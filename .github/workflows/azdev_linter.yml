@@ -18,7 +18,7 @@ jobs:
         path: ./extension
 
     # Install python
-    - uses: actions/setup-python@v2
+    - uses: actions/setup-python@v3
       name: Setup python
       with:
           python-version: "3.9"
