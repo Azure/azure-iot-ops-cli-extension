@@ -1,4 +1,4 @@
-exclude: azext_iot/sdk/
+exclude: azext_edge/sdk/
 repos:
   # Prevent python black hook from executing
   #- repo: https://github.com/psf/black

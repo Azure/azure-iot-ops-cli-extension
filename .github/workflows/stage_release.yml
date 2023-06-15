@@ -1,0 +1,26 @@
+name: Release
+concurrency: production
+
+on:
+  workflow_call:
+
+jobs:
+  release:
+    environment: production
+    runs-on: [self-hosted, 1ES.Pool=iotupx-github-hosted-pool, 1ES.ImageOverride=MMSUbuntu20.04]
+    steps:
+      - name: Download Wheel
+        uses: actions/download-artifact@v3
+        with:
+          name: azure-edge-cli-ext
+          path: ./release
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./release/*.*
+          draft: true
+          prerelease: true
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

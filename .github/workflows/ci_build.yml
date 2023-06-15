@@ -1,0 +1,17 @@
+name: CI Build
+on:
+  push:
+    branches:
+      - dev
+  # in case we need release-ready builds of specific branches
+  workflow_dispatch:
+jobs:
+  security:
+    uses: ./.github/workflows/security_checks.yml
+  test:
+    uses: ./.github/workflows/tox.yml
+  build:
+    uses: ./.github/workflows/build.yml
+  linter:
+    needs: [build]
+    uses: ./.github/workflows/azdev_linter.yml
