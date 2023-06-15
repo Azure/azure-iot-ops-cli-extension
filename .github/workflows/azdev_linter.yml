@@ -41,5 +41,5 @@ jobs:
         for i in $WHEELS; do
           az extension add --source $i -y --debug
         done
-        cp ./linter_exclusions.yml $AZURE_EXTENSION_DIR/azure-iot/
-        azdev linter --include-whl-extensions azure-iot --min-severity medium
+        cp ./linter_exclusions.yml $AZURE_EXTENSION_DIR/azure-edge/
+        azdev linter --include-whl-extensions azure-edge --min-severity medium

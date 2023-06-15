@@ -14,6 +14,11 @@ jobs:
         with:
           name: azure-edge-cli-ext
           path: ./release
+      - name: Download SBOM
+        uses: actions/download-artifact@v3
+        with:
+          name: SBOM
+          path: ./release
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
