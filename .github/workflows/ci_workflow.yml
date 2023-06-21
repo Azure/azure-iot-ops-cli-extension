@@ -17,6 +17,11 @@ jobs:
         run: |
           pip install wheel
           python -m setup bdist_wheel
+      - name: Upload Wheel Artifact
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          path: dist/*.whl
+          name: azure-edge-cli-ext
   test:
     uses: ./.github/workflows/tox.yml
   linter:
