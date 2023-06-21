@@ -36,18 +36,23 @@ def load_iotedge_arguments(self, _):
             help="The local directory the produced bundle will be saved to. "
             "If no directory is provided the current directory is used.",
         )
+        context.argument(
+            "namespace",
+            options_list=["--namespace"],
+            help="K8s cluster namespace the command should operate against.",
+        )
 
     with self.argument_context("edge e4k check") as context:
         context.argument(
             "pre_deployment_checks",
-            options_list=["--pre-deployment"],
+            options_list=["--pre"],
             help="Run only pre-requisite checks such as Kubernetes, Helm version, "
             "memory requirements etc, are satisfied before attempting to install E4K.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
             "post_deployment_checks",
-            options_list=["--post-deployment"],
+            options_list=["--post"],
             help="Run only post deployment checks to measure E4K system key health attributes.",
             arg_type=get_three_state_flag(),
         )
@@ -76,7 +81,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "refresh_in_seconds",
             options_list=["--refresh"],
-            help="Number of seconds between a stats refresh.",
+            help="Number of seconds between a stats refresh. Applicable with --watch.",
             type=int,
         )
         context.argument(
@@ -85,6 +90,36 @@ def load_iotedge_arguments(self, _):
             help="The operation blocks and dynamically updates a stats table.",
             arg_type=get_three_state_flag(),
         )
+        context.argument(
+            "diag_service_pod_prefix",
+            options_list=["--diag-svc-pod"],
+            help="The diagnostic service pod prefix. The first pod fulfilling the condition "
+            "will be connected to.",
+            arg_group="Pod",
+        )
+        context.argument(
+            "pod_port",
+            type=int,
+            options_list=["--port"],
+            help="The pod port to connect through.",
+            arg_group="Pod"
+        )
+        context.argument(
+            "raw_response_print",
+            options_list=["--raw"],
+            arg_type=get_three_state_flag(),
+            help="Return raw output from the metrics API.",
+        )
+
+    # cmd,
+    # namespace: Optional[str] = None,
+    # refresh_in_seconds: int = 10,
+    # context_name: Optional[str] = None,
+    # diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
+    # pod_port: int = 9600,
+    # raw_response: Optional[bool] = None,
+    # watch: Optional[bool] = None,
+
 
     with self.argument_context("edge e4k support") as context:
         context.argument(

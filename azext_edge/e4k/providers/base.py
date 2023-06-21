@@ -13,7 +13,7 @@ from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
-from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList
+from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList, V1Service, V1ServiceList
 from packaging import version
 from rich.console import NewLine, Pretty
 from rich.json import JSON
@@ -46,6 +46,23 @@ _namespaced_object_cache: dict = {}
 _namespaced_service_cache: dict = {}
 
 
+def get_namespaced_service(name: str, namespace: str) -> V1Service:
+    target_service_key = (name, namespace)
+    if target_service_key in _namespaced_service_cache:
+        return _namespaced_service_cache[target_service_key]
+
+    try:
+        v1 = client.CoreV1Api()
+        v1_service: V1Service = v1.read_namespaced_service(
+            name=name, namespace=namespace
+        )
+        _namespaced_service_cache[target_service_key] = v1_service
+    except ApiException as ae:
+        logger.debug(str(ae))
+    else:
+        return _namespaced_service_cache[target_service_key]
+
+
 def get_namespaced_pods_by_prefix(
     prefix: str, namespace: str
 ) -> Tuple[Union[None, List[V1Pod]], Union[None, Exception]]:
@@ -66,25 +83,27 @@ def get_namespaced_pods_by_prefix(
     return target_pods, None
 
 
-def get_namespaced_object(
-    resource: IotEdgeBrokerResource, namespace: Optional[str] = None
+def get_namespaced_custom_objects(
+    resource: IotEdgeBrokerResource, plural: str, namespace: str
 ) -> dict:
-    target_resource_key = str(resource)
+    target_resource_key = (resource, plural)
     if target_resource_key in _namespaced_object_cache:
         return _namespaced_object_cache[target_resource_key]
 
-    if not namespace:
-        namespace = DEFAULT_NAMESPACE
-
-    custom_client = client.CustomObjectsApi()
-
-    _namespaced_object_cache[
-        target_resource_key
-    ] = custom_client.list_namespaced_custom_object(
-        resource.group, resource.version, namespace, resource.resource
-    )
-
-    return _namespaced_object_cache[target_resource_key]
+    try:
+        custom_client = client.CustomObjectsApi()
+        _namespaced_object_cache[
+            target_resource_key
+        ] = custom_client.list_namespaced_custom_object(
+            group=resource.group,
+            version=resource.version,
+            namespace=namespace,
+            plural=plural,
+        )
+    except ApiException as ae:
+        logger.debug(str(ae))
+    else:
+        return _namespaced_object_cache[target_resource_key]
 
 
 class PodRequest:
@@ -145,10 +164,8 @@ def get_cluster_custom_resources(
         return _cluster_resources_cache[resource]
 
     try:
-        v1_api_resource_list: v1_api_resource_list = (
-            client.CustomObjectsApi().get_api_resources(
-                group=resource.group, version=resource.version
-            )
+        return client.CustomObjectsApi().get_api_resources(
+            group=resource.group, version=resource.version
         )
     except ApiException as ae:
         logger.debug(msg=str(ae))

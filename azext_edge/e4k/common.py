@@ -72,7 +72,7 @@ AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
 AZEDGE_DIAGNOSTICS_POD_PREFIX = "azedge-diagnostics"
 AZEDGE_DIAGNOSTICS_PROBE_POD_NAME_PREFIX = "azedge-diagnostics-probe"
 
-AZEDGE_FRONTEND_POD_PREFIX = "azedge-dmqtt-frontend"
+AZEDGE_FRONTEND_PREFIX = "azedge-dmqtt-frontend"
 AZEDGE_KAFKA_CONFIG_PREFIX = "azedge-kafka-config"
 
 OPCUA_RESOURCE = IotEdgeBrokerResource("e4i.microsoft.com", "v1", "")

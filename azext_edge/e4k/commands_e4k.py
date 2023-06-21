@@ -5,162 +5,50 @@
 # --------------------------------------------------------------------------------------------
 
 from pathlib import PurePath
-from time import sleep
 from typing import Dict, List, Optional, Union
 
 from knack.log import get_logger
-from rich.console import Console, NewLine
-
 from .providers.base import load_config_context
+from .common import AZEDGE_DIAGNOSTICS_SERVICE
 
 logger = get_logger(__name__)
-
-console = Console(width=120)
-
 
 
 def check(
     cmd,
-    pre_deployment_checks=None,
-    post_deployment_checks=None,
-    namespace=None,
+    pre_deployment_checks: Optional[bool] = None,
+    post_deployment_checks: Optional[bool] = None,
+    namespace: Optional[str] = None,
     as_list=None,
     context_name=None,
 ):
     load_config_context(context_name=context_name)
-    from .common import BROKER_RESOURCE
     from .providers.checks import run_checks
-    return run_checks(as_list=as_list)
 
+    run_pre = True
+    run_post = True
+    if pre_deployment_checks and not post_deployment_checks:
+        run_post = False
+    if post_deployment_checks and not pre_deployment_checks:
+        run_pre = False
 
-def check2(
-    cmd,
-    pre_deployment_checks=None,
-    post_deployment_checks=None,
-    namespace=None,
-    as_list=None,
-    context_name=None,
-):
-    if not as_list:
-        logger.warning("Currently only --list mode is supported.")
-        return
-
-    load_config_context(context_name=context_name)
-    from .common import BROKER_RESOURCE
-    from .providers.base import get_cluster_custom_resources
-    from .providers.e4i.support_bundle import build_bundle
-    from .providers.stats import get_stats_pods
-
-    get_cluster_custom_resources(BROKER_RESOURCE, raise_on_404=True)
-
-
-
-    from azext_edge.e4k.common import CheckTaskStatus
-
-    successful_tasks = []
-    warning_tasks = []
-    error_tasks = []
-    skipped_tasks = []
-
-    def print_summary():
-        from rich.panel import Panel
-
-        content = f"[green]{len(successful_tasks)} check(s) succeeded.[/green]"
-        if warning_tasks:
-            content = (
-                content
-                + "\n"
-                + f"[yellow]{len(warning_tasks)} check(s) raised warnings.[/yellow]"
-            )
-        else:
-            content = content + "\n" + "[green]0 check(s) raised warnings.[/green]"
-        if error_tasks:
-            content = (
-                content
-                + "\n"
-                + f"[red]{len(error_tasks)} check(s) raised errors.[/red]"
-            )
-        else:
-            content = content + "\n" + "[green]0 check(s) raised errors.[/green]"
-        content = (
-            content
-            + "\n"
-            + f"[grey84]{len(skipped_tasks)} check(s) were skipped.[/grey84]"
-        )
-
-        console.print(Panel(content, title="Summary", expand=False))
-
-    def _handle_status(status: str):
-        if status == CheckTaskStatus.success.value:
-            successful_tasks.append(status)
-        elif status == CheckTaskStatus.warning.value:
-            warning_tasks.append(status)
-        elif status == CheckTaskStatus.error.value:
-            error_tasks.append(status)
-        elif status == CheckTaskStatus.skipped.value:
-            skipped_tasks.append(status)
-
-    def handle_pre_deployment_checks():
-        from azext_edge.e4k.providers.checks import pre_deployment_checks
-
-        tasks = list(pre_deployment_checks.values())
-        tasks.reverse()
-
-        console.rule("Pre deployment checks", align="left")
-        console.print(NewLine(1))
-        with console.status("[cyan]Analyzing E4K environment...") as status:
-            while tasks:
-                task = tasks.pop()
-                task_result = task()
-
-                display = task_result.get("display")
-                status = task_result.get("status")
-                _handle_list_output(display)
-                _handle_status(status)
-                sleep(0.25)
-                console.print(NewLine(1))
-        console.print(NewLine(1))
-
-    def handle_post_deployment_checks():
-        from azext_edge.e4k.providers.checks import post_deployment_checks
-
-        tasks = list(post_deployment_checks.values())
-        tasks.reverse()
-
-        console.rule("Post deployment checks", align="left")
-        console.print(NewLine(1))
-        with console.status("[cyan]Analyzing E4K environment...") as status:
-            while tasks:
-                task = tasks.pop()
-                task_result = task()
-
-                display = task_result.get("display")
-                status = task_result.get("status")
-                _handle_list_output(display)
-                _handle_status(status)
-                sleep(0.25)
-                console.print(NewLine(1))
-        console.print(NewLine(1))
-
-    if not post_deployment_checks:
-        handle_pre_deployment_checks()
-
-    if pre_deployment_checks:
-        print_summary()
-        return
-
-    handle_post_deployment_checks()
-    print_summary()
-
-    # console.print(NewLine(1))
+    return run_checks(
+        namespace=namespace,
+        as_list=as_list,
+        pre_deployment=run_pre,
+        post_deployment=run_post,
+    )
 
 
 def stats(
     cmd,
-    namespace: str = None,
+    namespace: Optional[str] = None,
+    context_name: Optional[str] = None,
+    diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
+    pod_port: int = 9600,
+    raw_response_print: Optional[bool] = None,
     refresh_in_seconds: int = 10,
     watch: Optional[bool] = None,
-    context_name: Optional[str] = None,
 ):
     load_config_context(context_name=context_name)
     from .common import BROKER_RESOURCE
@@ -170,7 +58,12 @@ def stats(
     get_cluster_custom_resources(BROKER_RESOURCE, raise_on_404=True)
 
     return get_stats_pods(
-        namespace=namespace, refresh_in_seconds=refresh_in_seconds, watch=watch
+        namespace=namespace,
+        diag_service_pod_prefix=diag_service_pod_prefix,
+        raw_response_print=raw_response_print,
+        pod_port=pod_port,
+        refresh_in_seconds=refresh_in_seconds,
+        watch=watch,
     )
 
 
@@ -205,13 +98,3 @@ def config(cmd, passphrase: str, iterations: int = 210000):
     return {
         "hash": f"pbkdf2-sha512$i={iterations},l={len(dk)}${str(base64.b64encode(dk), encoding='utf-8')}"
     }
-
-
-def _handle_list_output(display: Union[str, dict]):
-    if isinstance(display, str):
-        console.print(display, highlight=False)
-    elif isinstance(display, dict):
-        for k in display:
-            console.print(k, highlight=False)
-            for i in display[k]:
-                console.print(i, highlight=False)

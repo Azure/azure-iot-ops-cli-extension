@@ -4,57 +4,65 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
+from datetime import datetime
+from time import sleep
+from typing import Optional
+from rich.console import Console
+from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 
-from .base import DEFAULT_NAMESPACE, get_namespaced_pods_by_prefix, client
+from ..common import AZEDGE_DIAGNOSTICS_SERVICE, CONSOLE_WIDTH
+from .base import DEFAULT_NAMESPACE, get_namespaced_pods_by_prefix, portforward_http
 
 logger = get_logger(__name__)
 
+console = Console(width=CONSOLE_WIDTH, highlight=True)
+
 
 def get_stats_pods(
-    namespace: str = None,
-    refresh_in_seconds: int = 10,
-    watch: bool = False,
+    namespace: Optional[str] = None,
+    diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
+    pod_port: int = 9600,
     raw_response=False,
+    raw_response_print=False,
+    refresh_in_seconds: int = 10,
+    watch: bool = False,  
 ):
-    from datetime import datetime
-    from time import sleep
-    from kubernetes.client.models import V1Pod, V1PodList, V1PodStatus
-    from azext_edge.e4k.common import AZEDGE_DIAGNOSTICS_POD_PREFIX
-    from .base import portforward_http
-
     if not namespace:
         namespace = DEFAULT_NAMESPACE
 
-    target_pods, exception = get_namespaced_pods_by_prefix(
-        prefix=AZEDGE_DIAGNOSTICS_POD_PREFIX, namespace=namespace
+    target_pods, _ = get_namespaced_pods_by_prefix(
+        prefix=diag_service_pod_prefix, namespace=namespace
     )
     if not target_pods:
-        raise RuntimeError(
+        raise ResourceNotFoundError(
             f"Diagnostics service does not exist in namespace {namespace}."
         )
     diagnostic_pod = target_pods[0]
     # diagnostic_pod_status: V1PodStatus = diagnostic_pod.status
-    pod_port = 9600
+    target_pod_port = pod_port
 
     from rich import box
-    from rich.console import Console
     from rich.live import Live
     from rich.table import Table
 
-    console = Console(width=120)
     table = Table(box=box.MINIMAL_DOUBLE_HEAD)
     table.add_column("Stat")
     table.add_column("Value")
     table.add_column("Description")
 
     with portforward_http(
-        namespace=namespace, pod_name=diagnostic_pod.metadata.name, pod_port=pod_port
+        namespace=namespace,
+        pod_name=diagnostic_pod.metadata.name,
+        pod_port=target_pod_port,
     ) as pf:
         try:
             raw_metrics = pf.get("/metrics")
             if raw_response:
                 return raw_metrics
+            elif raw_response_print:
+                console.print(raw_metrics)
+                return
             stats = dict(sorted(_clean_stats(raw_metrics).items()))
             if not watch:
                 return stats
