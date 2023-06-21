@@ -16,7 +16,7 @@ jobs:
       - name: Build Wheel
         run: |
           pip install wheel
-          python -m setup bdist_wheel
+          python -m setup bdist_wheel -d dist
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v3.1.0
         with:
