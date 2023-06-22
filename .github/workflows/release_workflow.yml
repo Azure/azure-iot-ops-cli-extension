@@ -2,16 +2,23 @@ name: Build and Publish Release
 on:
   # only manual trigger
   workflow_dispatch:
+    inputs:
+      continue-on-fail:
+        description: Continue build even if checks fail
+        type: boolean
+        required: false
+        default: false
 jobs:
   security:
     uses: ./.github/workflows/security_checks.yml
+  build:
+    uses: ./.github/workflows/release_build.yml
   test:
     uses: ./.github/workflows/tox.yml
-  build:
-    uses: ./.github/workflows/build.yml
   linter:
     needs: [build]
     uses: ./.github/workflows/azdev_linter.yml
   release:
-    needs: [build, linter, security, test]
+    needs: [security, build, test, linter]
+    if: ${{ success() || github.event.inputs.continue-on-fail }}
     uses: ./.github/workflows/stage_release.yml

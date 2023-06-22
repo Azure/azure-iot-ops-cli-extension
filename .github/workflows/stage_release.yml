@@ -18,13 +18,17 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: SBOM
-          path: ./release
+          path: ./release/SBOM
+      - name: Zip SBOM
+        run: zip ./SBOM.zip ./release/SBOM/
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: ./release/*.*
+          files: |
+            ./release/*.whl
+            ./SBOM.zip
           draft: true
-          prerelease: true
+          prerelease: false
           fail_on_unmatched_files: true
           generate_release_notes: true
         env:

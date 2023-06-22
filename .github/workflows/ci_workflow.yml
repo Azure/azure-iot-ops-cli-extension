@@ -1,0 +1,29 @@
+name: CI Build
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup python
+        uses: actions/setup-python@v3
+        with:
+            python-version: "3.9"
+      - name: Build Wheel
+        run: |
+          pip install wheel
+          python -m setup bdist_wheel -d dist
+      - name: Upload Wheel Artifact
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          path: dist/*.whl
+          name: azure-edge-cli-ext
+  test:
+    uses: ./.github/workflows/tox.yml
+  linter:
+    needs: [build]
+    uses: ./.github/workflows/azdev_linter.yml
