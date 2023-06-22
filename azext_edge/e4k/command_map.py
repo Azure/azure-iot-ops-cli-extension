@@ -16,6 +16,9 @@ e4k_resource_ops = CliCommandType(
 e4i_resource_ops = CliCommandType(
     operations_tmpl="azext_edge.e4k.commands_e4i#{}"
 )
+edge_resource_ops = CliCommandType(
+    operations_tmpl="azext_edge.e4k.commands_edge#{}"
+)
 
 
 class IdentityResultTransform(LongRunningOperation):
@@ -34,6 +37,12 @@ def load_iotedge_commands(self, _):
         is_preview=True,
     ) as cmd_group:
         pass
+
+    with self.command_group(
+        "edge support",
+        command_type=edge_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("create-bundle", "support_bundle")
 
     with self.command_group(
         "edge e4k",

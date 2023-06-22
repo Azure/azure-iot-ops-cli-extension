@@ -19,6 +19,20 @@ def load_iotedge_help():
     """
 
     helps[
+        "edge support"
+    ] = """
+        type: group
+        short-summary: Support operations and tools.
+    """
+
+    helps[
+        "edge support create-bundle"
+    ] = """
+        type: command
+        short-summary: Creates a standard support bundle zip archive for use in troubleshooting and diagnostics.
+    """
+
+    helps[
         "edge e4k"
     ] = """
         type: group

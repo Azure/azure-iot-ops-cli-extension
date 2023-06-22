@@ -8,7 +8,7 @@
 CLI parameter definitions.
 """
 
-from knack.arguments import CLIArgumentType
+from knack.arguments import CLIArgumentType, CaseInsensitiveList
 from azure.cli.core.commands.parameters import (
     resource_group_name_type,
     get_three_state_flag,
@@ -39,7 +39,23 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "namespace",
             options_list=["--namespace"],
-            help="K8s cluster namespace the command should operate against.",
+            help="K8s cluster namespace the command should operate against. "
+            "If no namespace is provided `default` will be used.",
+        )
+
+    with self.argument_context("edge support") as context:
+        context.argument(
+            "edge_service",
+            options_list=["--edge-service"],
+            choices=CaseInsensitiveList(["auto", "e4k", "opcua"]),
+            help="The edge service the support bundle creation should apply to. "
+            "If auto is selected, the operation will detect which edge services are available.",
+        )
+        context.argument(
+            "log_age_seconds",
+            options_list=["--log-age"],
+            help="Container log age in seconds.",
+            type=int,
         )
 
     with self.argument_context("edge e4k check") as context:
@@ -93,16 +109,11 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "diag_service_pod_prefix",
             options_list=["--diag-svc-pod"],
-            help="The diagnostic service pod prefix. The first pod fulfilling the condition "
-            "will be connected to.",
+            help="The diagnostic service pod prefix. The first pod fulfilling the condition " "will be connected to.",
             arg_group="Pod",
         )
         context.argument(
-            "pod_port",
-            type=int,
-            options_list=["--port"],
-            help="The pod port to connect through.",
-            arg_group="Pod"
+            "pod_port", type=int, options_list=["--port"], help="The pod port to connect through.", arg_group="Pod"
         )
         context.argument(
             "raw_response_print",
@@ -119,7 +130,6 @@ def load_iotedge_arguments(self, _):
     # pod_port: int = 9600,
     # raw_response: Optional[bool] = None,
     # watch: Optional[bool] = None,
-
 
     with self.argument_context("edge e4k support") as context:
         context.argument(

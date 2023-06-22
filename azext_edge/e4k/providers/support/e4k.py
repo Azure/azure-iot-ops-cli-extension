@@ -4,17 +4,18 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-import json
-from datetime import datetime
-from typing import Dict, List
-from zipfile import ZipFile
+from functools import partial
 
 from knack.log import get_logger
+from kubernetes.client.models import V1ObjectMeta, V1PodList
 
-from .base import DEFAULT_NAMESPACE, get_namespaced_pods_by_prefix, client
+from ..base import client
+from .base import process_v1_pods, process_crd
+from ...common import OPCUA_RESOURCE
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
+
 
 
 def fetch_events(
@@ -98,12 +99,6 @@ def fetch_pods(
                         container=c.name,
                         previous=previous,
                     )
-                    log = _add_log_header(
-                        log=log,
-                        namespace=namespace,
-                        container_name=c.name,
-                        pod_name=pod_name,
-                    )
                     result.append(
                         {
                             "data": log,
@@ -164,91 +159,12 @@ support_namespace_elements = {
     "diagnostic metrics": fetch_diagnostic_metrics,
 }
 
-support_global_elements = {"nodes": fetch_nodes}
 
+def prepare_bundle(log_age_seconds: int = 60 * 60 * 24) -> dict:
+    applicable_namespaces = []
+    support_runtime_elements["supervisorPods"] = partial(fetch_supervisor_pods, since_seconds=log_age_seconds)
+    support_runtime_elements["deployments"] = partial(fetch_deployments, since_seconds=log_age_seconds)
 
-def build_bundle(bundle_path: str, namespaces: List[str] = None):
-    from rich.console import Console, NewLine
-    from rich.live import Live
-    from rich.table import Table
-    from rich.progress import Progress
-
-    console = Console(width=120)
-    grid = Table.grid(expand=False)
-    grid = Table.grid(expand=False)
-    grid.add_column()
-
-    collects = []
-    collects.extend(list(support_namespace_elements.keys()))
-
-    if not namespaces:
-        namespaces = [DEFAULT_NAMESPACE]
-
-    if "kube-system" not in namespaces:
-        namespaces.append("kube-system")
-
-    bundle = {}
-    with Live(grid, console=console, transient=True) as live:
-        uber_progress = Progress()
-        uber_task = uber_progress.add_task("[green]Building support bundle", total=(len(collects) * len(namespaces)))
-        for namespace in namespaces:
-            namespace_task = uber_progress.add_task(f"[cyan]Processing {namespace}", total=len(collects))
-            bundle[namespace] = {}
-            for element in support_namespace_elements:
-                header = f"Fetching [medium_purple4]{element}[/medium_purple4] data..."
-                grid = Table.grid(expand=False)
-                grid.add_column()
-
-                grid.add_row(NewLine(1))
-                grid.add_row(header)
-                grid.add_row(NewLine(1))
-                grid.add_row(uber_progress)
-                live.update(grid, refresh=True)
-
-                bundle[namespace][element] = support_namespace_elements[element](namespace)
-
-                if not uber_progress.finished:
-                    uber_progress.update(namespace_task, advance=1)
-                    uber_progress.update(uber_task, advance=1)
-
-            bundle["global"] = {}
-            for element in support_global_elements:
-                bundle["global"][element] = support_global_elements[element]()
-
-    write_zip(file_path=bundle_path, bundle=bundle)
-    return {"bundlePath": bundle_path, "namespaces": namespaces, "errors": None}
-
-
-def write_zip(bundle: dict, file_path: str):
-    with ZipFile(file=file_path, mode="w") as myzip:
-        todo: List[dict] = []
-        global_elements = bundle.pop("global", None)
-        if global_elements:
-            for element in global_elements:
-                todo.append(global_elements[element])
-
-        for namespace in bundle:
-            for element in bundle[namespace]:
-                if isinstance(bundle[namespace][element], list):
-                    todo.extend(bundle[namespace][element])
-                else:
-                    todo.append(bundle[namespace][element])
-
-        for t in todo:
-            if t:
-                data = t.get("data")
-                if data:
-                    if isinstance(data, dict):
-                        data = json.dumps(t["data"], indent=2, cls=SafeEncoder)
-                    myzip.writestr(zinfo_or_arcname=f"{t['zinfo']}", data=data)
-
-
-class SafeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        return json.JSONEncoder.default(self, o)
-
-
-
+    opcua_to_run = {}
+    opcua_to_run.update(support_crd_elements)
+    opcua_to_run.update(support_runtime_elements)

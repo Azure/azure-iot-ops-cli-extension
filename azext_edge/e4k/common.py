@@ -59,13 +59,19 @@ class E4kCheckType(Enum):
     post = "post"
 
 
-IotEdgeBrokerResource = namedtuple(
-    "IoTEdgeBrokerResource", ["group", "version", "resource"]
-)
+class EdgeResourceType(Enum):
+    """
+    Edge resource type.
+    """
+
+    auto = "auto"
+    e4k = "e4k"
+    opcua = "opcua"
+
+
+IotEdgeBrokerResource = namedtuple("IoTEdgeBrokerResource", ["group", "version", "resource"])
 BROKER_RESOURCE = IotEdgeBrokerResource("az-edge.com", "v1alpha2", "brokers")
-BRIDGE_RESOURCE = IotEdgeBrokerResource(
-    "az-edge.com", "v1alpha2", "mqttbridgeconnectors"
-)
+BRIDGE_RESOURCE = IotEdgeBrokerResource("az-edge.com", "v1alpha2", "mqttbridgeconnectors")
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
 
