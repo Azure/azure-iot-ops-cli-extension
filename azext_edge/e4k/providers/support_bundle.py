@@ -14,13 +14,14 @@ from knack.log import get_logger
 from .base import DEFAULT_NAMESPACE, get_namespaced_pods_by_prefix, client
 
 logger = get_logger(__name__)
+generic = client.ApiClient()
 
 
 def fetch_events(
     namespace: str,
 ):
     return {
-        "data": client.CoreV1Api().list_namespaced_event(namespace).to_dict(),
+        "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_namespaced_event(namespace)),
         "zinfo": f"{namespace}/events.json",
     }
 
@@ -29,9 +30,9 @@ def fetch_replication_controllers(
     namespace: str,
 ):
     return {
-        "data": client.CoreV1Api()
-        .list_namespaced_replication_controller(namespace)
-        .to_dict(),
+        "data": generic.sanitize_for_serialization(
+            obj=client.CoreV1Api().list_namespaced_replication_controller(namespace)
+        ),
         "zinfo": f"{namespace}/replicationcontrollers.json",
     }
 
@@ -40,7 +41,7 @@ def fetch_services(
     namespace: str,
 ):
     return {
-        "data": client.CoreV1Api().list_namespaced_service(namespace).to_dict(),
+        "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_namespaced_service(namespace)),
         "zinfo": f"{namespace}/services.json",
     }
 
@@ -49,7 +50,7 @@ def fetch_daemon_sets(
     namespace: str,
 ):
     return {
-        "data": client.AppsV1Api().list_namespaced_daemon_set(namespace).to_dict(),
+        "data": generic.sanitize_for_serialization(obj=client.AppsV1Api().list_namespaced_daemon_set(namespace)),
         "zinfo": f"{namespace}/daemonsets.json",
     }
 
@@ -58,7 +59,7 @@ def fetch_deployments(
     namespace: str,
 ):
     return {
-        "data": client.AppsV1Api().list_namespaced_deployment(namespace).to_dict(),
+        "data": generic.sanitize_for_serialization(obj=client.AppsV1Api().list_namespaced_deployment(namespace)),
         "zinfo": f"{namespace}/deployments.json",
     }
 
@@ -67,7 +68,7 @@ def fetch_replica_sets(
     namespace: str,
 ):
     return {
-        "data": client.AppsV1Api().list_namespaced_deployment(namespace).to_dict(),
+        "data": generic.sanitize_for_serialization(obj=client.AppsV1Api().list_namespaced_deployment(namespace)),
         "zinfo": f"{namespace}/replicasets.json",
     }
 
@@ -81,7 +82,8 @@ def fetch_pods(
     result = []
     v1_api = client.CoreV1Api()
     pods_data: V1PodList = v1_api.list_namespaced_pod(namespace)
-    result.append({"data": pods_data.to_dict(), "zinfo": f"{namespace}/pods.json"})
+    result.append({"data": generic.sanitize_for_serialization(obj=pods_data), "zinfo": f"{namespace}/pods.json"})
+
     for p in pods_data.items:
         pod: V1Pod = p
         pod_name = pod.metadata.name
@@ -132,9 +134,7 @@ def fetch_diagnostic_metrics(namespace: str):
     from ..common import AZEDGE_DIAGNOSTICS_POD_PREFIX
     from .stats import get_stats_pods
 
-    target_pods, exception = get_namespaced_pods_by_prefix(
-        prefix=AZEDGE_DIAGNOSTICS_POD_PREFIX, namespace=namespace
-    )
+    target_pods, _ = get_namespaced_pods_by_prefix(prefix=AZEDGE_DIAGNOSTICS_POD_PREFIX, namespace=namespace)
     if not target_pods:
         logger.debug(f"Skipping metrics fetch for namespace {namespace}.")
         return
@@ -142,13 +142,13 @@ def fetch_diagnostic_metrics(namespace: str):
     stats_raw = get_stats_pods(namespace=namespace, raw_response=True)
     return {
         "data": stats_raw,
-        "zinfo": f"{namespace}/diagnostics_metrics.txt",
+        "zinfo": f"{namespace}/diagnostics_metrics.log",
     }
 
 
 def fetch_nodes(**kwargs):
     return {
-        "data": client.CoreV1Api().list_node().to_dict(),
+        "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_node()),
         "zinfo": "nodes.json",
     }
 
@@ -198,13 +198,9 @@ def build_bundle(bundle_path: str, namespaces: List[str] = None):
     bundle = {}
     with Live(grid, console=console, transient=True) as live:
         uber_progress = Progress()
-        uber_task = uber_progress.add_task(
-            "[green]Building support bundle", total=(len(collects) * len(namespaces))
-        )
+        uber_task = uber_progress.add_task("[green]Building support bundle", total=(len(collects) * len(namespaces)))
         for namespace in namespaces:
-            namespace_task = uber_progress.add_task(
-                f"[cyan]Processing {namespace}", total=len(collects)
-            )
+            namespace_task = uber_progress.add_task(f"[cyan]Processing {namespace}", total=len(collects))
             bundle[namespace] = {}
             for element in support_namespace_elements:
                 header = f"Fetching [medium_purple4]{element}[/medium_purple4] data..."
@@ -217,9 +213,7 @@ def build_bundle(bundle_path: str, namespaces: List[str] = None):
                 grid.add_row(uber_progress)
                 live.update(grid, refresh=True)
 
-                bundle[namespace][element] = support_namespace_elements[element](
-                    namespace
-                )
+                bundle[namespace][element] = support_namespace_elements[element](namespace)
 
                 if not uber_progress.finished:
                     uber_progress.update(namespace_task, advance=1)
