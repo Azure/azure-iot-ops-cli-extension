@@ -1,5 +1,4 @@
 name: Release
-concurrency: production
 
 on:
   workflow_call:
