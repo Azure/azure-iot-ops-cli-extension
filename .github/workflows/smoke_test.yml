@@ -37,6 +37,7 @@ jobs:
           kubectl get all
       - name: Run smoke tests
         run: |
+          az edge support create-bundle --edge-service auto
           az edge support create-bundle --edge-service e4k
           az edge support create-bundle --edge-service opcua
           az edge e4k check
