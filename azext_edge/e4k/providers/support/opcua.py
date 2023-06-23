@@ -64,7 +64,7 @@ support_runtime_elements = {}
 
 def prepare_bundle(log_age_seconds: int = 60 * 60 * 24) -> dict:
     support_runtime_elements["supervisorPods"] = partial(fetch_supervisor_pods, since_seconds=log_age_seconds)
-    support_runtime_elements["deployments"] = partial(process_deployments, since_seconds=log_age_seconds)
+    support_runtime_elements["deployments"] = partial(fetch_apollo_deployment, since_seconds=log_age_seconds)
 
     opcua_to_run = {}
     opcua_to_run.update(support_crd_elements)

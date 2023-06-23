@@ -45,7 +45,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     pending_work["common"].update(prepare_shared_bundle())
     total_work_count = len(pending_work["opcua"]) + len(pending_work["e4k"]) + len(pending_work["common"])
 
-    bundle = {}
+    bundle = {"e4k": {}, "opcua": {}, "common": {}}
     grid = Table.grid(expand=False)
     with Live(grid, console=console, transient=True) as live:
         uber_progress = Progress()
@@ -54,7 +54,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
             total=total_work_count,
         )
 
-        def visually_process(description: str, support_segment: dict):
+        def visually_process(description: str, support_segment: dict, edge_service: str):
             namespace_task = uber_progress.add_task(f"[cyan]{description}", total=len(support_segment))
             for element in support_segment:
                 header = f"Fetching [medium_purple4]{element}[/medium_purple4] data..."
@@ -67,7 +67,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
                 grid.add_row(uber_progress)
                 live.update(grid, refresh=True)
 
-                bundle[element] = support_segment[element]()
+                bundle[edge_service][element] = support_segment[element]()
 
                 if not uber_progress.finished:
                     uber_progress.update(namespace_task, advance=1)
@@ -77,16 +77,19 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
             visually_process(
                 description="Processing E4K resources",
                 support_segment=pending_work["e4k"],
+                edge_service="e4k",
             )
         if pending_work["opcua"]:
             visually_process(
                 description="Processing OPC-UA resources",
                 support_segment=pending_work["opcua"],
+                edge_service="opcua",
             )
         if pending_work["common"]:
             visually_process(
                 description="Processing common resources",
                 support_segment=pending_work["common"],
+                edge_service="common"
             )
 
     write_zip(file_path=bundle_path, bundle=bundle)
@@ -96,11 +99,13 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
 def write_zip(bundle: dict, file_path: str):
     with ZipFile(file=file_path, mode="w") as myzip:
         todo: List[dict] = []
-        for element in bundle:
-            if isinstance(bundle[element], list):
-                todo.extend(bundle[element])
-            else:
-                todo.append(bundle[element])
+        for edge_service in ["e4k", "opcua", "common"]:
+            if edge_service in bundle:
+                for element in bundle[edge_service]:
+                    if isinstance(bundle[edge_service][element], list):
+                        todo.extend(bundle[edge_service][element])
+                    else:
+                        todo.append(bundle[edge_service][element])
 
         added_path = {}
         for t in todo:
