@@ -56,23 +56,3 @@ def load_iotedge_commands(self, _):
         command_type=e4k_resource_ops,
     ) as cmd_group:
         cmd_group.command("hash", "config")
-
-    with self.command_group(
-        "edge e4k support",
-        command_type=e4k_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("create-bundle", "support_bundle")
-
-    # OPC UA segment
-
-    with self.command_group(
-        "edge opcua",
-        command_type=e4i_resource_ops,
-    ) as cmd_group:
-        pass
-
-    with self.command_group(
-        "edge opcua support",
-        command_type=e4i_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("create-bundle", "support_bundle")
