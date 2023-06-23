@@ -112,29 +112,6 @@ def process_v1_pods(
     return processed
 
 
-def process_events(resource: IotEdgeBrokerResource, plural: str, file_prefix: Optional[str] = None):
-    result: dict = client.CustomObjectsApi().list_cluster_custom_object(
-        group=resource.group,
-        version=resource.version,
-        plural=plural,
-    )
-    if not file_prefix:
-        file_prefix = plural[:-1]
-
-    if resource.group.startswith("e4i"):
-        edge_service = "opcua"
-    else:
-        edge_service = "e4k"
-
-    processed = []
-    for r in result.get("items", []):
-        namespace = r["metadata"]["namespace"]
-        name = r["metadata"]["name"]
-        processed.append({"data": r, "zinfo": f"{edge_service}/{namespace}/{file_prefix}.{name}.yaml"})
-
-    return processed
-
-
 def process_deployments(
     resource: IotEdgeBrokerResource,
     label_selector: str,
@@ -169,8 +146,111 @@ def process_deployments(
             }
         )
         deployment_pods = v1_api.list_namespaced_pod(deployment_namespace)
-        processed.extend(
-            process_v1_pods(edge_service=edge_service, pods=deployment_pods, since_seconds=since_seconds)
+        processed.extend(process_v1_pods(edge_service=edge_service, pods=deployment_pods, since_seconds=since_seconds))
+
+    return processed
+
+
+def process_statefulset(
+    resource: IotEdgeBrokerResource,
+    label_selector: str,
+):
+    from kubernetes.client.models import V1StatefulSet, V1StatefulSetList
+
+    v1_apps = client.AppsV1Api()
+
+    processed = []
+    if resource.group.startswith("e4i"):
+        edge_service = "opcua"
+    else:
+        edge_service = "e4k"
+
+    statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(label_selector=label_selector)
+    logger.info(f"Detected {len(statefulsets.items)} statefulsets.")
+
+    for statefulset in statefulsets.items:
+        s: V1StatefulSet = statefulset
+        # TODO: Workaround
+        s.api_version = statefulsets.api_version
+        s.kind = "Statefulset"
+        statefulset_metadata: V1ObjectMeta = s.metadata
+        statefulset_namespace = statefulset_metadata.namespace
+        statefulset_name = statefulset_metadata.name
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=s),
+                "zinfo": f"{edge_service}/{statefulset_namespace}/statefulset.{statefulset_name}.yaml",
+            }
+        )
+
+    return processed
+
+
+def process_services(
+    resource: IotEdgeBrokerResource,
+    label_selector: str,
+):
+    from kubernetes.client.models import V1Service, V1ServiceList
+
+    v1_apps = client.AppsV1Api()
+
+    processed = []
+    if resource.group.startswith("e4i"):
+        edge_service = "opcua"
+    else:
+        edge_service = "e4k"
+
+    services: V1ServiceList = v1_apps.list_stateful_set_for_all_namespaces(label_selector=label_selector)
+    logger.info(f"Detected {len(services.items)} services.")
+
+    for service in services.items:
+        s: V1Service = service
+        # TODO: Workaround
+        s.api_version = services.api_version
+        s.kind = "Service"
+        statefulset_metadata: V1ObjectMeta = s.metadata
+        statefulset_namespace = statefulset_metadata.namespace
+        statefulset_name = statefulset_metadata.name
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=s),
+                "zinfo": f"{edge_service}/{statefulset_namespace}/service.{statefulset_name}.yaml",
+            }
+        )
+
+    return processed
+
+
+def process_replicasets(
+    resource: IotEdgeBrokerResource,
+    label_selector: str,
+):
+    from kubernetes.client.models import V1ReplicaSet, V1ReplicaSetList
+
+    v1_apps = client.AppsV1Api()
+
+    processed = []
+    if resource.group.startswith("e4i"):
+        edge_service = "opcua"
+    else:
+        edge_service = "e4k"
+
+    replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
+    logger.info(f"Detected {len(replicasets.items)} replicasets.")
+
+    for replicaset in replicasets.items:
+        r: V1ReplicaSet = replicaset
+        # TODO: Workaround
+        r.api_version = replicasets.api_version
+        r.kind = "ReplicaSet"
+        statefulset_metadata: V1ObjectMeta = r.metadata
+        statefulset_namespace = statefulset_metadata.namespace
+        statefulset_name = statefulset_metadata.name
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=r),
+                "zinfo": f"{edge_service}/{statefulset_namespace}/replicaset.{statefulset_name}.yaml",
+            }
         )
 
     return processed

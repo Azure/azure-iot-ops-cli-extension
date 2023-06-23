@@ -102,13 +102,16 @@ def write_zip(bundle: dict, file_path: str):
             else:
                 todo.append(bundle[element])
 
+        added_path = {}
         for t in todo:
             if t:
                 data = t.get("data")
-                if data:
+                zinfo = t.get("zinfo")
+                if data and zinfo not in added_path:
                     if isinstance(data, dict):
                         data = yaml.safe_dump(t["data"], indent=2)
-                    myzip.writestr(zinfo_or_arcname=f"{t['zinfo']}", data=data)
+                    myzip.writestr(zinfo_or_arcname=zinfo, data=data)
+                    added_path[zinfo] = True
 
 
 def str_presenter(dumper, data):

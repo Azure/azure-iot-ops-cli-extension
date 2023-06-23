@@ -5,13 +5,12 @@
 # --------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import List, Tuple
 
 from knack.log import get_logger
 
-from ..base import client, get_namespaced_pods_by_prefix
-from .base import process_crd, process_deployments
 from ...common import BROKER_RESOURCE
+from ..base import client, get_namespaced_pods_by_prefix
+from .base import process_crd, process_deployments, process_replicasets, process_services, process_statefulset
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
@@ -23,44 +22,6 @@ def fetch_events(
     return {
         "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_namespaced_event(namespace)),
         "zinfo": f"{namespace}/events.json",
-    }
-
-
-def fetch_replication_controllers(
-    namespace: str,
-):
-    return {
-        "data": generic.sanitize_for_serialization(
-            obj=client.CoreV1Api().list_namespaced_replication_controller(namespace)
-        ),
-        "zinfo": f"{namespace}/replicationcontrollers.json",
-    }
-
-
-def fetch_services(
-    namespace: str,
-):
-    return {
-        "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_namespaced_service(namespace)),
-        "zinfo": f"{namespace}/services.json",
-    }
-
-
-def fetch_daemon_sets(
-    namespace: str,
-):
-    return {
-        "data": generic.sanitize_for_serialization(obj=client.AppsV1Api().list_namespaced_daemon_set(namespace)),
-        "zinfo": f"{namespace}/daemonsets.json",
-    }
-
-
-def fetch_replica_sets(
-    namespace: str,
-):
-    return {
-        "data": generic.sanitize_for_serialization(obj=client.AppsV1Api().list_stateful_set_for_all_namespaces(namespace)),
-        "zinfo": f"{namespace}/replicasets.json",
     }
 
 
@@ -80,18 +41,6 @@ def fetch_replica_sets(
 #         )
 #     except ApiException as e:
 #         logger.debug(e.body)
-
-
-# support_namespace_elements = {
-#     "events": fetch_events,
-#     "replication controllers": fetch_replication_controllers,
-#     "services": fetch_services,
-#     "daemon sets": fetch_daemon_sets,
-#     "deployments": fetch_deployments,
-#     "pods": fetch_pods,
-#     "custom brokers": fetch_custom_brokers,
-#     "diagnostic metrics": fetch_diagnostic_metrics,
-# }
 
 
 # TODO
@@ -123,14 +72,6 @@ def fetch_diagnostic_service():
     return process_crd(BROKER_RESOURCE, "diagnosticservices")
 
 
-def fetch_broker_deployments(since_seconds: int = 60 * 60 * 24):
-    return process_deployments(
-        resource=BROKER_RESOURCE,
-        field_selectors=["app=azedge-e4k-operator", "app=broker", "app=diagnostics"],
-        since_seconds=since_seconds,
-    )
-
-
 support_crd_elements = {
     "brokers": fetch_brokers,
     "listeners": fetch_broker_listeners,
@@ -157,13 +98,45 @@ def fetch_diagnostic_metrics(namespace: str):
     }
 
 
-support_runtime_elements = {}
+def fetch_broker_deployments(since_seconds: int = 60 * 60 * 24):
+    return process_deployments(
+        resource=BROKER_RESOURCE,
+        label_selector="app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest)",
+        since_seconds=since_seconds,
+    )
+
+
+def fetch_statefulsets():
+    return process_statefulset(
+        resource=BROKER_RESOURCE,
+        label_selector="app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager)",
+    )
+
+
+def fetch_services():
+    return process_services(
+        resource=BROKER_RESOURCE,
+        label_selector="app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager)",
+    )
+
+
+def fetch_replicasets():
+    return process_replicasets(
+        resource=BROKER_RESOURCE,
+        label_selector="app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager)",
+    )
+
+
+support_runtime_elements = {
+    "statefulsets": fetch_statefulsets,
+    "services": fetch_services,
+    "replicasets": fetch_replicasets,
+}
 
 
 def prepare_bundle(log_age_seconds: int = 60 * 60 * 24) -> dict:
     e4k_to_run = {}
 
-    # support_runtime_elements["supervisorPods"] = partial(fetch_supervisor_pods, since_seconds=log_age_seconds)
     support_runtime_elements["deployments"] = partial(fetch_broker_deployments, since_seconds=log_age_seconds)
 
     e4k_to_run = {}

@@ -226,8 +226,8 @@ def evaluate_broker_diagnostics(
     )
     diag_count_display = "- Expecting exactly [blue]1[/blue] broker diagnostic per namespace. Actual {}."
     if diagnostics_count != 1:
-        add_diag_count_eval(status=CheckTaskStatus.error.value)
-        diag_display_value = f"[red]{diagnostics_count}[/red]"
+        add_diag_count_eval(status=CheckTaskStatus.warning.value)
+        diag_display_value = f"[yellow]{diagnostics_count}[/yellow]"
     else:
         add_diag_count_eval(status=CheckTaskStatus.success.value)
         diag_display_value = f"[green]{diagnostics_count}[/green]"
