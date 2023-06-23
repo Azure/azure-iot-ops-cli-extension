@@ -59,7 +59,7 @@ class E4kCheckType(Enum):
     post = "post"
 
 
-class EdgeResourceType(Enum):
+class EdgeServiceType(Enum):
     """
     Edge resource type.
     """

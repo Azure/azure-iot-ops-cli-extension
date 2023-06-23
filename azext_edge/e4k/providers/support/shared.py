@@ -4,14 +4,9 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-from functools import partial
-
 from knack.log import get_logger
-from kubernetes.client.models import V1ObjectMeta, V1PodList
-
 from ..base import client
-from .base import process_v1_pods, process_crd
-from ...common import OPCUA_RESOURCE
+
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
