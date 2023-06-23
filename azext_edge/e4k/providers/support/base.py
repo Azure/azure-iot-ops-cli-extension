@@ -116,6 +116,7 @@ def process_deployments(
     resource: IotEdgeBrokerResource,
     label_selector: str,
     since_seconds: int = 60 * 60 * 24,
+    return_namespaces: bool = False
 ):
     from kubernetes.client.models import V1Deployment, V1DeploymentList
 
@@ -130,6 +131,7 @@ def process_deployments(
 
     deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(label_selector=label_selector)
     logger.info(f"Detected {len(deployments.items)} deployments.")
+    namespace_pods_work = {}
 
     for deployment in deployments.items:
         d: V1Deployment = deployment
@@ -145,8 +147,13 @@ def process_deployments(
                 "zinfo": f"{edge_service}/{deployment_namespace}/deployment.{deployment_name}.yaml",
             }
         )
-        deployment_pods = v1_api.list_namespaced_pod(deployment_namespace)
-        processed.extend(process_v1_pods(edge_service=edge_service, pods=deployment_pods, since_seconds=since_seconds))
+        if deployment_namespace not in namespace_pods_work:
+            deployment_pods = v1_api.list_namespaced_pod(deployment_namespace)
+            processed.extend(process_v1_pods(edge_service=edge_service, pods=deployment_pods, since_seconds=since_seconds))
+            namespace_pods_work[deployment_namespace] = True
+
+    if return_namespaces:
+        return processed, namespace_pods_work
 
     return processed
 

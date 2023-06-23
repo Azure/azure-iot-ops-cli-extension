@@ -42,6 +42,10 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
         get_cluster_custom_resources(resource=OPCUA_RESOURCE, raise_on_404=True)
         pending_work["opcua"].update(prepare_opcua_bundle(log_age_seconds))
 
+    if not any([pending_work["e4k"], pending_work["opcua"]]):
+        logger.warning("No known edge services discovered on cluster.")
+        return
+
     pending_work["common"].update(prepare_shared_bundle())
     total_work_count = len(pending_work["opcua"]) + len(pending_work["e4k"]) + len(pending_work["common"])
 

@@ -11,9 +11,13 @@ from knack.log import get_logger
 from ...common import BROKER_RESOURCE
 from ..base import client, get_namespaced_pods_by_prefix
 from .base import process_crd, process_deployments, process_replicasets, process_services, process_statefulset
+from ..checks import run_checks
+
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
+
+E4K_LABEL = "app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager)"
 
 
 def fetch_events(
@@ -91,39 +95,60 @@ def fetch_diagnostic_metrics(namespace: str):
         logger.debug(f"Skipping metrics fetch for namespace {namespace}.")
         return
 
-    stats_raw = get_stats_pods(namespace=namespace, raw_response=True)
-    return {
-        "data": stats_raw,
-        "zinfo": f"{namespace}/diagnostics_metrics.log",
-    }
+    try:
+        stats_raw = get_stats_pods(namespace=namespace, raw_response=True)
+        return {
+            "data": stats_raw,
+            "zinfo": f"e4k/{namespace}/diagnostics_metrics.out",
+        }
+    except Exception:
+        logger.debug(f"Unable to call stats pod metrics against namespace {namespace}.")
 
 
 def fetch_broker_deployments(since_seconds: int = 60 * 60 * 24):
-    return process_deployments(
-        resource=BROKER_RESOURCE,
-        label_selector="app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest)",
-        since_seconds=since_seconds,
+    processed, namespaces = process_deployments(
+        resource=BROKER_RESOURCE, label_selector=E4K_LABEL, since_seconds=since_seconds, return_namespaces=True
     )
+    for namespace in namespaces:
+        metrics: dict = fetch_diagnostic_metrics(namespace)
+        if metrics:
+            processed.append(metrics)
+
+        metrics: dict = fetch_diagnostic_metrics(namespace)
+        if metrics:
+            processed.append(metrics)
+
+        try:
+            checks = run_checks(namespace=namespace)
+            checks_data = {
+                "data": checks,
+                "zinfo": f"e4k/{namespace}/checks.yaml",
+            }
+            processed.append(checks_data)
+        except Exception:
+            logger.debug(f"Unable to run checks against namespace {namespace}.")
+
+    return processed
 
 
 def fetch_statefulsets():
     return process_statefulset(
         resource=BROKER_RESOURCE,
-        label_selector="app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager)",
+        label_selector=E4K_LABEL,
     )
 
 
 def fetch_services():
     return process_services(
         resource=BROKER_RESOURCE,
-        label_selector="app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager)",
+        label_selector=E4K_LABEL,
     )
 
 
 def fetch_replicasets():
     return process_replicasets(
         resource=BROKER_RESOURCE,
-        label_selector="app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager)",
+        label_selector=E4K_LABEL,
     )
 
 
