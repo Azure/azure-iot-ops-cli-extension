@@ -4,8 +4,7 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-from pathlib import PurePath
-from typing import Dict, List, Optional, Union
+from typing import Optional
 
 from knack.log import get_logger
 from .providers.base import load_config_context
@@ -65,26 +64,6 @@ def stats(
         refresh_in_seconds=refresh_in_seconds,
         watch=watch,
     )
-
-
-def support_bundle(
-    cmd,
-    namespaces: list = None,
-    bundle_dir: Optional[str] = None,
-    context_name: Optional[str] = None,
-):
-    load_config_context(context_name=context_name)
-    # TODO: Temp use of get_bundle_path in e4i space. Common
-    # utility functions will be relocated.
-    from .commands_e4i import get_bundle_path
-    from .common import BROKER_RESOURCE
-    from .providers.base import get_cluster_custom_resources
-    from .providers.support_bundle import build_bundle
-
-    get_cluster_custom_resources(resource=BROKER_RESOURCE, raise_on_404=True)
-
-    bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir, system_name="e4k")
-    return build_bundle(bundle_path=str(bundle_path), namespaces=namespaces)
 
 
 def config(cmd, passphrase: str, iterations: int = 210000):

@@ -121,29 +121,3 @@ def load_iotedge_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Return raw output from the metrics API.",
         )
-
-    # cmd,
-    # namespace: Optional[str] = None,
-    # refresh_in_seconds: int = 10,
-    # context_name: Optional[str] = None,
-    # diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
-    # pod_port: int = 9600,
-    # raw_response: Optional[bool] = None,
-    # watch: Optional[bool] = None,
-
-    with self.argument_context("edge e4k support") as context:
-        context.argument(
-            "namespaces",
-            nargs="+",
-            options_list=["--namespaces"],
-            help="Space-separated namespaces in addition to `kube-system` from which to fetch key performance indicators. "
-            "If no namespaces are provided the namespace `default` will be used.",
-        )
-
-    with self.argument_context("edge opcua") as context:
-        context.argument(
-            "log_age_seconds",
-            options_list=["--log-age"],
-            help="Container log age in seconds.",
-            type=int,
-        )
