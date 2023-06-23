@@ -37,6 +37,6 @@ jobs:
           echo tag: "${{ env.tag }}"
           echo version: "${{ env.version }}"
           echo wheel: "${{ env.wheel }}"
-          gh release create "${{ env.tag }}" --generate-notes -d -t "azure-edge ${{ env.version }}" "${{ env.wheel }}" "./release/SBOM#SBOM" --repo "${{ github.repository }}"
+          gh release create "${{ env.tag }}" --generate-notes -d -t "azure-edge ${{ env.version }}" "${{ env.wheel }}" "./SBOM.zip#SBOM" --repo "${{ github.repository }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
