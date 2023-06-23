@@ -31,7 +31,7 @@ jobs:
           name: SBOM
           path: ./release/SBOM
       - name: Zip SBOM
-        run: zip ./SBOM.zip ./release/SBOM/
+        run: zip ./SBOM.zip ./release/SBOM -r
       - name: Create Release
         run: |
           echo tag: "${{ env.tag }}"
