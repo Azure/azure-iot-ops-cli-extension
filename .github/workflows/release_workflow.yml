@@ -18,6 +18,9 @@ jobs:
   linter:
     needs: [build]
     uses: ./.github/workflows/azdev_linter.yml
+  smoke_test:
+    needs: [build]
+    uses: ./.github/workflows/smoke_test.yml
   release:
     needs: [security, build, test, linter]
     if: ${{ success() || github.event.inputs.continue-on-fail }}

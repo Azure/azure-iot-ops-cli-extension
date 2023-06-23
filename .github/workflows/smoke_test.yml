@@ -1,0 +1,51 @@
+
+name: Smoke Test
+on:
+  workflow_call:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+      - name: Setup python
+        uses: actions/setup-python@v3
+        with:
+            python-version: "3.9"
+      - name: Install CLI
+        run: |
+          python -m venv env
+          source env/bin/activate
+          pip install azdev
+          azdev setup -c EDGE
+          az -v
+      - name: Download Wheel
+        uses: actions/download-artifact@v3
+        with:
+          name: azure-edge-cli-ext
+          path: ./extension
+      - name: Install Extension
+        run: |
+          extension=( ./extension/*.whl )
+          az extension add --source $extension -y
+          az -v
+      - name: Install and setup cluster
+        run: |
+          bash .github/scripts/k3d.sh
+      - name: kubectl debug info
+        run: |
+          kubectl get all
+      - name: Run smoke tests
+        run: |
+          az edge support create-bundle --edge-service e4k
+          az edge support create-bundle --edge-service opcua
+          az edge e4k check
+          az edge e4k check --list
+          az edge e4k stats
+          az edge e4k config hash -p test
+      - name: Upload support bundle artifacts
+        uses: actions/upload-artifact@v3.1.0
+        if: always()
+        with:
+          path: ./*.zip
+          name: support_bundles
