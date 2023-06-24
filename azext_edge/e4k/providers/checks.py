@@ -463,200 +463,166 @@ def evaluate_broker_listeners(
 ):
     from kubernetes.client.models import V1LoadBalancerIngress, V1LoadBalancerStatus
 
-    result = {}
-    result["name"] = "evaluateBrokerListeners"
-    result["description"] = "Evaluate E4K broker listeners"
-    result["evaluations"] = []
-    displays = []
+    check_manager = CheckManager(
+        check_name="evalBrokers", check_desc="Evaluate E4K broker listeners", namespace=namespace
+    )
 
-    evaluate_listener_count = {
-        "expected": ">=1",
-        "target": "brokerListenerCount",
-    }
-    evaluate_listener_reference = {
-        "expected": "validRef",
-        "target": "spec.brokerRef",
-        "actual": [],
-    }
-    evaluate_loadbalancer_ip = {
-        "expected": "[*].ip",
-        "target": "status.loadbalancer.ingress",
-        "actual": [],
-    }
+    target_listeners = "brokerlisteners.az-edge.com"
+    listener_conditions = [
+        "len(brokerlisteners)>=1",
+        "spec",
+        "valid(spec.brokerRef)",
+        "status",
+        "status.loadbalancer.ingress[*].ip>=1",
+    ]
+    check_manager.add_target(target_name=target_listeners, conditions=listener_conditions)
 
     valid_broker_refs = _get_valid_references(namespace=namespace, plural="brokers")
     listener_list: dict = get_namespaced_custom_objects(
         resource=BROKER_RESOURCE, namespace=namespace, plural="brokerlisteners"
     )
+
     if not listener_list:
-        evaluate_listener_count["status"] = CheckTaskStatus.error.value
-        displays.append(
-            Padding(
-                "Unable to fetch broker listeners.",
-                (0, 0, 0, 8),
-            )
+        fetch_listeners_error_text = "Unable to fetch namespace brokerlisteners."
+        check_manager.add_target_eval(
+            target_name=target_listeners, status=CheckTaskStatus.error.value, value=fetch_listeners_error_text
         )
+        check_manager.add_display(
+            target_name=target_listeners, display=Padding(fetch_listeners_error_text, (0, 0, 0, 8))
+        )
+        return check_manager.as_dict(as_list)
+
+    listeners: List[dict] = listener_list.get("items", [])
+    listeners_count = len(listeners)
+    listener_count_desc = "- Expecting [blue]>=1[/blue] broker listeners per namespace. Detected {}."
+    listeners_eval_status = CheckTaskStatus.success.value
+
+    if listeners_count >= 1:
+        listener_count_desc = listener_count_desc.format(f"[green]{listeners_count}[/green]")
     else:
-        listeners: List[dict] = listener_list.get("items", [])
-        listener_count_desc = "- Expecting {{[blue]>=1[/blue]}} broker listeners per namespace. Actual {{{}}}."
-        listener_count = len(listeners)
-        evaluate_listener_count["actual"] = listener_count
-        if listener_count < 1:
-            evaluate_listener_count["status"] = CheckTaskStatus.error.value
-            displays.append(
-                Padding(
-                    listener_count_desc.format(f"[red]{listener_count}[/red]"),
-                    (0, 0, 0, 8),
-                )
-            )
+        listener_count_desc = listener_count_desc.format(f"[yellow]{listeners_count}[/yellow]")
+        listeners_eval_status = CheckTaskStatus.warning.value
+    check_manager.add_display(target_name=target_listeners, display=Padding(listener_count_desc, (0, 0, 0, 8)))
+
+    processed_services = {}
+    for l in listeners:
+        listener_name: str = l["metadata"]["name"]
+        listener_spec_service_name: str = l["spec"]["serviceName"]
+        listener_spec_service_type: str = l["spec"]["serviceType"]
+        listener_broker_ref: str = l["spec"]["brokerRef"]
+
+        listener_eval_value = {}
+        listener_eval_value["spec"] = l["spec"]
+
+        if listener_broker_ref not in valid_broker_refs:
+            ref_display = f"[red]Invalid[/red] broker reference {{[red]{listener_broker_ref}[/red]}}."
+            listeners_eval_status = CheckTaskStatus.error.value
         else:
-            evaluate_listener_count["status"] = CheckTaskStatus.success.value
-            displays.append(
-                Padding(
-                    listener_count_desc.format(f"[green]{listener_count}[/green]"),
-                    (0, 0, 0, 8),
-                )
-            )
+            ref_display = f"[green]Valid[/green] broker reference {{[green]{listener_broker_ref}[/green]}}."
 
-        for l in listeners:
-            listener_name: str = l["metadata"]["name"]
-            listener_namespace: str = l["metadata"]["namespace"]
-            listener_spec_service_name: str = l["spec"]["serviceName"]
-            listener_spec_service_type: str = l["spec"]["serviceType"]
-            listener_broker_ref: str = l["spec"]["brokerRef"]
-            eval_broker_ref = {
-                "spec.brokerRef": listener_broker_ref,
-                "name": listener_name,
-                "namespace": listener_namespace,
-            }
-            if listener_broker_ref not in valid_broker_refs:
-                eval_broker_ref["status"] = CheckTaskStatus.error.value
-                ref_display = f"[red]Invalid[/red] reference {{[red]{listener_broker_ref}[/red]}}."
-            else:
-                eval_broker_ref["status"] = CheckTaskStatus.success.value
-                ref_display = f"[green]Valid[/green] reference {{[green]{listener_broker_ref}[/green]}}."
-            evaluate_listener_reference["actual"].append(eval_broker_ref)
+        listener_desc = f"\n- Broker Listener {{[blue]{listener_name}[/blue]}}. {ref_display}"
+        check_manager.add_display(target_name=target_listeners, display=Padding(listener_desc, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_listeners,
+            display=Padding(
+                f"Port: [blue]{l['spec']['port']}[/blue]",
+                (0, 0, 0, 12),
+            ),
+        )
+        check_manager.add_display(
+            target_name=target_listeners,
+            display=Padding(
+                f"AuthN enabled: [blue]{l['spec']['authenticationEnabled']}[/blue]",
+                (0, 0, 0, 12),
+            ),
+        )
+        check_manager.add_display(
+            target_name=target_listeners,
+            display=Padding(
+                f"AuthZ enabled: [blue]{l['spec']['authenticationEnabled']}[/blue]",
+                (0, 0, 0, 12),
+            ),
+        )
 
-            displays.append(
-                Padding(
-                    f"\n- Broker Listener {{[blue]{listener_name}[/blue]}}. {ref_display}",
-                    (0, 0, 0, 8),
-                ),
-            )
-            displays.append(
-                Padding(
-                    f"Port: {{[blue]{l['spec']['port']}[/blue]}}",
-                    (0, 0, 0, 12),
-                ),
-            )
-            displays.append(
-                Padding(
-                    f"AuthN enabled: {{[blue]{l['spec']['authenticationEnabled']}[/blue]}}",
-                    (0, 0, 0, 12),
-                ),
-            )
-            displays.append(
-                Padding(
-                    f"AuthZ enabled: {{[blue]{l['spec']['authenticationEnabled']}[/blue]}}",
-                    (0, 0, 0, 12),
-                ),
-            )
-
+        if listener_spec_service_name not in processed_services:
             associated_service: V1Service = get_namespaced_service(name=listener_spec_service_name, namespace=namespace)
+            processed_services[listener_spec_service_name] = True
             if not associated_service:
-                displays.append(
-                    Padding(
+                listeners_eval_status = CheckTaskStatus.warning.value
+                check_manager.add_display(
+                    target_name=target_listeners,
+                    display=Padding(
                         f"Unable to fetch associated service {{[red]{listener_spec_service_name}[/red]}}.",
                         (0, 0, 0, 12),
                     ),
                 )
-                continue
-            displays.append(
-                Padding(
-                    f"\nAssociated service {{[blue]{listener_spec_service_name}[/blue]}} of type {{[blue]{listener_spec_service_type}[/blue]}}",
-                    (0, 0, 0, 12),
-                ),
-            )
+            else:
+                check_manager.add_display(
+                    target_name=target_listeners,
+                    display=Padding(
+                        f"\nService {{[blue]{listener_spec_service_name}[/blue]}} of type [blue]{listener_spec_service_type}[/blue]",
+                        (0, 0, 0, 12),
+                    ),
+                )
 
-            service_status: V1ServiceStatus = associated_service.status
-            if listener_spec_service_type.lower() == "loadbalancer":
-                evaluate_loadbalancer_ip_entry = {}
-                load_balancer: V1LoadBalancerStatus = service_status.load_balancer
-                # TODO
-                ingress_rules: List[V1LoadBalancerIngress] = load_balancer.ingress
-                evaluate_loadbalancer_ip_entry["namespace"] = namespace
-                evaluate_loadbalancer_ip_entry["name"] = listener_name
-                evaluate_loadbalancer_ip_entry["status.loadbalancer.ingress"] = ingress_rules
+                service_status: V1ServiceStatus = associated_service.status
+                if listener_spec_service_type.lower() == "loadbalancer":
+                    ingress_rules_desc = "- Expecting [blue]>=1[/blue] ingress rules. Actual {}."
 
-                if not ingress_rules:
-                    evaluate_loadbalancer_ip_entry["status"] = CheckTaskStatus.warning.value
-                else:
-                    ingress_rules_count = len(ingress_rules)
-                    displays.append(
-                        Padding(
-                            f"Status",
-                            (0, 0, 0, 16),
-                        ),
+                    load_balancer: V1LoadBalancerStatus = service_status.load_balancer
+                    ingress_rules: List[V1LoadBalancerIngress] = load_balancer.ingress
+
+                    if not ingress_rules:
+                        listeners_eval_status = CheckTaskStatus.warning.value
+                        ingress_count_colored = f"[red]0[/red]"
+                    else:
+                        ingress_count_colored = f"[green]{len(ingress_rules)}[/green]"
+
+                    check_manager.add_display(
+                        target_name=target_listeners,
+                        display=Padding(ingress_rules_desc.format(ingress_count_colored), (0, 0, 0, 16)),
                     )
-                    actual_ingress_count = (
-                        f"{{[red]{ingress_rules_count}[/red]}}"
-                        if not ingress_rules_count
-                        else f"{{[green]{ingress_rules_count}[/green]}}"
-                    )
-                    displays.append(
-                        Padding(
-                            f"- Expecting at least {{[blue]{1}[/blue]}} ingress rule. Actual {actual_ingress_count}.",
-                            (0, 0, 0, 20),
-                        ),
-                    )
+
+                    if ingress_rules:
+                        check_manager.add_display(
+                            target_name=target_listeners,
+                            display=Padding("Ingress", (0, 0, 0, 14)),
+                        )
+
                     for ingress in ingress_rules:
                         ing: dict = ingress.to_dict()
-                        rule_display = ""
-                        hostname = ing.get("hostname")
                         ip = ing.get("ip")
-                        evaluate_loadbalancer_ip_entry["status"] = (
-                            CheckTaskStatus.success.value if ip or hostname else CheckTaskStatus.warning.value
-                        )
-                        if hostname:
-                            rule_display = f"hostname: {{[green]{hostname}[/green]}}"
+                        listeners_eval_status = CheckTaskStatus.success.value if ip else CheckTaskStatus.warning.value
                         if ip:
-                            rule_display = f"{rule_display} ip: {{[green]{ip}[/green]}}"
-                        displays.append(
-                            Padding(
-                                rule_display,
-                                (0, 0, 0, 24),
-                            ),
+                            rule_desc = f"- ip: [green]{ip}[/green]"
+                            check_manager.add_display(
+                                target_name=target_listeners,
+                                display=Padding(rule_desc, (0, 0, 0, 18)),
+                            )
+
+                if listener_spec_service_type.lower() == "clusterip":
+                    safe_cluster_ip = associated_service.to_dict().get("spec", {}).get("cluster_ip")
+                    if safe_cluster_ip:
+                        check_manager.add_display(
+                            target_name=target_listeners,
+                            display=Padding(f"Cluster IP: [blue]{safe_cluster_ip}[/blue]", (0, 0, 0, 16)),
                         )
-                evaluate_loadbalancer_ip["actual"].append(evaluate_loadbalancer_ip_entry)
-            if listener_spec_service_type.lower() == "clusterip":
-                safe_cluster_ip = associated_service.to_dict().get("spec", {}).get("cluster_ip")
-                if safe_cluster_ip:
-                    displays.append(
-                        Padding(
-                            f"Cluster IP: [blue]{safe_cluster_ip}[/blue]",
-                            (0, 0, 0, 16),
-                        ),
-                    )
 
-    if as_list:
-        evaluate_listener_count["displays"] = displays
-        result["description"] = f"{result['description']} in namespace {{[cyan]{namespace}[/cyan]}}"
-    result["evaluations"].append(evaluate_listener_count)
-    if evaluate_listener_reference.get("actual"):
-        evaluate_listener_reference["status"] = _get_worst_status(evaluate_listener_reference["actual"])
-        result["evaluations"].append(evaluate_listener_reference)
-    if evaluate_loadbalancer_ip.get("actual"):
-        evaluate_loadbalancer_ip["status"] = _get_worst_status(evaluate_loadbalancer_ip["actual"])
-    result["status"] = _get_worst_status(result["evaluations"])
+        check_manager.add_target_eval(
+            target_name=target_listeners,
+            status=listeners_eval_status,
+            value=listener_eval_value,
+            resource_name=listener_name,
+        )
 
-    return result
+    return check_manager.as_dict(as_list)
 
 
 def evaluate_brokers(
     namespace: str,
     as_list: bool = False,
 ):
-    check_manager = CheckManager(check_name="evaluateBrokers", check_desc="Evaluate E4K brokers", namespace=namespace)
+    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K brokers", namespace=namespace)
 
     target_brokers = "brokers.az-edge.com"
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
@@ -684,7 +650,6 @@ def evaluate_brokers(
     check_manager.add_display(target_name=target_brokers, display=Padding(brokers_count_text, (0, 0, 0, 8)))
 
     for b in brokers:
-        broker_namespace = b["metadata"]["namespace"]
         broker_name = b["metadata"]["name"]
         broker_spec: dict = b["spec"]
         broker_mode = broker_spec.get("mode")
@@ -697,7 +662,7 @@ def evaluate_brokers(
         if broker_status_state:
             status_display_text = f"{status_display_text} {broker_status_desc}."
 
-        target_broker_text = f"\n- Broker [blue]{broker_name}[/blue] mode [blue]{broker_mode}[/blue]."
+        target_broker_text = f"\n- Broker {{[blue]{broker_name}[/blue]}} mode [blue]{broker_mode}[/blue]."
         check_manager.add_display(target_name=target_brokers, display=Padding(target_broker_text, (0, 0, 0, 8)))
 
         broker_eval_value = {"status": {"status": broker_status, "statusDescription": broker_status_desc}}
@@ -1124,17 +1089,6 @@ def _get_valid_references(namespace: str, plural: str):
                 result[name] = True
 
     return result
-
-
-def _get_worst_status(evals: List[dict]) -> str:
-    worst_status = CheckTaskStatus.success.value
-    for e in evals:
-        eval_status = e.get("status")
-        if eval_status == CheckTaskStatus.error.value:
-            return CheckTaskStatus.error.value
-        if eval_status == CheckTaskStatus.warning.value and worst_status == CheckTaskStatus.success.value:
-            worst_status = CheckTaskStatus.warning.value
-    return worst_status
 
 
 class CheckManager:
