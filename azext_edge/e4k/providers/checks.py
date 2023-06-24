@@ -65,7 +65,7 @@ def run_checks(
             {
                 "checkK8sVersion": partial(check_k8s_version, as_list=as_list),
                 "checkHelmVersion": partial(check_helm_version, as_list=as_list),
-                "checkNodeMemory": partial(check_node_memory, as_list=as_list),
+                "checkNodes": partial(check_nodes, as_list=as_list),
             }
         )
 
@@ -890,161 +890,149 @@ def check_k8s_version(as_list: bool = False):
     from ..common import MIN_K8S_VERSION
 
     version_client = client.VersionApi()
-    result = {}
-    result["name"] = "minK8sVers"
-    result["description"] = "Minimum Kubernetes server version"
-    result["evaluations"] = []
-    evaluation = {"expected": f">={MIN_K8S_VERSION}"}
-    displays = []
+
+    target_k8s_version = "k8s"
+    check_manager = CheckManager(check_name="evalK8sVers", check_desc="Evaluate Kubernetes server")
+    check_manager.add_target(
+        target_name=target_k8s_version,
+        conditions=[f"(k8s version)>={MIN_K8S_VERSION}"],
+    )
 
     try:
         version_details: VersionInfo = version_client.get_code()
     except ApiException as ae:
         logger.debug(str(ae))
-        result["status"] = CheckTaskStatus.warning.value
-        evaluation["actual"] = "Unable to determine. Is there connectivity to the cluster?"
-        displays.append(Padding(f"- {evaluation['actual']}", (0, 0, 0, 8)))
+        api_error_text = "Unable to determine. Is there connectivity to the cluster?"
+        check_manager.add_target_eval(
+            target_name=target_k8s_version, status=CheckTaskStatus.error.value, value=api_error_text
+        )
+        check_manager.add_display(target_name=target_k8s_version, display=Padding((0, 0, 0, 8)))
     else:
         major_version = version_details.major
         minor_version = version_details.minor
         semver = f"{major_version}.{minor_version}"
-        evaluation["actual"] = semver
-        if version.parse(semver) >= version.parse(MIN_K8S_VERSION):
-            evaluation["status"] = CheckTaskStatus.success.value
-            display_vers = f"[green]{semver}[/green]"
-        else:
-            evaluation["status"] = CheckTaskStatus.error.value
-            display_vers = f"[red]{semver}[/red]"
-        result["status"] = evaluation["status"]
-        displays.append(
-            Padding(
-                f"- Expected {{[blue]{evaluation['expected']}[/blue]}} actual {{{display_vers}}}.",
-                (0, 0, 0, 8),
-            )
-        )
 
-    if as_list:
-        evaluation["displays"] = displays
-    result["evaluations"].append(evaluation)
-    return result
+        if version.parse(semver) >= version.parse(MIN_K8S_VERSION):
+            semver_status = CheckTaskStatus.success.value
+            semver_colored = f"[green]{semver}[/green]"
+        else:
+            semver_status = CheckTaskStatus.error.value
+            semver_colored = f"[red]{semver}[/red]"
+
+        k8s_semver_text = f"Require [blue]k8s[/blue] >=[cyan]{MIN_K8S_VERSION}[/cyan] detected {semver_colored}."
+        check_manager.add_target_eval(target_name=target_k8s_version, status=semver_status, value=semver)
+        check_manager.add_display(target_name=target_k8s_version, display=Padding(k8s_semver_text, (0, 0, 0, 8)))
+
+    return check_manager.as_dict(as_list)
 
 
 def check_helm_version(as_list: bool = False):
     from shutil import which
     from subprocess import CalledProcessError, run
-
     from packaging import version
 
     from ..common import MIN_HELM_VERSION
 
-    result = {}
-    result["name"] = "minHelmVers"
-    result["description"] = "Minimum local helm version"
-    result["evaluations"] = []
-    evaluation = {"expected": f">={MIN_HELM_VERSION}"}
-    displays = []
+    check_manager = CheckManager(check_name="evalHelmVers", check_desc="Evaluate helm")
+    target_helm_version = "helm"
+    check_manager.add_target(
+        target_name=target_helm_version,
+        conditions=[f"(helm version)>={MIN_HELM_VERSION}"],
+    )
 
     helm_path = which("helm")
     if not helm_path:
-        evaluation["actual"] = "Unable to determine. Is helm installed and on system path?"
-        evaluation["status"] = CheckTaskStatus.error.value
-        result["status"] = evaluation["status"]
-        displays.append(Padding(f"- {evaluation['actual']}", (0, 0, 0, 8)))
+        not_found_helm_text = "Unable to determine. Is helm installed and on system path?"
+        check_manager.add_target_eval(
+            target_name=target_helm_version, status=CheckTaskStatus.error.value, value=not_found_helm_text
+        )
+        check_manager.add_display(target_name=target_helm_version, display=Padding(not_found_helm_text, 0, 0, 0, 8))
+        return check_manager.as_dict(as_list)
+
+    try:
+        completed_process = run(
+            [helm_path, "version", '--template="{{.Version}}"'],
+            capture_output=True,
+            check=True,
+        )
+    except CalledProcessError:
+        process_error_text = "Unable to determine. Error running helm version command."
+        check_manager.add_target_eval(
+            target_name=target_helm_version, status=CheckTaskStatus.error.value, value=process_error_text
+        )
+        check_manager.add_display(target_name=target_helm_version, display=Padding(process_error_text, 0, 0, 0, 8))
+        return CheckManager.as_dict(as_list)
+
+    helm_semver = completed_process.stdout.decode("utf-8").replace('"', "")
+    if version.parse(helm_semver) >= version.parse(MIN_HELM_VERSION):
+        helm_semver_status = CheckTaskStatus.success.value
+        helm_semver_colored = f"[green]{helm_semver}[/green]"
     else:
-        try:
-            completed_process = run(
-                [helm_path, "version", '--template="{{.Version}}"'],
-                capture_output=True,
-                check=True,
-            )
-        except CalledProcessError:
-            evaluation["actual"] = "Unable to determine. Error running helm version command."
-            evaluation["status"] = CheckTaskStatus.warning.value
-            result["status"] = evaluation["status"]
-            displays.append(Padding(f"- {evaluation['actual']}", (0, 0, 0, 8)))
-        else:
-            helm_semver = completed_process.stdout.decode("utf-8").replace('"', "")
-            evaluation["actual"] = helm_semver
-            if version.parse(helm_semver) >= version.parse(MIN_HELM_VERSION):
-                evaluation["status"] = CheckTaskStatus.success.value
-                display_vers = f"[green]{helm_semver}[/green]"
-            else:
-                evaluation["status"] = CheckTaskStatus.error.value
-                display_vers = f"[red]{helm_semver}[/red]"
-            result["status"] = evaluation["status"]
-            displays.append(
-                Padding(
-                    f"- Expected {{[blue]{evaluation['expected']}[/blue]}} actual {{{display_vers}}}.",
-                    (0, 0, 0, 8),
-                )
-            )
+        helm_semver_status = CheckTaskStatus.error.value
+        helm_semver_colored = f"[red]{helm_semver}[/red]"
+    helm_semver_text = f"Require [blue]helm[/blue] >=[cyan]{MIN_HELM_VERSION}[/cyan] detected {helm_semver_colored}."
 
-    if as_list:
-        evaluation["displays"] = displays
-    result["evaluations"].append(evaluation)
-    return result
+    check_manager.add_target_eval(target_name=target_helm_version, status=helm_semver_status, value=helm_semver)
+    check_manager.add_display(target_name=target_helm_version, display=Padding(helm_semver_text, (0, 0, 0, 8)))
+
+    return check_manager.as_dict(as_list)
 
 
-def check_node_memory(as_list: bool = False):
+def check_nodes(as_list: bool = False):
     from kubernetes.client.models import V1Node, V1NodeList
 
-    result = {}
-    result["name"] = "minNodeMem"
-    result["description"] = "Minimum node memory"
-    result["evaluations"] = []
-    evaluation_node_count = {"target": "nodeCount", "expected": ">=1"}
-    evaluation_nodes_memory = {"target": "nodeMemory", "expected": ">=140MiB"}
-    node_displays = []
+    check_manager = CheckManager(check_name="evalClusterNodes", check_desc="Evaluate cluster nodes")
+    target_minimum_nodes = "cluster/nodes"
+    check_manager.add_target(
+        target_name=target_minimum_nodes,
+        conditions=["len(cluster/nodes)>=1", "(cluster/nodes).each(node.status.allocatable[memory]>=140MiB)"],
+    )
 
     try:
         core_client = client.CoreV1Api()
         nodes: V1NodeList = core_client.list_node()
     except ApiException as ae:
         logger.debug(str(ae))
-        result["status"] = CheckTaskStatus.warning.value
-        evaluation_node_count["actual"] = "Unable to fetch nodes. Is there connectivity to the cluster?"
-        evaluation_nodes_memory["actual"] = []
-        node_displays.append(Padding(f"- {evaluation_node_count['actual']}", (0, 0, 0, 8)))
+        api_error_text = "Unable to fetch nodes. Is there connectivity to the cluster?"
+        check_manager.add_target_eval(
+            target_name=target_minimum_nodes, status=CheckTaskStatus.error.value, value=api_error_text
+        )
+        check_manager.add_display(target_name=target_minimum_nodes, display=Padding(api_error_text, (0, 0, 0, 8)))
     else:
         node_items: List[V1Node] = nodes.items
-        evaluation_nodes_memory["actual"] = []
-        if not node_items:
-            evaluation_node_count["actual"] = 0
-            evaluation_node_count["status"] = CheckTaskStatus.error.value
-            result["status"] = evaluation_node_count["status"]
-        else:
-            evaluation_node_count["actual"] = len(nodes.items)
-            evaluation_node_count["status"] = CheckTaskStatus.success.value
+        node_count = len(node_items)
+        target_display = "At least 1 node is required. Detected {}."
+        if node_count < 1:
+            target_display = Padding(target_display.format(f"[red]{node_count}[/red]"), (0, 0, 0, 8))
+            check_manager.add_target_eval(target_name=target_minimum_nodes, status=CheckTaskStatus.error.value)
+            check_manager.add_display(target_name=target_minimum_nodes, display=target_display)
+            return check_manager.as_dict()
 
-            has_limited_node = False
-            for node in node_items:
-                memory: str = node.status.allocatable["memory"]
-                memory = memory.replace("Ki", "")
-                memory: int = int(int(memory) / 1024)
-                node_name = node.metadata.name
-                satisfies_mem = False
-                if memory >= 140:
-                    satisfies_mem = True
-                else:
-                    has_limited_node = True
-                display_mem = f"[green]{memory}[/green]" if satisfies_mem else f"[yellow]{memory}[/yellow]"
-                evaluation_nodes_memory["actual"].append({"nodeName": node_name, "nodeMem": f"{memory}MiB"})
-                node_displays.append(
-                    Padding(
-                        f"- {{[blue]{node_name}[/blue]}} {{{display_mem}}}MiB.",
-                        (0, 0, 0, 8),
-                    )
-                )
-            evaluation_nodes_memory["status"] = (
-                CheckTaskStatus.warning.value if has_limited_node else CheckTaskStatus.success.value
+        target_display = Padding(target_display.format(f"[green]{node_count}[/green]"), (0, 0, 0, 8))
+        check_manager.add_display(target_name=target_minimum_nodes, display=target_display)
+        check_manager.add_display(target_name=target_minimum_nodes, display=NewLine())
+
+        for node in node_items:
+            node_memory_value = {}
+            memory_status = CheckTaskStatus.success.value
+            memory: str = node.status.allocatable["memory"]
+            memory = memory.replace("Ki", "")
+            memory: int = int(int(memory) / 1024)
+            mem_colored = f"[green]{memory}[/green]"
+            node_name = node.metadata.name
+            node_memory_value[node_name] = f"{memory}MiB"
+
+            if memory < 140:
+                memory_status = CheckTaskStatus.warning.value
+                mem_colored = f"[yellow]{memory}[/yellow]"
+
+            node_memory_display = Padding(f"[blue]{node_name}[/blue] {mem_colored} MiB", (0, 0, 0, 8))
+            check_manager.add_target_eval(
+                target_name=target_minimum_nodes, status=memory_status, value=node_memory_value
             )
-            result["status"] = evaluation_nodes_memory["status"]
+            check_manager.add_display(target_name=target_minimum_nodes, display=node_memory_display)
 
-    if as_list:
-        evaluation_nodes_memory["displays"] = node_displays
-    result["evaluations"].append(evaluation_node_count)
-    result["evaluations"].append(evaluation_nodes_memory)
-    return result
+    return check_manager.as_dict(as_list)
 
 
 # def check_mqtt_bridge_health(namespace: Optional[str] = None):

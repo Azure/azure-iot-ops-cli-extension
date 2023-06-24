@@ -134,15 +134,16 @@ def fetch_broker_deployments():
         if metrics:
             processed.append(metrics)
 
-        try:
-            checks = run_checks(namespace=namespace)
-            checks_data = {
-                "data": checks,
-                "zinfo": f"e4k/{namespace}/checks.yaml",
-            }
-            processed.append(checks_data)
-        except Exception:
-            logger.debug(f"Unable to run checks against namespace {namespace}.")
+        # TODO: @digimaun
+        # try:
+        #     checks = run_checks(namespace=namespace)
+        #     checks_data = {
+        #         "data": checks,
+        #         "zinfo": f"e4k/{namespace}/checks.yaml",
+        #     }
+        #     processed.append(checks_data)
+        # except Exception:
+        #     logger.debug(f"Unable to run checks against namespace {namespace}.")
 
     return processed
 
