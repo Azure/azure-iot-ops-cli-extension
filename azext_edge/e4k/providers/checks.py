@@ -673,6 +673,7 @@ def evaluate_brokers(
         elif broker_status in [
             ResourceState.recovering.value,
             ResourceState.warn.value,
+            ResourceState.starting.value,
         ]:
             broker_eval_status = CheckTaskStatus.warning.value
         check_manager.add_display(target_name=target_brokers, display=Padding(status_display_text, (0, 0, 0, 12)))
@@ -1070,10 +1071,9 @@ def _decorate_resource_status(status: str) -> str:
 
     if status in [ResourceState.failed.value, ResourceState.error.value]:
         return f"[red]{status}[/red]"
-    if status in [ResourceState.recovering.value, ResourceState.warn.value, "N/A"]:
+    if status in [ResourceState.recovering.value, ResourceState.warn.value, ResourceState.starting.value, "N/A"]:
         return f"[yellow]{status}[/yellow]"
     return f"[green]{status}[/green]"
-    # TODO: light_sea_green
 
 
 def _get_valid_references(namespace: str, plural: str):

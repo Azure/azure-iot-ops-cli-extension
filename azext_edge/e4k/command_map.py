@@ -33,10 +33,10 @@ def load_iotedge_commands(self, _):
     """
     with self.command_group(
         "edge",
-        command_type=e4k_resource_ops,
+        command_type=edge_resource_ops,
         is_preview=True,
     ) as cmd_group:
-        pass
+        cmd_group.command("check", "check")
 
     with self.command_group(
         "edge support",
@@ -48,7 +48,6 @@ def load_iotedge_commands(self, _):
         "edge e4k",
         command_type=e4k_resource_ops,
     ) as cmd_group:
-        cmd_group.command("check", "check")
         cmd_group.command("stats", "stats")
 
     with self.command_group(

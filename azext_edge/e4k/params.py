@@ -31,12 +31,6 @@ def load_iotedge_arguments(self, _):
             arg_group="K8s Cluster",
         )
         context.argument(
-            "bundle_dir",
-            options_list=["--bundle-dir"],
-            help="The local directory the produced bundle will be saved to. "
-            "If no directory is provided the current directory is used.",
-        )
-        context.argument(
             "namespace",
             options_list=["--namespace"],
             help="K8s cluster namespace the command should operate against. "
@@ -57,19 +51,25 @@ def load_iotedge_arguments(self, _):
             help="Container log age in seconds.",
             type=int,
         )
+        context.argument(
+            "bundle_dir",
+            options_list=["--bundle-dir"],
+            help="The local directory the produced bundle will be saved to. "
+            "If no directory is provided the current directory is used.",
+        )
 
-    with self.argument_context("edge e4k check") as context:
+    with self.argument_context("edge check") as context:
         context.argument(
             "pre_deployment_checks",
             options_list=["--pre"],
-            help="Run only pre-requisite checks such as Kubernetes, Helm version, "
-            "memory requirements etc, are satisfied before attempting to install E4K.",
+            help="Run only pre-requisite checks to determine if the target environments meets the minimum "
+            "requirements of an edge service deployment.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
             "post_deployment_checks",
             options_list=["--post"],
-            help="Run only post deployment checks to measure E4K system key health attributes.",
+            help="Run only post-deployment checks.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -77,6 +77,12 @@ def load_iotedge_arguments(self, _):
             options_list=["--list"],
             help="Output check content and validations in a human optimized list format.",
             arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "edge_service",
+            options_list=["--edge-service"],
+            choices=CaseInsensitiveList(["e4k"]),
+            help="The edge service deployment that will be evaluated.",
         )
 
     with self.argument_context("edge e4k config") as context:

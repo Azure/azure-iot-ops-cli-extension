@@ -15,7 +15,12 @@ def load_iotedge_help():
         "edge"
     ] = """
         type: group
-        short-summary: Manage Azure Edge resources.
+        short-summary: Manage PAS resources.
+        long-summary: |
+            Project Alice Springs (PAS) is a set of highly aligned, but loosely coupled, first-party
+            Kubernetes services that enable you to aggregate data from on-prem assets into an
+            industrial-grade MQTT Broker, add edge compute and set up bi-directional data flow with
+            a variety of services in the cloud.
     """
 
     helps[
@@ -33,21 +38,17 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge e4k"
+        "edge check"
     ] = """
-        type: group
-        short-summary: Manage E4K resources.
-        long-summary: |
-          Project E4K is a set of highly aligned, but loosely coupled, first-party Kubernetes services that enable you to aggregate data from on-prem assets into an industrial-grade MQTT Broker, add edge compute and set up bi-directional data flow with a variety of services in the cloud.
-
-          E4K is seamlessly integrated with Azure Arc, bringing the power of the Azure control plane to digital operations in industries around the world.
+        type: command
+        short-summary: Evaluate PAS edge service deployments for health, configuration and usability.
     """
 
     helps[
-        "edge e4k check"
+        "edge e4k"
     ] = """
-        type: command
-        short-summary: Run tests to validate E4K prerequisites and E4K deployment for health, configuration and usability.
+        type: group
+        short-summary: E4K specific utilities.
     """
 
     helps[

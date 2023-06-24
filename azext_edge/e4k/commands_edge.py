@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from pathlib import PurePath
-from typing import Optional
+from typing import Optional, Union
 
 from knack.log import get_logger
 
@@ -27,3 +27,30 @@ def support_bundle(
 
     bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir)
     return build_bundle(edge_service=edge_service, bundle_path=str(bundle_path), log_age_seconds=log_age_seconds)
+
+
+def check(
+    cmd,
+    pre_deployment_checks: Optional[bool] = None,
+    post_deployment_checks: Optional[bool] = None,
+    namespace: Optional[str] = None,
+    as_list=None,
+    context_name=None,
+    edge_service: str = "e4k",
+) -> Union[dict, None]:
+    load_config_context(context_name=context_name)
+    from .providers.checks import run_checks
+
+    run_pre = True
+    run_post = True
+    if pre_deployment_checks and not post_deployment_checks:
+        run_post = False
+    if post_deployment_checks and not pre_deployment_checks:
+        run_pre = False
+
+    return run_checks(
+        namespace=namespace,
+        as_list=as_list,
+        pre_deployment=run_pre,
+        post_deployment=run_post,
+    )
