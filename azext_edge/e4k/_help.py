@@ -48,7 +48,7 @@ def load_iotedge_help():
         "edge e4k"
     ] = """
         type: group
-        short-summary: E4K specific utilities.
+        short-summary: E4K specific tools.
     """
 
     helps[
@@ -62,7 +62,7 @@ def load_iotedge_help():
         "edge e4k config"
     ] = """
         type: group
-        short-summary: Configuration utilities.
+        short-summary: Config utilities.
     """
 
     helps[

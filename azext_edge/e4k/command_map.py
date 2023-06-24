@@ -13,18 +13,9 @@ from azure.cli.core.commands import LongRunningOperation
 e4k_resource_ops = CliCommandType(
     operations_tmpl="azext_edge.e4k.commands_e4k#{}"
 )
-e4i_resource_ops = CliCommandType(
-    operations_tmpl="azext_edge.e4k.commands_e4i#{}"
-)
 edge_resource_ops = CliCommandType(
     operations_tmpl="azext_edge.e4k.commands_edge#{}"
 )
-
-
-class IdentityResultTransform(LongRunningOperation):
-    def __call__(self, poller):
-        result = super(IdentityResultTransform, self).__call__(poller)
-        return result.identity
 
 
 def load_iotedge_commands(self, _):
