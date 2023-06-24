@@ -8,14 +8,9 @@
 Load CLI commands
 """
 from azure.cli.core.commands import CliCommandType
-from azure.cli.core.commands import LongRunningOperation
 
-e4k_resource_ops = CliCommandType(
-    operations_tmpl="azext_edge.e4k.commands_e4k#{}"
-)
-edge_resource_ops = CliCommandType(
-    operations_tmpl="azext_edge.e4k.commands_edge#{}"
-)
+e4k_resource_ops = CliCommandType(operations_tmpl="azext_edge.e4k.commands_e4k#{}")
+edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.e4k.commands_edge#{}")
 
 
 def load_iotedge_commands(self, _):

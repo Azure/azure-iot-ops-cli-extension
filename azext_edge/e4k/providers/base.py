@@ -53,9 +53,7 @@ def get_namespaced_service(name: str, namespace: str) -> V1Service:
 
     try:
         v1 = client.CoreV1Api()
-        v1_service: V1Service = v1.read_namespaced_service(
-            name=name, namespace=namespace
-        )
+        v1_service: V1Service = v1.read_namespaced_service(name=name, namespace=namespace)
         _namespaced_service_cache[target_service_key] = v1_service
     except ApiException as ae:
         logger.debug(str(ae))
@@ -64,11 +62,13 @@ def get_namespaced_service(name: str, namespace: str) -> V1Service:
 
 
 def get_namespaced_pods_by_prefix(
-    prefix: str, namespace: str
+    prefix: str,
+    namespace: str,
+    label_selector: str = None,
 ) -> Tuple[Union[None, List[V1Pod]], Union[None, Exception]]:
     v1 = client.CoreV1Api()
 
-    pods_list: V1PodList = v1.list_namespaced_pod(namespace)
+    pods_list: V1PodList = v1.list_namespaced_pod(namespace, label_selector=label_selector)
     target_pods: List[V1Pod] = []
     for pod in pods_list.items:
         p: V1Pod = pod
@@ -76,25 +76,19 @@ def get_namespaced_pods_by_prefix(
             target_pods.append(p)
     if not target_pods:
         # TODO
-        return None, RuntimeError(
-            f"Pods in namespace {namespace} with prefix {prefix} could not be found."
-        )
+        return None, RuntimeError(f"Pods in namespace {namespace} with prefix {prefix} could not be found.")
 
     return target_pods, None
 
 
-def get_namespaced_custom_objects(
-    resource: IotEdgeBrokerResource, plural: str, namespace: str
-) -> dict:
+def get_namespaced_custom_objects(resource: IotEdgeBrokerResource, plural: str, namespace: str) -> dict:
     target_resource_key = (resource, plural)
     if target_resource_key in _namespaced_object_cache:
         return _namespaced_object_cache[target_resource_key]
 
     try:
         custom_client = client.CustomObjectsApi()
-        _namespaced_object_cache[
-            target_resource_key
-        ] = custom_client.list_namespaced_custom_object(
+        _namespaced_object_cache[target_resource_key] = custom_client.list_namespaced_custom_object(
             group=resource.group,
             version=resource.version,
             namespace=namespace,
@@ -121,9 +115,7 @@ class PodRequest:
 
 
 @contextmanager
-def portforward_http(
-    namespace: str, pod_name: str, pod_port: str, **kwargs
-) -> PodRequest:
+def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> PodRequest:
     from kubernetes.stream import portforward, stream
 
     api = client.CoreV1Api()
@@ -146,9 +138,7 @@ def portforward_http(
     socket_create_connection = socket.create_connection
     try:
         socket.create_connection = kubernetes_create_connection
-        pod_request = PodRequest(
-            namespace=namespace, pod_name=pod_name, pod_port=pod_port
-        )
+        pod_request = PodRequest(namespace=namespace, pod_name=pod_name, pod_port=pod_port)
         yield pod_request
     finally:
         socket.create_connection = socket_create_connection
@@ -164,12 +154,8 @@ def get_cluster_custom_resources(
         return _cluster_resources_cache[resource]
 
     try:
-        return client.CustomObjectsApi().get_api_resources(
-            group=resource.group, version=resource.version
-        )
+        return client.CustomObjectsApi().get_api_resources(group=resource.group, version=resource.version)
     except ApiException as ae:
         logger.debug(msg=str(ae))
         if int(ae.status) == 404 and raise_on_404:
-            raise ResourceNotFoundError(
-                f"{resource.group}/{resource.version} resources do not exist on the cluster."
-            )
+            raise ResourceNotFoundError(f"{resource.group}/{resource.version} resources do not exist on the cluster.")
