@@ -354,7 +354,7 @@ def evaluate_broker_diagnostics(
                 check_manager.add_display(
                     target_name=target_diagnostic_service_spec,
                     display=Padding(
-                        f"\nAssociated resource {{[blue]{diag_service_resource_name}[/blue]}} of kind {{[blue]{diag_service_resource_kind}[/blue]}}.",
+                        f"\nAssociated resource {{[blue]{diag_service_resource_name}[/blue]}} of kind [blue]{diag_service_resource_kind}[/blue].",
                         (0, 0, 0, 8),
                     ),
                 )
@@ -468,13 +468,7 @@ def evaluate_broker_listeners(
     )
 
     target_listeners = "brokerlisteners.az-edge.com"
-    listener_conditions = [
-        "len(brokerlisteners)>=1",
-        "spec",
-        "valid(spec.brokerRef)",
-        "status",
-        "status.loadbalancer.ingress[*].ip>=1",
-    ]
+    listener_conditions = ["len(brokerlisteners)>=1", "spec", "valid(spec.brokerRef)", "status"]
     check_manager.add_target(target_name=target_listeners, conditions=listener_conditions)
 
     valid_broker_refs = _get_valid_references(namespace=namespace, plural="brokers")
@@ -545,7 +539,9 @@ def evaluate_broker_listeners(
         )
 
         if listener_spec_service_name not in processed_services:
-            associated_service: V1Service = get_namespaced_service(name=listener_spec_service_name, namespace=namespace)
+            associated_service: dict = get_namespaced_service(
+                name=listener_spec_service_name, namespace=namespace, as_dict=True
+            )
             processed_services[listener_spec_service_name] = True
             if not associated_service:
                 listeners_eval_status = CheckTaskStatus.warning.value
@@ -557,56 +553,82 @@ def evaluate_broker_listeners(
                     ),
                 )
             else:
+                target_listener_service = f"service/{listener_spec_service_name}"
+                listener_service_eval_status = CheckTaskStatus.success.value
+                check_manager.add_target(target_name=target_listener_service)
                 check_manager.add_display(
-                    target_name=target_listeners,
+                    target_name=target_listener_service,
                     display=Padding(
                         f"\nService {{[blue]{listener_spec_service_name}[/blue]}} of type [blue]{listener_spec_service_type}[/blue]",
                         (0, 0, 0, 12),
                     ),
                 )
 
-                service_status: V1ServiceStatus = associated_service.status
                 if listener_spec_service_type.lower() == "loadbalancer":
+                    check_manager.set_target_conditions(
+                        target_name=target_listener_service,
+                        conditions=["status", "len(status.loadBalancer.ingress[*].ip)>=1"],
+                    )
                     ingress_rules_desc = "- Expecting [blue]>=1[/blue] ingress rules. Actual {}."
 
-                    load_balancer: V1LoadBalancerStatus = service_status.load_balancer
-                    ingress_rules: List[V1LoadBalancerIngress] = load_balancer.ingress
+                    service_status = associated_service.get("status", {})
+                    load_balancer = service_status.get("loadBalancer", {})
+                    ingress_rules: List[dict] = load_balancer.get("ingress", [])
 
                     if not ingress_rules:
-                        listeners_eval_status = CheckTaskStatus.warning.value
+                        listener_service_eval_status = CheckTaskStatus.warning.value
                         ingress_count_colored = f"[red]0[/red]"
                     else:
                         ingress_count_colored = f"[green]{len(ingress_rules)}[/green]"
 
                     check_manager.add_display(
-                        target_name=target_listeners,
+                        target_name=target_listener_service,
                         display=Padding(ingress_rules_desc.format(ingress_count_colored), (0, 0, 0, 16)),
                     )
 
                     if ingress_rules:
                         check_manager.add_display(
-                            target_name=target_listeners,
+                            target_name=target_listener_service,
                             display=Padding("Ingress", (0, 0, 0, 14)),
                         )
 
                     for ingress in ingress_rules:
-                        ing: dict = ingress.to_dict()
-                        ip = ing.get("ip")
-                        listeners_eval_status = CheckTaskStatus.success.value if ip else CheckTaskStatus.warning.value
+                        ip = ingress.get("ip")
                         if ip:
                             rule_desc = f"- ip: [green]{ip}[/green]"
                             check_manager.add_display(
-                                target_name=target_listeners,
+                                target_name=target_listener_service,
                                 display=Padding(rule_desc, (0, 0, 0, 18)),
                             )
+                        else:
+                            listener_service_eval_status = CheckTaskStatus.warning.value
+
+                    check_manager.add_target_eval(
+                        target_name=target_listener_service, status=listener_service_eval_status, value=service_status
+                    )
 
                 if listener_spec_service_type.lower() == "clusterip":
-                    safe_cluster_ip = associated_service.to_dict().get("spec", {}).get("cluster_ip")
-                    if safe_cluster_ip:
-                        check_manager.add_display(
-                            target_name=target_listeners,
-                            display=Padding(f"Cluster IP: [blue]{safe_cluster_ip}[/blue]", (0, 0, 0, 16)),
-                        )
+                    check_manager.set_target_conditions(
+                        target_name=target_listener_service, conditions=["spec.clusterIP"]
+                    )
+                    cluster_ip = associated_service.get("spec", {}).get("clusterIP")
+
+                    cluster_ip_desc = "Cluster IP: {}"
+                    if not cluster_ip:
+                        listener_service_eval_status = CheckTaskStatus.warning.value
+                        cluster_ip_desc = cluster_ip_desc.format("[yellow]Undetermined[/yellow]")
+                    else:
+                        cluster_ip_desc = cluster_ip_desc.format(f"[cyan]{cluster_ip}[/cyan]")
+
+                    check_manager.add_display(
+                        target_name=target_listener_service,
+                        display=Padding(cluster_ip_desc, (0, 0, 0, 16)),
+                    )
+                    check_manager.add_target_eval(
+                        target_name=target_listener_service,
+                        status=listener_service_eval_status,
+                        value={"spec.clusterIP": cluster_ip},
+                    )
 
         check_manager.add_target_eval(
             target_name=target_listeners,

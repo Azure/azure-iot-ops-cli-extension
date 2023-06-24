@@ -34,7 +34,7 @@ def check(
     pre_deployment_checks: Optional[bool] = None,
     post_deployment_checks: Optional[bool] = None,
     namespace: Optional[str] = None,
-    as_list=None,
+    as_object=None,
     context_name=None,
     edge_service: str = "e4k",
 ) -> Union[dict, None]:
@@ -50,7 +50,7 @@ def check(
 
     return run_checks(
         namespace=namespace,
-        as_list=as_list,
+        as_list=not as_object,
         pre_deployment=run_pre,
         post_deployment=run_post,
     )

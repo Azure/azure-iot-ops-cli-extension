@@ -62,8 +62,8 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "pre_deployment_checks",
             options_list=["--pre"],
-            help="Run only pre-requisite checks to determine if the target environments meets the minimum "
-            "requirements of an edge service deployment.",
+            help="Run only pre-requisite checks to determine if the minimum "
+            "requirements of an edge service deployment are fulfilled.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -73,10 +73,11 @@ def load_iotedge_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
         context.argument(
-            "as_list",
-            options_list=["--list"],
-            help="Output check content and validations in a human optimized list format.",
+            "as_object",
+            options_list=["--as-object"],
+            help="Output check content and validations in a CI friendly data structure.",
             arg_type=get_three_state_flag(),
+            arg_group="Format",
         )
         context.argument(
             "edge_service",

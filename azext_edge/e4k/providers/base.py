@@ -30,6 +30,7 @@ from azext_edge.e4k.common import (
 DEFAULT_NAMESPACE: str = "default"
 
 logger = get_logger(__name__)
+generic = client.ApiClient()
 
 
 def load_config_context(context_name: Optional[str] = None):
@@ -46,7 +47,7 @@ _namespaced_object_cache: dict = {}
 _namespaced_service_cache: dict = {}
 
 
-def get_namespaced_service(name: str, namespace: str) -> V1Service:
+def get_namespaced_service(name: str, namespace: str, as_dict: bool = False) -> Union[V1Service, dict]:
     target_service_key = (name, namespace)
     if target_service_key in _namespaced_service_cache:
         return _namespaced_service_cache[target_service_key]
@@ -58,7 +59,10 @@ def get_namespaced_service(name: str, namespace: str) -> V1Service:
     except ApiException as ae:
         logger.debug(str(ae))
     else:
-        return _namespaced_service_cache[target_service_key]
+        result = _namespaced_service_cache[target_service_key]
+        if as_dict:
+            return generic.sanitize_for_serialization(obj=result)
+        return result
 
 
 def get_namespaced_pods_by_prefix(
