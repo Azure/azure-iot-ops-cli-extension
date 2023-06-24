@@ -85,7 +85,7 @@ def run_checks(
         result["postDeployment"].append(resource_enumeration)
         if api_resources:
             if "Broker" in api_resources:
-                result["postDeployment"].append(evaluate_broker_custom_objects(namespace=namespace, as_list=as_list))
+                result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
             if "BrokerListener" in api_resources:
                 result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
             if "DiagnosticService":
@@ -652,195 +652,128 @@ def evaluate_broker_listeners(
     return result
 
 
-def evaluate_broker_custom_objects(
+def evaluate_brokers(
     namespace: str,
     as_list: bool = False,
 ):
-    result = {}
-    result["name"] = "evaluateBroker"
-    result["description"] = f"Evaluate E4K broker"
-    result["evaluations"] = []
-    displays = []
+    check_manager = CheckManager(check_name="evaluateBrokers", check_desc="Evaluate E4K brokers", namespace=namespace)
 
-    evaluate_broker_count = {
-        "expected": 1,
-        "target": "brokerCount",
-    }
-    evaluate_spec_mode = {"target": "spec.mode", "actual": []}
-    evaluate_spec_cardinality = {"target": "spec.cardinality", "actual": []}
-    evaluate_status = {"target": "status", "actual": []}
+    target_brokers = "brokers.az-edge.com"
+    broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
+    check_manager.add_target(target_name=target_brokers, conditions=broker_conditions)
 
     broker_list: dict = get_namespaced_custom_objects(resource=BROKER_RESOURCE, plural="brokers", namespace=namespace)
     if not broker_list:
-        evaluate_broker_count["status"] = CheckTaskStatus.error.value
-        displays.append(
-            Padding(
-                "Unable to fetch broker resources.",
-                (0, 0, 0, 8),
-            )
+        fetch_brokers_error_text = "Unable to fetch namespace brokers."
+        check_manager.add_target_eval(
+            target_name=target_brokers, status=CheckTaskStatus.error.value, value=fetch_brokers_error_text
         )
+        check_manager.add_display(target_name=target_brokers, display=Padding(fetch_brokers_error_text, (0, 0, 0, 8)))
+        return check_manager.as_dict(as_list)
+
+    brokers: List[dict] = broker_list.get("items", [])
+    brokers_count = len(brokers)
+    brokers_count_text = "- Expecting exactly [blue]1[/blue] broker resource per namespace. Detected {}."
+    broker_eval_status = CheckTaskStatus.success.value
+
+    if brokers_count == 1:
+        brokers_count_text = brokers_count_text.format(f"[green]{brokers_count}[/green]")
     else:
-        brokers: List[dict] = broker_list.get("items", [])
-        broker_count_desc = "- Expecting exactly {{[blue]1[/blue]}} broker resource per namespace. Actual {{{}}}."
-        broker_count = len(brokers)
-        evaluate_broker_count["actual"] = broker_count
-        if broker_count != 1:
-            evaluate_broker_count["status"] = CheckTaskStatus.error.value
-            displays.append(
-                Padding(
-                    broker_count_desc.format(f"[red]{broker_count}[/red]"),
-                    (0, 0, 0, 8),
-                )
-            )
-        else:
-            evaluate_broker_count["status"] = CheckTaskStatus.success.value
-            displays.append(
-                Padding(
-                    broker_count_desc.format(f"[green]{broker_count}[/green]"),
-                    (0, 0, 0, 8),
-                )
-            )
+        brokers_count_text = brokers_count_text.format(f"[red]{brokers_count}[/red]")
+        broker_eval_status = CheckTaskStatus.error.value
+    check_manager.add_display(target_name=target_brokers, display=Padding(brokers_count_text, (0, 0, 0, 8)))
 
-        for b in brokers:
-            broker_namespace = b["metadata"]["namespace"]
-            broker_name = b["metadata"]["name"]
-            broker_spec: dict = b["spec"]
-            broker_mode = broker_spec.get("mode")
-            broker_status_state = b.get("status", {})
-            broker_status = broker_status_state.get("status", "N/A")
-            broker_status_desc = broker_status_state.get("statusDescription")
-            status_display = f"- Status {{{_decorate_resource_status(broker_status)}}}."
-            if broker_status_state:
-                status_display = f"{status_display} {broker_status_desc}."
-            displays.append(
-                Padding(
-                    f"\n- Broker {{[blue]{broker_name}[/blue]}} mode {{[blue]{broker_mode}[/blue]}}.",
-                    (0, 0, 0, 8),
-                ),
-            )
-            evaluate_status["actual"].append(
-                {
-                    "namespace": broker_namespace,
-                    "name": broker_name,
-                    "status": broker_status_state,
-                }
-            )
-            if broker_status in [ResourceState.error.value, ResourceState.failed.value]:
-                evaluate_status["status"] = CheckTaskStatus.error.value
-            elif broker_status in [
-                ResourceState.recovering.value,
-                ResourceState.warn.value,
-            ]:
-                evaluate_status["status"] = CheckTaskStatus.warning.value
+    for b in brokers:
+        broker_namespace = b["metadata"]["namespace"]
+        broker_name = b["metadata"]["name"]
+        broker_spec: dict = b["spec"]
+        broker_mode = broker_spec.get("mode")
+        broker_status_state = b.get("status", {})
+        broker_status = broker_status_state.get("status", "N/A")
+        broker_status_desc = broker_status_state.get("statusDescription")
+
+        status_display_text = f"Status {{{_decorate_resource_status(broker_status)}}}."
+
+        if broker_status_state:
+            status_display_text = f"{status_display_text} {broker_status_desc}."
+
+        target_broker_text = f"\n- Broker [blue]{broker_name}[/blue] mode [blue]{broker_mode}[/blue]."
+        check_manager.add_display(target_name=target_brokers, display=Padding(target_broker_text, (0, 0, 0, 8)))
+
+        broker_eval_value = {"status": {"status": broker_status, "statusDescription": broker_status_desc}}
+        broker_eval_status = CheckTaskStatus.success.value
+
+        if broker_status in [ResourceState.error.value, ResourceState.failed.value]:
+            broker_eval_status = CheckTaskStatus.error.value
+        elif broker_status in [
+            ResourceState.recovering.value,
+            ResourceState.warn.value,
+        ]:
+            broker_eval_status = CheckTaskStatus.warning.value
+        check_manager.add_display(target_name=target_brokers, display=Padding(status_display_text, (0, 0, 0, 12)))
+
+        if broker_mode == "distributed":
+            broker_conditions.append("spec.cardinality")
+            broker_conditions.append("spec.cardinality.backendChain.chainCount>=1")
+            broker_conditions.append("spec.cardinality.backendChain.replicas>=1")
+            broker_conditions.append("spec.cardinality.frontend.replicas>=1")
+
+            check_manager.set_target_conditions(target_name=target_brokers, conditions=broker_conditions)
+            check_manager.add_display(target_name=target_brokers, display=Padding("\nCardinality", (0, 0, 0, 12)))
+            broker_cardinality: dict = broker_spec.get("cardinality")
+            broker_eval_value["spec.cardinality"] = broker_cardinality
+            if not broker_cardinality:
+                broker_eval_status = CheckTaskStatus.error.value
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    display=Padding("[magenta]spec.cardinality is undefined![/magenta]", (0, 0, 0, 16)),
+                )
             else:
-                evaluate_status["status"] = CheckTaskStatus.success.value
+                backend_cardinality_desc = (
+                    "- Expecting backend chainCount [blue]>=1[/blue] and replicas [blue]>=1[/blue]. Actual {} and {}."
+                )
+                backend_chain = broker_cardinality.get("backendChain", {})
+                backend_chain_count: Optional[int] = backend_chain.get("chainCount")
+                backend_replicas: Optional[int] = backend_chain.get("replicas")
 
-            evaluate_spec_mode["actual"].append(
-                {
-                    "namespace": broker_namespace,
-                    "name": broker_name,
-                    "spec.mode": broker_mode,
-                }
-            )
-            result["evaluations"].append(evaluate_spec_mode)
-            result["evaluations"].append(evaluate_status)
-            if broker_mode and broker_mode == "distributed":
-                broker_cardinality: dict = broker_spec.get("cardinality")
-                evaluate_spec_cardinality["actual"].append(
-                    {
-                        "namespace": broker_namespace,
-                        "name": broker_name,
-                        "spec.cardinality": broker_cardinality,
-                    }
-                )
-                evaluate_spec_cardinality["expecting"] = [
-                    "backendChain.chainCount>=1",
-                    "backendChain.replicas>=1",
-                    "frontend.replicas>=1",
-                ]
-                displays.append(
-                    Padding(f"Cardinality", (0, 0, 0, 12)),
-                )
-                if not broker_cardinality:
-                    evaluate_spec_cardinality["status"] = CheckTaskStatus.error.value
-                    displays.append(
-                        Padding(
-                            f"- [magenta]spec.cardinality is undefined![/magenta]",
-                            (0, 0, 0, 16),
-                        ),
-                    )
+                if backend_chain_count and backend_chain_count >= 1:
+                    backend_chain_count_colored = f"[green]{backend_chain_count}[/green]"
                 else:
-                    backend_cardinality_desc = "- Expecting backend chainCount {{[blue]>=1[/blue]}} and replicas {{[blue]>=1[/blue]}}. Actual {{{}}} and {{{}}}."
-                    backend_chain = broker_cardinality.get("backendChain", {})
-                    backend_chain_count: Optional[int] = backend_chain.get("chainCount")
-                    backend_replicas: Optional[int] = backend_chain.get("replicas")
-                    frontend_cardinality_desc = "- Expecting frontend replicas {{[blue]>=1[/blue]}}. Actual {{{}}}."
-                    frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
-                    if not backend_chain_count or backend_chain_count < 1 or backend_replicas < 1:
-                        evaluate_spec_cardinality["status"] = CheckTaskStatus.warning.value
-                        chain_count_seg = (
-                            f"[red]{backend_chain_count}[/red]"
-                            if not backend_chain_count or backend_chain_count < 1
-                            else f"[green]{backend_chain_count}[/green]"
-                        )
-                        replicas_seg = (
-                            f"[red]{backend_replicas}[/red]"
-                            if not backend_replicas or backend_replicas < 1
-                            else f"[green]{backend_replicas}[/green]"
-                        )
-                        displays.append(
-                            Padding(
-                                f"{backend_cardinality_desc.format(chain_count_seg, replicas_seg)}",
-                                (0, 0, 0, 16),
-                            ),
-                        )
-                    else:
-                        evaluate_spec_cardinality["status"] = CheckTaskStatus.success.value
-                        displays.append(
-                            Padding(
-                                f"{backend_cardinality_desc.format(f'[green]{backend_chain_count}[/green]', f'[green]{backend_replicas}[/green]')}",
-                                (0, 0, 0, 16),
-                            ),
-                        )
-                    if not frontend_replicas or frontend_replicas < 1:
-                        evaluate_spec_cardinality["status"] = CheckTaskStatus.warning.value
-                        displays.append(
-                            Padding(
-                                f"{frontend_cardinality_desc.format(f'[red]{frontend_replicas}[/red]')}",
-                                (0, 0, 0, 16),
-                            ),
-                        )
-                    else:
-                        prior_status = evaluate_spec_cardinality.get("status")
-                        if not prior_status:
-                            evaluate_spec_cardinality["status"] = CheckTaskStatus.success.value
-                        displays.append(
-                            Padding(
-                                f"{frontend_cardinality_desc.format(f'[green]{frontend_replicas}[/green]')}",
-                                (0, 0, 0, 16),
-                            ),
-                        )
-                result["evaluations"].append(evaluate_spec_cardinality)
-            displays.append(
-                Padding(
-                    f"Health",
-                    (0, 0, 0, 12),
-                ),
-            )
-            displays.append(
-                Padding(
-                    status_display,
-                    (0, 0, 0, 16),
-                ),
-            )
+                    backend_chain_count_colored = f"[red]{backend_chain_count}[/red]"
+                    broker_eval_status = CheckTaskStatus.error.value
 
-    if as_list:
-        evaluate_broker_count["displays"] = displays
-        result["description"] = f"{result['description']} in namespace {{[cyan]{namespace}[/cyan]}}"
-    result["evaluations"].append(evaluate_broker_count)
-    result["status"] = _get_worst_status(result["evaluations"])
+                if backend_replicas and backend_replicas >= 1:
+                    backend_replicas_colored = f"[green]{backend_replicas}[/green]"
+                else:
+                    backend_replicas_colored = f"[red]{backend_replicas}[/red]"
+                    broker_eval_status = CheckTaskStatus.error.value
 
-    return result
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    display=Padding(
+                        backend_cardinality_desc.format(backend_chain_count_colored, backend_replicas_colored),
+                        (0, 0, 0, 16),
+                    ),
+                )
+
+                frontend_cardinality_desc = "- Expecting frontend replicas [blue]>=1[/blue]. Actual {}."
+                frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
+
+                if frontend_replicas and frontend_replicas >= 1:
+                    frontend_replicas_colored = f"[green]{frontend_replicas}[/green]"
+                else:
+                    frontend_replicas_colored = f"[red]{frontend_replicas}[/red]"
+
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    display=Padding(frontend_cardinality_desc.format(frontend_replicas_colored), (0, 0, 0, 16)),
+                )
+
+        check_manager.add_target_eval(
+            target_name=target_brokers, status=broker_eval_status, value=broker_eval_value, resource_name=broker_name
+        )
+
+    return check_manager.as_dict(as_list)
 
 
 def enumerate_e4k_resources(
@@ -906,10 +839,10 @@ def check_k8s_version(as_list: bool = False):
 
         if version.parse(semver) >= version.parse(MIN_K8S_VERSION):
             semver_status = CheckTaskStatus.success.value
-            semver_colored = f"[green]{semver}[/green]"
+            semver_colored = f"[green]v{semver}[/green]"
         else:
             semver_status = CheckTaskStatus.error.value
-            semver_colored = f"[red]{semver}[/red]"
+            semver_colored = f"[red]v{semver}[/red]"
 
         k8s_semver_text = f"Require [blue]k8s[/blue] >=[cyan]{MIN_K8S_VERSION}[/cyan] detected {semver_colored}."
         check_manager.add_target_eval(target_name=target_k8s_version, status=semver_status, value=semver)
@@ -1243,6 +1176,9 @@ class CheckManager:
         self.targets[target_name]["conditions"] = conditions
         self.targets[target_name]["evaluations"]: List[dict] = []
         self.targets[target_name]["status"] = CheckTaskStatus.success.value
+
+    def set_target_conditions(self, target_name: str, conditions: List[str]):
+        self.targets[target_name]["conditions"] = conditions
 
     def add_target_eval(
         self,
