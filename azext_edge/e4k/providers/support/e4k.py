@@ -10,7 +10,14 @@ from knack.log import get_logger
 
 from ...common import BROKER_RESOURCE
 from ..base import client, get_namespaced_pods_by_prefix
-from .base import process_crd, process_deployments, process_replicasets, process_services, process_statefulset
+from .base import (
+    process_crd,
+    process_deployments,
+    process_replicasets,
+    process_services,
+    process_statefulset,
+    process_v1_pods,
+)
 from ..checks import run_checks
 
 
@@ -21,11 +28,10 @@ E4K_LABEL = "app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,heal
 
 
 def fetch_events(
-    namespace: str,
 ):
     return {
-        "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_namespaced_event(namespace)),
-        "zinfo": f"{namespace}/events.json",
+        "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_event_for_all_namespaces(label_selector=E4K_LABEL)),
+        "zinfo": f"e4k/events.json",
     }
 
 
@@ -115,9 +121,9 @@ def fetch_diagnostic_metrics(namespace: str):
         logger.debug(f"Unable to call stats pod metrics against namespace {namespace}.")
 
 
-def fetch_broker_deployments(since_seconds: int = 60 * 60 * 24):
+def fetch_broker_deployments():
     processed, namespaces = process_deployments(
-        resource=BROKER_RESOURCE, label_selector=E4K_LABEL, since_seconds=since_seconds, return_namespaces=True
+        resource=BROKER_RESOURCE, label_selector=E4K_LABEL, return_namespaces=True
     )
     for namespace in namespaces:
         metrics: dict = fetch_diagnostic_metrics(namespace)
@@ -162,17 +168,22 @@ def fetch_replicasets():
     )
 
 
+def fetch_pods(since_seconds: int = 60 * 60 * 24):
+    return process_v1_pods(resource=BROKER_RESOURCE, label_selector=E4K_LABEL, since_seconds=since_seconds)
+
+
 support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
     "services": fetch_services,
     "replicasets": fetch_replicasets,
+    "deployments": fetch_broker_deployments,
 }
 
 
 def prepare_bundle(log_age_seconds: int = 60 * 60 * 24) -> dict:
     e4k_to_run = {}
 
-    support_runtime_elements["deployments"] = partial(fetch_broker_deployments, since_seconds=log_age_seconds)
+    support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
 
     e4k_to_run = {}
     e4k_to_run.update(support_crd_elements)

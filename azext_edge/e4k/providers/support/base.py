@@ -11,7 +11,7 @@ from typing import List, Optional
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
-from kubernetes.client.models import V1Container, V1ObjectMeta, V1Pod, V1PodList, V1PodSpec
+from kubernetes.client.models import V1Container, V1ObjectMeta
 
 from ...common import IotEdgeBrokerResource
 from ..base import client
@@ -50,12 +50,28 @@ def process_crd(
 
 
 def process_v1_pods(
-    edge_service: str, pods: V1PodList, since_seconds: int = 60 * 60 * 24, include_metrics=False, previous_logs=False
+    resource: IotEdgeBrokerResource,
+    label_selector=None,
+    since_seconds: int = 60 * 60 * 24,
+    include_metrics=False,
+    previous_logs=False,
 ) -> List[dict]:
+    from kubernetes.client.models import V1Pod, V1PodList, V1PodSpec
+
     v1_api = client.CoreV1Api()
     custom_api = client.CustomObjectsApi()
 
     processed = []
+    if resource.group.startswith("e4i"):
+        edge_service = "opcua"
+    else:
+        edge_service = "e4k"
+
+    pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
+    pod_logger_info = f"Detected {len(pods.items)} pods."
+    if label_selector:
+        pod_logger_info = f"{pod_logger_info} with label {pod_logger_info}."
+    logger.info(pod_logger_info)
     for pod in pods.items:
         p: V1Pod = pod
         pod_metadata: V1ObjectMeta = p.metadata
@@ -114,13 +130,11 @@ def process_v1_pods(
 
 def process_deployments(
     resource: IotEdgeBrokerResource,
-    label_selector: str,
-    since_seconds: int = 60 * 60 * 24,
+    label_selector: str = None,
     return_namespaces: bool = False,
 ):
     from kubernetes.client.models import V1Deployment, V1DeploymentList
 
-    v1_api = client.CoreV1Api()
     v1_apps = client.AppsV1Api()
 
     processed = []
@@ -148,10 +162,6 @@ def process_deployments(
             }
         )
         if deployment_namespace not in namespace_pods_work:
-            deployment_pods = v1_api.list_namespaced_pod(namespace=deployment_namespace)
-            processed.extend(
-                process_v1_pods(edge_service=edge_service, pods=deployment_pods, since_seconds=since_seconds)
-            )
             namespace_pods_work[deployment_namespace] = True
 
     if return_namespaces:

@@ -17,6 +17,10 @@ logger = get_logger(__name__)
 generic = client.ApiClient()
 
 
+OPCUA_GENERAL_LABEL = "app in (opc-ua-connector,opcplc)"
+OPCUA_SUPERVISOR_LABEL = "app in (edge-application-supervisor)"
+
+
 def fetch_applications():
     return process_crd(OPCUA_RESOURCE, "applications")
 
@@ -37,18 +41,18 @@ def fetch_assets():
     return process_crd(OPCUA_RESOURCE, "assets")
 
 
-def fetch_supervisor_pods(since_seconds: int = 60 * 60 * 24):
-    v1_api = client.CoreV1Api()
-
-    pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector="app=edge-application-supervisor")
-    logger.info(f"Detected {len(pods.items)} edge-application-supervisor pods.")
-    return process_v1_pods(edge_service="opcua", pods=pods, since_seconds=since_seconds, include_metrics=True)
-
-
-def fetch_apollo_deployment(since_seconds: int = 60 * 60 * 24):
-    return process_deployments(
-        resource=OPCUA_RESOURCE, label_selector="orchestrator=apollo", since_seconds=since_seconds
+def fetch_pods(since_seconds: int = 60 * 60 * 24):
+    opcua_pods = process_v1_pods(OPCUA_RESOURCE, label_selector=OPCUA_GENERAL_LABEL, since_seconds=since_seconds)
+    opcua_pods.extend(
+        process_v1_pods(
+            OPCUA_RESOURCE, label_selector=OPCUA_SUPERVISOR_LABEL, since_seconds=since_seconds, include_metrics=True
+        )
     )
+    return opcua_pods
+
+
+def fetch_apollo_deployment():
+    return process_deployments(resource=OPCUA_RESOURCE, label_selector="orchestrator=apollo")
 
 
 support_crd_elements = {
@@ -59,12 +63,11 @@ support_crd_elements = {
     "assets": fetch_assets,
 }
 
-support_runtime_elements = {}
+support_runtime_elements = {"deployments": fetch_apollo_deployment}
 
 
 def prepare_bundle(log_age_seconds: int = 60 * 60 * 24) -> dict:
-    support_runtime_elements["supervisorPods"] = partial(fetch_supervisor_pods, since_seconds=log_age_seconds)
-    support_runtime_elements["deployments"] = partial(fetch_apollo_deployment, since_seconds=log_age_seconds)
+    support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
 
     opcua_to_run = {}
     opcua_to_run.update(support_crd_elements)
