@@ -64,25 +64,35 @@ def fetch_broker_diagnostics():
     return process_crd(BROKER_RESOURCE, "brokerdiagnostics")
 
 
-def fetch_broker_authentication():
+def fetch_broker_authentications():
     return process_crd(BROKER_RESOURCE, "brokerauthentications")
 
 
-def fetch_broker_authorization():
+def fetch_broker_authorizations():
     return process_crd(BROKER_RESOURCE, "brokerauthorizations")
 
 
-def fetch_diagnostic_service():
+def fetch_diagnostic_services():
     return process_crd(BROKER_RESOURCE, "diagnosticservices")
+
+
+def fetch_mqtt_bridge_topic_maps():
+    return process_crd(BROKER_RESOURCE, "mqttbridgetopicmaps")
+
+
+def fetch_mqtt_bridge_connectors():
+    return process_crd(BROKER_RESOURCE, "mqttbridgeconnectors")
 
 
 support_crd_elements = {
     "brokers": fetch_brokers,
     "listeners": fetch_broker_listeners,
     "diagnostics": fetch_broker_diagnostics,
-    "authN": fetch_broker_authentication,
-    "authZ": fetch_broker_authorization,
-    "services": fetch_diagnostic_service,
+    "authN": fetch_broker_authentications,
+    "authZ": fetch_broker_authorizations,
+    "services": fetch_diagnostic_services,
+    "bridgetopicmaps": fetch_mqtt_bridge_topic_maps,
+    "bridgeconnectors": fetch_mqtt_bridge_connectors,
 }
 
 
