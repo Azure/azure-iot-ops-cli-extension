@@ -846,41 +846,33 @@ def evaluate_broker_custom_objects(
 def enumerate_e4k_resources(
     as_list: bool = False,
 ) -> Tuple[dict, dict]:
-    result = {}
-    result["name"] = "enumerateE4kResources"
-    result["description"] = "Enumerate E4K API resources"
-    result["evaluations"] = []
-    evaluation = {"target": f"{BROKER_RESOURCE.group}/{BROKER_RESOURCE.version}"}
-    displays = []
     resource_kind_map = {}
+    target_api = f"{BROKER_RESOURCE.group}/{BROKER_RESOURCE.version}"
+    check_manager = CheckManager(check_name="enumerateE4kApi", check_desc="Enumerate E4K API resources")
+    check_manager.add_target(target_name=target_api)
 
-    api_resources = get_cluster_custom_resources(BROKER_RESOURCE)
+    api_resources: V1APIResourceList = get_cluster_custom_resources(BROKER_RESOURCE)
+
     if not api_resources:
-        evaluation["actual"] = []
-        evaluation["status"] = CheckTaskStatus.skipped.value
-        result["status"] = evaluation["status"]
-        displays.append(
-            Padding(
-                f"- {{[blue]{evaluation['target']}[/blue]}} resources [red]not[/red] detected.\n\nSkipping further evaluation.",
-                (0, 0, 0, 8),
-            )
+        check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.skipped.value)
+        missing_api_text = (
+            f"[blue]{target_api}[/blue] API resources [red]not[/red] detected.\n\nSkipping deployment evaluation."
         )
-    else:
-        evaluation["actual"] = []
-        evaluation["status"] = CheckTaskStatus.success.value
-        result["status"] = evaluation["status"]
-        displays.append(Padding(f"- {{[blue]{evaluation['target']}[/blue]}}", (0, 0, 0, 8)))
-        for resource in api_resources.resources:
-            r: V1APIResource = resource
-            if r.kind not in resource_kind_map:
-                evaluation["actual"].append(r.kind)
-                resource_kind_map[r.kind] = True
-                displays.append(Padding(f"{{[cyan]{r.kind}[/cyan]}}", (0, 0, 0, 12)))
+        check_manager.add_display(target_name=target_api, display=Padding(missing_api_text, (0, 0, 0, 8)))
+        return check_manager.as_dict(as_list), resource_kind_map
 
-    if as_list:
-        evaluation["displays"] = displays
-    result["evaluations"].append(evaluation)
-    return result, resource_kind_map
+    api_header_display = Padding(f"[blue]{target_api}[/blue] API resources", (0, 0, 0, 8))
+    check_manager.add_display(target_name=target_api, display=api_header_display)
+    for resource in api_resources.resources:
+        r: V1APIResource = resource
+        if r.kind not in resource_kind_map:
+            resource_kind_map[r.kind] = True
+            check_manager.add_display(target_name=target_api, display=Padding(f"[cyan]{r.kind}[/cyan]", (0, 0, 0, 12)))
+
+    check_manager.add_target_eval(
+        target_name=target_api, status=CheckTaskStatus.success.value, value=list(resource_kind_map.keys())
+    )
+    return check_manager.as_dict(as_list), resource_kind_map
 
 
 def check_k8s_version(as_list: bool = False):
@@ -1245,7 +1237,7 @@ class CheckManager:
         self.target_displays = {}
         self.worst_status = CheckTaskStatus.success.value
 
-    def add_target(self, target_name: str, conditions: List[str]):
+    def add_target(self, target_name: str, conditions: List[str] = None):
         if target_name not in self.targets:
             self.targets[target_name] = {}
         self.targets[target_name]["conditions"] = conditions
