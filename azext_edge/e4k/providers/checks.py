@@ -451,14 +451,6 @@ def evaluate_broker_diagnostics(
                                 ),
                             )
                         check_manager.add_display(target_name=target_service_deployed, display=NewLine())
-                        # check_manager.add_display(
-                        #     target_name=target_service_deployed,
-                        #     display=Padding(f"port [blue]{port.get('port')}[/blue]", (0, 0, 0, 24)),
-                        # )
-                        # check_manager.add_display(
-                        #     target_name=target_service_deployed,
-                        #     display=Padding(f"protocol [blue]{port.get('protocol')}[/blue]", (0, 0, 0, 24)),
-                        # )
 
                 evaluate_pod_health(
                     check_manager=check_manager,

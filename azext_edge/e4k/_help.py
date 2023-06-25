@@ -27,7 +27,7 @@ def load_iotedge_help():
         "edge support"
     ] = """
         type: group
-        short-summary: Support operations and tools.
+        short-summary: Edge service support operations.
     """
 
     helps[
