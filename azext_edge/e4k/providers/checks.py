@@ -213,10 +213,16 @@ def evaluate_broker_diagnostics(
 
     diagnostics: List[dict] = diagnostics_list.get("items", [])
     diagnostics_count = len(diagnostics)
-    diag_count_display = "- Expecting exactly [blue]1[/blue] broker diagnostic. Actual {}."
+    diag_count_display = "- Expecting exactly [blue]1[/blue] broker diagnostic resource. Actual {}."
     if diagnostics_count != 1:
         target_diag_status = CheckTaskStatus.warning.value
         diag_display_value = f"[yellow]{diagnostics_count}[/yellow]"
+        if diagnostics_count == 0:
+            check_manager.add_target_eval(
+                target_name=target_diag,
+                status=target_diag_status,
+                value="No broker diagnostics detected.",
+            )
     else:
         diag_display_value = f"[green]{diagnostics_count}[/green]"
     check_manager.add_display(
@@ -321,7 +327,7 @@ def evaluate_broker_diagnostics(
                 check_manager.add_display(
                     target_name=target_diagnostic_service,
                     display=Padding(
-                        f"\n- Diagnostic service {{[blue]{diag_service_resource_name}[/blue]}}.",
+                        f"\n- Diagnostic service resource {{[blue]{diag_service_resource_name}[/blue]}}.",
                         (0, 0, 0, 8),
                     ),
                 )
@@ -383,7 +389,9 @@ def evaluate_broker_diagnostics(
                 )
 
                 target_service_deployed = f"service/{AZEDGE_DIAGNOSTICS_SERVICE}"
-                check_manager.add_target(target_name=target_service_deployed, conditions=None)
+                check_manager.add_target(
+                    target_name=target_service_deployed, conditions=["spec.clusterIP", "spec.ports"]
+                )
                 check_manager.add_display(
                     target_name=target_service_deployed,
                     display=Padding(
@@ -395,30 +403,63 @@ def evaluate_broker_diagnostics(
                 diagnostics_service = get_namespaced_service(
                     name=AZEDGE_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True
                 )
-                if diagnostics_service:
-                    check_manager.add_target_eval(
-                        target_name=target_service_deployed,
-                        status=CheckTaskStatus.success.value,
-                        value=True,
-                        resource_name=diagnostics_service.metadata.name,
-                    )
-                    diag_service_display_suffix = f"[green]detected[/green]."
-                else:
+                if not diagnostics_service:
                     check_manager.add_target_eval(
                         target_name=target_service_deployed, status=CheckTaskStatus.warning.value, value=None
                     )
-                    diag_service_display_suffix = f"[yellow]not detected[/yellow]."
+                    diag_service_desc_suffix = f"[yellow]not detected[/yellow]."
+                    diag_service_desc = (
+                        f"Service {{[blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/blue]}} {diag_service_desc_suffix}"
+                    )
+                    check_manager.add_display(
+                        target_name=target_service_deployed,
+                        display=Padding(
+                            diag_service_desc,
+                            (0, 0, 0, 16),
+                        ),
+                    )
+                else:
+                    clusterIP = diagnostics_service.get("spec", {}).get("clusterIP")
+                    ports: List[dict] = diagnostics_service.get("spec", {}).get("ports", [])
 
-                diag_service_display = (
-                    f"Service {{[blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/blue]}} {diag_service_display_suffix}"
-                )
-                check_manager.add_display(
-                    target_name=target_service_deployed,
-                    display=Padding(
-                        diag_service_display,
-                        (0, 0, 0, 16),
-                    ),
-                )
+                    check_manager.add_target_eval(
+                        target_name=target_service_deployed,
+                        status=CheckTaskStatus.success.value,
+                        value={"spec": {"clusterIP": clusterIP, "ports": ports}},
+                        resource_name=diagnostics_service["metadata"]["name"],
+                    )
+                    diag_service_desc_suffix = f"[green]detected[/green]."
+                    diag_service_desc = (
+                        f"Service {{[blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/blue]}} {diag_service_desc_suffix}"
+                    )
+                    check_manager.add_display(
+                        target_name=target_service_deployed,
+                        display=Padding(
+                            diag_service_desc,
+                            (0, 0, 0, 16),
+                        ),
+                    )
+                    if ports:
+                        for port in ports:
+                            check_manager.add_display(
+                                target_name=target_service_deployed,
+                                display=Padding(
+                                    f"[cyan]{port.get('name')}[/cyan] "
+                                    f"port [cyan]{port.get('port')}[/cyan] "
+                                    f"protocol [cyan]{port.get('protocol')}[/cyan]",
+                                    (0, 0, 0, 20),
+                                ),
+                            )
+                        check_manager.add_display(target_name=target_service_deployed, display=NewLine())
+                        # check_manager.add_display(
+                        #     target_name=target_service_deployed,
+                        #     display=Padding(f"port [blue]{port.get('port')}[/blue]", (0, 0, 0, 24)),
+                        # )
+                        # check_manager.add_display(
+                        #     target_name=target_service_deployed,
+                        #     display=Padding(f"protocol [blue]{port.get('protocol')}[/blue]", (0, 0, 0, 24)),
+                        # )
+
                 evaluate_pod_health(
                     check_manager=check_manager,
                     namespace=namespace,
@@ -433,8 +474,6 @@ def evaluate_broker_listeners(
     namespace: str,
     as_list: bool = False,
 ):
-    from kubernetes.client.models import V1LoadBalancerIngress, V1LoadBalancerStatus
-
     check_manager = CheckManager(
         check_name="evalBrokerListeners", check_desc="Evaluate E4K broker listeners", namespace=namespace
     )
