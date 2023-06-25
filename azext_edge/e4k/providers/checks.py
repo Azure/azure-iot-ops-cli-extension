@@ -1173,10 +1173,13 @@ class CheckManager:
             if existing_status == CheckTaskStatus.success.value and status in [
                 CheckTaskStatus.warning.value,
                 CheckTaskStatus.error.value,
+                CheckTaskStatus.skipped.value,
             ]:
                 self.targets[target_name]["status"] = status
                 self.worst_status = status
-            elif existing_status == CheckTaskStatus.warning.value and status in [CheckTaskStatus.error.value]:
+            elif (
+                existing_status == CheckTaskStatus.warning.value or existing_status == CheckTaskStatus.skipped.value
+            ) and status in [CheckTaskStatus.error.value]:
                 self.targets[target_name]["status"] = status
                 self.worst_status = status
 
