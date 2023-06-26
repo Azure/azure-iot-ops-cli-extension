@@ -213,18 +213,16 @@ def evaluate_broker_diagnostics(
 
     diagnostics: List[dict] = diagnostics_list.get("items", [])
     diagnostics_count = len(diagnostics)
-    diag_count_display = "- Expecting exactly [blue]1[/blue] broker diagnostic resource. Actual {}."
-    if diagnostics_count != 1:
-        target_diag_status = CheckTaskStatus.warning.value
-        diag_display_value = f"[yellow]{diagnostics_count}[/yellow]"
-        if diagnostics_count == 0:
-            check_manager.add_target_eval(
-                target_name=target_diag,
-                status=target_diag_status,
-                value="No broker diagnostics detected.",
-            )
+    diag_count_display = "- Expecting up to [blue]1[/blue] broker diagnostic resource. {}"
+    if not diagnostics_count:
+        check_manager.set_target_status(target_name=target_diag, status=CheckTaskStatus.warning.value)
+        diag_display_value = f"[yellow]Actual {diagnostics_count}[/yellow]."
+    elif diagnostics_count > 1:
+        check_manager.set_target_status(target_name=target_diag, status=CheckTaskStatus.error.value)
+        diag_display_value = f"[red]Actual {diagnostics_count}[/red]."
     else:
-        diag_display_value = f"[green]{diagnostics_count}[/green]"
+        diag_display_value = f"[green]Actual {diagnostics_count}[/green]."
+
     check_manager.add_display(
         target_name=target_diag,
         display=Padding(diag_count_display.format(diag_display_value), (0, 0, 0, 8)),
@@ -445,7 +443,7 @@ def evaluate_broker_diagnostics(
                                 target_name=target_service_deployed,
                                 display=Padding(
                                     f"[cyan]{port.get('name')}[/cyan] "
-                                    f"port [cyan]{port.get('port')}[/cyan] "
+                                    f"port [blue]{port.get('port')}[/blue] "
                                     f"protocol [cyan]{port.get('protocol')}[/cyan]",
                                     (0, 0, 0, 20),
                                 ),
@@ -684,7 +682,7 @@ def evaluate_brokers(
 
     brokers: List[dict] = broker_list.get("items", [])
     brokers_count = len(brokers)
-    brokers_count_text = "- Expecting exactly [blue]1[/blue] broker resource per namespace. Detected {}."
+    brokers_count_text = "- Expecting [blue]1[/blue] broker resource per namespace. Detected {}."
     broker_eval_status = CheckTaskStatus.success.value
 
     if brokers_count == 1:
@@ -1179,6 +1177,9 @@ class CheckManager:
 
     def set_target_conditions(self, target_name: str, conditions: List[str]):
         self.targets[target_name]["conditions"] = conditions
+
+    def set_target_status(self, target_name: str, status: str):
+        self._process_status(target_name=target_name, status=status)
 
     def add_target_eval(
         self,
