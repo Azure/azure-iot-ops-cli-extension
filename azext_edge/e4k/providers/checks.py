@@ -843,7 +843,7 @@ def check_k8s_version(as_list: bool = False):
         check_manager.add_target_eval(
             target_name=target_k8s_version, status=CheckTaskStatus.error.value, value=api_error_text
         )
-        check_manager.add_display(target_name=target_k8s_version, display=Padding((0, 0, 0, 8)))
+        check_manager.add_display(target_name=target_k8s_version, display=Padding(api_error_text, (0, 0, 0, 8)))
     else:
         major_version = version_details.major
         minor_version = version_details.minor
@@ -883,7 +883,7 @@ def check_helm_version(as_list: bool = False):
         check_manager.add_target_eval(
             target_name=target_helm_version, status=CheckTaskStatus.error.value, value=not_found_helm_text
         )
-        check_manager.add_display(target_name=target_helm_version, display=Padding(not_found_helm_text, 0, 0, 0, 8))
+        check_manager.add_display(target_name=target_helm_version, display=Padding(not_found_helm_text, (0, 0, 0, 8)))
         return check_manager.as_dict(as_list)
 
     try:
@@ -897,7 +897,7 @@ def check_helm_version(as_list: bool = False):
         check_manager.add_target_eval(
             target_name=target_helm_version, status=CheckTaskStatus.error.value, value=process_error_text
         )
-        check_manager.add_display(target_name=target_helm_version, display=Padding(process_error_text, 0, 0, 0, 8))
+        check_manager.add_display(target_name=target_helm_version, display=Padding(process_error_text, (0, 0, 0, 8)))
         return CheckManager.as_dict(as_list)
 
     helm_semver = completed_process.stdout.decode("utf-8").replace('"', "")
