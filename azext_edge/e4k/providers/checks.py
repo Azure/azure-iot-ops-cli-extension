@@ -587,7 +587,7 @@ def evaluate_broker_listeners(
                         target_name=target_listener_service,
                         conditions=["status", "len(status.loadBalancer.ingress[*].ip)>=1"],
                     )
-                    ingress_rules_desc = "- Expecting [blue]>=1[/blue] ingress rule. Actual {}."
+                    ingress_rules_desc = "- Expecting [blue]>=1[/blue] ingress rule. {}"
 
                     service_status = associated_service.get("status", {})
                     load_balancer = service_status.get("loadBalancer", {})
@@ -595,9 +595,9 @@ def evaluate_broker_listeners(
 
                     if not ingress_rules:
                         listener_service_eval_status = CheckTaskStatus.warning.value
-                        ingress_count_colored = f"[red]0[/red]"
+                        ingress_count_colored = f"[red]Actual 0[/red]."
                     else:
-                        ingress_count_colored = f"[green]{len(ingress_rules)}[/green]"
+                        ingress_count_colored = f"[green]Actual {len(ingress_rules)}[/green]."
 
                     check_manager.add_display(
                         target_name=target_listener_service,
@@ -766,13 +766,13 @@ def evaluate_brokers(
                     ),
                 )
 
-                frontend_cardinality_desc = "- Expecting frontend replicas [blue]>=1[/blue]. Actual {}."
+                frontend_cardinality_desc = "- Expecting frontend replicas [blue]>=1[/blue]. {}"
                 frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
 
                 if frontend_replicas and frontend_replicas >= 1:
-                    frontend_replicas_colored = f"[green]{frontend_replicas}[/green]"
+                    frontend_replicas_colored = f"[green]Actual {frontend_replicas}[/green]."
                 else:
-                    frontend_replicas_colored = f"[red]{frontend_replicas}[/red]"
+                    frontend_replicas_colored = f"[red]Actual {frontend_replicas}[/red]."
 
                 check_manager.add_display(
                     target_name=target_brokers,
