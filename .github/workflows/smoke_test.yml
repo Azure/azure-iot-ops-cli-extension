@@ -40,8 +40,8 @@ jobs:
           az edge support create-bundle --edge-service auto
           az edge support create-bundle --edge-service e4k
           az edge support create-bundle --edge-service opcua
-          az edge e4k check
-          az edge e4k check --list
+          az edge check
+          az edge check --as-object
           az edge e4k stats
           az edge e4k config hash -p test
       - name: Upload support bundle artifacts
