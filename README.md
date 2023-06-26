@@ -10,7 +10,7 @@ on.
 
 1. Install the [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
     - You must have at least `v2.39.0` for the latest versions of `azure-edge`, which you can verify with `az --version`
-1. Add, Update or Remove the Edge extension with the following commands:
+1. Add, update or remove the Edge extension with the following commands:
     - Add: `az extension add --name azure-edge`
     - Update: `az extension update --name azure-edge`
     - Remove: `az extension remove --name azure-edge`
