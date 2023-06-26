@@ -587,7 +587,7 @@ def evaluate_broker_listeners(
                         target_name=target_listener_service,
                         conditions=["status", "len(status.loadBalancer.ingress[*].ip)>=1"],
                     )
-                    ingress_rules_desc = "- Expecting [blue]>=1[/blue] ingress rules. Actual {}."
+                    ingress_rules_desc = "- Expecting [blue]>=1[/blue] ingress rule. Actual {}."
 
                     service_status = associated_service.get("status", {})
                     load_balancer = service_status.get("loadBalancer", {})
