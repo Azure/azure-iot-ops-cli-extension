@@ -211,7 +211,7 @@ def process_services(
 ):
     from kubernetes.client.models import V1Service, V1ServiceList
 
-    v1_apps = client.AppsV1Api()
+    v1_api = client.CoreV1Api()
 
     processed = []
     if resource.group.startswith("e4i"):
@@ -219,7 +219,7 @@ def process_services(
     else:
         edge_service = "e4k"
 
-    services: V1ServiceList = v1_apps.list_stateful_set_for_all_namespaces(label_selector=label_selector)
+    services: V1ServiceList = v1_api.list_service_for_all_namespaces(label_selector=label_selector)
     logger.info(f"Detected {len(services.items)} services.")
 
     for service in services.items:
@@ -227,13 +227,13 @@ def process_services(
         # TODO: Workaround
         s.api_version = services.api_version
         s.kind = "Service"
-        statefulset_metadata: V1ObjectMeta = s.metadata
-        statefulset_namespace = statefulset_metadata.namespace
-        statefulset_name = statefulset_metadata.name
+        service_metadata: V1ObjectMeta = s.metadata
+        service_namespace = service_metadata.namespace
+        service_name = service_metadata.name
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=s),
-                "zinfo": f"{edge_service}/{statefulset_namespace}/service.{statefulset_name}.yaml",
+                "zinfo": f"{edge_service}/{service_namespace}/service.{service_name}.yaml",
             }
         )
 

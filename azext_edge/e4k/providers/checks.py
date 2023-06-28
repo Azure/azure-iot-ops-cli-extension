@@ -642,7 +642,7 @@ def evaluate_broker_listeners(
 
                     check_manager.add_display(
                         target_name=target_listener_service,
-                        display=Padding(cluster_ip_desc, (0, 0, 0, 16)),
+                        display=Padding(cluster_ip_desc, (0, 0, 0, 12)),
                     )
                     check_manager.add_target_eval(
                         target_name=target_listener_service,
