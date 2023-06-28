@@ -8,6 +8,10 @@ on:
         type: boolean
         required: false
         default: false
+      update_index:
+        type: boolean
+        description: 'Push this version to the private extension index'
+        default: false
 jobs:
   security:
     uses: ./.github/workflows/security_checks.yml
@@ -25,3 +29,5 @@ jobs:
     needs: [security, build, test, linter]
     if: ${{ success() || github.event.inputs.continue-on-fail }}
     uses: ./.github/workflows/stage_release.yml
+    with:
+      update_index: ${{ github.event.inputs.update_index }}

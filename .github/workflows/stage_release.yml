@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_call:
+    inputs:
+      update_index:
+        type: boolean
+        description: 'Push this version to the extension index'
+        default: false
 
 jobs:
   release:
@@ -40,3 +45,7 @@ jobs:
           gh release create "${{ env.tag }}" --generate-notes -d -t "azure-edge ${{ env.version }}" "${{ env.wheel }}" "./SBOM.zip#SBOM" --repo "${{ github.repository }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  index_update:
+    needs: [release]
+    if: ${{ github.event.inputs.update_index }}
+    uses: ./.github/workflows/update_private_index.yml
