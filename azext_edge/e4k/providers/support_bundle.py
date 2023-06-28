@@ -17,7 +17,7 @@ from .base import client, get_cluster_custom_resources
 logger = get_logger(__name__)
 generic = client.ApiClient()
 
-console = Console(width=CONSOLE_WIDTH)
+console = Console()
 
 
 def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[int] = None):
