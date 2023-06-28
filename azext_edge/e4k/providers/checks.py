@@ -213,15 +213,15 @@ def evaluate_broker_diagnostics(
 
     diagnostics: List[dict] = diagnostics_list.get("items", [])
     diagnostics_count = len(diagnostics)
-    diag_count_display = "- Expecting up to [blue]1[/blue] broker diagnostic resource. {}"
+    diag_count_display = "- Expecting up to [bright_blue]1[/bright_blue] broker diagnostic resource. {}"
     if not diagnostics_count:
         check_manager.set_target_status(target_name=target_diag, status=CheckTaskStatus.warning.value)
-        diag_display_value = f"[yellow]Actual {diagnostics_count}[/yellow]."
+        diag_display_value = f"[yellow]Detected {diagnostics_count}[/yellow]."
     elif diagnostics_count > 1:
         check_manager.set_target_status(target_name=target_diag, status=CheckTaskStatus.error.value)
-        diag_display_value = f"[red]Actual {diagnostics_count}[/red]."
+        diag_display_value = f"[red]Detected {diagnostics_count}[/red]."
     else:
-        diag_display_value = f"[green]Actual {diagnostics_count}[/green]."
+        diag_display_value = f"[green]Detected {diagnostics_count}[/green]."
 
     check_manager.add_display(
         target_name=target_diag,
@@ -229,12 +229,13 @@ def evaluate_broker_diagnostics(
     )
 
     evaluated_diagnostic_services = False
+    evaluated_pod_health = False
     for diag in diagnostics:
         diag_name: str = diag["metadata"]["name"]
         diag_spec: dict = diag["spec"]
         diag_broker_ref: str = diag_spec["brokerRef"]
 
-        diagnostic_header_display = f"- Broker diagnostic {{[blue]{diag_name}[/blue]}}."
+        diagnostic_header_display = f"- Broker diagnostic {{[bright_blue]{diag_name}[/bright_blue]}}."
         valid_broker_ref = True
         if diag_broker_ref not in valid_broker_refs:
             valid_broker_ref = False
@@ -261,15 +262,17 @@ def evaluate_broker_diagnostics(
         )
         check_manager.add_display(
             target_name=target_diag,
-            display=Padding(f"Enable Metrics: [blue]{diag_spec_enable_metrics}[/blue]", (0, 0, 0, 12)),
+            display=Padding(f"Enable Metrics: [bright_blue]{diag_spec_enable_metrics}[/bright_blue]", (0, 0, 0, 12)),
         )
         check_manager.add_display(
             target_name=target_diag,
-            display=Padding(f"Enable Self-Check: [blue]{diag_spec_enable_selfcheck}[/blue]", (0, 0, 0, 12)),
+            display=Padding(
+                f"Enable Self-Check: [bright_blue]{diag_spec_enable_selfcheck}[/bright_blue]", (0, 0, 0, 12)
+            ),
         )
         check_manager.add_display(
             target_name=target_diag,
-            display=Padding(f"Enable Tracing: [blue]{diag_spec_enable_tracing}[/blue]", (0, 0, 0, 12)),
+            display=Padding(f"Enable Tracing: [bright_blue]{diag_spec_enable_tracing}[/bright_blue]", (0, 0, 0, 12)),
         )
         check_manager.add_display(
             target_name=target_diag,
@@ -285,6 +288,7 @@ def evaluate_broker_diagnostics(
             resource_name=diag_name,
         )
 
+    if not evaluated_pod_health:
         check_manager.add_display(
             target_name=target_diag,
             display=Padding(
@@ -295,6 +299,7 @@ def evaluate_broker_diagnostics(
         evaluate_pod_health(
             check_manager=check_manager, namespace=namespace, pod=AZEDGE_DIAGNOSTICS_PROBE, display_padding=16
         )
+        evaluated_pod_health = True
 
     if not evaluated_diagnostic_services:
         diagnostics_service_list: dict = get_namespaced_custom_objects(
@@ -325,7 +330,7 @@ def evaluate_broker_diagnostics(
                 check_manager.add_display(
                     target_name=target_diagnostic_service,
                     display=Padding(
-                        f"\n- Diagnostic service resource {{[blue]{diag_service_resource_name}[/blue]}}.",
+                        f"\n- Diagnostic service resource {{[bright_blue]{diag_service_resource_name}[/bright_blue]}}.",
                         (0, 0, 0, 8),
                     ),
                 )
@@ -340,42 +345,42 @@ def evaluate_broker_diagnostics(
                 check_manager.add_display(
                     target_name=target_diagnostic_service,
                     display=Padding(
-                        f"Data Export Frequency: [blue]{diag_service_spec_data_export_freq}[/blue] seconds",
+                        f"Data Export Frequency: [bright_blue]{diag_service_spec_data_export_freq}[/bright_blue] seconds",
                         (0, 0, 0, 12),
                     ),
                 )
                 check_manager.add_display(
                     target_name=target_diagnostic_service,
                     display=Padding(
-                        f"Log Format: [blue]{diag_service_spec_log_format}[/blue]",
+                        f"Log Format: [bright_blue]{diag_service_spec_log_format}[/bright_blue]",
                         (0, 0, 0, 12),
                     ),
                 )
                 check_manager.add_display(
                     target_name=target_diagnostic_service,
                     display=Padding(
-                        f"Log Level: [blue]{diag_service_spec_log_level}[/blue]",
+                        f"Log Level: [bright_blue]{diag_service_spec_log_level}[/bright_blue]",
                         (0, 0, 0, 12),
                     ),
                 )
                 check_manager.add_display(
                     target_name=target_diagnostic_service,
                     display=Padding(
-                        f"Max Data Storage Size: [blue]{diag_service_spec_max_data_storage_size}[/blue]",
+                        f"Max Data Storage Size: [bright_blue]{diag_service_spec_max_data_storage_size}[/bright_blue]",
                         (0, 0, 0, 12),
                     ),
                 )
                 check_manager.add_display(
                     target_name=target_diagnostic_service,
                     display=Padding(
-                        f"Metrics Port: [blue]{diag_service_spec_metrics_port}[/blue]",
+                        f"Metrics Port: [bright_blue]{diag_service_spec_metrics_port}[/bright_blue]",
                         (0, 0, 0, 12),
                     ),
                 )
                 check_manager.add_display(
                     target_name=target_diagnostic_service,
                     display=Padding(
-                        f"Stale Data Timeout: [blue]{diag_service_spec_stale_data_timeout}[/blue] seconds",
+                        f"Stale Data Timeout: [bright_blue]{diag_service_spec_stale_data_timeout}[/bright_blue] seconds",
                         (0, 0, 0, 12),
                     ),
                 )
@@ -406,9 +411,7 @@ def evaluate_broker_diagnostics(
                         target_name=target_service_deployed, status=CheckTaskStatus.warning.value, value=None
                     )
                     diag_service_desc_suffix = f"[yellow]not detected[/yellow]."
-                    diag_service_desc = (
-                        f"Service {{[blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/blue]}} {diag_service_desc_suffix}"
-                    )
+                    diag_service_desc = f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
                     check_manager.add_display(
                         target_name=target_service_deployed,
                         display=Padding(
@@ -427,9 +430,7 @@ def evaluate_broker_diagnostics(
                         resource_name=diagnostics_service["metadata"]["name"],
                     )
                     diag_service_desc_suffix = f"[green]detected[/green]."
-                    diag_service_desc = (
-                        f"Service {{[blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/blue]}} {diag_service_desc_suffix}"
-                    )
+                    diag_service_desc = f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
                     check_manager.add_display(
                         target_name=target_service_deployed,
                         display=Padding(
@@ -443,7 +444,7 @@ def evaluate_broker_diagnostics(
                                 target_name=target_service_deployed,
                                 display=Padding(
                                     f"[cyan]{port.get('name')}[/cyan] "
-                                    f"port [blue]{port.get('port')}[/blue] "
+                                    f"port [bright_blue]{port.get('port')}[/bright_blue] "
                                     f"protocol [cyan]{port.get('protocol')}[/cyan]",
                                     (0, 0, 0, 20),
                                 ),
@@ -489,14 +490,15 @@ def evaluate_broker_listeners(
 
     listeners: List[dict] = listener_list.get("items", [])
     listeners_count = len(listeners)
-    listener_count_desc = "- Expecting [blue]>=1[/blue] broker listeners per namespace. Detected {}."
+    listener_count_desc = "- Expecting [bright_blue]>=1[/bright_blue] broker listeners per namespace. {}"
     listeners_eval_status = CheckTaskStatus.success.value
 
     if listeners_count >= 1:
-        listener_count_desc = listener_count_desc.format(f"[green]{listeners_count}[/green]")
+        listener_count_desc = listener_count_desc.format(f"[green]Detected {listeners_count}[/green].")
     else:
-        listener_count_desc = listener_count_desc.format(f"[yellow]{listeners_count}[/yellow]")
-        listeners_eval_status = CheckTaskStatus.warning.value
+        listener_count_desc = listener_count_desc.format(f"[yellow]Detected {listeners_count}[/yellow].")
+        check_manager.set_target_status(target_name=target_listeners, status=CheckTaskStatus.warning.value)
+        # TODO listeners_eval_status = CheckTaskStatus.warning.value
     check_manager.add_display(target_name=target_listeners, display=Padding(listener_count_desc, (0, 0, 0, 8)))
 
     processed_services = {}
@@ -517,26 +519,26 @@ def evaluate_broker_listeners(
             ref_display = f"[green]Valid[/green] broker reference {{[green]{listener_broker_ref}[/green]}}."
             listener_eval_value["valid(spec.brokerRef)"] = True
 
-        listener_desc = f"\n- Broker Listener {{[blue]{listener_name}[/blue]}}. {ref_display}"
+        listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}. {ref_display}"
         check_manager.add_display(target_name=target_listeners, display=Padding(listener_desc, (0, 0, 0, 8)))
         check_manager.add_display(
             target_name=target_listeners,
             display=Padding(
-                f"Port: [blue]{l['spec']['port']}[/blue]",
+                f"Port: [bright_blue]{l['spec']['port']}[/bright_blue]",
                 (0, 0, 0, 12),
             ),
         )
         check_manager.add_display(
             target_name=target_listeners,
             display=Padding(
-                f"AuthN enabled: [blue]{l['spec']['authenticationEnabled']}[/blue]",
+                f"AuthN enabled: [bright_blue]{l['spec']['authenticationEnabled']}[/bright_blue]",
                 (0, 0, 0, 12),
             ),
         )
         check_manager.add_display(
             target_name=target_listeners,
             display=Padding(
-                f"AuthZ enabled: [blue]{l['spec']['authenticationEnabled']}[/blue]",
+                f"AuthZ enabled: [bright_blue]{l['spec']['authenticationEnabled']}[/bright_blue]",
                 (0, 0, 0, 12),
             ),
         )
@@ -545,7 +547,7 @@ def evaluate_broker_listeners(
             check_manager.add_display(
                 target_name=target_listeners,
                 display=Padding(
-                    f"Node Port: [blue]{node_port}[/blue]",
+                    f"Node Port: [bright_blue]{node_port}[/bright_blue]",
                     (0, 0, 0, 12),
                 ),
             )
@@ -577,8 +579,8 @@ def evaluate_broker_listeners(
                 check_manager.add_display(
                     target_name=target_listener_service,
                     display=Padding(
-                        f"\nService {{[blue]{listener_spec_service_name}[/blue]}} of type [blue]{listener_spec_service_type}[/blue]",
-                        (0, 0, 0, 12),
+                        f"\nService {{[bright_blue]{listener_spec_service_name}[/bright_blue]}} of type [bright_blue]{listener_spec_service_type}[/bright_blue]",
+                        (0, 0, 0, 8),
                     ),
                 )
 
@@ -587,7 +589,7 @@ def evaluate_broker_listeners(
                         target_name=target_listener_service,
                         conditions=["status", "len(status.loadBalancer.ingress[*].ip)>=1"],
                     )
-                    ingress_rules_desc = "- Expecting [blue]>=1[/blue] ingress rule. {}"
+                    ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
 
                     service_status = associated_service.get("status", {})
                     load_balancer = service_status.get("loadBalancer", {})
@@ -595,19 +597,19 @@ def evaluate_broker_listeners(
 
                     if not ingress_rules:
                         listener_service_eval_status = CheckTaskStatus.warning.value
-                        ingress_count_colored = f"[red]Actual 0[/red]."
+                        ingress_count_colored = f"[red]Detected 0[/red]."
                     else:
-                        ingress_count_colored = f"[green]Actual {len(ingress_rules)}[/green]."
+                        ingress_count_colored = f"[green]Detected {len(ingress_rules)}[/green]."
 
                     check_manager.add_display(
                         target_name=target_listener_service,
-                        display=Padding(ingress_rules_desc.format(ingress_count_colored), (0, 0, 0, 16)),
+                        display=Padding(ingress_rules_desc.format(ingress_count_colored), (0, 0, 0, 12)),
                     )
 
                     if ingress_rules:
                         check_manager.add_display(
                             target_name=target_listener_service,
-                            display=Padding("Ingress", (0, 0, 0, 14)),
+                            display=Padding("\nIngress", (0, 0, 0, 12)),
                         )
 
                     for ingress in ingress_rules:
@@ -616,7 +618,7 @@ def evaluate_broker_listeners(
                             rule_desc = f"- ip: [green]{ip}[/green]"
                             check_manager.add_display(
                                 target_name=target_listener_service,
-                                display=Padding(rule_desc, (0, 0, 0, 18)),
+                                display=Padding(rule_desc, (0, 0, 0, 16)),
                             )
                         else:
                             listener_service_eval_status = CheckTaskStatus.warning.value
@@ -668,7 +670,7 @@ def evaluate_brokers(
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K brokers", namespace=namespace)
 
     target_brokers = "brokers.az-edge.com"
-    broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
+    broker_conditions = ["len(brokers)==1", "status", "spec", "spec.mode"]
     check_manager.add_target(target_name=target_brokers, conditions=broker_conditions)
 
     broker_list: dict = get_namespaced_custom_objects(resource=BROKER_RESOURCE, plural="brokers", namespace=namespace)
@@ -682,16 +684,17 @@ def evaluate_brokers(
 
     brokers: List[dict] = broker_list.get("items", [])
     brokers_count = len(brokers)
-    brokers_count_text = "- Expecting [blue]1[/blue] broker resource per namespace. Detected {}."
+    brokers_count_text = "- Expecting [bright_blue]1[/bright_blue] broker resource per namespace. {}."
     broker_eval_status = CheckTaskStatus.success.value
 
     if brokers_count == 1:
-        brokers_count_text = brokers_count_text.format(f"[green]{brokers_count}[/green]")
+        brokers_count_text = brokers_count_text.format(f"[green]Detected {brokers_count}[/green]")
     else:
-        brokers_count_text = brokers_count_text.format(f"[red]{brokers_count}[/red]")
-        broker_eval_status = CheckTaskStatus.error.value
+        brokers_count_text = brokers_count_text.format(f"[red]Detected {brokers_count}[/red]")
+        check_manager.set_target_status(target_name=target_brokers, status=CheckTaskStatus.error.value)
     check_manager.add_display(target_name=target_brokers, display=Padding(brokers_count_text, (0, 0, 0, 8)))
 
+    added_distributed_conditions = False
     for b in brokers:
         broker_name = b["metadata"]["name"]
         broker_spec: dict = b["spec"]
@@ -705,7 +708,9 @@ def evaluate_brokers(
         if broker_status_state:
             status_display_text = f"{status_display_text} {broker_status_desc}."
 
-        target_broker_text = f"\n- Broker {{[blue]{broker_name}[/blue]}} mode [blue]{broker_mode}[/blue]."
+        target_broker_text = (
+            f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}} mode [bright_blue]{broker_mode}[/bright_blue]."
+        )
         check_manager.add_display(target_name=target_brokers, display=Padding(target_broker_text, (0, 0, 0, 8)))
 
         broker_eval_value = {"status": {"status": broker_status, "statusDescription": broker_status_desc}}
@@ -723,10 +728,13 @@ def evaluate_brokers(
         check_manager.add_display(target_name=target_brokers, display=Padding(status_display_text, (0, 0, 0, 12)))
 
         if broker_mode == "distributed":
-            broker_conditions.append("spec.cardinality")
-            broker_conditions.append("spec.cardinality.backendChain.chainCount>=1")
-            broker_conditions.append("spec.cardinality.backendChain.replicas>=1")
-            broker_conditions.append("spec.cardinality.frontend.replicas>=1")
+            if not added_distributed_conditions:
+                # TODO - conditional evaluations
+                broker_conditions.append("spec.cardinality")
+                broker_conditions.append("spec.cardinality.backendChain.chainCount>=1")
+                broker_conditions.append("spec.cardinality.backendChain.replicas>=1")
+                broker_conditions.append("spec.cardinality.frontend.replicas>=1")
+                added_distributed_conditions = True
 
             check_manager.set_target_conditions(target_name=target_brokers, conditions=broker_conditions)
             check_manager.add_display(target_name=target_brokers, display=Padding("\nCardinality", (0, 0, 0, 12)))
@@ -739,9 +747,7 @@ def evaluate_brokers(
                     display=Padding("[magenta]spec.cardinality is undefined![/magenta]", (0, 0, 0, 16)),
                 )
             else:
-                backend_cardinality_desc = (
-                    "- Expecting backend chainCount [blue]>=1[/blue] and replicas [blue]>=1[/blue]. Actual {} and {}."
-                )
+                backend_cardinality_desc = "- Expecting backend chainCount [bright_blue]>=1[/bright_blue] and replicas [bright_blue]>=1[/bright_blue]. Detected {} and {}."
                 backend_chain = broker_cardinality.get("backendChain", {})
                 backend_chain_count: Optional[int] = backend_chain.get("chainCount")
                 backend_replicas: Optional[int] = backend_chain.get("replicas")
@@ -766,13 +772,13 @@ def evaluate_brokers(
                     ),
                 )
 
-                frontend_cardinality_desc = "- Expecting frontend replicas [blue]>=1[/blue]. {}"
+                frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
                 frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
 
                 if frontend_replicas and frontend_replicas >= 1:
-                    frontend_replicas_colored = f"[green]Actual {frontend_replicas}[/green]."
+                    frontend_replicas_colored = f"[green]Detected {frontend_replicas}[/green]."
                 else:
-                    frontend_replicas_colored = f"[red]Actual {frontend_replicas}[/red]."
+                    frontend_replicas_colored = f"[red]Detected {frontend_replicas}[/red]."
 
                 check_manager.add_display(
                     target_name=target_brokers,
@@ -798,13 +804,11 @@ def enumerate_e4k_resources(
 
     if not api_resources:
         check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.skipped.value)
-        missing_api_text = (
-            f"[blue]{target_api}[/blue] API resources [red]not[/red] detected.\n\nSkipping deployment evaluation."
-        )
+        missing_api_text = f"[bright_blue]{target_api}[/bright_blue] API resources [red]not[/red] detected.\n\nSkipping deployment evaluation."
         check_manager.add_display(target_name=target_api, display=Padding(missing_api_text, (0, 0, 0, 8)))
         return check_manager.as_dict(as_list), resource_kind_map
 
-    api_header_display = Padding(f"[blue]{target_api}[/blue] API resources", (0, 0, 0, 8))
+    api_header_display = Padding(f"[bright_blue]{target_api}[/bright_blue] API resources", (0, 0, 0, 8))
     check_manager.add_display(target_name=target_api, display=api_header_display)
     for resource in api_resources.resources:
         r: V1APIResource = resource
@@ -854,7 +858,9 @@ def check_k8s_version(as_list: bool = False):
             semver_status = CheckTaskStatus.error.value
             semver_colored = f"[red]v{semver}[/red]"
 
-        k8s_semver_text = f"Require [blue]k8s[/blue] >=[cyan]{MIN_K8S_VERSION}[/cyan] detected {semver_colored}."
+        k8s_semver_text = (
+            f"Require [bright_blue]k8s[/bright_blue] >=[cyan]{MIN_K8S_VERSION}[/cyan] detected {semver_colored}."
+        )
         check_manager.add_target_eval(target_name=target_k8s_version, status=semver_status, value=semver)
         check_manager.add_display(target_name=target_k8s_version, display=Padding(k8s_semver_text, (0, 0, 0, 8)))
 
@@ -905,7 +911,9 @@ def check_helm_version(as_list: bool = False):
     else:
         helm_semver_status = CheckTaskStatus.error.value
         helm_semver_colored = f"[red]{helm_semver}[/red]"
-    helm_semver_text = f"Require [blue]helm[/blue] >=[cyan]{MIN_HELM_VERSION}[/cyan] detected {helm_semver_colored}."
+    helm_semver_text = (
+        f"Require [bright_blue]helm[/bright_blue] >=[cyan]{MIN_HELM_VERSION}[/cyan] detected {helm_semver_colored}."
+    )
 
     check_manager.add_target_eval(target_name=target_helm_version, status=helm_semver_status, value=helm_semver)
     check_manager.add_display(target_name=target_helm_version, display=Padding(helm_semver_text, (0, 0, 0, 8)))
@@ -961,7 +969,7 @@ def check_nodes(as_list: bool = False):
                 memory_status = CheckTaskStatus.warning.value
                 mem_colored = f"[yellow]{memory}[/yellow]"
 
-            node_memory_display = Padding(f"[blue]{node_name}[/blue] {mem_colored} MiB", (0, 0, 0, 8))
+            node_memory_display = Padding(f"[bright_blue]{node_name}[/bright_blue] {mem_colored} MiB", (0, 0, 0, 8))
             check_manager.add_target_eval(
                 target_name=target_minimum_nodes, status=memory_status, value=node_memory_value
             )
@@ -1264,7 +1272,7 @@ def evaluate_pod_health(check_manager: CheckManager, namespace: str, pod: str, d
             check_manager.add_display(
                 target_name=target_service_pod,
                 display=Padding(
-                    f"Pod {{[blue]{pod_name}[/blue]}} in phase {{{pod_phase_deco}}}.",
+                    f"Pod {{[bright_blue]{pod_name}[/bright_blue]}} in phase {{{pod_phase_deco}}}.",
                     (0, 0, 0, display_padding),
                 ),
             )

@@ -53,11 +53,6 @@ def fetch_events(
 #         logger.debug(e.body)
 
 
-# TODO
-# {MqttBridgeTopicMap}
-# {MqttBridgeConnector}
-
-
 def fetch_brokers():
     return process_crd(BROKER_RESOURCE, "brokers")
 
