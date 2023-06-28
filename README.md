@@ -1,7 +1,7 @@
 # Microsoft Azure Edge extension for Azure CLI
 
 ![Python](https://img.shields.io/pypi/pyversions/azure-cli.svg?maxAge=2592000)
-![Build Status](https://dev.azure.com/azureiotdevxp/aziotcli/_apis/build/status/Merge%20-%20Azure.azure-iot-cli-extension?branchName=dev)
+![Build](https://github.com/azure/azure-edge-cli-extension/actions/workflows/release_workflow.yml/badge.svg)
 
 The **Azure Edge extension for Azure CLI** aims to accelerate the development, management and automation of Azure Edge solutions. It does this via addition of rich features and functionality to the official [Azure CLI](https://docs.microsoft.com/en-us/cli/azure).
 on.
