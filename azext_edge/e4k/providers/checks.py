@@ -40,7 +40,7 @@ from .base import (
 
 logger = get_logger(__name__)
 
-console = Console(width=CONSOLE_WIDTH, highlight=False)
+console = Console(width=100, highlight=False)
 
 
 def run_checks(
