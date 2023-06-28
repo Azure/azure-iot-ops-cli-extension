@@ -51,40 +51,40 @@ def run_checks(
 ):
     result = {}
 
-    if pre_deployment:
-        result["preDeployment"] = []
-        desired_checks = {}
-        desired_checks.update(
-            {
-                "checkK8sVersion": partial(check_k8s_version, as_list=as_list),
-                "checkHelmVersion": partial(check_helm_version, as_list=as_list),
-                "checkNodes": partial(check_nodes, as_list=as_list),
-            }
-        )
+    with console.status("Analyzing cluster...") as status:
+        sleep(0.25)
 
-        with console.status("Analyzing cluster...") as status:
-            sleep(0.25)
+        if pre_deployment:
+            result["preDeployment"] = []
+            desired_checks = {}
+            desired_checks.update(
+                {
+                    "checkK8sVersion": partial(check_k8s_version, as_list=as_list),
+                    "checkHelmVersion": partial(check_helm_version, as_list=as_list),
+                    "checkNodes": partial(check_nodes, as_list=as_list),
+                }
+            )
+
             for c in desired_checks:
                 output = desired_checks[c]()
                 result["preDeployment"].append(output)
 
-    if post_deployment:
-        if not namespace:
-            namespace = DEFAULT_NAMESPACE
-        result["postDeployment"] = []
-        # TODO: with console.status("Analyzing E4K environment...") as status:
-        # sleep(0.25)
-        resource_enumeration, api_resources = enumerate_e4k_resources(as_list=as_list)
-        result["postDeployment"].append(resource_enumeration)
-        if api_resources:
-            if "Broker" in api_resources:
-                result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
-            if "BrokerListener" in api_resources:
-                result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
-            if "DiagnosticService":
-                result["postDeployment"].append(evaluate_broker_diagnostics(namespace=namespace, as_list=as_list))
-            if "MqttBridgeConnector" in api_resources:
-                pass
+        if post_deployment:
+            if not namespace:
+                namespace = DEFAULT_NAMESPACE
+            result["postDeployment"] = []
+
+            resource_enumeration, api_resources = enumerate_e4k_resources(as_list=as_list)
+            result["postDeployment"].append(resource_enumeration)
+            if api_resources:
+                if "Broker" in api_resources:
+                    result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
+                if "BrokerListener" in api_resources:
+                    result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
+                if "DiagnosticService":
+                    result["postDeployment"].append(evaluate_broker_diagnostics(namespace=namespace, as_list=as_list))
+                if "MqttBridgeConnector" in api_resources:
+                    pass
 
     if not as_list:
         return result
@@ -293,11 +293,11 @@ def evaluate_broker_diagnostics(
             target_name=target_diag,
             display=Padding(
                 "\nStatus",
-                (0, 0, 0, 12),
+                (0, 0, 0, 8),
             ),
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=AZEDGE_DIAGNOSTICS_PROBE, display_padding=16
+            check_manager=check_manager, namespace=namespace, pod=AZEDGE_DIAGNOSTICS_PROBE, display_padding=12
         )
         evaluated_pod_health = True
 
