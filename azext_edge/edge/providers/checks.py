@@ -18,7 +18,7 @@ from rich.console import Console, NewLine, Pretty
 from rich.json import JSON
 from rich.padding import Padding
 
-from azext_edge.e4k.common import (
+from ..common import (
     AZEDGE_DIAGNOSTICS_SERVICE,
     AZEDGE_DIAGNOSTICS_PROBE,
     BRIDGE_RESOURCE,

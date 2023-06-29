@@ -19,7 +19,7 @@ from rich.console import NewLine, Pretty
 from rich.json import JSON
 from rich.padding import Padding
 
-from azext_edge.e4k.common import (
+from ..common import (
     BRIDGE_RESOURCE,
     BROKER_RESOURCE,
     CheckTaskStatus,

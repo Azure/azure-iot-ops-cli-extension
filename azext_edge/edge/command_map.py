@@ -9,8 +9,8 @@ Load CLI commands
 """
 from azure.cli.core.commands import CliCommandType
 
-e4k_resource_ops = CliCommandType(operations_tmpl="azext_edge.e4k.commands_e4k#{}")
-edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.e4k.commands_edge#{}")
+e4k_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_e4k#{}")
+edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
 
 
 def load_iotedge_commands(self, _):
@@ -40,4 +40,4 @@ def load_iotedge_commands(self, _):
         "edge e4k config",
         command_type=e4k_resource_ops,
     ) as cmd_group:
-        cmd_group.command("hash", "config")
+        cmd_group.command("get-password-hash", "hash")
