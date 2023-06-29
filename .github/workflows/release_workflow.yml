@@ -30,4 +30,5 @@ jobs:
     if: ${{ success() || github.event.inputs.continue-on-fail }}
     uses: ./.github/workflows/stage_release.yml
     with:
-      update_index: ${{ github.event.inputs.update_index }}
+      update_index: ${{ github.event.inputs.update_index == 'true' }}
+    secrets: inherit

@@ -4,37 +4,73 @@ on:
   workflow_call:
 env:
   storage_container_url: https://azedgecli.blob.core.windows.net/drop
+  extensions_folder: azure-cli-extensions
   sas_token: ${{ secrets.sas_token }}
 jobs:
-    update_index:
-        environment: production
-        runs-on: [self-hosted, 1ES.Pool=iotupx-github-hosted-pool, 1ES.ImageOverride=MMSUbuntu20.04]
-        steps:
-          - name: Download wheel
-            id: wheel
-            uses: actions/download-artifact@v3
-            with:
-              name: azure-edge-cli-ext
-              path: ./
-          - name: Install azcopy
-            run: |
-              curl -so azcopy.tar.gz -L 'https://aka.ms/downloadazcopy-v10-linux'
-              tar -zxvf azcopy.tar.gz --strip 1
-          - name: Upload wheel to storage
-            run: |
-              wheel=$(find *.whl)
-              azcopy copy ${{ steps.wheel.outputs.download-path }} '${{ env.storage_container_url }}/$wheel?${{env.sas_token}}'
-          - name: Download private index file
-            run: |
-              azcopy copy '${{ env.storage_container_url }}/index.json' 'index.json'
-          - name: Update private index
-            run: |
-              python -m venv env
-              source env/bin/activate
-              pip install azdev
-              azdev setup -r .
-              mkdir azure-cli-extensions/
-              mv index.json azure-cli-extensions/
-              azdev extension update-index
-              cd azure-cli-extensions
-              azcopy copy 'index.json' '${{ env.storage_container_url }}/index.json?${{env.sas_token}}'
+  update_index:
+    environment: production
+    runs-on:
+      [
+        self-hosted,
+        1ES.Pool=iotupx-github-hosted-pool,
+        1ES.ImageOverride=MMSUbuntu20.04,
+      ]
+    steps:
+      - name: Pull git repo
+        uses: actions/checkout@v3
+      - name: Download wheel
+        id: wheel
+        uses: actions/download-artifact@v3
+        with:
+          name: azure-edge-cli-ext
+          path: ./
+      - name: Install azcopy
+        run: |
+          curl -so azcopy.tar.gz -L 'https://aka.ms/downloadazcopy-v10-linux'
+          tar -zxvf azcopy.tar.gz --strip 1
+      - name: Download private index file
+        run: |
+          azcopy copy "${{ env.storage_container_url }}/index.json" 'index.json'
+          mkdir ${{ env.extensions_folder }}
+          mv index.json ${{ env.extensions_folder }}
+      # If this version is already in the index, skip uploading and updating index
+      - name: Determine if version already exists
+        id: duplicate_check
+        run: |
+          wheel=$(find *.whl)
+          echo "wheel=$wheel" >> $GITHUB_ENV
+          cd ${{ env.extensions_folder }}
+          if grep -Fq $wheel index.json; then
+            echo "Wheel found in index, skipping update" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "CONTINUE=true" >> $GITHUB_OUTPUT
+          fi
+      # Upload wheel to storage
+      - name: Upload Wheel
+        if: steps.duplicate_check.outputs.CONTINUE == 'true'
+        run: |
+          azcopy copy ${{ env.wheel }} "${{ env.storage_container_url }}/${{ env.wheel }}?${{ env.SAS_TOKEN }}"
+        env:
+          SAS_TOKEN: ${{ secrets.SAS_TOKEN }}
+      # Setup and configure azdev to update local index file
+      - name: Setup azdev, update private index file
+        if: steps.duplicate_check.outputs.CONTINUE == 'true'
+        run: |
+          set -ev
+          pip install virtualenv
+          python -m virtualenv venv/
+          source ./venv/bin/activate
+          git clone --single-branch -b dev https://github.com/Azure/azure-cli.git ../azure-cli
+          pip install azdev
+          azdev --version
+          azdev setup -c ../azure-cli -r .
+          azdev extension update-index "${{ env.storage_container_url }}/${{ env.wheel }}"
+      # Upload index file to storage
+      - name: Push index
+        if: steps.duplicate_check.outputs.CONTINUE == 'true'
+        run: |
+          cd ${{ env.extensions_folder }}
+          url="${{ env.storage_container_url }}/index.json?${{ env.SAS_TOKEN }}"
+          azcopy copy 'index.json' $url
+        env:
+          SAS_TOKEN: ${{ secrets.SAS_TOKEN }}

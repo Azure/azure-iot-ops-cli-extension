@@ -47,5 +47,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   index_update:
     needs: [release]
-    if: ${{ github.event.inputs.update_index }}
+    if: ${{ github.event.inputs.update_index == 'true' }}
     uses: ./.github/workflows/update_private_index.yml
+    secrets: inherit
