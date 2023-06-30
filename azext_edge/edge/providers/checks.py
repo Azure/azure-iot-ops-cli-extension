@@ -114,16 +114,16 @@ def process_as_list(result: Dict[str, dict], namespace: str):
     def _print_summary():
         from rich.panel import Panel
 
-        success_content = f"[green]{success_count} succeeded.[/green]"
-        warning_content = f"{warning_count} raised warnings."
+        success_content = f"[green]{success_count} check(s) succeeded.[/green]"
+        warning_content = f"{warning_count} check(s) raised warnings."
         warning_content = (
             f"[green]{warning_content}[/green]" if not warning_count else f"[yellow]{warning_content}[/yellow]"
         )
-        error_content = f"{error_count} raised errors."
+        error_content = f"{error_count} check(s) raised errors."
         error_content = f"[green]{error_content}[/green]" if not error_count else f"[red]{error_content}[/red]"
-        skipped_content = f"[bright_white]{skipped_count} were skipped[/bright_white]."
+        skipped_content = f"[bright_white]{skipped_count} check(s) were skipped[/bright_white]."
         content = f"{success_content}\n{warning_content}\n{error_content}\n{skipped_content}"
-        console.print(Panel(content, title="Summary", expand=False))
+        console.print(Panel(content, title="Check Summary", expand=False))
 
     def _enumerate_displays(checks: List[Dict[str, dict]]):
         for c in checks:
@@ -818,7 +818,10 @@ def enumerate_e4k_resources(
 
     if not api_resources:
         check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.skipped.value)
-        missing_api_text = f"[bright_blue]{target_api}[/bright_blue] API resources [red]not[/red] detected.\n\nSkipping deployment evaluation."
+        missing_api_text = (
+            f"[bright_blue]{target_api}[/bright_blue] API resources [red]not[/red] detected."
+            "\n\n[bright_white]Skipping deployment evaluation[/bright_white]."
+        )
         check_manager.add_display(target_name=target_api, display=Padding(missing_api_text, (0, 0, 0, 8)))
         return check_manager.as_dict(as_list), resource_kind_map
 
@@ -958,14 +961,14 @@ def check_nodes(as_list: bool = False):
     else:
         node_items: List[V1Node] = nodes.items
         node_count = len(node_items)
-        target_display = "At least 1 node is required. Detected {}."
+        target_display = "At least 1 node is required. {}"
         if node_count < 1:
-            target_display = Padding(target_display.format(f"[red]{node_count}[/red]"), (0, 0, 0, 8))
+            target_display = Padding(target_display.format(f"[red]Detected {node_count}[/red]."), (0, 0, 0, 8))
             check_manager.add_target_eval(target_name=target_minimum_nodes, status=CheckTaskStatus.error.value)
             check_manager.add_display(target_name=target_minimum_nodes, display=target_display)
             return check_manager.as_dict()
 
-        target_display = Padding(target_display.format(f"[green]{node_count}[/green]"), (0, 0, 0, 8))
+        target_display = Padding(target_display.format(f"[green]Detected {node_count}[/green]."), (0, 0, 0, 8))
         check_manager.add_display(target_name=target_minimum_nodes, display=target_display)
         check_manager.add_display(target_name=target_minimum_nodes, display=NewLine())
 
