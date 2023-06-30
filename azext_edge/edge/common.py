@@ -74,6 +74,7 @@ BROKER_RESOURCE = IotEdgeBrokerResource("az-edge.com", "v1alpha2", "brokers")
 BRIDGE_RESOURCE = IotEdgeBrokerResource("az-edge.com", "v1alpha2", "mqttbridgeconnectors")
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
+METRICS_SERVICE_API_PORT = 9600
 
 AZEDGE_DIAGNOSTICS_PROBE_PREFIX = "azedge-diagnostics-probe"
 AZEDGE_FRONTEND_PREFIX = "azedge-dmqtt-frontend"

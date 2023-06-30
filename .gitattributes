@@ -11,3 +11,5 @@
 
 # Some Windows-specific files should always be CRLF
 *.bat eol=crlf
+
+**/tests/edge/e4k/raw_stats.txt text eol=lf

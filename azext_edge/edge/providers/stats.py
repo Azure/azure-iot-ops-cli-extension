@@ -7,11 +7,12 @@
 from datetime import datetime
 from time import sleep
 from typing import Optional
-from rich.console import Console
+
 from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
+from rich.console import Console
 
-from ..common import AZEDGE_DIAGNOSTICS_SERVICE, DEFAULT_CONSOLE_WIDTH
+from ..common import METRICS_SERVICE_API_PORT, AZEDGE_DIAGNOSTICS_SERVICE, DEFAULT_CONSOLE_WIDTH
 from .base import DEFAULT_NAMESPACE, get_namespaced_pods_by_prefix, portforward_http
 
 logger = get_logger(__name__)
@@ -22,24 +23,19 @@ console = Console(width=DEFAULT_CONSOLE_WIDTH, highlight=True)
 def get_stats_pods(
     namespace: Optional[str] = None,
     diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
-    pod_port: int = 9600,
+    pod_port: int = METRICS_SERVICE_API_PORT,
     raw_response=False,
     raw_response_print=False,
     refresh_in_seconds: int = 10,
-    watch: bool = False,  
+    watch: bool = False,
 ):
     if not namespace:
         namespace = DEFAULT_NAMESPACE
 
-    target_pods, _ = get_namespaced_pods_by_prefix(
-        prefix=diag_service_pod_prefix, namespace=namespace
-    )
+    target_pods, _ = get_namespaced_pods_by_prefix(prefix=diag_service_pod_prefix, namespace=namespace)
     if not target_pods:
-        raise ResourceNotFoundError(
-            f"Diagnostics service does not exist in namespace {namespace}."
-        )
+        raise ResourceNotFoundError(f"Diagnostics service does not exist in namespace {namespace}.")
     diagnostic_pod = target_pods[0]
-    # diagnostic_pod_status: V1PodStatus = diagnostic_pod.status
     target_pod_port = pod_port
 
     from rich import box
@@ -66,12 +62,8 @@ def get_stats_pods(
             stats = dict(sorted(_clean_stats(raw_metrics).items()))
             if not watch:
                 return stats
-            logger.warning(
-                f"Refreshing every {refresh_in_seconds} seconds. Use ctrl-c to terminate stats watch.\n"
-            )
-            with Live(
-                table, refresh_per_second=4, auto_refresh=False, console=console
-            ) as live:
+            logger.warning(f"Refreshing every {refresh_in_seconds} seconds. Use ctrl-c to terminate stats watch.\n")
+            with Live(table, refresh_per_second=4, auto_refresh=False, console=console) as live:
                 while True:
                     stats = dict(sorted(_clean_stats(raw_metrics).items()))
                     table = Table(
@@ -102,7 +94,7 @@ def get_stats_pods(
         except Exception as e:
             if str(e).startswith("HTTPConnectionPool"):
                 return
-            raise e
+            logger.warning(f"Failure in stats processing\n\n{str(e)}")
 
 
 def _clean_stats(raw_stats: str) -> dict:
@@ -136,10 +128,7 @@ def _clean_stats(raw_stats: str) -> dict:
         if key not in result:
             result[key] = value
         else:
-            if (
-                key == "publishes_received_per_second"
-                or key == "publishes_sent_per_second"
-            ):
+            if key == "publishes_received_per_second" or key == "publishes_sent_per_second":
                 result[key] = result[key] + value
             elif key == "publish_route_replication_correctness":
                 result[key] = result[key] * value
@@ -152,17 +141,13 @@ def _clean_stats(raw_stats: str) -> dict:
             normalized["azedge_selftest_latest_run_status_total"] = {
                 "displayName": "Self Test",
                 "description": "Result of the last self test.",
-                "value": _get_pass_fail(
-                    result["azedge_selftest_latest_run_status_total"]
-                ),
+                "value": _get_pass_fail(result["azedge_selftest_latest_run_status_total"]),
             }
         if "publish_route_replication_correctness" in result:
             normalized["publish_route_replication_correctness"] = {
                 "displayName": "Replication Correctness",
                 "description": "Replication correctness.",
-                "value": _get_pass_fail(
-                    result["publish_route_replication_correctness"]
-                ),
+                "value": _get_pass_fail(result["publish_route_replication_correctness"]),
             }
         if "publish_latency_mu_ms" in result:
             normalized["publish_latency_mu_ms"] = {

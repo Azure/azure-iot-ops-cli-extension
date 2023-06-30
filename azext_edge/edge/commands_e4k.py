@@ -8,7 +8,7 @@ from typing import Optional
 
 from knack.log import get_logger
 from .providers.base import load_config_context
-from .common import AZEDGE_DIAGNOSTICS_SERVICE
+from .common import AZEDGE_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT
 
 logger = get_logger(__name__)
 
@@ -18,7 +18,7 @@ def stats(
     namespace: Optional[str] = None,
     context_name: Optional[str] = None,
     diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
-    pod_port: int = 9600,
+    pod_port: int = METRICS_SERVICE_API_PORT,
     raw_response_print: Optional[bool] = None,
     refresh_in_seconds: int = 10,
     watch: Optional[bool] = None,

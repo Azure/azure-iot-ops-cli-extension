@@ -32,7 +32,6 @@ def load_config_context(context_name: Optional[str] = None):
     global DEFAULT_NAMESPACE
     DEFAULT_NAMESPACE = current_config.get("namespace") or "default"
 
-
 _namespaced_object_cache: dict = {}
 _namespaced_service_cache: dict = {}
 
