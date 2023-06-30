@@ -8,13 +8,8 @@
 CLI parameter definitions.
 """
 
-from knack.arguments import CLIArgumentType, CaseInsensitiveList
-from azure.cli.core.commands.parameters import (
-    resource_group_name_type,
-    get_three_state_flag,
-    get_enum_type,
-    tags_type,
-)
+from knack.arguments import CaseInsensitiveList
+from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type
 
 
 def load_iotedge_arguments(self, _):
@@ -32,7 +27,7 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "namespace",
-            options_list=["--namespace"],
+            options_list=["--namespace", "-n"],
             help="K8s cluster namespace the command should operate against. "
             "If no namespace is provided `default` will be used.",
         )
@@ -40,7 +35,7 @@ def load_iotedge_arguments(self, _):
     with self.argument_context("edge support") as context:
         context.argument(
             "edge_service",
-            options_list=["--edge-service"],
+            options_list=["--edge-service", "-e"],
             choices=CaseInsensitiveList(["auto", "e4k", "opcua"]),
             help="The edge service the support bundle creation should apply to. "
             "If auto is selected, the operation will detect which edge services are available.",
@@ -81,7 +76,7 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "edge_service",
-            options_list=["--edge-service"],
+            options_list=["--edge-service", "-e"],
             choices=CaseInsensitiveList(["e4k"]),
             help="The edge service deployment that will be evaluated.",
         )

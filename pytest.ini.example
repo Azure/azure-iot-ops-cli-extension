@@ -10,36 +10,6 @@ norecursedirs =
     build
 
 testpaths =
-    azext_iot/tests
+    azext_edge/tests
 
 env =
-    AZURE_TEST_RUN_LIVE=True
-    azext_iot_testrg=
-    azext_iot_testhub=
-    azext_iot_testdps=
-    azext_iot_testdps_hub=
-    azext_iot_teststorageaccount=
-    azext_iot_teststoragecontainer=
-    azext_iot_central_app_id=
-    azext_iot_central_scope_id=
-    azext_iot_central_primarykey=
-    azext_iot_central_storage_cstring=
-    azext_iot_central_storage_container=
-    azext_dt_adx_cluster=
-    azext_dt_adx_database=
-    azext_dt_adx_rg=
-    azext_dt_ep_eventgrid_topic=
-    azext_dt_ep_servicebus_namespace=
-    azext_dt_ep_servicebus_policy=
-    azext_dt_ep_servicebus_topic=
-    azext_dt_ep_eventhub_namespace=
-    azext_dt_ep_eventhub_policy=
-    azext_dt_ep_eventhub_topic=
-    azext_dt_ep_eventhub_topic_consumer_group=
-    azext_dt_ep_rg=
-    azext_dt_region=
-    azext_dt_max_models_per_batch=
-
-markers =
-    adu_infrastructure: desired customizations for ADU integration tests.
-    hub_infrastructure: desired customizations for IoT Hub integration tests.

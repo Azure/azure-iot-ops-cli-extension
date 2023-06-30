@@ -13,13 +13,13 @@ class EdgeExtensionCommandsLoader(AzCommandsLoader):
         super(EdgeExtensionCommandsLoader, self).__init__(cli_ctx=cli_ctx)
 
     def load_command_table(self, args):
-        from azext_edge.e4k.command_map import load_iotedge_commands
+        from azext_edge.edge.command_map import load_iotedge_commands
         load_iotedge_commands(self, args)
 
         return self.command_table
 
     def load_arguments(self, command):
-        from azext_edge.e4k.params import load_iotedge_arguments
+        from azext_edge.edge.params import load_iotedge_arguments
         load_iotedge_arguments(self, command)
 
 

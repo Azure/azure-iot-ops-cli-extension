@@ -75,14 +75,16 @@ BRIDGE_RESOURCE = IotEdgeBrokerResource("az-edge.com", "v1alpha2", "mqttbridgeco
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
 
-AZEDGE_DIAGNOSTICS_POD_PREFIX = "azedge-diagnostics"
-AZEDGE_DIAGNOSTICS_PROBE = "azedge-diagnostics-probe"
-
+AZEDGE_DIAGNOSTICS_PROBE_PREFIX = "azedge-diagnostics-probe"
 AZEDGE_FRONTEND_PREFIX = "azedge-dmqtt-frontend"
+AZEDGE_BACKEND_PREFIX = "azedge-dmqtt-backend"
+AZEDGE_AUTH_PREFIX = "azedge-dmqtt-authentication"
+
+
 AZEDGE_KAFKA_CONFIG_PREFIX = "azedge-kafka-config"
 
 OPCUA_RESOURCE = IotEdgeBrokerResource("e4i.microsoft.com", "v1", "")
 
 MIN_K8S_VERSION = "1.20"
 MIN_HELM_VERSION = "3.8.0"
-CONSOLE_WIDTH = 120
+DEFAULT_CONSOLE_WIDTH = 120

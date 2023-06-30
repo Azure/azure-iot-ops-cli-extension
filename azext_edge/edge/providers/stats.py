@@ -11,12 +11,12 @@ from rich.console import Console
 from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 
-from ..common import AZEDGE_DIAGNOSTICS_SERVICE, CONSOLE_WIDTH
+from ..common import AZEDGE_DIAGNOSTICS_SERVICE, DEFAULT_CONSOLE_WIDTH
 from .base import DEFAULT_NAMESPACE, get_namespaced_pods_by_prefix, portforward_http
 
 logger = get_logger(__name__)
 
-console = Console(width=CONSOLE_WIDTH, highlight=True)
+console = Console(width=DEFAULT_CONSOLE_WIDTH, highlight=True)
 
 
 def get_stats_pods(
