@@ -11,7 +11,7 @@ import yaml
 from knack.log import get_logger
 from rich.console import Console, NewLine
 
-from ..common import BROKER_RESOURCE, OPCUA_RESOURCE, CONSOLE_WIDTH, EdgeServiceType
+from ..common import BROKER_RESOURCE, OPCUA_RESOURCE, EdgeServiceType
 from .base import client, get_cluster_custom_resources
 
 logger = get_logger(__name__)
@@ -91,9 +91,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
             )
         if pending_work["common"]:
             visually_process(
-                description="Processing common resources",
-                support_segment=pending_work["common"],
-                edge_service="common"
+                description="Processing common resources", support_segment=pending_work["common"], edge_service="common"
             )
 
     write_zip(file_path=bundle_path, bundle=bundle)

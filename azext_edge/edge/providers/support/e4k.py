@@ -98,10 +98,10 @@ support_crd_elements = {
 
 
 def fetch_diagnostic_metrics(namespace: str):
-    from ...common import AZEDGE_DIAGNOSTICS_POD_PREFIX
+    from ...common import AZEDGE_DIAGNOSTICS_SERVICE
     from ..stats import get_stats_pods
 
-    target_pods, _ = get_namespaced_pods_by_prefix(prefix=AZEDGE_DIAGNOSTICS_POD_PREFIX, namespace=namespace)
+    target_pods, _ = get_namespaced_pods_by_prefix(prefix=AZEDGE_DIAGNOSTICS_SERVICE, namespace=namespace)
     if not target_pods:
         logger.debug(f"Skipping metrics fetch for namespace {namespace}.")
         return

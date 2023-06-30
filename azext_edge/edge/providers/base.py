@@ -6,7 +6,7 @@
 
 import socket
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 from urllib.request import urlopen
 
 from azure.cli.core.azclierror import ResourceNotFoundError
@@ -14,18 +14,8 @@ from knack.log import get_logger
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList, V1Service, V1ServiceList
-from packaging import version
-from rich.console import NewLine, Pretty
-from rich.json import JSON
-from rich.padding import Padding
 
-from ..common import (
-    BRIDGE_RESOURCE,
-    BROKER_RESOURCE,
-    CheckTaskStatus,
-    IotEdgeBrokerResource,
-    ResourceState,
-)
+from ..common import IotEdgeBrokerResource
 
 DEFAULT_NAMESPACE: str = "default"
 

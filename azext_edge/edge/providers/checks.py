@@ -14,16 +14,16 @@ from kubernetes.client.models import (
     V1APIResource,
     V1APIResourceList,
 )
-from rich.console import Console, NewLine, Pretty
-from rich.json import JSON
+from rich.console import Console, NewLine
 from rich.padding import Padding
 
 from ..common import (
     AZEDGE_DIAGNOSTICS_SERVICE,
-    AZEDGE_DIAGNOSTICS_PROBE,
-    BRIDGE_RESOURCE,
+    AZEDGE_DIAGNOSTICS_PROBE_PREFIX,
+    AZEDGE_FRONTEND_PREFIX,
+    AZEDGE_BACKEND_PREFIX,
+    AZEDGE_AUTH_PREFIX,
     BROKER_RESOURCE,
-    CONSOLE_WIDTH,
     CheckTaskStatus,
     IotEdgeBrokerResource,
     ResourceState,
@@ -51,40 +51,40 @@ def run_checks(
 ):
     result = {}
 
-    with console.status("Analyzing cluster...") as status:
-        sleep(0.25)
+    # with console.status("Analyzing cluster...") as status:
+    #    sleep(0.25)
 
-        if pre_deployment:
-            result["preDeployment"] = []
-            desired_checks = {}
-            desired_checks.update(
-                {
-                    "checkK8sVersion": partial(check_k8s_version, as_list=as_list),
-                    "checkHelmVersion": partial(check_helm_version, as_list=as_list),
-                    "checkNodes": partial(check_nodes, as_list=as_list),
-                }
-            )
+    if pre_deployment:
+        result["preDeployment"] = []
+        desired_checks = {}
+        desired_checks.update(
+            {
+                "checkK8sVersion": partial(check_k8s_version, as_list=as_list),
+                "checkHelmVersion": partial(check_helm_version, as_list=as_list),
+                "checkNodes": partial(check_nodes, as_list=as_list),
+            }
+        )
 
-            for c in desired_checks:
-                output = desired_checks[c]()
-                result["preDeployment"].append(output)
+        for c in desired_checks:
+            output = desired_checks[c]()
+            result["preDeployment"].append(output)
 
-        if post_deployment:
-            if not namespace:
-                namespace = DEFAULT_NAMESPACE
-            result["postDeployment"] = []
+    if post_deployment:
+        if not namespace:
+            namespace = DEFAULT_NAMESPACE
+        result["postDeployment"] = []
 
-            resource_enumeration, api_resources = enumerate_e4k_resources(as_list=as_list)
-            result["postDeployment"].append(resource_enumeration)
-            if api_resources:
-                if "Broker" in api_resources:
-                    result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
-                if "BrokerListener" in api_resources:
-                    result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
-                if "DiagnosticService":
-                    result["postDeployment"].append(evaluate_broker_diagnostics(namespace=namespace, as_list=as_list))
-                if "MqttBridgeConnector" in api_resources:
-                    pass
+        resource_enumeration, api_resources = enumerate_e4k_resources(as_list=as_list)
+        result["postDeployment"].append(resource_enumeration)
+        if api_resources:
+            if "Broker" in api_resources:
+                result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
+            if "BrokerListener" in api_resources:
+                result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
+            if "DiagnosticService":
+                result["postDeployment"].append(evaluate_broker_diagnostics(namespace=namespace, as_list=as_list))
+            if "MqttBridgeConnector" in api_resources:
+                pass
 
     if not as_list:
         return result
@@ -114,38 +114,35 @@ def process_as_list(result: Dict[str, dict], namespace: str):
     def _print_summary():
         from rich.panel import Panel
 
-        success_content = f"[green]{success_count} check(s) succeeded.[/green]"
-        warning_content = f"{warning_count} check(s) raised warnings."
+        success_content = f"[green]{success_count} succeeded.[/green]"
+        warning_content = f"{warning_count} raised warnings."
         warning_content = (
             f"[green]{warning_content}[/green]" if not warning_count else f"[yellow]{warning_content}[/yellow]"
         )
-        error_content = f"{error_count} check(s) raised errors."
+        error_content = f"{error_count} raised errors."
         error_content = f"[green]{error_content}[/green]" if not error_count else f"[red]{error_content}[/red]"
-        skipped_content = f"{skipped_count} check(s) were skipped."
+        skipped_content = f"[bright_white]{skipped_count} were skipped[/bright_white]."
         content = f"{success_content}\n{warning_content}\n{error_content}\n{skipped_content}"
         console.print(Panel(content, title="Summary", expand=False))
 
-    def _enumerate_displays(_checks: List[Dict[str, dict]]):
-        for c in _checks:
+    def _enumerate_displays(checks: List[Dict[str, dict]]):
+        for c in checks:
             status = c.get("status")
             prefix_emoji = get_emoji_from_status(status)
-            _increment_summary(status)
             console.print(Padding(f"{prefix_emoji} {c['description']}", (0, 0, 0, 4)))
-            # @digimaun - hacky
-            targets = c.get("targets", {})
-            if targets:
-                for t in targets:
-                    displays = targets[t].get("displays", [])
-                    for d in displays:
-                        console.print(d)
-            # @digimaun - delete soon
-            else:
-                evaluations = c.get("evaluations", [])
-                for e in evaluations:
-                    displays = e.get("displays", [])
-                    for d in displays:
-                        console.print(d)
 
+            targets = c.get("targets", {})
+            for t in targets:
+                displays = targets[t].get("displays", [])
+                for d in displays:
+                    console.print(d)
+                target_status = targets[t].get("status")
+                evaluations = targets[t].get("evaluations", [])
+                if not evaluations:
+                    _increment_summary(target_status)
+                for e in evaluations:
+                    eval_status = e.get("status")
+                    _increment_summary(eval_status)
             console.print(NewLine(1))
         console.print(NewLine(1))
 
@@ -189,7 +186,7 @@ def evaluate_broker_diagnostics(
     target_diag = "brokerdiagnostics.az-edge.com"
     target_diag_status = CheckTaskStatus.success.value
     check_manager.add_target(
-        target_name=target_diag, conditions=["len(brokerdiagnostics)==1", "spec", "valid(spec.brokerRef)"]
+        target_name=target_diag, conditions=["len(brokerdiagnostics)<=1", "spec", "valid(spec.brokerRef)"]
     )
     valid_broker_refs = _get_valid_references(namespace=namespace, plural="brokers")
 
@@ -215,8 +212,8 @@ def evaluate_broker_diagnostics(
     diagnostics_count = len(diagnostics)
     diag_count_display = "- Expecting up to [bright_blue]1[/bright_blue] broker diagnostic resource. {}"
     if not diagnostics_count:
-        check_manager.set_target_status(target_name=target_diag, status=CheckTaskStatus.warning.value)
-        diag_display_value = f"[yellow]Detected {diagnostics_count}[/yellow]."
+        check_manager.set_target_status(target_name=target_diag, status=CheckTaskStatus.skipped.value)
+        diag_display_value = f"[bright_white]Detected {diagnostics_count}[/bright_white]."
     elif diagnostics_count > 1:
         check_manager.set_target_status(target_name=target_diag, status=CheckTaskStatus.error.value)
         diag_display_value = f"[red]Detected {diagnostics_count}[/red]."
@@ -229,7 +226,6 @@ def evaluate_broker_diagnostics(
     )
 
     evaluated_diagnostic_services = False
-    evaluated_pod_health = False
     for diag in diagnostics:
         diag_name: str = diag["metadata"]["name"]
         diag_spec: dict = diag["spec"]
@@ -287,19 +283,6 @@ def evaluate_broker_diagnostics(
             },
             resource_name=diag_name,
         )
-
-    if not evaluated_pod_health:
-        check_manager.add_display(
-            target_name=target_diag,
-            display=Padding(
-                "\nStatus",
-                (0, 0, 0, 8),
-            ),
-        )
-        evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=AZEDGE_DIAGNOSTICS_PROBE, display_padding=12
-        )
-        evaluated_pod_health = True
 
     if not evaluated_diagnostic_services:
         diagnostics_service_list: dict = get_namespaced_custom_objects(
@@ -667,10 +650,10 @@ def evaluate_brokers(
     namespace: str,
     as_list: bool = False,
 ):
-    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K brokers", namespace=namespace)
+    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker", namespace=namespace)
 
     target_brokers = "brokers.az-edge.com"
-    broker_conditions = ["len(brokers)==1", "status", "spec", "spec.mode"]
+    broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
     check_manager.add_target(target_name=target_brokers, conditions=broker_conditions)
 
     broker_list: dict = get_namespaced_custom_objects(resource=BROKER_RESOURCE, plural="brokers", namespace=namespace)
@@ -740,6 +723,7 @@ def evaluate_brokers(
             check_manager.add_display(target_name=target_brokers, display=Padding("\nCardinality", (0, 0, 0, 12)))
             broker_cardinality: dict = broker_spec.get("cardinality")
             broker_eval_value["spec.cardinality"] = broker_cardinality
+            broker_eval_value["spec.mode"] = broker_mode
             if not broker_cardinality:
                 broker_eval_status = CheckTaskStatus.error.value
                 check_manager.add_display(
@@ -747,27 +731,36 @@ def evaluate_brokers(
                     display=Padding("[magenta]spec.cardinality is undefined![/magenta]", (0, 0, 0, 16)),
                 )
             else:
-                backend_cardinality_desc = "- Expecting backend chainCount [bright_blue]>=1[/bright_blue] and replicas [bright_blue]>=1[/bright_blue]. Detected {} and {}."
+                backend_cardinality_desc = "- Expecting backend chainCount [bright_blue]>=1[/bright_blue]. {}"
+                backend_replicas_desc = "- Expecting backend replicas [bright_blue]>=1[/bright_blue]. {}"
+
                 backend_chain = broker_cardinality.get("backendChain", {})
                 backend_chain_count: Optional[int] = backend_chain.get("chainCount")
                 backend_replicas: Optional[int] = backend_chain.get("replicas")
 
                 if backend_chain_count and backend_chain_count >= 1:
-                    backend_chain_count_colored = f"[green]{backend_chain_count}[/green]"
+                    backend_chain_count_colored = f"[green]Actual {backend_chain_count}[/green]."
                 else:
-                    backend_chain_count_colored = f"[red]{backend_chain_count}[/red]"
+                    backend_chain_count_colored = f"[red]Actual {backend_chain_count}[/red]."
                     broker_eval_status = CheckTaskStatus.error.value
 
                 if backend_replicas and backend_replicas >= 1:
-                    backend_replicas_colored = f"[green]{backend_replicas}[/green]"
+                    backend_replicas_colored = f"[green]Actual {backend_replicas}[/green]."
                 else:
-                    backend_replicas_colored = f"[red]{backend_replicas}[/red]"
+                    backend_replicas_colored = f"[red]Actual {backend_replicas}[/red]."
                     broker_eval_status = CheckTaskStatus.error.value
 
                 check_manager.add_display(
                     target_name=target_brokers,
                     display=Padding(
-                        backend_cardinality_desc.format(backend_chain_count_colored, backend_replicas_colored),
+                        backend_cardinality_desc.format(backend_chain_count_colored),
+                        (0, 0, 0, 16),
+                    ),
+                )
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    display=Padding(
+                        backend_replicas_desc.format(backend_replicas_colored),
                         (0, 0, 0, 16),
                     ),
                 )
@@ -776,9 +769,9 @@ def evaluate_brokers(
                 frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
 
                 if frontend_replicas and frontend_replicas >= 1:
-                    frontend_replicas_colored = f"[green]Detected {frontend_replicas}[/green]."
+                    frontend_replicas_colored = f"[green]Actual {frontend_replicas}[/green]."
                 else:
-                    frontend_replicas_colored = f"[red]Detected {frontend_replicas}[/red]."
+                    frontend_replicas_colored = f"[red]Actual {frontend_replicas}[/red]."
 
                 check_manager.add_display(
                     target_name=target_brokers,
@@ -787,6 +780,27 @@ def evaluate_brokers(
 
         check_manager.add_target_eval(
             target_name=target_brokers, status=broker_eval_status, value=broker_eval_value, resource_name=broker_name
+        )
+
+    if brokers_count > 0:
+        check_manager.add_display(
+            target_name=target_brokers,
+            display=Padding(
+                "\nRuntime Health",
+                (0, 0, 0, 8),
+            ),
+        )
+        evaluate_pod_health(
+            check_manager=check_manager, namespace=namespace, pod=AZEDGE_DIAGNOSTICS_PROBE_PREFIX, display_padding=12
+        )
+        evaluate_pod_health(
+            check_manager=check_manager, namespace=namespace, pod=AZEDGE_FRONTEND_PREFIX, display_padding=12
+        )
+        evaluate_pod_health(
+            check_manager=check_manager, namespace=namespace, pod=AZEDGE_BACKEND_PREFIX, display_padding=12
+        )
+        evaluate_pod_health(
+            check_manager=check_manager, namespace=namespace, pod=AZEDGE_AUTH_PREFIX, display_padding=12
         )
 
     return check_manager.as_dict(as_list)
@@ -1176,12 +1190,14 @@ class CheckManager:
         self.target_displays = {}
         self.worst_status = CheckTaskStatus.success.value
 
-    def add_target(self, target_name: str, conditions: List[str] = None):
+    def add_target(self, target_name: str, conditions: List[str] = None, description: str = None):
         if target_name not in self.targets:
             self.targets[target_name] = {}
         self.targets[target_name]["conditions"] = conditions
         self.targets[target_name]["evaluations"]: List[dict] = []
         self.targets[target_name]["status"] = CheckTaskStatus.success.value
+        if description:
+            self.targets[target_name]["description"] = description
 
     def set_target_conditions(self, target_name: str, conditions: List[str]):
         self.targets[target_name]["conditions"] = conditions
