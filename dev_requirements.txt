@@ -1,4 +1,3 @@
-kubernetes
 pytest
 pytest-mock
 pytest-cov
