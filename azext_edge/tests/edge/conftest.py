@@ -14,10 +14,11 @@ def mocked_client(mocker):
 
 
 @pytest.fixture
-def mocked_config(mocker):
+def mocked_config(request, mocker):
     patched = mocker.patch("azext_edge.edge.providers.base.config", autospec=True)
-    patched.list_kube_config_contexts.return_value = ([], {"namespace": "default"})
-    yield patched
+    current_context = getattr(request, "param", {})
+    patched.list_kube_config_contexts.return_value = ([], current_context)
+    yield {"param": current_context, "mock": patched}
 
 
 @pytest.fixture

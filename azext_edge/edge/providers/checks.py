@@ -30,7 +30,6 @@ from ..common import (
 )
 
 from .base import (
-    DEFAULT_NAMESPACE,
     client,
     get_cluster_custom_resources,
     get_namespaced_custom_objects,
@@ -71,6 +70,8 @@ def run_checks(
 
     if post_deployment:
         if not namespace:
+            from .base import DEFAULT_NAMESPACE
+
             namespace = DEFAULT_NAMESPACE
         result["postDeployment"] = []
 
@@ -1271,7 +1272,7 @@ def evaluate_pod_health(check_manager: CheckManager, namespace: str, pod: str, d
 
     target_service_pod = f"pod/{pod}"
     check_manager.add_target(target_name=target_service_pod, conditions=["status.phase"])
-    diagnostics_pods, _ = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=E4K_LABEL)
+    diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=E4K_LABEL)
     if not diagnostics_pods:
         check_manager.add_target_eval(target_name=target_service_pod, status=CheckTaskStatus.warning.value, value=None)
         check_manager.add_display(

@@ -13,7 +13,7 @@ from knack.log import get_logger
 from rich.console import Console
 
 from ..common import METRICS_SERVICE_API_PORT, AZEDGE_DIAGNOSTICS_SERVICE, DEFAULT_CONSOLE_WIDTH
-from .base import DEFAULT_NAMESPACE, get_namespaced_pods_by_prefix, portforward_http
+from .base import get_namespaced_pods_by_prefix, portforward_http
 
 logger = get_logger(__name__)
 
@@ -30,9 +30,11 @@ def get_stats_pods(
     watch: bool = False,
 ):
     if not namespace:
+        from .base import DEFAULT_NAMESPACE
+
         namespace = DEFAULT_NAMESPACE
 
-    target_pods, _ = get_namespaced_pods_by_prefix(prefix=diag_service_pod_prefix, namespace=namespace)
+    target_pods = get_namespaced_pods_by_prefix(prefix=diag_service_pod_prefix, namespace=namespace)
     if not target_pods:
         raise ResourceNotFoundError(f"Diagnostics service does not exist in namespace {namespace}.")
     diagnostic_pod = target_pods[0]

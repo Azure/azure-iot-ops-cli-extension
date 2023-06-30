@@ -81,7 +81,7 @@ def load_iotedge_arguments(self, _):
             help="The edge service deployment that will be evaluated.",
         )
 
-    with self.argument_context("edge e4k config") as context:
+    with self.argument_context("edge e4k get-password-hash") as context:
         context.argument(
             "iterations",
             options_list=["--iterations", "-i"],

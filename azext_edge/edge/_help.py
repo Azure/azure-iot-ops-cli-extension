@@ -58,16 +58,16 @@ def load_iotedge_help():
         short-summary: Show dmqtt running statistics.
     """
 
-    helps[
-        "edge e4k config"
-    ] = """
-        type: group
-        short-summary: Config utilities.
-    """
+    # helps[
+    #     "edge e4k config"
+    # ] = """
+    #     type: group
+    #     short-summary: Config utilities.
+    # """
 
     helps[
-        "edge e4k config hash"
+        "edge e4k get-password-hash"
     ] = """
         type: command
-        short-summary: Generates the PBKDF2 hash of the phrase applying PBKDF2-HMAC-SHA512. A 128-bit salt is used from os.urandom.
+        short-summary: Generates a PBKDF2 hash of the passphrase applying PBKDF2-HMAC-SHA512. A 128-bit salt is used from os.urandom.
     """

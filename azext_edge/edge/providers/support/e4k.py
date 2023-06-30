@@ -18,7 +18,6 @@ from .base import (
     process_statefulset,
     process_v1_pods,
 )
-from ..checks import run_checks
 
 
 logger = get_logger(__name__)
@@ -27,12 +26,14 @@ generic = client.ApiClient()
 E4K_LABEL = "app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager)"
 
 
-def fetch_events(
-):
-    return {
-        "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_event_for_all_namespaces(label_selector=E4K_LABEL)),
-        "zinfo": f"e4k/events.json",
-    }
+# TODO: @digimaun
+# def fetch_events():
+#     return {
+#         "data": generic.sanitize_for_serialization(
+#             obj=client.CoreV1Api().list_event_for_all_namespaces(label_selector=E4K_LABEL)
+#         ),
+#         "zinfo": f"e4k/events.json",
+#     }
 
 
 # for previous in [False, True]:
@@ -101,7 +102,7 @@ def fetch_diagnostic_metrics(namespace: str):
     from ...common import AZEDGE_DIAGNOSTICS_SERVICE
     from ..stats import get_stats_pods
 
-    target_pods, _ = get_namespaced_pods_by_prefix(prefix=AZEDGE_DIAGNOSTICS_SERVICE, namespace=namespace)
+    target_pods = get_namespaced_pods_by_prefix(prefix=AZEDGE_DIAGNOSTICS_SERVICE, namespace=namespace)
     if not target_pods:
         logger.debug(f"Skipping metrics fetch for namespace {namespace}.")
         return

@@ -6,14 +6,14 @@
 
 import socket
 from contextlib import contextmanager
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 from urllib.request import urlopen
 
 from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
-from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList, V1Service, V1ServiceList
+from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList, V1Service
 
 from ..common import IotEdgeBrokerResource
 
@@ -32,11 +32,11 @@ def load_config_context(context_name: Optional[str] = None):
     global DEFAULT_NAMESPACE
     DEFAULT_NAMESPACE = current_config.get("namespace") or "default"
 
-_namespaced_object_cache: dict = {}
+
 _namespaced_service_cache: dict = {}
 
 
-def get_namespaced_service(name: str, namespace: str, as_dict: bool = False) -> Union[V1Service, dict]:
+def get_namespaced_service(name: str, namespace: str, as_dict: bool = False) -> Union[V1Service, dict, None]:
     target_service_key = (name, namespace)
     if target_service_key in _namespaced_service_cache:
         return _namespaced_service_cache[target_service_key]
@@ -54,27 +54,43 @@ def get_namespaced_service(name: str, namespace: str, as_dict: bool = False) -> 
         return result
 
 
+_namespaced_pods_cache: dict = {}
+
+
 def get_namespaced_pods_by_prefix(
     prefix: str,
     namespace: str,
     label_selector: str = None,
-) -> Tuple[Union[None, List[V1Pod]], Union[None, Exception]]:
-    v1 = client.CoreV1Api()
+    as_dict: bool = False,
+) -> Union[List[V1Pod], List[dict], None]:
+    target_pods_key = (prefix, namespace, label_selector)
+    if target_pods_key in _namespaced_pods_cache:
+        return _namespaced_pods_cache[target_pods_key]
 
-    pods_list: V1PodList = v1.list_namespaced_pod(namespace, label_selector=label_selector)
-    target_pods: List[V1Pod] = []
-    for pod in pods_list.items:
-        p: V1Pod = pod
-        if p.metadata.name.startswith(prefix):
-            target_pods.append(p)
-    if not target_pods:
-        # TODO
-        return None, RuntimeError(f"Pods in namespace {namespace} with prefix {prefix} could not be found.")
+    try:
+        v1 = client.CoreV1Api()
+        pods_list: V1PodList = v1.list_namespaced_pod(namespace, label_selector=label_selector)
+        matched_pods: List[V1Pod] = []
+        for pod in pods_list.items:
+            p: V1Pod = pod
+            if p.metadata.name.startswith(prefix):
+                matched_pods.append(p)
+        _namespaced_pods_cache[target_pods_key] = matched_pods
+    except ApiException as ae:
+        logger.debug(str(ae))
+    else:
+        result = _namespaced_pods_cache[target_pods_key]
+        if as_dict:
+            return generic.sanitize_for_serialization(obj=result)
+        return result
 
-    return target_pods, None
+
+_namespaced_object_cache: dict = {}
 
 
-def get_namespaced_custom_objects(resource: IotEdgeBrokerResource, plural: str, namespace: str) -> dict:
+def get_namespaced_custom_objects(
+    resource: IotEdgeBrokerResource, plural: str, namespace: str
+) -> Union[List[dict], None]:
     target_resource_key = (resource, plural)
     if target_resource_key in _namespaced_object_cache:
         return _namespaced_object_cache[target_resource_key]
@@ -91,6 +107,23 @@ def get_namespaced_custom_objects(resource: IotEdgeBrokerResource, plural: str, 
         logger.debug(str(ae))
     else:
         return _namespaced_object_cache[target_resource_key]
+
+
+_cluster_resources_cache: dict = {}
+
+
+def get_cluster_custom_resources(
+    resource: IotEdgeBrokerResource, raise_on_404: bool = False
+) -> Union[V1APIResourceList, None]:
+    if resource in _cluster_resources_cache:
+        return _cluster_resources_cache[resource]
+
+    try:
+        return client.CustomObjectsApi().get_api_resources(group=resource.group, version=resource.version)
+    except ApiException as ae:
+        logger.debug(msg=str(ae))
+        if int(ae.status) == 404 and raise_on_404:
+            raise ResourceNotFoundError(f"{resource.group}/{resource.version} resources do not exist on the cluster.")
 
 
 class PodRequest:
@@ -135,20 +168,3 @@ def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> 
         yield pod_request
     finally:
         socket.create_connection = socket_create_connection
-
-
-_cluster_resources_cache: dict = {}
-
-
-def get_cluster_custom_resources(
-    resource: IotEdgeBrokerResource, raise_on_404: bool = False
-) -> Union[V1APIResourceList, None]:
-    if resource in _cluster_resources_cache:
-        return _cluster_resources_cache[resource]
-
-    try:
-        return client.CustomObjectsApi().get_api_resources(group=resource.group, version=resource.version)
-    except ApiException as ae:
-        logger.debug(msg=str(ae))
-        if int(ae.status) == 404 and raise_on_404:
-            raise ResourceNotFoundError(f"{resource.group}/{resource.version} resources do not exist on the cluster.")
