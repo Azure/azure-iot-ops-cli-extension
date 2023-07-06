@@ -6,7 +6,7 @@
 
 from functools import partial
 from time import sleep
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException

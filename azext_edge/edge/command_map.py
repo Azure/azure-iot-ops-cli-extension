@@ -35,4 +35,4 @@ def load_iotedge_commands(self, _):
         command_type=e4k_resource_ops,
     ) as cmd_group:
         cmd_group.command("stats", "stats")
-        cmd_group.command("get-password-hash", "hash")
+        cmd_group.command("get-password-hash", "get_password_hash")

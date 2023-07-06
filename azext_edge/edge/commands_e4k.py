@@ -40,7 +40,7 @@ def stats(
     )
 
 
-def hash(cmd, passphrase: str, iterations: int = 210000):
+def get_password_hash(cmd, passphrase: str, iterations: int = 210000):
     import base64
     from hashlib import pbkdf2_hmac
     from os import urandom
