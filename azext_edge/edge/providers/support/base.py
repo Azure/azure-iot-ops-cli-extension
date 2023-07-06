@@ -278,9 +278,9 @@ def process_replicasets(
 def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "pas") -> PurePath:
     if not bundle_dir:
         bundle_dir = "."
-    bundle_dir = abspath(bundle_dir)
     if "~" in bundle_dir:
         bundle_dir = expanduser(bundle_dir)
+    bundle_dir = abspath(bundle_dir)
     bundle_dir_pure_path = PurePath(bundle_dir)
     if not isdir(str(bundle_dir_pure_path)):
         makedirs(bundle_dir_pure_path, exist_ok=True)

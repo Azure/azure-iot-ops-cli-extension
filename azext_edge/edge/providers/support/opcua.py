@@ -7,7 +7,6 @@
 from functools import partial
 
 from knack.log import get_logger
-from kubernetes.client.models import V1ObjectMeta, V1PodList
 
 from ..base import client
 from .base import process_v1_pods, process_crd, process_deployments
@@ -19,6 +18,7 @@ generic = client.ApiClient()
 
 OPCUA_GENERAL_LABEL = "app in (opc-ua-connector,opcplc)"
 OPCUA_SUPERVISOR_LABEL = "app in (edge-application-supervisor)"
+OPCUA_ORCHESTRATOR_LABEL = "orchestrator=apollo"
 
 
 def fetch_applications():
@@ -52,7 +52,7 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
 
 
 def fetch_apollo_deployment():
-    return process_deployments(resource=OPCUA_RESOURCE, label_selector="orchestrator=apollo")
+    return process_deployments(resource=OPCUA_RESOURCE, label_selector=OPCUA_ORCHESTRATOR_LABEL)
 
 
 support_crd_elements = {
