@@ -6,6 +6,7 @@
 
 from functools import partial
 from typing import List
+from ...generators import generate_generic_id
 
 import pytest
 
@@ -26,6 +27,27 @@ def mocked_os_makedirs(mocker):
 def mocked_zipfile(mocker):
     patched = mocker.patch("azext_edge.edge.providers.support_bundle.ZipFile", autospec=True)
     yield patched
+
+# TODO - @digimaun make this more useful / flexible configuration.
+@pytest.fixture
+def mocked_list_pods(mocked_client):
+    from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
+
+    result = {}
+    pod_names = [generate_generic_id(), generate_generic_id()]
+    pods = []
+    for n in pod_names:
+        container_name = generate_generic_id()
+        namespace_name = generate_generic_id()
+        spec = V1PodSpec(containers=[V1Container(name=container_name)])
+        pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace_name, name=n), spec=spec)
+        pods.append(pod)
+        result[namespace_name] = {n: {container_name: {}}}
+
+    pods_list = V1PodList(items=pods)
+    mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
+
+    yield result
 
 
 @pytest.fixture(scope="function")
