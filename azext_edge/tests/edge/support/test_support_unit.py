@@ -116,7 +116,7 @@ def assert_pod_logs(mocked_client, expected_pods: Dict[str, Dict[str, dict]], si
                 )
 
 
-def test_get_bundle_path():
+def test_get_bundle_path(mocked_os_makedirs):
     path = get_bundle_path("~/test")
     expected = f"{join(expanduser('~'), 'test', 'support_bundle_')}"
     assert str(path).startswith(expected) and str(path).endswith("_pas.zip")
