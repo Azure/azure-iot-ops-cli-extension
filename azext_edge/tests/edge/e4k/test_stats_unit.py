@@ -13,14 +13,14 @@ from azext_edge.edge.common import AZEDGE_DIAGNOSTICS_SERVICE, METRICS_SERVICE_A
 from ...generators import generate_generic_id
 
 
-def test_stats(mocked_client, mocked_config, mocked_urlopen, stub_raw_stats):
+def test_stats(mocker, mocked_client, mocked_config, mocked_urlopen, stub_raw_stats):
     pods = [V1Pod(metadata=V1ObjectMeta(name=AZEDGE_DIAGNOSTICS_SERVICE, namespace="namespace"))]
     pod_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
 
     attrs = {"read.return_value": stub_raw_stats.read()}
     response = MagicMock(**attrs)
-    mocked_urlopen.return_value = response
+    mocked_urlopen.return_value.__enter__.return_value = response
 
     namespace = generate_generic_id()
     context_name = generate_generic_id()
@@ -29,6 +29,10 @@ def test_stats(mocked_client, mocked_config, mocked_urlopen, stub_raw_stats):
     mocked_urlopen.assert_called_with(
         f"http://{AZEDGE_DIAGNOSTICS_SERVICE}.{namespace}.kubernetes:{METRICS_SERVICE_API_PORT}/metrics"
     )
+
+    console_mock = mocker.patch("azext_edge.edge.providers.stats.console", autospec=True)
+    stats(cmd=None, namespace=namespace, context_name=context_name, raw_response_print=True)
+    console_mock.print.assert_called_once()
 
 
 def min_stats_assert(stats_map: dict):
