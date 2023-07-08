@@ -12,12 +12,12 @@ from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
 
-from ..common import METRICS_SERVICE_API_PORT, AZEDGE_DIAGNOSTICS_SERVICE, DEFAULT_CONSOLE_WIDTH
+from ..common import METRICS_SERVICE_API_PORT, AZEDGE_DIAGNOSTICS_SERVICE
 from .base import get_namespaced_pods_by_prefix, portforward_http
 
 logger = get_logger(__name__)
 
-console = Console(width=DEFAULT_CONSOLE_WIDTH, highlight=True)
+console = Console(highlight=True)
 
 
 def get_stats_pods(
@@ -65,14 +65,15 @@ def get_stats_pods(
             if not watch:
                 return stats
             logger.warning(f"Refreshing every {refresh_in_seconds} seconds. Use ctrl-c to terminate stats watch.\n")
-            with Live(table, refresh_per_second=4, auto_refresh=False, console=console) as live:
+            with Live(table, refresh_per_second=4, auto_refresh=False) as live:
                 while True:
                     stats = dict(sorted(_clean_stats(raw_metrics).items()))
                     table = Table(
                         box=box.ROUNDED,
                         caption=f"Last refresh {datetime.now().isoformat()}",
                         highlight=True,
-                        expand=True,
+                        expand=False,
+                        min_width=100,
                     )
                     table.add_column("Stat")
                     table.add_column("Value", min_width=10)

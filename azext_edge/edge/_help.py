@@ -58,13 +58,6 @@ def load_iotedge_help():
         short-summary: Show dmqtt running statistics.
     """
 
-    # helps[
-    #     "edge e4k config"
-    # ] = """
-    #     type: group
-    #     short-summary: Config utilities.
-    # """
-
     helps[
         "edge e4k get-password-hash"
     ] = """

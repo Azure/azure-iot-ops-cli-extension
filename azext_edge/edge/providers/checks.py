@@ -25,7 +25,6 @@ from ..common import (
     AZEDGE_AUTH_PREFIX,
     BROKER_RESOURCE,
     CheckTaskStatus,
-    IotEdgeBrokerResource,
     ResourceState,
 )
 
@@ -85,6 +84,7 @@ def run_checks(
             if "DiagnosticService":
                 result["postDeployment"].append(evaluate_broker_diagnostics(namespace=namespace, as_list=as_list))
             if "MqttBridgeConnector" in api_resources:
+                # result["postDeployment"].append(evaluate_bridge_connectors(namespace=namespace, as_list=as_list))
                 pass
 
     if not as_list:
@@ -173,6 +173,112 @@ def get_emoji_from_status(status: str) -> str:
         return ":hammer:"
     if status == CheckTaskStatus.error.value:
         return "[red]:stop_sign:[/red]"
+
+
+# def check_mqtt_bridge_health(namespace: Optional[str] = None):
+#     namespaced_object = get_namespaced_object(BRIDGE_RESOURCE, namespace)
+
+#     display_key = "E4K MQTT bridge health"
+#     nested_displays = []
+
+#     if not namespaced_object.get("items"):
+#         nested_displays.append(
+#             Padding(
+#                 ":hammer: No E4K bridge installed.",
+#                 (0, 0, 0, 4),
+#             )
+#         )
+#     else:
+#         valid_bridges = {}
+#         for bridge in namespaced_object["items"]:
+#             bridge_metadata: dict = bridge["metadata"]
+#             bridge_name = bridge_metadata.get("name")
+#             if not bridge_name:
+#                 nested_displays.append(
+#                     Padding(
+#                         f":stop_sign: MQTT bridge in namespace '{namespace}' has no field 'name'.",
+#                         (0, 0, 0, 4),
+#                     )
+#                 )
+#             else:
+#                 valid_bridges[bridge_name] = bridge
+#         if valid_bridges:
+#             for bridge_name in valid_bridges:
+#                 bridge_status = valid_bridges[bridge_name].get("status")
+#                 bridge_config_status_level = None
+#                 if bridge_status:
+#                     bridge_config_status_level = bridge_status.get("configStatusLevel")
+#                 # @digimaun - delta, no configStatusLevel == unknown vs error
+#                 if not any([bridge_status, bridge_config_status_level]):
+#                     nested_displays.append(
+#                         Padding(
+#                             f"[yellow]:warning:[/yellow] {{{bridge_name}}} current state unknown.",
+#                             (0, 0, 0, 4),
+#                         )
+#                     )
+#                 else:
+#                     prefix = None
+#                     if bridge_config_status_level.lower() == "warn":
+#                         prefix = "[yellow]:warning:[/yellow]"
+#                     elif bridge_config_status_level.lower() == "error":
+#                         prefix = "[red]:stop_sign:[/red]"
+#                     else:
+#                         prefix = ":zap:"
+
+#                     nested_displays.append(
+#                         Padding(
+#                             f"{prefix} {{{bridge_name}}} current state {{[light_sea_green]{bridge_config_status_level}[/light_sea_green]}}.",
+#                             (0, 0, 0, 4),
+#                         )
+#                     )
+
+#     display_key, status = _prefix_display_key(display_key, nested_displays)
+#     return {"display": {display_key: nested_displays}, "status": status}
+
+
+# def evaluate_bridge_connectors(namespace: str, as_list: bool = False):
+#     check_manager = CheckManager(
+#         check_name="evalMqttBridgeConnectors",
+#         check_desc="Evaluate E4K Mqtt Bridge Connectors",
+#         namespace=namespace,
+#     )
+#     target_bridge_connectors = "mqttbridgeconnectors.az-edge.com"
+#     check_manager.add_target(
+#         target_name=target_bridge_connectors, conditions=["len(brokerdiagnostics)", "spec", "valid(spec.brokerRef)"]
+#     )
+#     bridge_connectors_list: dict = get_namespaced_custom_objects(
+#         resource=BROKER_RESOURCE, namespace=namespace, plural="mqttbridgeconnectors"
+#     )
+#     if not bridge_connectors_list:
+#         check_manager.add_target_eval(
+#             target_name=target_bridge_connectors,
+#             status=CheckTaskStatus.warning.value,
+#             value=None,
+#         )
+#         check_manager.add_display(
+#             target_name=target_bridge_connectors,
+#             display=Padding(
+#                 "Unable to fetch mqtt bridge connectors.",
+#                 (0, 0, 0, 8),
+#             ),
+#         )
+#         return check_manager.as_dict(as_list)
+
+#     bridge_connectors: List[dict] = bridge_connectors_list.get("items", [])
+#     if not bridge_connectors:
+#         check_manager.add_target_eval(
+#             target_name=target_bridge_connectors,
+#             status=CheckTaskStatus.skipped.value,
+#             value=None,
+#         )
+#         check_manager.add_display(
+#             target_name=target_bridge_connectors,
+#             display=Padding(
+#                 "- No mqtt bridge resouces detected. Skipping check.",
+#                 (0, 0, 0, 8),
+#             ),
+#         )
+#         return check_manager.as_dict(as_list)
 
 
 def evaluate_broker_diagnostics(
@@ -394,7 +500,7 @@ def evaluate_broker_diagnostics(
                     check_manager.add_target_eval(
                         target_name=target_service_deployed, status=CheckTaskStatus.warning.value, value=None
                     )
-                    diag_service_desc_suffix = f"[yellow]not detected[/yellow]."
+                    diag_service_desc_suffix = "[yellow]not detected[/yellow]."
                     diag_service_desc = f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
                     check_manager.add_display(
                         target_name=target_service_deployed,
@@ -413,7 +519,7 @@ def evaluate_broker_diagnostics(
                         value={"spec": {"clusterIP": clusterIP, "ports": ports}},
                         resource_name=diagnostics_service["metadata"]["name"],
                     )
-                    diag_service_desc_suffix = f"[green]detected[/green]."
+                    diag_service_desc_suffix = "[green]detected[/green]."
                     diag_service_desc = f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
                     check_manager.add_display(
                         target_name=target_service_deployed,
@@ -463,7 +569,7 @@ def evaluate_broker_listeners(
     )
 
     if not listener_list:
-        fetch_listeners_error_text = "Unable to fetch namespace brokerlisteners."
+        fetch_listeners_error_text = "Unable to fetch brokerlisteners."
         check_manager.add_target_eval(
             target_name=target_listeners, status=CheckTaskStatus.error.value, value=fetch_listeners_error_text
         )
@@ -486,14 +592,14 @@ def evaluate_broker_listeners(
     check_manager.add_display(target_name=target_listeners, display=Padding(listener_count_desc, (0, 0, 0, 8)))
 
     processed_services = {}
-    for l in listeners:
-        listener_name: str = l["metadata"]["name"]
-        listener_spec_service_name: str = l["spec"]["serviceName"]
-        listener_spec_service_type: str = l["spec"]["serviceType"]
-        listener_broker_ref: str = l["spec"]["brokerRef"]
+    for listener in listeners:
+        listener_name: str = listener["metadata"]["name"]
+        listener_spec_service_name: str = listener["spec"]["serviceName"]
+        listener_spec_service_type: str = listener["spec"]["serviceType"]
+        listener_broker_ref: str = listener["spec"]["brokerRef"]
 
         listener_eval_value = {}
-        listener_eval_value["spec"] = l["spec"]
+        listener_eval_value["spec"] = listener["spec"]
 
         if listener_broker_ref not in valid_broker_refs:
             ref_display = f"[red]Invalid[/red] broker reference {{[red]{listener_broker_ref}[/red]}}."
@@ -508,25 +614,25 @@ def evaluate_broker_listeners(
         check_manager.add_display(
             target_name=target_listeners,
             display=Padding(
-                f"Port: [bright_blue]{l['spec']['port']}[/bright_blue]",
+                f"Port: [bright_blue]{listener['spec']['port']}[/bright_blue]",
                 (0, 0, 0, 12),
             ),
         )
         check_manager.add_display(
             target_name=target_listeners,
             display=Padding(
-                f"AuthN enabled: [bright_blue]{l['spec']['authenticationEnabled']}[/bright_blue]",
+                f"AuthN enabled: [bright_blue]{listener['spec']['authenticationEnabled']}[/bright_blue]",
                 (0, 0, 0, 12),
             ),
         )
         check_manager.add_display(
             target_name=target_listeners,
             display=Padding(
-                f"AuthZ enabled: [bright_blue]{l['spec']['authenticationEnabled']}[/bright_blue]",
+                f"AuthZ enabled: [bright_blue]{listener['spec']['authenticationEnabled']}[/bright_blue]",
                 (0, 0, 0, 12),
             ),
         )
-        node_port = l["spec"].get("nodePort")
+        node_port = listener["spec"].get("nodePort")
         if node_port:
             check_manager.add_display(
                 target_name=target_listeners,
@@ -581,7 +687,7 @@ def evaluate_broker_listeners(
 
                     if not ingress_rules:
                         listener_service_eval_status = CheckTaskStatus.warning.value
-                        ingress_count_colored = f"[red]Detected 0[/red]."
+                        ingress_count_colored = "[red]Detected 0[/red]."
                     else:
                         ingress_count_colored = f"[green]Detected {len(ingress_rules)}[/green]."
 
@@ -994,67 +1100,6 @@ def check_nodes(as_list: bool = False):
             check_manager.add_display(target_name=target_minimum_nodes, display=node_memory_display)
 
     return check_manager.as_dict(as_list)
-
-
-# def check_mqtt_bridge_health(namespace: Optional[str] = None):
-#     namespaced_object = get_namespaced_object(BRIDGE_RESOURCE, namespace)
-
-#     display_key = "E4K MQTT bridge health"
-#     nested_displays = []
-
-#     if not namespaced_object.get("items"):
-#         nested_displays.append(
-#             Padding(
-#                 ":hammer: No E4K bridge installed.",
-#                 (0, 0, 0, 4),
-#             )
-#         )
-#     else:
-#         valid_bridges = {}
-#         for bridge in namespaced_object["items"]:
-#             bridge_metadata: dict = bridge["metadata"]
-#             bridge_name = bridge_metadata.get("name")
-#             if not bridge_name:
-#                 nested_displays.append(
-#                     Padding(
-#                         f":stop_sign: MQTT bridge in namespace '{namespace}' has no field 'name'.",
-#                         (0, 0, 0, 4),
-#                     )
-#                 )
-#             else:
-#                 valid_bridges[bridge_name] = bridge
-#         if valid_bridges:
-#             for bridge_name in valid_bridges:
-#                 bridge_status = valid_bridges[bridge_name].get("status")
-#                 bridge_config_status_level = None
-#                 if bridge_status:
-#                     bridge_config_status_level = bridge_status.get("configStatusLevel")
-#                 # @digimaun - delta, no configStatusLevel == unknown vs error
-#                 if not any([bridge_status, bridge_config_status_level]):
-#                     nested_displays.append(
-#                         Padding(
-#                             f"[yellow]:warning:[/yellow] {{{bridge_name}}} current state unknown.",
-#                             (0, 0, 0, 4),
-#                         )
-#                     )
-#                 else:
-#                     prefix = None
-#                     if bridge_config_status_level.lower() == "warn":
-#                         prefix = "[yellow]:warning:[/yellow]"
-#                     elif bridge_config_status_level.lower() == "error":
-#                         prefix = "[red]:stop_sign:[/red]"
-#                     else:
-#                         prefix = ":zap:"
-
-#                     nested_displays.append(
-#                         Padding(
-#                             f"{prefix} {{{bridge_name}}} current state {{[light_sea_green]{bridge_config_status_level}[/light_sea_green]}}.",
-#                             (0, 0, 0, 4),
-#                         )
-#                     )
-
-#     display_key, status = _prefix_display_key(display_key, nested_displays)
-#     return {"display": {display_key: nested_displays}, "status": status}
 
 
 # def check_cloud_connector_health(namespace: Optional[str] = None):

@@ -88,4 +88,3 @@ OPCUA_RESOURCE = IotEdgeBrokerResource("e4i.microsoft.com", "v1", "")
 
 MIN_K8S_VERSION = "1.20"
 MIN_HELM_VERSION = "3.8.0"
-DEFAULT_CONSOLE_WIDTH = 120

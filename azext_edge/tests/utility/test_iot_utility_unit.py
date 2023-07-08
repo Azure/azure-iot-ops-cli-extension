@@ -8,11 +8,8 @@ import os
 from unittest import mock
 
 import pytest
-from azure.cli.core.extension import get_extension_path
-from knack.util import CLIError
 
 from azext_edge.common.utility import validate_min_python_version
-from azext_edge.constants import EXTENSION_NAME
 
 
 class TestMinPython(object):
@@ -60,9 +57,7 @@ class TestCliInit(object):
         invalid_directories = []
         for directory in directory_structure:
             if directory_structure[directory] is None:
-                invalid_directories.append(
-                    "Directory: '{}' missing __init__.py".format(directory)
-                )
+                invalid_directories.append("Directory: '{}' missing __init__.py".format(directory))
 
         if invalid_directories:
             pytest.fail(", ".join(invalid_directories))

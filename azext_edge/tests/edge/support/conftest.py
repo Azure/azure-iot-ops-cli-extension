@@ -28,6 +28,7 @@ def mocked_zipfile(mocker):
     patched = mocker.patch("azext_edge.edge.providers.support_bundle.ZipFile", autospec=True)
     yield patched
 
+
 # TODO - @digimaun make this more useful / flexible configuration.
 @pytest.fixture
 def mocked_list_pods(mocked_client):

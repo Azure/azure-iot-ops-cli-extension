@@ -18,8 +18,7 @@ import sys
 import re
 import hmac
 import hashlib
-from typing import Any, Optional, List, Dict
-from threading import Event, Thread
+from typing import Any, List, Dict
 from datetime import datetime
 from knack.log import get_logger
 from azure.cli.core.azclierror import (
@@ -29,7 +28,6 @@ from azure.cli.core.azclierror import (
 )
 
 logger = get_logger(__name__)
-
 
 
 def validate_key_value_pairs(string):
@@ -48,9 +46,7 @@ def validate_key_value_pairs(string):
     return result
 
 
-def process_json_arg(
-    content: str, argument_name: str = "content", preserve_order=False
-):
+def process_json_arg(content: str, argument_name: str = "content", preserve_order=False):
     """Primary processor of json input"""
     json_from_file = None
 
@@ -84,9 +80,7 @@ def process_yaml_arg(path: str) -> Dict[str, Any]:
     """Primary processor of yaml file input"""
 
     if not os.path.exists(path):
-        raise FileOperationError(
-            _file_location_error.format("YAML", path)
-        )
+        raise FileOperationError(_file_location_error.format("YAML", path))
 
     try:
         import yaml
@@ -94,18 +88,14 @@ def process_yaml_arg(path: str) -> Dict[str, Any]:
         with open(path, "rb") as f:
             return yaml.load(f, Loader=yaml.SafeLoader)
     except Exception as ex:
-        raise InvalidArgumentValueError(
-            _file_parse_error.format("YAML", path, ex)
-        )
+        raise InvalidArgumentValueError(_file_parse_error.format("YAML", path, ex))
 
 
 def process_toml_arg(path: str) -> Dict[str, Any]:
     """Primary processor of TOML file input"""
 
     if not os.path.exists(path):
-        raise FileOperationError(
-            _file_location_error.format("TOML", path)
-        )
+        raise FileOperationError(_file_location_error.format("TOML", path))
 
     try:
         import tomli
@@ -113,9 +103,7 @@ def process_toml_arg(path: str) -> Dict[str, Any]:
         with open(path, "rb") as f:
             return tomli.load(f)
     except Exception as ex:
-        raise InvalidArgumentValueError(
-            _file_parse_error.format("TOML", path, ex)
-        )
+        raise InvalidArgumentValueError(_file_parse_error.format("TOML", path, ex))
 
 
 def shell_safe_json_parse(json_or_dict_string, preserve_order=False):
@@ -134,12 +122,8 @@ def shell_safe_json_parse(json_or_dict_string, preserve_order=False):
         except SyntaxError:
             raise CLIInternalError(json_ex)
         except ValueError as ex:
-            logger.debug(
-                ex
-            )  # log the exception which could be a python dict parsing error.
-            raise CLIInternalError(
-                json_ex
-            )  # raise json_ex error which is more readable and likely.
+            logger.debug(ex)  # log the exception which could be a python dict parsing error.
+            raise CLIInternalError(json_ex)  # raise json_ex error which is more readable and likely.
 
 
 def read_file_content(file_path, allow_binary=False):
@@ -161,9 +145,7 @@ def read_file_content(file_path, allow_binary=False):
                 return base64.b64encode(input_file.read()).decode("utf-8")
         except Exception:  # pylint: disable=broad-except
             pass
-    raise FileOperationError(
-        "Failed to decode file {} - unknown decoding".format(file_path)
-    )
+    raise FileOperationError("Failed to decode file {} - unknown decoding".format(file_path))
 
 
 def trim_from_start(s, substring):
@@ -188,9 +170,7 @@ def validate_min_python_version(major, minor, error_msg=None, exit_on_fail=True)
             msg = (
                 error_msg
                 if error_msg
-                else "Python version {}.{} or higher required for this functionality.".format(
-                    major, minor
-                )
+                else "Python version {}.{} or higher required for this functionality.".format(major, minor)
             )
             sys.exit(msg)
 
@@ -398,9 +378,7 @@ def compute_device_key(primary_key, registration_id):
     """
     secret = base64.b64decode(primary_key)
     device_key = base64.b64encode(
-        hmac.new(
-            secret, msg=registration_id.encode("utf8"), digestmod=hashlib.sha256
-        ).digest()
+        hmac.new(secret, msg=registration_id.encode("utf8"), digestmod=hashlib.sha256).digest()
     )
     return device_key
 
@@ -431,9 +409,7 @@ def ensure_azure_namespace_path():
     if os.path.isdir(ext_azure_dir):
         import azure
 
-        if (
-            getattr(azure, "__path__", None) and ext_azure_dir not in azure.__path__
-        ):  # _NamespacePath /w PEP420
+        if getattr(azure, "__path__", None) and ext_azure_dir not in azure.__path__:  # _NamespacePath /w PEP420
             if isinstance(azure.__path__, list):
                 azure.__path__.insert(0, ext_azure_dir)
             else:

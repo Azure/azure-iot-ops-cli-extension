@@ -133,8 +133,8 @@ class PodRequest:
         self.pod_port = pod_port
 
     def get(self, resource_path: str):
-        response = urlopen(self._build_url(resource_path=resource_path))
-        return response.read().decode("utf-8")
+        with urlopen(self._build_url(resource_path=resource_path)) as response:
+            return response.read().decode("utf-8")
 
     def _build_url(self, resource_path: str):
         return f"http://{self.pod_name}.{self.namespace}.kubernetes:{self.pod_port}{resource_path}"
@@ -142,7 +142,7 @@ class PodRequest:
 
 @contextmanager
 def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> PodRequest:
-    from kubernetes.stream import portforward, stream
+    from kubernetes.stream import portforward
 
     api = client.CoreV1Api()
 
