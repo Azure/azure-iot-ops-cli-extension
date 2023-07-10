@@ -1,0 +1,17 @@
+name: CI Build and Test
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+jobs:
+  build:
+    uses: ./.github/workflows/ci_build.yml
+  test:
+    uses: ./.github/workflows/tox.yml
+  linter:
+    needs: [build]
+    uses: ./.github/workflows/azdev_linter.yml
+  smoke_test:
+    needs: [build]
+    uses: ./.github/workflows/smoke_test.yml

@@ -1,0 +1,34 @@
+name: Build and Publish Release
+on:
+  # only manual trigger
+  workflow_dispatch:
+    inputs:
+      continue-on-fail:
+        description: Continue build even if checks fail
+        type: boolean
+        required: false
+        default: false
+      update_index:
+        type: boolean
+        description: 'Push this version to the private extension index'
+        default: false
+jobs:
+  security:
+    uses: ./.github/workflows/security_checks.yml
+  build:
+    uses: ./.github/workflows/release_build.yml
+  test:
+    uses: ./.github/workflows/tox.yml
+  linter:
+    needs: [build]
+    uses: ./.github/workflows/azdev_linter.yml
+  smoke_test:
+    needs: [build]
+    uses: ./.github/workflows/smoke_test.yml
+  release:
+    needs: [security, build, test, linter]
+    if: ${{ success() || github.event.inputs.continue-on-fail }}
+    uses: ./.github/workflows/stage_release.yml
+    with:
+      update_index: ${{ github.event.inputs.update_index == 'true' }}
+    secrets: inherit

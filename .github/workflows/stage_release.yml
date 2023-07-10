@@ -1,8 +1,12 @@
 name: Release
-concurrency: production
 
 on:
   workflow_call:
+    inputs:
+      update_index:
+        type: boolean
+        description: 'Push this version to the extension index'
+        default: false
 
 jobs:
   release:
@@ -14,18 +18,35 @@ jobs:
         with:
           name: azure-edge-cli-ext
           path: ./release
+      - name: Setup python
+        uses: actions/setup-python@v3
+        with:
+            python-version: "3.9"
+      - name: Install and determine version
+        run: |
+          wheel=$(find ./release/*.whl)
+          pip install $wheel
+          version=$(pip show azure_edge | grep Version: | awk '{print $2}')
+          echo "wheel=$wheel" >> $GITHUB_ENV
+          echo "version=$version" >> $GITHUB_ENV
+          echo "tag=v$version" >> $GITHUB_ENV
       - name: Download SBOM
         uses: actions/download-artifact@v3
         with:
           name: SBOM
-          path: ./release
+          path: ./release/SBOM
+      - name: Zip SBOM
+        run: zip ./SBOM.zip ./release/SBOM -r
       - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: ./release/*.*
-          draft: true
-          prerelease: true
-          fail_on_unmatched_files: true
-          generate_release_notes: true
+        run: |
+          echo tag: "${{ env.tag }}"
+          echo version: "${{ env.version }}"
+          echo wheel: "${{ env.wheel }}"
+          gh release create "${{ env.tag }}" --generate-notes -d -t "azure-edge ${{ env.version }}" "${{ env.wheel }}" "./SBOM.zip#SBOM" --repo "${{ github.repository }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  index_update:
+    needs: [release]
+    if: ${{ github.event.inputs.update_index == 'true' }}
+    uses: ./.github/workflows/update_private_index.yml
+    secrets: inherit

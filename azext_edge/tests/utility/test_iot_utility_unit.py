@@ -5,36 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 import os
-from unittest import mock
-
 import pytest
-from azure.cli.core.extension import get_extension_path
-from knack.util import CLIError
-
-from azext_edge.common.utility import validate_min_python_version
-from azext_edge.constants import EXTENSION_NAME
-
-
-class TestMinPython(object):
-    @pytest.mark.parametrize("pymajor, pyminor", [(3, 6), (3, 4), (2, 7)])
-    def test_min_python(self, pymajor, pyminor):
-        with mock.patch("azext_edge.common.utility.sys.version_info") as version_mock:
-            version_mock.major = pymajor
-            version_mock.minor = pyminor
-
-            assert validate_min_python_version(2, 7)
-
-    @pytest.mark.parametrize(
-        "pymajor, pyminor, exception",
-        [(3, 6, SystemExit), (3, 4, SystemExit), (2, 7, SystemExit)],
-    )
-    def test_min_python_error(self, pymajor, pyminor, exception):
-        with mock.patch("azext_edge.common.utility.sys.version_info") as version_mock:
-            version_mock.major = 2
-            version_mock.minor = 6
-
-            with pytest.raises(exception):
-                validate_min_python_version(pymajor, pyminor)
 
 
 class TestCliInit(object):
@@ -60,9 +31,7 @@ class TestCliInit(object):
         invalid_directories = []
         for directory in directory_structure:
             if directory_structure[directory] is None:
-                invalid_directories.append(
-                    "Directory: '{}' missing __init__.py".format(directory)
-                )
+                invalid_directories.append("Directory: '{}' missing __init__.py".format(directory))
 
         if invalid_directories:
             pytest.fail(", ".join(invalid_directories))

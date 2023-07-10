@@ -7,6 +7,7 @@
 import pytest
 import os
 
+
 # Sets current working directory to the directory of the executing file
 @pytest.fixture
 def set_cwd(request):

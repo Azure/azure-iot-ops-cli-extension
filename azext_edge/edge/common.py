@@ -59,24 +59,32 @@ class E4kCheckType(Enum):
     post = "post"
 
 
-IotEdgeBrokerResource = namedtuple(
-    "IoTEdgeBrokerResource", ["group", "version", "resource"]
-)
+class EdgeServiceType(Enum):
+    """
+    Edge resource type.
+    """
+
+    auto = "auto"
+    e4k = "e4k"
+    opcua = "opcua"
+
+
+IotEdgeBrokerResource = namedtuple("IoTEdgeBrokerResource", ["group", "version", "resource"])
 BROKER_RESOURCE = IotEdgeBrokerResource("az-edge.com", "v1alpha2", "brokers")
-BRIDGE_RESOURCE = IotEdgeBrokerResource(
-    "az-edge.com", "v1alpha2", "mqttbridgeconnectors"
-)
+BRIDGE_RESOURCE = IotEdgeBrokerResource("az-edge.com", "v1alpha2", "mqttbridgeconnectors")
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
+METRICS_SERVICE_API_PORT = 9600
 
-AZEDGE_DIAGNOSTICS_POD_PREFIX = "azedge-diagnostics"
-AZEDGE_DIAGNOSTICS_PROBE_POD_NAME_PREFIX = "azedge-diagnostics-probe"
+AZEDGE_DIAGNOSTICS_PROBE_PREFIX = "azedge-diagnostics-probe"
+AZEDGE_FRONTEND_PREFIX = "azedge-dmqtt-frontend"
+AZEDGE_BACKEND_PREFIX = "azedge-dmqtt-backend"
+AZEDGE_AUTH_PREFIX = "azedge-dmqtt-authentication"
 
-AZEDGE_FRONTEND_POD_PREFIX = "azedge-dmqtt-frontend"
+
 AZEDGE_KAFKA_CONFIG_PREFIX = "azedge-kafka-config"
 
 OPCUA_RESOURCE = IotEdgeBrokerResource("e4i.microsoft.com", "v1", "")
 
 MIN_K8S_VERSION = "1.20"
 MIN_HELM_VERSION = "3.8.0"
-CONSOLE_WIDTH = 120

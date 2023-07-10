@@ -1,6 +1,7 @@
 name: CLI Command Table Linter
 on:
   workflow_call:
+  pull_request:
 
 jobs:
   linter:
@@ -10,7 +11,7 @@ jobs:
     # checkout source (for linter_exclusions)
     - uses: actions/checkout@v3
 
-    # download built wheel (from ./build.yml)
+    # download built wheel (from ./release_build.yml)
     - name: Download Wheel
       uses: actions/download-artifact@v3
       with:

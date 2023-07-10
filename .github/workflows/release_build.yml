@@ -16,7 +16,7 @@ jobs:
 
       - name: Build Wheel
         run: |
-          pip install wheel
+          pip install wheel==0.30.0
           python -m setup bdist_wheel -d dist
       - name: Generate SBOM
         run: |
