@@ -5,7 +5,6 @@
 # --------------------------------------------------------------------------------------------
 
 from functools import partial
-from time import sleep
 from typing import Any, Dict, List, Optional, Tuple
 
 from knack.log import get_logger
@@ -50,6 +49,7 @@ def run_checks(
     result = {}
 
     # with console.status("Analyzing cluster...") as status:
+    #    from time import sleep
     #    sleep(0.25)
 
     if pre_deployment:
