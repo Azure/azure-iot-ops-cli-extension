@@ -45,5 +45,10 @@ def get_password_hash(cmd, passphrase: str, iterations: int = 210000):
     from hashlib import pbkdf2_hmac
     from os import urandom
 
-    dk = pbkdf2_hmac("sha512", bytes(passphrase, encoding="utf8"), urandom(16), iterations)
-    return {"hash": f"pbkdf2-sha512$i={iterations},l={len(dk)}${str(base64.b64encode(dk), encoding='utf-8')}"}
+    salt = urandom(16)
+
+    dk = pbkdf2_hmac("sha512", bytes(passphrase, encoding="utf8"), salt, iterations)
+    return {
+        "hash": f"$pbkdf2-sha512$i={iterations},l={len(dk)}${str(base64.b64encode(salt), encoding='utf-8').rstrip('=')}"
+        f"${str(base64.b64encode(dk), encoding='utf-8').rstrip('=')}"
+    }
