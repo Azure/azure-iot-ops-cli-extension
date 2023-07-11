@@ -1,7 +1,7 @@
 # coding=utf-8
 # --------------------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License. See License.txt in the project root for license information.
+# PRIVATE DISTRIBUTION FOR NDA CUSTOMERS ONLY
 # --------------------------------------------------------------------------------------------
 
 
@@ -16,6 +16,9 @@ def test_check_manager():
     namespace = generate_generic_id()
     check_manager = CheckManager(check_name=name, check_desc=desc, namespace=namespace)
     assert_check_manager_dict(check_manager=check_manager, expected_name=name, expected_desc=desc)
+    
+    target = generate_generic_id()
+    check_manager.add_target()
 
 
 def assert_check_manager_dict(
