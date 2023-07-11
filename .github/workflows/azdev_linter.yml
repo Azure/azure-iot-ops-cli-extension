@@ -1,7 +1,6 @@
 name: CLI Command Table Linter
 on:
   workflow_call:
-  pull_request:
 
 jobs:
   linter:
