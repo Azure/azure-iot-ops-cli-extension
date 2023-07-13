@@ -2,7 +2,7 @@
 # coding=utf-8
 # --------------------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
-# PRIVATE DISTRIBUTION FOR NDA CUSTOMERS ONLY
+# Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
 import re
@@ -54,7 +54,6 @@ CLASSIFIERS = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
-    "License :: OSI Approved :: MIT License",
 ]
 
 short_description = "The Azure Edge extension for Azure CLI."
