@@ -5,18 +5,13 @@
 # --------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from ..base import client
-
+from .base import process_nodes
 
 logger = get_logger(__name__)
-generic = client.ApiClient()
 
 
 def fetch_nodes():
-    return {
-        "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_node()),
-        "zinfo": "nodes.yaml",
-    }
+    return process_nodes()
 
 
 support_shared_elements = {"nodes": fetch_nodes}

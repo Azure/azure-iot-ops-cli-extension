@@ -56,19 +56,19 @@ def mocked_cluster_resources(request, mocker):
     from azure.cli.core.azclierror import ResourceNotFoundError
     from kubernetes.client.models import V1APIResource, V1APIResourceList
 
-    from ....edge.common import BROKER_RESOURCE, OPCUA_RESOURCE, IotEdgeBrokerResource
+    from ....edge.common import EdgeResourceApi, E4K_API_V1A2, OPCUA_API_V1
 
-    requested_resources = getattr(request, "param", {})
+    requested_resource_apis = getattr(request, "param", {})
     resource_map = {}
 
     def _get_api_resource(kind: str):
         return V1APIResource(name=f"{kind.lower()}s", kind=kind, namespaced=True, singular_name=kind.lower(), verbs=[])
 
-    for resource in requested_resources:
-        r: IotEdgeBrokerResource = resource
+    for resource_api in requested_resource_apis:
+        r: EdgeResourceApi = resource_api
         v1_resources: List[V1APIResource] = []
 
-        if r == BROKER_RESOURCE:
+        if r == E4K_API_V1A2:
             v1_resources.append(_get_api_resource("Broker"))
             v1_resources.append(_get_api_resource("BrokerListener"))
             v1_resources.append(_get_api_resource("BrokerDiagnostic"))
@@ -78,7 +78,7 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("MqttBridgeTopicMap"))
             v1_resources.append(_get_api_resource("MqttBridgeConnector"))
 
-        if r == OPCUA_RESOURCE:
+        if r == OPCUA_API_V1:
             v1_resources.append(_get_api_resource("Application"))
             v1_resources.append(_get_api_resource("ModuleType"))
             v1_resources.append(_get_api_resource("Module"))
@@ -89,16 +89,14 @@ def mocked_cluster_resources(request, mocker):
 
     def _handle_resource_call(*args, **kwargs):
         resource_map = kwargs["context"]
-        if kwargs["resource"] in resource_map:
-            return resource_map[kwargs["resource"]]
+        if kwargs["resource_api"] in resource_map:
+            return resource_map[kwargs["resource_api"]]
 
         if "raise_on_404" in kwargs and kwargs["raise_on_404"]:
-            raise ResourceNotFoundError(
-                f"{kwargs['resource'].group}/{kwargs['resource'].version} resources do not exist on the cluster."
-            )
+            raise ResourceNotFoundError(f"{kwargs['resource_api'].as_str()} resources do not exist on the cluster.")
 
-    patched = mocker.patch("azext_edge.edge.providers.support_bundle.get_cluster_custom_resources", autospec=True)
+    patched = mocker.patch("azext_edge.edge.providers.support_bundle.get_cluster_custom_api", autospec=True)
     _handle_call = partial(_handle_resource_call, context=resource_map)
     patched.side_effect = _handle_call
 
-    yield {"param": requested_resources, "mock": patched, "resources": resource_map}
+    yield {"param": requested_resource_apis, "mock": patched, "resources": resource_map}

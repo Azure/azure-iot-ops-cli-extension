@@ -13,28 +13,21 @@ from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Container, V1ObjectMeta
 
-from ...common import IotEdgeBrokerResource
+from ...common import EdgeResource
 from ..base import client
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
 
 
-def process_crd(
-    resource: IotEdgeBrokerResource, plural: str, file_prefix: Optional[str] = None, include_namespaces: bool = False
-):
+def process_crd(resource: EdgeResource, file_prefix: Optional[str] = None, include_namespaces: bool = False):
     result: dict = client.CustomObjectsApi().list_cluster_custom_object(
-        group=resource.group,
-        version=resource.version,
-        plural=plural,
+        group=resource.api.group,
+        version=resource.api.version,
+        plural=resource.plural,
     )
     if not file_prefix:
-        file_prefix = plural[:-1]
-
-    if resource.group.startswith("e4i"):
-        edge_service = "opcua"
-    else:
-        edge_service = "e4k"
+        file_prefix = resource.resource
 
     processed = []
     namespaces = []
@@ -42,7 +35,9 @@ def process_crd(
         namespace = r["metadata"]["namespace"]
         namespaces.append(namespace)
         name = r["metadata"]["name"]
-        processed.append({"data": r, "zinfo": f"{edge_service}/{namespace}/{file_prefix}.{name}.yaml"})
+        processed.append(
+            {"data": r, "zinfo": f"{namespace}/{resource.api.moniker}/{file_prefix}.{resource.api.version}.{name}.yaml"}
+        )
 
     if include_namespaces:
         processed, namespaces
@@ -50,11 +45,11 @@ def process_crd(
 
 
 def process_v1_pods(
-    resource: IotEdgeBrokerResource,
+    resource: EdgeResource,
     label_selector=None,
     since_seconds: int = 60 * 60 * 24,
     include_metrics=False,
-    previous_logs=False,
+    capture_previous_logs=False,
 ) -> List[dict]:
     from kubernetes.client.models import V1Pod, V1PodList, V1PodSpec
 
@@ -62,10 +57,6 @@ def process_v1_pods(
     custom_api = client.CustomObjectsApi()
 
     processed = []
-    if resource.group.startswith("e4i"):
-        edge_service = "opcua"
-    else:
-        edge_service = "e4k"
 
     pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
     pod_logger_info = f"Detected {len(pods.items)} pods."
@@ -83,31 +74,35 @@ def process_v1_pods(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=p),
-                "zinfo": f"{edge_service}/{pod_namespace}/pod.{pod_name}.yaml",
+                "zinfo": f"{pod_namespace}/{resource.api.moniker}/pod.{pod_name}.yaml",
             }
         )
         pod_spec: V1PodSpec = p.spec
         pod_containers: List[V1Container] = pod_spec.containers
+        capture_previous_log_runs = [False]
+        if capture_previous_logs:
+            capture_previous_log_runs.append(True)
         for container in pod_containers:
-            try:
-                # previous_log_runs = [False]
-                # if previous_logs:
-                #     previous_log_runs.append(True)
-                logger.debug(f"Reading log from pod {pod_name} container {container.name}")
-                log: str = v1_api.read_namespaced_pod_log(
-                    name=pod_name,
-                    namespace=pod_namespace,
-                    since_seconds=since_seconds,
-                    container=container.name,
-                )
-                processed.append(
-                    {
-                        "data": log,
-                        "zinfo": f"{edge_service}/{pod_namespace}/pod.{pod_name}.{container.name}.log",
-                    }
-                )
-            except ApiException as e:
-                logger.debug(e.body)
+            for capture_previous in capture_previous_log_runs:
+                try:
+                    logger_debug_previous = "previous run " if capture_previous else ""
+                    logger.debug(f"Reading {logger_debug_previous}log from pod {pod_name} container {container.name}")
+                    log: str = v1_api.read_namespaced_pod_log(
+                        name=pod_name,
+                        namespace=pod_namespace,
+                        since_seconds=since_seconds,
+                        container=container.name,
+                        previous=capture_previous,
+                    )
+                    zinfo_previous_segment = "previous." if capture_previous else ""
+                    processed.append(
+                        {
+                            "data": log,
+                            "zinfo": f"{pod_namespace}/{resource.api.moniker}/pod.{pod_name}.{container.name}.{zinfo_previous_segment}log",
+                        }
+                    )
+                except ApiException as e:
+                    logger.debug(e.body)
 
         if include_metrics:
             try:
@@ -119,7 +114,7 @@ def process_v1_pods(
                     processed.append(
                         {
                             "data": metric,
-                            "zinfo": f"{edge_service}/{pod_namespace}/pod.{pod_name}.metric.yaml",
+                            "zinfo": f"{pod_namespace}/{resource.api.moniker}/pod.{pod_name}.metric.yaml",
                         }
                     )
             except ApiException as e:
@@ -129,7 +124,7 @@ def process_v1_pods(
 
 
 def process_deployments(
-    resource: IotEdgeBrokerResource,
+    resource: EdgeResource,
     label_selector: str = None,
     return_namespaces: bool = False,
 ):
@@ -138,10 +133,6 @@ def process_deployments(
     v1_apps = client.AppsV1Api()
 
     processed = []
-    if resource.group.startswith("e4i"):
-        edge_service = "opcua"
-    else:
-        edge_service = "e4k"
 
     deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(label_selector=label_selector)
     logger.info(f"Detected {len(deployments.items)} deployments.")
@@ -158,7 +149,7 @@ def process_deployments(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=d),
-                "zinfo": f"{edge_service}/{deployment_namespace}/deployment.{deployment_name}.yaml",
+                "zinfo": f"{deployment_namespace}/{resource.api.moniker}/deployment.{deployment_name}.yaml",
             }
         )
         if deployment_namespace not in namespace_pods_work:
@@ -171,7 +162,7 @@ def process_deployments(
 
 
 def process_statefulset(
-    resource: IotEdgeBrokerResource,
+    resource: EdgeResource,
     label_selector: str,
 ):
     from kubernetes.client.models import V1StatefulSet, V1StatefulSetList
@@ -179,10 +170,6 @@ def process_statefulset(
     v1_apps = client.AppsV1Api()
 
     processed = []
-    if resource.group.startswith("e4i"):
-        edge_service = "opcua"
-    else:
-        edge_service = "e4k"
 
     statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(label_selector=label_selector)
     logger.info(f"Detected {len(statefulsets.items)} statefulsets.")
@@ -198,26 +185,21 @@ def process_statefulset(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=s),
-                "zinfo": f"{edge_service}/{statefulset_namespace}/statefulset.{statefulset_name}.yaml",
+                "zinfo": f"{statefulset_namespace}/{resource.api.moniker}/statefulset.{statefulset_name}.yaml",
             }
         )
 
     return processed
 
 
-def process_services(
-    resource: IotEdgeBrokerResource,
-    label_selector: str,
-):
+def process_services(resource: EdgeResource, label_selector: str, prefix_names: List[str] = None):
     from kubernetes.client.models import V1Service, V1ServiceList
 
     v1_api = client.CoreV1Api()
 
     processed = []
-    if resource.group.startswith("e4i"):
-        edge_service = "opcua"
-    else:
-        edge_service = "e4k"
+    if not prefix_names:
+        prefix_names = []
 
     services: V1ServiceList = v1_api.list_service_for_all_namespaces(label_selector=label_selector)
     logger.info(f"Detected {len(services.items)} services.")
@@ -228,12 +210,16 @@ def process_services(
         s.api_version = services.api_version
         s.kind = "Service"
         service_metadata: V1ObjectMeta = s.metadata
-        service_namespace = service_metadata.namespace
-        service_name = service_metadata.name
+        service_namespace: str = service_metadata.namespace
+        service_name: str = service_metadata.name
+        if prefix_names:
+            matched_prefix = [service_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=s),
-                "zinfo": f"{edge_service}/{service_namespace}/service.{service_name}.yaml",
+                "zinfo": f"{service_namespace}/{resource.api.moniker}/service.{service_name}.yaml",
             }
         )
 
@@ -241,7 +227,7 @@ def process_services(
 
 
 def process_replicasets(
-    resource: IotEdgeBrokerResource,
+    resource: EdgeResource,
     label_selector: str,
 ):
     from kubernetes.client.models import V1ReplicaSet, V1ReplicaSetList
@@ -249,10 +235,6 @@ def process_replicasets(
     v1_apps = client.AppsV1Api()
 
     processed = []
-    if resource.group.startswith("e4i"):
-        edge_service = "opcua"
-    else:
-        edge_service = "e4k"
 
     replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
     logger.info(f"Detected {len(replicasets.items)} replicasets.")
@@ -261,18 +243,25 @@ def process_replicasets(
         r: V1ReplicaSet = replicaset
         # TODO: Workaround
         r.api_version = replicasets.api_version
-        r.kind = "ReplicaSet"
+        r.kind = "Replicaset"
         statefulset_metadata: V1ObjectMeta = r.metadata
         statefulset_namespace = statefulset_metadata.namespace
         statefulset_name = statefulset_metadata.name
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=r),
-                "zinfo": f"{edge_service}/{statefulset_namespace}/replicaset.{statefulset_name}.yaml",
+                "zinfo": f"{statefulset_namespace}/{resource.api.moniker}/replicaset.{statefulset_name}.yaml",
             }
         )
 
     return processed
+
+
+def process_nodes():
+    return {
+        "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_node()),
+        "zinfo": "nodes.yaml",
+    }
 
 
 def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "pas") -> PurePath:

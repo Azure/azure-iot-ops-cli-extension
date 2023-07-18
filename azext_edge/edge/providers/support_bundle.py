@@ -11,8 +11,8 @@ import yaml
 from knack.log import get_logger
 from rich.console import Console, NewLine
 
-from ..common import BROKER_RESOURCE, OPCUA_RESOURCE, EdgeServiceType
-from .base import client, get_cluster_custom_resources
+from ..common import E4K_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1, EdgeServiceType
+from .base import client, get_cluster_custom_api
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
@@ -26,30 +26,41 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from rich.table import Table
     from .support.e4k import prepare_bundle as prepare_e4k_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
+    from .support.bluefin import prepare_bundle as prepare_bluefin_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
 
-    pending_work = {"e4k": {}, "opcua": {}, "common": {}}
+    pending_work = {"e4k": {}, "opcua": {}, "bluefin": {}, "common": {}}
     # TODO: optimize
     if edge_service == EdgeServiceType.auto.value:
-        if get_cluster_custom_resources(resource=BROKER_RESOURCE):
+        if get_cluster_custom_api(resource_api=E4K_API_V1A2):
             pending_work["e4k"].update(prepare_e4k_bundle(log_age_seconds))
-        if get_cluster_custom_resources(resource=OPCUA_RESOURCE):
+        if get_cluster_custom_api(resource_api=OPCUA_API_V1):
             pending_work["opcua"].update(prepare_opcua_bundle(log_age_seconds))
+        if get_cluster_custom_api(resource_api=BLUEFIN_API_V1):
+            pending_work["bluefin"].update(prepare_bluefin_bundle(log_age_seconds))
     elif edge_service == EdgeServiceType.e4k.value:
-        get_cluster_custom_resources(resource=BROKER_RESOURCE, raise_on_404=True)
+        get_cluster_custom_api(resource_api=E4K_API_V1A2, raise_on_404=True)
         pending_work["e4k"].update(prepare_e4k_bundle(log_age_seconds))
     elif edge_service == EdgeServiceType.opcua.value:
-        get_cluster_custom_resources(resource=OPCUA_RESOURCE, raise_on_404=True)
+        get_cluster_custom_api(resource_api=OPCUA_API_V1, raise_on_404=True)
         pending_work["opcua"].update(prepare_opcua_bundle(log_age_seconds))
+    elif edge_service == EdgeServiceType.bluefin.value:
+        get_cluster_custom_api(resource_api=BLUEFIN_API_V1, raise_on_404=True)
+        pending_work["bluefin"].update(prepare_bluefin_bundle(log_age_seconds))
 
-    if not any([pending_work["e4k"], pending_work["opcua"]]):
+    if not any([pending_work["e4k"], pending_work["opcua"], pending_work["bluefin"]]):
         logger.warning("No known edge services discovered on cluster.")
         return
 
     pending_work["common"].update(prepare_shared_bundle())
-    total_work_count = len(pending_work["opcua"]) + len(pending_work["e4k"]) + len(pending_work["common"])
+    total_work_count = (
+        len(pending_work["opcua"])
+        + len(pending_work["e4k"])
+        + len(pending_work["bluefin"])
+        + len(pending_work["common"])
+    )
 
-    bundle = {"e4k": {}, "opcua": {}, "common": {}}
+    bundle = {"e4k": {}, "opcua": {}, "bluefin": {}, "common": {}}
     grid = Table.grid(expand=False)
     with Live(grid, console=console, transient=True) as live:
         uber_progress = Progress()
@@ -89,6 +100,12 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
                 support_segment=pending_work["opcua"],
                 edge_service="opcua",
             )
+        if pending_work["bluefin"]:
+            visually_process(
+                description="Processing Bluefin resources",
+                support_segment=pending_work["bluefin"],
+                edge_service="bluefin",
+            )
         if pending_work["common"]:
             visually_process(
                 description="Processing common resources", support_segment=pending_work["common"], edge_service="common"
@@ -101,7 +118,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
 def write_zip(bundle: dict, file_path: str):
     with ZipFile(file=file_path, mode="w") as myzip:
         todo: List[dict] = []
-        for edge_service in ["e4k", "opcua", "common"]:
+        for edge_service in ["e4k", "opcua", "bluefin", "common"]:
             if edge_service in bundle:
                 for element in bundle[edge_service]:
                     if isinstance(bundle[edge_service][element], list):

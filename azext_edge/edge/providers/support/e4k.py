@@ -8,7 +8,16 @@ from functools import partial
 
 from knack.log import get_logger
 
-from ...common import BROKER_RESOURCE
+from ...common import (
+    E4K_BROKER,
+    E4K_BROKER_DIAGNOSTIC,
+    E4K_BROKER_LISTENER,
+    E4K_DIAGNOSTIC_SERVICE,
+    E4K_BROKER_AUTHENTICATION,
+    E4K_BROKER_AUTHORIZATION,
+    E4K_MQTT_BRIDGE_TOPIC_MAP,
+    E4K_MQTT_BRIDGE_CONNECTOR,
+)
 from ..base import client, get_namespaced_pods_by_prefix
 from .base import (
     process_crd,
@@ -55,44 +64,44 @@ E4K_LABEL = "app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,heal
 
 
 def fetch_brokers():
-    return process_crd(BROKER_RESOURCE, "brokers")
+    return process_crd(E4K_BROKER)
 
 
 def fetch_broker_listeners():
-    return process_crd(BROKER_RESOURCE, "brokerlisteners")
+    return process_crd(E4K_BROKER_LISTENER)
 
 
 def fetch_broker_diagnostics():
-    return process_crd(BROKER_RESOURCE, "brokerdiagnostics")
+    return process_crd(E4K_BROKER_DIAGNOSTIC)
 
 
 def fetch_broker_authentications():
-    return process_crd(BROKER_RESOURCE, "brokerauthentications")
+    return process_crd(E4K_BROKER_AUTHENTICATION)
 
 
 def fetch_broker_authorizations():
-    return process_crd(BROKER_RESOURCE, "brokerauthorizations")
+    return process_crd(E4K_BROKER_AUTHORIZATION)
 
 
 def fetch_diagnostic_services():
-    return process_crd(BROKER_RESOURCE, "diagnosticservices")
+    return process_crd(E4K_DIAGNOSTIC_SERVICE)
 
 
 def fetch_mqtt_bridge_topic_maps():
-    return process_crd(BROKER_RESOURCE, "mqttbridgetopicmaps")
+    return process_crd(E4K_MQTT_BRIDGE_TOPIC_MAP)
 
 
 def fetch_mqtt_bridge_connectors():
-    return process_crd(BROKER_RESOURCE, "mqttbridgeconnectors")
+    return process_crd(E4K_MQTT_BRIDGE_CONNECTOR)
 
 
 support_crd_elements = {
     "brokers": fetch_brokers,
     "listeners": fetch_broker_listeners,
-    "diagnostics": fetch_broker_diagnostics,
+    "brokerdiagnostics": fetch_broker_diagnostics,
     "authN": fetch_broker_authentications,
     "authZ": fetch_broker_authorizations,
-    "services": fetch_diagnostic_services,
+    "diagnosticservices": fetch_diagnostic_services,
     "bridgetopicmaps": fetch_mqtt_bridge_topic_maps,
     "bridgeconnectors": fetch_mqtt_bridge_connectors,
 }
@@ -111,16 +120,14 @@ def fetch_diagnostic_metrics(namespace: str):
         stats_raw = get_stats_pods(namespace=namespace, raw_response=True)
         return {
             "data": stats_raw,
-            "zinfo": f"e4k/{namespace}/diagnostics_metrics.out",
+            "zinfo": f"e4k/{namespace}/diagnostics_metrics.txt",
         }
     except Exception:
         logger.debug(f"Unable to call stats pod metrics against namespace {namespace}.")
 
 
 def fetch_broker_deployments():
-    processed, namespaces = process_deployments(
-        resource=BROKER_RESOURCE, label_selector=E4K_LABEL, return_namespaces=True
-    )
+    processed, namespaces = process_deployments(resource=E4K_BROKER, label_selector=E4K_LABEL, return_namespaces=True)
     for namespace in namespaces:
         metrics: dict = fetch_diagnostic_metrics(namespace)
         if metrics:
@@ -130,7 +137,7 @@ def fetch_broker_deployments():
         if metrics:
             processed.append(metrics)
 
-        # TODO: @digimaun
+        # TODO: @digimaun - enable after support for disabling check polling UX.
         # try:
         #     checks = run_checks(namespace=namespace)
         #     checks_data = {
@@ -146,33 +153,35 @@ def fetch_broker_deployments():
 
 def fetch_statefulsets():
     return process_statefulset(
-        resource=BROKER_RESOURCE,
+        resource=E4K_BROKER,
         label_selector=E4K_LABEL,
     )
 
 
 def fetch_services():
     return process_services(
-        resource=BROKER_RESOURCE,
+        resource=E4K_BROKER,
         label_selector=E4K_LABEL,
     )
 
 
 def fetch_replicasets():
     return process_replicasets(
-        resource=BROKER_RESOURCE,
+        resource=E4K_BROKER,
         label_selector=E4K_LABEL,
     )
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
-    return process_v1_pods(resource=BROKER_RESOURCE, label_selector=E4K_LABEL, since_seconds=since_seconds)
+    return process_v1_pods(
+        resource=E4K_BROKER, label_selector=E4K_LABEL, since_seconds=since_seconds, capture_previous_logs=True
+    )
 
 
 support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
-    "services": fetch_services,
     "replicasets": fetch_replicasets,
+    "services": fetch_services,
     "deployments": fetch_broker_deployments,
 }
 

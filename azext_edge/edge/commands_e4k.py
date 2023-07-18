@@ -24,11 +24,11 @@ def stats(
     watch: Optional[bool] = None,
 ):
     load_config_context(context_name=context_name)
-    from .common import BROKER_RESOURCE
-    from .providers.base import get_cluster_custom_resources
+    from .common import E4K_API_V1A2
+    from .providers.base import get_cluster_custom_api
     from .providers.stats import get_stats_pods
 
-    get_cluster_custom_resources(BROKER_RESOURCE, raise_on_404=True)
+    get_cluster_custom_api(resource_api=E4K_API_V1A2, raise_on_404=True)
 
     return get_stats_pods(
         namespace=namespace,

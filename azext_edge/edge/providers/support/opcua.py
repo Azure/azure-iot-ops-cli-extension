@@ -8,12 +8,10 @@ from functools import partial
 
 from knack.log import get_logger
 
-from ..base import client
-from .base import process_v1_pods, process_crd, process_deployments
-from ...common import OPCUA_RESOURCE
+from ...common import OPCUA_APPLICATION, OPCUA_ASSET, OPCUA_ASSET_TYPE, OPCUA_MODULE, OPCUA_MODULE_TYPE
+from .base import process_crd, process_deployments, process_v1_pods
 
 logger = get_logger(__name__)
-generic = client.ApiClient()
 
 
 OPCUA_GENERAL_LABEL = "app in (opc-ua-connector,opcplc)"
@@ -22,37 +20,46 @@ OPCUA_ORCHESTRATOR_LABEL = "orchestrator=apollo"
 
 
 def fetch_applications():
-    return process_crd(OPCUA_RESOURCE, "applications")
+    return process_crd(OPCUA_APPLICATION)
 
 
 def fetch_module_types():
-    return process_crd(OPCUA_RESOURCE, "moduletypes", "module_type")
+    return process_crd(OPCUA_MODULE_TYPE, "module_type")
 
 
 def fetch_modules():
-    return process_crd(OPCUA_RESOURCE, "modules")
+    return process_crd(OPCUA_MODULE)
 
 
 def fetch_asset_types():
-    return process_crd(OPCUA_RESOURCE, "assettypes", "asset_type")
+    return process_crd(OPCUA_ASSET_TYPE, "asset_type")
 
 
 def fetch_assets():
-    return process_crd(OPCUA_RESOURCE, "assets")
+    return process_crd(OPCUA_ASSET)
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
-    opcua_pods = process_v1_pods(OPCUA_RESOURCE, label_selector=OPCUA_GENERAL_LABEL, since_seconds=since_seconds)
+    opcua_pods = process_v1_pods(
+        resource=OPCUA_APPLICATION,
+        label_selector=OPCUA_GENERAL_LABEL,
+        since_seconds=since_seconds,
+        capture_previous_logs=True,
+    )
     opcua_pods.extend(
         process_v1_pods(
-            OPCUA_RESOURCE, label_selector=OPCUA_SUPERVISOR_LABEL, since_seconds=since_seconds, include_metrics=True
+            resource=OPCUA_APPLICATION,
+            label_selector=OPCUA_SUPERVISOR_LABEL,
+            since_seconds=since_seconds,
+            include_metrics=True,
+            capture_previous_logs=True,
         )
     )
     return opcua_pods
 
 
 def fetch_apollo_deployment():
-    return process_deployments(resource=OPCUA_RESOURCE, label_selector=OPCUA_ORCHESTRATOR_LABEL)
+    return process_deployments(resource=OPCUA_APPLICATION, label_selector=OPCUA_ORCHESTRATOR_LABEL)
 
 
 support_crd_elements = {

@@ -1,7 +1,7 @@
 ---
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-Thank you for contributing to the IoT extension!
+Thank you for contributing to Azure Edge tooling!
 
 This checklist is used to make sure that common guidelines for a pull request are followed.
 
@@ -20,6 +20,6 @@ Basic expectations
 - [ ] Have extraneous print or debug statements, commented out code-blocks or code-statements (if any) been removed from the surface area of changes?
 - [ ] Have you made an entry in HISTORY.rst which concisely explains your user-facing feature or change?
 
-Azure IoT CLI maintainers reserve the right to enforce any of the outlined expectations.
+Azure Edge CLI maintainers reserve the right to enforce any of the outlined expectations.
 
 A PR is considered **ready for review** when all basic expectations have been met (or do not apply).
