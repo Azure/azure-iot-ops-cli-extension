@@ -15,7 +15,7 @@ from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList, V1Service
 
-from ..common import IotEdgeBrokerResource
+from ..common import EdgeResourceApi, EdgeResource
 
 DEFAULT_NAMESPACE: str = "default"
 
@@ -89,19 +89,19 @@ _namespaced_object_cache: dict = {}
 
 
 def get_namespaced_custom_objects(
-    resource: IotEdgeBrokerResource, plural: str, namespace: str
+    resource: EdgeResource, namespace: str
 ) -> Union[List[dict], None]:
-    target_resource_key = (resource, plural)
+    target_resource_key = (resource, resource.plural)
     if target_resource_key in _namespaced_object_cache:
         return _namespaced_object_cache[target_resource_key]
 
     try:
         custom_client = client.CustomObjectsApi()
         _namespaced_object_cache[target_resource_key] = custom_client.list_namespaced_custom_object(
-            group=resource.group,
-            version=resource.version,
+            group=resource.api.group,
+            version=resource.api.version,
             namespace=namespace,
-            plural=plural,
+            plural=resource.plural,
         )
     except ApiException as ae:
         logger.debug(str(ae))
@@ -112,18 +112,19 @@ def get_namespaced_custom_objects(
 _cluster_resources_cache: dict = {}
 
 
-def get_cluster_custom_resources(
-    resource: IotEdgeBrokerResource, raise_on_404: bool = False
+def get_cluster_custom_api(
+    resource_api: EdgeResourceApi, raise_on_404: bool = False
 ) -> Union[V1APIResourceList, None]:
-    if resource in _cluster_resources_cache:
-        return _cluster_resources_cache[resource]
+    if resource_api in _cluster_resources_cache:
+        return _cluster_resources_cache[resource_api]
 
     try:
-        return client.CustomObjectsApi().get_api_resources(group=resource.group, version=resource.version)
+        return client.CustomObjectsApi().get_api_resources(group=resource_api.group, version=resource_api.version)
     except ApiException as ae:
         logger.debug(msg=str(ae))
         if int(ae.status) == 404 and raise_on_404:
-            raise ResourceNotFoundError(f"{resource.group}/{resource.version} resources do not exist on the cluster.")
+            raise ResourceNotFoundError(
+                f"{resource_api.as_str()} resources do not exist on the cluster.")
 
 
 class PodRequest:

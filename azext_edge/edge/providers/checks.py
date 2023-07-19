@@ -22,14 +22,19 @@ from ..common import (
     AZEDGE_FRONTEND_PREFIX,
     AZEDGE_BACKEND_PREFIX,
     AZEDGE_AUTH_PREFIX,
-    BROKER_RESOURCE,
+    E4K_API_V1A2,
     CheckTaskStatus,
     ResourceState,
+    EdgeResource,
+    E4K_BROKER,
+    E4K_BROKER_LISTENER,
+    E4K_BROKER_DIAGNOSTIC,
+    E4K_DIAGNOSTIC_SERVICE,
 )
 
 from .base import (
     client,
-    get_cluster_custom_resources,
+    get_cluster_custom_api,
     get_namespaced_custom_objects,
     get_namespaced_pods_by_prefix,
     get_namespaced_service,
@@ -190,11 +195,9 @@ def evaluate_broker_diagnostics(
     check_manager.add_target(
         target_name=target_diag, conditions=["len(brokerdiagnostics)<=1", "spec", "valid(spec.brokerRef)"]
     )
-    valid_broker_refs = _get_valid_references(namespace=namespace, plural="brokers")
+    valid_broker_refs = _get_valid_references(resource=E4K_BROKER, namespace=namespace)
 
-    diagnostics_list: dict = get_namespaced_custom_objects(
-        resource=BROKER_RESOURCE, namespace=namespace, plural="brokerdiagnostics"
-    )
+    diagnostics_list: dict = get_namespaced_custom_objects(resource=E4K_BROKER_DIAGNOSTIC, namespace=namespace)
     if not diagnostics_list:
         check_manager.add_target_eval(
             target_name=target_diag,
@@ -288,7 +291,7 @@ def evaluate_broker_diagnostics(
 
     if not evaluated_diagnostic_services:
         diagnostics_service_list: dict = get_namespaced_custom_objects(
-            resource=BROKER_RESOURCE, namespace=namespace, plural="diagnosticservices"
+            resource=E4K_DIAGNOSTIC_SERVICE, namespace=namespace
         )
         evaluated_diagnostic_services = True
         diagnostics_service_resources = diagnostics_service_list.get("items", [])
@@ -458,13 +461,11 @@ def evaluate_broker_listeners(
     listener_conditions = ["len(brokerlisteners)>=1", "spec", "valid(spec.brokerRef)", "spec.serviceName", "status"]
     check_manager.add_target(target_name=target_listeners, conditions=listener_conditions)
 
-    valid_broker_refs = _get_valid_references(namespace=namespace, plural="brokers")
-    listener_list: dict = get_namespaced_custom_objects(
-        resource=BROKER_RESOURCE, namespace=namespace, plural="brokerlisteners"
-    )
+    valid_broker_refs = _get_valid_references(resource=E4K_BROKER, namespace=namespace)
+    listener_list: dict = get_namespaced_custom_objects(resource=E4K_BROKER_LISTENER, namespace=namespace)
 
     if not listener_list:
-        fetch_listeners_error_text = "Unable to fetch brokerlisteners."
+        fetch_listeners_error_text = f"Unable to fetch {E4K_BROKER_LISTENER.plural}."
         check_manager.add_target_eval(
             target_name=target_listeners, status=CheckTaskStatus.error.value, value=fetch_listeners_error_text
         )
@@ -658,9 +659,9 @@ def evaluate_brokers(
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
     check_manager.add_target(target_name=target_brokers, conditions=broker_conditions)
 
-    broker_list: dict = get_namespaced_custom_objects(resource=BROKER_RESOURCE, plural="brokers", namespace=namespace)
+    broker_list: dict = get_namespaced_custom_objects(resource=E4K_BROKER, namespace=namespace)
     if not broker_list:
-        fetch_brokers_error_text = "Unable to fetch namespace brokers."
+        fetch_brokers_error_text = f"Unable to fetch namespace {E4K_BROKER.plural}."
         check_manager.add_target_eval(
             target_name=target_brokers, status=CheckTaskStatus.error.value, value=fetch_brokers_error_text
         )
@@ -812,11 +813,11 @@ def enumerate_e4k_resources(
     as_list: bool = False,
 ) -> Tuple[dict, dict]:
     resource_kind_map = {}
-    target_api = f"{BROKER_RESOURCE.group}/{BROKER_RESOURCE.version}"
+    target_api = E4K_API_V1A2.as_str()
     check_manager = CheckManager(check_name="enumerateE4kApi", check_desc="Enumerate E4K API resources")
     check_manager.add_target(target_name=target_api)
 
-    api_resources: V1APIResourceList = get_cluster_custom_resources(BROKER_RESOURCE)
+    api_resources: V1APIResourceList = get_cluster_custom_api(resource_api=E4K_API_V1A2)
 
     if not api_resources:
         check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.skipped.value)
@@ -1017,9 +1018,9 @@ def _decorate_resource_status(status: str) -> str:
     return f"[green]{status}[/green]"
 
 
-def _get_valid_references(namespace: str, plural: str):
+def _get_valid_references(resource: EdgeResource, namespace: str):
     result = {}
-    custom_objects: dict = get_namespaced_custom_objects(resource=BROKER_RESOURCE, namespace=namespace, plural=plural)
+    custom_objects: dict = get_namespaced_custom_objects(resource=resource, namespace=namespace)
     if custom_objects:
         objects: List[dict] = custom_objects.get("items", [])
         for object in objects:
@@ -1040,10 +1041,11 @@ class CheckManager:
         "namespace": "default,
         "targets": {
             "len(listeners)": {
+                "displays": [],
                 "conditions": ["==1"],
                 "evaluations": [
                     {
-                        "name?": "listeners",
+                        "name"?: "listeners",
                         "kind"?: "brokerListener
                         "value"?: 2,
                         "status": "warning"
@@ -1053,7 +1055,6 @@ class CheckManager:
             }
         },
         "status": "warning",
-        "displays": []
     }
     """
 
@@ -1120,17 +1121,19 @@ class CheckManager:
         self.target_displays[target_name].append(display)
 
     def as_dict(self, as_list: bool = False):
+        import copy
+
         result = {
             "name": self.check_name,
             "namespace": self.namespace,
             "description": self.check_desc,
-            "targets": self.targets,
+            "targets": {},
             "status": self.worst_status,
         }
+        result["targets"] = copy.deepcopy(self.targets)
         if as_list:
-            # TODO: hacky
             for t in self.target_displays:
-                self.targets[t]["displays"] = self.target_displays[t]
+                result["targets"][t]["displays"] = copy.deepcopy(self.target_displays[t])
 
             if self.namespace:
                 result["description"] = f"{result['description']} in namespace {{[cyan]{self.namespace}[/cyan]}}"
