@@ -98,7 +98,10 @@ def process_v1_pods(
                     processed.append(
                         {
                             "data": log,
-                            "zinfo": f"{pod_namespace}/{resource.api.moniker}/pod.{pod_name}.{container.name}.{zinfo_previous_segment}log",
+                            "zinfo": (
+                                f"{pod_namespace}/{resource.api.moniker}"
+                                f"/pod.{pod_name}.{container.name}.{zinfo_previous_segment}log"
+                            ),
                         }
                     )
                 except ApiException as e:

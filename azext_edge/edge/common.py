@@ -11,7 +11,6 @@ shared: Define shared data types(enums) and constant strings.
 
 from enum import Enum
 from typing import NamedTuple
-from collections import namedtuple
 
 
 class CheckTaskStatus(Enum):

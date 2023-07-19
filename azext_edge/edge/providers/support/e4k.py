@@ -45,24 +45,6 @@ E4K_LABEL = "app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,heal
 #     }
 
 
-# for previous in [False, True]:
-#     try:
-#         log: str = v1_api.read_namespaced_pod_log(
-#             name=pod_name,
-#             namespace=namespace,
-#             container=c.name,
-#             previous=previous,
-#         )
-#         result.append(
-#             {
-#                 "data": log,
-#                 "zinfo": f"{namespace}/{pod_name}/{c.name}{'-previous' if previous else ''}.log",
-#             }
-#         )
-#     except ApiException as e:
-#         logger.debug(e.body)
-
-
 def fetch_brokers():
     return process_crd(E4K_BROKER)
 

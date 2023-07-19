@@ -1041,10 +1041,11 @@ class CheckManager:
         "namespace": "default,
         "targets": {
             "len(listeners)": {
+                "displays": [],
                 "conditions": ["==1"],
                 "evaluations": [
                     {
-                        "name?": "listeners",
+                        "name"?: "listeners",
                         "kind"?: "brokerListener
                         "value"?: 2,
                         "status": "warning"
@@ -1054,7 +1055,6 @@ class CheckManager:
             }
         },
         "status": "warning",
-        "displays": []
     }
     """
 
