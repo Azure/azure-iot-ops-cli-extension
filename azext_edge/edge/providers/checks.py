@@ -1121,17 +1121,19 @@ class CheckManager:
         self.target_displays[target_name].append(display)
 
     def as_dict(self, as_list: bool = False):
+        import copy
+
         result = {
             "name": self.check_name,
             "namespace": self.namespace,
             "description": self.check_desc,
-            "targets": self.targets,
+            "targets": {},
             "status": self.worst_status,
         }
+        result["targets"] = copy.deepcopy(self.targets)
         if as_list:
-            # TODO: hacky
             for t in self.target_displays:
-                self.targets[t]["displays"] = self.target_displays[t]
+                result["targets"][t]["displays"] = copy.deepcopy(self.target_displays[t])
 
             if self.namespace:
                 result["description"] = f"{result['description']} in namespace {{[cyan]{self.namespace}[/cyan]}}"
