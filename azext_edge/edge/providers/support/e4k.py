@@ -102,7 +102,7 @@ def fetch_diagnostic_metrics(namespace: str):
         stats_raw = get_stats_pods(namespace=namespace, raw_response=True)
         return {
             "data": stats_raw,
-            "zinfo": f"e4k/{namespace}/diagnostics_metrics.txt",
+            "zinfo": f"{namespace}/e4k/diagnostic_metrics.txt",
         }
     except Exception:
         logger.debug(f"Unable to call stats pod metrics against namespace {namespace}.")

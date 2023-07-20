@@ -33,6 +33,7 @@ from azext_edge.edge.common import (
     OPCUA_MODULE,
     OPCUA_MODULE_TYPE,
     EdgeResource,
+    EdgeResourceApi,
 )
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.bluefin import (
@@ -68,7 +69,18 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
     indirect=True,
 )
 def test_create_bundle(
-    mocked_client, mocked_cluster_resources, mocked_config, mocked_os_makedirs, mocked_zipfile, mocked_list_pods
+    mocked_client,
+    mocked_cluster_resources,
+    mocked_config,
+    mocked_os_makedirs,
+    mocked_zipfile,
+    mocked_list_cluster_custom_objects,
+    mocked_list_deployments,
+    mocked_list_pods,
+    mocked_list_replicasets,
+    mocked_list_statefulsets,
+    mocked_list_services,
+    mocked_list_nodes,
 ):
     if not mocked_cluster_resources["param"] or E4K_API_V1A2 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
@@ -95,101 +107,222 @@ def test_create_bundle(
 
     expected_resources = mocked_cluster_resources["param"]
     if E4K_API_V1A2 in expected_resources:
-        assert_list_custom_resources(mocked_client, E4K_BROKER)
-        assert_list_custom_resources(mocked_client, E4K_BROKER_LISTENER)
-        assert_list_custom_resources(mocked_client, E4K_BROKER_DIAGNOSTIC)
-        assert_list_custom_resources(mocked_client, E4K_DIAGNOSTIC_SERVICE)
-        assert_list_custom_resources(mocked_client, E4K_BROKER_AUTHENTICATION)
-        assert_list_custom_resources(mocked_client, E4K_BROKER_AUTHORIZATION)
-        assert_list_custom_resources(mocked_client, E4K_MQTT_BRIDGE_TOPIC_MAP)
-        assert_list_custom_resources(mocked_client, E4K_MQTT_BRIDGE_CONNECTOR)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_BROKER)
 
-        assert_list_deployments(mocked_client, label_selector=E4K_LABEL)
-        assert_list_pods(mocked_client, label_selector=E4K_LABEL)
-        assert_list_replica_sets(mocked_client, E4K_LABEL)
-        assert_list_stateful_sets(mocked_client, E4K_LABEL)
-        assert_list_services(mocked_client, E4K_LABEL)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_BROKER_LISTENER)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_BROKER_DIAGNOSTIC)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_DIAGNOSTIC_SERVICE)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_BROKER_AUTHENTICATION)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_BROKER_AUTHORIZATION)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_MQTT_BRIDGE_TOPIC_MAP)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_MQTT_BRIDGE_CONNECTOR)
+
+        assert_list_deployments(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
+        assert_list_pods(
+            mocked_client,
+            mocked_zipfile,
+            mocked_list_pods,
+            label_selector=E4K_LABEL,
+            resource_api=E4K_API_V1A2,
+            since_seconds=since_seconds,
+        )
+        assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
+        assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
+        assert_list_services(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
 
     if OPCUA_API_V1 in expected_resources:
-        assert_list_custom_resources(mocked_client, OPCUA_APPLICATION)
-        assert_list_custom_resources(mocked_client, OPCUA_MODULE_TYPE)
-        assert_list_custom_resources(mocked_client, OPCUA_MODULE)
-        assert_list_custom_resources(mocked_client, OPCUA_ASSET_TYPE)
-        assert_list_custom_resources(mocked_client, OPCUA_ASSET)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_APPLICATION)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_MODULE_TYPE, file_prefix="module_type")
+        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_MODULE)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_ASSET_TYPE, file_prefix="asset_type")
+        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_ASSET)
 
-        assert_list_deployments(mocked_client, label_selector=OPCUA_ORCHESTRATOR_LABEL)
-        assert_list_pods(mocked_client, label_selector=OPCUA_SUPERVISOR_LABEL)
-        assert_list_pods(mocked_client, label_selector=OPCUA_GENERAL_LABEL)
+        assert_list_deployments(
+            mocked_client, mocked_zipfile, label_selector=OPCUA_ORCHESTRATOR_LABEL, resource_api=OPCUA_API_V1
+        )
+        assert_list_pods(
+            mocked_client,
+            mocked_zipfile,
+            mocked_list_pods,
+            label_selector=OPCUA_SUPERVISOR_LABEL,
+            resource_api=OPCUA_API_V1,
+            since_seconds=since_seconds,
+        )
+        assert_list_pods(
+            mocked_client,
+            mocked_zipfile,
+            mocked_list_pods,
+            label_selector=OPCUA_GENERAL_LABEL,
+            resource_api=OPCUA_API_V1,
+            since_seconds=since_seconds,
+        )
 
     if BLUEFIN_API_V1 in expected_resources:
-        assert_list_custom_resources(mocked_client, BLUEFIN_PIPELINE)
-        assert_list_custom_resources(mocked_client, BLUEFIN_INSTANCE)
-        assert_list_custom_resources(mocked_client, BLUEFIN_DATASET)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, BLUEFIN_PIPELINE)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, BLUEFIN_INSTANCE)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, BLUEFIN_DATASET)
 
-        assert_list_deployments(mocked_client, label_selector=BLUEFIN_APP_LABEL)
-        assert_list_deployments(mocked_client, label_selector=BLUEFIN_PART_OF_LABEL)
+        assert_list_deployments(
+            mocked_client, mocked_zipfile, label_selector=BLUEFIN_APP_LABEL, resource_api=BLUEFIN_API_V1
+        )
+        assert_list_deployments(
+            mocked_client, mocked_zipfile, label_selector=BLUEFIN_PART_OF_LABEL, resource_api=BLUEFIN_API_V1
+        )
 
-        assert_list_pods(mocked_client, label_selector=BLUEFIN_APP_LABEL)
-        assert_list_pods(mocked_client, label_selector=BLUEFIN_INSTANCE_LABEL)
-        assert_list_pods(mocked_client, label_selector=BLUEFIN_RELEASE_LABEL)
-        assert_list_pods(mocked_client, label_selector=BLUEFIN_ONEOFF_LABEL)
+        assert_list_pods(
+            mocked_client,
+            mocked_zipfile,
+            mocked_list_pods,
+            label_selector=BLUEFIN_APP_LABEL,
+            resource_api=BLUEFIN_API_V1,
+            since_seconds=since_seconds,
+        )
+        assert_list_pods(
+            mocked_client,
+            mocked_zipfile,
+            mocked_list_pods,
+            label_selector=BLUEFIN_INSTANCE_LABEL,
+            resource_api=BLUEFIN_API_V1,
+            since_seconds=since_seconds,
+        )
+        assert_list_pods(
+            mocked_client,
+            mocked_zipfile,
+            mocked_list_pods,
+            label_selector=BLUEFIN_RELEASE_LABEL,
+            resource_api=BLUEFIN_API_V1,
+            since_seconds=since_seconds,
+        )
+        assert_list_pods(
+            mocked_client,
+            mocked_zipfile,
+            mocked_list_pods,
+            label_selector=BLUEFIN_ONEOFF_LABEL,
+            resource_api=BLUEFIN_API_V1,
+            since_seconds=since_seconds,
+        )
 
-        assert_list_replica_sets(mocked_client, label_selector=BLUEFIN_APP_LABEL)
-        assert_list_replica_sets(mocked_client, label_selector=BLUEFIN_ONEOFF_LABEL)
+        assert_list_replica_sets(
+            mocked_client, mocked_zipfile, label_selector=BLUEFIN_APP_LABEL, resource_api=BLUEFIN_API_V1
+        )
+        assert_list_replica_sets(
+            mocked_client, mocked_zipfile, label_selector=BLUEFIN_ONEOFF_LABEL, resource_api=BLUEFIN_API_V1
+        )
 
-        assert_list_stateful_sets(mocked_client, label_selector=BLUEFIN_RELEASE_LABEL)
-        assert_list_stateful_sets(mocked_client, label_selector=BLUEFIN_INSTANCE_LABEL)
+        assert_list_stateful_sets(
+            mocked_client,
+            mocked_zipfile,
+            label_selector=BLUEFIN_RELEASE_LABEL,
+            resource_api=BLUEFIN_API_V1,
+        )
+        assert_list_stateful_sets(
+            mocked_client, mocked_zipfile, label_selector=BLUEFIN_INSTANCE_LABEL, resource_api=BLUEFIN_API_V1
+        )
 
         # @digimaun - TODO, use labels when available.
-        assert_list_services(mocked_client, label_selector=None)
+        assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=BLUEFIN_API_V1)
 
     # assert shared KPIs regardless of service
-    assert_shared_kpis(mocked_client)
-
-    if mocked_list_pods:
-        assert_pod_logs(mocked_client, expected_pods=mocked_list_pods, since_seconds=since_seconds)
+    assert_shared_kpis(mocked_client, mocked_zipfile)
 
 
-def assert_list_custom_resources(mocked_client, resource: EdgeResource):
+def assert_list_custom_resources(mocked_client, mocked_zipfile, resource: EdgeResource, file_prefix: str = None):
     mocked_client.CustomObjectsApi().list_cluster_custom_object.assert_any_call(
         group=resource.api.group, version=resource.api.version, plural=resource.plural
     )
+    if not file_prefix:
+        file_prefix = resource.resource
+
+    mocked_zipfile(file="").__enter__().writestr.assert_any_call(
+        zinfo_or_arcname=f"mock_namespace/{resource.api.moniker}/{file_prefix}.{resource.api.version}.mock_name.yaml",
+        data=f"kind: {resource.resource}\nmetadata:\n  name: mock_name\n  namespace: mock_namespace\n",
+    )
 
 
-def assert_list_deployments(mocked_client, label_selector: str):
+def assert_list_deployments(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
     mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
+    mocked_zipfile(file="").__enter__().writestr.assert_any_call(
+        zinfo_or_arcname=f"mock_namespace/{resource_api.moniker}/deployment.mock_deployment.yaml",
+        data="kind: Deployment\nmetadata:\n  name: mock_deployment\n  namespace: mock_namespace\n",
+    )
 
-def assert_list_pods(mocked_client, label_selector: str):
+
+def assert_list_pods(
+    mocked_client,
+    mocked_zipfile,
+    mocked_list_pods,
+    label_selector: str,
+    resource_api: EdgeResourceApi,
+    **kwargs,
+):
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
+    for namespace in mocked_list_pods:
+        for pod_name in mocked_list_pods[namespace]:
+            for container_name in mocked_list_pods[namespace][pod_name]:
+                mocked_zipfile(file="").__enter__().writestr.assert_any_call(
+                    zinfo_or_arcname=f"{namespace}/{resource_api.moniker}/pod.{pod_name}.yaml",
+                    data=f"kind: Pod\nmetadata:\n  name: {pod_name}\n  "
+                    f"namespace: {namespace}\nspec:\n  containers:\n  - name: {container_name}\n",
+                )
 
-def assert_list_replica_sets(mocked_client, label_selector: str):
+                if "since_seconds" in kwargs:
+                    for previous_logs in [False, True]:
+                        mocked_client.CoreV1Api().read_namespaced_pod_log.assert_any_call(
+                            name=pod_name,
+                            namespace=namespace,
+                            since_seconds=kwargs["since_seconds"],
+                            container=container_name,
+                            previous=previous_logs,
+                        )
+                        previous_segment = ".previous" if previous_logs else ""
+                        mocked_zipfile(file="").__enter__().writestr.assert_any_call(
+                            zinfo_or_arcname=f"{namespace}/{resource_api.moniker}/"
+                            f"pod.{pod_name}.{container_name}{previous_segment}.log",
+                            data=mocked_list_pods[namespace][pod_name][container_name],
+                        )
+
+
+def assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
     mocked_client.AppsV1Api().list_replica_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
+    mocked_zipfile(file="").__enter__().writestr.assert_any_call(
+        zinfo_or_arcname=f"mock_namespace/{resource_api.moniker}/replicaset.mock_replicaset.yaml",
+        data="kind: Replicaset\nmetadata:\n  name: mock_replicaset\n  namespace: mock_namespace\n",
+    )
 
-def assert_list_stateful_sets(mocked_client, label_selector: str):
+
+def assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
     mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
+    mocked_zipfile(file="").__enter__().writestr.assert_any_call(
+        zinfo_or_arcname=f"mock_namespace/{resource_api.moniker}/statefulset.mock_statefulset.yaml",
+        data="kind: Statefulset\nmetadata:\n  name: mock_statefulset\n  namespace: mock_namespace\n",
+    )
 
-def assert_list_services(mocked_client, label_selector: str):
+
+def assert_list_services(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
     mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
+    # @digimaun - more configurable mocks
+    mock_name = "mock_service"
+    if resource_api == BLUEFIN_API_V1:
+        mock_name = "bluefin-service"
 
-def assert_shared_kpis(mocked_client):
+    mocked_zipfile(file="").__enter__().writestr.assert_any_call(
+        zinfo_or_arcname=f"mock_namespace/{resource_api.moniker}/service.{mock_name}.yaml",
+        data=f"kind: Service\nmetadata:\n  name: {mock_name}\n  namespace: mock_namespace\n",
+    )
+
+
+def assert_shared_kpis(mocked_client, mocked_zipfile):
     mocked_client.CoreV1Api().list_node.assert_called_once()
 
-
-def assert_pod_logs(mocked_client, expected_pods: Dict[str, Dict[str, dict]], since_seconds: int):
-    for namespace in expected_pods:
-        for pod in expected_pods[namespace]:
-            for container in expected_pods[namespace][pod]:
-                mocked_client.CoreV1Api().read_namespaced_pod_log.assert_any_call(
-                    name=pod, namespace=namespace, since_seconds=since_seconds, container=container, previous=False
-                )
-                mocked_client.CoreV1Api().read_namespaced_pod_log.assert_any_call(
-                    name=pod, namespace=namespace, since_seconds=since_seconds, container=container, previous=True
-                )
+    mocked_zipfile(file="").__enter__().writestr.assert_any_call(
+        zinfo_or_arcname="nodes.yaml",
+        data="items:\n- metadata:\n    name: mock_node\n",
+    )
 
 
 def test_get_bundle_path(mocked_os_makedirs):
