@@ -8,6 +8,7 @@ Help definitions for Digital Twins commands.
 """
 
 from knack.help_files import helps
+from .common import E4K_API_V1A2, BLUEFIN_API_V1, OPCUA_API_V1
 
 
 def load_iotedge_help():
@@ -32,16 +33,24 @@ def load_iotedge_help():
 
     helps[
         "edge support create-bundle"
-    ] = """
+    ] = f"""
         type: command
         short-summary: Creates a standard support bundle zip archive for use in troubleshooting and diagnostics.
+        long-summary: |
+            [Supported edge service APIs]
+                {E4K_API_V1A2.as_str()}
+                {OPCUA_API_V1.as_str()}
+                {BLUEFIN_API_V1.as_str()}
     """
 
     helps[
         "edge check"
-    ] = """
+    ] = f"""
         type: command
         short-summary: Evaluate PAS edge service deployments for health, configuration and usability.
+        long-summary: |
+            [Supported edge service APIs]
+                {E4K_API_V1A2.as_str()}
     """
 
     helps[
@@ -53,9 +62,12 @@ def load_iotedge_help():
 
     helps[
         "edge e4k stats"
-    ] = """
+    ] = f"""
         type: command
         short-summary: Show dmqtt running statistics.
+        long-summary: |
+            [Supported edge service APIs]
+                {E4K_API_V1A2.as_str()}
     """
 
     helps[
