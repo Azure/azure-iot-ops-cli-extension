@@ -69,6 +69,10 @@ class EdgeServiceType(Enum):
     opcua = "opcua"
     bluefin = "bluefin"
 
+    @classmethod
+    def list(cls):
+        return [c.value for c in cls]
+
 
 class EdgeResourceApi(NamedTuple):
     group: str
