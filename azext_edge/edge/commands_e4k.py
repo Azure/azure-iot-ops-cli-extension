@@ -26,11 +26,11 @@ def stats(
     load_config_context(context_name=context_name)
     from .common import E4K_API_V1A2
     from .providers.base import get_cluster_custom_api
-    from .providers.stats import get_stats_pods
+    from .providers.stats import get_stats
 
     get_cluster_custom_api(resource_api=E4K_API_V1A2, raise_on_404=True)
 
-    return get_stats_pods(
+    return get_stats(
         namespace=namespace,
         diag_service_pod_prefix=diag_service_pod_prefix,
         raw_response_print=raw_response_print,

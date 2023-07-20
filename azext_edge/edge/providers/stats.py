@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 console = Console(highlight=True)
 
 
-def get_stats_pods(
+def get_stats(
     namespace: Optional[str] = None,
     diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
     pod_port: int = METRICS_SERVICE_API_PORT,
