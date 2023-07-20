@@ -6,7 +6,6 @@
 
 import random
 from os.path import abspath, expanduser, join
-from typing import Dict
 
 import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
@@ -81,6 +80,7 @@ def test_create_bundle(
     mocked_list_statefulsets,
     mocked_list_services,
     mocked_list_nodes,
+    mocked_get_stats,
 ):
     if not mocked_cluster_resources["param"] or E4K_API_V1A2 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
@@ -129,6 +129,7 @@ def test_create_bundle(
         assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
         assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
         assert_list_services(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
+        assert_e4k_stats(mocked_zipfile)
 
     if OPCUA_API_V1 in expected_resources:
         assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_APPLICATION)
@@ -313,6 +314,13 @@ def assert_list_services(mocked_client, mocked_zipfile, label_selector: str, res
     mocked_zipfile(file="").__enter__().writestr.assert_any_call(
         zinfo_or_arcname=f"mock_namespace/{resource_api.moniker}/service.{mock_name}.yaml",
         data=f"kind: Service\nmetadata:\n  name: {mock_name}\n  namespace: mock_namespace\n",
+    )
+
+
+def assert_e4k_stats(mocked_zipfile):
+    mocked_zipfile(file="").__enter__().writestr.assert_any_call(
+        zinfo_or_arcname="mock_namespace/e4k/diagnostic_metrics.txt",
+        data="metrics",
     )
 
 

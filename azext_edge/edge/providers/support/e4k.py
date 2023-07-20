@@ -18,7 +18,7 @@ from ...common import (
     E4K_MQTT_BRIDGE_TOPIC_MAP,
     E4K_MQTT_BRIDGE_CONNECTOR,
 )
-from ..base import client, get_namespaced_pods_by_prefix
+from ..base import client
 from .base import (
     process_crd,
     process_deployments,
@@ -27,6 +27,7 @@ from .base import (
     process_statefulset,
     process_v1_pods,
 )
+from ..stats import get_stats
 
 
 logger = get_logger(__name__)
@@ -90,16 +91,9 @@ support_crd_elements = {
 
 
 def fetch_diagnostic_metrics(namespace: str):
-    from ...common import AZEDGE_DIAGNOSTICS_SERVICE
-    from ..stats import get_stats_pods
-
-    target_pods = get_namespaced_pods_by_prefix(prefix=AZEDGE_DIAGNOSTICS_SERVICE, namespace=namespace)
-    if not target_pods:
-        logger.debug(f"Skipping metrics fetch for namespace {namespace}.")
-        return
-
+    # @digimaun - TODO dynamically determine pod:port
     try:
-        stats_raw = get_stats_pods(namespace=namespace, raw_response=True)
+        stats_raw = get_stats(namespace=namespace, raw_response=True)
         return {
             "data": stats_raw,
             "zinfo": f"{namespace}/e4k/diagnostic_metrics.txt",
@@ -111,10 +105,6 @@ def fetch_diagnostic_metrics(namespace: str):
 def fetch_broker_deployments():
     processed, namespaces = process_deployments(resource=E4K_BROKER, label_selector=E4K_LABEL, return_namespaces=True)
     for namespace in namespaces:
-        metrics: dict = fetch_diagnostic_metrics(namespace)
-        if metrics:
-            processed.append(metrics)
-
         metrics: dict = fetch_diagnostic_metrics(namespace)
         if metrics:
             processed.append(metrics)

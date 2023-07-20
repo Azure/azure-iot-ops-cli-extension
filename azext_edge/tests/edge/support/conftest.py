@@ -29,6 +29,13 @@ def mocked_zipfile(mocker):
     yield patched
 
 
+@pytest.fixture
+def mocked_get_stats(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.support.e4k.get_stats", autospec=True)
+    patched.return_value = "metrics"
+    yield patched
+
+
 @pytest.fixture(scope="function")
 def mocked_cluster_resources(request, mocker):
     from azure.cli.core.azclierror import ResourceNotFoundError
