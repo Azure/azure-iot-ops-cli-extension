@@ -23,6 +23,8 @@ from ..common import (
     AZEDGE_BACKEND_PREFIX,
     AZEDGE_AUTH_PREFIX,
     E4K_API_V1A2,
+    E4K_MQTT_BRIDGE_CONNECTOR,
+    E4K_MQTT_BRIDGE_TOPIC_MAP,
     CheckTaskStatus,
     ResourceState,
     EdgeResource,
@@ -90,7 +92,7 @@ def run_checks(
                 if "DiagnosticService":
                     result["postDeployment"].append(evaluate_broker_diagnostics(namespace=namespace, as_list=as_list))
                 if "MqttBridgeConnector" in api_resources:
-                    # result["postDeployment"].append(evaluate_bridge_connectors(namespace=namespace, as_list=as_list))
+                    result["postDeployment"].append(evaluate_mqtt_bridge_connectors(namespace=namespace, as_list=as_list))
                     pass
 
         if not as_list:
@@ -805,6 +807,271 @@ def evaluate_brokers(
         evaluate_pod_health(
             check_manager=check_manager, namespace=namespace, pod=AZEDGE_AUTH_PREFIX, display_padding=12
         )
+
+    return check_manager.as_dict(as_list)
+
+
+def evaluate_mqtt_bridge_connectors(
+    namespace: str,
+    as_list: bool = False,
+):
+    check_manager = CheckManager(
+        check_name="evalMQTTBridgeConnectors",
+        check_desc="Evaluate MQTT Bridge Connectors",
+        namespace=namespace,
+    )
+    bridge_target = "MQTT Bridge Connectors"
+
+    # display = MQTT Bridge Connectors
+    check_manager.add_target(target_name=bridge_target)
+    top_level_padding = (0, 0, 0, 8)
+    bridge_objects: dict = get_namespaced_custom_objects(
+        resource=E4K_MQTT_BRIDGE_CONNECTOR, namespace=namespace
+    )
+
+    # check topic maps
+    topic_map_objects: dict = get_namespaced_custom_objects(
+        resource=E4K_MQTT_BRIDGE_TOPIC_MAP, namespace=namespace
+    )
+    topic_maps_by_bridge = {}
+
+    # attempt to map each topic_map to it's referenced bridge
+    if topic_map_objects:
+        topic_map_list: List[dict] = topic_map_objects.get("items", [])
+        bridge_refs = set(
+            map(
+                lambda ref: ref.get("spec", {}).get("mqttBridgeConnectorRef"),
+                topic_map_list,
+            )
+        )
+        for bridge in bridge_refs:
+            topic_maps_by_bridge[bridge] = [
+                topic
+                for topic in topic_map_list
+                if topic.get("spec", {}).get("mqttBridgeConnectorRef") == bridge
+            ]
+
+    if bridge_objects:
+        bridge_resources: List[dict] = bridge_objects.get("items", [])
+        for bridge in bridge_resources:
+            # bridge resource
+            bridge_metadata = bridge.get("metadata", {})
+            bridge_name = bridge_metadata.get("name")
+            check_manager.add_display(
+                target_name=bridge_target,
+                display=Padding(
+                    f"\n- Bridge {{[bright_blue]{bridge_name}[/bright_blue]}}",
+                    top_level_padding,
+                ),
+            )
+            bridge_detail_padding = (0, 0, 0, 12)
+
+            # bridge resource status
+            bridge_status = bridge.get("status", "N/A")
+            bridge_status_level = bridge_status.get(
+                "configStatusLevel", "N/A"
+            )  # warn / error / success
+
+            bridge_status_desc = bridge_status.get(
+                "configStatusDescription"
+            )  # text of status
+            bridge_status_text = f" {bridge_status_desc}" if bridge_status_desc else ""
+            spec = bridge.get("spec")
+            if spec:
+                # bridge resource instance details
+                bridge_instances = spec.get("bridgeInstances")  # number of instances
+                client_prefix = spec.get("clientIdPrefix")  # client ID prefix (e4k)
+
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"Status {{{_decorate_resource_status(bridge_status_level)}}}.{bridge_status_text}",
+                        bridge_detail_padding,
+                    ),
+                )
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"Bridge instances: [bright_blue]{bridge_instances}[/bright_blue]",
+                        bridge_detail_padding,
+                    ),
+                )
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"Client Prefix: [bright_blue]{client_prefix}[/bright_blue]",
+                        bridge_detail_padding,
+                    ),
+                )
+
+                # todo - @c-ryan-k - create mqtt endpoint broker parser
+                # local_broker = analyze_broker("localBrokerConnection", "Local Broker")  # etc.
+
+                # local broker endpoint
+                local_broker = spec.get("localBrokerConnection")
+                local_broker_endpoint = local_broker.get(
+                    "endpoint"
+                )  # endpoint IP / FQDN
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
+                        bridge_detail_padding,
+                    ),
+                )
+
+                local_broker_auth = next(
+                    iter(local_broker.get("authentication"))
+                )  # auth type
+                local_broker_tls = local_broker.get("tls", {}).get(
+                    "tlsEnabled", False
+                )  # tls enabled?
+
+                broker_detail_padding = (0, 0, 0, 16)
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"Auth: [bright_blue]{local_broker_auth}[/bright_blue]",
+                        broker_detail_padding,
+                    ),
+                )
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"TLS enabled: [bright_blue]{local_broker_tls}[/bright_blue]",
+                        broker_detail_padding,
+                    ),
+                )
+
+                # remote broker endpoint
+                remote_broker = spec.get("remoteBrokerConnection")
+                remote_broker_endpoint = remote_broker.get(
+                    "endpoint"
+                )  # endpoint IP / FQDN
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"Remote Broker Connection: [bright_blue]{remote_broker_endpoint}[/bright_blue]",
+                        bridge_detail_padding,
+                    ),
+                )
+
+                remote_broker_auth = next(
+                    iter(remote_broker.get("authentication"))
+                )  # auth type
+                remote_broker_tls = remote_broker.get("tls", {}).get(
+                    "tlsEnabled", False
+                )  # tls enabled?
+
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"Auth: [bright_blue]{remote_broker_auth}[/bright_blue]",
+                        broker_detail_padding,
+                    ),
+                )
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"TLS enabled: [bright_blue]{remote_broker_tls}[/bright_blue]",
+                        broker_detail_padding,
+                    ),
+                )
+
+            # topic maps
+            bridge_topic_maps = topic_maps_by_bridge.get(bridge_name, [])
+            if not len(bridge_topic_maps):
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"[yellow]No topic maps reference this resource[/yellow]",
+                        bridge_detail_padding,
+                    ),
+                )
+
+            for topic_map in bridge_topic_maps:
+                topic_name = topic_map.get("metadata", {}).get("name")
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"- Topic Map {{{topic_name}}}", bridge_detail_padding
+                    ),
+                )
+                for route in topic_map.get("spec", {}).get("routes", []):
+                    topic_map_detail_padding = (0, 0, 0, 16)
+                    check_manager.add_display(
+                        target_name=bridge_target,
+                        display=Padding(
+                            f"- Route {{[blue]{route.get('name')}[/blue]}}",
+                            topic_map_detail_padding,
+                        ),
+                    )
+                    # add_route_entry(route)  # direction/name/qos/source/target
+                    route_padding = (0, 0, 0, 20)
+                    check_manager.add_display(
+                        target_name=bridge_target,
+                        display=Padding(
+                            f"Direction [blue]{route.get('direction')}[/blue], QOS [blue]{route.get('qos')}[/blue]",
+                            route_padding,
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=bridge_target,
+                        display=Padding(
+                            f"From: [blue]{route.get('source')}[/blue]", route_padding
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=bridge_target,
+                        display=Padding(
+                            f"To: [blue]{route.get('target')}[/blue]", route_padding
+                        ),
+                    )
+
+                # remove topic map by bridge reference
+                del topic_maps_by_bridge[bridge_name]
+
+        invalid_bridge_refs = topic_maps_by_bridge.keys()
+        for invalid_bridge_ref in invalid_bridge_refs:
+            invalid_ref_maps = topic_maps_by_bridge[invalid_bridge_ref]
+            for ref_map in invalid_ref_maps:
+                topic_name = ref_map.get("metadata", {}).get("name")
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"\n- Topic Map {{{topic_name}}}. [red]Invalid[/red] bridge reference {{[red]{invalid_bridge_ref}[/red]}}",
+                        top_level_padding,
+                    ),
+                )
+                for route in topic_map.get("spec", {}).get("routes", []):
+                    topic_map_detail_padding = (0, 0, 0, 12)
+                    route_padding = (0, 0, 0, 16)
+                    check_manager.add_display(
+                        target_name=bridge_target,
+                        display=Padding(
+                            f"- Route {{[blue]{route.get('name')}[/blue]}}",
+                            topic_map_detail_padding,
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=bridge_target,
+                        display=Padding(
+                            f"Direction [blue]{route.get('direction')}[/blue], QOS [blue]{route.get('qos')}[/blue]",
+                            route_padding,
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=bridge_target,
+                        display=Padding(
+                            f"From: [blue]{route.get('source')}[/blue]", route_padding
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=bridge_target,
+                        display=Padding(
+                            f"To: [blue]{route.get('target')}[/blue]", route_padding
+                        ),
+                    )
 
     return check_manager.as_dict(as_list)
 
