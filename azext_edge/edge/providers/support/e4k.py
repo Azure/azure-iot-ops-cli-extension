@@ -5,27 +5,19 @@
 # --------------------------------------------------------------------------------------------
 
 from functools import partial
+from typing import Iterable
+from ..edge_api import EdgeResourceApi, E4K_API_V1A2
 
 from knack.log import get_logger
 
-from ...common import (
-    E4K_BROKER,
-    E4K_BROKER_DIAGNOSTIC,
-    E4K_BROKER_LISTENER,
-    E4K_DIAGNOSTIC_SERVICE,
-    E4K_BROKER_AUTHENTICATION,
-    E4K_BROKER_AUTHORIZATION,
-    E4K_MQTT_BRIDGE_TOPIC_MAP,
-    E4K_MQTT_BRIDGE_CONNECTOR,
-)
 from ..base import client
 from .base import (
-    process_crd,
     process_deployments,
     process_replicasets,
     process_services,
     process_statefulset,
     process_v1_pods,
+    assemble_crd_work,
 )
 from ..stats import get_stats
 
@@ -46,50 +38,6 @@ E4K_LABEL = "app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,heal
 #     }
 
 
-def fetch_brokers():
-    return process_crd(E4K_BROKER)
-
-
-def fetch_broker_listeners():
-    return process_crd(E4K_BROKER_LISTENER)
-
-
-def fetch_broker_diagnostics():
-    return process_crd(E4K_BROKER_DIAGNOSTIC)
-
-
-def fetch_broker_authentications():
-    return process_crd(E4K_BROKER_AUTHENTICATION)
-
-
-def fetch_broker_authorizations():
-    return process_crd(E4K_BROKER_AUTHORIZATION)
-
-
-def fetch_diagnostic_services():
-    return process_crd(E4K_DIAGNOSTIC_SERVICE)
-
-
-def fetch_mqtt_bridge_topic_maps():
-    return process_crd(E4K_MQTT_BRIDGE_TOPIC_MAP)
-
-
-def fetch_mqtt_bridge_connectors():
-    return process_crd(E4K_MQTT_BRIDGE_CONNECTOR)
-
-
-support_crd_elements = {
-    "brokers": fetch_brokers,
-    "listeners": fetch_broker_listeners,
-    "brokerdiagnostics": fetch_broker_diagnostics,
-    "authN": fetch_broker_authentications,
-    "authZ": fetch_broker_authorizations,
-    "diagnosticservices": fetch_diagnostic_services,
-    "bridgetopicmaps": fetch_mqtt_bridge_topic_maps,
-    "bridgeconnectors": fetch_mqtt_bridge_connectors,
-}
-
-
 def fetch_diagnostic_metrics(namespace: str):
     # @digimaun - TODO dynamically determine pod:port
     try:
@@ -103,7 +51,9 @@ def fetch_diagnostic_metrics(namespace: str):
 
 
 def fetch_broker_deployments():
-    processed, namespaces = process_deployments(resource=E4K_BROKER, label_selector=E4K_LABEL, return_namespaces=True)
+    processed, namespaces = process_deployments(
+        resource_api=E4K_API_V1A2, label_selector=E4K_LABEL, return_namespaces=True
+    )
     for namespace in namespaces:
         metrics: dict = fetch_diagnostic_metrics(namespace)
         if metrics:
@@ -125,28 +75,28 @@ def fetch_broker_deployments():
 
 def fetch_statefulsets():
     return process_statefulset(
-        resource=E4K_BROKER,
+        resource_api=E4K_API_V1A2,
         label_selector=E4K_LABEL,
     )
 
 
 def fetch_services():
     return process_services(
-        resource=E4K_BROKER,
+        resource_api=E4K_API_V1A2,
         label_selector=E4K_LABEL,
     )
 
 
 def fetch_replicasets():
     return process_replicasets(
-        resource=E4K_BROKER,
+        resource_api=E4K_API_V1A2,
         label_selector=E4K_LABEL,
     )
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     return process_v1_pods(
-        resource=E4K_BROKER, label_selector=E4K_LABEL, since_seconds=since_seconds, capture_previous_logs=True
+        resource_api=E4K_API_V1A2, label_selector=E4K_LABEL, since_seconds=since_seconds, capture_previous_logs=True
     )
 
 
@@ -158,13 +108,11 @@ support_runtime_elements = {
 }
 
 
-def prepare_bundle(log_age_seconds: int = 60 * 60 * 24) -> dict:
+def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
     e4k_to_run = {}
+    e4k_to_run.update(assemble_crd_work(apis))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
-
-    e4k_to_run = {}
-    e4k_to_run.update(support_crd_elements)
     e4k_to_run.update(support_runtime_elements)
 
     return e4k_to_run

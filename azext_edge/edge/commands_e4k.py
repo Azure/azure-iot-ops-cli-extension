@@ -24,11 +24,9 @@ def stats(
     watch: Optional[bool] = None,
 ):
     load_config_context(context_name=context_name)
-    from .common import E4K_API_V1A2
-    from .providers.base import get_cluster_custom_api
+    from .providers.edge_api import E4K_ACTIVE_API
     from .providers.stats import get_stats
-
-    get_cluster_custom_api(resource_api=E4K_API_V1A2, raise_on_404=True)
+    E4K_ACTIVE_API.is_deployed(raise_on_404=True)
 
     return get_stats(
         namespace=namespace,

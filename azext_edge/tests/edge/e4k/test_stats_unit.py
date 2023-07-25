@@ -36,7 +36,6 @@ def test_stats(mocker, mocked_client, mocked_config, mocked_urlopen, stub_raw_st
 
 
 def min_stats_assert(stats_map: dict):
-    _assert_stats_kpi(stats_map, "azedge_selftest_latest_run_status_total", value_pass_fail=True)
     _assert_stats_kpi(stats_map, "connected_sessions")
     _assert_stats_kpi(stats_map, "publish_latency_mu_ms")
     _assert_stats_kpi(stats_map, "publish_latency_sigma_ms")

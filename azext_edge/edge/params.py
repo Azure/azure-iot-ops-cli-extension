@@ -10,7 +10,7 @@ CLI parameter definitions.
 
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag
-from .common import EdgeServiceType
+from .common import SupportForEdgeServiceType
 
 
 def load_iotedge_arguments(self, _):
@@ -37,7 +37,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "edge_service",
             options_list=["--edge-service", "-e"],
-            choices=CaseInsensitiveList(EdgeServiceType.list()),
+            choices=CaseInsensitiveList(SupportForEdgeServiceType.list()),
             help="The edge service the support bundle creation should apply to. "
             "If auto is selected, the operation will detect which edge services are available.",
         )

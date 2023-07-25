@@ -7,27 +7,28 @@
 from os import makedirs
 from os.path import abspath, expanduser, isdir
 from pathlib import PurePath
-from typing import List, Optional
+from typing import List, Dict, Optional, Iterable
+from functools import partial
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Container, V1ObjectMeta
 
-from ...common import EdgeResource
+from ..edge_api import EdgeResource, EdgeResourceApi
 from ..base import client
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
 
 
-def process_crd(resource: EdgeResource, file_prefix: Optional[str] = None, include_namespaces: bool = False):
+def process_crd(resource: EdgeResource, file_prefix: Optional[str] = None):
     result: dict = client.CustomObjectsApi().list_cluster_custom_object(
         group=resource.api.group,
         version=resource.api.version,
         plural=resource.plural,
     )
     if not file_prefix:
-        file_prefix = resource.resource
+        file_prefix = resource.kind
 
     processed = []
     namespaces = []
@@ -39,13 +40,11 @@ def process_crd(resource: EdgeResource, file_prefix: Optional[str] = None, inclu
             {"data": r, "zinfo": f"{namespace}/{resource.api.moniker}/{file_prefix}.{resource.api.version}.{name}.yaml"}
         )
 
-    if include_namespaces:
-        processed, namespaces
     return processed
 
 
 def process_v1_pods(
-    resource: EdgeResource,
+    resource_api: EdgeResourceApi,
     label_selector=None,
     since_seconds: int = 60 * 60 * 24,
     include_metrics=False,
@@ -74,7 +73,7 @@ def process_v1_pods(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=p),
-                "zinfo": f"{pod_namespace}/{resource.api.moniker}/pod.{pod_name}.yaml",
+                "zinfo": f"{pod_namespace}/{resource_api.moniker}/pod.{pod_name}.yaml",
             }
         )
         pod_spec: V1PodSpec = p.spec
@@ -99,7 +98,7 @@ def process_v1_pods(
                         {
                             "data": log,
                             "zinfo": (
-                                f"{pod_namespace}/{resource.api.moniker}"
+                                f"{pod_namespace}/{resource_api.moniker}"
                                 f"/pod.{pod_name}.{container.name}.{zinfo_previous_segment}log"
                             ),
                         }
@@ -117,7 +116,7 @@ def process_v1_pods(
                     processed.append(
                         {
                             "data": metric,
-                            "zinfo": f"{pod_namespace}/{resource.api.moniker}/pod.{pod_name}.metric.yaml",
+                            "zinfo": f"{pod_namespace}/{resource_api.moniker}/pod.{pod_name}.metric.yaml",
                         }
                     )
             except ApiException as e:
@@ -127,7 +126,7 @@ def process_v1_pods(
 
 
 def process_deployments(
-    resource: EdgeResource,
+    resource_api: EdgeResourceApi,
     label_selector: str = None,
     return_namespaces: bool = False,
 ):
@@ -152,7 +151,7 @@ def process_deployments(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=d),
-                "zinfo": f"{deployment_namespace}/{resource.api.moniker}/deployment.{deployment_name}.yaml",
+                "zinfo": f"{deployment_namespace}/{resource_api.moniker}/deployment.{deployment_name}.yaml",
             }
         )
         if deployment_namespace not in namespace_pods_work:
@@ -165,7 +164,7 @@ def process_deployments(
 
 
 def process_statefulset(
-    resource: EdgeResource,
+    resource_api: EdgeResourceApi,
     label_selector: str,
 ):
     from kubernetes.client.models import V1StatefulSet, V1StatefulSetList
@@ -188,14 +187,14 @@ def process_statefulset(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=s),
-                "zinfo": f"{statefulset_namespace}/{resource.api.moniker}/statefulset.{statefulset_name}.yaml",
+                "zinfo": f"{statefulset_namespace}/{resource_api.moniker}/statefulset.{statefulset_name}.yaml",
             }
         )
 
     return processed
 
 
-def process_services(resource: EdgeResource, label_selector: str, prefix_names: List[str] = None):
+def process_services(resource_api: EdgeResourceApi, label_selector: str, prefix_names: List[str] = None):
     from kubernetes.client.models import V1Service, V1ServiceList
 
     v1_api = client.CoreV1Api()
@@ -222,7 +221,7 @@ def process_services(resource: EdgeResource, label_selector: str, prefix_names: 
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=s),
-                "zinfo": f"{service_namespace}/{resource.api.moniker}/service.{service_name}.yaml",
+                "zinfo": f"{service_namespace}/{resource_api.moniker}/service.{service_name}.yaml",
             }
         )
 
@@ -230,7 +229,7 @@ def process_services(resource: EdgeResource, label_selector: str, prefix_names: 
 
 
 def process_replicasets(
-    resource: EdgeResource,
+    resource_api: EdgeResourceApi,
     label_selector: str,
 ):
     from kubernetes.client.models import V1ReplicaSet, V1ReplicaSetList
@@ -253,7 +252,7 @@ def process_replicasets(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=r),
-                "zinfo": f"{statefulset_namespace}/{resource.api.moniker}/replicaset.{statefulset_name}.yaml",
+                "zinfo": f"{statefulset_namespace}/{resource_api.moniker}/replicaset.{statefulset_name}.yaml",
             }
         )
 
@@ -265,6 +264,23 @@ def process_nodes():
         "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_node()),
         "zinfo": "nodes.yaml",
     }
+
+
+def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional[Dict[str, str]] = None):
+    if not file_prefix_map:
+        file_prefix_map = {}
+
+    result = {}
+    for api in apis:
+        for kind in api.kinds:
+            resource = api.get_resource(kind)
+            file_prefix = file_prefix_map.get(kind)
+            if resource:
+                result[f"{resource.api.moniker} {resource.api.version} {resource.plural}"] = partial(
+                    process_crd, resource=resource, file_prefix=file_prefix
+                )
+
+    return result
 
 
 def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "pas") -> PurePath:

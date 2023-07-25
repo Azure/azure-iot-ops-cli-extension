@@ -41,7 +41,7 @@ def mocked_cluster_resources(request, mocker):
     from azure.cli.core.azclierror import ResourceNotFoundError
     from kubernetes.client.models import V1APIResource, V1APIResourceList
 
-    from ....edge.common import EdgeResourceApi, E4K_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1
+    from azext_edge.edge.providers.edge_api import EdgeResourceApi, E4K_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1
 
     requested_resource_apis = getattr(request, "param", {})
     resource_map = {}
@@ -83,9 +83,11 @@ def mocked_cluster_resources(request, mocker):
             return resource_map[kwargs["resource_api"]]
 
         if "raise_on_404" in kwargs and kwargs["raise_on_404"]:
-            raise ResourceNotFoundError(f"{kwargs['resource_api'].as_str()} resources do not exist on the cluster.")
+            raise ResourceNotFoundError(
+                f"{kwargs['resource_api'].as_str()} resource API is not detected on the cluster."
+            )
 
-    patched = mocker.patch("azext_edge.edge.providers.support_bundle.get_cluster_custom_api", autospec=True)
+    patched = mocker.patch("azext_edge.edge.providers.base.get_cluster_custom_api", autospec=True)
     _handle_call = partial(_handle_resource_call, context=resource_map)
     patched.side_effect = _handle_call
 
