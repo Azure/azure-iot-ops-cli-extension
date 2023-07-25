@@ -821,23 +821,27 @@ def evaluate_mqtt_bridge_connectors(
         namespace=namespace,
     )
     bridge_target = "MQTT Bridge Connectors"
-
-    # display = MQTT Bridge Connectors
+    # target = MQTT Bridge Connectors
     check_manager.add_target(target_name=bridge_target)
+
+    # This check is purely informational, so mark as skipped?
+    check_manager.set_target_status(target_name=bridge_target, status=CheckTaskStatus.skipped.value)
+
     top_level_padding = (0, 0, 0, 8)
     bridge_objects: dict = get_namespaced_custom_objects(
         resource=E4K_MQTT_BRIDGE_CONNECTOR, namespace=namespace
     )
+    bridge_resources: List[dict] = bridge_objects.get("items", [])
 
     # check topic maps
     topic_map_objects: dict = get_namespaced_custom_objects(
         resource=E4K_MQTT_BRIDGE_TOPIC_MAP, namespace=namespace
     )
+    topic_map_list: List[dict] = topic_map_objects.get("items", [])
     topic_maps_by_bridge = {}
 
     # attempt to map each topic_map to it's referenced bridge
-    if topic_map_objects:
-        topic_map_list: List[dict] = topic_map_objects.get("items", [])
+    if len(topic_map_list):
         bridge_refs = set(
             map(
                 lambda ref: ref.get("spec", {}).get("mqttBridgeConnectorRef"),
@@ -851,8 +855,7 @@ def evaluate_mqtt_bridge_connectors(
                 if topic.get("spec", {}).get("mqttBridgeConnectorRef") == bridge
             ]
 
-    if bridge_objects:
-        bridge_resources: List[dict] = bridge_objects.get("items", [])
+    if len(bridge_resources):
         for bridge in bridge_resources:
             # bridge resource
             bridge_metadata = bridge.get("metadata", {})
@@ -984,11 +987,11 @@ def evaluate_mqtt_bridge_connectors(
                 check_manager.add_display(
                     target_name=bridge_target,
                     display=Padding(
-                        f"[yellow]No topic maps reference this resource[/yellow]",
+                        "[yellow]No topic maps reference this resource[/yellow]",
                         bridge_detail_padding,
                     ),
                 )
-
+            # topic maps that reference this bridge
             for topic_map in bridge_topic_maps:
                 topic_name = topic_map.get("metadata", {}).get("name")
                 check_manager.add_display(
@@ -1031,6 +1034,11 @@ def evaluate_mqtt_bridge_connectors(
                 # remove topic map by bridge reference
                 del topic_maps_by_bridge[bridge_name]
 
+    else:
+        check_manager.add_display(target_name=bridge_target, display=Padding("- No MQTT bridge connector resources found.", top_level_padding))
+
+    # if there are any topic maps that haven't been mapped to a previous bridge
+    if topic_maps_by_bridge:
         invalid_bridge_refs = topic_maps_by_bridge.keys()
         for invalid_bridge_ref in invalid_bridge_refs:
             invalid_ref_maps = topic_maps_by_bridge[invalid_bridge_ref]
@@ -1072,6 +1080,10 @@ def evaluate_mqtt_bridge_connectors(
                             f"To: [blue]{route.get('target')}[/blue]", route_padding
                         ),
                     )
+
+    # no topic maps at all, but bridges
+    elif len(bridge_resources) and not len(topic_map_list):
+        check_manager.add_display(target_name=bridge_target, display=Padding("[yellow]- No topic map resources found.[/yellow]", top_level_padding))
 
     return check_manager.as_dict(as_list)
 
