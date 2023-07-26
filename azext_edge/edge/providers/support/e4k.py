@@ -25,7 +25,7 @@ from ..stats import get_stats
 logger = get_logger(__name__)
 generic = client.ApiClient()
 
-E4K_LABEL = "app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager)"
+E4K_LABEL = "app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager,azedge-mqttbridge)"
 
 
 # TODO: @digimaun
