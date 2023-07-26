@@ -53,7 +53,7 @@ class EdgeApiManager:
         apis_str = ""
         sep = "\n" if len(self.api_group_map) > 1 else ""
         for group in self.api_group_map:
-            apis_str += f" {group}/[{','.join(self.api_group_map[group])}]{sep}"
+            apis_str += f"{group}/[{','.join(self.api_group_map[group])}]{sep}"
         return apis_str
 
     def get_deployed(self, raise_on_404: bool = False) -> Iterable[EdgeResourceApi]:
