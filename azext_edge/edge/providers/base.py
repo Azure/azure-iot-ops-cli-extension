@@ -15,7 +15,7 @@ from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList, V1Service
 
-from ..common import EdgeResourceApi, EdgeResource
+from .edge_api import EdgeResourceApi, EdgeResource
 
 DEFAULT_NAMESPACE: str = "default"
 
@@ -88,9 +88,7 @@ def get_namespaced_pods_by_prefix(
 _namespaced_object_cache: dict = {}
 
 
-def get_namespaced_custom_objects(
-    resource: EdgeResource, namespace: str
-) -> Union[List[dict], None]:
+def get_namespaced_custom_objects(resource: EdgeResource, namespace: str) -> Union[List[dict], None]:
     target_resource_key = (resource, resource.plural)
     if target_resource_key in _namespaced_object_cache:
         return _namespaced_object_cache[target_resource_key]
@@ -109,22 +107,24 @@ def get_namespaced_custom_objects(
         return _namespaced_object_cache[target_resource_key]
 
 
-_cluster_resources_cache: dict = {}
+_cluster_resource_api_cache: dict = {}
 
 
-def get_cluster_custom_api(
-    resource_api: EdgeResourceApi, raise_on_404: bool = False
-) -> Union[V1APIResourceList, None]:
-    if resource_api in _cluster_resources_cache:
-        return _cluster_resources_cache[resource_api]
+def get_cluster_custom_api(resource_api: EdgeResourceApi, raise_on_404: bool = False) -> Union[V1APIResourceList, None]:
+    if resource_api in _cluster_resource_api_cache:
+        return _cluster_resource_api_cache[resource_api]
 
     try:
-        return client.CustomObjectsApi().get_api_resources(group=resource_api.group, version=resource_api.version)
+        custom_client = client.CustomObjectsApi()
+        _cluster_resource_api_cache[resource_api] = custom_client.get_api_resources(
+            group=resource_api.group, version=resource_api.version
+        )
     except ApiException as ae:
         logger.debug(msg=str(ae))
         if int(ae.status) == 404 and raise_on_404:
-            raise ResourceNotFoundError(
-                f"{resource_api.as_str()} resources do not exist on the cluster.")
+            raise ResourceNotFoundError(f"{resource_api.as_str()} resource API is not detected on the cluster.")
+    else:
+        return _cluster_resource_api_cache[resource_api]
 
 
 class PodRequest:

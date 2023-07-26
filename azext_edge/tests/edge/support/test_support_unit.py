@@ -11,29 +11,17 @@ import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
 from azext_edge.edge.commands_edge import support_bundle
-from azext_edge.edge.common import (
-    BLUEFIN_API_V1,
-    BLUEFIN_DATASET,
-    BLUEFIN_INSTANCE,
-    BLUEFIN_PIPELINE,
-    E4K_API_V1A2,
-    E4K_BROKER,
-    E4K_BROKER_AUTHENTICATION,
-    E4K_BROKER_AUTHORIZATION,
-    E4K_BROKER_DIAGNOSTIC,
-    E4K_BROKER_LISTENER,
-    E4K_DIAGNOSTIC_SERVICE,
-    E4K_MQTT_BRIDGE_CONNECTOR,
-    E4K_MQTT_BRIDGE_TOPIC_MAP,
-    OPCUA_API_V1,
-    OPCUA_APPLICATION,
-    OPCUA_ASSET,
-    OPCUA_ASSET_TYPE,
-    OPCUA_MODULE,
-    OPCUA_MODULE_TYPE,
+from azext_edge.edge.providers.edge_api import (
     EdgeResource,
     EdgeResourceApi,
+    E4kResourceKinds,
+    E4K_API_V1A2,
+    BluefinResourceKinds,
+    BLUEFIN_API_V1,
+    OpcuaResourceKinds,
+    OPCUA_API_V1,
 )
+
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.bluefin import (
     BLUEFIN_APP_LABEL,
@@ -107,16 +95,30 @@ def test_create_bundle(
 
     expected_resources = mocked_cluster_resources["param"]
     if E4K_API_V1A2 in expected_resources:
-        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_BROKER)
+        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_API_V1A2.get_resource(E4kResourceKinds.BROKER))
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, E4K_API_V1A2.get_resource(E4kResourceKinds.BROKER_LISTENER)
+        )
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, E4K_API_V1A2.get_resource(E4kResourceKinds.BROKER_DIAGNOSTIC)
+        )
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, E4K_API_V1A2.get_resource(E4kResourceKinds.DIAGNOSTIC_SERVICE)
+        )
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, E4K_API_V1A2.get_resource(E4kResourceKinds.BROKER_AUTHENTICATION)
+        )
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, E4K_API_V1A2.get_resource(E4kResourceKinds.BROKER_AUTHORIZATION)
+        )
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, E4K_API_V1A2.get_resource(E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP)
+        )
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, E4K_API_V1A2.get_resource(E4kResourceKinds.MQTT_BRIDGE_CONNECTOR)
+        )
 
-        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_BROKER_LISTENER)
-        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_BROKER_DIAGNOSTIC)
-        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_DIAGNOSTIC_SERVICE)
-        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_BROKER_AUTHENTICATION)
-        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_BROKER_AUTHORIZATION)
-        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_MQTT_BRIDGE_TOPIC_MAP)
-        assert_list_custom_resources(mocked_client, mocked_zipfile, E4K_MQTT_BRIDGE_CONNECTOR)
-
+        # Assert runtime resources
         assert_list_deployments(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
         assert_list_pods(
             mocked_client,
@@ -132,12 +134,27 @@ def test_create_bundle(
         assert_e4k_stats(mocked_zipfile)
 
     if OPCUA_API_V1 in expected_resources:
-        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_APPLICATION)
-        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_MODULE_TYPE, file_prefix="module_type")
-        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_MODULE)
-        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_ASSET_TYPE, file_prefix="asset_type")
-        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_ASSET)
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, OPCUA_API_V1.get_resource(OpcuaResourceKinds.APPLICATION)
+        )
+        assert_list_custom_resources(
+            mocked_client,
+            mocked_zipfile,
+            OPCUA_API_V1.get_resource(OpcuaResourceKinds.MODULE_TYPE),
+            file_prefix="module_type",
+        )
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, OPCUA_API_V1.get_resource(OpcuaResourceKinds.MODULE)
+        )
+        assert_list_custom_resources(
+            mocked_client,
+            mocked_zipfile,
+            OPCUA_API_V1.get_resource(OpcuaResourceKinds.ASSET_TYPE),
+            file_prefix="asset_type",
+        )
+        assert_list_custom_resources(mocked_client, mocked_zipfile, OPCUA_API_V1.get_resource(OpcuaResourceKinds.ASSET))
 
+        # Assert runtime resources
         assert_list_deployments(
             mocked_client, mocked_zipfile, label_selector=OPCUA_ORCHESTRATOR_LABEL, resource_api=OPCUA_API_V1
         )
@@ -159,10 +176,17 @@ def test_create_bundle(
         )
 
     if BLUEFIN_API_V1 in expected_resources:
-        assert_list_custom_resources(mocked_client, mocked_zipfile, BLUEFIN_PIPELINE)
-        assert_list_custom_resources(mocked_client, mocked_zipfile, BLUEFIN_INSTANCE)
-        assert_list_custom_resources(mocked_client, mocked_zipfile, BLUEFIN_DATASET)
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, BLUEFIN_API_V1.get_resource(BluefinResourceKinds.PIPELINE)
+        )
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, BLUEFIN_API_V1.get_resource(BluefinResourceKinds.INSTANCE)
+        )
+        assert_list_custom_resources(
+            mocked_client, mocked_zipfile, BLUEFIN_API_V1.get_resource(BluefinResourceKinds.DATASET)
+        )
 
+        # Assert runtime resources
         assert_list_deployments(
             mocked_client, mocked_zipfile, label_selector=BLUEFIN_APP_LABEL, resource_api=BLUEFIN_API_V1
         )
@@ -232,11 +256,11 @@ def assert_list_custom_resources(mocked_client, mocked_zipfile, resource: EdgeRe
         group=resource.api.group, version=resource.api.version, plural=resource.plural
     )
     if not file_prefix:
-        file_prefix = resource.resource
+        file_prefix = resource.kind
 
     mocked_zipfile(file="").__enter__().writestr.assert_any_call(
         zinfo_or_arcname=f"mock_namespace/{resource.api.moniker}/{file_prefix}.{resource.api.version}.mock_name.yaml",
-        data=f"kind: {resource.resource}\nmetadata:\n  name: mock_name\n  namespace: mock_namespace\n",
+        data=f"kind: {resource.kind}\nmetadata:\n  name: mock_name\n  namespace: mock_namespace\n",
     )
 
 
