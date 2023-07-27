@@ -69,6 +69,7 @@ def test_create_bundle(
     mocked_list_services,
     mocked_list_nodes,
     mocked_get_stats,
+    mocked_root_logger,
 ):
     if not mocked_cluster_resources["param"] or E4K_API_V1A2 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
@@ -84,6 +85,7 @@ def test_create_bundle(
 
     if mocked_cluster_resources["param"] == {}:
         auto_result_no_resources = support_bundle(None, bundle_dir=a_bundle_dir)
+        mocked_root_logger.warning.assert_called_once_with("No known edge services discovered on cluster.")
         assert auto_result_no_resources is None
         return
 

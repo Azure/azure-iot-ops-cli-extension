@@ -12,7 +12,14 @@ from knack.log import get_logger
 from rich.console import Console, NewLine
 
 from ..common import SupportForEdgeServiceType
-from ..providers.edge_api import BLUEFIN_API_V1, E4K_API_V1A2, E4K_API_V1A3, OPCUA_API_V1, EdgeApiManager
+from ..providers.edge_api import (
+    BLUEFIN_API_V1,
+    E4K_API_V1A2,
+    E4K_API_V1A3,
+    OPCUA_API_V1,
+    SYMPHONY_API_V1,
+    EdgeApiManager,
+)
 
 logger = get_logger(__name__)
 
@@ -21,6 +28,7 @@ console = Console()
 COMPAT_E4K_APIS = EdgeApiManager(ResourceApis=[E4K_API_V1A2, E4K_API_V1A3])
 COMPAT_OPCUA_APIS = EdgeApiManager(ResourceApis=[OPCUA_API_V1])
 COMPAT_BLUEFIN_APIS = EdgeApiManager(ResourceApis=[BLUEFIN_API_V1])
+COMPAT_SYMPHONY_APIS = EdgeApiManager(ResourceApis=[SYMPHONY_API_V1])
 
 
 def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[int] = None):
@@ -31,9 +39,10 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from .support.bluefin import prepare_bundle as prepare_bluefin_bundle
     from .support.e4k import prepare_bundle as prepare_e4k_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
+    from .support.symphony import prepare_bundle as prepare_symphony_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
 
-    pending_work = {"e4k": {}, "opcua": {}, "bluefin": {}, "common": {}}
+    pending_work = {"e4k": {}, "opcua": {}, "bluefin": {}, "symphony": {}, "common": {}}
 
     raise_on_404 = not (edge_service == SupportForEdgeServiceType.auto.value)
     if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.e4k.value]:
@@ -48,20 +57,23 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
         bluefin_apis = COMPAT_BLUEFIN_APIS.get_deployed(raise_on_404)
         if bluefin_apis:
             pending_work["bluefin"].update(prepare_bluefin_bundle(bluefin_apis, log_age_seconds))
+    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.symphony.value]:
+        symphony_apis = COMPAT_SYMPHONY_APIS.get_deployed(raise_on_404)
+        if symphony_apis:
+            pending_work["symphony"].update(prepare_symphony_bundle(bluefin_apis, log_age_seconds))
 
-    if not any([pending_work["e4k"], pending_work["opcua"], pending_work["bluefin"]]):
+    # @digimaun - consider combining this work check with work count.
+    if not any([pending_work[k] for k, _ in pending_work.items()]):
         logger.warning("No known edge services discovered on cluster.")
         return
 
     pending_work["common"].update(prepare_shared_bundle())
-    total_work_count = (
-        len(pending_work["opcua"])
-        + len(pending_work["e4k"])
-        + len(pending_work["bluefin"])
-        + len(pending_work["common"])
-    )
+    total_work_count = 0
+    for service in pending_work:
+        total_work_count = total_work_count + len(service)
 
-    bundle = {"e4k": {}, "opcua": {}, "bluefin": {}, "common": {}}
+    bundle = {service: {} for service, _ in pending_work.items()}
+
     grid = Table.grid(expand=False)
     with Live(grid, console=console, transient=True) as live:
         uber_progress = Progress()
@@ -94,28 +106,13 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
                     uber_progress.update(namespace_task, advance=1)
                     uber_progress.update(uber_task, advance=1)
 
-        if pending_work["e4k"]:
-            visually_process(
-                description="Processing E4K resources",
-                support_segment=pending_work["e4k"],
-                edge_service="e4k",
-            )
-        if pending_work["opcua"]:
-            visually_process(
-                description="Processing OPC-UA resources",
-                support_segment=pending_work["opcua"],
-                edge_service="opcua",
-            )
-        if pending_work["bluefin"]:
-            visually_process(
-                description="Processing Bluefin resources",
-                support_segment=pending_work["bluefin"],
-                edge_service="bluefin",
-            )
-        if pending_work["common"]:
-            visually_process(
-                description="Processing common resources", support_segment=pending_work["common"], edge_service="common"
-            )
+        for service in pending_work:
+            if pending_work[service]:
+                visually_process(
+                    description=f"Processing {service} resources",
+                    support_segment=pending_work[service],
+                    edge_service=service,
+                )
 
     write_zip(file_path=bundle_path, bundle=bundle)
     return {"bundlePath": bundle_path}
@@ -124,13 +121,12 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
 def write_zip(bundle: dict, file_path: str):
     with ZipFile(file=file_path, mode="w") as myzip:
         todo: List[dict] = []
-        for edge_service in ["e4k", "opcua", "bluefin", "common"]:
-            if edge_service in bundle:
-                for element in bundle[edge_service]:
-                    if isinstance(bundle[edge_service][element], list):
-                        todo.extend(bundle[edge_service][element])
-                    else:
-                        todo.append(bundle[edge_service][element])
+        for edge_service in bundle:
+            for element in bundle[edge_service]:
+                if isinstance(bundle[edge_service][element], list):
+                    todo.extend(bundle[edge_service][element])
+                else:
+                    todo.append(bundle[edge_service][element])
 
         added_path = {}
         for t in todo:
