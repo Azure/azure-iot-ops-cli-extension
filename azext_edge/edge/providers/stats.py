@@ -140,12 +140,6 @@ def _clean_stats(raw_stats: str) -> dict:
 
     if result:
         normalized = {}
-        if "azedge_selftest_latest_run_status_total" in result:
-            normalized["azedge_selftest_latest_run_status_total"] = {
-                "displayName": "Self Test",
-                "description": "Result of the last self test.",
-                "value": _get_pass_fail(result["azedge_selftest_latest_run_status_total"]),
-            }
         if "publish_route_replication_correctness" in result:
             normalized["publish_route_replication_correctness"] = {
                 "displayName": "Replication Correctness",

@@ -5,13 +5,13 @@
 # --------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import List
+from typing import Iterable, List
 
 from knack.log import get_logger
 
-from ...common import BLUEFIN_DATASET, BLUEFIN_INSTANCE, BLUEFIN_PIPELINE
+from ..edge_api import BLUEFIN_API_V1, EdgeResourceApi
 from .base import (
-    process_crd,
+    assemble_crd_work,
     process_deployments,
     process_replicasets,
     process_services,
@@ -32,28 +32,16 @@ BLUEFIN_PART_OF_LABEL = "app.kubernetes.io/part-of in (bluefin-operator)"
 BLUEFIN_ONEOFF_LABEL = "control-plane in (controller-manager)"
 
 
-def fetch_datasets():
-    return process_crd(BLUEFIN_DATASET)
-
-
-def fetch_instances():
-    return process_crd(BLUEFIN_INSTANCE)
-
-
-def fetch_pipelines():
-    return process_crd(BLUEFIN_PIPELINE)
-
-
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     bluefin_pods = process_v1_pods(
-        resource=BLUEFIN_INSTANCE,
+        resource_api=BLUEFIN_API_V1,
         label_selector=BLUEFIN_APP_LABEL,
         since_seconds=since_seconds,
         capture_previous_logs=True,
     )
     bluefin_pods.extend(
         process_v1_pods(
-            resource=BLUEFIN_INSTANCE,
+            resource_api=BLUEFIN_API_V1,
             label_selector=BLUEFIN_INSTANCE_LABEL,
             since_seconds=since_seconds,
             capture_previous_logs=True,
@@ -61,7 +49,7 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
     )
     bluefin_pods.extend(
         process_v1_pods(
-            resource=BLUEFIN_INSTANCE,
+            resource_api=BLUEFIN_API_V1,
             label_selector=BLUEFIN_RELEASE_LABEL,
             since_seconds=since_seconds,
             capture_previous_logs=True,
@@ -70,7 +58,7 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
 
     # @digimaun - TODO, depends on consistent labels
     temp_oneoffs = process_v1_pods(
-        resource=BLUEFIN_INSTANCE,
+        resource_api=BLUEFIN_API_V1,
         label_selector=BLUEFIN_ONEOFF_LABEL,
         since_seconds=since_seconds,
         capture_previous_logs=True,
@@ -82,42 +70,35 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
 
 
 def fetch_deployments():
-    processed = process_deployments(resource=BLUEFIN_INSTANCE, label_selector=BLUEFIN_APP_LABEL)
-    processed.extend(process_deployments(resource=BLUEFIN_INSTANCE, label_selector=BLUEFIN_PART_OF_LABEL))
+    processed = process_deployments(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_APP_LABEL)
+    processed.extend(process_deployments(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_PART_OF_LABEL))
 
     return processed
 
 
 def fetch_statefulsets():
     processed = process_statefulset(
-        resource=BLUEFIN_INSTANCE,
+        resource_api=BLUEFIN_API_V1,
         label_selector=BLUEFIN_APP_LABEL,
     )
-    processed.extend(process_statefulset(resource=BLUEFIN_INSTANCE, label_selector=BLUEFIN_RELEASE_LABEL))
-    processed.extend(process_statefulset(resource=BLUEFIN_INSTANCE, label_selector=BLUEFIN_INSTANCE_LABEL))
+    processed.extend(process_statefulset(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_RELEASE_LABEL))
+    processed.extend(process_statefulset(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_INSTANCE_LABEL))
     return processed
 
 
 def fetch_replicasets():
     processed = []
-    processed.extend(process_replicasets(resource=BLUEFIN_INSTANCE, label_selector=BLUEFIN_APP_LABEL))
+    processed.extend(process_replicasets(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_APP_LABEL))
 
     # @digimaun - TODO, depends on consistent labels
-    temp_oneoffs = process_replicasets(resource=BLUEFIN_INSTANCE, label_selector=BLUEFIN_ONEOFF_LABEL)
+    temp_oneoffs = process_replicasets(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_ONEOFF_LABEL)
     processed.extend(_process_oneoff_label_entities(temp_oneoffs=temp_oneoffs))
 
     return processed
 
 
 def fetch_services():
-    return process_services(resource=BLUEFIN_INSTANCE, label_selector=None, prefix_names=["bf-", "bluefin-"])
-
-
-support_crd_elements = {
-    "datasets": fetch_datasets,
-    "instances": fetch_instances,
-    "pipelines": fetch_pipelines,
-}
+    return process_services(resource_api=BLUEFIN_API_V1, label_selector=None, prefix_names=["bf-", "bluefin-"])
 
 
 support_runtime_elements = {
@@ -128,11 +109,11 @@ support_runtime_elements = {
 }
 
 
-def prepare_bundle(log_age_seconds: int = 60 * 60 * 24) -> dict:
-    support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
-
+def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
     bluefin_to_run = {}
-    bluefin_to_run.update(support_crd_elements)
+    bluefin_to_run.update(assemble_crd_work(apis))
+
+    support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     bluefin_to_run.update(support_runtime_elements)
 
     return bluefin_to_run

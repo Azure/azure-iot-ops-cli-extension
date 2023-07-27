@@ -22,17 +22,11 @@ from ..common import (
     AZEDGE_FRONTEND_PREFIX,
     AZEDGE_BACKEND_PREFIX,
     AZEDGE_AUTH_PREFIX,
-    E4K_API_V1A2,
-    E4K_MQTT_BRIDGE_CONNECTOR,
-    E4K_MQTT_BRIDGE_TOPIC_MAP,
     CheckTaskStatus,
     ResourceState,
-    EdgeResource,
-    E4K_BROKER,
-    E4K_BROKER_LISTENER,
-    E4K_BROKER_DIAGNOSTIC,
-    E4K_DIAGNOSTIC_SERVICE,
 )
+
+from ..providers.edge_api import E4K_ACTIVE_API, EdgeResource, E4kResourceKinds
 
 from .base import (
     client,
@@ -196,9 +190,12 @@ def evaluate_broker_diagnostics(
     check_manager.add_target(
         target_name=target_diag, conditions=["len(brokerdiagnostics)<=1", "spec", "valid(spec.brokerRef)"]
     )
-    valid_broker_refs = _get_valid_references(resource=E4K_BROKER, namespace=namespace)
-
-    diagnostics_list: dict = get_namespaced_custom_objects(resource=E4K_BROKER_DIAGNOSTIC, namespace=namespace)
+    valid_broker_refs = _get_valid_references(
+        resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER), namespace=namespace
+    )
+    diagnostics_list: dict = get_namespaced_custom_objects(
+        resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER_DIAGNOSTIC), namespace=namespace
+    )
     if not diagnostics_list:
         check_manager.add_target_eval(
             target_name=target_diag,
@@ -292,7 +289,7 @@ def evaluate_broker_diagnostics(
 
     if not evaluated_diagnostic_services:
         diagnostics_service_list: dict = get_namespaced_custom_objects(
-            resource=E4K_DIAGNOSTIC_SERVICE, namespace=namespace
+            resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.DIAGNOSTIC_SERVICE), namespace=namespace
         )
         evaluated_diagnostic_services = True
         diagnostics_service_resources = diagnostics_service_list.get("items", [])
@@ -462,11 +459,17 @@ def evaluate_broker_listeners(
     listener_conditions = ["len(brokerlisteners)>=1", "spec", "valid(spec.brokerRef)", "spec.serviceName", "status"]
     check_manager.add_target(target_name=target_listeners, conditions=listener_conditions)
 
-    valid_broker_refs = _get_valid_references(resource=E4K_BROKER, namespace=namespace)
-    listener_list: dict = get_namespaced_custom_objects(resource=E4K_BROKER_LISTENER, namespace=namespace)
+    valid_broker_refs = _get_valid_references(
+        resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER), namespace=namespace
+    )
+    listener_list: dict = get_namespaced_custom_objects(
+        resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER_LISTENER), namespace=namespace
+    )
 
     if not listener_list:
-        fetch_listeners_error_text = f"Unable to fetch {E4K_BROKER_LISTENER.plural}."
+        fetch_listeners_error_text = (
+            f"Unable to fetch {E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER_LISTENER).plural}."
+        )
         check_manager.add_target_eval(
             target_name=target_listeners, status=CheckTaskStatus.error.value, value=fetch_listeners_error_text
         )
@@ -660,9 +663,13 @@ def evaluate_brokers(
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
     check_manager.add_target(target_name=target_brokers, conditions=broker_conditions)
 
-    broker_list: dict = get_namespaced_custom_objects(resource=E4K_BROKER, namespace=namespace)
+    broker_list: dict = get_namespaced_custom_objects(
+        resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER), namespace=namespace
+    )
     if not broker_list:
-        fetch_brokers_error_text = f"Unable to fetch namespace {E4K_BROKER.plural}."
+        fetch_brokers_error_text = (
+            f"Unable to fetch namespace {E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER).plural}."
+        )
         check_manager.add_target_eval(
             target_name=target_brokers, status=CheckTaskStatus.error.value, value=fetch_brokers_error_text
         )
@@ -833,7 +840,8 @@ def evaluate_mqtt_bridge_connectors(
 
     top_level_padding = (0, 0, 0, 8)
     bridge_objects: dict = get_namespaced_custom_objects(
-        resource=E4K_MQTT_BRIDGE_CONNECTOR, namespace=namespace
+        resource=E4K_ACTIVE_API.get_resource(kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR),
+        namespace=namespace
     )
     bridge_resources: List[dict] = bridge_objects.get("items", [])
 
@@ -842,7 +850,8 @@ def evaluate_mqtt_bridge_connectors(
 
     # check topic maps
     topic_map_objects: dict = get_namespaced_custom_objects(
-        resource=E4K_MQTT_BRIDGE_TOPIC_MAP, namespace=namespace
+        resource=E4K_ACTIVE_API.get_resource(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP),
+        namespace=namespace
     )
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
 
@@ -1125,11 +1134,11 @@ def enumerate_e4k_resources(
     as_list: bool = False,
 ) -> Tuple[dict, dict]:
     resource_kind_map = {}
-    target_api = E4K_API_V1A2.as_str()
+    target_api = E4K_ACTIVE_API.as_str()
     check_manager = CheckManager(check_name="enumerateE4kApi", check_desc="Enumerate E4K API resources")
     check_manager.add_target(target_name=target_api)
 
-    api_resources: V1APIResourceList = get_cluster_custom_api(resource_api=E4K_API_V1A2)
+    api_resources: V1APIResourceList = get_cluster_custom_api(resource_api=E4K_ACTIVE_API)
 
     if not api_resources:
         check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.skipped.value)
