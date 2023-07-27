@@ -60,7 +60,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.symphony.value]:
         symphony_apis = COMPAT_SYMPHONY_APIS.get_deployed(raise_on_404)
         if symphony_apis:
-            pending_work["symphony"].update(prepare_symphony_bundle(bluefin_apis, log_age_seconds))
+            pending_work["symphony"].update(prepare_symphony_bundle(symphony_apis, log_age_seconds))
 
     # @digimaun - consider combining this work check with work count.
     if not any([pending_work[k] for k, _ in pending_work.items()]):
