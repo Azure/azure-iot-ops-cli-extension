@@ -18,6 +18,12 @@ def mocked_client(mocker, mocked_client):
 
 
 @pytest.fixture
+def mocked_root_logger(mocker, mocked_client):
+    patched = mocker.patch("azext_edge.edge.providers.support_bundle.logger", autospec=True)
+    yield patched
+
+
+@pytest.fixture
 def mocked_os_makedirs(mocker):
     patched = mocker.patch("azext_edge.edge.providers.support.base.makedirs", autospec=True)
     yield patched
@@ -41,9 +47,16 @@ def mocked_cluster_resources(request, mocker):
     from azure.cli.core.azclierror import ResourceNotFoundError
     from kubernetes.client.models import V1APIResource, V1APIResourceList
 
-    from azext_edge.edge.providers.edge_api import EdgeResourceApi, E4K_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1
+    from azext_edge.edge.providers.edge_api import (
+        EdgeResourceApi,
+        E4K_API_V1A2,
+        E4K_API_V1A3,
+        OPCUA_API_V1,
+        BLUEFIN_API_V1,
+        SYMPHONY_API_V1,
+    )
 
-    requested_resource_apis = getattr(request, "param", {})
+    requested_resource_apis = getattr(request, "param", [])
     resource_map = {}
 
     def _get_api_resource(kind: str):
@@ -54,6 +67,16 @@ def mocked_cluster_resources(request, mocker):
         v1_resources: List[V1APIResource] = []
 
         if r == E4K_API_V1A2:
+            v1_resources.append(_get_api_resource("Broker"))
+            v1_resources.append(_get_api_resource("BrokerListener"))
+            v1_resources.append(_get_api_resource("BrokerDiagnostic"))
+            v1_resources.append(_get_api_resource("DiagnosticService"))
+            v1_resources.append(_get_api_resource("BrokerAuthentication"))
+            v1_resources.append(_get_api_resource("BrokerAuthorization"))
+            v1_resources.append(_get_api_resource("MqttBridgeTopicMap"))
+            v1_resources.append(_get_api_resource("MqttBridgeConnector"))
+
+        if r == E4K_API_V1A3:
             v1_resources.append(_get_api_resource("Broker"))
             v1_resources.append(_get_api_resource("BrokerListener"))
             v1_resources.append(_get_api_resource("BrokerDiagnostic"))
@@ -74,6 +97,11 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("Dataset"))
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Pipeline"))
+
+        if r == SYMPHONY_API_V1:
+            v1_resources.append(_get_api_resource("Instance"))
+            v1_resources.append(_get_api_resource("Solution"))
+            v1_resources.append(_get_api_resource("Target"))
 
         resource_map[r] = V1APIResourceList(resources=v1_resources, group_version=r.version)
 
