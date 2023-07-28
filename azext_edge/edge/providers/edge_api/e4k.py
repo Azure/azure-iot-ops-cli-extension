@@ -26,4 +26,4 @@ E4K_API_V1A3 = EdgeResourceApi(
     group="az-edge.com", version="v1alpha3", moniker="e4k", kinds=frozenset(E4kResourceKinds.list())
 )
 
-E4K_ACTIVE_API = E4K_API_V1A2
+E4K_ACTIVE_API = E4K_API_V1A3
