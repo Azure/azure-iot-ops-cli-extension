@@ -70,8 +70,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     pending_work["common"].update(prepare_shared_bundle())
     total_work_count = 0
     for service in pending_work:
-        total_work_count = total_work_count + len(service)
-
+        total_work_count = total_work_count + len(pending_work[service])
     bundle = {service: {} for service, _ in pending_work.items()}
 
     grid = Table.grid(expand=False)
