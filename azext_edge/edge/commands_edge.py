@@ -42,10 +42,6 @@ def check(
     from .providers.edge_api import E4K_ACTIVE_API
     from .providers.checks import run_checks
 
-    # Currently check is only supported for e4k
-    if edge_service == "e4k":
-        E4K_ACTIVE_API.is_deployed(raise_on_404=True)
-
     run_pre = True
     run_post = True
     if pre_deployment_checks and not post_deployment_checks:
