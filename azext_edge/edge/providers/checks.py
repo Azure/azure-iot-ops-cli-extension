@@ -191,155 +191,166 @@ def evaluate_diagnostics_service(
     )
     diagnostics_service_resources = diagnostics_service_list.get("items", [])
     target_diagnostic_service = "diagnosticservices.az-edge.com"
-    check_manager.add_target(target_name=target_diagnostic_service, conditions=["spec"])
+
+    check_manager.add_target(target_name=target_diagnostic_service, conditions=[
+        "len(diagnosticservices)==1",
+        "(diagnosticservices).each(spec)"  # do we need this? or just "spec"
+    ])
+    
+    diagnostics_count_text = "- Expecting [bright_blue]1[/bright_blue] diagnostics service resource per namespace. {}."
+    diagnostic_service_count = len(diagnostics_service_resources)
+    
+    service_count_status = CheckTaskStatus.success.value
+    service_status_color = "green"
+    
+    # todo - currently, count != 1 is an error - possible to have >1 diagnostic resources? warn?
+    if diagnostic_service_count != 1:
+        service_count_status = CheckTaskStatus.error.value
+        service_status_color = "red"
+
+    diagnostics_count_text = diagnostics_count_text.format(f"[{service_status_color}]Detected {diagnostic_service_count}[/{service_status_color}]")
+
+    check_manager.add_target_eval(target_name=target_diagnostic_service, status=service_count_status, value=diagnostic_service_count) 
+    check_manager.add_display(target_name=target_diagnostic_service, display=Padding(diagnostics_count_text, (0, 0, 0, 8)))
+
     if not diagnostics_service_resources:
-        no_diag_service_desc = "No diagnostics service resource detected."
-        check_manager.add_target_eval(
-            target_name=target_diagnostic_service, status=CheckTaskStatus.warning.value, value=no_diag_service_desc
+        return check_manager.as_dict(as_list)
+
+    for diag_service_resource in diagnostics_service_resources:
+        diag_service_resource_name = diag_service_resource["metadata"]["name"]
+        diag_service_resource_spec: dict = diag_service_resource["spec"]
+
+        check_manager.add_display(
+            target_name=target_diagnostic_service,
+            display=Padding(
+                f"\n- Diagnostic service resource {{[bright_blue]{diag_service_resource_name}[/bright_blue]}}.",
+                (0, 0, 0, 8),
+            ),
+        )
+
+        diag_service_spec_data_export_freq = diag_service_resource_spec.get("dataExportFrequencySeconds")
+        diag_service_spec_log_format = diag_service_resource_spec.get("logFormat")
+        diag_service_spec_log_level = diag_service_resource_spec.get("logLevel")
+        diag_service_spec_max_data_storage_size = diag_service_resource_spec.get("maxDataStorageSize")
+        diag_service_spec_metrics_port = diag_service_resource_spec.get("metricsPort")
+        diag_service_spec_stale_data_timeout = diag_service_resource_spec.get("staleDataTimeoutSeconds")
+
+        check_manager.add_display(
+            target_name=target_diagnostic_service,
+            display=Padding(
+                f"Data Export Frequency: [bright_blue]{diag_service_spec_data_export_freq}[/bright_blue] seconds",
+                (0, 0, 0, 12),
+            ),
         )
         check_manager.add_display(
             target_name=target_diagnostic_service,
-            display=Padding(f"[yellow]{no_diag_service_desc}[/yellow]", (0, 0, 0, 8)),
+            display=Padding(
+                f"Log Format: [bright_blue]{diag_service_spec_log_format}[/bright_blue]",
+                (0, 0, 0, 12),
+            ),
+        )
+        check_manager.add_display(
+            target_name=target_diagnostic_service,
+            display=Padding(
+                f"Log Level: [bright_blue]{diag_service_spec_log_level}[/bright_blue]",
+                (0, 0, 0, 12),
+            ),
+        )
+        check_manager.add_display(
+            target_name=target_diagnostic_service,
+            display=Padding(
+                f"Max Data Storage Size: [bright_blue]{diag_service_spec_max_data_storage_size}[/bright_blue]",
+                (0, 0, 0, 12),
+            ),
+        )
+        check_manager.add_display(
+            target_name=target_diagnostic_service,
+            display=Padding(
+                f"Metrics Port: [bright_blue]{diag_service_spec_metrics_port}[/bright_blue]",
+                (0, 0, 0, 12),
+            ),
+        )
+        check_manager.add_display(
+            target_name=target_diagnostic_service,
+            display=Padding(
+                f"Stale Data Timeout: [bright_blue]{diag_service_spec_stale_data_timeout}[/bright_blue] seconds",
+                (0, 0, 0, 12),
+            ),
+        )
+
+        # this will add a success eval for each resource, even though != 1 is a warning
+        check_manager.add_target_eval(
+            target_name=target_diagnostic_service,
+            status=CheckTaskStatus.success.value,
+            value={"spec": diag_service_resource_spec},
+        )
+
+    target_service_deployed = f"service/{AZEDGE_DIAGNOSTICS_SERVICE}"
+    check_manager.add_target(
+        target_name=target_service_deployed, conditions=["spec.clusterIP", "spec.ports"]
+    )
+    check_manager.add_display(
+        target_name=target_service_deployed,
+        display=Padding(
+            "\nService Status",
+            (0, 0, 0, 8),
+        ),
+    )
+
+    diagnostics_service = get_namespaced_service(
+        name=AZEDGE_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True
+    )
+    if not diagnostics_service:
+        check_manager.add_target_eval(
+            target_name=target_service_deployed, status=CheckTaskStatus.error.value, value=None
+        )
+        diag_service_desc_suffix = "[red]not detected[/red]."
+        diag_service_desc = f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+        check_manager.add_display(
+            target_name=target_service_deployed,
+            display=Padding(
+                diag_service_desc,
+                (0, 0, 0, 12),
+            ),
         )
     else:
-        for diag_service_resource in diagnostics_service_resources:
-            diag_service_resource_name = diag_service_resource["metadata"]["name"]
-            diag_service_resource_spec: dict = diag_service_resource["spec"]
+        clusterIP = diagnostics_service.get("spec", {}).get("clusterIP")
+        ports: List[dict] = diagnostics_service.get("spec", {}).get("ports", [])
 
-            target_diagnostic_service_status = CheckTaskStatus.success.value
-            target_diagnostic_service_value = {}
-            target_diagnostic_service_value["spec"] = diag_service_resource_spec
-
-            check_manager.add_display(
-                target_name=target_diagnostic_service,
-                display=Padding(
-                    f"\n- Diagnostic service resource {{[bright_blue]{diag_service_resource_name}[/bright_blue]}}.",
-                    (0, 0, 0, 8),
-                ),
-            )
-
-            diag_service_spec_data_export_freq = diag_service_resource_spec.get("dataExportFrequencySeconds")
-            diag_service_spec_log_format = diag_service_resource_spec.get("logFormat")
-            diag_service_spec_log_level = diag_service_resource_spec.get("logLevel")
-            diag_service_spec_max_data_storage_size = diag_service_resource_spec.get("maxDataStorageSize")
-            diag_service_spec_metrics_port = diag_service_resource_spec.get("metricsPort")
-            diag_service_spec_stale_data_timeout = diag_service_resource_spec.get("staleDataTimeoutSeconds")
-
-            check_manager.add_display(
-                target_name=target_diagnostic_service,
-                display=Padding(
-                    f"Data Export Frequency: [bright_blue]{diag_service_spec_data_export_freq}[/bright_blue] seconds",
-                    (0, 0, 0, 12),
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_diagnostic_service,
-                display=Padding(
-                    f"Log Format: [bright_blue]{diag_service_spec_log_format}[/bright_blue]",
-                    (0, 0, 0, 12),
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_diagnostic_service,
-                display=Padding(
-                    f"Log Level: [bright_blue]{diag_service_spec_log_level}[/bright_blue]",
-                    (0, 0, 0, 12),
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_diagnostic_service,
-                display=Padding(
-                    f"Max Data Storage Size: [bright_blue]{diag_service_spec_max_data_storage_size}[/bright_blue]",
-                    (0, 0, 0, 12),
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_diagnostic_service,
-                display=Padding(
-                    f"Metrics Port: [bright_blue]{diag_service_spec_metrics_port}[/bright_blue]",
-                    (0, 0, 0, 12),
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_diagnostic_service,
-                display=Padding(
-                    f"Stale Data Timeout: [bright_blue]{diag_service_spec_stale_data_timeout}[/bright_blue] seconds",
-                    (0, 0, 0, 12),
-                ),
-            )
-
-            check_manager.add_target_eval(
-                target_name=target_diagnostic_service,
-                status=target_diagnostic_service_status,
-                value=target_diagnostic_service_value,
-            )
-
-            target_service_deployed = f"service/{AZEDGE_DIAGNOSTICS_SERVICE}"
-            check_manager.add_target(
-                target_name=target_service_deployed, conditions=["spec.clusterIP", "spec.ports"]
-            )
-            check_manager.add_display(
-                target_name=target_service_deployed,
-                display=Padding(
-                    "\nStatus",
-                    (0, 0, 0, 12),
-                ),
-            )
-
-            diagnostics_service = get_namespaced_service(
-                name=AZEDGE_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True
-            )
-            if not diagnostics_service:
-                check_manager.add_target_eval(
-                    target_name=target_service_deployed, status=CheckTaskStatus.warning.value, value=None
-                )
-                diag_service_desc_suffix = "[yellow]not detected[/yellow]."
-                diag_service_desc = f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+        check_manager.add_target_eval(
+            target_name=target_service_deployed,
+            status=CheckTaskStatus.success.value,
+            value={"spec": {"clusterIP": clusterIP, "ports": ports}},
+            resource_name=diagnostics_service["metadata"]["name"],
+        )
+        diag_service_desc_suffix = "[green]detected[/green]."
+        diag_service_desc = f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+        check_manager.add_display(
+            target_name=target_service_deployed,
+            display=Padding(
+                diag_service_desc,
+                (0, 0, 0, 12),
+            ),
+        )
+        if ports:
+            for port in ports:
                 check_manager.add_display(
                     target_name=target_service_deployed,
                     display=Padding(
-                        diag_service_desc,
+                        f"[cyan]{port.get('name')}[/cyan] "
+                        f"port [bright_blue]{port.get('port')}[/bright_blue] "
+                        f"protocol [cyan]{port.get('protocol')}[/cyan]",
                         (0, 0, 0, 16),
                     ),
                 )
-            else:
-                clusterIP = diagnostics_service.get("spec", {}).get("clusterIP")
-                ports: List[dict] = diagnostics_service.get("spec", {}).get("ports", [])
+            check_manager.add_display(target_name=target_service_deployed, display=NewLine())
 
-                check_manager.add_target_eval(
-                    target_name=target_service_deployed,
-                    status=CheckTaskStatus.success.value,
-                    value={"spec": {"clusterIP": clusterIP, "ports": ports}},
-                    resource_name=diagnostics_service["metadata"]["name"],
-                )
-                diag_service_desc_suffix = "[green]detected[/green]."
-                diag_service_desc = f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
-                check_manager.add_display(
-                    target_name=target_service_deployed,
-                    display=Padding(
-                        diag_service_desc,
-                        (0, 0, 0, 16),
-                    ),
-                )
-                if ports:
-                    for port in ports:
-                        check_manager.add_display(
-                            target_name=target_service_deployed,
-                            display=Padding(
-                                f"[cyan]{port.get('name')}[/cyan] "
-                                f"port [bright_blue]{port.get('port')}[/bright_blue] "
-                                f"protocol [cyan]{port.get('protocol')}[/cyan]",
-                                (0, 0, 0, 20),
-                            ),
-                        )
-                    check_manager.add_display(target_name=target_service_deployed, display=NewLine())
-
-            evaluate_pod_health(
-                check_manager=check_manager,
-                namespace=namespace,
-                pod=AZEDGE_DIAGNOSTICS_SERVICE,
-                display_padding=16,
-            )
+        evaluate_pod_health(
+            check_manager=check_manager,
+            namespace=namespace,
+            pod=AZEDGE_DIAGNOSTICS_SERVICE,
+            display_padding=12,
+        )
 
     return check_manager.as_dict(as_list)
 
@@ -702,56 +713,56 @@ def evaluate_brokers(
                     display=Padding(frontend_cardinality_desc.format(frontend_replicas_colored), (0, 0, 0, 16)),
                 )
 
-            if broker_diagnostics:
-                diagnostic_detail_padding = (0, 0, 0, 16)
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding("\nBroker Diagnostics", (0, 0, 0, 12))
-                )
-                diag_endpoint = broker_diagnostics.get("diagnosticServiceEndpoint")
-                diag_enable_metrics = broker_diagnostics.get("enableMetrics")
-                diag_enable_selfcheck = broker_diagnostics.get("enableSelfCheck")
-                diag_enable_tracing = broker_diagnostics.get("enableTracing")
-                diag_loglevel = broker_diagnostics.get("logLevel")
+        if broker_diagnostics:
+            diagnostic_detail_padding = (0, 0, 0, 16)
+            check_manager.add_display(
+                target_name=target_brokers,
+                display=Padding("\nBroker Diagnostics", (0, 0, 0, 12))
+            )
+            diag_endpoint = broker_diagnostics.get("diagnosticServiceEndpoint")
+            diag_enable_metrics = broker_diagnostics.get("enableMetrics")
+            diag_enable_selfcheck = broker_diagnostics.get("enableSelfCheck")
+            diag_enable_tracing = broker_diagnostics.get("enableTracing")
+            diag_loglevel = broker_diagnostics.get("logLevel")
 
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(
-                        f"Diagnostic Service Endpoint: [cyan]{diag_endpoint}[/cyan]",
-                        diagnostic_detail_padding,
-                    ),
-                )
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(f"Enable Metrics: [bright_blue]{diag_enable_metrics}[/bright_blue]", diagnostic_detail_padding),
-                )
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(
-                        f"Enable Self-Check: [bright_blue]{diag_enable_selfcheck}[/bright_blue]", diagnostic_detail_padding
-                    ),
-                )
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(f"Enable Tracing: [bright_blue]{diag_enable_tracing}[/bright_blue]", diagnostic_detail_padding),
-                )
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(f"Log Level: [cyan]{diag_loglevel}[/cyan]", diagnostic_detail_padding),
-                )
-            else:
-                check_manager.add_target_eval(
-                    target_name=target_brokers,
-                    status=CheckTaskStatus.warning.value,
-                    value=None,
-                )
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(
-                        "[yellow]Unable to fetch broker diagnostics.[/yellow]",
-                        diagnostic_detail_padding,
-                    ),
-                )
+            check_manager.add_display(
+                target_name=target_brokers,
+                display=Padding(
+                    f"Diagnostic Service Endpoint: [cyan]{diag_endpoint}[/cyan]",
+                    diagnostic_detail_padding,
+                ),
+            )
+            check_manager.add_display(
+                target_name=target_brokers,
+                display=Padding(f"Enable Metrics: [bright_blue]{diag_enable_metrics}[/bright_blue]", diagnostic_detail_padding),
+            )
+            check_manager.add_display(
+                target_name=target_brokers,
+                display=Padding(
+                    f"Enable Self-Check: [bright_blue]{diag_enable_selfcheck}[/bright_blue]", diagnostic_detail_padding
+                ),
+            )
+            check_manager.add_display(
+                target_name=target_brokers,
+                display=Padding(f"Enable Tracing: [bright_blue]{diag_enable_tracing}[/bright_blue]", diagnostic_detail_padding),
+            )
+            check_manager.add_display(
+                target_name=target_brokers,
+                display=Padding(f"Log Level: [cyan]{diag_loglevel}[/cyan]", diagnostic_detail_padding),
+            )
+        else:
+            check_manager.add_target_eval(
+                target_name=target_brokers,
+                status=CheckTaskStatus.warning.value,
+                value=None,
+            )
+            check_manager.add_display(
+                target_name=target_brokers,
+                display=Padding(
+                    "[yellow]Unable to fetch broker diagnostics.[/yellow]",
+                    diagnostic_detail_padding,
+                ),
+            )
 
         check_manager.add_target_eval(
             target_name=target_brokers, status=broker_eval_status, value=broker_eval_value, resource_name=broker_name
