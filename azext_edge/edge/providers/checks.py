@@ -726,7 +726,7 @@ def evaluate_brokers(
             if not added_distributed_conditions:
                 # TODO - conditional evaluations
                 broker_conditions.append("spec.cardinality")
-                broker_conditions.append("spec.cardinality.backendChain.chainCount>=1")
+                broker_conditions.append("spec.cardinality.backendChain.partitions>=1")
                 broker_conditions.append("spec.cardinality.backendChain.replicas>=1")
                 broker_conditions.append("spec.cardinality.frontend.replicas>=1")
                 added_distributed_conditions = True
@@ -743,23 +743,31 @@ def evaluate_brokers(
                     display=Padding("[magenta]spec.cardinality is undefined![/magenta]", (0, 0, 0, 16)),
                 )
             else:
-                backend_cardinality_desc = "- Expecting backend chainCount [bright_blue]>=1[/bright_blue]. {}"
+                backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
                 backend_replicas_desc = "- Expecting backend replicas [bright_blue]>=1[/bright_blue]. {}"
+                backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
 
                 backend_chain = broker_cardinality.get("backendChain", {})
-                backend_chain_count: Optional[int] = backend_chain.get("chainCount")
+                backend_partition_count: Optional[int] = backend_chain.get("partitions")
                 backend_replicas: Optional[int] = backend_chain.get("replicas")
+                backend_workers: Optional[int] = backend_chain.get("workers")
 
-                if backend_chain_count and backend_chain_count >= 1:
-                    backend_chain_count_colored = f"[green]Actual {backend_chain_count}[/green]."
+                if backend_partition_count and backend_partition_count >= 1:
+                    backend_chain_count_colored = f"[green]Actual {backend_partition_count}[/green]."
                 else:
-                    backend_chain_count_colored = f"[red]Actual {backend_chain_count}[/red]."
+                    backend_chain_count_colored = f"[red]Actual {backend_partition_count}[/red]."
                     broker_eval_status = CheckTaskStatus.error.value
 
                 if backend_replicas and backend_replicas >= 1:
                     backend_replicas_colored = f"[green]Actual {backend_replicas}[/green]."
                 else:
                     backend_replicas_colored = f"[red]Actual {backend_replicas}[/red]."
+                    broker_eval_status = CheckTaskStatus.error.value
+
+                if backend_workers and backend_workers >= 1:
+                    backend_workers_colored = f"[green]Actual {backend_workers}[/green]."
+                else:
+                    backend_workers_colored = f"[red]Actual {backend_workers}[/red]."
                     broker_eval_status = CheckTaskStatus.error.value
 
                 check_manager.add_display(
@@ -773,6 +781,13 @@ def evaluate_brokers(
                     target_name=target_brokers,
                     display=Padding(
                         backend_replicas_desc.format(backend_replicas_colored),
+                        (0, 0, 0, 16),
+                    ),
+                )
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    display=Padding(
+                        backend_workers_desc.format(backend_workers_colored),
                         (0, 0, 0, 16),
                     ),
                 )
