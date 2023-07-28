@@ -14,21 +14,21 @@ from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Container, V1ObjectMeta
 
-from ..edge_api import EdgeResource, EdgeResourceApi
+from ..edge_api import EdgeResourceApi
 from ..base import client
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
 
 
-def process_crd(resource: EdgeResource, file_prefix: Optional[str] = None):
+def process_crd(group: str, version: str, kind: str, api_moniker: str, file_prefix: Optional[str] = None):
     result: dict = client.CustomObjectsApi().list_cluster_custom_object(
-        group=resource.api.group,
-        version=resource.api.version,
-        plural=resource.plural,
+        group=group,
+        version=version,
+        plural=f"{kind}s",
     )
     if not file_prefix:
-        file_prefix = resource.kind
+        file_prefix = kind
 
     processed = []
     namespaces = []
@@ -36,9 +36,7 @@ def process_crd(resource: EdgeResource, file_prefix: Optional[str] = None):
         namespace = r["metadata"]["namespace"]
         namespaces.append(namespace)
         name = r["metadata"]["name"]
-        processed.append(
-            {"data": r, "zinfo": f"{namespace}/{resource.api.moniker}/{file_prefix}.{resource.api.version}.{name}.yaml"}
-        )
+        processed.append({"data": r, "zinfo": f"{namespace}/{api_moniker}/{file_prefix}.{version}.{name}.yaml"})
 
     return processed
 
@@ -302,12 +300,15 @@ def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional
     result = {}
     for api in apis:
         for kind in api.kinds:
-            resource = api.get_resource(kind)
             file_prefix = file_prefix_map.get(kind)
-            if resource:
-                result[f"{resource.api.moniker} {resource.api.version} {resource.plural}"] = partial(
-                    process_crd, resource=resource, file_prefix=file_prefix
-                )
+            result[f"{api.moniker} {api.version} {kind}"] = partial(
+                process_crd,
+                group=api.group,
+                version=api.version,
+                kind=kind,
+                api_moniker=api.moniker,
+                file_prefix=file_prefix,
+            )
 
     return result
 

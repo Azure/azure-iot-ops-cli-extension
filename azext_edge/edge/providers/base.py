@@ -15,7 +15,6 @@ from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList, V1Service
 
-from .edge_api import EdgeResourceApi, EdgeResource
 
 DEFAULT_NAMESPACE: str = "default"
 
@@ -88,18 +87,18 @@ def get_namespaced_pods_by_prefix(
 _namespaced_object_cache: dict = {}
 
 
-def get_namespaced_custom_objects(resource: EdgeResource, namespace: str) -> Union[List[dict], None]:
-    target_resource_key = (resource, resource.plural)
+def get_namespaced_custom_objects(group: str, version: str, namespace: str, plural: str) -> Union[List[dict], None]:
+    target_resource_key = (group, version, namespace, plural)
     if target_resource_key in _namespaced_object_cache:
         return _namespaced_object_cache[target_resource_key]
 
     try:
         custom_client = client.CustomObjectsApi()
         _namespaced_object_cache[target_resource_key] = custom_client.list_namespaced_custom_object(
-            group=resource.api.group,
-            version=resource.api.version,
+            group=group,
+            version=version,
             namespace=namespace,
-            plural=resource.plural,
+            plural=plural,
         )
     except ApiException as ae:
         logger.debug(str(ae))
@@ -110,21 +109,22 @@ def get_namespaced_custom_objects(resource: EdgeResource, namespace: str) -> Uni
 _cluster_resource_api_cache: dict = {}
 
 
-def get_cluster_custom_api(resource_api: EdgeResourceApi, raise_on_404: bool = False) -> Union[V1APIResourceList, None]:
-    if resource_api in _cluster_resource_api_cache:
-        return _cluster_resource_api_cache[resource_api]
+def get_cluster_custom_api(group: str, version: str, raise_on_404: bool = False) -> Union[V1APIResourceList, None]:
+    target_resource_api_key = (group, version)
+    if target_resource_api_key in _cluster_resource_api_cache:
+        return _cluster_resource_api_cache[target_resource_api_key]
 
     try:
         custom_client = client.CustomObjectsApi()
-        _cluster_resource_api_cache[resource_api] = custom_client.get_api_resources(
-            group=resource_api.group, version=resource_api.version
+        _cluster_resource_api_cache[target_resource_api_key] = custom_client.get_api_resources(
+            group=group, version=version
         )
     except ApiException as ae:
         logger.debug(msg=str(ae))
         if int(ae.status) == 404 and raise_on_404:
-            raise ResourceNotFoundError(f"{resource_api.as_str()} resource API is not detected on the cluster.")
+            raise ResourceNotFoundError(f"{group}/{version} resource API is not detected on the cluster.")
     else:
-        return _cluster_resource_api_cache[resource_api]
+        return _cluster_resource_api_cache[target_resource_api_key]
 
 
 class PodRequest:

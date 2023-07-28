@@ -64,6 +64,7 @@ def mocked_cluster_resources(request, mocker):
 
     for resource_api in requested_resource_apis:
         r: EdgeResourceApi = resource_api
+        r_key = r.as_str()
         v1_resources: List[V1APIResource] = []
 
         if r == E4K_API_V1A2:
@@ -103,19 +104,20 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("Solution"))
             v1_resources.append(_get_api_resource("Target"))
 
-        resource_map[r] = V1APIResourceList(resources=v1_resources, group_version=r.version)
+        resource_map[r_key] = V1APIResourceList(resources=v1_resources, group_version=r.version)
 
     def _handle_resource_call(*args, **kwargs):
-        resource_map = kwargs["context"]
-        if kwargs["resource_api"] in resource_map:
-            return resource_map[kwargs["resource_api"]]
+        resource_map: dict = kwargs["context"]
+
+        if "group" in kwargs and "version" in kwargs:
+            return resource_map.get(f"{kwargs['group']}/{kwargs['version']}")
 
         if "raise_on_404" in kwargs and kwargs["raise_on_404"]:
             raise ResourceNotFoundError(
                 f"{kwargs['resource_api'].as_str()} resource API is not detected on the cluster."
             )
 
-    patched = mocker.patch("azext_edge.edge.providers.base.get_cluster_custom_api", autospec=True)
+    patched = mocker.patch("azext_edge.edge.providers.edge_api.base.get_cluster_custom_api", autospec=True)
     _handle_call = partial(_handle_resource_call, context=resource_map)
     patched.side_effect = _handle_call
 

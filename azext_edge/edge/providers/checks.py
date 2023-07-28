@@ -5,7 +5,8 @@
 # --------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
+from enum import Enum
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
@@ -26,12 +27,11 @@ from ..common import (
     ResourceState,
 )
 
-from ..providers.edge_api import E4K_ACTIVE_API, EdgeResource, E4kResourceKinds
+from ..providers.edge_api import E4K_ACTIVE_API, E4kResourceKinds
 
 from .base import (
     client,
     get_cluster_custom_api,
-    get_namespaced_custom_objects,
     get_namespaced_pods_by_prefix,
     get_namespaced_service,
 )
@@ -191,12 +191,8 @@ def evaluate_broker_diagnostics(
     check_manager.add_target(
         target_name=target_diag, conditions=["len(brokerdiagnostics)<=1", "spec", "valid(spec.brokerRef)"]
     )
-    valid_broker_refs = _get_valid_references(
-        resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER), namespace=namespace
-    )
-    diagnostics_list: dict = get_namespaced_custom_objects(
-        resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER_DIAGNOSTIC), namespace=namespace
-    )
+    valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER, namespace=namespace)
+    diagnostics_list: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.BROKER_DIAGNOSTIC, namespace=namespace)
     if not diagnostics_list:
         check_manager.add_target_eval(
             target_name=target_diag,
@@ -289,8 +285,8 @@ def evaluate_broker_diagnostics(
         )
 
     if not evaluated_diagnostic_services:
-        diagnostics_service_list: dict = get_namespaced_custom_objects(
-            resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.DIAGNOSTIC_SERVICE), namespace=namespace
+        diagnostics_service_list: dict = E4K_ACTIVE_API.get_resources(
+            E4kResourceKinds.DIAGNOSTIC_SERVICE, namespace=namespace
         )
         evaluated_diagnostic_services = True
         diagnostics_service_resources = diagnostics_service_list.get("items", [])
@@ -460,12 +456,8 @@ def evaluate_broker_listeners(
     listener_conditions = ["len(brokerlisteners)>=1", "spec", "valid(spec.brokerRef)", "spec.serviceName", "status"]
     check_manager.add_target(target_name=target_listeners, conditions=listener_conditions)
 
-    valid_broker_refs = _get_valid_references(
-        resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER), namespace=namespace
-    )
-    listener_list: dict = get_namespaced_custom_objects(
-        resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER_LISTENER), namespace=namespace
-    )
+    valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER, namespace=namespace)
+    listener_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER_LISTENER, namespace=namespace)
 
     if not listener_list:
         fetch_listeners_error_text = (
@@ -664,13 +656,9 @@ def evaluate_brokers(
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
     check_manager.add_target(target_name=target_brokers, conditions=broker_conditions)
 
-    broker_list: dict = get_namespaced_custom_objects(
-        resource=E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER), namespace=namespace
-    )
+    broker_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER, namespace=namespace)
     if not broker_list:
-        fetch_brokers_error_text = (
-            f"Unable to fetch namespace {E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER).plural}."
-        )
+        fetch_brokers_error_text = f"Unable to fetch namespace {E4kResourceKinds.BROKER.value}s."
         check_manager.add_target_eval(
             target_name=target_brokers, status=CheckTaskStatus.error.value, value=fetch_brokers_error_text
         )
@@ -1027,9 +1015,9 @@ def _decorate_resource_status(status: str) -> str:
     return f"[green]{status}[/green]"
 
 
-def _get_valid_references(resource: EdgeResource, namespace: str):
+def _get_valid_references(kind: Union[Enum, str], namespace: str):
     result = {}
-    custom_objects: dict = get_namespaced_custom_objects(resource=resource, namespace=namespace)
+    custom_objects = E4K_ACTIVE_API.get_resources(kind=kind, namespace=namespace)
     if custom_objects:
         objects: List[dict] = custom_objects.get("items", [])
         for object in objects:

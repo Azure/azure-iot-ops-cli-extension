@@ -25,10 +25,10 @@ logger = get_logger(__name__)
 
 console = Console()
 
-COMPAT_E4K_APIS = EdgeApiManager(ResourceApis=[E4K_API_V1A2, E4K_API_V1A3])
-COMPAT_OPCUA_APIS = EdgeApiManager(ResourceApis=[OPCUA_API_V1])
-COMPAT_BLUEFIN_APIS = EdgeApiManager(ResourceApis=[BLUEFIN_API_V1])
-COMPAT_SYMPHONY_APIS = EdgeApiManager(ResourceApis=[SYMPHONY_API_V1])
+COMPAT_E4K_APIS = EdgeApiManager(resource_apis=[E4K_API_V1A2, E4K_API_V1A3])
+COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
+COMPAT_BLUEFIN_APIS = EdgeApiManager(resource_apis=[BLUEFIN_API_V1])
+COMPAT_SYMPHONY_APIS = EdgeApiManager(resource_apis=[SYMPHONY_API_V1])
 
 
 def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[int] = None):

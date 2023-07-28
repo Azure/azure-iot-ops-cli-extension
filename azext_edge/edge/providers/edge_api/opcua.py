@@ -16,6 +16,4 @@ class OpcuaResourceKinds(ListableEnum):
     ASSET = "asset"
 
 
-OPCUA_API_V1 = EdgeResourceApi(
-    group="e4i.microsoft.com", version="v1", moniker="opcua", kinds=frozenset(OpcuaResourceKinds.list())
-)
+OPCUA_API_V1 = EdgeResourceApi(group="e4i.microsoft.com", version="v1", moniker="opcua")

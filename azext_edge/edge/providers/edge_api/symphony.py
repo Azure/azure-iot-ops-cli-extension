@@ -14,6 +14,4 @@ class SymphonyResourceKinds(ListableEnum):
     TARGET = "target"
 
 
-SYMPHONY_API_V1 = EdgeResourceApi(
-    group="symphony.microsoft.com", version="v1", moniker="symphony", kinds=frozenset(SymphonyResourceKinds.list())
-)
+SYMPHONY_API_V1 = EdgeResourceApi(group="symphony.microsoft.com", version="v1", moniker="symphony")
