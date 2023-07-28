@@ -63,7 +63,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
             pending_work["symphony"].update(prepare_symphony_bundle(symphony_apis, log_age_seconds))
 
     # @digimaun - consider combining this work check with work count.
-    if not any([pending_work[k] for k, _ in pending_work.items()]):
+    if not any(v for _, v in pending_work.items()):
         logger.warning("No known edge services discovered on cluster.")
         return
 
