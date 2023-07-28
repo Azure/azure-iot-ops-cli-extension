@@ -461,7 +461,7 @@ def evaluate_broker_listeners(
 
     if not listener_list:
         fetch_listeners_error_text = (
-            f"Unable to fetch {E4K_ACTIVE_API.get_resource(E4kResourceKinds.BROKER_LISTENER).plural}."
+            f"Unable to fetch {E4kResourceKinds.BROKER_LISTENER.value}s."
         )
         check_manager.add_target_eval(
             target_name=target_listeners, status=CheckTaskStatus.error.value, value=fetch_listeners_error_text
@@ -814,7 +814,7 @@ def enumerate_e4k_resources(
     check_manager = CheckManager(check_name="enumerateE4kApi", check_desc="Enumerate E4K API resources")
     check_manager.add_target(target_name=target_api)
 
-    api_resources: V1APIResourceList = get_cluster_custom_api(resource_api=E4K_ACTIVE_API)
+    api_resources: V1APIResourceList = get_cluster_custom_api(group=E4K_ACTIVE_API.group, version=E4K_ACTIVE_API.version)
 
     if not api_resources:
         check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.skipped.value)
