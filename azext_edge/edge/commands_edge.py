@@ -39,7 +39,6 @@ def check(
     edge_service: str = "e4k",
 ) -> Union[dict, None]:
     load_config_context(context_name=context_name)
-    from .providers.edge_api import E4K_ACTIVE_API
     from .providers.checks import run_checks
 
     run_pre = True
