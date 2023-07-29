@@ -6,24 +6,22 @@
 
 from functools import partial
 from typing import Iterable
-from ..edge_api import EdgeResourceApi, E4K_API_V1A2
 
 from knack.log import get_logger
 
-from ..base import client
+from ..edge_api import E4K_API_V1A2, EdgeResourceApi
+from ..stats import get_stats
 from .base import (
+    assemble_crd_work,
     process_deployments,
     process_replicasets,
     process_services,
     process_statefulset,
     process_v1_pods,
-    assemble_crd_work,
 )
-from ..stats import get_stats
-
 
 logger = get_logger(__name__)
-generic = client.ApiClient()
+
 
 E4K_LABEL = "app in (azedge-e4k-operator,broker,diagnostics,azedge-selftest,health-manager,azedge-mqttbridge)"
 

@@ -5,6 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 import random
+from typing import List
 from os.path import abspath, expanduser, join
 
 import pytest
@@ -12,16 +13,12 @@ from azure.cli.core.azclierror import ResourceNotFoundError
 
 from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.providers.edge_api import (
-    EdgeResource,
     EdgeResourceApi,
-    E4kResourceKinds,
+    OpcuaResourceKinds,
     E4K_API_V1A2,
     E4K_API_V1A3,
-    BluefinResourceKinds,
     BLUEFIN_API_V1,
-    OpcuaResourceKinds,
     OPCUA_API_V1,
-    SymphonyResourceKinds,
     SYMPHONY_API_V1,
 )
 
@@ -110,71 +107,62 @@ def test_create_bundle(
     assert "bundlePath" in result
     assert a_bundle_dir in result["bundlePath"]
 
-    expected_resources = mocked_cluster_resources["param"]
+    expected_resources: List[EdgeResourceApi] = mocked_cluster_resources["param"]
 
     for api in expected_resources:
-        if api in [E4K_API_V1A2, E4K_API_V1A3]:
-            for resource in E4kResourceKinds.list():
-                assert_list_custom_resources(mocked_client, mocked_zipfile, api.get_resource(resource))
-
-                # Assert runtime resources
-                assert_list_deployments(
-                    mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2
-                )
-                assert_list_pods(
-                    mocked_client,
-                    mocked_zipfile,
-                    mocked_list_pods,
-                    label_selector=E4K_LABEL,
-                    resource_api=E4K_API_V1A2,
-                    since_seconds=since_seconds,
-                )
-                assert_list_replica_sets(
-                    mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2
-                )
-                assert_list_stateful_sets(
-                    mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2
-                )
-                assert_list_services(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
-                assert_e4k_stats(mocked_zipfile)
-
-        if api in [OPCUA_API_V1]:
-            for resource in OpcuaResourceKinds.list():
-                target_file_prefix = None
-                if resource == OpcuaResourceKinds.MODULE_TYPE.value:
+        for kind in api.kinds:
+            target_file_prefix = None
+            if api in [OPCUA_API_V1]:
+                if kind == OpcuaResourceKinds.MODULE_TYPE.value:
                     target_file_prefix = "module_type"
-                if resource == OpcuaResourceKinds.ASSET_TYPE.value:
+                if kind == OpcuaResourceKinds.ASSET_TYPE.value:
                     target_file_prefix = "asset_type"
 
-                assert_list_custom_resources(
-                    mocked_client, mocked_zipfile, api.get_resource(resource), file_prefix=target_file_prefix
-                )
+            assert_list_custom_resources(
+                mocked_client, mocked_zipfile, api, kind, file_prefix=target_file_prefix
+            )
 
-                # Assert runtime resources
-                assert_list_deployments(
-                    mocked_client, mocked_zipfile, label_selector=OPCUA_ORCHESTRATOR_LABEL, resource_api=OPCUA_API_V1
-                )
-                assert_list_pods(
-                    mocked_client,
-                    mocked_zipfile,
-                    mocked_list_pods,
-                    label_selector=OPCUA_SUPERVISOR_LABEL,
-                    resource_api=OPCUA_API_V1,
-                    since_seconds=since_seconds,
-                )
-                assert_list_pods(
-                    mocked_client,
-                    mocked_zipfile,
-                    mocked_list_pods,
-                    label_selector=OPCUA_GENERAL_LABEL,
-                    resource_api=OPCUA_API_V1,
-                    since_seconds=since_seconds,
-                )
+        if api in [E4K_API_V1A2, E4K_API_V1A3]:
+            # Assert runtime resources
+            assert_list_deployments(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=E4K_LABEL,
+                resource_api=E4K_API_V1A2,
+                since_seconds=since_seconds,
+            )
+            assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
+            assert_list_stateful_sets(
+                mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2
+            )
+            assert_list_services(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
+            assert_e4k_stats(mocked_zipfile)
+
+        if api in [OPCUA_API_V1]:
+            # Assert runtime resources
+            assert_list_deployments(
+                mocked_client, mocked_zipfile, label_selector=OPCUA_ORCHESTRATOR_LABEL, resource_api=OPCUA_API_V1
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=OPCUA_SUPERVISOR_LABEL,
+                resource_api=OPCUA_API_V1,
+                since_seconds=since_seconds,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=OPCUA_GENERAL_LABEL,
+                resource_api=OPCUA_API_V1,
+                since_seconds=since_seconds,
+            )
 
         if api in [BLUEFIN_API_V1]:
-            for resource in BluefinResourceKinds.list():
-                assert_list_custom_resources(mocked_client, mocked_zipfile, api.get_resource(resource))
-
             # Assert runtime resources
             assert_list_deployments(
                 mocked_client, mocked_zipfile, label_selector=BLUEFIN_APP_LABEL, resource_api=BLUEFIN_API_V1
@@ -237,9 +225,6 @@ def test_create_bundle(
             assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=BLUEFIN_API_V1)
 
         if api in [SYMPHONY_API_V1]:
-            for resource in SymphonyResourceKinds.list():
-                assert_list_custom_resources(mocked_client, mocked_zipfile, api.get_resource(resource))
-
             for symphony_label in [SYMPHONY_APP_LABEL, SYMPHONY_INSTANCE_LABEL, GENERIC_CONTROLLER_LABEL]:
                 assert_list_pods(
                     mocked_client,
@@ -269,17 +254,19 @@ def test_create_bundle(
         assert_shared_kpis(mocked_client, mocked_zipfile)
 
 
-def assert_list_custom_resources(mocked_client, mocked_zipfile, resource: EdgeResource, file_prefix: str = None):
+def assert_list_custom_resources(
+    mocked_client, mocked_zipfile, api: EdgeResourceApi, kind: str, file_prefix: str = None
+):
     mocked_client.CustomObjectsApi().list_cluster_custom_object.assert_any_call(
-        group=resource.api.group, version=resource.api.version, plural=resource.plural
+        group=api.group, version=api.version, plural=f"{kind}s"
     )
     if not file_prefix:
-        file_prefix = resource.kind
+        file_prefix = kind
 
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo=f"mock_namespace/{resource.api.moniker}/{file_prefix}.{resource.api.version}.mock_name.yaml",
-        data=f"kind: {resource.kind}\nmetadata:\n  name: mock_name\n  namespace: mock_namespace\n",
+        zinfo=f"mock_namespace/{api.moniker}/{file_prefix}.{api.version}.mock_name.yaml",
+        data=f"kind: {kind}\nmetadata:\n  name: mock_name\n  namespace: mock_namespace\n",
     )
 
 
