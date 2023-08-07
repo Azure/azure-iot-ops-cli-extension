@@ -192,7 +192,7 @@ def evaluate_diagnostics_service(
 
     check_manager.add_target(target_name=target_diagnostic_service, conditions=[
         "len(diagnosticservices)==1",
-        "(diagnosticservices).each(spec)"  # do we need this? or just "spec"
+        "spec"
     ])
 
     diagnostics_count_text = "- Expecting [bright_blue]1[/bright_blue] diagnostics service resource per namespace. {}."
@@ -201,10 +201,10 @@ def evaluate_diagnostics_service(
     service_count_status = CheckTaskStatus.success.value
     service_status_color = "green"
 
-    # todo - currently, count != 1 is an error - possible to have >1 diagnostic resources? warn?
+    # warn if we have <0, >1 diagnostic service resources
     if diagnostic_service_count != 1:
-        service_count_status = CheckTaskStatus.error.value
-        service_status_color = "red"
+        service_count_status = CheckTaskStatus.warning.value
+        service_status_color = "yellow"
 
     diagnostics_count_text = diagnostics_count_text.format(f"[{service_status_color}]Detected {diagnostic_service_count}[/{service_status_color}]")
 
@@ -276,7 +276,6 @@ def evaluate_diagnostics_service(
             ),
         )
 
-        # this will add a success eval for each resource, even though != 1 is a warning
         check_manager.add_target_eval(
             target_name=target_diagnostic_service,
             status=CheckTaskStatus.success.value,
