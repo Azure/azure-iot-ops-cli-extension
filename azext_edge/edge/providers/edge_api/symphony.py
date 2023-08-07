@@ -8,12 +8,10 @@ from .base import EdgeResourceApi
 from ...common import ListableEnum
 
 
-class OpcuaResourceKinds(ListableEnum):
-    APPLICATION = "application"
-    MODULE_TYPE = "moduletype"
-    MODULE = "module"
-    ASSET_TYPE = "assettype"
-    ASSET = "asset"
+class SymphonyResourceKinds(ListableEnum):
+    INSTANCE = "instance"
+    SOLUTION = "solution"
+    TARGET = "target"
 
 
-OPCUA_API_V1 = EdgeResourceApi(group="e4i.microsoft.com", version="v1", moniker="opcua")
+SYMPHONY_API_V1 = EdgeResourceApi(group="symphony.microsoft.com", version="v1", moniker="symphony")

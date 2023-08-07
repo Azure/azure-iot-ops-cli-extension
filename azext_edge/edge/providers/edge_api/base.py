@@ -5,44 +5,56 @@
 # --------------------------------------------------------------------------------------------
 
 from enum import Enum
-from typing import Dict, FrozenSet, Iterable, List, NamedTuple, Union
+from typing import Dict, FrozenSet, Iterable, List, Union
+from kubernetes.client.models import V1APIResourceList
+from ...providers.base import get_cluster_custom_api, get_namespaced_custom_objects
 
 from azure.cli.core.azclierror import ResourceNotFoundError
 
 
-class EdgeResourceApi(NamedTuple):
-    group: str
-    version: str
-    moniker: str
-    kinds: FrozenSet[str]
+class EdgeResourceApi:
+    def __init__(self, group: str, version: str, moniker: str):
+        self.group: str = group
+        self.version: str = version
+        self.moniker: str = moniker
+        self._api: V1APIResourceList = None
+        self._kinds: FrozenSet[str] = None
 
     def as_str(self) -> str:
         return f"{self.group}/{self.version}"
 
-    def get_resource(self, kind: Union[str, Enum]) -> Union["EdgeResource", None]:
-        if isinstance(kind, Enum):
-            kind = kind.value
-        if kind in self.kinds:
-            return EdgeResource(api=self, kind=kind)
-
     def is_deployed(self, raise_on_404: bool = False) -> bool:
-        from ...providers.base import get_cluster_custom_api
+        return self._get_api(raise_on_404) is not None
 
-        return get_cluster_custom_api(resource_api=self, raise_on_404=raise_on_404) is not None
-
-
-class EdgeResource(NamedTuple):
-    api: EdgeResourceApi
-    kind: str
+    def _get_api(self, raise_on_404: bool = False):
+        self._api = get_cluster_custom_api(group=self.group, version=self.version, raise_on_404=raise_on_404)
+        return self._api
 
     @property
-    def plural(self) -> str:
-        return f"{self.kind}s"
+    def kinds(self) -> Union[FrozenSet[str], None]:
+        if self._kinds:
+            return self._kinds
+
+        if not self._api:
+            self._get_api()
+
+        if self._api:
+            self._kinds = frozenset(r.kind.lower() for r in self._api.resources)
+            return self._kinds
+
+    def get_resources(self, kind: Union[str, Enum], namespace: str):
+        if isinstance(kind, Enum):
+            kind = kind.value
+
+        if self.kinds and kind in self.kinds:
+            return get_namespaced_custom_objects(
+                group=self.group, version=self.version, namespace=namespace, plural=f"{kind}s"
+            )
 
 
 class EdgeApiManager:
-    def __init__(self, ResourceApis: Iterable[EdgeResourceApi]):
-        self.resource_apis: FrozenSet[EdgeResourceApi] = frozenset(ResourceApis)
+    def __init__(self, resource_apis: Iterable[EdgeResourceApi]):
+        self.resource_apis: FrozenSet[EdgeResourceApi] = frozenset(resource_apis)
         self.api_group_map: Dict[str, List[str]] = {}
         for api in self.resource_apis:
             if api.group not in self.api_group_map:
@@ -66,3 +78,7 @@ class EdgeApiManager:
             raise ResourceNotFoundError(error_msg)
 
         return result
+
+    @property
+    def apis(self) -> FrozenSet[EdgeResourceApi]:
+        return self.resource_apis
