@@ -26,10 +26,10 @@ E4K_APP_LABELS = [
     'azedge-e4k-operator',
     'broker'
     'diagnostics',
-    'azedge-selftest'
-    'health-manager'
-    'azedge-mqttbridge'
-    'azedge-datalake'
+    'azedge-selftest',
+    'health-manager',
+    'azedge-mqttbridge',
+    'azedge-datalake',
 ]
 
 E4K_LABEL = f"app in ({','.join(E4K_APP_LABELS)})"
