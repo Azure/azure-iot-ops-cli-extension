@@ -17,6 +17,8 @@ class E4kResourceKinds(ListableEnum):
     BROKER_AUTHORIZATION = "brokerauthorization"
     MQTT_BRIDGE_TOPIC_MAP = "mqttbridgetopicmap"
     MQTT_BRIDGE_CONNECTOR = "mqttbridgeconnector"
+    DATALAKE_CONNECTOR = "datalakeconnector"
+    DATALAKE_CONNECTOR_TOPIC_MAP = "datalakeconnectortopicmap"
 
 
 E4K_API_V1A2 = EdgeResourceApi(group="az-edge.com", version="v1alpha2", moniker="e4k")
