@@ -131,58 +131,57 @@ def _clean_stats(raw_stats: str) -> dict:
         if key not in result:
             result[key] = value
         else:
-            if key == "publishes_received_per_second" or key == "publishes_sent_per_second":
+            # TODO - Enumerate key indexes
+            if key == "e4k_publishes_received_per_second" or key == "e4k_publishes_sent_per_second":
                 result[key] = result[key] + value
-            elif key == "publish_route_replication_correctness":
+            elif key == "e4k_publish_route_replication_correctness":
                 result[key] = result[key] * value
             else:
                 result[key] = value
-
     if result:
         normalized = {}
-        if "publish_route_replication_correctness" in result:
+        if "e4k_publish_route_replication_correctness" in result:
             normalized["publish_route_replication_correctness"] = {
                 "displayName": "Replication Correctness",
                 "description": "Replication correctness.",
-                "value": _get_pass_fail(result["publish_route_replication_correctness"]),
+                "value": _get_pass_fail(result["e4k_publish_route_replication_correctness"]),
             }
-        if "publish_latency_mu_ms" in result:
+        if "e4k_publish_latency_mu_ms" in result:
             normalized["publish_latency_mu_ms"] = {
                 "displayName": "P99 Average",
                 "description": "Average 99th percentile of publish message latency (ms).",
-                "value": round(result["publish_latency_mu_ms"], 5),
+                "value": round(result["e4k_publish_latency_mu_ms"], 5),
             }
-        if "publish_latency_sigma_ms" in result:
+        if "e4k_publish_latency_sigma_ms" in result:
             normalized["publish_latency_sigma_ms"] = {
                 "displayName": "P99 Standard Deviation",
                 "description": "Standard deviation of the 99th percentile publish message latency (ms).",
-                "value": round(result["publish_latency_sigma_ms"], 5),
+                "value": round(result["e4k_publish_latency_sigma_ms"], 5),
             }
-        if "publishes_received_per_second" in result:
+        if "e4k_publishes_received_per_second" in result:
             normalized["publishes_received_per_second"] = {
                 "displayName": "Inbound Message Rate",
                 "description": "Rate of inbound messages per second.",
-                "value": round(result["publishes_received_per_second"], 5),
+                "value": round(result["e4k_publishes_received_per_second"], 5),
             }
-        if "publishes_sent_per_second" in result:
+        if "e4k_publishes_sent_per_second" in result:
             normalized["publishes_sent_per_second"] = {
                 "displayName": "Outbound Message Rate",
                 "description": "Rate of outgoing messages per second.",
-                "value": round(result["publishes_sent_per_second"], 5),
+                "value": round(result["e4k_publishes_sent_per_second"], 5),
             }
-        if "connected_sessions" in result:
+        if "e4k_connected_sessions" in result:
             normalized["connected_sessions"] = {
                 "displayName": "Connected Sessions",
                 "description": "Total number of connected sessions.",
-                "value": result["connected_sessions"],
+                "value": result["e4k_connected_sessions"],
             }
-        if "total_subscriptions" in result:
+        if "e4k_total_subscriptions" in result:
             normalized["total_subscriptions"] = {
                 "displayName": "Total Subscriptions",
                 "description": "Total number of topic subscriptions.",
-                "value": result["total_subscriptions"],
+                "value": result["e4k_total_subscriptions"],
             }
-
         return normalized
 
     return result
