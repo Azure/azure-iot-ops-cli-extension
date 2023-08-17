@@ -64,6 +64,19 @@ class E4kCheckType(Enum):
     post = "post"
 
 
+class E4kDiagnosticPropertyIndex(Enum):
+    """
+    E4K Diagnostic Property Index Strings
+    """
+    publishes_received_per_second = "e4k_publishes_received_per_second"
+    publishes_sent_per_second = "e4k_publishes_sent_per_second"
+    publish_route_replication_correctness = "e4k_publish_route_replication_correctness"
+    publish_latency_mu_ms = "e4k_publish_latency_mu_ms"
+    publish_latency_sigma_ms = "e4k_publish_latency_sigma_ms"
+    connected_sessions = "e4k_connected_sessions"
+    total_subscriptions = "e4k_total_subscriptions"
+
+
 class SupportForEdgeServiceType(ListableEnum):
     """
     Edge resource type.
