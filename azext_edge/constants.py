@@ -7,7 +7,7 @@
 
 import os
 
-VERSION = "0.0.3a1"
+VERSION = "0.0.3a2"
 EXTENSION_NAME = "azure-edge"
 EXTENSION_ROOT = os.path.dirname(os.path.abspath(__file__))
 USER_AGENT = "EdgePlatformCliExtension/{}".format(VERSION)
