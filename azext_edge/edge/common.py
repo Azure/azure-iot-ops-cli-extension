@@ -73,6 +73,7 @@ class SupportForEdgeServiceType(ListableEnum):
     e4k = "e4k"
     opcua = "opcua"
     bluefin = "bluefin"
+    symphony = "symphony"
 
 
 # E4K runtime attributes

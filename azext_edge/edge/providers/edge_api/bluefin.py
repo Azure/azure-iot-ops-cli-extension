@@ -14,6 +14,4 @@ class BluefinResourceKinds(ListableEnum):
     PIPELINE = "pipeline"
 
 
-BLUEFIN_API_V1 = EdgeResourceApi(
-    group="bluefin.az-bluefin.com", version="v1", moniker="bluefin", kinds=frozenset(BluefinResourceKinds.list())
-)
+BLUEFIN_API_V1 = EdgeResourceApi(group="bluefin.az-bluefin.com", version="v1", moniker="bluefin")

@@ -14,21 +14,21 @@ from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Container, V1ObjectMeta
 
-from ..edge_api import EdgeResource, EdgeResourceApi
+from ..edge_api import EdgeResourceApi
 from ..base import client
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
 
 
-def process_crd(resource: EdgeResource, file_prefix: Optional[str] = None):
+def process_crd(group: str, version: str, kind: str, api_moniker: str, file_prefix: Optional[str] = None):
     result: dict = client.CustomObjectsApi().list_cluster_custom_object(
-        group=resource.api.group,
-        version=resource.api.version,
-        plural=resource.plural,
+        group=group,
+        version=version,
+        plural=f"{kind}s",
     )
     if not file_prefix:
-        file_prefix = resource.kind
+        file_prefix = kind
 
     processed = []
     namespaces = []
@@ -36,9 +36,7 @@ def process_crd(resource: EdgeResource, file_prefix: Optional[str] = None):
         namespace = r["metadata"]["namespace"]
         namespaces.append(namespace)
         name = r["metadata"]["name"]
-        processed.append(
-            {"data": r, "zinfo": f"{namespace}/{resource.api.moniker}/{file_prefix}.{resource.api.version}.{name}.yaml"}
-        )
+        processed.append({"data": r, "zinfo": f"{namespace}/{api_moniker}/{file_prefix}.{version}.{name}.yaml"})
 
     return processed
 
@@ -49,6 +47,7 @@ def process_v1_pods(
     since_seconds: int = 60 * 60 * 24,
     include_metrics=False,
     capture_previous_logs=False,
+    prefix_names: List[str] = None,
 ) -> List[dict]:
     from kubernetes.client.models import V1Pod, V1PodList, V1PodSpec
 
@@ -56,6 +55,8 @@ def process_v1_pods(
     custom_api = client.CustomObjectsApi()
 
     processed = []
+    if not prefix_names:
+        prefix_names = []
 
     pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
     pod_logger_info = f"Detected {len(pods.items)} pods."
@@ -65,8 +66,14 @@ def process_v1_pods(
     for pod in pods.items:
         p: V1Pod = pod
         pod_metadata: V1ObjectMeta = p.metadata
-        pod_namespace = pod_metadata.namespace
-        pod_name = pod_metadata.name
+        pod_namespace: str = pod_metadata.namespace
+        pod_name: str = pod_metadata.name
+
+        if prefix_names:
+            matched_prefix = [pod_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
+
         # TODO: Workaround
         p.api_version = pods.api_version
         p.kind = "Pod"
@@ -129,12 +136,15 @@ def process_deployments(
     resource_api: EdgeResourceApi,
     label_selector: str = None,
     return_namespaces: bool = False,
+    prefix_names: List[str] = None,
 ):
     from kubernetes.client.models import V1Deployment, V1DeploymentList
 
     v1_apps = client.AppsV1Api()
 
     processed = []
+    if not prefix_names:
+        prefix_names = []
 
     deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(label_selector=label_selector)
     logger.info(f"Detected {len(deployments.items)} deployments.")
@@ -146,8 +156,14 @@ def process_deployments(
         d.api_version = deployments.api_version
         d.kind = "Deployment"
         deployment_metadata: V1ObjectMeta = d.metadata
-        deployment_namespace = deployment_metadata.namespace
-        deployment_name = deployment_metadata.name
+        deployment_namespace: str = deployment_metadata.namespace
+        deployment_name: str = deployment_metadata.name
+
+        if prefix_names:
+            matched_prefix = [deployment_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
+
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=d),
@@ -182,8 +198,8 @@ def process_statefulset(
         s.api_version = statefulsets.api_version
         s.kind = "Statefulset"
         statefulset_metadata: V1ObjectMeta = s.metadata
-        statefulset_namespace = statefulset_metadata.namespace
-        statefulset_name = statefulset_metadata.name
+        statefulset_namespace: str = statefulset_metadata.namespace
+        statefulset_name: str = statefulset_metadata.name
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=s),
@@ -194,7 +210,7 @@ def process_statefulset(
     return processed
 
 
-def process_services(resource_api: EdgeResourceApi, label_selector: str, prefix_names: List[str] = None):
+def process_services(resource_api: EdgeResourceApi, label_selector: str = None, prefix_names: List[str] = None):
     from kubernetes.client.models import V1Service, V1ServiceList
 
     v1_api = client.CoreV1Api()
@@ -214,10 +230,12 @@ def process_services(resource_api: EdgeResourceApi, label_selector: str, prefix_
         service_metadata: V1ObjectMeta = s.metadata
         service_namespace: str = service_metadata.namespace
         service_name: str = service_metadata.name
+
         if prefix_names:
             matched_prefix = [service_name.startswith(prefix) for prefix in prefix_names]
             if not any(matched_prefix):
                 continue
+
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=s),
@@ -230,13 +248,16 @@ def process_services(resource_api: EdgeResourceApi, label_selector: str, prefix_
 
 def process_replicasets(
     resource_api: EdgeResourceApi,
-    label_selector: str,
+    label_selector: str = None,
+    prefix_names: List[str] = None,
 ):
     from kubernetes.client.models import V1ReplicaSet, V1ReplicaSetList
 
     v1_apps = client.AppsV1Api()
 
     processed = []
+    if not prefix_names:
+        prefix_names = []
 
     replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
     logger.info(f"Detected {len(replicasets.items)} replicasets.")
@@ -246,13 +267,19 @@ def process_replicasets(
         # TODO: Workaround
         r.api_version = replicasets.api_version
         r.kind = "Replicaset"
-        statefulset_metadata: V1ObjectMeta = r.metadata
-        statefulset_namespace = statefulset_metadata.namespace
-        statefulset_name = statefulset_metadata.name
+        replicaset_metadata: V1ObjectMeta = r.metadata
+        replicaset_namespace: str = replicaset_metadata.namespace
+        replicaset_name: str = replicaset_metadata.name
+
+        if prefix_names:
+            matched_prefix = [replicaset_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
+
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=r),
-                "zinfo": f"{statefulset_namespace}/{resource_api.moniker}/replicaset.{statefulset_name}.yaml",
+                "zinfo": f"{replicaset_namespace}/{resource_api.moniker}/replicaset.{replicaset_name}.yaml",
             }
         )
 
@@ -273,12 +300,15 @@ def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional
     result = {}
     for api in apis:
         for kind in api.kinds:
-            resource = api.get_resource(kind)
             file_prefix = file_prefix_map.get(kind)
-            if resource:
-                result[f"{resource.api.moniker} {resource.api.version} {resource.plural}"] = partial(
-                    process_crd, resource=resource, file_prefix=file_prefix
-                )
+            result[f"{api.moniker} {api.version} {kind}"] = partial(
+                process_crd,
+                group=api.group,
+                version=api.version,
+                kind=kind,
+                api_moniker=api.moniker,
+                file_prefix=file_prefix,
+            )
 
     return result
 
