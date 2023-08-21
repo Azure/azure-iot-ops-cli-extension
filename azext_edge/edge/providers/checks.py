@@ -87,6 +87,8 @@ def run_checks(
                     result["postDeployment"].append(evaluate_diagnostics_service(namespace=namespace, as_list=as_list))
                 if "MqttBridgeConnector" in api_resources:
                     result["postDeployment"].append(evaluate_mqtt_bridge_connectors(namespace=namespace, as_list=as_list))
+                if "DataLakeConnector" in api_resources:
+                    result["postDeployment"].append(evaluate_datalake_connectors(namespace=namespace, as_list=as_list))
 
         if not as_list:
             return result
@@ -802,20 +804,14 @@ def evaluate_mqtt_bridge_connectors(
     check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
 
     top_level_padding = (0, 0, 0, 8)
-    bridge_objects: dict = get_namespaced_custom_objects(
-        resource=E4K_ACTIVE_API.get_resource(kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR),
-        namespace=namespace
-    )
+    bridge_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR, namespace=namespace)
     bridge_resources: List[dict] = bridge_objects.get("items", [])
 
     # mqtt bridge pod prefix = azedge-[bridge_name]-[instance]
     bridge_pod_name_prefixes = list(map(lambda x: f"azedge-{x['metadata']['name']}", bridge_resources))
 
     # check topic maps
-    topic_map_objects: dict = get_namespaced_custom_objects(
-        resource=E4K_ACTIVE_API.get_resource(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP),
-        namespace=namespace
-    )
+    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP, namespace=namespace)
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
 
     # attempt to map each topic_map to its referenced bridge
@@ -1083,6 +1079,181 @@ def evaluate_mqtt_bridge_connectors(
             ),
         )
         for pod_prefix in bridge_pod_name_prefixes:
+            evaluate_pod_health(
+                check_manager=check_manager,
+                namespace=namespace,
+                pod=pod_prefix,
+                display_padding=12,
+            )
+
+    return check_manager.as_dict(as_list)
+
+
+def evaluate_datalake_connectors(
+    namespace: str,
+    as_list: bool = False,
+):
+    check_manager = CheckManager(
+        check_name="evalDatalakeBridgeConnectors",
+        check_desc="Evaluate Data Lake Connectors and Topic Maps",
+        namespace=namespace,
+    )
+
+    # target = Datalake Connectors
+    connector_target = f"{E4kResourceKinds.DATALAKE_CONNECTOR.value}s.az-edge.com"
+    check_manager.add_target(target_name=connector_target)
+
+    # target = Datalake Topic Maps
+    topic_map_target = f"{E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP.value}s.az-edge.com"
+    check_manager.add_target(target_name=topic_map_target)
+
+    # These checks are purely informational, so mark as skipped?
+    check_manager.set_target_status(target_name=connector_target, status=CheckTaskStatus.skipped.value)
+    check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
+
+    connector_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR, namespace=namespace)
+    connector_resources: List[dict] = connector_objects.get("items", [])
+
+    # connector pod prefix = azedge-[connector_name]-[instance]
+    connector_pod_name_prefixes = list(map(lambda x: f"azedge-{x['metadata']['name']}", connector_resources))
+
+    # check topic maps
+    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP, namespace=namespace)
+    topic_map_list: List[dict] = topic_map_objects.get("items", [])
+
+    # attempt to map each topic_map to its referenced connector
+    topic_maps_by_connector = {}
+    connector_refs = set(
+        map(
+            lambda ref: ref.get("spec", {}).get("dataLakeConnectorRef"),
+            topic_map_list,
+        )
+    )
+
+    for connector in connector_refs:
+        topic_maps_by_connector[connector] = [
+            topic
+            for topic in topic_map_list
+            if topic.get("spec", {}).get("dataLakeConnectorRef") == connector
+        ]
+
+    # output padding definitions    
+    top_level_padding = (0, 0, 0, 8)
+    connector_detail_padding = (0, 0, 0, 12)
+    # enumerate connector resources
+    if len(connector_resources):
+        for connector in connector_resources:
+            # connector resource
+            connector_metadata = connector.get("metadata", {})
+            connector_name = connector_metadata.get("name")
+            check_manager.add_display(
+                target_name=connector_target,
+                display=Padding(
+                    f"\n- Connector {{[bright_blue]{connector_name}[/bright_blue]}}",
+                    top_level_padding,
+                ),
+            )
+            # connector resource status
+            connector_status = connector.get("status", {})
+            connector_status_level = connector_status.get(
+                "configStatusLevel", "N/A"
+            )  # warn / error / success
+
+            connector_status_desc = connector_status.get(
+                "configStatusDescription"
+            )  # text of status
+            connector_status_text = f" {connector_status_desc}" if connector_status_desc else ""
+            spec = connector['spec']
+
+            # connector resource instance details
+            connector_instances = spec.get("instances")  # number of instances
+
+            check_manager.add_display(
+                target_name=connector_target,
+                display=Padding(
+                    f"Status {{{_decorate_resource_status(connector_status_level)}}}.{connector_status_text}",
+                    connector_detail_padding,
+                ),
+            )
+            check_manager.add_display(
+                target_name=connector_target,
+                display=Padding(
+                    f"Connector instances: [bright_blue]{connector_instances}[/bright_blue]",
+                    connector_detail_padding,
+                ),
+            )
+
+            # topic maps for this specific connector
+            connector_topic_maps = topic_maps_by_connector.get(connector_name, [])
+
+            # Show warning if no topic map references this connector
+            if not len(connector_topic_maps):
+                check_manager.add_display(
+                    target_name=connector_target,
+                    display=Padding(
+                        "[yellow]No topic maps reference this resource[/yellow]",
+                        connector_detail_padding,
+                    ),
+                )
+            # topic maps that reference this connector
+            for topic_map in connector_topic_maps:
+                topic_name = topic_map.get("metadata", {}).get("name")
+                topic_spec = topic_map.get("spec", {})
+                schema_table = topic_spec.get("mapping", {}).get('deltaTable', {})
+                _display_datalake_topic_map_details_table(
+                    check_manager=check_manager,
+                    target=topic_map_target,
+                    topic_map_name=topic_name,
+                    topic_map_schema=schema_table.get("schema", [])
+                )
+                # remove topic map by connector reference
+                del topic_maps_by_connector[connector_name]
+
+    else:  # skip check target if no connectors
+        check_manager.add_target_eval(
+            target_name=connector_target, status=CheckTaskStatus.skipped.value, value="No Data Lake Connector Resources Detected"
+        )
+        check_manager.add_display(target_name=connector_target, display=Padding("[yellow]No Data Lake Connector resources detected.[/yellow]", top_level_padding))
+
+    # if there are any topic maps that haven't been mapped to a previous connector
+    if topic_maps_by_connector:
+        invalid_connector_refs = topic_maps_by_connector.keys()
+        for invalid_connector_ref in invalid_connector_refs:
+            invalid_ref_maps = topic_maps_by_connector[invalid_connector_ref]
+
+            # for each topic map that references this connector
+            for ref_map in invalid_ref_maps:
+                topic_name = ref_map.get("metadata", {}).get("name")
+                topic_spec = topic_map.get("spec")
+                check_manager.add_display(
+                    target_name=topic_map_target,
+                    display=Padding(
+                        f"\n- Topic Map {{{topic_name}}}. [red]Invalid[/red] connector reference {{[red]{invalid_connector_ref}[/red]}}",
+                        top_level_padding,
+                    ),
+                )
+                schema_table = topic_spec.get("mapping", {}).get('deltaTable', {})
+                _display_datalake_topic_map_details_table(
+                    check_manager=check_manager,
+                    target=topic_map_target,
+                    topic_map_name=topic_name,
+                    topic_map_schema=schema_table.get("schema", [])
+                )
+
+    # if there are connectors, but no topic maps at all:
+    elif len(connector_resources) and not len(topic_map_list):
+        check_manager.add_display(target_name=topic_map_target, display=Padding("[yellow]- No topic map resources found.[/yellow]", top_level_padding))
+
+    if len(connector_pod_name_prefixes):
+        # evaluate resource health
+        check_manager.add_display(
+            target_name=connector_target,
+            display=Padding(
+                "\nRuntime Health",
+                (0, 0, 0, 8),
+            ),
+        )
+        for pod_prefix in connector_pod_name_prefixes:
             evaluate_pod_health(
                 check_manager=check_manager,
                 namespace=namespace,
