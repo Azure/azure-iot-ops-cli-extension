@@ -42,6 +42,8 @@ DEPENDENCIES = [
     "rich",
     "kubernetes",
     "tomli",
+    "protobuf",
+    "opentelemetry-proto",
 ]
 
 CLASSIFIERS = [

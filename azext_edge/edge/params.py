@@ -112,15 +112,39 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "diag_service_pod_prefix",
             options_list=["--diag-svc-pod"],
-            help="The diagnostic service pod prefix. The first pod fulfilling the condition " "will be connected to.",
-            arg_group="Pod",
+            help="The diagnostic service pod prefix. The first pod fulfilling the condition will be connected to.",
+            arg_group="Diagnostics Pod",
         )
         context.argument(
-            "pod_port", type=int, options_list=["--port"], help="The pod port to connect through.", arg_group="Pod"
+            "pod_metrics_port",
+            type=int,
+            options_list=["--metrics-port"],
+            help="Diagnostic service metrics API port.",
+            arg_group="Diagnostics Pod",
+        )
+        context.argument(
+            "pod_protobuf_port",
+            type=int,
+            options_list=["--protobuf-port"],
+            help="Diagnostic service protobuf API port.",
+            arg_group="Diagnostics Pod",
         )
         context.argument(
             "raw_response_print",
             options_list=["--raw"],
             arg_type=get_three_state_flag(),
             help="Return raw output from the metrics API.",
+        )
+        context.argument(
+            "trace_ids",
+            nargs="*",
+            options_list=["--trace-ids"],
+            help="Space-separated trace ids in hex format.",
+            arg_group="Trace"
+        )
+        context.argument(
+            "trace_dir",
+            options_list=["--trace-dir"],
+            help="Local directory where traces will be bundled and stored at.",
+            arg_group="Trace"
         )

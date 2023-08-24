@@ -6,7 +6,7 @@
 
 import socket
 from contextlib import contextmanager
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Iterator
 from urllib.request import urlopen
 
 from azure.cli.core.azclierror import ResourceNotFoundError
@@ -142,7 +142,7 @@ class PodRequest:
 
 
 @contextmanager
-def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> PodRequest:
+def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> Iterator[PodRequest]:
     from kubernetes.stream import portforward
 
     api = client.CoreV1Api()
@@ -169,3 +169,23 @@ def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> 
         yield pod_request
     finally:
         socket.create_connection = socket_create_connection
+
+
+@contextmanager
+def portforward_socket(pod_name: str, namespace: str, pod_port: str) -> Iterator[socket.socket]:
+    from kubernetes.stream import portforward
+
+    api = client.CoreV1Api()
+
+    pf = portforward(
+        api.connect_get_namespaced_pod_portforward,
+        pod_name,
+        namespace,
+        ports=str(pod_port),
+    )
+
+    target_socket: socket.socket = pf.socket(int(pod_port))._socket
+    target_socket.settimeout(10.0)
+    yield target_socket
+    target_socket.shutdown(socket.SHUT_RDWR)
+    target_socket.close()

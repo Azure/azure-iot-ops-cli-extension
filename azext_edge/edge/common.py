@@ -93,6 +93,7 @@ class SupportForEdgeServiceType(ListableEnum):
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
 METRICS_SERVICE_API_PORT = 9600
+PROTOBUF_SERVICE_API_PORT = 9800
 
 AZEDGE_DIAGNOSTICS_PROBE_PREFIX = "azedge-diagnostics-probe"
 AZEDGE_FRONTEND_PREFIX = "azedge-dmqtt-frontend"
