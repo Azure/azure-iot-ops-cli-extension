@@ -786,29 +786,204 @@ def evaluate_mqtt_bridge_connectors(
     namespace: str,
     as_list: bool = False,
 ):
+
+    def add_routes_display(check_manager: CheckManager, target: str, routes: List[Dict[str, str]], padding: tuple):
+        for route in routes:
+            route_name = route.get('name')
+            route_direction = route.get('direction')
+            route_qos = route.get('qos')
+            qos_formatted = f" QOS [blue]{route_qos}[/blue]" if route_qos else ''
+
+            check_manager.add_display(
+                target_name=target,
+                display=Padding(
+                    f"- Route {{[blue]{route_name}[/blue]}} direction [blue]{route_direction}[/blue]{qos_formatted}",
+                    padding,
+                ),
+            )
+
+    def create_routes_table(name: str, routes: List[Dict[str, str]]):
+        from rich.table import Table
+        title = f"\nTopic map [blue]{{{name}}}[/blue]"
+        table = Table(title=title, title_justify="left", title_style="None", show_lines=True)
+
+        columns = ["Route", "Direction", "QOS"]
+
+        for column in columns:
+            table.add_column(column, justify="left", style='blue', no_wrap=True)
+
+        for route in routes:
+            table.add_row(
+                f"{route.get('name')}",
+                f"{route.get('direction')}",
+                # f"From:\n  {route.get('source')}\nTo:\n  {route.get('target')}",
+                f"{route.get('qos')}",
+            )
+        return table
+
+    def display_topic_maps(check_manager: CheckManager, target: str, topic_maps: List[Dict[str, str]], padding: tuple, table: bool = False):
+        # Show warning if no topic maps
+        if not len(bridge_topic_maps):
+            check_manager.add_display(
+                target_name=bridge_target,
+                display=Padding(
+                    "[yellow]No topic maps reference this resource[/yellow]",
+                    padding,
+                ),
+            )
+
+        # topic maps that reference this bridge
+        for topic_map in topic_maps:
+            name = topic_map.get("metadata", {}).get("name")
+            routes = topic_map.get("spec", {}).get("routes", [])
+            if table:
+                route_table = create_routes_table(name, routes)
+                check_manager.add_display(
+                    target_name=target,
+                    display=Padding(
+                        route_table,
+                        padding
+                    )
+                )
+            else:
+                check_manager.add_display(
+                    target_name=bridge_target,
+                    display=Padding(
+                        f"- Topic Map {{[blue]{name}[/blue]}}", padding
+                    ),
+                )
+
+                route_padding = (0, 0, 0, padding[3] + 4)
+                add_routes_display(
+                    check_manager=check_manager,
+                    target=target,
+                    routes=routes,
+                    padding=route_padding
+                )
+
+    def display_bridge_info(check_manager: CheckManager, target: str, bridge: Dict[str, str], padding: tuple):
+        # bridge resource
+        bridge_metadata = bridge.get("metadata", {})
+        bridge_name = bridge_metadata.get("name")
+
+        # bridge resource status
+        bridge_status = bridge.get("status", {})
+        bridge_status_level = bridge_status.get(
+            "configStatusLevel", "N/A"
+        )  # warn / error / success
+
+        bridge_status_desc = bridge_status.get(
+            "configStatusDescription"
+        )  # text of status
+
+        bridge_status_text = f" {bridge_status_desc}" if bridge_status_desc else ""
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"\n- Bridge {{[bright_blue]{bridge_name}[/bright_blue]}} status {{{_decorate_resource_status(bridge_status_level)}}}.{bridge_status_text}",
+                padding,
+            ),
+        )
+
+        # bridge resource instance details
+        spec = bridge['spec']
+        bridge_instances = spec.get("bridgeInstances")  # number of instances
+        client_prefix = spec.get("clientIdPrefix")  # client ID prefix (e4k)
+
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Bridge instances: [bright_blue]{bridge_instances}[/bright_blue]",
+                bridge_detail_padding,
+            ),
+        )
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Client Prefix: [bright_blue]{client_prefix}[/bright_blue]",
+                bridge_detail_padding,
+            ),
+        )
+        # local broker endpoint
+        local_broker = spec.get("localBrokerConnection")
+        local_broker_endpoint = local_broker.get(
+            "endpoint"
+        )  # endpoint IP / FQDN
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
+                bridge_detail_padding,
+            ),
+        )
+
+        local_broker_auth = next(
+            iter(local_broker.get("authentication"))
+        )  # auth type
+        local_broker_tls = local_broker.get("tls", {}).get(
+            "tlsEnabled", False
+        )  # tls enabled?
+
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Auth: [bright_blue]{local_broker_auth}[/bright_blue] TLS: [bright_blue]{local_broker_tls}[/bright_blue]",
+                broker_detail_padding,
+            ),
+        )
+
+        # remote broker endpoint
+        remote_broker = spec.get("remoteBrokerConnection")
+        remote_broker_endpoint = remote_broker.get(
+            "endpoint"
+        )  # endpoint IP / FQDN
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Remote Broker Connection: [bright_blue]{remote_broker_endpoint}[/bright_blue]",
+                bridge_detail_padding,
+            ),
+        )
+
+        remote_broker_auth = next(
+            iter(remote_broker.get("authentication"))
+        )  # auth type
+        remote_broker_tls = remote_broker.get("tls", {}).get(
+            "tlsEnabled", False
+        )  # tls enabled?
+
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Auth: [bright_blue]{remote_broker_auth}[/bright_blue] TLS: [bright_blue]{remote_broker_tls}[/bright_blue]",
+                broker_detail_padding,
+            ),
+        )
+
     check_manager = CheckManager(
         check_name="evalMQTTBridgeConnectors",
         check_desc="Evaluate MQTT Bridge Connectors and Topic Maps",
         namespace=namespace,
     )
-    # target = MQTT Bridge Connectors
+
     bridge_target = "mqttbridgeconnectors.az-edge.com"
     check_manager.add_target(target_name=bridge_target)
-
-    # target = MQTT Bridge Topic Maps
     topic_map_target = "mqttbridgetopicmaps.az-edge.com"
     check_manager.add_target(target_name=topic_map_target)
 
-    # These checks are purely informational, so mark as skipped?
+    # These checks are purely informational, so mark as skipped
     check_manager.set_target_status(target_name=bridge_target, status=CheckTaskStatus.skipped.value)
     check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
 
     top_level_padding = (0, 0, 0, 8)
+    bridge_detail_padding = (0, 0, 0, 12)
+    broker_detail_padding = (0, 0, 0, 16)
+
     bridge_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR, namespace=namespace)
     bridge_resources: List[dict] = bridge_objects.get("items", [])
 
     # mqtt bridge pod prefix = azedge-[bridge_name]-[instance]
-    bridge_pod_name_prefixes = list(map(lambda x: f"azedge-{x['metadata']['name']}", bridge_resources))
+    bridge_pod_name_prefixes = list(map(lambda pod: f"azedge-{pod['metadata']['name']}", bridge_resources))
 
     # check topic maps
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP, namespace=namespace)
@@ -825,192 +1000,32 @@ def evaluate_mqtt_bridge_connectors(
 
     for bridge in bridge_refs:
         topic_maps_by_bridge[bridge] = [
-            topic
-            for topic in topic_map_list
+            topic for topic in topic_map_list
             if topic.get("spec", {}).get("mqttBridgeConnectorRef") == bridge
         ]
 
     # enumerate bridge resources
     if len(bridge_resources):
         for bridge in bridge_resources:
-            # bridge resource
             bridge_metadata = bridge.get("metadata", {})
             bridge_name = bridge_metadata.get("name")
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"\n- Bridge {{[bright_blue]{bridge_name}[/bright_blue]}}",
-                    top_level_padding,
-                ),
-            )
-            bridge_detail_padding = (0, 0, 0, 12)
-
-            # bridge resource status
-            bridge_status = bridge.get("status", {})
-            bridge_status_level = bridge_status.get(
-                "configStatusLevel", "N/A"
-            )  # warn / error / success
-
-            bridge_status_desc = bridge_status.get(
-                "configStatusDescription"
-            )  # text of status
-            bridge_status_text = f" {bridge_status_desc}" if bridge_status_desc else ""
-            spec = bridge['spec']
-
-            # bridge resource instance details
-            bridge_instances = spec.get("bridgeInstances")  # number of instances
-            client_prefix = spec.get("clientIdPrefix")  # client ID prefix (e4k)
-
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"Status {{{_decorate_resource_status(bridge_status_level)}}}.{bridge_status_text}",
-                    bridge_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"Bridge instances: [bright_blue]{bridge_instances}[/bright_blue]",
-                    bridge_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"Client Prefix: [bright_blue]{client_prefix}[/bright_blue]",
-                    bridge_detail_padding,
-                ),
-            )
-
-            # todo - @c-ryan-k - create mqtt endpoint broker parser
-            # local_broker = analyze_broker("localBrokerConnection", "Local Broker")  # etc.
-
-            # local broker endpoint
-            local_broker = spec.get("localBrokerConnection")
-            local_broker_endpoint = local_broker.get(
-                "endpoint"
-            )  # endpoint IP / FQDN
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
-                    bridge_detail_padding,
-                ),
-            )
-
-            local_broker_auth = next(
-                iter(local_broker.get("authentication"))
-            )  # auth type
-            local_broker_tls = local_broker.get("tls", {}).get(
-                "tlsEnabled", False
-            )  # tls enabled?
-
-            broker_detail_padding = (0, 0, 0, 16)
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"Auth: [bright_blue]{local_broker_auth}[/bright_blue]",
-                    broker_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"TLS enabled: [bright_blue]{local_broker_tls}[/bright_blue]",
-                    broker_detail_padding,
-                ),
-            )
-
-            # remote broker endpoint
-            remote_broker = spec.get("remoteBrokerConnection")
-            remote_broker_endpoint = remote_broker.get(
-                "endpoint"
-            )  # endpoint IP / FQDN
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"Remote Broker Connection: [bright_blue]{remote_broker_endpoint}[/bright_blue]",
-                    bridge_detail_padding,
-                ),
-            )
-
-            remote_broker_auth = next(
-                iter(remote_broker.get("authentication"))
-            )  # auth type
-            remote_broker_tls = remote_broker.get("tls", {}).get(
-                "tlsEnabled", False
-            )  # tls enabled?
-
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"Auth: [bright_blue]{remote_broker_auth}[/bright_blue]",
-                    broker_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"TLS enabled: [bright_blue]{remote_broker_tls}[/bright_blue]",
-                    broker_detail_padding,
-                ),
-            )
-
-            # topic maps for this specific bridge
             bridge_topic_maps = topic_maps_by_bridge.get(bridge_name, [])
 
-            # Show warning if no topic map references this bridge
-            if not len(bridge_topic_maps):
-                check_manager.add_display(
-                    target_name=bridge_target,
-                    display=Padding(
-                        "[yellow]No topic maps reference this resource[/yellow]",
-                        bridge_detail_padding,
-                    ),
-                )
-            # topic maps that reference this bridge
-            for topic_map in bridge_topic_maps:
-                topic_name = topic_map.get("metadata", {}).get("name")
-                check_manager.add_display(
-                    target_name=bridge_target,
-                    display=Padding(
-                        f"- Topic Map {{{topic_name}}}", bridge_detail_padding
-                    ),
-                )
-                for route in topic_map.get("spec", {}).get("routes", []):
-                    topic_map_detail_padding = (0, 0, 0, 16)
-                    check_manager.add_display(
-                        target_name=bridge_target,
-                        display=Padding(
-                            f"- Route {{[blue]{route.get('name')}[/blue]}}",
-                            topic_map_detail_padding,
-                        ),
-                    )
-                    # add_route_entry(route)  # direction/name/qos/source/target
-                    route_padding = (0, 0, 0, 20)
-                    check_manager.add_display(
-                        target_name=bridge_target,
-                        display=Padding(
-                            f"Direction [blue]{route.get('direction')}[/blue], QOS [blue]{route.get('qos')}[/blue]",
-                            route_padding,
-                        ),
-                    )
-                    check_manager.add_display(
-                        target_name=bridge_target,
-                        display=Padding(
-                            f"From: [blue]{route.get('source')}[/blue]", route_padding
-                        ),
-                    )
-                    check_manager.add_display(
-                        target_name=bridge_target,
-                        display=Padding(
-                            f"To: [blue]{route.get('target')}[/blue]", route_padding
-                        ),
-                    )
-
-                # remove topic map by bridge reference
-                del topic_maps_by_bridge[bridge_name]
+            display_bridge_info(
+                check_manager=check_manager,
+                target=bridge_target,
+                bridge=bridge,
+                padding=top_level_padding
+            )
+            # topic maps for this specific bridge
+            display_topic_maps(
+                check_manager=check_manager,
+                target=topic_map_target,
+                topic_maps=bridge_topic_maps,
+                padding=bridge_detail_padding
+            )
+            # remove topic map by bridge reference
+            del topic_maps_by_bridge[bridge_name]
 
     else:  # skip check target if no bridges
         check_manager.add_target_eval(
@@ -1027,7 +1042,6 @@ def evaluate_mqtt_bridge_connectors(
             # for each topic map that references this bridge
             for ref_map in invalid_ref_maps:
                 topic_name = ref_map.get("metadata", {}).get("name")
-                topic_spec = topic_map.get("spec")
                 check_manager.add_display(
                     target_name=topic_map_target,
                     display=Padding(
@@ -1035,35 +1049,6 @@ def evaluate_mqtt_bridge_connectors(
                         top_level_padding,
                     ),
                 )
-                for route in topic_spec.get("routes", []):
-                    topic_map_detail_padding = (0, 0, 0, 12)
-                    route_padding = (0, 0, 0, 16)
-                    check_manager.add_display(
-                        target_name=topic_map_target,
-                        display=Padding(
-                            f"- Route {{[blue]{route.get('name')}[/blue]}}",
-                            topic_map_detail_padding,
-                        ),
-                    )
-                    check_manager.add_display(
-                        target_name=topic_map_target,
-                        display=Padding(
-                            f"Direction [blue]{route.get('direction')}[/blue], QOS [blue]{route.get('qos')}[/blue]",
-                            route_padding,
-                        ),
-                    )
-                    check_manager.add_display(
-                        target_name=topic_map_target,
-                        display=Padding(
-                            f"From: [blue]{route.get('source')}[/blue]", route_padding
-                        ),
-                    )
-                    check_manager.add_display(
-                        target_name=topic_map_target,
-                        display=Padding(
-                            f"To: [blue]{route.get('target')}[/blue]", route_padding
-                        ),
-                    )
 
     # if there are bridges, but no topic maps at all:
     elif len(bridge_resources) and not len(topic_map_list):
@@ -1072,7 +1057,7 @@ def evaluate_mqtt_bridge_connectors(
     if len(bridge_pod_name_prefixes):
         # evaluate resource health
         check_manager.add_display(
-            target_name=bridge_target,
+            target_name=topic_map_target,
             display=Padding(
                 "\nRuntime Health",
                 (0, 0, 0, 8),
@@ -1093,31 +1078,163 @@ def evaluate_datalake_connectors(
     namespace: str,
     as_list: bool = False,
 ):
+
+    def create_schema_table(name: str, schema: List[Dict[str, str]]):
+        from rich.table import Table
+
+        table = Table(title=f"Data Lake Topic Map [blue]{{{name}}}[/blue] Schema")
+
+        columns = [
+            {"name": "Name", "style": "white"},
+            {"name": "Mapping", "style": "white"},
+            {"name": "Format", "style": "white"},
+            {"name": "Optional", "style": "white"},
+        ]
+
+        for column in columns:
+            table.add_column(column["name"], justify="left", style=column["style"], no_wrap=True)
+
+        for value in schema:
+            table.add_row(
+                f"{value['name']}",
+                f"{value['mapping']}",
+                f"{value['format']}",
+                f"{value['optional']}"
+            )
+        return table
+
+    def display_topic_maps(check_manager: CheckManager, target: str, topic_maps: List[Dict[str, str]], padding: tuple, table: bool = False):
+        # Show warning if no topic maps
+        if not len(connector_topic_maps):
+            check_manager.add_display(
+                target_name=target,
+                display=Padding(
+                    "[yellow]No topic maps reference this resource[/yellow]",
+                    padding,
+                ),
+            )
+            return
+
+        for topic_map in topic_maps:
+            topic_name = topic_map.get("metadata", {}).get("name")
+            check_manager.add_display(
+                target_name=target,
+                display=Padding(
+                    f"- Topic Map {{[bright_blue]{topic_name}[/bright_blue]}}",
+                    padding,
+                ),
+            )
+
+            topic_spec = topic_map.get("spec", {})
+            topic_mapping = topic_spec.get("mapping", {})
+            max_msg_per_batch = topic_mapping.get("maxMessagesPerBatch")
+            msg_payload_type = topic_mapping.get("messagePayloadType")
+            source_topic = topic_mapping.get("mqttSourceTopic")
+            qos = topic_mapping.get("qos")
+
+            delta_table = topic_mapping.get("deltaTable", {})
+            table_name = delta_table.get("tableName")
+
+            detail_padding = (0, 0, 0, padding[3] + 4)
+            for row in [
+                ["Table Name", table_name],
+                ["Max Messages Per Batch", max_msg_per_batch],
+                ["Message Payload Type", msg_payload_type],
+                ["MQTT Source Topic", source_topic],
+                ["QOS", qos],
+            ]:
+                check_manager.add_display(
+                    target_name=target,
+                    display=Padding(
+                        f"- {row[0]}: [bright_blue]{row[1]}[/bright_blue]",
+                        detail_padding,
+                    ),
+                )
+
+            # Schema display
+            delta_table = topic_mapping.get("deltaTable", {})
+            schema = delta_table.get('schema', [])
+            if table:
+                route_table = create_schema_table(topic_name, schema)
+                check_manager.add_display(
+                    target_name=target,
+                    display=Padding(
+                        route_table,
+                        padding
+                    )
+                )
+
+    def display_connector_info(
+        check_manager: CheckManager,
+        target: str,
+        connector: Dict[str, str],
+        padding: tuple
+    ):
+
+        # connector resource status
+        connector_status = connector.get("status", {})
+        connector_status_level = connector_status.get(
+            "configStatusLevel", "N/A"
+        )
+        connector_status_desc = connector_status.get(
+            "configStatusDescription"
+        )
+        connector_status_text = f" {connector_status_desc}" if connector_status_desc else ""
+
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"\n- Connector {{[bright_blue]{connector_name}[/bright_blue]}} status {{{_decorate_resource_status(connector_status_level)}}}.{connector_status_text}",
+                padding,
+            ),
+        )
+        detail_padding = (0, 0, 0, padding[3] + 4)
+        spec = connector['spec']
+        connector_instances = spec.get("instances")  # number of instances
+
+        # connector target
+        datalake_target = spec.get("target", {}).get("datalakeStorage", {})
+        datalake_endpoint = datalake_target.get('endpoint')
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Connector instances: [bright_blue]{connector_instances}[/bright_blue]",
+                detail_padding,
+            ),
+        )
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Target endpoint: [bright_blue]{datalake_endpoint}[/bright_blue]",
+                detail_padding,
+            ),
+        )
+
     check_manager = CheckManager(
         check_name="evalDatalakeBridgeConnectors",
         check_desc="Evaluate Data Lake Connectors and Topic Maps",
         namespace=namespace,
     )
 
-    # target = Datalake Connectors
-    connector_target = f"{E4kResourceKinds.DATALAKE_CONNECTOR.value}s.az-edge.com"
+    connector_target = "datalakeconnectors.az-edge.com"
     check_manager.add_target(target_name=connector_target)
-
-    # target = Datalake Topic Maps
-    topic_map_target = f"{E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP.value}s.az-edge.com"
+    topic_map_target = "datalakeconnectortopicmaps.az-edge.com"
     check_manager.add_target(target_name=topic_map_target)
 
-    # These checks are purely informational, so mark as skipped?
+    # These checks are purely informational, so mark as skipped
     check_manager.set_target_status(target_name=connector_target, status=CheckTaskStatus.skipped.value)
     check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
 
-    connector_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR, namespace=namespace)
-    connector_resources: List[dict] = connector_objects.get("items", [])
+    top_level_padding = (0, 0, 0, 8)
+    connector_detail_padding = (0, 0, 0, 12)
+
+    connector_resources: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR, namespace=namespace)
+    connectors: List[dict] = connector_resources.get("items", [])
 
     # connector pod prefix = azedge-[connector_name]-[instance]
-    connector_pod_name_prefixes = list(map(lambda x: f"azedge-{x['metadata']['name']}", connector_resources))
+    connector_pod_name_prefixes = list(map(lambda x: f"azedge-{x['metadata']['name']}", connectors))
 
-    # check topic maps
+    # Data Lake topic maps
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP, namespace=namespace)
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
 
@@ -1132,82 +1249,32 @@ def evaluate_datalake_connectors(
 
     for connector in connector_refs:
         topic_maps_by_connector[connector] = [
-            topic
-            for topic in topic_map_list
+            topic for topic in topic_map_list
             if topic.get("spec", {}).get("dataLakeConnectorRef") == connector
         ]
 
-    # output padding definitions    
-    top_level_padding = (0, 0, 0, 8)
-    connector_detail_padding = (0, 0, 0, 12)
     # enumerate connector resources
-    if len(connector_resources):
-        for connector in connector_resources:
+    if len(connectors):
+        for connector in connectors:
             # connector resource
             connector_metadata = connector.get("metadata", {})
             connector_name = connector_metadata.get("name")
-            check_manager.add_display(
-                target_name=connector_target,
-                display=Padding(
-                    f"\n- Connector {{[bright_blue]{connector_name}[/bright_blue]}}",
-                    top_level_padding,
-                ),
-            )
-            # connector resource status
-            connector_status = connector.get("status", {})
-            connector_status_level = connector_status.get(
-                "configStatusLevel", "N/A"
-            )  # warn / error / success
-
-            connector_status_desc = connector_status.get(
-                "configStatusDescription"
-            )  # text of status
-            connector_status_text = f" {connector_status_desc}" if connector_status_desc else ""
-            spec = connector['spec']
-
-            # connector resource instance details
-            connector_instances = spec.get("instances")  # number of instances
-
-            check_manager.add_display(
-                target_name=connector_target,
-                display=Padding(
-                    f"Status {{{_decorate_resource_status(connector_status_level)}}}.{connector_status_text}",
-                    connector_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=connector_target,
-                display=Padding(
-                    f"Connector instances: [bright_blue]{connector_instances}[/bright_blue]",
-                    connector_detail_padding,
-                ),
-            )
-
-            # topic maps for this specific connector
             connector_topic_maps = topic_maps_by_connector.get(connector_name, [])
 
-            # Show warning if no topic map references this connector
-            if not len(connector_topic_maps):
-                check_manager.add_display(
-                    target_name=connector_target,
-                    display=Padding(
-                        "[yellow]No topic maps reference this resource[/yellow]",
-                        connector_detail_padding,
-                    ),
-                )
-            # topic maps that reference this connector
-            for topic_map in connector_topic_maps:
-                topic_name = topic_map.get("metadata", {}).get("name")
-                topic_spec = topic_map.get("spec", {})
-                schema_table = topic_spec.get("mapping", {}).get('deltaTable', {})
-                _display_datalake_topic_map_details_table(
-                    check_manager=check_manager,
-                    target=topic_map_target,
-                    topic_map_name=topic_name,
-                    topic_map_schema=schema_table.get("schema", [])
-                )
-                # remove topic map by connector reference
-                del topic_maps_by_connector[connector_name]
+            display_connector_info(
+                check_manager=check_manager,
+                target=connector_target,
+                connector=connector,
+                padding=top_level_padding
+            )
+            display_topic_maps(
+                check_manager=check_manager,
+                target=topic_map_target,
+                topic_maps=connector_topic_maps,
+                padding=connector_detail_padding
+            )
+            # remove all topic maps for this connector
+            del topic_maps_by_connector[connector_name]
 
     else:  # skip check target if no connectors
         check_manager.add_target_eval(
@@ -1224,7 +1291,6 @@ def evaluate_datalake_connectors(
             # for each topic map that references this connector
             for ref_map in invalid_ref_maps:
                 topic_name = ref_map.get("metadata", {}).get("name")
-                topic_spec = topic_map.get("spec")
                 check_manager.add_display(
                     target_name=topic_map_target,
                     display=Padding(
@@ -1232,22 +1298,15 @@ def evaluate_datalake_connectors(
                         top_level_padding,
                     ),
                 )
-                schema_table = topic_spec.get("mapping", {}).get('deltaTable', {})
-                _display_datalake_topic_map_details_table(
-                    check_manager=check_manager,
-                    target=topic_map_target,
-                    topic_map_name=topic_name,
-                    topic_map_schema=schema_table.get("schema", [])
-                )
 
     # if there are connectors, but no topic maps at all:
-    elif len(connector_resources) and not len(topic_map_list):
+    elif len(connectors) and not len(topic_map_list):
         check_manager.add_display(target_name=topic_map_target, display=Padding("[yellow]- No topic map resources found.[/yellow]", top_level_padding))
 
     if len(connector_pod_name_prefixes):
         # evaluate resource health
         check_manager.add_display(
-            target_name=connector_target,
+            target_name=topic_map_target,
             display=Padding(
                 "\nRuntime Health",
                 (0, 0, 0, 8),
