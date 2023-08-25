@@ -1,4 +1,4 @@
-name: Release
+name: "[auto] Stage Release"
 
 on:
   workflow_call:
@@ -48,10 +48,10 @@ jobs:
   upload_wheel:
     needs: [release]
     if: ${{ github.event.inputs.update_index == 'true' }}
-    uses: ./.github/workflows/actions/upload_wheel.yml
+    uses: ./.github/workflows/upload_wheel.yml
     secrets: inherit
   update_index:
     needs: [release, upload_wheel]
     if: ${{ github.event.inputs.update_index == 'true' }}
-    uses: ./.github/workflows/actions/update_private_index.yml
+    uses: ./.github/workflows/update_private_index.yml
     secrets: inherit

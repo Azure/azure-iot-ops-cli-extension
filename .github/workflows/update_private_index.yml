@@ -1,4 +1,4 @@
-name: Update Private Extension index
+name: "[auto] Update Private Extension index"
 
 on:
   workflow_call:

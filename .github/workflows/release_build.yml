@@ -40,6 +40,7 @@ jobs:
         uses: actions/upload-artifact@v3.1.0
         with:
           path: ${{ env.wheel }}
+          name: azure-edge-cli-ext
       - name: Upload SBOM Artifact
         uses: actions/upload-artifact@v3.1.0
         with:
@@ -48,5 +49,5 @@ jobs:
   upload_wheel:
     needs: [build]
     if: ${{ github.event.inputs.upload_wheel == 'true' }}
-    uses: ./.github/workflows/actions/update_private_index.yml
+    uses: ./.github/workflows/upload_wheel.yml
     secrets: inherit

@@ -1,6 +1,6 @@
 ### Template / automated actions:
 	azdev_linter.yml
-	ci_build.yml (build only)
+	ci_build.yml
 	security_checks.yml
 	smoke_test.yml
 	stage_release.yml

@@ -9,12 +9,12 @@ on:
   workflow_dispatch:
 jobs:
   build:
-    uses: ./.github/workflows/actions/ci_build.yml
+    uses: ./.github/workflows/ci_build.yml
   test:
     uses: ./.github/workflows/tox.yml
   linter:
     needs: [build]
-    uses: ./.github/workflows/actions/azdev_linter.yml
+    uses: ./.github/workflows/azdev_linter.yml
   smoke_test:
     needs: [build]
-    uses: ./.github/workflows/actions/smoke_test.yml
+    uses: ./.github/workflows/smoke_test.yml
