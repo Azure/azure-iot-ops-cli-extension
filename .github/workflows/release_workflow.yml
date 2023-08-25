@@ -21,14 +21,14 @@ jobs:
     uses: ./.github/workflows/tox.yml
   linter:
     needs: [build]
-    uses: ./.github/workflows/azdev_linter.yml
+    uses: ./.github/workflows/actions/azdev_linter.yml
   smoke_test:
     needs: [build]
-    uses: ./.github/workflows/smoke_test.yml
+    uses: ./.github/workflows/actions/smoke_test.yml
   release:
     needs: [security, build, test, linter]
     if: ${{ success() || github.event.inputs.continue-on-fail }}
-    uses: ./.github/workflows/stage_release.yml
+    uses: ./.github/workflows/actions/stage_release.yml
     with:
       update_index: ${{ github.event.inputs.update_index == 'true' }}
     secrets: inherit

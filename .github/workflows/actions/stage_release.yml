@@ -48,5 +48,5 @@ jobs:
   index_update:
     needs: [release]
     if: ${{ github.event.inputs.update_index == 'true' }}
-    uses: ./.github/workflows/update_private_index.yml
+    uses: ./.github/workflows/actions/update_private_index.yml
     secrets: inherit
