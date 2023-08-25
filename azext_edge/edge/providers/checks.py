@@ -827,7 +827,7 @@ def evaluate_mqtt_bridge_connectors(
             check_manager.add_display(
                 target_name=bridge_target,
                 display=Padding(
-                    "[yellow]No topic maps reference this resource[/yellow]",
+                    "[yellow]No MQTT Bridge Topic Maps reference this resource[/yellow]",
                     padding,
                 ),
             )
@@ -835,24 +835,25 @@ def evaluate_mqtt_bridge_connectors(
         # topic maps that reference this bridge
         for topic_map in topic_maps:
             name = topic_map.get("metadata", {}).get("name")
+
+            check_manager.add_display(
+                target_name=target,
+                display=Padding(
+                    f"- Topic Map {{[blue]{name}[/blue]}}", padding
+                ),
+            )
+            
             routes = topic_map.get("spec", {}).get("routes", [])
             if table:
                 route_table = create_routes_table(name, routes)
                 check_manager.add_display(
-                    target_name=target,
+                    target_name=topic_map_target,
                     display=Padding(
                         route_table,
                         padding
                     )
                 )
             else:
-                check_manager.add_display(
-                    target_name=bridge_target,
-                    display=Padding(
-                        f"- Topic Map {{[blue]{name}[/blue]}}", padding
-                    ),
-                )
-
                 route_padding = (0, 0, 0, padding[3] + 4)
                 add_routes_display(
                     check_manager=check_manager,
@@ -966,14 +967,11 @@ def evaluate_mqtt_bridge_connectors(
         namespace=namespace,
     )
 
+    # These checks are purely informational, so mark as skipped
     bridge_target = "mqttbridgeconnectors.az-edge.com"
     check_manager.add_target(target_name=bridge_target)
-    topic_map_target = "mqttbridgetopicmaps.az-edge.com"
-    check_manager.add_target(target_name=topic_map_target)
-
-    # These checks are purely informational, so mark as skipped
     check_manager.set_target_status(target_name=bridge_target, status=CheckTaskStatus.skipped.value)
-    check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
+
 
     top_level_padding = (0, 0, 0, 8)
     bridge_detail_padding = (0, 0, 0, 12)
@@ -1020,12 +1018,13 @@ def evaluate_mqtt_bridge_connectors(
             # topic maps for this specific bridge
             display_topic_maps(
                 check_manager=check_manager,
-                target=topic_map_target,
+                target=bridge_target,
                 topic_maps=bridge_topic_maps,
                 padding=bridge_detail_padding
             )
             # remove topic map by bridge reference
-            del topic_maps_by_bridge[bridge_name]
+            if bridge_name in topic_maps_by_bridge:
+                del topic_maps_by_bridge[bridge_name]
 
     else:  # skip check target if no bridges
         check_manager.add_target_eval(
@@ -1035,6 +1034,11 @@ def evaluate_mqtt_bridge_connectors(
 
     # if there are any topic maps that haven't been mapped to a previous bridge
     if topic_maps_by_bridge:
+        
+        topic_map_target = "mqttbridgetopicmaps.az-edge.com"
+        check_manager.add_target(target_name=topic_map_target)
+        check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
+        
         invalid_bridge_refs = topic_maps_by_bridge.keys()
         for invalid_bridge_ref in invalid_bridge_refs:
             invalid_ref_maps = topic_maps_by_bridge[invalid_bridge_ref]
@@ -1045,7 +1049,7 @@ def evaluate_mqtt_bridge_connectors(
                 check_manager.add_display(
                     target_name=topic_map_target,
                     display=Padding(
-                        f"\n- Topic Map {{{topic_name}}}. [red]Invalid[/red] bridge reference {{[red]{invalid_bridge_ref}[/red]}}",
+                        f"\n- MQTT Bridge Topic Map {{[red]{topic_name}[/red]}}.\n  [red]Invalid[/red] bridge reference {{[red]{invalid_bridge_ref}[/red]}}",
                         top_level_padding,
                     ),
                 )
@@ -1216,14 +1220,10 @@ def evaluate_datalake_connectors(
         namespace=namespace,
     )
 
+    # These checks are purely informational, so mark as skipped
     connector_target = "datalakeconnectors.az-edge.com"
     check_manager.add_target(target_name=connector_target)
-    topic_map_target = "datalakeconnectortopicmaps.az-edge.com"
-    check_manager.add_target(target_name=topic_map_target)
-
-    # These checks are purely informational, so mark as skipped
     check_manager.set_target_status(target_name=connector_target, status=CheckTaskStatus.skipped.value)
-    check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
 
     top_level_padding = (0, 0, 0, 8)
     connector_detail_padding = (0, 0, 0, 12)
@@ -1269,12 +1269,13 @@ def evaluate_datalake_connectors(
             )
             display_topic_maps(
                 check_manager=check_manager,
-                target=topic_map_target,
+                target=connector_target,
                 topic_maps=connector_topic_maps,
                 padding=connector_detail_padding
             )
             # remove all topic maps for this connector
-            del topic_maps_by_connector[connector_name]
+            if connector_name in topic_maps_by_connector:
+                del topic_maps_by_connector[connector_name]
 
     else:  # skip check target if no connectors
         check_manager.add_target_eval(
@@ -1286,6 +1287,10 @@ def evaluate_datalake_connectors(
     if topic_maps_by_connector:
         invalid_connector_refs = topic_maps_by_connector.keys()
         for invalid_connector_ref in invalid_connector_refs:
+            topic_map_target = "datalakeconnectortopicmaps.az-edge.com"
+            check_manager.add_target(target_name=topic_map_target)
+            check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
+
             invalid_ref_maps = topic_maps_by_connector[invalid_connector_ref]
 
             # for each topic map that references this connector
@@ -1294,7 +1299,7 @@ def evaluate_datalake_connectors(
                 check_manager.add_display(
                     target_name=topic_map_target,
                     display=Padding(
-                        f"\n- Topic Map {{{topic_name}}}. [red]Invalid[/red] connector reference {{[red]{invalid_connector_ref}[/red]}}",
+                        f"\n- Data Lake Connector Topic Map {{[red]{topic_name}[/red]}}.\n  [red]Invalid[/red] connector reference {{[red]{invalid_connector_ref}[/red]}}",
                         top_level_padding,
                     ),
                 )
