@@ -45,8 +45,13 @@ jobs:
           gh release create "${{ env.tag }}" --generate-notes -d -t "azure-edge ${{ env.version }}" "${{ env.wheel }}" "./SBOM.zip#SBOM" --repo "${{ github.repository }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  index_update:
+  upload_wheel:
     needs: [release]
+    if: ${{ github.event.inputs.update_index == 'true' }}
+    uses: ./.github/workflows/actions/upload_wheel.yml
+    secrets: inherit
+  update_index:
+    needs: [release, upload_wheel]
     if: ${{ github.event.inputs.update_index == 'true' }}
     uses: ./.github/workflows/actions/update_private_index.yml
     secrets: inherit

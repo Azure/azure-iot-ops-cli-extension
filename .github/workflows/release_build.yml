@@ -2,6 +2,11 @@ name: Build Wheel for Release
 on:
   workflow_call:
   workflow_dispatch:
+    inputs:
+      upload_wheel:
+        type: boolean
+        description: 'Upload this wheel to extension storage container'
+        default: false
 
 jobs:
   build:
@@ -21,6 +26,7 @@ jobs:
       - name: Determine Wheel Version
         run: |
           wheel=$(find ./dist/*.whl)
+          echo "wheel=$wheel" >> $GITHUB_ENV
           pip install $wheel
           version=$(pip show azure_edge | grep Version: | awk '{print $2}')
           echo "version=$version" >> $GITHUB_ENV
@@ -33,10 +39,14 @@ jobs:
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v3.1.0
         with:
-          path: dist/*.whl
-          name: azure-edge-cli-ext
+          path: ${{ env.wheel }}
       - name: Upload SBOM Artifact
         uses: actions/upload-artifact@v3.1.0
         with:
           path: dist/_manifest/
           name: SBOM
+  upload_wheel:
+    needs: [build]
+    if: ${{ github.event.inputs.upload_wheel == 'true' }}
+    uses: ./.github/workflows/actions/update_private_index.yml
+    secrets: inherit
