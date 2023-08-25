@@ -14,7 +14,7 @@ on:
         default: false
 jobs:
   security:
-    uses: ./.github/workflows/security_checks.yml
+    uses: ./.github/workflows/actions/security_checks.yml
   build:
     uses: ./.github/workflows/release_build.yml
   test:
