@@ -2,15 +2,6 @@ name: "[auto] Stage Release"
 
 on:
   workflow_call:
-    # inputs:
-    #   upload_wheel:
-    #     type: boolean
-    #     description: 'Upload wheel to extension storage'
-    #     default: false
-    #   update_index:
-    #     type: boolean
-    #     description: 'Add this version to the extension index'
-    #     default: false
 
 jobs:
   release:
@@ -49,14 +40,3 @@ jobs:
           gh release create "${{ env.tag }}" --generate-notes -d -t "azure-edge ${{ env.version }}" "${{ env.wheel }}" "./SBOM.zip#SBOM" --repo "${{ github.repository }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  # upload_wheel:
-  #   needs: [release]
-  #   if: ${{ github.event.inputs.upload_wheel == 'true' }}
-  #   uses: ./.github/workflows/upload_wheel.yml
-  #   secrets: inherit
-  # update_index:
-  #   needs: [release, upload_wheel]
-  #   # Only if the current upload_wheel run was successful
-  #   if: ${{ github.event.inputs.update_index == 'true' && needs.upload_wheel.outputs.upload_success == 'true' }}
-  #   uses: ./.github/workflows/update_private_index.yml
-  #   secrets: inherit
