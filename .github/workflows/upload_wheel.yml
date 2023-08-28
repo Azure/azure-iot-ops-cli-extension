@@ -2,6 +2,10 @@ name: "[auto] Upload wheel to storage account"
 
 on:
   workflow_call:
+    outputs:
+      upload_success:
+        description: 'Whether or not the wheel was uploaded from this workflow'
+        value: ${{ jobs.upload_wheel.outputs.uploaded_wheel }}
 env:
   storage_container_url: https://azedgecli.blob.core.windows.net/drop
   extensions_folder: azure-cli-extensions
@@ -45,8 +49,10 @@ jobs:
         env:
           SAS_TOKEN: ${{ secrets.SAS_TOKEN }}
       - name: Upload Wheel
+        id: upload
         if: steps.duplicate_check.outputs.CONTINUE == 'true'
         run: |
           azcopy copy ${{ env.wheel }} "${{ env.storage_container_url }}/${{ env.wheel }}?${{ env.SAS_TOKEN }}"
+          echo "uploaded_wheel=true" >> $GITHUB_OUTPUT 
         env:
           SAS_TOKEN: ${{ secrets.SAS_TOKEN }}
