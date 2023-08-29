@@ -983,11 +983,9 @@ def evaluate_mqtt_bridge_connectors(
     # mqtt bridge pod prefix = azedge-[bridge_name]-[instance]
     bridge_pod_name_prefixes = list(map(lambda pod: f"azedge-{pod['metadata']['name']}", bridge_resources))
 
-    # check topic maps
+    # attempt to map each topic_map to its referenced bridge
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP, namespace=namespace)
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
-
-    # attempt to map each topic_map to its referenced bridge
     topic_maps_by_bridge = {}
     bridge_refs = set(
         map(
@@ -1002,7 +1000,6 @@ def evaluate_mqtt_bridge_connectors(
             if topic.get("spec", {}).get("mqttBridgeConnectorRef") == bridge
         ]
 
-    # enumerate bridge resources
     if len(bridge_resources):
         for bridge in bridge_resources:
             bridge_metadata = bridge.get("metadata", {})
@@ -1025,14 +1022,13 @@ def evaluate_mqtt_bridge_connectors(
             # remove topic map by bridge reference
             if bridge_name in topic_maps_by_bridge:
                 del topic_maps_by_bridge[bridge_name]
-
-    else:  # skip check target if no bridges
+    else:
         check_manager.add_target_eval(
             target_name=bridge_target, status=CheckTaskStatus.skipped.value, value="No MQTT Bridge Connector Resources Detected"
         )
         check_manager.add_display(target_name=bridge_target, display=Padding("[yellow]No MQTT bridge connector resources detected.[/yellow]", top_level_padding))
 
-    # if there are any topic maps that haven't been mapped to a previous bridge
+    # warn about topic maps with invalid bridge references
     if topic_maps_by_bridge:
         
         topic_map_target = "mqttbridgetopicmaps.az-edge.com"
@@ -1053,10 +1049,6 @@ def evaluate_mqtt_bridge_connectors(
                         top_level_padding,
                     ),
                 )
-
-    # if there are bridges, but no topic maps at all:
-    elif len(bridge_resources) and not len(topic_map_list):
-        check_manager.add_display(target_name=bridge_target, display=Padding("[yellow]- No topic map resources found.[/yellow]", top_level_padding))
 
     if len(bridge_pod_name_prefixes):
         # evaluate resource health
@@ -1234,11 +1226,9 @@ def evaluate_datalake_connectors(
     # connector pod prefix = azedge-[connector_name]-[instance]
     connector_pod_name_prefixes = list(map(lambda x: f"azedge-{x['metadata']['name']}", connectors))
 
-    # Data Lake topic maps
+    # attempt to map each topic_map to its referenced connector
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP, namespace=namespace)
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
-
-    # attempt to map each topic_map to its referenced connector
     topic_maps_by_connector = {}
     connector_refs = set(
         map(
@@ -1253,7 +1243,6 @@ def evaluate_datalake_connectors(
             if topic.get("spec", {}).get("dataLakeConnectorRef") == connector
         ]
 
-    # enumerate connector resources
     if len(connectors):
         for connector in connectors:
             # connector resource
@@ -1276,14 +1265,13 @@ def evaluate_datalake_connectors(
             # remove all topic maps for this connector
             if connector_name in topic_maps_by_connector:
                 del topic_maps_by_connector[connector_name]
-
-    else:  # skip check target if no connectors
+    else:
         check_manager.add_target_eval(
             target_name=connector_target, status=CheckTaskStatus.skipped.value, value="No Data Lake Connector Resources Detected"
         )
         check_manager.add_display(target_name=connector_target, display=Padding("[yellow]No Data Lake Connector resources detected.[/yellow]", top_level_padding))
 
-    # if there are any topic maps that haven't been mapped to a previous connector
+    # warn about topic maps with invalid references
     if topic_maps_by_connector:
         invalid_connector_refs = topic_maps_by_connector.keys()
         for invalid_connector_ref in invalid_connector_refs:
@@ -1304,12 +1292,8 @@ def evaluate_datalake_connectors(
                     ),
                 )
 
-    # if there are connectors, but no topic maps at all:
-    elif len(connectors) and not len(topic_map_list):
-        check_manager.add_display(target_name=topic_map_target, display=Padding("[yellow]- No topic map resources found.[/yellow]", top_level_padding))
-
+    # evaluate resource health
     if len(connector_pod_name_prefixes):
-        # evaluate resource health
         check_manager.add_display(
             target_name=topic_map_target,
             display=Padding(
