@@ -13,7 +13,6 @@ env:
 jobs:
   # Upload wheel to storage account
   upload_wheel:
-    environment: production
     runs-on:
       [
         self-hosted,

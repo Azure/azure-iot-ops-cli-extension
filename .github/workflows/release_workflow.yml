@@ -33,21 +33,41 @@ jobs:
   smoke_test:
     needs: [build]
     uses: ./.github/workflows/smoke_test.yml
+  approval:
+    needs: [security, build, test, linter]
+    if: ${{ (success() || github.event.inputs.continue-on-fail) && inputs.release_strategy != 'none' }}
+    environment: production
+    runs-on:
+      [
+        self-hosted,
+        1ES.Pool=iotupx-github-hosted-pool,
+        1ES.ImageOverride=MMSUbuntu20.04,
+      ]
+    steps:
+      - name: Confirm
+        run: |
+          echo "Approved"
+          echo "Release Strategy: ${{ inputs.release_strategy }}"
+          if [ "${{ inputs.release_strategy }}" == "upload-wheel"]; then
+            echo "Wheel will be uploaded to storage account."
+          elif [ "${{ inputs.release_strategy }}" == "prod-release"]; then
+            echo "Wheel will be uploaded to storage account and published to the private index."
+          fi
   # occurs when release_strategy is prod-release
   draft_github_release:
-    needs: [security, build, test, linter]
+    needs: [approval]
     if: ${{ (success() || github.event.inputs.continue-on-fail) && inputs.release_strategy == 'prod-release' }}
     uses: ./.github/workflows/stage_release.yml
     secrets: inherit
   # occurs when release_strategy is not 'none'
   upload_wheel:
-    needs: [security, build, test, linter, draft_github_release]
+    needs: [approval, draft_github_release]
     if: ${{ (success() || github.event.inputs.continue-on-fail) && inputs.release_strategy != 'none' }}
     uses: ./.github/workflows/upload_wheel.yml
     secrets: inherit
   # occurs when previous task succeeds and release_strategy is 'prod-release'
   update_index:
-    needs: [security, build, test, linter, upload_wheel]
+    needs: [approval, upload_wheel]
     if: ${{ (success() || github.event.inputs.continue-on-fail) && needs.upload_wheel.outputs.upload_success == 'true' && inputs.release_strategy == 'prod-release' }}
     uses: ./.github/workflows/update_private_index.yml
     secrets: inherit

@@ -1,11 +1,10 @@
-name: "[auto] Stage Release"
+name: "[auto] Draft Github Release"
 
 on:
   workflow_call:
 
 jobs:
-  release:
-    environment: production
+  create_draft_release:
     runs-on: [self-hosted, 1ES.Pool=iotupx-github-hosted-pool, 1ES.ImageOverride=MMSUbuntu20.04]
     steps:
       - name: Download Wheel
