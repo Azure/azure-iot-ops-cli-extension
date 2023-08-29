@@ -1,4 +1,5 @@
 name: Build and Publish Release
+run-name: 'Build and publish release - Deployment: ${{ inputs.release_strategy }}' 
 on:
   # only manual trigger
   workflow_dispatch:
@@ -37,12 +38,7 @@ jobs:
     needs: [security, build, test, linter]
     if: ${{ (success() || github.event.inputs.continue-on-fail) && inputs.release_strategy != 'none' }}
     environment: production
-    runs-on:
-      [
-        self-hosted,
-        1ES.Pool=iotupx-github-hosted-pool,
-        1ES.ImageOverride=MMSUbuntu20.04,
-      ]
+    runs-on: ubuntu-latest
     steps:
       - name: Confirm
         run: |
@@ -61,7 +57,7 @@ jobs:
     secrets: inherit
   # occurs when release_strategy is not 'none'
   upload_wheel:
-    needs: [approval, draft_github_release]
+    needs: [approval]
     if: ${{ (success() || github.event.inputs.continue-on-fail) && inputs.release_strategy != 'none' }}
     uses: ./.github/workflows/upload_wheel.yml
     secrets: inherit
