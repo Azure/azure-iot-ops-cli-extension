@@ -848,7 +848,7 @@ def evaluate_mqtt_bridge_connectors(
                     f"- Topic Map {{[blue]{name}[/blue]}}", padding
                 ),
             )
-            
+
             routes = topic_map.get("spec", {}).get("routes", [])
             if table:
                 route_table = create_routes_table(name, routes)
@@ -978,7 +978,6 @@ def evaluate_mqtt_bridge_connectors(
     check_manager.add_target(target_name=bridge_target)
     check_manager.set_target_status(target_name=bridge_target, status=CheckTaskStatus.skipped.value)
 
-
     top_level_padding = (0, 0, 0, 8)
     bridge_detail_padding = (0, 0, 0, 12)
     broker_detail_padding = (0, 0, 0, 16)
@@ -1036,11 +1035,11 @@ def evaluate_mqtt_bridge_connectors(
 
     # warn about topic maps with invalid bridge references
     if topic_maps_by_bridge:
-        
+
         topic_map_target = "mqttbridgetopicmaps.az-edge.com"
         check_manager.add_target(target_name=topic_map_target)
         check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
-        
+
         invalid_bridge_refs = topic_maps_by_bridge.keys()
         for invalid_bridge_ref in invalid_bridge_refs:
             invalid_ref_maps = topic_maps_by_bridge[invalid_bridge_ref]
