@@ -37,9 +37,6 @@ jobs:
           echo "wheel=$wheel" >> $GITHUB_ENV
           extensions=$(azcopy list "${{ env.storage_container_url }}?${{ env.SAS_TOKEN }}")
           echo "extensions: $extensions"
-          echo "wheel: $wheel"
-          echo "test:"
-          echo "$extensions" | grep -F $wheel
           if $(echo "$extensions" | grep -Fq $wheel); then
             echo "Wheel already uploaded, skipping upload" >> $GITHUB_STEP_SUMMARY
           else
