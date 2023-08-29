@@ -46,8 +46,14 @@ def run_checks(
     pre_deployment: bool = True,
     post_deployment: bool = True,
     as_list: bool = False,
+    resource_kinds: List[str] = None
 ):
     result = {}
+
+    check_resources = {}
+    all_resources = not resource_kinds or not len(resource_kinds)
+    for resource in E4kResourceKinds:
+        check_resources[resource] = True if all_resources or resource.value in resource_kinds else False
 
     with console.status("Analyzing cluster..."):
         from time import sleep
@@ -79,15 +85,15 @@ def run_checks(
             resource_enumeration, api_resources = enumerate_e4k_resources(as_list=as_list)
             result["postDeployment"].append(resource_enumeration)
             if api_resources:
-                if "Broker" in api_resources:
+                if "Broker" in api_resources and check_resources[E4kResourceKinds.BROKER]:
                     result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
-                if "BrokerListener" in api_resources:
+                if "BrokerListener" in api_resources and check_resources[E4kResourceKinds.BROKER_LISTENER]:
                     result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
-                if "DiagnosticService":
+                if "DiagnosticService" in api_resources and check_resources[E4kResourceKinds.DIAGNOSTIC_SERVICE]:
                     result["postDeployment"].append(evaluate_diagnostics_service(namespace=namespace, as_list=as_list))
-                if "MqttBridgeConnector" in api_resources:
+                if "MqttBridgeConnector" in api_resources and check_resources[E4kResourceKinds.MQTT_BRIDGE_CONNECTOR]:
                     result["postDeployment"].append(evaluate_mqtt_bridge_connectors(namespace=namespace, as_list=as_list))
-                if "DataLakeConnector" in api_resources:
+                if "DataLakeConnector" in api_resources and check_resources[E4kResourceKinds.DATALAKE_CONNECTOR]:
                     result["postDeployment"].append(evaluate_datalake_connectors(namespace=namespace, as_list=as_list))
 
         if not as_list:
