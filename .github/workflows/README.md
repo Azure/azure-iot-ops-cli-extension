@@ -21,7 +21,7 @@
     - [Smoke Test](smoke_test.yml)
 - ### [Build and Publish Release](release_workflow.yml)
   - Inputs:
-    - `continue_on_fail`: `bool` - (Break-Glass scnario) determines whether to continue build / release if pre-checks fail.
+    - `continue_on_fail`: `bool` - (Break-Glass scenario) determines whether to continue build / release if pre-checks fail.
     - `release_strategory`: `choice`
       - `none`: Finish once build and test succeed
       - `wheel-only`: After build:

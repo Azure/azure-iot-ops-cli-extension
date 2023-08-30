@@ -8,7 +8,6 @@ on:
         value: ${{ jobs.upload_wheel.outputs.upload_success }}
 env:
   storage_container_url: https://azedgecli.blob.core.windows.net/drop
-  extensions_folder: azure-cli-extensions
   sas_token: ${{ secrets.sas_token }}
 jobs:
   # Upload wheel to storage account
