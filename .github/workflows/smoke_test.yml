@@ -1,5 +1,5 @@
 
-name: Smoke Test
+name: "[auto] Smoke Test"
 on:
   workflow_call:
 jobs:

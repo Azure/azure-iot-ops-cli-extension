@@ -83,7 +83,7 @@ def run_checks(
                     result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
                 if "BrokerListener" in api_resources:
                     result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
-                if "DiagnosticService":
+                if "DiagnosticService" in api_resources:
                     result["postDeployment"].append(evaluate_diagnostics_service(namespace=namespace, as_list=as_list))
                 if "MqttBridgeConnector" in api_resources:
                     # result["postDeployment"].append(evaluate_bridge_connectors(namespace=namespace, as_list=as_list))

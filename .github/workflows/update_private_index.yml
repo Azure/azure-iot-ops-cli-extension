@@ -1,4 +1,4 @@
-name: Update Private Extension index
+name: "[auto] Update Private Extension index"
 
 on:
   workflow_call:
@@ -8,6 +8,7 @@ env:
   sas_token: ${{ secrets.sas_token }}
 jobs:
   update_index:
+    # prompt for explicit approval as this will update the index for customers
     environment: production
     runs-on:
       [
@@ -43,13 +44,6 @@ jobs:
           else
             echo "CONTINUE=true" >> $GITHUB_OUTPUT
           fi
-      # Upload wheel to storage
-      - name: Upload Wheel
-        if: steps.duplicate_check.outputs.CONTINUE == 'true'
-        run: |
-          azcopy copy ${{ env.wheel }} "${{ env.storage_container_url }}/${{ env.wheel }}?${{ env.SAS_TOKEN }}"
-        env:
-          SAS_TOKEN: ${{ secrets.SAS_TOKEN }}
       # Setup and configure azdev to update local index file
       - name: Setup azdev, update private index file
         if: steps.duplicate_check.outputs.CONTINUE == 'true'

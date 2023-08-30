@@ -1,4 +1,4 @@
-name: Simple Build
+name: "[auto] Simple Build"
 on:
   workflow_call:
 jobs:
