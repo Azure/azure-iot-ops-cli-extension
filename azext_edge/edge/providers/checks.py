@@ -986,18 +986,13 @@ def evaluate_mqtt_bridge_connectors(
     bridge_resources: List[dict] = bridge_objects.get("items", [])
 
     # mqtt bridge pod prefix = azedge-[bridge_name]-[instance]
-    bridge_pod_name_prefixes = list(map(lambda pod: f"azedge-{pod['metadata']['name']}", bridge_resources))
+    bridge_pod_name_prefixes = [f"azedge-{bridge['metadata']['name']}" for bridge in bridge_resources]
 
     # attempt to map each topic_map to its referenced bridge
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP, namespace=namespace)
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
     topic_maps_by_bridge = {}
-    bridge_refs = set(
-        map(
-            lambda ref: ref.get("spec", {}).get("mqttBridgeConnectorRef"),
-            topic_map_list,
-        )
-    )
+    bridge_refs = { ref.get("spec", {}).get("mqttBridgeConnectorRef") for ref in topic_map_list}
 
     for bridge in bridge_refs:
         topic_maps_by_bridge[bridge] = [
@@ -1229,18 +1224,13 @@ def evaluate_datalake_connectors(
     connectors: List[dict] = connector_resources.get("items", [])
 
     # connector pod prefix = azedge-[connector_name]-[instance]
-    connector_pod_name_prefixes = list(map(lambda x: f"azedge-{x['metadata']['name']}", connectors))
+    connector_pod_name_prefixes = [f"azedge-{con['metadata']['name']}" for con in connectors]
 
     # attempt to map each topic_map to its referenced connector
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP, namespace=namespace)
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
     topic_maps_by_connector = {}
-    connector_refs = set(
-        map(
-            lambda ref: ref.get("spec", {}).get("dataLakeConnectorRef"),
-            topic_map_list,
-        )
-    )
+    connector_refs = { ref.get("spec", {}).get("dataLakeConnectorRef") for ref in topic_map_list }
 
     for connector in connector_refs:
         topic_maps_by_connector[connector] = [
