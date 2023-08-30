@@ -8,6 +8,8 @@ env:
   sas_token: ${{ secrets.sas_token }}
 jobs:
   update_index:
+    # prompt for explicit approval as this will update the index for customers
+    environment: production
     runs-on:
       [
         self-hosted,

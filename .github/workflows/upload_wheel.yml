@@ -14,7 +14,7 @@ jobs:
   # Upload wheel to storage account
   upload_wheel:
     outputs:
-      upload_success:
+      upload_success: ${{ steps.upload.outputs.upload_success }}
     runs-on:
       [
         self-hosted,
