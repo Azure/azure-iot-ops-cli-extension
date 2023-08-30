@@ -5,7 +5,7 @@ on:
     outputs:
       upload_success:
         description: 'Whether or not the wheel was uploaded from this workflow'
-        value: ${{ jobs.upload_wheel.outputs.uploaded_wheel }}
+        value: ${{ jobs.upload_wheel.outputs.upload_success }}
 env:
   storage_container_url: https://azedgecli.blob.core.windows.net/test
   extensions_folder: azure-cli-extensions
@@ -13,6 +13,8 @@ env:
 jobs:
   # Upload wheel to storage account
   upload_wheel:
+    outputs:
+      upload_success:
     runs-on:
       [
         self-hosted,
@@ -50,6 +52,6 @@ jobs:
         if: steps.duplicate_check.outputs.CONTINUE == 'true'
         run: |
           azcopy copy ${{ env.wheel }} "${{ env.storage_container_url }}/${{ env.wheel }}?${{ env.SAS_TOKEN }}"
-          echo "uploaded_wheel=true" >> $GITHUB_OUTPUT 
+          echo "upload_success=true" >> $GITHUB_OUTPUT 
         env:
           SAS_TOKEN: ${{ secrets.SAS_TOKEN }}
