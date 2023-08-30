@@ -26,7 +26,7 @@ jobs:
           echo "version=$version" >> $GITHUB_ENV
       - name: Generate SBOM
         run: |
-          curl -Lo $RUNNER_TEMP/sbom-tool https://github.com/microsoft/sbom-tool/releases/download/v1.5.1/sbom-tool-linux-x64
+          curl -Lo $RUNNER_TEMP/sbom-tool https://github.com/microsoft/sbom-tool/releases/download/v1.5.2/sbom-tool-linux-x64
           chmod +x $RUNNER_TEMP/sbom-tool
           $RUNNER_TEMP/sbom-tool generate -b ./dist -bc . -pn "Azure Edge CLI Extension" -pv "${{ env.version }}" -ps Microsoft
 
