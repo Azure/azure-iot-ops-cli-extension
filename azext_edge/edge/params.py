@@ -124,3 +124,20 @@ def load_iotedge_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Return raw output from the metrics API.",
         )
+
+    with self.argument_context("edge init") as context:
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster"],
+            help="Target cluster name for PAS deployment.",
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location"],
+            help="The ARM custom location name corresponding to the PAS deployment.",
+        )
+        context.argument(
+            "cluster_namespace",
+            options_list=["--cluster-namespace"],
+            help="The cluster namespace PAS resources will be deployed to.",
+        )

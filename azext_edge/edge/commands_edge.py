@@ -54,3 +54,22 @@ def check(
         pre_deployment=run_pre,
         post_deployment=run_post,
     )
+
+
+def init(
+    cmd,
+    cluster_name: str,
+    resource_group_name: str,
+    custom_location_name: str,
+    cluster_namespace: str,
+) -> Union[dict, None]:
+    from azure.cli.core.commands.client_factory import get_subscription_id
+    from .providers.orchestration import deploy
+
+    deploy(
+        subscription_id=get_subscription_id(cmd.cli_ctx),
+        cluster_name=cluster_name,
+        cluster_namespace=cluster_namespace,
+        resource_group_name=resource_group_name,
+        custom_location_name=custom_location_name,
+    )
