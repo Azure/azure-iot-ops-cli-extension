@@ -33,10 +33,18 @@ def get_geneva_metrics_addr(namespace: str, protocol: bool = False):
 
 
 class ManifestBuilder:
-    def __init__(self, cluster_name: str, custom_location_name: str, cluster_namespace: str = "alice-springs"):
+    def __init__(
+        self,
+        cluster_name: str,
+        custom_location_name: str,
+        custom_location_namespace: str,
+        cluster_namespace: str = "alice-springs",
+    ):
         self.cluster_name = cluster_name
         self.cluster_namespace = cluster_namespace
         self.custom_location_name = custom_location_name
+        self.custom_location_namespace = custom_location_namespace
+
         self._manifest: dict = {
             "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
             "contentVersion": "0.1.1.0",
@@ -48,6 +56,7 @@ class ManifestBuilder:
                     "defaultValue": "[parameters('location')]",
                     "allowedValues": ["eastus2", "westus3", "westeurope"],
                 },
+                "customLocationName": {"type": "string", "defaultValue": custom_location_name},
                 "simulatePLC": {"type": "bool", "defaultValue": False},
                 "location": {
                     "type": "string",
@@ -61,10 +70,16 @@ class ManifestBuilder:
             },
             "variables": {
                 "clusterId": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-                "customLocationNamespace": "alice-springs-solution1",
+                "customLocationNamespace": custom_location_namespace,
                 "extensionInfix": "/providers/Microsoft.KubernetesConfiguration/extensions/",
             },
             "resources": [],
+            "outputs": {
+                "customLocationId": {
+                    "type": "string",
+                    "value": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                }
+            },
         }
         self._extension_ids = []
 
@@ -111,6 +126,48 @@ class ManifestBuilder:
         }
         self._manifest["resources"].append(payload)
         self._extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
+
+    def add_bluefin_extension(self, name: str = "processor"):
+        payload = {
+            "type": "Microsoft.KubernetesConfiguration/extensions",
+            "apiVersion": "2022-03-01",
+            "name": name,
+            "properties": {
+                "extensionType": "microsoft.alicesprings.processor",
+                "autoUpgradeMinorVersion": False,
+                "scope": {"cluster": {"releaseNamespace": self.cluster_namespace}},
+                "version": EdgeResourceVersions.bluefin.value,
+                "releaseTrain": "private-preview",
+                "configurationSettings": {
+                    "Microsoft.CustomLocation.ServiceAccount": "microsoft.bluefin",
+                    "otelCollectorAddress": get_otel_collector_addr(self.cluster_namespace, False),
+                    "genevaCollectorAddress": get_geneva_metrics_addr(self.cluster_namespace, False),
+                },
+            },
+            "scope": f"Microsoft.Kubernetes/connectedClusters/{self.cluster_name}",
+        }
+
+        self._manifest["resources"].append(payload)
+        self._extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
+
+    # def add_bluefin_instance(self):
+    #     payload = {
+    #         "type": "Microsoft.Bluefin/instances",
+    #         "apiVersion": "2023-06-26-preview",
+    #         "name": "[parameters('bluefinInstanceName')]",
+    #         "location": "[parameters('location')]",
+    #         "extendedLocation": {
+    #             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+    #             "type": "CustomLocation",
+    #         },
+    #         "properties": {},
+    #         "dependsOn": [
+    #             "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
+    #         ],
+    #     }
+
+    #     self._manifest["resources"].append(payload)
+    #     self._extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
 
     def add_custom_location(self):
         payload = {
@@ -530,6 +587,7 @@ def deploy(
     cluster_namespace: str,
     resource_group_name: str,
     custom_location_name: str,
+    custom_location_namespace: str,
 ):
     from azure.mgmt.resource import ResourceManagementClient
     from azure.identity import DefaultAzureCredential
@@ -540,14 +598,16 @@ def deploy(
 
     resource_client = ResourceManagementClient(credential=DefaultAzureCredential(), subscription_id=subscription_id)
     manifest_builder = ManifestBuilder(
-        cluster_name=cluster_name, custom_location_name=custom_location_name, cluster_namespace=cluster_namespace
+        cluster_name=cluster_name,
+        custom_location_name=custom_location_name,
+        custom_location_namespace=custom_location_namespace,
+        cluster_namespace=cluster_namespace,
     )
     manifest_builder.add_symphony_extension()
     manifest_builder.add_e4k_extension()
+    manifest_builder.add_bluefin_extension()
     manifest_builder.add_custom_location()
-    import pdb
 
-    pdb.set_trace()
     try:
         deployment = resource_client.deployments.begin_create_or_update(
             resource_group_name=resource_group_name,
@@ -568,7 +628,4 @@ def deploy(
             e.message = json.loads(e.response.text())["error"]["message"]
         raise AzureResponseError(e.message)
 
-    import pdb
-
-    pdb.set_trace()
-    pass
+    return deployment.properties.output_resources

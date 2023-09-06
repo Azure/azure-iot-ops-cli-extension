@@ -66,10 +66,11 @@ def init(
     from azure.cli.core.commands.client_factory import get_subscription_id
     from .providers.orchestration import deploy
 
-    deploy(
+    return deploy(
         subscription_id=get_subscription_id(cmd.cli_ctx),
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
         resource_group_name=resource_group_name,
         custom_location_name=custom_location_name,
+        custom_location_namespace=cluster_namespace,
     )
