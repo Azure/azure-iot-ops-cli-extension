@@ -5,6 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from enum import Enum
+from typing import Optional
 
 
 class EdgeResourceVersions(Enum):
@@ -16,6 +17,21 @@ class EdgeResourceVersions(Enum):
     observability = "0.62.3"
     opcua = "0.7.0"
     symphony = "0.44.9"
+
+
+extension_to_rp_map = {
+    "microsoft.alicesprings": "microsoft.symphony",
+    "microsoft.alicesprings.dataplane": None,
+    "microsoft.alicesprings.processor": "microsoft.bluefin",
+    "microsoft.deviceregistry.assets": "microsoft.deviceregistry",
+}
+
+extension_to_version_map = {
+    "microsoft.alicesprings": EdgeResourceVersions.symphony.value,
+    "microsoft.alicesprings.dataplane": EdgeResourceVersions.e4k.value,
+    "microsoft.alicesprings.processor": EdgeResourceVersions.bluefin.value,
+    "microsoft.deviceregistry.assets": EdgeResourceVersions.adr.value,
+}
 
 
 def get_otel_collector_addr(namespace: str, protocol: bool = False):
@@ -44,6 +60,7 @@ class ManifestBuilder:
         self.cluster_namespace = cluster_namespace
         self.custom_location_name = custom_location_name
         self.custom_location_namespace = custom_location_namespace
+        self.last_sync_priority: int = 0
 
         self._manifest: dict = {
             "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -83,91 +100,50 @@ class ManifestBuilder:
         }
         self._extension_ids = []
 
-    def add_symphony_extension(self, name: str = "alice-springs"):
-        payload = {
+    def get_next_priority(self) -> int:
+        self.last_sync_priority = self.last_sync_priority + 100
+        return self.last_sync_priority
+
+    def add_extension(
+        self, extension_type: str, name: str, include_sync_rule: bool, configuration: Optional[dict] = None
+    ):
+        extension = {
             "type": "Microsoft.KubernetesConfiguration/extensions",
             "apiVersion": "2022-03-01",
             "name": name,
             "properties": {
-                "extensionType": "microsoft.alicesprings",
+                "extensionType": extension_type,
                 "autoUpgradeMinorVersion": False,
                 "scope": {"cluster": {"releaseNamespace": self.cluster_namespace}},
-                "version": EdgeResourceVersions.symphony.value,
+                "version": extension_to_version_map[extension_type],
                 "releaseTrain": "private-preview",
-                "configurationSettings": {
-                    "Microsoft.CustomLocation.ServiceAccount": "default",
-                    "otelCollectorAddress": get_otel_collector_addr(self.cluster_namespace),
-                    "genevaCollectorAddress": get_geneva_metrics_addr(self.cluster_namespace),
-                },
+                "configurationSettings": {},
             },
             "scope": f"Microsoft.Kubernetes/connectedClusters/{self.cluster_name}",
         }
-        self._manifest["resources"].append(payload)
+        if configuration:
+            extension["properties"]["configurationSettings"].update(configuration)
+        self._manifest["resources"].append(extension)
         self._extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
 
-    def add_e4k_extension(self, name: str = "data-plane"):
-        payload = {
-            "type": "Microsoft.KubernetesConfiguration/extensions",
-            "apiVersion": "2022-03-01",
-            "name": name,
-            "identity": {"type": "SystemAssigned"},
-            "properties": {
-                "extensionType": "microsoft.alicesprings.dataplane",
-                "autoUpgradeMinorVersion": False,
-                "scope": {"cluster": {"releaseNamespace": self.cluster_namespace}},
-                "version": EdgeResourceVersions.e4k.value,
-                "releaseTrain": "private-preview",
-                "configurationSettings": {
-                    "global.quickstart": True,
-                    "global.openTelemetryCollectorAddr": get_otel_collector_addr(self.cluster_namespace, True),
+        if include_sync_rule:
+            sync_rule = {
+                "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
+                "apiVersion": "2021-08-31-preview",
+                "name": f"{self.custom_location_name}/{self.custom_location_name}-{extension_type.split()[-1]}-sync",
+                "location": "[parameters('clusterLocation')]",
+                "properties": {
+                    "priority": self.get_next_priority(),
+                    "selector": {
+                        "matchLabels": {"management.azure.com/provider-name": extension_to_rp_map[extension_type]}
+                    },
+                    "targetResourceGroup": "[resourceGroup().id]",
                 },
-            },
-            "scope": f"Microsoft.Kubernetes/connectedClusters/{self.cluster_name}",
-        }
-        self._manifest["resources"].append(payload)
-        self._extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
-
-    def add_bluefin_extension(self, name: str = "processor"):
-        payload = {
-            "type": "Microsoft.KubernetesConfiguration/extensions",
-            "apiVersion": "2022-03-01",
-            "name": name,
-            "properties": {
-                "extensionType": "microsoft.alicesprings.processor",
-                "autoUpgradeMinorVersion": False,
-                "scope": {"cluster": {"releaseNamespace": self.cluster_namespace}},
-                "version": EdgeResourceVersions.bluefin.value,
-                "releaseTrain": "private-preview",
-                "configurationSettings": {
-                    "Microsoft.CustomLocation.ServiceAccount": "microsoft.bluefin",
-                    "otelCollectorAddress": get_otel_collector_addr(self.cluster_namespace, False),
-                    "genevaCollectorAddress": get_geneva_metrics_addr(self.cluster_namespace, False),
-                },
-            },
-            "scope": f"Microsoft.Kubernetes/connectedClusters/{self.cluster_name}",
-        }
-
-        self._manifest["resources"].append(payload)
-        self._extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
-
-    # def add_bluefin_instance(self):
-    #     payload = {
-    #         "type": "Microsoft.Bluefin/instances",
-    #         "apiVersion": "2023-06-26-preview",
-    #         "name": "[parameters('bluefinInstanceName')]",
-    #         "location": "[parameters('location')]",
-    #         "extendedLocation": {
-    #             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-    #             "type": "CustomLocation",
-    #         },
-    #         "properties": {},
-    #         "dependsOn": [
-    #             "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
-    #         ],
-    #     }
-
-    #     self._manifest["resources"].append(payload)
-    #     self._extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
+                "dependsOn": [
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
+                ],
+            }
+            self._manifest["resources"].append(sync_rule)
 
     def add_custom_location(self):
         payload = {
@@ -603,9 +579,41 @@ def deploy(
         custom_location_namespace=custom_location_namespace,
         cluster_namespace=cluster_namespace,
     )
-    manifest_builder.add_symphony_extension()
-    manifest_builder.add_e4k_extension()
-    manifest_builder.add_bluefin_extension()
+    manifest_builder.add_extension(
+        extension_type="microsoft.alicesprings",
+        name="alice-springs",
+        include_sync_rule=True,
+        configuration={
+            "Microsoft.CustomLocation.ServiceAccount": "default",
+            "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
+            "genevaCollectorAddress": get_geneva_metrics_addr(cluster_namespace),
+        },
+    )
+    manifest_builder.add_extension(
+        extension_type="microsoft.alicesprings.dataplane",
+        name="data-plane",
+        include_sync_rule=False,
+        configuration={
+            "global.quickstart": True,
+            "global.openTelemetryCollectorAddr": get_otel_collector_addr(cluster_namespace, True),
+        },
+    )
+    manifest_builder.add_extension(
+        extension_type="microsoft.alicesprings.processor",
+        name="processor",
+        include_sync_rule=True,
+        configuration={
+            "Microsoft.CustomLocation.ServiceAccount": "microsoft.bluefin",
+            "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
+            "genevaCollectorAddress": get_geneva_metrics_addr(cluster_namespace),
+        },
+    )
+    manifest_builder.add_extension(
+        extension_type="microsoft.deviceregistry.assets",
+        name="assets",
+        include_sync_rule=True,
+    )
+
     manifest_builder.add_custom_location()
 
     try:
@@ -628,4 +636,5 @@ def deploy(
             e.message = json.loads(e.response.text())["error"]["message"]
         raise AzureResponseError(e.message)
 
-    return deployment.properties.output_resources
+    result = [resource.id for resource in deployment.properties.output_resources]
+    return result
