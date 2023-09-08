@@ -83,7 +83,10 @@ def load_iotedge_help():
         "edge init"
     ] = """
         type: command
-        short-summary: Initialize and deploy an IoT Ops solution.
-        long-summary: After this operation completes the full suite of IoT Ops edge services will
-            be deployed and configured on the target cluster.
+        short-summary: Initialize and deploy an AIO solution bundle to the target cluster.
+        long-summary: |
+            After this operation completes the desired suite of AIO edge services will
+            be deployed and configured on the target cluster. Deployment is done incrementally.
+
+            Customize AIO version via --aio-version or --custom-version.
     """

@@ -153,6 +153,20 @@ def load_iotedge_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Flag when set, will output the generated template intended for deployment.",
         )
+        context.argument(
+            "aio_version",
+            options_list=["--aio-version"],
+            help="The AIO bundle version to deploy.",
+            arg_group="AIO version",
+        )
+        context.argument(
+            "custom_version",
+            options_list=["--custom-version"],
+            help="Customize edge service versions to deploy. Usage takes precedence over --aio-version. "
+            "Use space-separated {key}={value} pairs where {key} is the edge service moniker and {value} "
+            "is the desired version. For example: e4k=0.5.0 bluefin=0.3.0",
+            arg_group="AIO version",
+        )
         # Akri
         context.argument(
             "opcua_discovery_endpoint",
@@ -173,5 +187,5 @@ def load_iotedge_arguments(self, _):
             options_list=["--simulate-plc"],
             arg_type=get_three_state_flag(),
             help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
-            arg_group="OPC-UA Broker",
+            arg_group="Opc-Ua Broker",
         )

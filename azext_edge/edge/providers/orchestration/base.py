@@ -5,8 +5,10 @@
 # --------------------------------------------------------------------------------------------
 
 from enum import Enum
-from typing import Optional, List
+from typing import List, Optional
 
+
+LATEST_AIO_VERSION = "0.1.1"
 
 class EdgeResourceVersions(Enum):
     adr = "0.9.0"
@@ -14,7 +16,7 @@ class EdgeResourceVersions(Enum):
     bluefin = "0.2.4"
     e4k = "0.5.1"
     e4in = "0.1.1"
-    observability = "0.62.3"
+    obs = "0.62.3"
     opcua = "0.7.0"
     symphony = "0.44.9"
 
@@ -57,12 +59,14 @@ class ManifestBuilder:
         custom_location_name: str,
         custom_location_namespace: str,
         cluster_namespace: str = "alice-springs",
+        aio_version: str = LATEST_AIO_VERSION,
         **kwargs,
     ):
         self.cluster_name = cluster_name
         self.cluster_namespace = cluster_namespace
         self.custom_location_name = custom_location_name
         self.custom_location_namespace = custom_location_namespace
+        self.aio_version = aio_version,
         self.last_sync_priority: int = 0
         self.symphony_components: List[dict] = []
         self.resources: List[dict] = []
@@ -209,7 +213,7 @@ class ManifestBuilder:
 
         self.symphony_components.append(
             get_observability(
-                version=EdgeResourceVersions.observability.value,
+                version=EdgeResourceVersions.obs.value,
             )
         )
         self.symphony_components.append(get_e4in(version=EdgeResourceVersions.e4in.value))
@@ -252,15 +256,18 @@ def deploy(
     resource_group_name: str,
     custom_location_name: str,
     custom_location_namespace: str,
+    aio_version: str,
     location: Optional[str] = None,
     **kwargs,
 ):
-    from azure.mgmt.resource import ResourceManagementClient
-    from azure.identity import DefaultAzureCredential
-    from azure.core.exceptions import HttpResponseError
-    from azure.cli.core.azclierror import AzureResponseError
-    from uuid import uuid4
     import json
+    from uuid import uuid4
+
+    from azure.cli.core.azclierror import AzureResponseError
+    from azure.core.exceptions import HttpResponseError
+    from azure.identity import DefaultAzureCredential
+    from azure.mgmt.resource import ResourceManagementClient
+    from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 
     resource_client = ResourceManagementClient(credential=DefaultAzureCredential(), subscription_id=subscription_id)
     manifest_builder = ManifestBuilder(
@@ -314,23 +321,27 @@ def deploy(
     if kwargs.get("what_if"):
         return manifest_builder.manifest
 
-    try:
-        deployment = resource_client.deployments.begin_create_or_update(
-            resource_group_name=resource_group_name,
-            deployment_name=f"azedge.init.pas.{str(uuid4()).replace('-', '')}",
-            parameters={
-                "properties": {
-                    "mode": "Incremental",
-                    "template": manifest_builder.manifest,
-                    "parameters": deployment_params,
-                }
-            },
-        ).result()
-    except HttpResponseError as e:
-        # TODO: repeated error message.
-        if "Deployment template validation failed:" in e.message:
-            e.message = json.loads(e.response.text())["error"]["message"]
-        raise AzureResponseError(e.message)
+    with Progress(
+        SpinnerColumn(), *Progress.get_default_columns(), "Elapsed:", TimeElapsedColumn(), transient=True
+    ) as progress:
+        progress.add_task(description=f"Deploying AIO version: {aio_version}", total=None)
+        try:
+            deployment = resource_client.deployments.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                deployment_name=f"azedge.init.pas.{str(uuid4()).replace('-', '')}",
+                parameters={
+                    "properties": {
+                        "mode": "Incremental",
+                        "template": manifest_builder.manifest,
+                        "parameters": deployment_params,
+                    }
+                },
+            ).result()
+        except HttpResponseError as e:
+            # TODO: repeated error message.
+            if "Deployment template validation failed:" in e.message:
+                e.message = json.loads(e.response.text())["error"]["message"]
+            raise AzureResponseError(e.message)
 
-    result = [resource.id for resource in deployment.properties.output_resources]
-    return result
+        result = [resource.id for resource in deployment.properties.output_resources]
+        return result
