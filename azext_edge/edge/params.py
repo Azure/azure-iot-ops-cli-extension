@@ -10,7 +10,7 @@ CLI parameter definitions.
 
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag
-from .common import SupportForEdgeServiceType
+from .common import SupportForEdgeServiceType, AkriK8sDistroType
 
 
 def load_iotedge_arguments(self, _):
@@ -134,10 +134,44 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_location_name",
             options_list=["--custom-location"],
-            help="The ARM custom location name corresponding to the PAS deployment.",
+            help="The custom location name corresponding to the PAS deployment.",
         )
         context.argument(
             "cluster_namespace",
             options_list=["--cluster-namespace"],
             help="The cluster namespace PAS resources will be deployed to.",
+        )
+        context.argument(
+            "location",
+            options_list=["--location"],
+            help="The location that will be used for provisioned collateral. "
+            "If not provided the resource group location will be used.",
+        )
+        context.argument(
+            "what_if",
+            options_list=["--what-if"],
+            arg_type=get_three_state_flag(),
+            help="Flag when set, will output the generated template intended for deployment.",
+        )
+        # Akri
+        context.argument(
+            "opcua_discovery_endpoint",
+            options_list=["--opcua-discovery-url"],
+            help="Configures an OPC-UA server endpoint for Akri discovery handlers.",
+            arg_group="Akri",
+        )
+        context.argument(
+            "kubernetes_distro",
+            options_list=["--kubernetes-distro"],
+            help="Optimizes the Akri deployment for a particular Kubernetes distribution.",
+            choices=CaseInsensitiveList(AkriK8sDistroType.list()),
+            arg_group="Akri",
+        )
+        # OPC-UA Broker
+        context.argument(
+            "simulate_plc",
+            options_list=["--simulate-plc"],
+            arg_type=get_three_state_flag(),
+            help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
+            arg_group="OPC-UA Broker",
         )

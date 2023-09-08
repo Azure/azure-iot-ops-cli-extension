@@ -11,6 +11,7 @@ from knack.log import get_logger
 
 from .providers.base import load_config_context
 from .providers.support.base import get_bundle_path
+from .common import AkriK8sDistroType
 
 logger = get_logger(__name__)
 
@@ -62,6 +63,11 @@ def init(
     resource_group_name: str,
     custom_location_name: str,
     cluster_namespace: str,
+    location: Optional[str] = None,
+    what_if: Optional[bool] = None,
+    simulate_plc: Optional[bool] = None,
+    opcua_discovery_endpoint: Optional[str] = None,
+    kubernetes_distro: str = AkriK8sDistroType.k8s.value,
 ) -> Union[dict, None]:
     from azure.cli.core.commands.client_factory import get_subscription_id
     from .providers.orchestration import deploy
@@ -73,4 +79,9 @@ def init(
         resource_group_name=resource_group_name,
         custom_location_name=custom_location_name,
         custom_location_namespace=cluster_namespace,
+        location=location,
+        what_if=what_if,
+        opcua_discovery_endpoint=opcua_discovery_endpoint,
+        kubernetes_distro=kubernetes_distro,
+        simulate_plc=simulate_plc,
     )

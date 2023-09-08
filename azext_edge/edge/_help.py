@@ -78,3 +78,12 @@ def load_iotedge_help():
         type: command
         short-summary: Generates a PBKDF2 hash of the passphrase applying PBKDF2-HMAC-SHA512. A 128-bit salt is used from os.urandom.
     """
+
+    helps[
+        "edge init"
+    ] = """
+        type: command
+        short-summary: Initialize and deploy an IoT Ops solution.
+        long-summary: After this operation completes the full suite of IoT Ops edge services will
+            be deployed and configured on the target cluster.
+    """
