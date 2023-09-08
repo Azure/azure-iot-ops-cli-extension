@@ -86,7 +86,7 @@ class ManifestBuilder:
                     "defaultValue": "[resourceGroup().location]",
                     "allowedValues": ["eastus2", "westus3", "westeurope"],
                 },
-                "targetName": {"type": "string", "defaultValue": "quickstart"},
+                "targetName": {"type": "string", "defaultValue": "init"},
                 "kubernetesDistro": {"type": "string", "defaultValue": "k8s"},
                 "bluefinInstanceName": {"type": "string", "defaultValue": "bluefin-instance"},
             },
@@ -112,28 +112,32 @@ class ManifestBuilder:
                 "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
                 "type": "CustomLocation",
             },
-            "properties": {"scope": cluster_namespace, "version": "0.1.1", "components": []},
-            "topologies": [
-                {
-                    "bindings": [
-                        {
-                            "role": "instance",
-                            "provider": "providers.target.k8s",
-                            "config": {"inCluster": "True"},
-                        },
-                        {
-                            "role": "helm.v3",
-                            "provider": "providers.target.helm",
-                            "config": {"inCluster": "True"},
-                        },
-                        {
-                            "role": "yaml.k8s",
-                            "provider": "providers.target.kubectl",
-                            "config": {"inCluster": "True"},
-                        },
-                    ]
-                }
-            ],
+            "properties": {
+                "scope": cluster_namespace,
+                "version": "0.1.1",
+                "components": [],
+                "topologies": [
+                    {
+                        "bindings": [
+                            {
+                                "role": "instance",
+                                "provider": "providers.target.k8s",
+                                "config": {"inCluster": "True"},
+                            },
+                            {
+                                "role": "helm.v3",
+                                "provider": "providers.target.helm",
+                                "config": {"inCluster": "True"},
+                            },
+                            {
+                                "role": "yaml.k8s",
+                                "provider": "providers.target.kubectl",
+                                "config": {"inCluster": "True"},
+                            },
+                        ]
+                    }
+                ],
+            },
             "dependsOn": [
                 "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
             ],
