@@ -51,9 +51,8 @@ def run_checks(
     result = {}
 
     check_resources = {}
-    all_resources = not resource_kinds or not len(resource_kinds)
     for resource in E4kResourceKinds:
-        check_resources[resource] = True if all_resources or resource.value in resource_kinds else False
+        check_resources[resource] = True if (not resource_kinds or resource.value in resource_kinds) else False
 
     with console.status("Analyzing cluster..."):
         from time import sleep
@@ -831,7 +830,7 @@ def evaluate_mqtt_bridge_connectors(
         # Show warning if no topic maps
         if not len(bridge_topic_maps):
             check_manager.add_display(
-                target_name=bridge_target,
+                target_name=target,
                 display=Padding(
                     "[yellow]No MQTT Bridge Topic Maps reference this resource[/yellow]",
                     padding,
@@ -853,7 +852,7 @@ def evaluate_mqtt_bridge_connectors(
             if table:
                 route_table = create_routes_table(name, routes)
                 check_manager.add_display(
-                    target_name=topic_map_target,
+                    target_name=target,
                     display=Padding(
                         route_table,
                         padding
@@ -973,7 +972,7 @@ def evaluate_mqtt_bridge_connectors(
         namespace=namespace,
     )
 
-    # These checks are purely informational, so mark as skipped
+    # MQTT Bridge Connector checks are purely informational, so mark as skipped
     bridge_target = "mqttbridgeconnectors.az-edge.com"
     check_manager.add_target(target_name=bridge_target)
     check_manager.set_target_status(target_name=bridge_target, status=CheckTaskStatus.skipped.value)
@@ -992,7 +991,7 @@ def evaluate_mqtt_bridge_connectors(
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP, namespace=namespace)
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
     topic_maps_by_bridge = {}
-    bridge_refs = { ref.get("spec", {}).get("mqttBridgeConnectorRef") for ref in topic_map_list}
+    bridge_refs = {ref.get("spec", {}).get("mqttBridgeConnectorRef") for ref in topic_map_list}
 
     for bridge in bridge_refs:
         topic_maps_by_bridge[bridge] = [
@@ -1023,18 +1022,19 @@ def evaluate_mqtt_bridge_connectors(
             if bridge_name in topic_maps_by_bridge:
                 del topic_maps_by_bridge[bridge_name]
     else:
+        eval_str = "No MQTT Bridge Connector Resources detected"
         check_manager.add_target_eval(
-            target_name=bridge_target, status=CheckTaskStatus.skipped.value, value="No MQTT Bridge Connector Resources Detected"
+            target_name=bridge_target,
+            status=CheckTaskStatus.skipped.value,
+            value=eval_str
         )
-        check_manager.add_display(target_name=bridge_target, display=Padding("[yellow]No MQTT bridge connector resources detected.[/yellow]", top_level_padding))
+        check_manager.add_display(
+            target_name=bridge_target,
+            display=Padding(eval_str, top_level_padding)
+        )
 
     # warn about topic maps with invalid bridge references
     if topic_maps_by_bridge:
-
-        topic_map_target = "mqttbridgetopicmaps.az-edge.com"
-        check_manager.add_target(target_name=topic_map_target)
-        check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
-
         invalid_bridge_refs = topic_maps_by_bridge.keys()
         for invalid_bridge_ref in invalid_bridge_refs:
             invalid_ref_maps = topic_maps_by_bridge[invalid_bridge_ref]
@@ -1043,7 +1043,7 @@ def evaluate_mqtt_bridge_connectors(
             for ref_map in invalid_ref_maps:
                 topic_name = ref_map.get("metadata", {}).get("name")
                 check_manager.add_display(
-                    target_name=topic_map_target,
+                    target_name=bridge_target,
                     display=Padding(
                         f"\n- MQTT Bridge Topic Map {{[red]{topic_name}[/red]}}.\n  [red]Invalid[/red] bridge reference {{[red]{invalid_bridge_ref}[/red]}}",
                         top_level_padding,
@@ -1053,7 +1053,7 @@ def evaluate_mqtt_bridge_connectors(
     if len(bridge_pod_name_prefixes):
         # evaluate resource health
         check_manager.add_display(
-            target_name=topic_map_target,
+            target_name=bridge_target,
             display=Padding(
                 "\nRuntime Health",
                 (0, 0, 0, 8),
@@ -1105,7 +1105,7 @@ def evaluate_datalake_connectors(
             check_manager.add_display(
                 target_name=target,
                 display=Padding(
-                    "[yellow]No topic maps reference this resource[/yellow]",
+                    "[yellow]No Data Lake Connector Topic Maps reference this resource[/yellow]",
                     padding,
                 ),
             )
@@ -1230,7 +1230,7 @@ def evaluate_datalake_connectors(
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP, namespace=namespace)
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
     topic_maps_by_connector = {}
-    connector_refs = { ref.get("spec", {}).get("dataLakeConnectorRef") for ref in topic_map_list }
+    connector_refs = {ref.get("spec", {}).get("dataLakeConnectorRef") for ref in topic_map_list}
 
     for connector in connector_refs:
         topic_maps_by_connector[connector] = [
@@ -1261,26 +1261,20 @@ def evaluate_datalake_connectors(
             if connector_name in topic_maps_by_connector:
                 del topic_maps_by_connector[connector_name]
     else:
-        check_manager.add_target_eval(
-            target_name=connector_target, status=CheckTaskStatus.skipped.value, value="No Data Lake Connector Resources Detected"
-        )
-        check_manager.add_display(target_name=connector_target, display=Padding("[yellow]No Data Lake Connector resources detected.[/yellow]", top_level_padding))
+        eval_str = "No Data Lake Connector Resources Detected"
+        check_manager.add_target_eval(target_name=connector_target, status=CheckTaskStatus.skipped.value, value=eval_str)
+        check_manager.add_display(target_name=connector_target, display=Padding(eval_str, top_level_padding))
 
     # warn about topic maps with invalid references
     if topic_maps_by_connector:
         invalid_connector_refs = topic_maps_by_connector.keys()
         for invalid_connector_ref in invalid_connector_refs:
-            topic_map_target = "datalakeconnectortopicmaps.az-edge.com"
-            check_manager.add_target(target_name=topic_map_target)
-            check_manager.set_target_status(target_name=topic_map_target, status=CheckTaskStatus.skipped.value)
-
             invalid_ref_maps = topic_maps_by_connector[invalid_connector_ref]
-
             # for each topic map that references this connector
             for ref_map in invalid_ref_maps:
                 topic_name = ref_map.get("metadata", {}).get("name")
                 check_manager.add_display(
-                    target_name=topic_map_target,
+                    target_name=connector_target,
                     display=Padding(
                         f"\n- Data Lake Connector Topic Map {{[red]{topic_name}[/red]}}.\n  [red]Invalid[/red] connector reference {{[red]{invalid_connector_ref}[/red]}}",
                         top_level_padding,
@@ -1290,7 +1284,7 @@ def evaluate_datalake_connectors(
     # evaluate resource health
     if len(connector_pod_name_prefixes):
         check_manager.add_display(
-            target_name=topic_map_target,
+            target_name=connector_target,
             display=Padding(
                 "\nRuntime Health",
                 (0, 0, 0, 8),
