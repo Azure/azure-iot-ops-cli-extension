@@ -5,10 +5,18 @@
 # --------------------------------------------------------------------------------------------
 
 
-from azext_edge.edge.providers.checks import CheckManager, run_checks, E4kResourceKinds, ResourceState
-from azext_edge.edge.common import CheckTaskStatus
-from ...generators import generate_generic_id
 import pytest
+from typing import Dict
+from azext_edge.edge.common import CheckTaskStatus
+from azext_edge.edge.providers.checks import (CheckManager, E4kResourceKinds,
+                                              ResourceState,
+                                              evaluate_broker_listeners,
+                                              evaluate_brokers,
+                                              evaluate_diagnostics_service,
+                                              run_checks)
+
+from ...generators import generate_generic_id
+
 
 def test_check_manager():
     name = generate_generic_id()
@@ -139,6 +147,7 @@ def assert_check_manager_dict(
         for target in expected_target_displays:
             assert expected_target_displays[target] == result_check_dict_displays["targets"][target]["displays"]
 
+
 @pytest.mark.parametrize(
     "resource_kinds",
     [
@@ -210,67 +219,303 @@ def test_check_by_resource_types(mocker, mock_e4k_resource_types, resource_kinds
         # ensure no other checks were run
         [eval_lookup[evaluator].assert_not_called() for evaluator in eval_lookup]
 
+
 @pytest.mark.parametrize(
-    "mock_resource_items, assertions",
+    "broker, conditions, evaluations",
     [
         (
-            # broker items
-            [
-                {
-                    "metadata": {"namespace": "mock_namespace", "name": "mock_name"},
-                    "spec": {
-                        "diagnostics": {
-                            "diagnosticServiceEndpoint": "None",
-                            "enableMetrics": "True",
-                            "enableSelfCheck": "True",
-                            "enableSelfTracing": "True",
-                            "enableTracing": "True",
-                            "logFormat": "text",
-                            "logLevel": "info,hyper=off,kube_client=off,tower=off,conhash=off,h2=off",
-                        },
-                        "cardinality": {
-                            "backendChain": { "partitions": 1, "replicas": 2, "workers": 1 },
-                            "frontend": { "replicas": 1 }
-                        },
-                    },
-                    "status": {
-                        "status": ResourceState.running.value,
-                        "statusDescription": ""
-                    }
-                }
-            ],
-            # assertions
+            # broker (distributed)
             {
-                'test': 'test'
-            }
+                "metadata": {"namespace": "mock_namespace", "name": "mock_name"},
+                "spec": {
+                    "diagnostics": {},  # required
+                    "cardinality": {
+                        "backendChain": {"partitions": 1, "replicas": 2, "workers": 1},
+                        "frontend": {"replicas": 1}
+                    },
+                    "mode": "distributed"
+                },
+                "status": {
+                    "status": ResourceState.running.value,
+                    "statusDescription": ""
+                }
+            },
+            # conditions str
+            [
+                "len(brokers)==1",
+                "status",
+                "spec.mode",
+                "spec.cardinality",
+                "spec.cardinality.backendChain.partitions>=1",
+                "spec.cardinality.backendChain.replicas>=1",
+                "spec.cardinality.frontend.replicas>=1"
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "warning"),  # unable to fetch broker diagnostics
+                ],
+                [
+                    ("status", "success"),
+                    ("name", "mock_name"),
+                    ("value/status/status", "Running"),
+                    ("value/spec.cardinality/backendChain/partitions", 1),
+                    ("value/spec.cardinality/backendChain/replicas", 2),
+                    ("value/spec.cardinality/backendChain/workers", 1),
+                    ("value/spec.cardinality/frontend/replicas", 1),
+                ],
+            ]
+        ),
+        (
+            # broker 2 - not distributed, so less conditions on cardinality
+            {
+                "metadata": {"namespace": "mock_namespace", "name": "mock_name"},
+                "spec": {
+                    "diagnostics": {
+                        "diagnosticServiceEndpoint": "test",
+                        "enableMetrics": "test",
+                        "enableSelfCheck": "test",
+                        "enableTracing": "test",
+                        "logLevel": "test",
+                    },
+                    "cardinality": {
+                        "backendChain": {"partitions": 1, "replicas": 2, "workers": 1},
+                        "frontend": {"replicas": 1}
+                    },
+                },
+                "status": {
+                    "status": ResourceState.starting.value,
+                    "statusDescription": ""
+                }
+            },
+            # conditions
+            [
+                "len(brokers)==1",
+                "status",
+                "spec.mode",
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "warning"),  # still starting, so warning status
+                    ("name", "mock_name"),
+                    ("value/status/status", "Starting"),
+                ],
+            ]
         )
     ]
 )
 def test_broker_checks(
     mocker,
     mock_evaluate_pod_health,
-    mock_resource_items,
-    assertions
+    broker,
+    conditions,
+    evaluations
 ):
-    # from unittest.mock import MagicMock
-    from azext_edge.edge.providers.checks import evaluate_brokers
-    
-    # broker_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER, namespace=namespace)
     mocker.patch('azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources', return_value={
-        "items": mock_resource_items
+        "items": [broker]
     })
 
     namespace = generate_generic_id()
     result = evaluate_brokers(namespace=namespace)
 
-def test_broker_listner_checks():
-    pass
+    # all evalBroker assertions
+    assert result['name'] == 'evalBrokers'
+    assert result['namespace'] == namespace
+    assert result['targets']['brokers.az-edge.com']
+    target = result['targets']['brokers.az-edge.com']
 
-def test_diagnostic_service_checks():
-    pass
+    # default conditions
+    result_conditions = target['conditions']
+    for condition in ['len(brokers)==1', 'status', 'spec.mode']:
+        assert condition in result_conditions
+
+    # custom conditions
+    for condition in conditions:
+        assert condition in result_conditions
+
+    # assert eval properties
+    result_evals = target['evaluations']
+    for idx, evals in enumerate(evaluations):
+        for eval in evals:
+            assert_dict_props(
+                path=eval[0],
+                expected=eval[1],
+                obj=result_evals[idx]
+            )
+
+
+@pytest.mark.parametrize(
+    "listener, conditions, evaluations",
+    [
+        (
+            # listener with valid broker ref
+            {
+                "metadata": {"namespace": "mock_namespace", "name": "mock_name"},
+                "spec": {
+                    "serviceName": "name",
+                    "serviceType": "type",
+                    "brokerRef": "mock_broker",
+                    "port": 8080,
+                    "authenticationEnabled": "True"
+                },
+                "status": {
+                    "status": ResourceState.running.value,
+                    "statusDescription": ""
+                }
+            },
+            # conditions str
+            [
+                "len(brokerlisteners)>=1",
+                "spec",
+                "valid(spec.brokerRef)",
+                "spec.serviceName",
+                "status"
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("name", "mock_name"),
+                    ("value/spec/serviceName", "name"),
+                    ("value/spec/serviceType", "type"),
+                    ("value/spec/brokerRef", "mock_broker"),
+                    ("value/spec/port", 8080),
+                    ("value/spec/authenticationEnabled", "True"),
+                    ("value/valid(spec.brokerRef)", True),
+                ],
+            ]
+        ),
+    ]
+)
+def test_broker_listener_checks(
+    mocker,
+    mock_evaluate_pod_health,
+    listener,
+    conditions,
+    evaluations
+):
+    # mock listener values
+    mocker.patch('azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources', return_value={
+        "items": [listener]
+    })
+    # broker ref
+    mocker.patch('azext_edge.edge.providers.checks._get_valid_references', return_value={
+        "mock_broker": True
+    })
+
+    namespace = generate_generic_id()
+    result = evaluate_broker_listeners(namespace=namespace)
+
+    assert result['name'] == 'evalBrokerListeners'
+    assert result['namespace'] == namespace
+    assert result['targets']['brokerlisteners.az-edge.com']
+    target = result['targets']['brokerlisteners.az-edge.com']
+
+    # conditions
+    result_conditions = target['conditions']
+    for condition in conditions:
+        assert condition in result_conditions
+
+    # assert eval properties
+    result_evals = target['evaluations']
+    for idx, evals in enumerate(evaluations):
+        for eval in evals:
+            assert_dict_props(
+                path=eval[0],
+                expected=eval[1],
+                obj=result_evals[idx]
+            )
+
+@pytest.mark.parametrize(
+    "service, conditions, evaluations",
+    [
+        (
+            # diagnostic service
+            {
+                "metadata": {"namespace": "mock_namespace", "name": "mock_name"},
+                "spec": {
+                    "dataExportFrequencySeconds": 10,
+                    "logFormat": "text",
+                    "logLevel": "info",
+                    "maxDataStorageSize": 16,
+                    "metricsPort": 9600,
+                    "staleDataTimeoutSeconds": 600
+                },
+            },
+            # conditions str
+            [
+                "len(diagnosticservices)==1",
+                "spec"
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec/dataExportFrequencySeconds", 10),
+                    ("value/spec/logFormat", "text"),
+                    ("value/spec/logLevel", "info"),
+                    ("value/spec/maxDataStorageSize", 16),
+                    ("value/spec/metricsPort", 9600),
+                    ("value/spec/staleDataTimeoutSeconds", 600),
+
+                ],
+            ]
+        ),
+    ]
+)
+def test_diagnostic_service_checks(
+    mocker,
+    mock_evaluate_pod_health,
+    service,
+    conditions,
+    evaluations
+):
+    # mock service values
+    mocker.patch('azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources', return_value={
+        "items": [service]
+    })
+
+    namespace = generate_generic_id()
+    result = evaluate_diagnostics_service(namespace=namespace)
+
+    assert result['name'] == 'evalBrokerDiag'
+    assert result['namespace'] == namespace
+    assert result['targets']['diagnosticservices.az-edge.com']
+    target = result['targets']['diagnosticservices.az-edge.com']
+
+    # conditions
+    result_conditions = target['conditions']
+    for condition in conditions:
+        assert condition in result_conditions
+
+    # assert eval properties
+    result_evals = target['evaluations']
+    for idx, evals in enumerate(evaluations):
+        for eval in evals:
+            assert_dict_props(
+                path=eval[0],
+                expected=eval[1],
+                obj=result_evals[idx]
+            )
+
 
 def test_mqtt_checks():
     pass
 
+
 def test_datalake_checks():
     pass
+
+
+def assert_dict_props(path: str, expected: str, obj: Dict[str, str]):
+    val = obj
+    for key in path.split('/'):
+        val = val[key]
+    if isinstance(val, list) or isinstance(val, dict):
+        assert expected in val
+    else:
+        assert val == expected

@@ -631,6 +631,7 @@ def evaluate_brokers(
                 broker_conditions.append("spec.cardinality")
                 broker_conditions.append("spec.cardinality.backendChain.partitions>=1")
                 broker_conditions.append("spec.cardinality.backendChain.replicas>=1")
+                broker_conditions.append("spec.cardinality.backendChain.workers>=1")
                 broker_conditions.append("spec.cardinality.frontend.replicas>=1")
                 added_distributed_conditions = True
 
@@ -708,8 +709,8 @@ def evaluate_brokers(
                     display=Padding(frontend_cardinality_desc.format(frontend_replicas_colored), (0, 0, 0, 16)),
                 )
 
+        diagnostic_detail_padding = (0, 0, 0, 16)
         if broker_diagnostics:
-            diagnostic_detail_padding = (0, 0, 0, 16)
             check_manager.add_display(
                 target_name=target_brokers,
                 display=Padding("\nBroker Diagnostics", (0, 0, 0, 12))
