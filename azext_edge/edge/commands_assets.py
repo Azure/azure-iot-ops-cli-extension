@@ -48,7 +48,7 @@ def list_assets(
     cmd,
     resource_group_name: Optional[str] = None,
 ) -> dict:
-    subscription = get_subscription_id(cmd.az_cli)
+    subscription = get_subscription_id(cmd.cli_ctx)
     # additions:
     # resource group
     # subscription
@@ -69,7 +69,7 @@ def show_asset(
     asset_name: str,
     resource_group_name: Optional[str] = None
 ) -> dict:
-    subscription = get_subscription_id(cmd.az_cli)
+    subscription = get_subscription_id(cmd.cli_ctx)
     if resource_group_name:
         resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/Microsoft.DeviceRegistry/assets/{asset_name}?api-version={API_VERSION}"
         cli.invoke(f"rest --method GET --uri {resource_path}")
@@ -88,7 +88,7 @@ def delete_asset(
     asset_name: str,
     resource_group_name: Optional[str] = None
 ) -> dict:
-    subscription = get_subscription_id(cmd.az_cli)
+    subscription = get_subscription_id(cmd.cli_ctx)
     if not resource_group_name:
         assets_list = list_assets(cmd)
         for asset in assets_list:
@@ -131,7 +131,7 @@ def create_asset(
     ev_queue_size: int = 1,
     tags=None,
 ):
-    subscription = get_subscription_id(cmd.az_cli)
+    subscription = get_subscription_id(cmd.cli_ctx)
     resource_type = "Microsoft.DeviceRegistry/assets"
 
     # extended location
@@ -221,7 +221,6 @@ def update_asset(
     cmd,
     asset_name: str,
     resource_group_name: Optional[str] = None,
-    location: Optional[str] = None,
     data_points=None,
     description: Optional[str] = None,
     documentation_uri: Optional[str] = None,
@@ -239,7 +238,7 @@ def update_asset(
     queue_size: int = 1,
     tags=None,
 ):
-    subscription = get_subscription_id(cmd.az_cli)
+    subscription = get_subscription_id(cmd.cli_ctx)
     resource_type = "Microsoft.DeviceRegistry/assets"
     # Properties
     properties = {}
