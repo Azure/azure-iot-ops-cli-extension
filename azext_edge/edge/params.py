@@ -9,7 +9,7 @@ CLI parameter definitions.
 """
 
 from knack.arguments import CaseInsensitiveList
-from azure.cli.core.commands.parameters import get_three_state_flag
+from azure.cli.core.commands.parameters import get_three_state_flag, tags_type
 from .common import SupportForEdgeServiceType
 
 
@@ -146,7 +146,11 @@ def load_iotedge_arguments(self, _):
             options_list=["--custom-location-resource-group", "--clrg"],
             help="Resource group for custom location. If not provided, asset resource group will be used.",
         )
-
+        context.argument(
+            "custom_location_subscription",
+            options_list=["--custom-location-subscription", "--cls"],
+            help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
+        )
         context.argument(
             "asset_type",
             options_list=["--asset-type", "--at"],
@@ -270,5 +274,8 @@ def load_iotedge_arguments(self, _):
             arg_group="Event Default",
         )
         context.argument(
-            "tags", options_list=["--tags"], help="Asset tags."
+            "tags",
+            options_list=["--tags"],
+            help="Asset tags.",
+            arg_type=tags_type,
         )

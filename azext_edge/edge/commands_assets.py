@@ -22,7 +22,6 @@ logger = get_logger(__name__)
 
 API_VERSION = "2023-06-21-preview"  # "2023-08-01-preview"
 cli = EmbeddedCLI()
-SUBSCRIPTION = get_subscription_id(cli.az_cli)
 
 
 # def log_round_trip(response, *args, **kwargs):
@@ -49,12 +48,12 @@ def list_assets(
     cmd,
     resource_group_name: Optional[str] = None,
 ) -> dict:
+    subscription = get_subscription_id(cmd.az_cli)
     # additions:
     # resource group
     # subscription
     # see if there is some server side querying
-
-    uri = f"/subscriptions/{SUBSCRIPTION}"
+    uri = f"/subscriptions/{subscription}"
     if resource_group_name:
         uri += f"/resourceGroups/{resource_group_name}"
     uri += f"/providers/Microsoft.DeviceRegistry/assets?api-version={API_VERSION}"
@@ -70,8 +69,9 @@ def show_asset(
     asset_name: str,
     resource_group_name: Optional[str] = None
 ) -> dict:
+    subscription = get_subscription_id(cmd.az_cli)
     if resource_group_name:
-        resource_path = f"/subscriptions/{SUBSCRIPTION}/resourceGroups/{resource_group_name}/providers/Microsoft.DeviceRegistry/assets/{asset_name}?api-version={API_VERSION}"
+        resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/Microsoft.DeviceRegistry/assets/{asset_name}?api-version={API_VERSION}"
         cli.invoke(f"rest --method GET --uri {resource_path}")
         return cli.as_json()
 
@@ -88,6 +88,7 @@ def delete_asset(
     asset_name: str,
     resource_group_name: Optional[str] = None
 ) -> dict:
+    subscription = get_subscription_id(cmd.az_cli)
     if not resource_group_name:
         assets_list = list_assets(cmd)
         for asset in assets_list:
@@ -95,7 +96,7 @@ def delete_asset(
                 resource_group_name = asset["resourceGroup"]
                 break
 
-    resource_path = f"/subscriptions/{SUBSCRIPTION}/resourceGroups/{resource_group_name}/providers/Microsoft.DeviceRegistry/assets/{asset_name}?api-version={API_VERSION}"
+    resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/Microsoft.DeviceRegistry/assets/{asset_name}?api-version={API_VERSION}"
     cli.invoke(f"rest --method DELETE --uri {resource_path}")
 
 
@@ -107,6 +108,7 @@ def create_asset(
     custom_location: str,
     asset_type: Optional[str] = None,
     custom_location_resource_group: Optional[str] = None,
+    custom_location_subscription: Optional[str] = None,
     data_points=None,
     description: Optional[str] = None,
     disabled: bool = False,
@@ -129,15 +131,18 @@ def create_asset(
     ev_queue_size: int = 1,
     tags=None,
 ):
+    subscription = get_subscription_id(cmd.az_cli)
     resource_type = "Microsoft.DeviceRegistry/assets"
 
     # extended location
+    if not custom_location_subscription:
+        custom_location_subscription = subscription
     if not custom_location_resource_group:
         custom_location_resource_group = resource_group_name
     extended_location = {
         "type": "CustomLocation",
-        "name": f"/subscriptions/{SUBSCRIPTION}/resourcegroups/{custom_location_resource_group}/providers/microsoft.extendedlocation"
-        f"/customlocations/{custom_location}"
+        "name": f"/subscriptions/{custom_location_subscription}/resourcegroups/{custom_location_resource_group}"
+        f"/providers/microsoft.extendedlocation/customlocations/{custom_location}"
     }
     # Location
     if not location:
@@ -197,7 +202,7 @@ def create_asset(
     # Events
     properties["events"] = process_events(events)
 
-    resource_path = f"/subscriptions/{SUBSCRIPTION}/resourceGroups/{resource_group_name}/providers/{resource_type}/{asset_name}?api-version={API_VERSION}"
+    resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/{resource_type}/{asset_name}?api-version={API_VERSION}"
     asset_body = {
         "extendedLocation": extended_location,
         "id": resource_path,
@@ -215,7 +220,7 @@ def create_asset(
 def update_asset(
     cmd,
     asset_name: str,
-    resource_group_name: str,
+    resource_group_name: Optional[str] = None,
     location: Optional[str] = None,
     data_points=None,
     description: Optional[str] = None,
@@ -234,6 +239,7 @@ def update_asset(
     queue_size: int = 1,
     tags=None,
 ):
+    subscription = get_subscription_id(cmd.az_cli)
     resource_type = "Microsoft.DeviceRegistry/assets"
     # Properties
     properties = {}
@@ -281,7 +287,7 @@ def update_asset(
     # Events
     properties["events"] = process_events(events)
 
-    resource_path = f"/subscriptions/{SUBSCRIPTION}/resourceGroups/{resource_group_name}/providers/{resource_type}/{asset_name}?api-version={API_VERSION}"
+    resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/{resource_type}/{asset_name}?api-version={API_VERSION}"
     asset_body = {
         "properties": properties,
         "tags": tags,
