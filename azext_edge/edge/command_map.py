@@ -11,6 +11,7 @@ from azure.cli.core.commands import CliCommandType
 
 e4k_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_e4k#{}")
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
+asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 
 
 def load_iotedge_commands(self, _):
@@ -36,3 +37,13 @@ def load_iotedge_commands(self, _):
     ) as cmd_group:
         cmd_group.command("stats", "stats")
         cmd_group.command("get-password-hash", "get_password_hash")
+
+    with self.command_group(
+        "edge asset",
+        command_type=asset_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("create", "create_asset")
+        cmd_group.command("delete", "delete_asset")
+        cmd_group.command("list", "list_assets")
+        cmd_group.command("show", "show_asset")
+        cmd_group.command("update", "update_asset")
