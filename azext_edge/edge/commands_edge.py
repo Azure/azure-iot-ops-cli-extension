@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from pathlib import PurePath
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 from knack.log import get_logger
 
@@ -64,12 +64,13 @@ def init(
     custom_location_name: str,
     cluster_namespace: str,
     aio_version: str = "0.1.1",
-    custom_version: Optional[str] = None,
+    custom_version: Optional[List[str]] = None,
     location: Optional[str] = None,
     what_if: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
     kubernetes_distro: str = AkriK8sDistroType.k8s.value,
+    no_progress: Optional[bool] = None,
 ) -> Union[dict, None]:
     from azure.cli.core.commands.client_factory import get_subscription_id
     from .providers.orchestration import deploy
@@ -78,13 +79,15 @@ def init(
         subscription_id=get_subscription_id(cmd.cli_ctx),
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
-        resource_group_name=resource_group_name,
         custom_location_name=custom_location_name,
         custom_location_namespace=cluster_namespace,
+        resource_group_name=resource_group_name,
         location=location,
         aio_version=aio_version,
+        custom_version=custom_version,
         what_if=what_if,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         kubernetes_distro=kubernetes_distro,
         simulate_plc=simulate_plc,
+        no_progress=no_progress,
     )

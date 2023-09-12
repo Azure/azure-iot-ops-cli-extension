@@ -99,6 +99,13 @@ class AkriK8sDistroType(ListableEnum):
     minik8s = "minik8s"
 
 
+class DeployableAioVersions(ListableEnum):
+    """
+    Deployable AIO versions.
+    """
+
+    v011 = "0.1.1"
+
 # E4K runtime attributes
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"

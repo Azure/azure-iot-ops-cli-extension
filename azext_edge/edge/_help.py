@@ -83,7 +83,7 @@ def load_iotedge_help():
         "edge init"
     ] = """
         type: command
-        short-summary: Initialize and deploy an AIO solution bundle to the target cluster.
+        short-summary: Initialize and deploy an AIO service bundle to the target cluster.
         long-summary: |
             After this operation completes the desired suite of AIO edge services will
             be deployed and configured on the target cluster. Deployment is done incrementally.

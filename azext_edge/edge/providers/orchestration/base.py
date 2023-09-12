@@ -4,36 +4,8 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from enum import Enum
 from typing import List, Optional
-
-
-LATEST_AIO_VERSION = "0.1.1"
-
-class EdgeResourceVersions(Enum):
-    adr = "0.9.0"
-    akri = "0.1.0"
-    bluefin = "0.2.4"
-    e4k = "0.5.1"
-    e4in = "0.1.1"
-    obs = "0.62.3"
-    opcua = "0.7.0"
-    symphony = "0.44.9"
-
-
-extension_to_rp_map = {
-    "microsoft.alicesprings": "microsoft.symphony",
-    "microsoft.alicesprings.dataplane": None,
-    "microsoft.alicesprings.processor": "microsoft.bluefin",
-    "microsoft.deviceregistry.assets": "microsoft.deviceregistry",
-}
-
-extension_to_version_map = {
-    "microsoft.alicesprings": EdgeResourceVersions.symphony.value,
-    "microsoft.alicesprings.dataplane": EdgeResourceVersions.e4k.value,
-    "microsoft.alicesprings.processor": EdgeResourceVersions.bluefin.value,
-    "microsoft.deviceregistry.assets": EdgeResourceVersions.adr.value,
-}
+from .aio_versions import AioVersionDef, EdgeServiceMoniker, get_aio_version_map
 
 
 def get_otel_collector_addr(namespace: str, prefix_protocol: bool = False):
@@ -58,15 +30,18 @@ class ManifestBuilder:
         cluster_name: str,
         custom_location_name: str,
         custom_location_namespace: str,
-        cluster_namespace: str = "alice-springs",
-        aio_version: str = LATEST_AIO_VERSION,
+        cluster_namespace: str,
+        version_def: AioVersionDef,
+        location: str = None,
         **kwargs,
     ):
         self.cluster_name = cluster_name
         self.cluster_namespace = cluster_namespace
         self.custom_location_name = custom_location_name
         self.custom_location_namespace = custom_location_namespace
-        self.aio_version = aio_version,
+        self.location = location
+        self.version_def = version_def
+
         self.last_sync_priority: int = 0
         self.symphony_components: List[dict] = []
         self.resources: List[dict] = []
@@ -77,43 +52,29 @@ class ManifestBuilder:
             "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
             "contentVersion": "0.1.1.0",
             "metadata": {"description": "Az Edge CLI PAS deployment."},
-            "parameters": {
-                "clusterName": {"type": "string"},
-                "clusterLocation": {
-                    "type": "string",
-                    "defaultValue": "[parameters('location')]",
-                    "allowedValues": ["eastus2", "westus3", "westeurope"],
-                },
-                "customLocationName": {"type": "string", "defaultValue": custom_location_name},
-                "location": {
-                    "type": "string",
-                    "defaultValue": "[resourceGroup().location]",
-                    "allowedValues": ["eastus2", "westus3", "westeurope"],
-                },
-                "targetName": {"type": "string", "defaultValue": "init"},
-                "kubernetesDistro": {"type": "string", "defaultValue": "k8s"},
-                "bluefinInstanceName": {"type": "string", "defaultValue": "bluefin-instance"},
-            },
             "variables": {
-                "clusterId": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-                "customLocationNamespace": custom_location_namespace,
+                "clusterId": f"[resourceId('Microsoft.Kubernetes/connectedClusters', '{self.cluster_name}')]",
+                "customLocationNamespace": self.custom_location_namespace,
+                "customLocationName": self.custom_location_name,
                 "extensionInfix": "/providers/Microsoft.KubernetesConfiguration/extensions/",
+                "targetName": f"{self.cluster_name}-{self.cluster_namespace}-init",
+                "location": self.location or "[resourceGroup().location]",
             },
             "resources": [],
             "outputs": {
                 "customLocationId": {
                     "type": "string",
-                    "value": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                    "value": "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]",
                 }
             },
         }
         self._symphony_target_template: dict = {
             "type": "Microsoft.Symphony/targets",
-            "name": "[parameters('targetName')]",
-            "location": "[parameters('clusterLocation')]",
+            "name": "[variables('targetName')]",
+            "location": "[variables('location')]",
             "apiVersion": "2023-05-22-preview",
             "extendedLocation": {
-                "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]",
                 "type": "CustomLocation",
             },
             "properties": {
@@ -143,7 +104,7 @@ class ManifestBuilder:
                 ],
             },
             "dependsOn": [
-                "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
+                "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]"
             ],
         }
 
@@ -152,7 +113,11 @@ class ManifestBuilder:
         return self.last_sync_priority
 
     def add_extension(
-        self, extension_type: str, name: str, include_sync_rule: bool, configuration: Optional[dict] = None
+        self,
+        extension_type: str,
+        name: str,
+        include_sync_rule: bool,
+        configuration: Optional[dict] = None,
     ):
         extension = {
             "type": "Microsoft.KubernetesConfiguration/extensions",
@@ -162,7 +127,7 @@ class ManifestBuilder:
                 "extensionType": extension_type,
                 "autoUpgradeMinorVersion": False,
                 "scope": {"cluster": {"releaseNamespace": self.cluster_namespace}},
-                "version": extension_to_version_map[extension_type],
+                "version": self.version_def.extension_to_vers_map[extension_type],
                 "releaseTrain": "private-preview",
                 "configurationSettings": {},
             },
@@ -178,16 +143,18 @@ class ManifestBuilder:
                 "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                 "apiVersion": "2021-08-31-preview",
                 "name": f"{self.custom_location_name}/{self.custom_location_name}-{extension_type.split()[-1]}-sync",
-                "location": "[parameters('clusterLocation')]",
+                "location": "[variables('location')]",
                 "properties": {
                     "priority": self.get_next_priority(),
                     "selector": {
-                        "matchLabels": {"management.azure.com/provider-name": extension_to_rp_map[extension_type]}
+                        "matchLabels": {
+                            "management.azure.com/provider-name": self.version_def.extension_to_rp_map[extension_type]
+                        }
                     },
                     "targetResourceGroup": "[resourceGroup().id]",
                 },
                 "dependsOn": [
-                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]"
                 ],
             }
             self.resources.append(sync_rule)
@@ -197,7 +164,7 @@ class ManifestBuilder:
             "type": "Microsoft.ExtendedLocation/customLocations",
             "apiVersion": "2021-08-31-preview",
             "name": self.custom_location_name,
-            "location": "[parameters('clusterLocation')]",
+            "location": "[variables('location')]",
             "properties": {
                 "hostResourceId": "[variables('clusterId')]",
                 "namespace": "[variables('customLocationNamespace')]",
@@ -213,20 +180,22 @@ class ManifestBuilder:
 
         self.symphony_components.append(
             get_observability(
-                version=EdgeResourceVersions.obs.value,
+                version=self.version_def.moniker_to_version_map[EdgeServiceMoniker.obs.value],
             )
         )
-        self.symphony_components.append(get_e4in(version=EdgeResourceVersions.e4in.value))
+        self.symphony_components.append(
+            get_e4in(version=self.version_def.moniker_to_version_map[EdgeServiceMoniker.e4in.value])
+        )
         self.symphony_components.append(
             get_akri(
-                version=EdgeResourceVersions.akri.value,
+                version=self.version_def.moniker_to_version_map[EdgeServiceMoniker.akri.value],
                 opcua_discovery_endpoint=self.kwargs.get("opcua_discovery_endpoint", "opc.tcp://<notset>:50000/"),
                 kubernetes_distro=self.kwargs.get("kubernetes_distro", "k8s"),
             )
         )
         self.symphony_components.append(
             get_opcua_broker(
-                version=EdgeResourceVersions.opcua.value,
+                version=self.version_def.moniker_to_version_map[EdgeServiceMoniker.opcua.value],
                 namespace=self.cluster_namespace,
                 otel_collector_addr=get_otel_collector_addr(self.cluster_namespace, True),
                 geneva_collector_addr=get_geneva_metrics_addr(self.cluster_namespace, True),
@@ -269,17 +238,28 @@ def deploy(
     from azure.mgmt.resource import ResourceManagementClient
     from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 
+    version_def = get_aio_version_map(version=aio_version)
+
     resource_client = ResourceManagementClient(credential=DefaultAzureCredential(), subscription_id=subscription_id)
     manifest_builder = ManifestBuilder(
         cluster_name=cluster_name,
         custom_location_name=custom_location_name,
         custom_location_namespace=custom_location_namespace,
         cluster_namespace=cluster_namespace,
+        location=location,
+        version_def=version_def,
         **kwargs,
     )
+    no_progress = kwargs.get("no_progress", False)
+    if "custom_version" in kwargs:
+        import pdb
+
+        pdb.set_trace()
+        pass
+
     manifest_builder.add_extension(
         extension_type="microsoft.alicesprings",
-        name="alice-springs",
+        name="iotoperations",
         include_sync_rule=True,
         configuration={
             "Microsoft.CustomLocation.ServiceAccount": "default",
@@ -289,23 +269,24 @@ def deploy(
     )
     manifest_builder.add_extension(
         extension_type="microsoft.alicesprings.dataplane",
-        name="data-plane",
+        name="mq",
         include_sync_rule=False,
         configuration={
             "global.quickstart": True,
             "global.openTelemetryCollectorAddr": get_otel_collector_addr(cluster_namespace, True),
         },
     )
-    manifest_builder.add_extension(
-        extension_type="microsoft.alicesprings.processor",
-        name="processor",
-        include_sync_rule=True,
-        configuration={
-            "Microsoft.CustomLocation.ServiceAccount": "microsoft.bluefin",
-            "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
-            "genevaCollectorAddress": get_geneva_metrics_addr(cluster_namespace),
-        },
-    )
+    if False:
+        manifest_builder.add_extension(
+            extension_type="microsoft.alicesprings.processor",
+            name="dataprocessor",
+            include_sync_rule=True,
+            configuration={
+                "Microsoft.CustomLocation.ServiceAccount": "microsoft.bluefin",
+                "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
+                "genevaCollectorAddress": get_geneva_metrics_addr(cluster_namespace),
+            },
+        )
     manifest_builder.add_extension(
         extension_type="microsoft.deviceregistry.assets",
         name="assets",
@@ -314,15 +295,16 @@ def deploy(
     manifest_builder.add_custom_location()
     manifest_builder.add_std_symphony_components()
 
-    deployment_params = {"clusterName": {"value": cluster_name}}
-    if location:
-        deployment_params["location"] = {"value": location}
-
     if kwargs.get("what_if"):
         return manifest_builder.manifest
 
     with Progress(
-        SpinnerColumn(), *Progress.get_default_columns(), "Elapsed:", TimeElapsedColumn(), transient=True
+        SpinnerColumn(),
+        *Progress.get_default_columns(),
+        "Elapsed:",
+        TimeElapsedColumn(),
+        transient=False,
+        disable=no_progress,
     ) as progress:
         progress.add_task(description=f"Deploying AIO version: {aio_version}", total=None)
         try:
@@ -333,7 +315,6 @@ def deploy(
                     "properties": {
                         "mode": "Incremental",
                         "template": manifest_builder.manifest,
-                        "parameters": deployment_params,
                     }
                 },
             ).result()
@@ -343,5 +324,13 @@ def deploy(
                 e.message = json.loads(e.response.text())["error"]["message"]
             raise AzureResponseError(e.message)
 
-        result = [resource.id for resource in deployment.properties.output_resources]
-        return result
+        result = {}
+        result["provisioningState"] = deployment.properties.provisioning_state
+        result["correlationId"] = deployment.properties.correlation_id
+        result["name"] = deployment.name
+        result["resourceIds"] = [resource.id for resource in deployment.properties.output_resources]
+
+        import pdb
+
+        pdb.set_trace()
+        pass

@@ -10,7 +10,7 @@ CLI parameter definitions.
 
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag
-from .common import SupportForEdgeServiceType, AkriK8sDistroType
+from .common import SupportForEdgeServiceType, AkriK8sDistroType, DeployableAioVersions
 
 
 def load_iotedge_arguments(self, _):
@@ -157,15 +157,28 @@ def load_iotedge_arguments(self, _):
             "aio_version",
             options_list=["--aio-version"],
             help="The AIO bundle version to deploy.",
+            choices=CaseInsensitiveList(DeployableAioVersions.list()),
             arg_group="AIO version",
         )
         context.argument(
             "custom_version",
+            nargs="+",
             options_list=["--custom-version"],
             help="Customize edge service versions to deploy. Usage takes precedence over --aio-version. "
             "Use space-separated {key}={value} pairs where {key} is the edge service moniker and {value} "
             "is the desired version. For example: e4k=0.5.0 bluefin=0.3.0",
             arg_group="AIO version",
+        )
+        context.argument(
+            "no_progress",
+            options_list=["--no-progress"],
+            arg_type=get_three_state_flag(),
+            help="Disable the progress bar.",
+        )
+        context.argument(
+            "no_wait",
+            options_list=["--no-wait"],
+            help="Do not block.",
         )
         # Akri
         context.argument(
