@@ -6,13 +6,15 @@
 
 
 import pytest
-from typing import Dict
+from typing import Dict, Any
 from azext_edge.edge.common import CheckTaskStatus
 from azext_edge.edge.providers.checks import (CheckManager, E4kResourceKinds,
                                               ResourceState,
                                               evaluate_broker_listeners,
                                               evaluate_brokers,
                                               evaluate_diagnostics_service,
+                                              evaluate_mqtt_bridge_connectors,
+                                              evaluate_datalake_connectors,
                                               run_checks)
 
 from ...generators import generate_generic_id
@@ -220,14 +222,38 @@ def test_check_by_resource_types(mocker, mock_e4k_resource_types, resource_kinds
         [eval_lookup[evaluator].assert_not_called() for evaluator in eval_lookup]
 
 
+def _generate_resource_stub(
+    metadata: Dict[str, Any] = None,
+    spec: Dict[str, Any] = None,
+    status: Dict[str, Any] = None
+):
+    resource = {}
+
+    # fill metadata
+    resource['metadata'] = {"namespace": "mock_namespace", "name": "mock_name"}
+    resource['spec'] = {}
+
+    if metadata:
+        for key in metadata:
+            resource['metadata'][key] = metadata[key]
+    if spec:
+        for key in spec:
+            resource['spec'][key] = spec[key]
+
+    if status:
+        resource['status'] = {}
+        for key in status:
+            resource['spec'][key] = status[key]
+    return resource
+
+
 @pytest.mark.parametrize(
     "broker, conditions, evaluations",
     [
         (
             # broker (distributed)
-            {
-                "metadata": {"namespace": "mock_namespace", "name": "mock_name"},
-                "spec": {
+            _generate_resource_stub(
+                spec={
                     "diagnostics": {},  # required
                     "cardinality": {
                         "backendChain": {"partitions": 1, "replicas": 2, "workers": 1},
@@ -235,11 +261,11 @@ def test_check_by_resource_types(mocker, mock_e4k_resource_types, resource_kinds
                     },
                     "mode": "distributed"
                 },
-                "status": {
+                status={
                     "status": ResourceState.running.value,
                     "statusDescription": ""
                 }
-            },
+            ),
             # conditions str
             [
                 "len(brokers)==1",
@@ -256,9 +282,9 @@ def test_check_by_resource_types(mocker, mock_e4k_resource_types, resource_kinds
                     ("status", "warning"),  # unable to fetch broker diagnostics
                 ],
                 [
-                    ("status", "success"),
+                    ("status", "warning"),
                     ("name", "mock_name"),
-                    ("value/status/status", "Running"),
+                    ("value/status/status", "N/A"),
                     ("value/spec.cardinality/backendChain/partitions", 1),
                     ("value/spec.cardinality/backendChain/replicas", 2),
                     ("value/spec.cardinality/backendChain/workers", 1),
@@ -268,9 +294,8 @@ def test_check_by_resource_types(mocker, mock_e4k_resource_types, resource_kinds
         ),
         (
             # broker 2 - not distributed, so less conditions on cardinality
-            {
-                "metadata": {"namespace": "mock_namespace", "name": "mock_name"},
-                "spec": {
+            _generate_resource_stub(
+                spec={
                     "diagnostics": {
                         "diagnosticServiceEndpoint": "test",
                         "enableMetrics": "test",
@@ -283,11 +308,11 @@ def test_check_by_resource_types(mocker, mock_e4k_resource_types, resource_kinds
                         "frontend": {"replicas": 1}
                     },
                 },
-                "status": {
+                status={
                     "status": ResourceState.starting.value,
                     "statusDescription": ""
                 }
-            },
+            ),
             # conditions
             [
                 "len(brokers)==1",
@@ -299,7 +324,7 @@ def test_check_by_resource_types(mocker, mock_e4k_resource_types, resource_kinds
                 [
                     ("status", "warning"),  # still starting, so warning status
                     ("name", "mock_name"),
-                    ("value/status/status", "Starting"),
+                    ("value/status/status", "N/A"),
                 ],
             ]
         )
@@ -350,20 +375,19 @@ def test_broker_checks(
     [
         (
             # listener with valid broker ref
-            {
-                "metadata": {"namespace": "mock_namespace", "name": "mock_name"},
-                "spec": {
+            _generate_resource_stub(
+                spec={
                     "serviceName": "name",
                     "serviceType": "type",
                     "brokerRef": "mock_broker",
                     "port": 8080,
                     "authenticationEnabled": "True"
                 },
-                "status": {
+                status={
                     "status": ResourceState.running.value,
                     "statusDescription": ""
                 }
-            },
+            ),
             # conditions str
             [
                 "len(brokerlisteners)>=1",
@@ -427,14 +451,14 @@ def test_broker_listener_checks(
                 obj=result_evals[idx]
             )
 
+
 @pytest.mark.parametrize(
     "service, conditions, evaluations",
     [
         (
             # diagnostic service
-            {
-                "metadata": {"namespace": "mock_namespace", "name": "mock_name"},
-                "spec": {
+            _generate_resource_stub(
+                spec={
                     "dataExportFrequencySeconds": 10,
                     "logFormat": "text",
                     "logLevel": "info",
@@ -442,7 +466,7 @@ def test_broker_listener_checks(
                     "metricsPort": 9600,
                     "staleDataTimeoutSeconds": 600
                 },
-            },
+            ),
             # conditions str
             [
                 "len(diagnosticservices)==1",
@@ -503,11 +527,107 @@ def test_diagnostic_service_checks(
             )
 
 
-def test_mqtt_checks():
-    pass
+@pytest.mark.parametrize(
+    "bridge, topic_map, conditions, evaluations",
+    [
+        (
+            # mqtt bridge
+            _generate_resource_stub(
+                spec={
+                    "localBrokerConnection": {
+                        "authentication": {
+                            "test": {}
+                        }
+                    },
+                    "remoteBrokerConnection": {
+                        "authentication": {
+                            "test": {}
+                        }
+                    },
+                }
+            ),
+            # topic map
+            _generate_resource_stub(
+                spec={
+                    "mqttBridgeConnectorRef": ""
+                }
+            ),
+            # conditions str
+            [
+            ],
+            # evaluations
+            [
+            ]
+        ),
+    ]
+)
+def test_mqtt_checks(
+    mocker,
+    mock_evaluate_pod_health,
+    bridge,
+    topic_map,
+    conditions,
+    evaluations
+):
+    mocker = mocker.patch(
+        'azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources',
+        side_effect=[
+            {
+                "items": [bridge]
+            },
+            {
+                "items": [topic_map]
+            }
+        ]
+    )
+
+    namespace = generate_generic_id()
+    result = evaluate_mqtt_bridge_connectors(namespace=namespace)
+
+    assert result['name'] == 'evalMQTTBridgeConnectors'
+    assert result['namespace'] == namespace
+    assert result['targets']['mqttbridgeconnectors.az-edge.com']
+    target = result['targets']['mqttbridgeconnectors.az-edge.com']
+
+    # conditions
+    result_conditions = target['conditions']
+    for condition in conditions:
+        assert condition in result_conditions
+
+    # assert eval properties
+    result_evals = target['evaluations']
+    for idx, evals in enumerate(evaluations):
+        for eval in evals:
+            assert_dict_props(
+                path=eval[0],
+                expected=eval[1],
+                obj=result_evals[idx]
+            )
 
 
-def test_datalake_checks():
+@pytest.mark.parametrize(
+    "connector, conditions, evaluations",
+    [
+        (
+            # datalake connector
+            _generate_resource_stub(
+            ),
+            # conditions str
+            [
+            ],
+            # evaluations
+            [
+            ]
+        ),
+    ]
+)
+def test_datalake_checks(
+    mocker,
+    mock_evaluate_pod_health,
+    connector,
+    conditions,
+    evaluations
+):
     pass
 
 
