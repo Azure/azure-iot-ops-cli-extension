@@ -276,6 +276,6 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "tags",
             options_list=["--tags"],
-            help="Asset tags.",
+            help="Asset tags. Property bag in key-value pairs with the following format: a=b c=d",
             arg_type=tags_type,
         )

@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 import json
-from typing import Optional
+from typing import Dict, List, Optional
 
 from knack.log import get_logger
 
@@ -22,26 +22,6 @@ logger = get_logger(__name__)
 
 API_VERSION = "2023-06-21-preview"  # "2023-08-01-preview"
 cli = EmbeddedCLI()
-
-
-# def log_round_trip(response, *args, **kwargs):
-#     try:
-#         logger.debug("Request URL: %r", response.request.url)
-#         logger.debug("Request method: %r", response.request.method)
-#         logger.debug("Request headers:")
-#         for header, value in response.request.headers.items():
-#             if header.lower() == "authorization":
-#                 value = "*****"
-#             logger.debug("    %r: %r", header, value)
-#         logger.debug("Request body:")
-#         logger.debug(str(response.request.body))
-#     except Exception as e:
-#         logger.debug("Failed to log request: %r", e)
-
-
-# session = requests.Session()
-# session.headers.update({"User-Agent": USER_AGENT, "x-ms-client-request-id": str(uuid1()), "Accept": "application/json"})
-# session.hooks["response"].append(log_round_trip)
 
 
 def list_assets(
@@ -129,7 +109,7 @@ def create_asset(
     ev_publishing_interval: int = 1000,
     ev_sampling_interval: int = 500,
     ev_queue_size: int = 1,
-    tags=None,
+    tags: Optional[Dict[str, str]] = None,
 ):
     subscription = get_subscription_id(cmd.cli_ctx)
     resource_type = "Microsoft.DeviceRegistry/assets"
@@ -152,7 +132,9 @@ def create_asset(
     # Properties
     properties = {
         "connectivityProfileUri": endpoint_profile,
-        "enabled": not disabled
+        "enabled": not disabled,
+        "dataPoints": process_data_points(data_points),
+        "events": process_events(events),
     }
 
     # Optional properties
@@ -196,21 +178,12 @@ def create_asset(
     }
     properties["defaultEventsConfiguration"] = json.dumps(event_defaults)
 
-    # Data points
-    properties["dataPoints"] = process_data_points(data_points)
-
-    # Events
-    properties["events"] = process_events(events)
-
     resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/{resource_type}/{asset_name}?api-version={API_VERSION}"
     asset_body = {
         "extendedLocation": extended_location,
-        "id": resource_path,
         "location": location,
-        "name": asset_name,
         "properties": properties,
         "tags": tags,
-        "type": resource_type
     }
 
     cli.invoke(f"rest --method PUT --uri {resource_path} --body '{json.dumps(asset_body)}'")
@@ -240,6 +213,9 @@ def update_asset(
 ):
     subscription = get_subscription_id(cmd.cli_ctx)
     resource_type = "Microsoft.DeviceRegistry/assets"
+    # get the asset
+
+    # modify the asset
     # Properties
     properties = {}
 
@@ -295,7 +271,7 @@ def update_asset(
     return cli.as_json()
 
 
-def process_data_points(data_points):
+def process_data_points(data_points: Optional[List[str]]) -> Dict[str, str]:
     if not data_points:
         return []
     processed_dps = []
@@ -303,7 +279,7 @@ def process_data_points(data_points):
         parsed_dp = assemble_nargs_to_dict(data_point)
 
         if not parsed_dp.get("data_source"):
-            raise RequiredArgumentMissingError(f"Data point is missing the data_source.")
+            raise RequiredArgumentMissingError(f"Data point ({data_point}) is missing the data_source.")
 
         custom_configuration = {}
         if parsed_dp.get("sampling_interval"):
@@ -311,8 +287,8 @@ def process_data_points(data_points):
         if parsed_dp.get("queue_size"):
             custom_configuration["queueSize"] = int(parsed_dp.get("queue_size"))
 
-        if parsed_dp.get("capability_id"):
-            parsed_dp["capabilityId"] = parsed_dp.get("name")
+        if not parsed_dp.get("capability_id"):
+            parsed_dp["capability_id"] = parsed_dp.get("name")
 
         processed_dp = {
             "capabilityId": parsed_dp.get("capability_id"),
@@ -326,7 +302,7 @@ def process_data_points(data_points):
     return processed_dps
 
 
-def process_events(events):
+def process_events(events: Optional[List[List[str]]]) -> Dict[str, str]:
     if not events:
         return []
     processed_events = []
@@ -334,16 +310,16 @@ def process_events(events):
         parsed_event = assemble_nargs_to_dict(event)
 
         if not parsed_event.get("event_notifier"):
-            raise RequiredArgumentMissingError(f"Event is missing the event notifier.")
+            raise RequiredArgumentMissingError(f"Event ({event}) is missing the event notifier.")
 
         custom_configuration = {}
         if parsed_event.get("sampling_interval"):
             custom_configuration["samplingInterval"] = int(parsed_event.get("sampling_interval"))
-        if parsed_event.get("queueSize"):
-            custom_configuration["queueSize"] = int(parsed_event.get("queueSize"))
+        if parsed_event.get("queue_size"):
+            custom_configuration["queueSize"] = int(parsed_event.get("queue_size"))
 
-        if parsed_event.get("capability_id"):
-            parsed_event["capabilityId"] = parsed_event.get("name")
+        if not parsed_event.get("capability_id"):
+            parsed_event["capability_id"] = parsed_event.get("name")
 
         processed_event = {
             "capabilityId": parsed_event.get("capability_id"),

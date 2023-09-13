@@ -5,3 +5,5 @@
 # --------------------------------------------------------------------------------------------
 
 EMBEDDED_CLI_ASSETS_PATH = "azext_edge.edge.commands_assets.cli"
+PROCESS_DP_ASSETS_PATH = "azext_edge.edge.commands_assets.process_data_points"
+PROCESS_EV_ASSETS_PATH = "azext_edge.edge.commands_assets.process_events"

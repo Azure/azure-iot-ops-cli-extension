@@ -45,4 +45,3 @@ def embedded_cli_client(mocker, request):
     # patched_handler.side_effect = CLIError("error")
 
     yield patched_cli
-
