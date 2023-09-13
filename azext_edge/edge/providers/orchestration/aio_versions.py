@@ -4,11 +4,10 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from ...common import DeployableAioVersions
-from enum import Enum
+from ...common import DeployableAioVersions, ListableEnum
 
 
-class EdgeServiceMoniker(Enum):
+class EdgeServiceMoniker(ListableEnum):
     adr = "adr"
     akri = "akri"
     bluefin = "bluefin"
@@ -42,8 +41,21 @@ class AioVersionDef:
     def moniker_to_version_map(self):
         return self._moniker_to_vers_map
 
+    def set_moniker_to_version_map(self, moniker_map: dict):
+        self._moniker_to_vers_map = moniker_map
+        ext_to_vers_map = {}
+        ext_to_rp_map = {}
+        for key in self._moniker_to_vers_map:
+            if self.version == DeployableAioVersions.v011.value:
+                ext_to_vers_map[v011_moniker_to_extension_map[key]] = self._moniker_to_vers_map[key]
+                ext_to_rp_map[v011_moniker_to_extension_map[key]] = self._ext_to_rp_map[
+                    v011_moniker_to_extension_map[key]
+                ]
+        self._ext_to_vers_map = ext_to_vers_map
+        self._ext_to_rp_map = ext_to_rp_map
 
-def get_aio_version_map(version: str) -> AioVersionDef:
+
+def get_aio_version_def(version: str) -> AioVersionDef:
     if version == DeployableAioVersions.v011.value:
         return AioVersionDef(
             version=version,
@@ -76,4 +88,11 @@ v011_extension_to_version_map = {
     "microsoft.alicesprings.dataplane": v011_moniker_to_version_map[EdgeServiceMoniker.e4k.value],
     "microsoft.alicesprings.processor": v011_moniker_to_version_map[EdgeServiceMoniker.bluefin.value],
     "microsoft.deviceregistry.assets": v011_moniker_to_version_map[EdgeServiceMoniker.adr.value],
+}
+
+v011_moniker_to_extension_map = {
+    EdgeServiceMoniker.symphony.value: "microsoft.alicesprings",
+    EdgeServiceMoniker.e4k.value: "microsoft.alicesprings.dataplane",
+    EdgeServiceMoniker.bluefin.value: "microsoft.alicesprings.processor",
+    EdgeServiceMoniker.adr.value: "microsoft.deviceregistry.assets",
 }

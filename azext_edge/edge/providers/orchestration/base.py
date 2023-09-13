@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from typing import List, Optional
-from .aio_versions import AioVersionDef, EdgeServiceMoniker, get_aio_version_map
+from .aio_versions import AioVersionDef, EdgeServiceMoniker, get_aio_version_def
 
 
 def get_otel_collector_addr(namespace: str, prefix_protocol: bool = False):
@@ -119,45 +119,52 @@ class ManifestBuilder:
         include_sync_rule: bool,
         configuration: Optional[dict] = None,
     ):
-        extension = {
-            "type": "Microsoft.KubernetesConfiguration/extensions",
-            "apiVersion": "2022-03-01",
-            "name": name,
-            "properties": {
-                "extensionType": extension_type,
-                "autoUpgradeMinorVersion": False,
-                "scope": {"cluster": {"releaseNamespace": self.cluster_namespace}},
-                "version": self.version_def.extension_to_vers_map[extension_type],
-                "releaseTrain": "private-preview",
-                "configurationSettings": {},
-            },
-            "scope": f"Microsoft.Kubernetes/connectedClusters/{self.cluster_name}",
-        }
-        if configuration:
-            extension["properties"]["configurationSettings"].update(configuration)
-        self.resources.append(extension)
-        self.extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
+        target_version = self.version_def.extension_to_vers_map.get(extension_type)
+        import pdb
 
-        if include_sync_rule:
-            sync_rule = {
-                "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
-                "apiVersion": "2021-08-31-preview",
-                "name": f"{self.custom_location_name}/{self.custom_location_name}-{extension_type.split()[-1]}-sync",
-                "location": "[variables('location')]",
+        pdb.set_trace()
+        if target_version:
+            extension = {
+                "type": "Microsoft.KubernetesConfiguration/extensions",
+                "apiVersion": "2022-03-01",
+                "name": name,
                 "properties": {
-                    "priority": self.get_next_priority(),
-                    "selector": {
-                        "matchLabels": {
-                            "management.azure.com/provider-name": self.version_def.extension_to_rp_map[extension_type]
-                        }
-                    },
-                    "targetResourceGroup": "[resourceGroup().id]",
+                    "extensionType": extension_type,
+                    "autoUpgradeMinorVersion": False,
+                    "scope": {"cluster": {"releaseNamespace": self.cluster_namespace}},
+                    "version": self.version_def.extension_to_vers_map[extension_type],
+                    "releaseTrain": "private-preview",
+                    "configurationSettings": {},
                 },
-                "dependsOn": [
-                    "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]"
-                ],
+                "scope": f"Microsoft.Kubernetes/connectedClusters/{self.cluster_name}",
             }
-            self.resources.append(sync_rule)
+            if configuration:
+                extension["properties"]["configurationSettings"].update(configuration)
+            self.resources.append(extension)
+            self.extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
+
+            if include_sync_rule:
+                sync_rule = {
+                    "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
+                    "apiVersion": "2021-08-31-preview",
+                    "name": f"{self.custom_location_name}/{self.custom_location_name}-{extension_type.split()[-1]}-sync",
+                    "location": "[variables('location')]",
+                    "properties": {
+                        "priority": self.get_next_priority(),
+                        "selector": {
+                            "matchLabels": {
+                                "management.azure.com/provider-name": self.version_def.extension_to_rp_map[
+                                    extension_type
+                                ]
+                            }
+                        },
+                        "targetResourceGroup": "[resourceGroup().id]",
+                    },
+                    "dependsOn": [
+                        "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]"
+                    ],
+                }
+                self.resources.append(sync_rule)
 
     def add_custom_location(self):
         payload = {
@@ -178,30 +185,36 @@ class ManifestBuilder:
     def add_std_symphony_components(self):
         from .components import get_akri, get_e4in, get_observability, get_opcua_broker
 
-        self.symphony_components.append(
-            get_observability(
-                version=self.version_def.moniker_to_version_map[EdgeServiceMoniker.obs.value],
+        # TODO: Primitive pattern
+        obs_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.obs.value)
+        if obs_version:
+            self.symphony_components.append(get_observability(version=obs_version))
+
+        e4in_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.e4in.value)
+        if e4in_version:
+            self.symphony_components.append(get_e4in(version=e4in_version))
+
+        akri_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.akri.value)
+        if akri_version:
+            self.symphony_components.append(
+                get_akri(
+                    version=akri_version,
+                    opcua_discovery_endpoint=self.kwargs.get("opcua_discovery_endpoint", "opc.tcp://<notset>:50000/"),
+                    kubernetes_distro=self.kwargs.get("kubernetes_distro", "k8s"),
+                )
             )
-        )
-        self.symphony_components.append(
-            get_e4in(version=self.version_def.moniker_to_version_map[EdgeServiceMoniker.e4in.value])
-        )
-        self.symphony_components.append(
-            get_akri(
-                version=self.version_def.moniker_to_version_map[EdgeServiceMoniker.akri.value],
-                opcua_discovery_endpoint=self.kwargs.get("opcua_discovery_endpoint", "opc.tcp://<notset>:50000/"),
-                kubernetes_distro=self.kwargs.get("kubernetes_distro", "k8s"),
+
+        opcua_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.opcua.value)
+        if opcua_version:
+            self.symphony_components.append(
+                get_opcua_broker(
+                    version=opcua_version,
+                    namespace=self.cluster_namespace,
+                    otel_collector_addr=get_otel_collector_addr(self.cluster_namespace, True),
+                    geneva_collector_addr=get_geneva_metrics_addr(self.cluster_namespace, True),
+                    simulate_plc=self.kwargs.get("simulate_plc", False),
+                )
             )
-        )
-        self.symphony_components.append(
-            get_opcua_broker(
-                version=self.version_def.moniker_to_version_map[EdgeServiceMoniker.opcua.value],
-                namespace=self.cluster_namespace,
-                otel_collector_addr=get_otel_collector_addr(self.cluster_namespace, True),
-                geneva_collector_addr=get_geneva_metrics_addr(self.cluster_namespace, True),
-                simulate_plc=self.kwargs.get("simulate_plc", False),
-            )
-        )
 
     @property
     def manifest(self):
@@ -238,7 +251,7 @@ def deploy(
     from azure.mgmt.resource import ResourceManagementClient
     from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 
-    version_def = get_aio_version_map(version=aio_version)
+    version_def = process_deployable_version(aio_version, **kwargs)
 
     resource_client = ResourceManagementClient(credential=DefaultAzureCredential(), subscription_id=subscription_id)
     manifest_builder = ManifestBuilder(
@@ -251,11 +264,6 @@ def deploy(
         **kwargs,
     )
     no_progress = kwargs.get("no_progress", False)
-    if "custom_version" in kwargs:
-        import pdb
-
-        pdb.set_trace()
-        pass
 
     manifest_builder.add_extension(
         extension_type="microsoft.alicesprings",
@@ -334,3 +342,30 @@ def deploy(
 
         pdb.set_trace()
         pass
+
+        return result
+
+
+def process_deployable_version(aio_version: str, **kwargs) -> AioVersionDef:
+    from ...util import assemble_nargs_to_dict
+
+    base_version_def = get_aio_version_def(version=aio_version)
+    custom_version = kwargs.get("custom_version")
+    only_deploy_custom = kwargs.get("only_deploy_custom")
+
+    if not custom_version:
+        return base_version_def
+
+    custom_version_map = assemble_nargs_to_dict(custom_version)
+    # Basic moniker validation.
+    monikers = set(EdgeServiceMoniker.list())
+    for key in custom_version_map:
+        if key not in monikers:
+            raise ValueError(f"Moniker '{key}' is not supported.")
+
+    if only_deploy_custom:
+        base_version_def.set_moniker_to_version_map(custom_version_map)
+    else:
+        base_version_def.moniker_to_version_map.update(custom_version_map)
+
+    return base_version_def

@@ -11,6 +11,7 @@ CLI parameter definitions.
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag
 from .common import SupportForEdgeServiceType, AkriK8sDistroType, DeployableAioVersions
+from .providers.orchestration.aio_versions import EdgeServiceMoniker
 
 
 def load_iotedge_arguments(self, _):
@@ -166,7 +167,15 @@ def load_iotedge_arguments(self, _):
             options_list=["--custom-version"],
             help="Customize edge service versions to deploy. Usage takes precedence over --aio-version. "
             "Use space-separated {key}={value} pairs where {key} is the edge service moniker and {value} "
-            "is the desired version. For example: e4k=0.5.0 bluefin=0.3.0",
+            f"is the desired version. The following monikers may be used: {', '.join(EdgeServiceMoniker.list())}. "
+            "Example: e4k=0.5.0 bluefin=0.3.0",
+            arg_group="AIO version",
+        )
+        context.argument(
+            "only_deploy_custom",
+            options_list=["--only-custom"],
+            arg_type=get_three_state_flag(),
+            help="Only deploy the edge services specified in --custom-version.",
             arg_group="AIO version",
         )
         context.argument(
