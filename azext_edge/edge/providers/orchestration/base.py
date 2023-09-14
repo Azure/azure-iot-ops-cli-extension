@@ -4,7 +4,8 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
+
 from .aio_versions import AioVersionDef, EdgeServiceMoniker, get_aio_version_def
 
 
@@ -47,6 +48,7 @@ class ManifestBuilder:
         self.resources: List[dict] = []
         self.extension_ids: List[str] = []
         self.kwargs = kwargs
+        self.create_sync_rules = self.kwargs.get("create_sync_rules")
 
         self._manifest: dict = {
             "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -57,16 +59,9 @@ class ManifestBuilder:
                 "customLocationNamespace": self.custom_location_namespace,
                 "customLocationName": self.custom_location_name,
                 "extensionInfix": "/providers/Microsoft.KubernetesConfiguration/extensions/",
-                "targetName": f"{self.cluster_name}-{self.cluster_namespace}-init",
                 "location": self.location or "[resourceGroup().location]",
             },
             "resources": [],
-            "outputs": {
-                "customLocationId": {
-                    "type": "string",
-                    "value": "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]",
-                }
-            },
         }
         self._symphony_target_template: dict = {
             "type": "Microsoft.Symphony/targets",
@@ -116,13 +111,9 @@ class ManifestBuilder:
         self,
         extension_type: str,
         name: str,
-        include_sync_rule: bool,
         configuration: Optional[dict] = None,
     ):
         target_version = self.version_def.extension_to_vers_map.get(extension_type)
-        import pdb
-
-        pdb.set_trace()
         if target_version:
             extension = {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
@@ -132,7 +123,7 @@ class ManifestBuilder:
                     "extensionType": extension_type,
                     "autoUpgradeMinorVersion": False,
                     "scope": {"cluster": {"releaseNamespace": self.cluster_namespace}},
-                    "version": self.version_def.extension_to_vers_map[extension_type],
+                    "version": target_version,
                     "releaseTrain": "private-preview",
                     "configurationSettings": {},
                 },
@@ -143,7 +134,8 @@ class ManifestBuilder:
             self.resources.append(extension)
             self.extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
 
-            if include_sync_rule:
+            if self.create_sync_rules:
+                # TODO: self.version_def.extension_to_rp_map
                 sync_rule = {
                     "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                     "apiVersion": "2021-08-31-preview",
@@ -224,6 +216,7 @@ class ManifestBuilder:
         if self.resources:
             m["resources"].extend(self.resources)
         if self.symphony_components:
+            m["variables"]["targetName"] = f"{self.cluster_name}-{self.cluster_namespace}-init"
             t = deepcopy(self._symphony_target_template)
             t["properties"]["components"].extend(self.symphony_components)
             m["resources"].append(t)
@@ -249,9 +242,21 @@ def deploy(
     from azure.core.exceptions import HttpResponseError
     from azure.identity import DefaultAzureCredential
     from azure.mgmt.resource import ResourceManagementClient
+    from rich.console import Console
     from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
+    from rich.table import Table
 
     version_def = process_deployable_version(aio_version, **kwargs)
+    detail_aio_version = kwargs.get("detail_aio_version", False)
+    if detail_aio_version:
+        console = Console()
+        table = Table(title=f"Azure IoT Ops {version_def.version}")
+        table.add_column("Component", justify="left", style="cyan")
+        table.add_column("Version", justify="left", style="magenta")
+        for moniker in version_def.moniker_to_version_map:
+            table.add_row(moniker, version_def.moniker_to_version_map[moniker])
+        console.print(table)
+        return
 
     resource_client = ResourceManagementClient(credential=DefaultAzureCredential(), subscription_id=subscription_id)
     manifest_builder = ManifestBuilder(
@@ -268,7 +273,6 @@ def deploy(
     manifest_builder.add_extension(
         extension_type="microsoft.alicesprings",
         name="iotoperations",
-        include_sync_rule=True,
         configuration={
             "Microsoft.CustomLocation.ServiceAccount": "default",
             "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
@@ -278,27 +282,23 @@ def deploy(
     manifest_builder.add_extension(
         extension_type="microsoft.alicesprings.dataplane",
         name="mq",
-        include_sync_rule=False,
         configuration={
-            "global.quickstart": True,
+            # "global.quickstart": True,
             "global.openTelemetryCollectorAddr": get_otel_collector_addr(cluster_namespace, True),
         },
     )
-    if False:
-        manifest_builder.add_extension(
-            extension_type="microsoft.alicesprings.processor",
-            name="dataprocessor",
-            include_sync_rule=True,
-            configuration={
-                "Microsoft.CustomLocation.ServiceAccount": "microsoft.bluefin",
-                "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
-                "genevaCollectorAddress": get_geneva_metrics_addr(cluster_namespace),
-            },
-        )
+    manifest_builder.add_extension(
+        extension_type="microsoft.alicesprings.processor",
+        name="dataprocessor",
+        configuration={
+            "Microsoft.CustomLocation.ServiceAccount": "microsoft.bluefin",
+            "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
+            "genevaCollectorAddress": get_geneva_metrics_addr(cluster_namespace),
+        },
+    )
     manifest_builder.add_extension(
         extension_type="microsoft.deviceregistry.assets",
         name="assets",
-        include_sync_rule=True,
     )
     manifest_builder.add_custom_location()
     manifest_builder.add_std_symphony_components()
@@ -314,7 +314,7 @@ def deploy(
         transient=False,
         disable=no_progress,
     ) as progress:
-        progress.add_task(description=f"Deploying AIO version: {aio_version}", total=None)
+        progress.add_task(description=f"Deploying AIO version: {version_def.version}", total=None)
         try:
             deployment = resource_client.deployments.begin_create_or_update(
                 resource_group_name=resource_group_name,
@@ -331,17 +331,16 @@ def deploy(
             if "Deployment template validation failed:" in e.message:
                 e.message = json.loads(e.response.text())["error"]["message"]
             raise AzureResponseError(e.message)
+        except KeyboardInterrupt:
+            return
 
+        # TODO: result structure
         result = {}
         result["provisioningState"] = deployment.properties.provisioning_state
         result["correlationId"] = deployment.properties.correlation_id
         result["name"] = deployment.name
+        result["aioBundle"] = manifest_builder.version_def.moniker_to_version_map
         result["resourceIds"] = [resource.id for resource in deployment.properties.output_resources]
-
-        import pdb
-
-        pdb.set_trace()
-        pass
 
         return result
 
@@ -363,9 +362,5 @@ def process_deployable_version(aio_version: str, **kwargs) -> AioVersionDef:
         if key not in monikers:
             raise ValueError(f"Moniker '{key}' is not supported.")
 
-    if only_deploy_custom:
-        base_version_def.set_moniker_to_version_map(custom_version_map)
-    else:
-        base_version_def.moniker_to_version_map.update(custom_version_map)
-
+    base_version_def.set_moniker_to_version_map(custom_version_map, only_deploy_custom)
     return base_version_def

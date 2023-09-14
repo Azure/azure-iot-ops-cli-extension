@@ -41,16 +41,20 @@ class AioVersionDef:
     def moniker_to_version_map(self):
         return self._moniker_to_vers_map
 
-    def set_moniker_to_version_map(self, moniker_map: dict):
+    def set_moniker_to_version_map(self, moniker_map: dict, refresh_mappings: bool = False):
+        self._version = "custom"
+        if not refresh_mappings:
+            self._moniker_to_vers_map.update(moniker_map)
+            return
+
         self._moniker_to_vers_map = moniker_map
         ext_to_vers_map = {}
         ext_to_rp_map = {}
         for key in self._moniker_to_vers_map:
-            if self.version == DeployableAioVersions.v011.value:
-                ext_to_vers_map[v011_moniker_to_extension_map[key]] = self._moniker_to_vers_map[key]
-                ext_to_rp_map[v011_moniker_to_extension_map[key]] = self._ext_to_rp_map[
-                    v011_moniker_to_extension_map[key]
-                ]
+            moniker_to_extension_key = moniker_to_extension_map.get(key)
+            if moniker_to_extension_key:
+                ext_to_vers_map[moniker_to_extension_map[key]] = self._moniker_to_vers_map[key]
+                ext_to_rp_map[moniker_to_extension_map[key]] = self._ext_to_rp_map[moniker_to_extension_map[key]]
         self._ext_to_vers_map = ext_to_vers_map
         self._ext_to_rp_map = ext_to_rp_map
 
@@ -78,7 +82,7 @@ v011_moniker_to_version_map = {
 
 v011_extension_to_rp_map = {
     "microsoft.alicesprings": "microsoft.symphony",
-    "microsoft.alicesprings.dataplane": None,
+    "microsoft.alicesprings.dataplane": "microsoft.alicespringsdataplane",
     "microsoft.alicesprings.processor": "microsoft.bluefin",
     "microsoft.deviceregistry.assets": "microsoft.deviceregistry",
 }
@@ -90,7 +94,7 @@ v011_extension_to_version_map = {
     "microsoft.deviceregistry.assets": v011_moniker_to_version_map[EdgeServiceMoniker.adr.value],
 }
 
-v011_moniker_to_extension_map = {
+moniker_to_extension_map = {
     EdgeServiceMoniker.symphony.value: "microsoft.alicesprings",
     EdgeServiceMoniker.e4k.value: "microsoft.alicesprings.dataplane",
     EdgeServiceMoniker.bluefin.value: "microsoft.alicesprings.processor",

@@ -64,6 +64,7 @@ def init(
     custom_location_name: str,
     cluster_namespace: str,
     aio_version: str = "0.1.1",
+    detail_aio_version: Optional[bool] = None,
     custom_version: Optional[List[str]] = None,
     only_deploy_custom: Optional[bool] = None,
     location: Optional[str] = None,
@@ -71,6 +72,7 @@ def init(
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
     kubernetes_distro: str = AkriK8sDistroType.k8s.value,
+    create_sync_rules: Optional[bool] = None,
     no_progress: Optional[bool] = None,
 ) -> Union[dict, None]:
     from azure.cli.core.commands.client_factory import get_subscription_id
@@ -83,13 +85,15 @@ def init(
         custom_location_name=custom_location_name,
         custom_location_namespace=cluster_namespace,
         resource_group_name=resource_group_name,
-        location=location,
         aio_version=aio_version,
+        location=location,
+        detail_aio_version=detail_aio_version,
         custom_version=custom_version,
         only_deploy_custom=only_deploy_custom,
         what_if=what_if,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         kubernetes_distro=kubernetes_distro,
         simulate_plc=simulate_plc,
+        create_sync_rules=create_sync_rules,
         no_progress=no_progress,
     )

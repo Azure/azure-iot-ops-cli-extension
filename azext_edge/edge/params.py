@@ -159,30 +159,43 @@ def load_iotedge_arguments(self, _):
             options_list=["--aio-version"],
             help="The AIO bundle version to deploy.",
             choices=CaseInsensitiveList(DeployableAioVersions.list()),
-            arg_group="AIO version",
+            arg_group="AIO Version",
+        )
+        context.argument(
+            "detail_aio_version",
+            options_list=["--detail-version"],
+            help="Summarize and show the versions of deployable components.",
+            arg_type=get_three_state_flag(),
+            arg_group="AIO Version",
         )
         context.argument(
             "custom_version",
             nargs="+",
             options_list=["--custom-version"],
-            help="Customize edge service versions to deploy. Usage takes precedence over --aio-version. "
+            help="Customize AIO deployment by specifying edge service versions. Usage takes precedence over --aio-version. "
             "Use space-separated {key}={value} pairs where {key} is the edge service moniker and {value} "
             f"is the desired version. The following monikers may be used: {', '.join(EdgeServiceMoniker.list())}. "
             "Example: e4k=0.5.0 bluefin=0.3.0",
-            arg_group="AIO version",
+            arg_group="AIO Version",
         )
         context.argument(
             "only_deploy_custom",
             options_list=["--only-custom"],
             arg_type=get_three_state_flag(),
             help="Only deploy the edge services specified in --custom-version.",
-            arg_group="AIO version",
+            arg_group="AIO Version",
+        )
+        context.argument(
+            "create_sync_rules",
+            options_list=["--create-sync-rules"],
+            arg_type=get_three_state_flag(),
+            help="Create sync rules for arc-enabled extensions.",
         )
         context.argument(
             "no_progress",
             options_list=["--no-progress"],
             arg_type=get_three_state_flag(),
-            help="Disable the progress bar.",
+            help="Disable deployment progress bar.",
         )
         context.argument(
             "no_wait",
