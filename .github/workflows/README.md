@@ -1,0 +1,42 @@
+## Template / automated actions:
+- Tests
+  - [azdev_linter.yml](azdev_linter.yml)
+  - [security_checks.yml](security_checks.yml)
+  - [smoke_test.yml](smoke_test.yml)
+  - [codeql.yml](codeql.yml)
+- Build / Release Tasks
+  - [ci_build.yml](ci_build.yml)
+  - [release_build.yml](release_build.yml)
+  - [stage_release.yml](stage_release.yml)
+  - [update_private_index.yml](update_private_index.yml)
+  - [upload_wheel.yml](upload_wheel.yml)
+
+## Top-level / triggered workflows:
+- ### [Tox tests](tox.yml)
+- ### [CI Build and Test](ci_workflow.yml)
+  - Jobs: 
+    - [Build](ci_build.yml)
+    - [Tox Test](tox.yml)
+    - [AZDev Linter](azdev_linter.yml)
+    - [Smoke Test](smoke_test.yml)
+- ### [Build and Publish Release](release_workflow.yml)
+  - Inputs:
+    - `continue_on_fail`: `bool` - (Break-Glass scenario) determines whether to continue build / release if pre-checks fail.
+    - `release_strategory`: `choice`
+      - `none`: Finish once build and test succeed
+      - `wheel-only`: After build:
+        - [Upload the wheel to storage](upload_wheel.yml)
+      - `prod-release`: After build, this task will:
+        - [Draft a github release](stage_release.yml)
+        - [Upload the wheel to storage](upload_wheel.yml)
+        - [Update the private index](update_private_index.yml)
+
+  - Jobs (*conditional):
+    - [Security Checks](security_checks.yml)
+    - [Build](release_build.yml)
+    - [Tox Test](tox.yml)
+    - [AZDev Linter](azdev_linter.yml)
+    - [Smoke Test](smoke_test.yml)
+    - [Draft a github release](stage_release.yml) *
+    - [Upload the wheel to storage](upload_wheel.yml) *
+    - [Update the private index](update_private_index.yml) *

@@ -88,47 +88,16 @@ def run_checks(
             )
             result["postDeployment"].append(resource_enumeration)
             if api_resources:
-                if (
-                    "Broker" in api_resources
-                    and check_resources[E4kResourceKinds.BROKER]
-                ):
-                    result["postDeployment"].append(
-                        evaluate_brokers(namespace=namespace, as_list=as_list)
-                    )
-                if (
-                    "BrokerListener" in api_resources
-                    and check_resources[E4kResourceKinds.BROKER_LISTENER]
-                ):
-                    result["postDeployment"].append(
-                        evaluate_broker_listeners(namespace=namespace, as_list=as_list)
-                    )
-                if (
-                    "DiagnosticService" in api_resources
-                    and check_resources[E4kResourceKinds.DIAGNOSTIC_SERVICE]
-                ):
-                    result["postDeployment"].append(
-                        evaluate_diagnostics_service(
-                            namespace=namespace, as_list=as_list
-                        )
-                    )
-                if (
-                    "MqttBridgeConnector" in api_resources
-                    and check_resources[E4kResourceKinds.MQTT_BRIDGE_CONNECTOR]
-                ):
-                    result["postDeployment"].append(
-                        evaluate_mqtt_bridge_connectors(
-                            namespace=namespace, as_list=as_list
-                        )
-                    )
-                if (
-                    "DataLakeConnector" in api_resources
-                    and check_resources[E4kResourceKinds.DATALAKE_CONNECTOR]
-                ):
-                    result["postDeployment"].append(
-                        evaluate_datalake_connectors(
-                            namespace=namespace, as_list=as_list
-                        )
-                    )
+                if "Broker" in api_resources and check_resources[E4kResourceKinds.BROKER]:
+                    result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
+                if "BrokerListener" in api_resources and check_resources[E4kResourceKinds.BROKER_LISTENER]:
+                    result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
+                if "DiagnosticService" in api_resources and check_resources[E4kResourceKinds.DIAGNOSTIC_SERVICE]:
+                    result["postDeployment"].append(evaluate_diagnostics_service(namespace=namespace, as_list=as_list))
+                if "MqttBridgeConnector" in api_resources and check_resources[E4kResourceKinds.MQTT_BRIDGE_CONNECTOR]:
+                    result["postDeployment"].append(evaluate_mqtt_bridge_connectors(namespace=namespace, as_list=as_list))
+                if "DataLakeConnector" in api_resources and check_resources[E4kResourceKinds.DATALAKE_CONNECTOR]:
+                    result["postDeployment"].append(evaluate_datalake_connectors(namespace=namespace, as_list=as_list))
 
         if not as_list:
             return result
@@ -1565,7 +1534,7 @@ def evaluate_datalake_connectors(
                 padding=connector_detail_padding,
             )
             # remove all topic maps for this connector
-            topic_maps_by_connector.pop(connector_name, None)
+            topic_maps_by_connector.pop(connector_name
     else:
         eval_str = "No Data Lake Connector Resources Detected"
         check_manager.add_target_eval(
