@@ -46,13 +46,15 @@ def run_checks(
     pre_deployment: bool = True,
     post_deployment: bool = True,
     as_list: bool = False,
-    resource_kinds: List[str] = None
+    resource_kinds: List[str] = None,
 ):
     result = {}
 
     check_resources = {}
     for resource in E4kResourceKinds:
-        check_resources[resource] = True if (not resource_kinds or resource.value in resource_kinds) else False
+        check_resources[resource] = (
+            True if (not resource_kinds or resource.value in resource_kinds) else False
+        )
 
     with console.status("Analyzing cluster..."):
         from time import sleep
@@ -81,19 +83,52 @@ def run_checks(
                 namespace = DEFAULT_NAMESPACE
             result["postDeployment"] = []
 
-            resource_enumeration, api_resources = enumerate_e4k_resources(as_list=as_list)
+            resource_enumeration, api_resources = enumerate_e4k_resources(
+                as_list=as_list
+            )
             result["postDeployment"].append(resource_enumeration)
             if api_resources:
-                if "Broker" in api_resources and check_resources[E4kResourceKinds.BROKER]:
-                    result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
-                if "BrokerListener" in api_resources and check_resources[E4kResourceKinds.BROKER_LISTENER]:
-                    result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
-                if "DiagnosticService" in api_resources and check_resources[E4kResourceKinds.DIAGNOSTIC_SERVICE]:
-                    result["postDeployment"].append(evaluate_diagnostics_service(namespace=namespace, as_list=as_list))
-                if "MqttBridgeConnector" in api_resources and check_resources[E4kResourceKinds.MQTT_BRIDGE_CONNECTOR]:
-                    result["postDeployment"].append(evaluate_mqtt_bridge_connectors(namespace=namespace, as_list=as_list))
-                if "DataLakeConnector" in api_resources and check_resources[E4kResourceKinds.DATALAKE_CONNECTOR]:
-                    result["postDeployment"].append(evaluate_datalake_connectors(namespace=namespace, as_list=as_list))
+                if (
+                    "Broker" in api_resources
+                    and check_resources[E4kResourceKinds.BROKER]
+                ):
+                    result["postDeployment"].append(
+                        evaluate_brokers(namespace=namespace, as_list=as_list)
+                    )
+                if (
+                    "BrokerListener" in api_resources
+                    and check_resources[E4kResourceKinds.BROKER_LISTENER]
+                ):
+                    result["postDeployment"].append(
+                        evaluate_broker_listeners(namespace=namespace, as_list=as_list)
+                    )
+                if (
+                    "DiagnosticService" in api_resources
+                    and check_resources[E4kResourceKinds.DIAGNOSTIC_SERVICE]
+                ):
+                    result["postDeployment"].append(
+                        evaluate_diagnostics_service(
+                            namespace=namespace, as_list=as_list
+                        )
+                    )
+                if (
+                    "MqttBridgeConnector" in api_resources
+                    and check_resources[E4kResourceKinds.MQTT_BRIDGE_CONNECTOR]
+                ):
+                    result["postDeployment"].append(
+                        evaluate_mqtt_bridge_connectors(
+                            namespace=namespace, as_list=as_list
+                        )
+                    )
+                if (
+                    "DataLakeConnector" in api_resources
+                    and check_resources[E4kResourceKinds.DATALAKE_CONNECTOR]
+                ):
+                    result["postDeployment"].append(
+                        evaluate_datalake_connectors(
+                            namespace=namespace, as_list=as_list
+                        )
+                    )
 
         if not as_list:
             return result
@@ -126,12 +161,22 @@ def process_as_list(result: Dict[str, dict], namespace: str):
         success_content = f"[green]{success_count} check(s) succeeded.[/green]"
         warning_content = f"{warning_count} check(s) raised warnings."
         warning_content = (
-            f"[green]{warning_content}[/green]" if not warning_count else f"[yellow]{warning_content}[/yellow]"
+            f"[green]{warning_content}[/green]"
+            if not warning_count
+            else f"[yellow]{warning_content}[/yellow]"
         )
         error_content = f"{error_count} check(s) raised errors."
-        error_content = f"[green]{error_content}[/green]" if not error_count else f"[red]{error_content}[/red]"
-        skipped_content = f"[bright_white]{skipped_count} check(s) were skipped[/bright_white]."
-        content = f"{success_content}\n{warning_content}\n{error_content}\n{skipped_content}"
+        error_content = (
+            f"[green]{error_content}[/green]"
+            if not error_count
+            else f"[red]{error_content}[/red]"
+        )
+        skipped_content = (
+            f"[bright_white]{skipped_count} check(s) were skipped[/bright_white]."
+        )
+        content = (
+            f"{success_content}\n{warning_content}\n{error_content}\n{skipped_content}"
+        )
         console.print(Panel(content, title="Check Summary", expand=False))
 
     def _enumerate_displays(checks: List[Dict[str, dict]]):
@@ -192,14 +237,16 @@ def evaluate_diagnostics_service(
         check_desc="Evaluate E4K Diagnostics Service",
         namespace=namespace,
     )
-    diagnostics_service_list: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DIAGNOSTIC_SERVICE, namespace=namespace)
+    diagnostics_service_list: dict = E4K_ACTIVE_API.get_resources(
+        kind=E4kResourceKinds.DIAGNOSTIC_SERVICE, namespace=namespace
+    )
     diagnostics_service_resources = diagnostics_service_list.get("items", [])
     target_diagnostic_service = "diagnosticservices.az-edge.com"
 
-    check_manager.add_target(target_name=target_diagnostic_service, conditions=[
-        "len(diagnosticservices)==1",
-        "spec"
-    ])
+    check_manager.add_target(
+        target_name=target_diagnostic_service,
+        conditions=["len(diagnosticservices)==1", "spec"],
+    )
 
     diagnostics_count_text = "- Expecting [bright_blue]1[/bright_blue] diagnostics service resource per namespace. {}."
     diagnostic_service_count = len(diagnostics_service_resources)
@@ -212,10 +259,19 @@ def evaluate_diagnostics_service(
         service_count_status = CheckTaskStatus.warning.value
         service_status_color = "yellow"
 
-    diagnostics_count_text = diagnostics_count_text.format(f"[{service_status_color}]Detected {diagnostic_service_count}[/{service_status_color}]")
+    diagnostics_count_text = diagnostics_count_text.format(
+        f"[{service_status_color}]Detected {diagnostic_service_count}[/{service_status_color}]"
+    )
 
-    check_manager.add_target_eval(target_name=target_diagnostic_service, status=service_count_status, value=diagnostic_service_count)
-    check_manager.add_display(target_name=target_diagnostic_service, display=Padding(diagnostics_count_text, (0, 0, 0, 8)))
+    check_manager.add_target_eval(
+        target_name=target_diagnostic_service,
+        status=service_count_status,
+        value=diagnostic_service_count,
+    )
+    check_manager.add_display(
+        target_name=target_diagnostic_service,
+        display=Padding(diagnostics_count_text, (0, 0, 0, 8)),
+    )
 
     if not diagnostics_service_resources:
         return check_manager.as_dict(as_list)
@@ -232,12 +288,18 @@ def evaluate_diagnostics_service(
             ),
         )
 
-        diag_service_spec_data_export_freq = diag_service_resource_spec.get("dataExportFrequencySeconds")
+        diag_service_spec_data_export_freq = diag_service_resource_spec.get(
+            "dataExportFrequencySeconds"
+        )
         diag_service_spec_log_format = diag_service_resource_spec.get("logFormat")
         diag_service_spec_log_level = diag_service_resource_spec.get("logLevel")
-        diag_service_spec_max_data_storage_size = diag_service_resource_spec.get("maxDataStorageSize")
+        diag_service_spec_max_data_storage_size = diag_service_resource_spec.get(
+            "maxDataStorageSize"
+        )
         diag_service_spec_metrics_port = diag_service_resource_spec.get("metricsPort")
-        diag_service_spec_stale_data_timeout = diag_service_resource_spec.get("staleDataTimeoutSeconds")
+        diag_service_spec_stale_data_timeout = diag_service_resource_spec.get(
+            "staleDataTimeoutSeconds"
+        )
 
         check_manager.add_display(
             target_name=target_diagnostic_service,
@@ -305,7 +367,9 @@ def evaluate_diagnostics_service(
     )
     if not diagnostics_service:
         check_manager.add_target_eval(
-            target_name=target_service_deployed, status=CheckTaskStatus.error.value, value=None
+            target_name=target_service_deployed,
+            status=CheckTaskStatus.error.value,
+            value=None,
         )
         diag_service_desc_suffix = "[red]not detected[/red]."
         diag_service_desc = f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
@@ -346,7 +410,9 @@ def evaluate_diagnostics_service(
                         (0, 0, 0, 16),
                     ),
                 )
-            check_manager.add_display(target_name=target_service_deployed, display=NewLine())
+            check_manager.add_display(
+                target_name=target_service_deployed, display=NewLine()
+            )
 
         evaluate_pod_health(
             check_manager=check_manager,
@@ -363,40 +429,67 @@ def evaluate_broker_listeners(
     as_list: bool = False,
 ):
     check_manager = CheckManager(
-        check_name="evalBrokerListeners", check_desc="Evaluate E4K broker listeners", namespace=namespace
+        check_name="evalBrokerListeners",
+        check_desc="Evaluate E4K broker listeners",
+        namespace=namespace,
     )
 
     target_listeners = "brokerlisteners.az-edge.com"
-    listener_conditions = ["len(brokerlisteners)>=1", "spec", "valid(spec.brokerRef)", "spec.serviceName", "status"]
-    check_manager.add_target(target_name=target_listeners, conditions=listener_conditions)
+    listener_conditions = [
+        "len(brokerlisteners)>=1",
+        "spec",
+        "valid(spec.brokerRef)",
+        "spec.serviceName",
+        "status",
+    ]
+    check_manager.add_target(
+        target_name=target_listeners, conditions=listener_conditions
+    )
 
-    valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER, namespace=namespace)
-    listener_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER_LISTENER, namespace=namespace)
+    valid_broker_refs = _get_valid_references(
+        kind=E4kResourceKinds.BROKER, namespace=namespace
+    )
+    listener_list: dict = E4K_ACTIVE_API.get_resources(
+        E4kResourceKinds.BROKER_LISTENER, namespace=namespace
+    )
 
     if not listener_list:
         fetch_listeners_error_text = (
             f"Unable to fetch {E4kResourceKinds.BROKER_LISTENER.value}s."
         )
         check_manager.add_target_eval(
-            target_name=target_listeners, status=CheckTaskStatus.error.value, value=fetch_listeners_error_text
+            target_name=target_listeners,
+            status=CheckTaskStatus.error.value,
+            value=fetch_listeners_error_text,
         )
         check_manager.add_display(
-            target_name=target_listeners, display=Padding(fetch_listeners_error_text, (0, 0, 0, 8))
+            target_name=target_listeners,
+            display=Padding(fetch_listeners_error_text, (0, 0, 0, 8)),
         )
         return check_manager.as_dict(as_list)
 
     listeners: List[dict] = listener_list.get("items", [])
     listeners_count = len(listeners)
-    listener_count_desc = "- Expecting [bright_blue]>=1[/bright_blue] broker listeners per namespace. {}"
+    listener_count_desc = (
+        "- Expecting [bright_blue]>=1[/bright_blue] broker listeners per namespace. {}"
+    )
     listeners_eval_status = CheckTaskStatus.success.value
 
     if listeners_count >= 1:
-        listener_count_desc = listener_count_desc.format(f"[green]Detected {listeners_count}[/green].")
+        listener_count_desc = listener_count_desc.format(
+            f"[green]Detected {listeners_count}[/green]."
+        )
     else:
-        listener_count_desc = listener_count_desc.format(f"[yellow]Detected {listeners_count}[/yellow].")
-        check_manager.set_target_status(target_name=target_listeners, status=CheckTaskStatus.warning.value)
+        listener_count_desc = listener_count_desc.format(
+            f"[yellow]Detected {listeners_count}[/yellow]."
+        )
+        check_manager.set_target_status(
+            target_name=target_listeners, status=CheckTaskStatus.warning.value
+        )
         # TODO listeners_eval_status = CheckTaskStatus.warning.value
-    check_manager.add_display(target_name=target_listeners, display=Padding(listener_count_desc, (0, 0, 0, 8)))
+    check_manager.add_display(
+        target_name=target_listeners, display=Padding(listener_count_desc, (0, 0, 0, 8))
+    )
 
     processed_services = {}
     for listener in listeners:
@@ -417,7 +510,9 @@ def evaluate_broker_listeners(
             listener_eval_value["valid(spec.brokerRef)"] = True
 
         listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}. {ref_display}"
-        check_manager.add_display(target_name=target_listeners, display=Padding(listener_desc, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_listeners, display=Padding(listener_desc, (0, 0, 0, 8))
+        )
         check_manager.add_display(
             target_name=target_listeners,
             display=Padding(
@@ -484,9 +579,14 @@ def evaluate_broker_listeners(
                 if listener_spec_service_type.lower() == "loadbalancer":
                     check_manager.set_target_conditions(
                         target_name=target_listener_service,
-                        conditions=["status", "len(status.loadBalancer.ingress[*].ip)>=1"],
+                        conditions=[
+                            "status",
+                            "len(status.loadBalancer.ingress[*].ip)>=1",
+                        ],
                     )
-                    ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
+                    ingress_rules_desc = (
+                        "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
+                    )
 
                     service_status = associated_service.get("status", {})
                     load_balancer = service_status.get("loadBalancer", {})
@@ -496,11 +596,16 @@ def evaluate_broker_listeners(
                         listener_service_eval_status = CheckTaskStatus.warning.value
                         ingress_count_colored = "[red]Detected 0[/red]."
                     else:
-                        ingress_count_colored = f"[green]Detected {len(ingress_rules)}[/green]."
+                        ingress_count_colored = (
+                            f"[green]Detected {len(ingress_rules)}[/green]."
+                        )
 
                     check_manager.add_display(
                         target_name=target_listener_service,
-                        display=Padding(ingress_rules_desc.format(ingress_count_colored), (0, 0, 0, 12)),
+                        display=Padding(
+                            ingress_rules_desc.format(ingress_count_colored),
+                            (0, 0, 0, 12),
+                        ),
                     )
 
                     if ingress_rules:
@@ -521,21 +626,28 @@ def evaluate_broker_listeners(
                             listener_service_eval_status = CheckTaskStatus.warning.value
 
                     check_manager.add_target_eval(
-                        target_name=target_listener_service, status=listener_service_eval_status, value=service_status
+                        target_name=target_listener_service,
+                        status=listener_service_eval_status,
+                        value=service_status,
                     )
 
                 if listener_spec_service_type.lower() == "clusterip":
                     check_manager.set_target_conditions(
-                        target_name=target_listener_service, conditions=["spec.clusterIP"]
+                        target_name=target_listener_service,
+                        conditions=["spec.clusterIP"],
                     )
                     cluster_ip = associated_service.get("spec", {}).get("clusterIP")
 
                     cluster_ip_desc = "Cluster IP: {}"
                     if not cluster_ip:
                         listener_service_eval_status = CheckTaskStatus.warning.value
-                        cluster_ip_desc = cluster_ip_desc.format("[yellow]Undetermined[/yellow]")
+                        cluster_ip_desc = cluster_ip_desc.format(
+                            "[yellow]Undetermined[/yellow]"
+                        )
                     else:
-                        cluster_ip_desc = cluster_ip_desc.format(f"[cyan]{cluster_ip}[/cyan]")
+                        cluster_ip_desc = cluster_ip_desc.format(
+                            f"[cyan]{cluster_ip}[/cyan]"
+                        )
 
                     check_manager.add_display(
                         target_name=target_listener_service,
@@ -564,32 +676,53 @@ def evaluate_brokers(
     namespace: str,
     as_list: bool = False,
 ):
-    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker", namespace=namespace)
+    check_manager = CheckManager(
+        check_name="evalBrokers", check_desc="Evaluate E4K broker", namespace=namespace
+    )
 
     target_brokers = "brokers.az-edge.com"
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
     check_manager.add_target(target_name=target_brokers, conditions=broker_conditions)
 
-    broker_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER, namespace=namespace)
+    broker_list: dict = E4K_ACTIVE_API.get_resources(
+        E4kResourceKinds.BROKER, namespace=namespace
+    )
     if not broker_list:
-        fetch_brokers_error_text = f"Unable to fetch namespace {E4kResourceKinds.BROKER.value}s."
-        check_manager.add_target_eval(
-            target_name=target_brokers, status=CheckTaskStatus.error.value, value=fetch_brokers_error_text
+        fetch_brokers_error_text = (
+            f"Unable to fetch namespace {E4kResourceKinds.BROKER.value}s."
         )
-        check_manager.add_display(target_name=target_brokers, display=Padding(fetch_brokers_error_text, (0, 0, 0, 8)))
+        check_manager.add_target_eval(
+            target_name=target_brokers,
+            status=CheckTaskStatus.error.value,
+            value=fetch_brokers_error_text,
+        )
+        check_manager.add_display(
+            target_name=target_brokers,
+            display=Padding(fetch_brokers_error_text, (0, 0, 0, 8)),
+        )
         return check_manager.as_dict(as_list)
 
     brokers: List[dict] = broker_list.get("items", [])
     brokers_count = len(brokers)
-    brokers_count_text = "- Expecting [bright_blue]1[/bright_blue] broker resource per namespace. {}."
+    brokers_count_text = (
+        "- Expecting [bright_blue]1[/bright_blue] broker resource per namespace. {}."
+    )
     broker_eval_status = CheckTaskStatus.success.value
 
     if brokers_count == 1:
-        brokers_count_text = brokers_count_text.format(f"[green]Detected {brokers_count}[/green]")
+        brokers_count_text = brokers_count_text.format(
+            f"[green]Detected {brokers_count}[/green]"
+        )
     else:
-        brokers_count_text = brokers_count_text.format(f"[red]Detected {brokers_count}[/red]")
-        check_manager.set_target_status(target_name=target_brokers, status=CheckTaskStatus.error.value)
-    check_manager.add_display(target_name=target_brokers, display=Padding(brokers_count_text, (0, 0, 0, 8)))
+        brokers_count_text = brokers_count_text.format(
+            f"[red]Detected {brokers_count}[/red]"
+        )
+        check_manager.set_target_status(
+            target_name=target_brokers, status=CheckTaskStatus.error.value
+        )
+    check_manager.add_display(
+        target_name=target_brokers, display=Padding(brokers_count_text, (0, 0, 0, 8))
+    )
 
     added_distributed_conditions = False
     for b in brokers:
@@ -606,12 +739,15 @@ def evaluate_brokers(
         if broker_status_state:
             status_display_text = f"{status_display_text} {broker_status_desc}."
 
-        target_broker_text = (
-            f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}} mode [bright_blue]{broker_mode}[/bright_blue]."
+        target_broker_text = f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}} mode [bright_blue]{broker_mode}[/bright_blue]."
+        check_manager.add_display(
+            target_name=target_brokers,
+            display=Padding(target_broker_text, (0, 0, 0, 8)),
         )
-        check_manager.add_display(target_name=target_brokers, display=Padding(target_broker_text, (0, 0, 0, 8)))
 
-        broker_eval_value = {"status": {"status": broker_status, "statusDescription": broker_status_desc}}
+        broker_eval_value = {
+            "status": {"status": broker_status, "statusDescription": broker_status_desc}
+        }
         broker_eval_status = CheckTaskStatus.success.value
 
         if broker_status in [ResourceState.error.value, ResourceState.failed.value]:
@@ -623,7 +759,10 @@ def evaluate_brokers(
             "N/A",
         ]:
             broker_eval_status = CheckTaskStatus.warning.value
-        check_manager.add_display(target_name=target_brokers, display=Padding(status_display_text, (0, 0, 0, 12)))
+        check_manager.add_display(
+            target_name=target_brokers,
+            display=Padding(status_display_text, (0, 0, 0, 12)),
+        )
 
         if broker_mode == "distributed":
             if not added_distributed_conditions:
@@ -635,8 +774,13 @@ def evaluate_brokers(
                 broker_conditions.append("spec.cardinality.frontend.replicas>=1")
                 added_distributed_conditions = True
 
-            check_manager.set_target_conditions(target_name=target_brokers, conditions=broker_conditions)
-            check_manager.add_display(target_name=target_brokers, display=Padding("\nCardinality", (0, 0, 0, 12)))
+            check_manager.set_target_conditions(
+                target_name=target_brokers, conditions=broker_conditions
+            )
+            check_manager.add_display(
+                target_name=target_brokers,
+                display=Padding("\nCardinality", (0, 0, 0, 12)),
+            )
             broker_cardinality: dict = broker_spec.get("cardinality")
             broker_eval_value["spec.cardinality"] = broker_cardinality
             broker_eval_value["spec.mode"] = broker_mode
@@ -644,12 +788,21 @@ def evaluate_brokers(
                 broker_eval_status = CheckTaskStatus.error.value
                 check_manager.add_display(
                     target_name=target_brokers,
-                    display=Padding("[magenta]spec.cardinality is undefined![/magenta]", (0, 0, 0, 16)),
+                    display=Padding(
+                        "[magenta]spec.cardinality is undefined![/magenta]",
+                        (0, 0, 0, 16),
+                    ),
                 )
             else:
-                backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
-                backend_replicas_desc = "- Expecting backend replicas [bright_blue]>=1[/bright_blue]. {}"
-                backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
+                backend_cardinality_desc = (
+                    "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
+                )
+                backend_replicas_desc = (
+                    "- Expecting backend replicas [bright_blue]>=1[/bright_blue]. {}"
+                )
+                backend_workers_desc = (
+                    "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
+                )
 
                 backend_chain = broker_cardinality.get("backendChain", {})
                 backend_partition_count: Optional[int] = backend_chain.get("partitions")
@@ -657,19 +810,27 @@ def evaluate_brokers(
                 backend_workers: Optional[int] = backend_chain.get("workers")
 
                 if backend_partition_count and backend_partition_count >= 1:
-                    backend_chain_count_colored = f"[green]Actual {backend_partition_count}[/green]."
+                    backend_chain_count_colored = (
+                        f"[green]Actual {backend_partition_count}[/green]."
+                    )
                 else:
-                    backend_chain_count_colored = f"[red]Actual {backend_partition_count}[/red]."
+                    backend_chain_count_colored = (
+                        f"[red]Actual {backend_partition_count}[/red]."
+                    )
                     broker_eval_status = CheckTaskStatus.error.value
 
                 if backend_replicas and backend_replicas >= 1:
-                    backend_replicas_colored = f"[green]Actual {backend_replicas}[/green]."
+                    backend_replicas_colored = (
+                        f"[green]Actual {backend_replicas}[/green]."
+                    )
                 else:
                     backend_replicas_colored = f"[red]Actual {backend_replicas}[/red]."
                     broker_eval_status = CheckTaskStatus.error.value
 
                 if backend_workers and backend_workers >= 1:
-                    backend_workers_colored = f"[green]Actual {backend_workers}[/green]."
+                    backend_workers_colored = (
+                        f"[green]Actual {backend_workers}[/green]."
+                    )
                 else:
                     backend_workers_colored = f"[red]Actual {backend_workers}[/red]."
                     broker_eval_status = CheckTaskStatus.error.value
@@ -696,24 +857,35 @@ def evaluate_brokers(
                     ),
                 )
 
-                frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
-                frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
+                frontend_cardinality_desc = (
+                    "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
+                )
+                frontend_replicas: Optional[int] = broker_cardinality.get(
+                    "frontend", {}
+                ).get("replicas")
 
                 if frontend_replicas and frontend_replicas >= 1:
-                    frontend_replicas_colored = f"[green]Actual {frontend_replicas}[/green]."
+                    frontend_replicas_colored = (
+                        f"[green]Actual {frontend_replicas}[/green]."
+                    )
                 else:
-                    frontend_replicas_colored = f"[red]Actual {frontend_replicas}[/red]."
+                    frontend_replicas_colored = (
+                        f"[red]Actual {frontend_replicas}[/red]."
+                    )
 
                 check_manager.add_display(
                     target_name=target_brokers,
-                    display=Padding(frontend_cardinality_desc.format(frontend_replicas_colored), (0, 0, 0, 16)),
+                    display=Padding(
+                        frontend_cardinality_desc.format(frontend_replicas_colored),
+                        (0, 0, 0, 16),
+                    ),
                 )
 
         diagnostic_detail_padding = (0, 0, 0, 16)
         if broker_diagnostics:
             check_manager.add_display(
                 target_name=target_brokers,
-                display=Padding("\nBroker Diagnostics", (0, 0, 0, 12))
+                display=Padding("\nBroker Diagnostics", (0, 0, 0, 12)),
             )
             diag_endpoint = broker_diagnostics.get("diagnosticServiceEndpoint")
             diag_enable_metrics = broker_diagnostics.get("enableMetrics")
@@ -730,21 +902,31 @@ def evaluate_brokers(
             )
             check_manager.add_display(
                 target_name=target_brokers,
-                display=Padding(f"Enable Metrics: [bright_blue]{diag_enable_metrics}[/bright_blue]", diagnostic_detail_padding),
-            )
-            check_manager.add_display(
-                target_name=target_brokers,
                 display=Padding(
-                    f"Enable Self-Check: [bright_blue]{diag_enable_selfcheck}[/bright_blue]", diagnostic_detail_padding
+                    f"Enable Metrics: [bright_blue]{diag_enable_metrics}[/bright_blue]",
+                    diagnostic_detail_padding,
                 ),
             )
             check_manager.add_display(
                 target_name=target_brokers,
-                display=Padding(f"Enable Tracing: [bright_blue]{diag_enable_tracing}[/bright_blue]", diagnostic_detail_padding),
+                display=Padding(
+                    f"Enable Self-Check: [bright_blue]{diag_enable_selfcheck}[/bright_blue]",
+                    diagnostic_detail_padding,
+                ),
             )
             check_manager.add_display(
                 target_name=target_brokers,
-                display=Padding(f"Log Level: [cyan]{diag_loglevel}[/cyan]", diagnostic_detail_padding),
+                display=Padding(
+                    f"Enable Tracing: [bright_blue]{diag_enable_tracing}[/bright_blue]",
+                    diagnostic_detail_padding,
+                ),
+            )
+            check_manager.add_display(
+                target_name=target_brokers,
+                display=Padding(
+                    f"Log Level: [cyan]{diag_loglevel}[/cyan]",
+                    diagnostic_detail_padding,
+                ),
             )
         else:
             check_manager.add_target_eval(
@@ -761,7 +943,10 @@ def evaluate_brokers(
             )
 
         check_manager.add_target_eval(
-            target_name=target_brokers, status=broker_eval_status, value=broker_eval_value, resource_name=broker_name
+            target_name=target_brokers,
+            status=broker_eval_status,
+            value=broker_eval_value,
+            resource_name=broker_name,
         )
 
     if brokers_count > 0:
@@ -773,16 +958,28 @@ def evaluate_brokers(
             ),
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=AZEDGE_DIAGNOSTICS_PROBE_PREFIX, display_padding=12
+            check_manager=check_manager,
+            namespace=namespace,
+            pod=AZEDGE_DIAGNOSTICS_PROBE_PREFIX,
+            display_padding=12,
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=AZEDGE_FRONTEND_PREFIX, display_padding=12
+            check_manager=check_manager,
+            namespace=namespace,
+            pod=AZEDGE_FRONTEND_PREFIX,
+            display_padding=12,
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=AZEDGE_BACKEND_PREFIX, display_padding=12
+            check_manager=check_manager,
+            namespace=namespace,
+            pod=AZEDGE_BACKEND_PREFIX,
+            display_padding=12,
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=AZEDGE_AUTH_PREFIX, display_padding=12
+            check_manager=check_manager,
+            namespace=namespace,
+            pod=AZEDGE_AUTH_PREFIX,
+            display_padding=12,
         )
 
     return check_manager.as_dict(as_list)
@@ -792,13 +989,17 @@ def evaluate_mqtt_bridge_connectors(
     namespace: str,
     as_list: bool = False,
 ):
-
-    def add_routes_display(check_manager: CheckManager, target: str, routes: List[Dict[str, str]], padding: tuple):
+    def add_routes_display(
+        check_manager: CheckManager,
+        target: str,
+        routes: List[Dict[str, str]],
+        padding: tuple,
+    ):
         for route in routes:
-            route_name = route.get('name')
-            route_direction = route.get('direction')
-            route_qos = route.get('qos')
-            qos_formatted = f" QOS [blue]{route_qos}[/blue]" if route_qos else ''
+            route_name = route.get("name")
+            route_direction = route.get("direction")
+            route_qos = route.get("qos")
+            qos_formatted = f" QOS [blue]{route_qos}[/blue]" if route_qos else ""
 
             check_manager.add_display(
                 target_name=target,
@@ -810,13 +1011,16 @@ def evaluate_mqtt_bridge_connectors(
 
     def create_routes_table(name: str, routes: List[Dict[str, str]]):
         from rich.table import Table
+
         title = f"\nTopic map [blue]{{{name}}}[/blue]"
-        table = Table(title=title, title_justify="left", title_style="None", show_lines=True)
+        table = Table(
+            title=title, title_justify="left", title_style="None", show_lines=True
+        )
 
         columns = ["Route", "Direction", "QOS"]
 
         for column in columns:
-            table.add_column(column, justify="left", style='blue', no_wrap=True)
+            table.add_column(column, justify="left", style="blue", no_wrap=True)
 
         for route in routes:
             table.add_row(
@@ -827,7 +1031,13 @@ def evaluate_mqtt_bridge_connectors(
             )
         return table
 
-    def display_topic_maps(check_manager: CheckManager, target: str, topic_maps: List[Dict[str, str]], padding: tuple, table: bool = False):
+    def display_topic_maps(
+        check_manager: CheckManager,
+        target: str,
+        topic_maps: List[Dict[str, str]],
+        padding: tuple,
+        table: bool = False,
+    ):
         # Show warning if no topic maps
         if not len(bridge_topic_maps):
             check_manager.add_display(
@@ -844,31 +1054,28 @@ def evaluate_mqtt_bridge_connectors(
 
             check_manager.add_display(
                 target_name=target,
-                display=Padding(
-                    f"- Topic Map {{[blue]{name}[/blue]}}", padding
-                ),
+                display=Padding(f"- Topic Map {{[blue]{name}[/blue]}}", padding),
             )
 
             routes = topic_map.get("spec", {}).get("routes", [])
             if table:
                 route_table = create_routes_table(name, routes)
                 check_manager.add_display(
-                    target_name=target,
-                    display=Padding(
-                        route_table,
-                        padding
-                    )
+                    target_name=target, display=Padding(route_table, padding)
                 )
+                return
             else:
                 route_padding = (0, 0, 0, padding[3] + 4)
                 add_routes_display(
                     check_manager=check_manager,
                     target=target,
                     routes=routes,
-                    padding=route_padding
+                    padding=route_padding,
                 )
 
-    def display_bridge_info(check_manager: CheckManager, target: str, bridge: Dict[str, str], padding: tuple):
+    def display_bridge_info(
+        check_manager: CheckManager, target: str, bridge: Dict[str, str], padding: tuple
+    ):
         # bridge resource
         bridge_metadata = bridge.get("metadata", {})
         bridge_name = bridge_metadata.get("name")
@@ -878,6 +1085,26 @@ def evaluate_mqtt_bridge_connectors(
         bridge_status_level = bridge_status.get(
             "configStatusLevel", "N/A"
         )  # warn / error / success
+
+        bridge_eval_status = CheckTaskStatus.success.value
+
+        if bridge_status in [ResourceState.error.value, ResourceState.failed.value]:
+            bridge_eval_status = CheckTaskStatus.error.value
+        elif bridge_status in [
+            ResourceState.recovering.value,
+            ResourceState.warn.value,
+            ResourceState.starting.value,
+            "N/A",
+        ]:
+            bridge_eval_status = CheckTaskStatus.warning.value
+
+        check_manager.add_target_eval(
+            target_name=target,
+            status=bridge_eval_status,
+            value=bridge_status,
+            resource_name=bridge_name,
+            resource_kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+        )
 
         bridge_status_desc = bridge_status.get(
             "configStatusDescription"
@@ -893,7 +1120,27 @@ def evaluate_mqtt_bridge_connectors(
         )
 
         # bridge resource instance details
-        spec = bridge['spec']
+        spec = bridge.get("spec", {})
+        bridge_eval_status = (
+            CheckTaskStatus.error.value
+            if not all(
+                [
+                    spec.get("localBrokerConnection"),
+                    spec.get("remoteBrokerConnection"),
+                    spec.get("tls"),
+                ]
+            )
+            else CheckTaskStatus.success.value
+        )
+
+        check_manager.add_target_eval(
+            target_name=target,
+            status=bridge_eval_status,
+            value=spec,
+            resource_name=bridge_name,
+            resource_kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+        )
+
         bridge_instances = spec.get("bridgeInstances")  # number of instances
         client_prefix = spec.get("clientIdPrefix")  # client ID prefix (e4k)
 
@@ -912,10 +1159,8 @@ def evaluate_mqtt_bridge_connectors(
             ),
         )
         # local broker endpoint
-        local_broker = spec.get("localBrokerConnection")
-        local_broker_endpoint = local_broker.get(
-            "endpoint"
-        )  # endpoint IP / FQDN
+        local_broker = spec.get("localBrokerConnection", {})
+        local_broker_endpoint = local_broker.get("endpoint")  # endpoint IP / FQDN
         check_manager.add_display(
             target_name=target,
             display=Padding(
@@ -924,9 +1169,7 @@ def evaluate_mqtt_bridge_connectors(
             ),
         )
 
-        local_broker_auth = next(
-            iter(local_broker.get("authentication"))
-        )  # auth type
+        local_broker_auth = next(iter(local_broker.get("authentication")))  # auth type
         local_broker_tls = local_broker.get("tls", {}).get(
             "tlsEnabled", False
         )  # tls enabled?
@@ -940,10 +1183,8 @@ def evaluate_mqtt_bridge_connectors(
         )
 
         # remote broker endpoint
-        remote_broker = spec.get("remoteBrokerConnection")
-        remote_broker_endpoint = remote_broker.get(
-            "endpoint"
-        )  # endpoint IP / FQDN
+        remote_broker = spec.get("remoteBrokerConnection", {})
+        remote_broker_endpoint = remote_broker.get("endpoint")  # endpoint IP / FQDN
         check_manager.add_display(
             target_name=target,
             display=Padding(
@@ -976,31 +1217,46 @@ def evaluate_mqtt_bridge_connectors(
     # MQTT Bridge Connector checks are purely informational, so mark as skipped
     bridge_target = "mqttbridgeconnectors.az-edge.com"
     check_manager.add_target(target_name=bridge_target)
-    check_manager.set_target_status(target_name=bridge_target, status=CheckTaskStatus.skipped.value)
+    check_manager.set_target_status(
+        target_name=bridge_target, status=CheckTaskStatus.skipped.value
+    )
 
     top_level_padding = (0, 0, 0, 8)
     bridge_detail_padding = (0, 0, 0, 12)
     broker_detail_padding = (0, 0, 0, 16)
 
-    bridge_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR, namespace=namespace)
+    bridge_objects: dict = E4K_ACTIVE_API.get_resources(
+        kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR, namespace=namespace
+    )
     bridge_resources: List[dict] = bridge_objects.get("items", [])
 
     # mqtt bridge pod prefix = azedge-[bridge_name]-[instance]
-    bridge_pod_name_prefixes = [f"azedge-{bridge['metadata']['name']}" for bridge in bridge_resources]
+    bridge_pod_name_prefixes = [
+        f"azedge-{bridge['metadata']['name']}" for bridge in bridge_resources
+    ]
 
     # attempt to map each topic_map to its referenced bridge
-    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP, namespace=namespace)
+    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
+        kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP, namespace=namespace
+    )
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
     topic_maps_by_bridge = {}
-    bridge_refs = {ref.get("spec", {}).get("mqttBridgeConnectorRef") for ref in topic_map_list}
+    bridge_refs = {
+        ref.get("spec", {}).get("mqttBridgeConnectorRef") for ref in topic_map_list
+    }
 
     for bridge in bridge_refs:
         topic_maps_by_bridge[bridge] = [
-            topic for topic in topic_map_list
+            topic
+            for topic in topic_map_list
             if topic.get("spec", {}).get("mqttBridgeConnectorRef") == bridge
         ]
 
     if len(bridge_resources):
+        check_manager.set_target_conditions(
+            target_name=bridge_target, conditions=["status", "valid(spec)"]
+        )
+
         for bridge in bridge_resources:
             bridge_metadata = bridge.get("metadata", {})
             bridge_name = bridge_metadata.get("name")
@@ -1010,46 +1266,43 @@ def evaluate_mqtt_bridge_connectors(
                 check_manager=check_manager,
                 target=bridge_target,
                 bridge=bridge,
-                padding=top_level_padding
+                padding=top_level_padding,
             )
             # topic maps for this specific bridge
             display_topic_maps(
                 check_manager=check_manager,
                 target=bridge_target,
                 topic_maps=bridge_topic_maps,
-                padding=bridge_detail_padding
+                padding=bridge_detail_padding,
             )
             # remove topic map by bridge reference
-            if bridge_name in topic_maps_by_bridge:
-                del topic_maps_by_bridge[bridge_name]
+            topic_maps_by_bridge.pop(bridge_name, None)
     else:
         eval_str = "No MQTT Bridge Connector Resources detected"
         check_manager.add_target_eval(
             target_name=bridge_target,
             status=CheckTaskStatus.skipped.value,
-            value=eval_str
+            value=eval_str,
         )
         check_manager.add_display(
-            target_name=bridge_target,
-            display=Padding(eval_str, top_level_padding)
+            target_name=bridge_target, display=Padding(eval_str, top_level_padding)
         )
 
     # warn about topic maps with invalid bridge references
-    if topic_maps_by_bridge:
-        invalid_bridge_refs = topic_maps_by_bridge.keys()
-        for invalid_bridge_ref in invalid_bridge_refs:
-            invalid_ref_maps = topic_maps_by_bridge[invalid_bridge_ref]
+    invalid_bridge_refs = topic_maps_by_bridge.keys() if topic_maps_by_bridge else []
+    for invalid_bridge_ref in invalid_bridge_refs:
+        invalid_ref_maps = topic_maps_by_bridge[invalid_bridge_ref]
 
-            # for each topic map that references this bridge
-            for ref_map in invalid_ref_maps:
-                topic_name = ref_map.get("metadata", {}).get("name")
-                check_manager.add_display(
-                    target_name=bridge_target,
-                    display=Padding(
-                        f"\n- MQTT Bridge Topic Map {{[red]{topic_name}[/red]}}.\n  [red]Invalid[/red] bridge reference {{[red]{invalid_bridge_ref}[/red]}}",
-                        top_level_padding,
-                    ),
-                )
+        # for each topic map that references this bridge
+        for ref_map in invalid_ref_maps:
+            topic_name = ref_map.get("metadata", {}).get("name")
+            check_manager.add_display(
+                target_name=bridge_target,
+                display=Padding(
+                    f"\n- MQTT Bridge Topic Map {{[red]{topic_name}[/red]}}.\n  [red]Invalid[/red] bridge reference {{[red]{invalid_bridge_ref}[/red]}}",
+                    top_level_padding,
+                ),
+            )
 
     if len(bridge_pod_name_prefixes):
         # evaluate resource health
@@ -1075,7 +1328,6 @@ def evaluate_datalake_connectors(
     namespace: str,
     as_list: bool = False,
 ):
-
     def create_schema_table(name: str, schema: List[Dict[str, str]]):
         from rich.table import Table
 
@@ -1089,18 +1341,26 @@ def evaluate_datalake_connectors(
         ]
 
         for column in columns:
-            table.add_column(column["name"], justify="left", style=column["style"], no_wrap=True)
+            table.add_column(
+                column["name"], justify="left", style=column["style"], no_wrap=True
+            )
 
         for value in schema:
             table.add_row(
                 f"{value['name']}",
                 f"{value['mapping']}",
                 f"{value['format']}",
-                f"{value['optional']}"
+                f"{value['optional']}",
             )
         return table
 
-    def display_topic_maps(check_manager: CheckManager, target: str, topic_maps: List[Dict[str, str]], padding: tuple, table: bool = False):
+    def display_topic_maps(
+        check_manager: CheckManager,
+        target: str,
+        topic_maps: List[Dict[str, str]],
+        padding: tuple,
+        table: bool = False,
+    ):
         # Show warning if no topic maps
         if not len(connector_topic_maps):
             check_manager.add_display(
@@ -1150,33 +1410,47 @@ def evaluate_datalake_connectors(
 
             # Schema display
             delta_table = topic_mapping.get("deltaTable", {})
-            schema = delta_table.get('schema', [])
+            schema = delta_table.get("schema", [])
             if table:
                 route_table = create_schema_table(topic_name, schema)
                 check_manager.add_display(
-                    target_name=target,
-                    display=Padding(
-                        route_table,
-                        padding
-                    )
+                    target_name=target, display=Padding(route_table, padding)
                 )
 
     def display_connector_info(
         check_manager: CheckManager,
         target: str,
         connector: Dict[str, str],
-        padding: tuple
+        padding: tuple,
     ):
-
         # connector resource status
         connector_status = connector.get("status", {})
-        connector_status_level = connector_status.get(
-            "configStatusLevel", "N/A"
+        connector_status_level = connector_status.get("configStatusLevel", "N/A")
+
+        connector_eval_status = CheckTaskStatus.success.value
+
+        if connector_status in [ResourceState.error.value, ResourceState.failed.value]:
+            connector_eval_status = CheckTaskStatus.error.value
+        elif connector_status in [
+            ResourceState.recovering.value,
+            ResourceState.warn.value,
+            ResourceState.starting.value,
+            "N/A",
+        ]:
+            connector_eval_status = CheckTaskStatus.warning.value
+
+        check_manager.add_target_eval(
+            target_name=target,
+            status=connector_eval_status,
+            value=connector_status,
+            resource_name=connector_name,
+            resource_kind=E4kResourceKinds.DATALAKE_CONNECTOR.value,
         )
-        connector_status_desc = connector_status.get(
-            "configStatusDescription"
+
+        connector_status_desc = connector_status.get("configStatusDescription")
+        connector_status_text = (
+            f" {connector_status_desc}" if connector_status_desc else ""
         )
-        connector_status_text = f" {connector_status_desc}" if connector_status_desc else ""
 
         check_manager.add_display(
             target_name=target,
@@ -1186,12 +1460,29 @@ def evaluate_datalake_connectors(
             ),
         )
         detail_padding = (0, 0, 0, padding[3] + 4)
-        spec = connector['spec']
+        spec = connector.get("spec", {})
+        connector_eval_status = connector_eval_status = (
+            CheckTaskStatus.error.value
+            if not all(
+                [
+                    spec.get("target", {}).get("datalakeStorage", {}).get("endpoint"),
+                    spec.get("instances"),
+                ]
+            )
+            else CheckTaskStatus.success.value
+        )
+        check_manager.add_target_eval(
+            target_name=target,
+            status=connector_eval_status,
+            value=spec,
+            resource_name=connector_name,
+            resource_kind=E4kResourceKinds.DATALAKE_CONNECTOR.value,
+        )
         connector_instances = spec.get("instances")  # number of instances
 
         # connector target
         datalake_target = spec.get("target", {}).get("datalakeStorage", {})
-        datalake_endpoint = datalake_target.get('endpoint')
+        datalake_endpoint = datalake_target.get("endpoint")
         check_manager.add_display(
             target_name=target,
             display=Padding(
@@ -1208,7 +1499,7 @@ def evaluate_datalake_connectors(
         )
 
     check_manager = CheckManager(
-        check_name="evalDatalakeBridgeConnectors",
+        check_name="evalDataLakeConnectors",
         check_desc="Evaluate Data Lake Connectors and Topic Maps",
         namespace=namespace,
     )
@@ -1216,30 +1507,45 @@ def evaluate_datalake_connectors(
     # These checks are purely informational, so mark as skipped
     connector_target = "datalakeconnectors.az-edge.com"
     check_manager.add_target(target_name=connector_target)
-    check_manager.set_target_status(target_name=connector_target, status=CheckTaskStatus.skipped.value)
+    check_manager.set_target_status(
+        target_name=connector_target, status=CheckTaskStatus.skipped.value
+    )
 
     top_level_padding = (0, 0, 0, 8)
     connector_detail_padding = (0, 0, 0, 12)
 
-    connector_resources: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR, namespace=namespace)
+    connector_resources: dict = E4K_ACTIVE_API.get_resources(
+        kind=E4kResourceKinds.DATALAKE_CONNECTOR, namespace=namespace
+    )
     connectors: List[dict] = connector_resources.get("items", [])
 
     # connector pod prefix = azedge-[connector_name]-[instance]
-    connector_pod_name_prefixes = [f"azedge-{con['metadata']['name']}" for con in connectors]
+    connector_pod_name_prefixes = [
+        f"azedge-{con['metadata']['name']}" for con in connectors
+    ]
 
     # attempt to map each topic_map to its referenced connector
-    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP, namespace=namespace)
+    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
+        kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP, namespace=namespace
+    )
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
     topic_maps_by_connector = {}
-    connector_refs = {ref.get("spec", {}).get("dataLakeConnectorRef") for ref in topic_map_list}
+    connector_refs = {
+        ref.get("spec", {}).get("dataLakeConnectorRef") for ref in topic_map_list
+    }
 
     for connector in connector_refs:
         topic_maps_by_connector[connector] = [
-            topic for topic in topic_map_list
+            topic
+            for topic in topic_map_list
             if topic.get("spec", {}).get("dataLakeConnectorRef") == connector
         ]
 
     if len(connectors):
+        check_manager.set_target_conditions(
+            target_name=connector_target,
+            conditions=["status", "valid(spec)", "len(spec.instances)>=1"],
+        )
         for connector in connectors:
             # connector resource
             connector_metadata = connector.get("metadata", {})
@@ -1250,37 +1556,41 @@ def evaluate_datalake_connectors(
                 check_manager=check_manager,
                 target=connector_target,
                 connector=connector,
-                padding=top_level_padding
+                padding=top_level_padding,
             )
             display_topic_maps(
                 check_manager=check_manager,
                 target=connector_target,
                 topic_maps=connector_topic_maps,
-                padding=connector_detail_padding
+                padding=connector_detail_padding,
             )
             # remove all topic maps for this connector
-            if connector_name in topic_maps_by_connector:
-                del topic_maps_by_connector[connector_name]
+            topic_maps_by_connector.pop(connector_name, None)
     else:
         eval_str = "No Data Lake Connector Resources Detected"
-        check_manager.add_target_eval(target_name=connector_target, status=CheckTaskStatus.skipped.value, value=eval_str)
-        check_manager.add_display(target_name=connector_target, display=Padding(eval_str, top_level_padding))
+        check_manager.add_target_eval(
+            target_name=connector_target,
+            status=CheckTaskStatus.skipped.value,
+            value=eval_str,
+        )
+        check_manager.add_display(
+            target_name=connector_target, display=Padding(eval_str, top_level_padding)
+        )
 
     # warn about topic maps with invalid references
-    if topic_maps_by_connector:
-        invalid_connector_refs = topic_maps_by_connector.keys()
-        for invalid_connector_ref in invalid_connector_refs:
-            invalid_ref_maps = topic_maps_by_connector[invalid_connector_ref]
-            # for each topic map that references this connector
-            for ref_map in invalid_ref_maps:
-                topic_name = ref_map.get("metadata", {}).get("name")
-                check_manager.add_display(
-                    target_name=connector_target,
-                    display=Padding(
-                        f"\n- Data Lake Connector Topic Map {{[red]{topic_name}[/red]}}.\n  [red]Invalid[/red] connector reference {{[red]{invalid_connector_ref}[/red]}}",
-                        top_level_padding,
-                    ),
-                )
+    invalid_connector_refs = topic_maps_by_connector.keys() if topic_maps_by_connector else []
+    for invalid_connector_ref in invalid_connector_refs:
+        invalid_ref_maps = topic_maps_by_connector[invalid_connector_ref]
+        # for each topic map that references this connector
+        for ref_map in invalid_ref_maps:
+            topic_name = ref_map.get("metadata", {}).get("name")
+            check_manager.add_display(
+                target_name=connector_target,
+                display=Padding(
+                    f"\n- Data Lake Connector Topic Map {{[red]{topic_name}[/red]}}.\n  [red]Invalid[/red] connector reference {{[red]{invalid_connector_ref}[/red]}}",
+                    top_level_padding,
+                ),
+            )
 
     # evaluate resource health
     if len(connector_pod_name_prefixes):
@@ -1307,30 +1617,45 @@ def enumerate_e4k_resources(
 ) -> Tuple[dict, dict]:
     resource_kind_map = {}
     target_api = E4K_ACTIVE_API.as_str()
-    check_manager = CheckManager(check_name="enumerateE4kApi", check_desc="Enumerate E4K API resources")
+    check_manager = CheckManager(
+        check_name="enumerateE4kApi", check_desc="Enumerate E4K API resources"
+    )
     check_manager.add_target(target_name=target_api)
 
-    api_resources: V1APIResourceList = get_cluster_custom_api(group=E4K_ACTIVE_API.group, version=E4K_ACTIVE_API.version)
+    api_resources: V1APIResourceList = get_cluster_custom_api(
+        group=E4K_ACTIVE_API.group, version=E4K_ACTIVE_API.version
+    )
 
     if not api_resources:
-        check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.skipped.value)
+        check_manager.add_target_eval(
+            target_name=target_api, status=CheckTaskStatus.skipped.value
+        )
         missing_api_text = (
             f"[bright_blue]{target_api}[/bright_blue] API resources [red]not[/red] detected."
             "\n\n[bright_white]Skipping deployment evaluation[/bright_white]."
         )
-        check_manager.add_display(target_name=target_api, display=Padding(missing_api_text, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_api, display=Padding(missing_api_text, (0, 0, 0, 8))
+        )
         return check_manager.as_dict(as_list), resource_kind_map
 
-    api_header_display = Padding(f"[bright_blue]{target_api}[/bright_blue] API resources", (0, 0, 0, 8))
+    api_header_display = Padding(
+        f"[bright_blue]{target_api}[/bright_blue] API resources", (0, 0, 0, 8)
+    )
     check_manager.add_display(target_name=target_api, display=api_header_display)
     for resource in api_resources.resources:
         r: V1APIResource = resource
         if r.kind not in resource_kind_map:
             resource_kind_map[r.kind] = True
-            check_manager.add_display(target_name=target_api, display=Padding(f"[cyan]{r.kind}[/cyan]", (0, 0, 0, 12)))
+            check_manager.add_display(
+                target_name=target_api,
+                display=Padding(f"[cyan]{r.kind}[/cyan]", (0, 0, 0, 12)),
+            )
 
     check_manager.add_target_eval(
-        target_name=target_api, status=CheckTaskStatus.success.value, value=list(resource_kind_map.keys())
+        target_name=target_api,
+        status=CheckTaskStatus.success.value,
+        value=list(resource_kind_map.keys()),
     )
     return check_manager.as_dict(as_list), resource_kind_map
 
@@ -1344,7 +1669,9 @@ def check_k8s_version(as_list: bool = False):
     version_client = client.VersionApi()
 
     target_k8s_version = "k8s"
-    check_manager = CheckManager(check_name="evalK8sVers", check_desc="Evaluate Kubernetes server")
+    check_manager = CheckManager(
+        check_name="evalK8sVers", check_desc="Evaluate Kubernetes server"
+    )
     check_manager.add_target(
         target_name=target_k8s_version,
         conditions=[f"(k8s version)>={MIN_K8S_VERSION}"],
@@ -1356,9 +1683,14 @@ def check_k8s_version(as_list: bool = False):
         logger.debug(str(ae))
         api_error_text = "Unable to determine. Is there connectivity to the cluster?"
         check_manager.add_target_eval(
-            target_name=target_k8s_version, status=CheckTaskStatus.error.value, value=api_error_text
+            target_name=target_k8s_version,
+            status=CheckTaskStatus.error.value,
+            value=api_error_text,
         )
-        check_manager.add_display(target_name=target_k8s_version, display=Padding(api_error_text, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_k8s_version,
+            display=Padding(api_error_text, (0, 0, 0, 8)),
+        )
     else:
         major_version = version_details.major
         minor_version = version_details.minor
@@ -1371,11 +1703,14 @@ def check_k8s_version(as_list: bool = False):
             semver_status = CheckTaskStatus.error.value
             semver_colored = f"[red]v{semver}[/red]"
 
-        k8s_semver_text = (
-            f"Require [bright_blue]k8s[/bright_blue] >=[cyan]{MIN_K8S_VERSION}[/cyan] detected {semver_colored}."
+        k8s_semver_text = f"Require [bright_blue]k8s[/bright_blue] >=[cyan]{MIN_K8S_VERSION}[/cyan] detected {semver_colored}."
+        check_manager.add_target_eval(
+            target_name=target_k8s_version, status=semver_status, value=semver
         )
-        check_manager.add_target_eval(target_name=target_k8s_version, status=semver_status, value=semver)
-        check_manager.add_display(target_name=target_k8s_version, display=Padding(k8s_semver_text, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_k8s_version,
+            display=Padding(k8s_semver_text, (0, 0, 0, 8)),
+        )
 
     return check_manager.as_dict(as_list)
 
@@ -1396,11 +1731,18 @@ def check_helm_version(as_list: bool = False):
 
     helm_path = which("helm")
     if not helm_path:
-        not_found_helm_text = "Unable to determine. Is helm installed and on system path?"
-        check_manager.add_target_eval(
-            target_name=target_helm_version, status=CheckTaskStatus.error.value, value=not_found_helm_text
+        not_found_helm_text = (
+            "Unable to determine. Is helm installed and on system path?"
         )
-        check_manager.add_display(target_name=target_helm_version, display=Padding(not_found_helm_text, (0, 0, 0, 8)))
+        check_manager.add_target_eval(
+            target_name=target_helm_version,
+            status=CheckTaskStatus.error.value,
+            value=not_found_helm_text,
+        )
+        check_manager.add_display(
+            target_name=target_helm_version,
+            display=Padding(not_found_helm_text, (0, 0, 0, 8)),
+        )
         return check_manager.as_dict(as_list)
 
     try:
@@ -1412,9 +1754,14 @@ def check_helm_version(as_list: bool = False):
     except CalledProcessError:
         process_error_text = "Unable to determine. Error running helm version command."
         check_manager.add_target_eval(
-            target_name=target_helm_version, status=CheckTaskStatus.error.value, value=process_error_text
+            target_name=target_helm_version,
+            status=CheckTaskStatus.error.value,
+            value=process_error_text,
         )
-        check_manager.add_display(target_name=target_helm_version, display=Padding(process_error_text, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_helm_version,
+            display=Padding(process_error_text, (0, 0, 0, 8)),
+        )
         return CheckManager.as_dict(as_list)
 
     helm_semver = completed_process.stdout.decode("utf-8").replace('"', "")
@@ -1424,12 +1771,14 @@ def check_helm_version(as_list: bool = False):
     else:
         helm_semver_status = CheckTaskStatus.error.value
         helm_semver_colored = f"[red]{helm_semver}[/red]"
-    helm_semver_text = (
-        f"Require [bright_blue]helm[/bright_blue] >=[cyan]{MIN_HELM_VERSION}[/cyan] detected {helm_semver_colored}."
-    )
+    helm_semver_text = f"Require [bright_blue]helm[/bright_blue] >=[cyan]{MIN_HELM_VERSION}[/cyan] detected {helm_semver_colored}."
 
-    check_manager.add_target_eval(target_name=target_helm_version, status=helm_semver_status, value=helm_semver)
-    check_manager.add_display(target_name=target_helm_version, display=Padding(helm_semver_text, (0, 0, 0, 8)))
+    check_manager.add_target_eval(
+        target_name=target_helm_version, status=helm_semver_status, value=helm_semver
+    )
+    check_manager.add_display(
+        target_name=target_helm_version, display=Padding(helm_semver_text, (0, 0, 0, 8))
+    )
 
     return check_manager.as_dict(as_list)
 
@@ -1437,11 +1786,16 @@ def check_helm_version(as_list: bool = False):
 def check_nodes(as_list: bool = False):
     from kubernetes.client.models import V1Node, V1NodeList
 
-    check_manager = CheckManager(check_name="evalClusterNodes", check_desc="Evaluate cluster nodes")
+    check_manager = CheckManager(
+        check_name="evalClusterNodes", check_desc="Evaluate cluster nodes"
+    )
     target_minimum_nodes = "cluster/nodes"
     check_manager.add_target(
         target_name=target_minimum_nodes,
-        conditions=["len(cluster/nodes)>=1", "(cluster/nodes).each(node.status.allocatable[memory]>=140MiB)"],
+        conditions=[
+            "len(cluster/nodes)>=1",
+            "(cluster/nodes).each(node.status.allocatable[memory]>=140MiB)",
+        ],
     )
 
     try:
@@ -1451,21 +1805,38 @@ def check_nodes(as_list: bool = False):
         logger.debug(str(ae))
         api_error_text = "Unable to fetch nodes. Is there connectivity to the cluster?"
         check_manager.add_target_eval(
-            target_name=target_minimum_nodes, status=CheckTaskStatus.error.value, value=api_error_text
+            target_name=target_minimum_nodes,
+            status=CheckTaskStatus.error.value,
+            value=api_error_text,
         )
-        check_manager.add_display(target_name=target_minimum_nodes, display=Padding(api_error_text, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_minimum_nodes,
+            display=Padding(api_error_text, (0, 0, 0, 8)),
+        )
     else:
         node_items: List[V1Node] = nodes.items
         node_count = len(node_items)
         target_display = "At least 1 node is required. {}"
         if node_count < 1:
-            target_display = Padding(target_display.format(f"[red]Detected {node_count}[/red]."), (0, 0, 0, 8))
-            check_manager.add_target_eval(target_name=target_minimum_nodes, status=CheckTaskStatus.error.value)
-            check_manager.add_display(target_name=target_minimum_nodes, display=target_display)
+            target_display = Padding(
+                target_display.format(f"[red]Detected {node_count}[/red]."),
+                (0, 0, 0, 8),
+            )
+            check_manager.add_target_eval(
+                target_name=target_minimum_nodes, status=CheckTaskStatus.error.value
+            )
+            check_manager.add_display(
+                target_name=target_minimum_nodes, display=target_display
+            )
             return check_manager.as_dict()
 
-        target_display = Padding(target_display.format(f"[green]Detected {node_count}[/green]."), (0, 0, 0, 8))
-        check_manager.add_display(target_name=target_minimum_nodes, display=target_display)
+        target_display = Padding(
+            target_display.format(f"[green]Detected {node_count}[/green]."),
+            (0, 0, 0, 8),
+        )
+        check_manager.add_display(
+            target_name=target_minimum_nodes, display=target_display
+        )
         check_manager.add_display(target_name=target_minimum_nodes, display=NewLine())
 
         for node in node_items:
@@ -1482,11 +1853,18 @@ def check_nodes(as_list: bool = False):
                 memory_status = CheckTaskStatus.warning.value
                 mem_colored = f"[yellow]{memory}[/yellow]"
 
-            node_memory_display = Padding(f"[bright_blue]{node_name}[/bright_blue] {mem_colored} MiB", (0, 0, 0, 8))
-            check_manager.add_target_eval(
-                target_name=target_minimum_nodes, status=memory_status, value=node_memory_value
+            node_memory_display = Padding(
+                f"[bright_blue]{node_name}[/bright_blue] {mem_colored} MiB",
+                (0, 0, 0, 8),
             )
-            check_manager.add_display(target_name=target_minimum_nodes, display=node_memory_display)
+            check_manager.add_target_eval(
+                target_name=target_minimum_nodes,
+                status=memory_status,
+                value=node_memory_value,
+            )
+            check_manager.add_display(
+                target_name=target_minimum_nodes, display=node_memory_display
+            )
 
     return check_manager.as_dict(as_list)
 
@@ -1506,7 +1884,12 @@ def _decorate_resource_status(status: str) -> str:
 
     if status in [ResourceState.failed.value, ResourceState.error.value]:
         return f"[red]{status}[/red]"
-    if status in [ResourceState.recovering.value, ResourceState.warn.value, ResourceState.starting.value, "N/A"]:
+    if status in [
+        ResourceState.recovering.value,
+        ResourceState.warn.value,
+        ResourceState.starting.value,
+        "N/A",
+    ]:
         return f"[yellow]{status}[/yellow]"
     return f"[green]{status}[/green]"
 
@@ -1551,7 +1934,9 @@ class CheckManager:
     }
     """
 
-    def __init__(self, check_name: str, check_desc: str, namespace: Optional[str] = None):
+    def __init__(
+        self, check_name: str, check_desc: str, namespace: Optional[str] = None
+    ):
         self.check_name = check_name
         self.check_desc = check_desc
         self.namespace = namespace
@@ -1559,7 +1944,9 @@ class CheckManager:
         self.target_displays = {}
         self.worst_status = CheckTaskStatus.success.value
 
-    def add_target(self, target_name: str, conditions: List[str] = None, description: str = None):
+    def add_target(
+        self, target_name: str, conditions: List[str] = None, description: str = None
+    ):
         if target_name not in self.targets:
             self.targets[target_name] = {}
         self.targets[target_name]["conditions"] = conditions
@@ -1593,7 +1980,9 @@ class CheckManager:
         self._process_status(target_name, status)
 
     def _process_status(self, target_name: str, status: str):
-        existing_status = self.targets[target_name].get("status", CheckTaskStatus.success.value)
+        existing_status = self.targets[target_name].get(
+            "status", CheckTaskStatus.success.value
+        )
         if existing_status != status:
             if existing_status == CheckTaskStatus.success.value and status in [
                 CheckTaskStatus.warning.value,
@@ -1603,7 +1992,8 @@ class CheckManager:
                 self.targets[target_name]["status"] = status
                 self.worst_status = status
             elif (
-                existing_status == CheckTaskStatus.warning.value or existing_status == CheckTaskStatus.skipped.value
+                existing_status == CheckTaskStatus.warning.value
+                or existing_status == CheckTaskStatus.skipped.value
             ) and status in [CheckTaskStatus.error.value]:
                 self.targets[target_name]["status"] = status
                 self.worst_status = status
@@ -1626,25 +2016,42 @@ class CheckManager:
         result["targets"] = copy.deepcopy(self.targets)
         if as_list:
             for t in self.target_displays:
-                result["targets"][t]["displays"] = copy.deepcopy(self.target_displays[t])
+                result["targets"][t]["displays"] = copy.deepcopy(
+                    self.target_displays[t]
+                )
 
             if self.namespace:
-                result["description"] = f"{result['description']} in namespace {{[cyan]{self.namespace}[/cyan]}}"
+                result[
+                    "description"
+                ] = f"{result['description']} in namespace {{[cyan]{self.namespace}[/cyan]}}"
 
         return result
 
 
-def evaluate_pod_health(check_manager: CheckManager, namespace: str, pod: str, display_padding: int):
+def evaluate_pod_health(
+    check_manager: CheckManager, namespace: str, pod: str, display_padding: int
+):
     from .support.e4k import E4K_LABEL
 
     target_service_pod = f"pod/{pod}"
-    check_manager.add_target(target_name=target_service_pod, conditions=["status.phase"])
-    diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=E4K_LABEL)
+    check_manager.add_target(
+        target_name=target_service_pod, conditions=["status.phase"]
+    )
+    diagnostics_pods = get_namespaced_pods_by_prefix(
+        prefix=pod, namespace=namespace, label_selector=E4K_LABEL
+    )
     if not diagnostics_pods:
-        check_manager.add_target_eval(target_name=target_service_pod, status=CheckTaskStatus.warning.value, value=None)
+        check_manager.add_target_eval(
+            target_name=target_service_pod,
+            status=CheckTaskStatus.warning.value,
+            value=None,
+        )
         check_manager.add_display(
             target_name=target_service_pod,
-            display=Padding(f"{target_service_pod}* [yellow]not detected[/yellow].", (0, 0, 0, display_padding)),
+            display=Padding(
+                f"{target_service_pod}* [yellow]not detected[/yellow].",
+                (0, 0, 0, display_padding),
+            ),
         )
     else:
         for pod in diagnostics_pods:
@@ -1654,7 +2061,9 @@ def evaluate_pod_health(check_manager: CheckManager, namespace: str, pod: str, d
             pod_phase_deco, status = _decorate_pod_phase(pod_phase)
 
             check_manager.add_target_eval(
-                target_name=target_service_pod, status=status, value={"name": pod_name, "status.phase": pod_phase}
+                target_name=target_service_pod,
+                status=status,
+                value={"name": pod_name, "status.phase": pod_phase},
             )
             check_manager.add_display(
                 target_name=target_service_pod,
