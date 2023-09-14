@@ -1534,7 +1534,7 @@ def evaluate_datalake_connectors(
                 padding=connector_detail_padding,
             )
             # remove all topic maps for this connector
-            topic_maps_by_connector.pop(connector_name
+            topic_maps_by_connector.pop(connector_name)
     else:
         eval_str = "No Data Lake Connector Resources Detected"
         check_manager.add_target_eval(
