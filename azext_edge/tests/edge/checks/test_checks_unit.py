@@ -243,27 +243,23 @@ def test_check_by_resource_types(mocker, mock_e4k_resource_types, resource_kinds
 
 
 def _generate_resource_stub(
-    metadata: Dict[str, Any] = None,
-    spec: Dict[str, Any] = None,
-    status: Dict[str, Any] = None,
+    metadata: Dict[str, Any] = {},
+    spec: Dict[str, Any] = {},
+    status: Dict[str, Any] = {},
 ):
     resource = {}
 
     # fill metadata
     resource["metadata"] = {"namespace": "mock_namespace", "name": "mock_name"}
     resource["spec"] = {}
+    resource["status"] = {}
 
-    if metadata:
-        for key in metadata:
-            resource["metadata"][key] = metadata[key]
-    if spec:
-        for key in spec:
-            resource["spec"][key] = spec[key]
-
-    if status:
-        resource["status"] = {}
-        for key in status:
-            resource["spec"][key] = status[key]
+    for key in metadata:
+        resource["metadata"][key] = metadata[key]
+    for key in spec:
+        resource["spec"][key] = spec[key]
+    for key in status:
+        resource["status"][key] = status[key]
     return resource
 
 
@@ -299,9 +295,9 @@ def _generate_resource_stub(
                     ("status", "warning"),  # unable to fetch broker diagnostics
                 ],
                 [
-                    ("status", "warning"),
+                    ("status", "success"),
                     ("name", "mock_name"),
-                    ("value/status/status", "N/A"),
+                    ("value/status/status", "Running"),
                     ("value/spec.cardinality/backendChain/partitions", 1),
                     ("value/spec.cardinality/backendChain/replicas", 2),
                     ("value/spec.cardinality/backendChain/workers", 1),
@@ -341,7 +337,7 @@ def _generate_resource_stub(
                 [
                     ("status", "warning"),  # still starting, so warning status
                     ("name", "mock_name"),
-                    ("value/status/status", "N/A"),
+                    ("value/status/status", "Starting"),
                 ],
             ],
         ),
@@ -525,6 +521,9 @@ def test_diagnostic_service_checks(
                     },
                     "tls": {"tlsEnabled": True},
                 },
+                status={
+                    "configStatusLevel": ResourceState.running.value
+                }
             ),
             # topic map
             _generate_resource_stub(spec={"mqttBridgeConnectorRef": "test_bridge"}),
@@ -580,6 +579,9 @@ def test_mqtt_checks(
                     "instances": 2,
                     "target": {"datalakeStorage": {"endpoint": "test_endpoint"}},
                 },
+                status={
+                    "configStatusLevel": ResourceState.running.value
+                }
             ),
             # topic map
             _generate_resource_stub(spec={"dataLakeConnectorRef": "test_connector"}),

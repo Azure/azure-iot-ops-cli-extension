@@ -1053,13 +1053,13 @@ def evaluate_mqtt_bridge_connectors(
         bridge_status = bridge.get("status", {})
         bridge_status_level = bridge_status.get(
             "configStatusLevel", "N/A"
-        )  # warn / error / success
+        )
 
         bridge_eval_status = CheckTaskStatus.success.value
 
-        if bridge_status in [ResourceState.error.value, ResourceState.failed.value]:
+        if bridge_status_level in [ResourceState.error.value, ResourceState.failed.value]:
             bridge_eval_status = CheckTaskStatus.error.value
-        elif bridge_status in [
+        elif bridge_status_level in [
             ResourceState.recovering.value,
             ResourceState.warn.value,
             ResourceState.starting.value,
@@ -1077,7 +1077,7 @@ def evaluate_mqtt_bridge_connectors(
 
         bridge_status_desc = bridge_status.get(
             "configStatusDescription"
-        )  # text of status
+        )
 
         bridge_status_text = f" {bridge_status_desc}" if bridge_status_desc else ""
         check_manager.add_display(
@@ -1096,7 +1096,6 @@ def evaluate_mqtt_bridge_connectors(
                 [
                     spec.get("localBrokerConnection"),
                     spec.get("remoteBrokerConnection"),
-                    spec.get("tls"),
                 ]
             )
             else CheckTaskStatus.success.value
@@ -1110,8 +1109,8 @@ def evaluate_mqtt_bridge_connectors(
             resource_kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
         )
 
-        bridge_instances = spec.get("bridgeInstances")  # number of instances
-        client_prefix = spec.get("clientIdPrefix")  # client ID prefix (e4k)
+        bridge_instances = spec.get("bridgeInstances")
+        client_prefix = spec.get("clientIdPrefix")
 
         check_manager.add_display(
             target_name=target,
@@ -1129,7 +1128,7 @@ def evaluate_mqtt_bridge_connectors(
         )
         # local broker endpoint
         local_broker = spec.get("localBrokerConnection", {})
-        local_broker_endpoint = local_broker.get("endpoint")  # endpoint IP / FQDN
+        local_broker_endpoint = local_broker.get("endpoint")
         check_manager.add_display(
             target_name=target,
             display=Padding(
@@ -1138,10 +1137,10 @@ def evaluate_mqtt_bridge_connectors(
             ),
         )
 
-        local_broker_auth = next(iter(local_broker.get("authentication")))  # auth type
+        local_broker_auth = next(iter(local_broker.get("authentication")))
         local_broker_tls = local_broker.get("tls", {}).get(
             "tlsEnabled", False
-        )  # tls enabled?
+        )
 
         check_manager.add_display(
             target_name=target,
@@ -1153,7 +1152,7 @@ def evaluate_mqtt_bridge_connectors(
 
         # remote broker endpoint
         remote_broker = spec.get("remoteBrokerConnection", {})
-        remote_broker_endpoint = remote_broker.get("endpoint")  # endpoint IP / FQDN
+        remote_broker_endpoint = remote_broker.get("endpoint")
         check_manager.add_display(
             target_name=target,
             display=Padding(
@@ -1164,10 +1163,10 @@ def evaluate_mqtt_bridge_connectors(
 
         remote_broker_auth = next(
             iter(remote_broker.get("authentication"))
-        )  # auth type
+        )
         remote_broker_tls = remote_broker.get("tls", {}).get(
             "tlsEnabled", False
-        )  # tls enabled?
+        )
 
         check_manager.add_display(
             target_name=target,
@@ -1179,16 +1178,13 @@ def evaluate_mqtt_bridge_connectors(
 
     check_manager = CheckManager(
         check_name="evalMQTTBridgeConnectors",
-        check_desc="Evaluate MQTT Bridge Connectors and Topic Maps",
+        check_desc="Evaluate MQTT Bridge Connectors",
         namespace=namespace,
     )
 
     # MQTT Bridge Connector checks are purely informational, so mark as skipped
     bridge_target = "mqttbridgeconnectors.az-edge.com"
     check_manager.add_target(target_name=bridge_target)
-    check_manager.set_target_status(
-        target_name=bridge_target, status=CheckTaskStatus.skipped.value
-    )
 
     top_level_padding = (0, 0, 0, 8)
     bridge_detail_padding = (0, 0, 0, 12)
@@ -1252,6 +1248,9 @@ def evaluate_mqtt_bridge_connectors(
             target_name=bridge_target,
             status=CheckTaskStatus.skipped.value,
             value=eval_str,
+        )
+        check_manager.set_target_status(
+            target_name=bridge_target, status=CheckTaskStatus.skipped.value
         )
         check_manager.add_display(
             target_name=bridge_target, display=Padding(eval_str, top_level_padding)
@@ -1398,9 +1397,9 @@ def evaluate_datalake_connectors(
 
         connector_eval_status = CheckTaskStatus.success.value
 
-        if connector_status in [ResourceState.error.value, ResourceState.failed.value]:
+        if connector_status_level in [ResourceState.error.value, ResourceState.failed.value]:
             connector_eval_status = CheckTaskStatus.error.value
-        elif connector_status in [
+        elif connector_status_level in [
             ResourceState.recovering.value,
             ResourceState.warn.value,
             ResourceState.starting.value,
@@ -1447,7 +1446,7 @@ def evaluate_datalake_connectors(
             resource_name=connector_name,
             resource_kind=E4kResourceKinds.DATALAKE_CONNECTOR.value,
         )
-        connector_instances = spec.get("instances")  # number of instances
+        connector_instances = spec.get("instances")
 
         # connector target
         datalake_target = spec.get("target", {}).get("datalakeStorage", {})
@@ -1469,16 +1468,13 @@ def evaluate_datalake_connectors(
 
     check_manager = CheckManager(
         check_name="evalDataLakeConnectors",
-        check_desc="Evaluate Data Lake Connectors and Topic Maps",
+        check_desc="Evaluate Data Lake Connectors",
         namespace=namespace,
     )
 
     # These checks are purely informational, so mark as skipped
     connector_target = "datalakeconnectors.az-edge.com"
     check_manager.add_target(target_name=connector_target)
-    check_manager.set_target_status(
-        target_name=connector_target, status=CheckTaskStatus.skipped.value
-    )
 
     top_level_padding = (0, 0, 0, 8)
     connector_detail_padding = (0, 0, 0, 12)
@@ -1534,7 +1530,7 @@ def evaluate_datalake_connectors(
                 padding=connector_detail_padding,
             )
             # remove all topic maps for this connector
-            topic_maps_by_connector.pop(connector_name)
+            topic_maps_by_connector.pop(connector_name, None)
     else:
         eval_str = "No Data Lake Connector Resources Detected"
         check_manager.add_target_eval(
@@ -1542,12 +1538,17 @@ def evaluate_datalake_connectors(
             status=CheckTaskStatus.skipped.value,
             value=eval_str,
         )
+        check_manager.set_target_status(
+            target_name=connector_target, status=CheckTaskStatus.skipped.value
+        )
         check_manager.add_display(
             target_name=connector_target, display=Padding(eval_str, top_level_padding)
         )
 
     # warn about topic maps with invalid references
-    invalid_connector_refs = topic_maps_by_connector.keys() if topic_maps_by_connector else []
+    invalid_connector_refs = (
+        topic_maps_by_connector.keys() if topic_maps_by_connector else []
+    )
     for invalid_connector_ref in invalid_connector_refs:
         invalid_ref_maps = topic_maps_by_connector[invalid_connector_ref]
         # for each topic map that references this connector
