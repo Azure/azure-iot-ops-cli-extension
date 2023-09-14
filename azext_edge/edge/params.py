@@ -152,7 +152,16 @@ def load_iotedge_arguments(self, _):
             "what_if",
             options_list=["--what-if"],
             arg_type=get_three_state_flag(),
+            help="Flag when set, will show changes that will be made by the deployment "
+            "if executed at the scope of the resource group.",
+            arg_group="Template"
+        )
+        context.argument(
+            "show_template",
+            options_list=["--show-template"],
+            arg_type=get_three_state_flag(),
             help="Flag when set, will output the generated template intended for deployment.",
+            arg_group="Template"
         )
         context.argument(
             "aio_version",
@@ -223,4 +232,12 @@ def load_iotedge_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
             arg_group="Opc-Ua Broker",
+        )
+        # Bluefin
+        context.argument(
+            "instance_name",
+            options_list=["--processor-instance"],
+            arg_type=get_three_state_flag(),
+            help="Disable deployment progress bar.",
+            arg_group="Data Processor",
         )

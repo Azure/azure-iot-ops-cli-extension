@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from .aio_versions import AioVersionDef, EdgeServiceMoniker, get_aio_version_def
 
@@ -73,6 +73,7 @@ class ManifestBuilder:
             "properties": {
                 "scope": cluster_namespace,
                 "version": "0.1.1",
+                "displayName": "[variables('targetName')]",
                 "components": [],
                 "topologies": [
                     {
@@ -110,6 +111,7 @@ class ManifestBuilder:
         extension_type: str,
         name: str,
         configuration: Optional[dict] = None,
+        release_train: str = "private-preview",
     ):
         target_version = self.version_def.extension_to_vers_map.get(extension_type)
         if target_version:
@@ -122,7 +124,7 @@ class ManifestBuilder:
                     "autoUpgradeMinorVersion": False,
                     "scope": {"cluster": {"releaseNamespace": self.cluster_namespace}},
                     "version": target_version,
-                    "releaseTrain": "private-preview",
+                    "releaseTrain": release_train,
                     "configurationSettings": {},
                 },
                 "scope": f"Microsoft.Kubernetes/connectedClusters/{self.cluster_name}",
@@ -233,7 +235,6 @@ def deploy(
     location: Optional[str] = None,
     **kwargs,
 ):
-    import json
     from uuid import uuid4
 
     from azure.cli.core.azclierror import AzureResponseError
@@ -281,9 +282,9 @@ def deploy(
         extension_type="microsoft.alicesprings.dataplane",
         name="mq",
         configuration={
-            # "global.quickstart": True,
+            "global.quickstart": True,
             "global.openTelemetryCollectorAddr": get_otel_collector_addr(cluster_namespace, True),
-        },
+        }
     )
     manifest_builder.add_extension(
         extension_type="microsoft.alicesprings.processor",
@@ -301,7 +302,7 @@ def deploy(
     manifest_builder.add_custom_location()
     manifest_builder.add_std_symphony_components()
 
-    if kwargs.get("what_if"):
+    if kwargs.get("show_template"):
         return manifest_builder.manifest
 
     with Progress(
@@ -312,22 +313,37 @@ def deploy(
         transient=False,
         disable=no_progress,
     ) as progress:
-        progress.add_task(description=f"Deploying AIO version: {version_def.version}", total=None)
+        deployment_name = f"azedge.init.pas.{str(uuid4()).replace('-', '')}"
+        deployment_params = {
+            "properties": {
+                "mode": "Incremental",
+                "template": manifest_builder.manifest,
+            }
+        }
+
         try:
+            if kwargs.get("what_if"):
+                from azure.cli.command_modules.resource.custom import format_what_if_operation_result
+
+                progress.add_task(description=f"What-if of deploying AIO version: {version_def.version}", total=None)
+                what_if_deployment = resource_client.deployments.begin_what_if(
+                    resource_group_name=resource_group_name,
+                    deployment_name=deployment_name,
+                    parameters=deployment_params,
+                ).result()
+                progress.stop()
+                print(format_what_if_operation_result(what_if_operation_result=what_if_deployment))
+
+                return
+
+            progress.add_task(description=f"Deploying AIO version: {version_def.version}", total=None)
             deployment = resource_client.deployments.begin_create_or_update(
                 resource_group_name=resource_group_name,
-                deployment_name=f"azedge.init.pas.{str(uuid4()).replace('-', '')}",
-                parameters={
-                    "properties": {
-                        "mode": "Incremental",
-                        "template": manifest_builder.manifest,
-                    }
-                },
+                deployment_name=deployment_name,
+                parameters=deployment_params,
             ).result()
         except HttpResponseError as e:
-            # TODO: repeated error message.
-            if "Deployment template validation failed:" in e.message:
-                e.message = json.loads(e.response.text())["error"]["message"]
+            # TODO: repeated error messages.
             raise AzureResponseError(e.message)
         except KeyboardInterrupt:
             return
