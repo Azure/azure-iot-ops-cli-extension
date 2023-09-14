@@ -10,8 +10,6 @@ from .aio_versions import AioVersionDef, EdgeServiceMoniker, get_aio_version_def
 
 
 def get_otel_collector_addr(namespace: str, prefix_protocol: bool = False):
-    port_map = {"http": "4317", "grpc": "4318"}
-
     addr = f"otel-collector.{namespace}.svc.cluster.local:4317"
     if prefix_protocol:
         return f"http://{addr}"
