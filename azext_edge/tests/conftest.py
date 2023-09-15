@@ -41,6 +41,7 @@ def embedded_cli_client(mocker, request):
     # as_json returns the value - set 2 since side_effect becomes an iterator
     patched_cli.as_json.side_effect = [request.param["as_json_result"]] * 2
 
+    # error handling to correct type
     # patched_handler = mocker.patch("azext_iot.devices.commands_group.handle_service_exception")
     # patched_handler.side_effect = CLIError("error")
 

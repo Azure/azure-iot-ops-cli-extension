@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from knack.log import get_logger
 
@@ -13,14 +13,12 @@ from azure.cli.core.azclierror import ResourceNotFoundError, RequiredArgumentMis
 from azure.cli.core.commands.client_factory import get_subscription_id
 from azext_edge.common.embedded_cli import EmbeddedCLI
 
-from azure.mgmt.resource import ResourceManagementClient
-from azure.identity import DefaultAzureCredential
-
 from azext_edge.common.utility import assemble_nargs_to_dict
 
 logger = get_logger(__name__)
 
-API_VERSION = "2023-06-21-preview"  # "2023-08-01-preview"
+# for some reason "2023-08-01-preview" doesnt work with custom location
+API_VERSION = "2023-06-21-preview"
 cli = EmbeddedCLI()
 
 
@@ -29,18 +27,11 @@ def list_assets(
     resource_group_name: Optional[str] = None,
 ) -> dict:
     subscription = get_subscription_id(cmd.cli_ctx)
-    # additions:
-    # resource group
-    # subscription
-    # see if there is some server side querying
     uri = f"/subscriptions/{subscription}"
     if resource_group_name:
         uri += f"/resourceGroups/{resource_group_name}"
-    uri += f"/providers/Microsoft.DeviceRegistry/assets?api-version={API_VERSION}"
-    cli.invoke(f"rest --method GET --uri {uri}")
-
-    # resource_type = "Microsoft.DeviceRegistry/assets"
-    # cli.invoke(f"resource list --resource-type {resource_type}")
+    uri += "/providers/Microsoft.DeviceRegistry/assets"
+    cli.invoke(f"rest --method GET --uri {uri}?api-version={API_VERSION}")
     return cli.as_json()["value"]
 
 
@@ -51,8 +42,9 @@ def show_asset(
 ) -> dict:
     subscription = get_subscription_id(cmd.cli_ctx)
     if resource_group_name:
-        resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/Microsoft.DeviceRegistry/assets/{asset_name}?api-version={API_VERSION}"
-        cli.invoke(f"rest --method GET --uri {resource_path}")
+        resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/"\
+            f"Microsoft.DeviceRegistry/assets/{asset_name}"
+        cli.invoke(f"rest --method GET --uri {resource_path}?api-version={API_VERSION}")
         return cli.as_json()
 
     assets_list = list_assets(cmd)
@@ -60,7 +52,7 @@ def show_asset(
         if asset["name"] == asset_name:
             return asset
 
-    raise ResourceNotFoundError()
+    raise ResourceNotFoundError(f"Asset {asset_name} not found in subscription {subscription}.")
 
 
 def delete_asset(
@@ -76,8 +68,9 @@ def delete_asset(
                 resource_group_name = asset["resourceGroup"]
                 break
 
-    resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/Microsoft.DeviceRegistry/assets/{asset_name}?api-version={API_VERSION}"
-    cli.invoke(f"rest --method DELETE --uri {resource_path}")
+    resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/"\
+        f"Microsoft.DeviceRegistry/assets/{asset_name}"
+    cli.invoke(f"rest --method DELETE --uri {resource_path}?api-version={API_VERSION}")
 
 
 def create_asset(
@@ -89,11 +82,11 @@ def create_asset(
     asset_type: Optional[str] = None,
     custom_location_resource_group: Optional[str] = None,
     custom_location_subscription: Optional[str] = None,
-    data_points=None,
+    data_points: Optional[List[str]] = None,
     description: Optional[str] = None,
     disabled: bool = False,
     documentation_uri: Optional[str] = None,
-    events=None,
+    events: Optional[List[str]] = None,
     external_asset_id: Optional[str] = None,
     hardware_revision: Optional[str] = None,
     location: Optional[str] = None,
@@ -132,53 +125,35 @@ def create_asset(
     # Properties
     properties = {
         "connectivityProfileUri": endpoint_profile,
-        "enabled": not disabled,
         "dataPoints": process_data_points(data_points),
         "events": process_events(events),
     }
 
-    # Optional properties
-    # assetType
-    # defaultEventsConfiguration
-    if asset_type:
-        properties["assetType"] = asset_type
-    if description:
-        properties["description"] = description
-    if documentation_uri:
-        properties["documentationUri"] = documentation_uri
-    if external_asset_id:
-        properties["externalAssetId"] = external_asset_id
-    if hardware_revision:
-        properties["hardwareRevision"] = hardware_revision
-    if manufacturer:
-        properties["manufacturer"] = manufacturer
-    if manufacturer_uri:
-        properties["manufacturerUri"] = manufacturer_uri
-    if model:
-        properties["model"] = model
-    if product_code:
-        properties["productCode"] = product_code
-    if serial_number:
-        properties["serialNumber"] = serial_number
-    if software_revision:
-        properties["softwareRevision"] = software_revision
+    # Other properties
+    update_properties(
+        properties,
+        asset_type=asset_type,
+        description=description,
+        disabled=disabled,
+        documentation_uri=documentation_uri,
+        external_asset_id=external_asset_id,
+        hardware_revision=hardware_revision,
+        manufacturer=manufacturer,
+        manufacturer_uri=manufacturer_uri,
+        model=model,
+        product_code=product_code,
+        serial_number=serial_number,
+        software_revision=software_revision,
+        dp_publishing_interval=dp_publishing_interval,
+        dp_sampling_interval=dp_sampling_interval,
+        dp_queue_size=dp_queue_size,
+        ev_publishing_interval=ev_publishing_interval,
+        ev_sampling_interval=ev_sampling_interval,
+        ev_queue_size=ev_queue_size,
+    )
 
-    # Defaults
-    data_point_defaults = {
-        "publishingInterval": dp_publishing_interval,
-        "samplingInterval": dp_sampling_interval,
-        "queueSize": dp_queue_size
-    }
-    properties["defaultDataPointsConfiguration"] = json.dumps(data_point_defaults)
-
-    event_defaults = {
-        "publishingInterval": ev_publishing_interval,
-        "samplingInterval": ev_sampling_interval,
-        "queueSize": ev_queue_size
-    }
-    properties["defaultEventsConfiguration"] = json.dumps(event_defaults)
-
-    resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/{resource_type}/{asset_name}?api-version={API_VERSION}"
+    resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/{resource_type}"\
+        f"/{asset_name}"
     asset_body = {
         "extendedLocation": extended_location,
         "location": location,
@@ -186,7 +161,7 @@ def create_asset(
         "tags": tags,
     }
 
-    cli.invoke(f"rest --method PUT --uri {resource_path} --body '{json.dumps(asset_body)}'")
+    cli.invoke(f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(asset_body)}'")
     return cli.as_json()
 
 
@@ -194,10 +169,12 @@ def update_asset(
     cmd,
     asset_name: str,
     resource_group_name: Optional[str] = None,
-    data_points=None,
+    asset_type: Optional[str] = None,
+    data_points: Optional[List[str]] = None,
     description: Optional[str] = None,
+    disabled: Optional[bool] = None,
     documentation_uri: Optional[str] = None,
-    events=None,
+    events: Optional[List[str]] = None,
     external_asset_id: Optional[str] = None,
     hardware_revision: Optional[str] = None,
     manufacturer: Optional[str] = None,
@@ -206,69 +183,78 @@ def update_asset(
     product_code: Optional[str] = None,
     serial_number: Optional[str] = None,
     software_revision: Optional[str] = None,
-    publishing_interval: int = 1000,
-    sampling_interval: int = 500,
-    queue_size: int = 1,
-    tags=None,
+    dp_publishing_interval: Optional[int] = None,
+    dp_sampling_interval: Optional[int] = None,
+    dp_queue_size: Optional[int] = None,
+    ev_publishing_interval: Optional[int] = None,
+    ev_sampling_interval: Optional[int] = None,
+    ev_queue_size: Optional[int] = None,
+    tags: Optional[Dict[str, str]] = None,
 ):
-    subscription = get_subscription_id(cmd.cli_ctx)
-    resource_type = "Microsoft.DeviceRegistry/assets"
     # get the asset
+    original_asset = show_asset(
+        cmd=cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name
+    )
+    if tags:
+        original_asset["tags"] = tags
 
     # modify the asset
     # Properties
-    properties = {}
+    properties = original_asset.get("properties", {})
+    if data_points:
+        properties["dataPoints"] = process_data_points(data_points)
+    if events:
+        properties["events"] = process_events(events)
 
-    # Optional properties
-    if description:
-        properties["description"] = description
-    if documentation_uri:
-        properties["documentationUri"] = documentation_uri
-    if external_asset_id:
-        properties["externalAssetId"] = external_asset_id
-    if hardware_revision:
-        properties["hardwareRevision"] = hardware_revision
-    if manufacturer:
-        properties["manufacturer"] = manufacturer
-    if manufacturer_uri:
-        properties["manufacturerUri"] = manufacturer_uri
-    if model:
-        properties["model"] = model
-    if product_code:
-        properties["productCode"] = product_code
-    if serial_number:
-        properties["serialNumber"] = serial_number
-    if software_revision:
-        properties["softwareRevision"] = software_revision
+    # version cannot be bumped :D
 
-    # Defaults
-    data_point_defaults = {
-        "publishingInterval": publishing_interval,
-        "samplingInterval": sampling_interval,
-        "queueSize": queue_size
-    }
-    properties["defaultDataPointsConfiguration"] = json.dumps(data_point_defaults)
+    # Other properties
+    update_properties(
+        properties,
+        asset_type=asset_type,
+        description=description,
+        disabled=disabled,
+        documentation_uri=documentation_uri,
+        external_asset_id=external_asset_id,
+        hardware_revision=hardware_revision,
+        manufacturer=manufacturer,
+        manufacturer_uri=manufacturer_uri,
+        model=model,
+        product_code=product_code,
+        serial_number=serial_number,
+        software_revision=software_revision,
+        dp_publishing_interval=dp_publishing_interval,
+        dp_sampling_interval=dp_sampling_interval,
+        dp_queue_size=dp_queue_size,
+        ev_publishing_interval=ev_publishing_interval,
+        ev_sampling_interval=ev_sampling_interval,
+        ev_queue_size=ev_queue_size,
+    )
 
-    event_defaults = {
-        "publishingInterval": publishing_interval,
-        "samplingInterval": sampling_interval,
-        "queueSize": queue_size
-    }
-    properties["defaultEventsConfiguration"] = json.dumps(event_defaults)
-
-    # Data points
-    properties["dataPoints"] = process_data_points(data_points)
-
-    # Events
-    properties["events"] = process_events(events)
-
-    resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/{resource_type}/{asset_name}?api-version={API_VERSION}"
-    asset_body = {
-        "properties": properties,
-        "tags": tags,
-    }
-    cli.invoke(f"rest --method PATCH --uri {resource_path} --body '{json.dumps(asset_body)}'")
+    resource_path = original_asset["id"]
+    # TODO: change to patch once supported
+    cli.invoke(
+        f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(original_asset)}'"
+    )
     return cli.as_json()
+
+
+def build_configuration(
+    original_configuration: str,
+    publishing_interval: Optional[int] = None,
+    sampling_interval: Optional[int] = None,
+    queue_size: Optional[int] = None,
+) -> str:
+    defaults = json.loads(original_configuration)
+    if publishing_interval:
+        defaults["publishingInterval"] = publishing_interval
+    if sampling_interval:
+        defaults["samplingInterval"] = sampling_interval
+    if queue_size:
+        defaults["queueSize"] = queue_size
+    return json.dumps(defaults)
 
 
 def process_data_points(data_points: Optional[List[str]]) -> Dict[str, str]:
@@ -310,7 +296,7 @@ def process_events(events: Optional[List[List[str]]]) -> Dict[str, str]:
         parsed_event = assemble_nargs_to_dict(event)
 
         if not parsed_event.get("event_notifier"):
-            raise RequiredArgumentMissingError(f"Event ({event}) is missing the event notifier.")
+            raise RequiredArgumentMissingError(f"Event ({event}) is missing the event_notifier.")
 
         custom_configuration = {}
         if parsed_event.get("sampling_interval"):
@@ -331,3 +317,65 @@ def process_events(events: Optional[List[List[str]]]) -> Dict[str, str]:
         processed_events.append(processed_event)
 
     return processed_events
+
+
+def update_properties(
+    properties: Dict[str, Union[str, List[Dict[str, str]]]],
+    asset_type: Optional[str] = None,
+    description: Optional[str] = None,
+    disabled: Optional[bool] = None,
+    documentation_uri: Optional[str] = None,
+    external_asset_id: Optional[str] = None,
+    hardware_revision: Optional[str] = None,
+    manufacturer: Optional[str] = None,
+    manufacturer_uri: Optional[str] = None,
+    model: Optional[str] = None,
+    product_code: Optional[str] = None,
+    serial_number: Optional[str] = None,
+    software_revision: Optional[str] = None,
+    dp_publishing_interval: Optional[int] = None,
+    dp_sampling_interval: Optional[int] = None,
+    dp_queue_size: Optional[int] = None,
+    ev_publishing_interval: Optional[int] = None,
+    ev_sampling_interval: Optional[int] = None,
+    ev_queue_size: Optional[int] = None,
+) -> None:
+    if asset_type:
+        properties["assetType"] = asset_type
+    if description:
+        properties["description"] = description
+    if disabled is not None:
+        properties["enabled"] = not disabled
+    if documentation_uri:
+        properties["documentationUri"] = documentation_uri
+    if external_asset_id:
+        properties["externalAssetId"] = external_asset_id
+    if hardware_revision:
+        properties["hardwareRevision"] = hardware_revision
+    if manufacturer:
+        properties["manufacturer"] = manufacturer
+    if manufacturer_uri:
+        properties["manufacturerUri"] = manufacturer_uri
+    if model:
+        properties["model"] = model
+    if product_code:
+        properties["productCode"] = product_code
+    if serial_number:
+        properties["serialNumber"] = serial_number
+    if software_revision:
+        properties["softwareRevision"] = software_revision
+
+    # Defaults
+    properties["defaultDataPointsConfiguration"] = build_configuration(
+        original_configuration=properties.get("defaultDataPointsConfiguration", "{}"),
+        publishing_interval=dp_publishing_interval,
+        sampling_interval=dp_sampling_interval,
+        queue_size=dp_queue_size
+    )
+
+    properties["defaultEventsConfiguration"] = build_configuration(
+        original_configuration=properties.get("defaultEventsConfiguration", "{}"),
+        publishing_interval=ev_publishing_interval,
+        sampling_interval=ev_sampling_interval,
+        queue_size=ev_queue_size
+    )

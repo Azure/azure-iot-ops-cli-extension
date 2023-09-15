@@ -7,29 +7,21 @@
 import json
 import pytest
 
-from azext_edge.common.utility import assemble_nargs_to_dict
-
 from ....edge.commands_assets import create_asset
 
-from . import EMBEDDED_CLI_ASSETS_PATH, PROCESS_DP_ASSETS_PATH, PROCESS_EV_ASSETS_PATH
+from . import EMBEDDED_CLI_ASSETS_PATH
 from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
-@pytest.fixture()
-def process_dp_and_ev_fixture(mocker, request):
-    patched_dp = mocker.patch(PROCESS_DP_ASSETS_PATH)
-    patched_dp.return_value = request.param["process_dp_result"]
-    patched_ev = mocker.patch(PROCESS_EV_ASSETS_PATH)
-    patched_ev.return_value = request.param["process_ev_result"]
-    yield patched_dp, patched_ev
 
 @pytest.mark.parametrize("embedded_cli_client", [{
     "path": EMBEDDED_CLI_ASSETS_PATH,
     "as_json_result": {"result": generate_generic_id()}
 }], indirect=True)
-@pytest.mark.parametrize("process_dp_and_ev_fixture", [{
+@pytest.mark.parametrize("asset_helpers_fixture", [{
     "process_dp_result": generate_generic_id(),
-    "process_ev_result": generate_generic_id()
+    "process_ev_result": generate_generic_id(),
+    "update_properties_result": generate_generic_id(),
 }], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
@@ -68,8 +60,8 @@ def process_dp_and_ev_fixture(mocker, request):
         "ev_queue_size": 888,
     },
 ])
-def test_create_asset(fixture_cmd, embedded_cli_client, process_dp_and_ev_fixture, req):
-    patched_dp, patched_ev = process_dp_and_ev_fixture
+def test_create_asset(fixture_cmd, embedded_cli_client, asset_helpers_fixture, req):
+    patched_dp, patched_ev, patched_up = asset_helpers_fixture
     # Required params
     asset_name = generate_generic_id()
     resource_group_name = generate_generic_id()
@@ -120,35 +112,23 @@ def test_create_asset(fixture_cmd, embedded_cli_client, process_dp_and_ev_fixtur
     # Properties
     request_props = request_body["properties"]
     assert request_props["connectivityProfileUri"] == endpoint_profile
-    assert request_props["enabled"] is not req.get("disabled", False)
 
-    # Optional props
-    assert request_props.get("assetType") == req.get("asset_type")
-    assert request_props.get("description") == req.get("description")
-    assert request_props.get("documentationUri") == req.get("documentation_uri")
-    assert request_props.get("externalAssetId") == req.get("external_asset_id")
-    assert request_props.get("hardwareRevision") == req.get("hardware_revision")
-    assert request_props.get("manufacturer") == req.get("manufacturer")
-    assert request_props.get("manufacturerUri") == req.get("manufacturer_uri")
-    assert request_props.get("model") == req.get("model")
-    assert request_props.get("productCode") == req.get("product_code")
-    assert request_props.get("serialNumber") == req.get("serial_number")
-    assert request_props.get("softwareRevision") == req.get("software_revision")
+    # Check that update props mock got called correctly
+    assert request_props["result"]
+    assert request_props.get("defaultDataPointsConfiguration") is None
+    assert request_props.get("defaultEventsConfiguration") is None
 
-    # Defaults
-    dp_defaults = {
-        "publishingInterval": req.get("dp_publishing_interval", 1000),
-        "samplingInterval": req.get("dp_sampling_interval", 500),
-        "queueSize": req.get("dp_queue_size", 1)
-    }
-    assert request_props["defaultDataPointsConfiguration"] == json.dumps(dp_defaults)
-
-    ev_defaults = {
-        "publishingInterval": req.get("ev_publishing_interval", 1000),
-        "samplingInterval": req.get("ev_sampling_interval", 500),
-        "queueSize": req.get("ev_queue_size", 1)
-    }
-    assert request_props["defaultEventsConfiguration"] == json.dumps(ev_defaults)
+    # Set up defaults
+    req["disabled"] = req.get("disabled", False)
+    req["dp_publishing_interval"] = req.get("dp_publishing_interval", 1000)
+    req["dp_sampling_interval"] = req.get("dp_sampling_interval", 500)
+    req["dp_queue_size"] = req.get("dp_queue_size", 1)
+    req["ev_publishing_interval"] = req.get("ev_publishing_interval", 1000)
+    req["ev_sampling_interval"] = req.get("ev_sampling_interval", 500)
+    req["ev_queue_size"] = req.get("ev_queue_size", 1)
+    for arg in patched_up.call_args.kwargs:
+        assert patched_up.call_args.kwargs[arg] == req.get(arg)
+        assert request_props.get(arg) is None
 
     # Data points + events
     assert patched_dp.call_args[0][0] == req.get("data_points")
