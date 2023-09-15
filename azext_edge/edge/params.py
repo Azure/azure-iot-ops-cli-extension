@@ -11,6 +11,7 @@ CLI parameter definitions.
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag
 from .common import SupportForEdgeServiceType
+from .providers.edge_api.e4k import E4kResourceKinds
 
 
 def load_iotedge_arguments(self, _):
@@ -80,6 +81,19 @@ def load_iotedge_arguments(self, _):
             options_list=["--edge-service", "-e"],
             choices=CaseInsensitiveList(["e4k"]),
             help="The edge service deployment that will be evaluated.",
+        )
+        context.argument(
+            "resource_kinds",
+            nargs="*",
+            options_list=["--resources"],
+            choices=CaseInsensitiveList([
+                E4kResourceKinds.BROKER.value,
+                E4kResourceKinds.BROKER_LISTENER.value,
+                E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
+                E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+                E4kResourceKinds.DATALAKE_CONNECTOR.value,
+            ]),
+            help="Only run checks on specific resource kinds. Use space-separated values.",
         )
 
     with self.argument_context("edge e4k get-password-hash") as context:
