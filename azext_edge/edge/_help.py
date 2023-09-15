@@ -78,3 +78,51 @@ def load_iotedge_help():
         type: command
         short-summary: Generates a PBKDF2 hash of the passphrase applying PBKDF2-HMAC-SHA512. A 128-bit salt is used from os.urandom.
     """
+
+    helps[
+        "edge asset"
+    ] = """
+        type: group
+        short-summary: Manage assets.
+    """
+
+    helps[
+        "edge asset create"
+    ] = """
+        type: group
+        short-summary: Create an asset.
+    """
+
+    helps[
+        "edge asset list"
+    ] = """
+        type: group
+        short-summary: List assets.
+    """
+
+    helps[
+        "edge asset show"
+    ] = """
+        type: group
+        short-summary: Show an asset.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
+            the correct asset is retrieved.
+    """
+
+    helps[
+        "edge asset update"
+    ] = """
+        type: group
+        short-summary: Update an asset.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
+            the correct asset is modified.
+    """
+
+    helps[
+        "edge asset delete"
+    ] = """
+        type: group
+        short-summary: Delete an asset.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
+            the correct asset is deleted.
+    """
