@@ -8,9 +8,11 @@
 CLI parameter definitions.
 """
 
-from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag
-from .common import SupportForEdgeServiceType, AkriK8sDistroType, DeployableAioVersions
+from knack.arguments import CaseInsensitiveList
+
+from .common import AkriK8sDistroType, DeployableAioVersions, SupportForEdgeServiceType
+from .providers.edge_api import E4kResourceKinds
 from .providers.orchestration.aio_versions import EdgeServiceMoniker
 
 
@@ -81,6 +83,21 @@ def load_iotedge_arguments(self, _):
             options_list=["--edge-service", "-e"],
             choices=CaseInsensitiveList(["e4k"]),
             help="The edge service deployment that will be evaluated.",
+        )
+        context.argument(
+            "resource_kinds",
+            nargs="*",
+            options_list=["--resources"],
+            choices=CaseInsensitiveList(
+                [
+                    E4kResourceKinds.BROKER.value,
+                    E4kResourceKinds.BROKER_LISTENER.value,
+                    E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
+                    E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+                    E4kResourceKinds.DATALAKE_CONNECTOR.value,
+                ]
+            ),
+            help="Only run checks on specific resource kinds. Use space-separated values.",
         )
 
     with self.argument_context("edge e4k get-password-hash") as context:
@@ -154,14 +171,14 @@ def load_iotedge_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Flag when set, will show changes that will be made by the deployment "
             "if executed at the scope of the resource group.",
-            arg_group="Template"
+            arg_group="Template",
         )
         context.argument(
             "show_template",
             options_list=["--show-template"],
             arg_type=get_three_state_flag(),
             help="Flag when set, will output the generated template intended for deployment.",
-            arg_group="Template"
+            arg_group="Template",
         )
         context.argument(
             "aio_version",

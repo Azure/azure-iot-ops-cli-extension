@@ -38,6 +38,7 @@ def check(
     as_object=None,
     context_name=None,
     edge_service: str = "e4k",
+    resource_kinds: List[str] = None
 ) -> Union[dict, None]:
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
@@ -54,6 +55,7 @@ def check(
         as_list=not as_object,
         pre_deployment=run_pre,
         post_deployment=run_post,
+        resource_kinds=resource_kinds
     )
 
 
