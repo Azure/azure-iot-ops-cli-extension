@@ -65,7 +65,6 @@ def run_checks(
             desired_checks.update(
                 {
                     "checkK8sVersion": partial(check_k8s_version, as_list=as_list),
-                    "checkHelmVersion": partial(check_helm_version, as_list=as_list),
                     "checkNodes": partial(check_nodes, as_list=as_list),
                 }
             )
@@ -1537,70 +1536,6 @@ def check_k8s_version(as_list: bool = False):
             target_name=target_k8s_version,
             display=Padding(k8s_semver_text, (0, 0, 0, 8)),
         )
-
-    return check_manager.as_dict(as_list)
-
-
-def check_helm_version(as_list: bool = False):
-    from shutil import which
-    from subprocess import CalledProcessError, run
-    from packaging import version
-
-    from ..common import MIN_HELM_VERSION
-
-    check_manager = CheckManager(check_name="evalHelmVers", check_desc="Evaluate helm")
-    target_helm_version = "helm"
-    check_manager.add_target(
-        target_name=target_helm_version,
-        conditions=[f"(helm version)>={MIN_HELM_VERSION}"],
-    )
-
-    helm_path = which("helm")
-    if not helm_path:
-        not_found_helm_text = "Unable to determine. Is helm installed and on system path?"
-        check_manager.add_target_eval(
-            target_name=target_helm_version,
-            status=CheckTaskStatus.error.value,
-            value=not_found_helm_text,
-        )
-        check_manager.add_display(
-            target_name=target_helm_version,
-            display=Padding(not_found_helm_text, (0, 0, 0, 8)),
-        )
-        return check_manager.as_dict(as_list)
-
-    try:
-        completed_process = run(
-            [helm_path, "version", '--template="{{.Version}}"'],
-            capture_output=True,
-            check=True,
-        )
-    except CalledProcessError:
-        process_error_text = "Unable to determine. Error running helm version command."
-        check_manager.add_target_eval(
-            target_name=target_helm_version,
-            status=CheckTaskStatus.error.value,
-            value=process_error_text,
-        )
-        check_manager.add_display(
-            target_name=target_helm_version,
-            display=Padding(process_error_text, (0, 0, 0, 8)),
-        )
-        return CheckManager.as_dict(as_list)
-
-    helm_semver = completed_process.stdout.decode("utf-8").replace('"', "")
-    if version.parse(helm_semver) >= version.parse(MIN_HELM_VERSION):
-        helm_semver_status = CheckTaskStatus.success.value
-        helm_semver_colored = f"[green]{helm_semver}[/green]"
-    else:
-        helm_semver_status = CheckTaskStatus.error.value
-        helm_semver_colored = f"[red]{helm_semver}[/red]"
-    helm_semver_text = (
-        f"Require [bright_blue]helm[/bright_blue] >=[cyan]{MIN_HELM_VERSION}[/cyan] detected {helm_semver_colored}."
-    )
-
-    check_manager.add_target_eval(target_name=target_helm_version, status=helm_semver_status, value=helm_semver)
-    check_manager.add_display(target_name=target_helm_version, display=Padding(helm_semver_text, (0, 0, 0, 8)))
 
     return check_manager.as_dict(as_list)
 
