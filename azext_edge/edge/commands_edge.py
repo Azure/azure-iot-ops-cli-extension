@@ -75,6 +75,7 @@ def init(
     kubernetes_distro: str = AkriK8sDistroType.k8s.value,
     create_sync_rules: Optional[bool] = None,
     no_progress: Optional[bool] = None,
+    processor_instance_name: str = "azedge-init",
 ) -> Union[dict, None]:
     from azure.cli.core.commands.client_factory import get_subscription_id
     from .providers.orchestration import deploy
@@ -98,4 +99,5 @@ def init(
         simulate_plc=simulate_plc,
         create_sync_rules=create_sync_rules,
         no_progress=no_progress,
+        processor_instance_name=processor_instance_name,
     )

@@ -235,9 +235,9 @@ def load_iotedge_arguments(self, _):
         )
         # Bluefin
         context.argument(
-            "instance_name",
+            "processor_instance_name",
             options_list=["--processor-instance"],
             arg_type=get_three_state_flag(),
-            help="Disable deployment progress bar.",
+            help="Instance name for data processor. Used if data processor is part of the deployment.",
             arg_group="Data Processor",
         )

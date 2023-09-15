@@ -174,6 +174,23 @@ class ManifestBuilder:
         }
         self.resources.append(payload)
 
+    def add_bluefin_instance(self, name: str):
+        payload = {
+            "type": "Microsoft.Bluefin/instances",
+            "apiVersion": "2023-06-26-preview",
+            "name": name,
+            "location": "[variables('location')]",
+            "extendedLocation": {
+                "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]",
+                "type": "CustomLocation",
+            },
+            "properties": {},
+            "dependsOn": [
+                "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]"
+            ],
+        }
+        self.resources.append(payload)
+
     def add_std_symphony_components(self):
         from .components import get_akri, get_e4in, get_observability, get_opcua_broker
 
@@ -284,7 +301,7 @@ def deploy(
         configuration={
             "global.quickstart": True,
             "global.openTelemetryCollectorAddr": get_otel_collector_addr(cluster_namespace, True),
-        }
+        },
     )
     manifest_builder.add_extension(
         extension_type="microsoft.alicesprings.processor",
@@ -301,6 +318,9 @@ def deploy(
     )
     manifest_builder.add_custom_location()
     manifest_builder.add_std_symphony_components()
+
+    if EdgeServiceMoniker.bluefin.value in version_def.moniker_to_version_map:
+        manifest_builder.add_bluefin_instance(name=kwargs.get("processor_instance_name", "azedge-init"))
 
     if kwargs.get("show_template"):
         return manifest_builder.manifest
