@@ -47,3 +47,19 @@ def load_iotedge_commands(self, _):
         cmd_group.command("list", "list_assets")
         cmd_group.command("show", "show_asset")
         cmd_group.command("update", "update_asset")
+
+    with self.command_group(
+        "edge asset data-point",
+        command_type=asset_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_asset_data_point")
+        cmd_group.command("list", "list_asset_data_points")
+        cmd_group.command("remove", "remove_asset_data_point")
+
+    with self.command_group(
+        "edge asset event",
+        command_type=asset_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_asset_event")
+        cmd_group.command("list", "list_asset_events")
+        cmd_group.command("remove", "remove_asset_event")

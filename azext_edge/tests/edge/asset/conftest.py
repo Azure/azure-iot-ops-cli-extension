@@ -5,9 +5,11 @@
 # --------------------------------------------------------------------------------------------
 
 import pytest
+import json
 from . import (
     PROCESS_SUB_POINTS_ASSETS_PATH,
-    UPDATE_PROPERTIES_ASSETS_PATH
+    UPDATE_PROPERTIES_ASSETS_PATH,
+    SHOW_ASSETS_PATH
 )
 
 
@@ -27,3 +29,11 @@ def asset_helpers_fixture(mocker, request):
     patched_up = mocker.patch(UPDATE_PROPERTIES_ASSETS_PATH)
     patched_up.side_effect = mock_update_properties
     yield patched_sp, patched_up
+
+
+@pytest.fixture()
+def show_asset_fixture(mocker, request):
+    patched_show = mocker.patch(SHOW_ASSETS_PATH)
+    copy = json.loads(json.dumps(request.param))
+    patched_show.return_value = copy
+    yield patched_show, request.param

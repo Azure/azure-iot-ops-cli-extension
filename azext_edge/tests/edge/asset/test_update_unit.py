@@ -11,6 +11,8 @@ from ....edge.commands_assets import update_asset
 
 from . import (
     EMBEDDED_CLI_ASSETS_PATH,
+    MINIMUM_ASSET,
+    FULL_ASSET
 )
 from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
@@ -20,86 +22,7 @@ from ...generators import generate_generic_id
     "path": EMBEDDED_CLI_ASSETS_PATH,
     "as_json_result": {"result": generate_generic_id()}
 }], indirect=True)
-@pytest.mark.parametrize("original_asset", [
-    {
-        "extendedLocation": {
-            "name": generate_generic_id(),
-            "type": generate_generic_id(),
-        },
-        "id": generate_generic_id(),
-        "location": "westus3",
-        "name": "props-test-min",
-        "properties": {
-            "connectivityProfileUri": generate_generic_id(),
-            "dataPoints": [],
-            "defaultDataPointsConfiguration": "{\"publishingInterval\": 1000, \"samplingInterval\": 500, "
-            "\"queueSize\": 1}",
-            "defaultEventsConfiguration": "{\"publishingInterval\": 1000, \"samplingInterval\": 500, \"queueSize\": 1}",
-            "displayName": "props-test-min",
-            "enabled": True,
-            "events": [],
-            "externalAssetId": generate_generic_id(),
-            "provisioningState": "Accepted",
-            "uuid": generate_generic_id(),
-            "version": 1
-        },
-        "resourceGroup": generate_generic_id(),
-        "type": "microsoft.deviceregistry/assets"
-    },
-    {
-        "extendedLocation": {
-            "name": generate_generic_id(),
-            "type": generate_generic_id(),
-        },
-        "id": generate_generic_id(),
-        "location": "westus3",
-        "name": "props-test-max",
-        "properties": {
-            "assetType": generate_generic_id(),
-            "connectivityProfileUri": generate_generic_id(),
-            "dataPoints": [
-                {
-                    "capabilityId": "mymagicthing",
-                    "dataPointConfiguration": "{\"samplingInterval\": 100}",
-                    "dataSource": "potato3",
-                    "name": "yellow",
-                    "observabilityMode": "allthemagic"
-                }
-            ],
-            "defaultDataPointsConfiguration": "{\"publishingInterval\": \"100\", \"samplingInterval\": \"10\","
-            " \"queueSize\": \"2\"}",
-            "defaultEventsConfiguration": "{\"publishingInterval\": \"200\", \"samplingInterval\": \"20\", "
-            "\"queueSize\": \"3\"}",
-            "description": generate_generic_id(),
-            "displayName": "props-test-max",
-            "documentationUri": generate_generic_id(),
-            "enabled": False,
-            "events": [
-                {
-                    "eventConfiguration": "{}",
-                    "eventNotifier": "wat"
-                }
-            ],
-            "externalAssetId": generate_generic_id(),
-            "hardwareRevision": generate_generic_id(),
-            "manufacturer": generate_generic_id(),
-            "manufacturerUri": generate_generic_id(),
-            "model": generate_generic_id(),
-            "productCode": generate_generic_id(),
-            "provisioningState": "Failed",
-            "serialNumber": generate_generic_id(),
-            "softwareRevision": generate_generic_id(),
-            "uuid": generate_generic_id(),
-            "version": 1
-        },
-        "resourceGroup": generate_generic_id(),
-        "tags": {
-            generate_generic_id(): generate_generic_id(),
-            generate_generic_id(): generate_generic_id()
-        },
-        "type": "microsoft.deviceregistry/assets"
-    }
-])
+@pytest.mark.parametrize("show_asset_fixture", [MINIMUM_ASSET, FULL_ASSET], indirect=True)
 @pytest.mark.parametrize("asset_helpers_fixture", [{
     "process_asset_sub_points": generate_generic_id(),
     "update_properties": generate_generic_id(),
@@ -139,20 +62,19 @@ from ...generators import generate_generic_id
     },
 ])
 def test_update_asset(
-    mocker, fixture_cmd, embedded_cli_client, original_asset, asset_helpers_fixture, req
+    mocker, fixture_cmd, embedded_cli_client, show_asset_fixture, asset_helpers_fixture, req
 ):
     patched_sp, patched_up = asset_helpers_fixture
     # Required params
     asset_name = generate_generic_id()
-    # patch show call
-    patched_show = mocker.patch("azext_edge.edge.commands_assets.show_asset")
-    patched_show.return_value = original_asset
-
     result = update_asset(
         cmd=fixture_cmd,
         asset_name=asset_name,
         **req
     )
+
+    show_asset, original_asset = show_asset_fixture
+    assert show_asset.call_args.kwargs.get("resource_group_name") == req.get("resource_group_name")
     assert result == next(embedded_cli_client.as_json.side_effect)
 
     request = embedded_cli_client.invoke.call_args[0][-1]

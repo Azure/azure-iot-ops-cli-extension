@@ -89,21 +89,21 @@ def load_iotedge_help():
     helps[
         "edge asset create"
     ] = """
-        type: group
+        type: command
         short-summary: Create an asset.
     """
 
     helps[
         "edge asset list"
     ] = """
-        type: group
+        type: command
         short-summary: List assets.
     """
 
     helps[
         "edge asset show"
     ] = """
-        type: group
+        type: command
         short-summary: Show an asset.
         long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
             the correct asset is retrieved.
@@ -112,7 +112,7 @@ def load_iotedge_help():
     helps[
         "edge asset update"
     ] = """
-        type: group
+        type: command
         short-summary: Update an asset.
         long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
             the correct asset is modified.
@@ -121,8 +121,77 @@ def load_iotedge_help():
     helps[
         "edge asset delete"
     ] = """
-        type: group
+        type: command
         short-summary: Delete an asset.
         long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
             the correct asset is deleted.
+    """
+
+    helps[
+        "edge asset data-point"
+    ] = """
+        type: group
+        short-summary: Manage data points in an asset.
+    """
+
+    helps[
+        "edge asset data-point add"
+    ] = """
+        type: command
+        short-summary: Add a data point to an asset.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
+            the correct asset is deleted.
+
+            To modify multiple data points at once, please use `az edge asset update` instead.
+    """
+
+    helps[
+        "edge asset data-point list"
+    ] = """
+        type: command
+        short-summary: List data points in an asset.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
+            the correct asset is deleted.
+    """
+
+    helps[
+        "edge asset data-point remove"
+    ] = """
+        type: command
+        short-summary: Remove a data point in an asset.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
+            the correct asset is retrieved.
+
+            To modify multiple data points at once, please use `az edge asset update` instead.
+    """
+
+    helps[
+        "edge asset event add"
+    ] = """
+        type: command
+        short-summary: Add an event to an asset.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
+            the correct asset is deleted.
+
+            To modify multiple events at once, please use `az edge asset update` instead.
+    """
+
+    helps[
+        "edge asset event list"
+    ] = """
+        type: command
+        short-summary: List events in an asset.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
+            the correct asset is deleted.
+    """
+
+    helps[
+        "edge asset event remove"
+    ] = """
+        type: command
+        short-summary: Remove an event in an asset.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
+            the correct asset is retrieved.
+
+            To modify multiple events at once, please use `az edge asset update` instead.
     """

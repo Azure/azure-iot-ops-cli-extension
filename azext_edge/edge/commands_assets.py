@@ -246,8 +246,8 @@ def update_asset(
 # Data Point sub commands
 def add_asset_data_point(
     cmd,
-    data_source: str,
     asset_name: str,
+    data_source: str,
     capability_id: Optional[str] = None,
     name: Optional[str] = None,
     observability_mode: Optional[str] = None,
@@ -275,7 +275,7 @@ def add_asset_data_point(
     cli.invoke(
         f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(asset)}'"
     )
-    return cli.as_json()
+    return cli.as_json()["properties"]["dataPoints"]
 
 
 def list_asset_data_points(
@@ -311,7 +311,7 @@ def remove_asset_data_point(
     if data_source:
         data_points = [dp for dp in data_points if dp["dataSource"] != data_source]
     else:
-        data_points = [dp for dp in data_points if dp["name"] != name]
+        data_points = [dp for dp in data_points if dp.get("name") != name]
 
     asset["properties"]["dataPoints"] = data_points
 
@@ -320,14 +320,14 @@ def remove_asset_data_point(
     cli.invoke(
         f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(asset)}'"
     )
-    return cli.as_json()
+    return cli.as_json()["properties"]["dataPoints"]
 
 
 # Event sub commands
 def add_asset_event(
     cmd,
-    event_notifier: str,
     asset_name: str,
+    event_notifier: str,
     capability_id: Optional[str] = None,
     name: Optional[str] = None,
     observability_mode: Optional[str] = None,
@@ -355,7 +355,7 @@ def add_asset_event(
     cli.invoke(
         f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(asset)}'"
     )
-    return cli.as_json()
+    return cli.as_json()["properties"]["events"]
 
 
 def list_asset_events(
@@ -389,9 +389,9 @@ def remove_asset_event(
 
     events = asset["properties"]["events"]
     if event_notifier:
-        events = [dp for dp in events if dp["dataSource"] != event_notifier]
+        events = [e for e in events if e["eventNotifier"] != event_notifier]
     else:
-        events = [dp for dp in events if dp["name"] != name]
+        events = [e for e in events if e.get("name") != name]
 
     asset["properties"]["events"] = events
 
@@ -400,7 +400,7 @@ def remove_asset_event(
     cli.invoke(
         f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(asset)}'"
     )
-    return cli.as_json()
+    return cli.as_json()["properties"]["events"]
 
 
 # Helpers

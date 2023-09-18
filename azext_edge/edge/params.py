@@ -177,7 +177,9 @@ def load_iotedge_arguments(self, _):
             nargs="+",
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the data point to create. "
-            "The following key values are supported: `capability_id`, `data_point_configuration`, `data_source` (required), `name`, `observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` (int), `queue_size` (int) "
+            "The following key values are supported: `capability_id`, `data_point_configuration`, "
+            "`data_source` (required), `name`, `observability_mode` (none, gauge, counter, histogram, "
+            "or log), `sampling_interval` (int), `queue_size` (int) "
             "--data-point can be used 1 or more times. Review help examples for full parameter usage",
             arg_group="Additional Info",
         )
@@ -199,7 +201,9 @@ def load_iotedge_arguments(self, _):
             nargs="+",
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the event to create. "
-            "The following key values are supported: `capability_id`, `data_point_configuration`, `event_notifier` (required), `name`, `observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` (int), `queue_size` (int) "
+            "The following key values are supported: `capability_id`, `data_point_configuration`, "
+            "`event_notifier` (required), `name`, `observability_mode` (none, gauge, counter, histogram, "
+            "or log), `sampling_interval` (int), `queue_size` (int) "
             "--event can be used 1 or more times. Review help examples for full parameter usage",
             arg_group="Additional Info",
         )
@@ -260,7 +264,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "dp_sampling_interval",
             options_list=["--data-point-sampling-interval", "--dpsi"],
-            help="Default sampling interval for data points.",
+            help="Default sampling interval (in milliseconds) for data points.",
             arg_group="Data Point Default",
         )
         context.argument(
@@ -278,7 +282,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "ev_sampling_interval",
             options_list=["--event-sampling-interval", "--esi"],
-            help="Default sampling interval for events.",
+            help="Default sampling interval (in milliseconds) for events.",
             arg_group="Event Default",
         )
         context.argument(
@@ -292,4 +296,53 @@ def load_iotedge_arguments(self, _):
             options_list=["--tags"],
             help="Asset tags. Property bag in key-value pairs with the following format: a=b c=d",
             arg_type=tags_type,
+        )
+        context.argument(
+            "observability_mode",
+            options_list=["--observability-mode", "--om"],
+            help="Observability mode.",
+        )
+        context.argument(
+            "queue_size",
+            options_list=["--queue-size", "--qs"],
+            help="Custom queue size.",
+        )
+        context.argument(
+            "sampling_interval",
+            options_list=["--sampling-interval", "--si"],
+            help="Custom sampling interval (in milliseconds).",
+        )
+
+    with self.argument_context("edge asset data-point") as context:
+        context.argument(
+            "capability_id",
+            options_list=["--capability-id", "--ci"],
+            help="Capability Id. If not provided, data point name will be used.",
+        )
+        context.argument(
+            "name",
+            options_list=["--data-point-name", "--dpn"],
+            help="Data point name.",
+        )
+        context.argument(
+            "data_source",
+            options_list=["--data-source", "--ds"],
+            help="Data source.",
+        )
+
+    with self.argument_context("edge asset event") as context:
+        context.argument(
+            "capability_id",
+            options_list=["--capability-id", "--ci"],
+            help="Capability Id. If not provided, event name will be used.",
+        )
+        context.argument(
+            "name",
+            options_list=["--event-name", "--en"],
+            help="Event name.",
+        )
+        context.argument(
+            "event_notifier",
+            options_list=["--event-notifier", "--en"],
+            help="Event notifier.",
         )
