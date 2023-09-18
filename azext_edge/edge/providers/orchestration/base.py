@@ -233,7 +233,7 @@ class ManifestBuilder:
         if self.resources:
             m["resources"].extend(self.resources)
         if self.symphony_components:
-            m["variables"]["targetName"] = f"{self.cluster_name}-{self.cluster_namespace}-init"
+            m["variables"]["targetName"] = f"{self.cluster_name}-{self.cluster_namespace}-init-target"
             t = deepcopy(self._symphony_target_template)
             t["properties"]["components"].extend(self.symphony_components)
             m["resources"].append(t)
@@ -320,7 +320,7 @@ def deploy(
     manifest_builder.add_std_symphony_components()
 
     if EdgeServiceMoniker.bluefin.value in version_def.moniker_to_version_map:
-        manifest_builder.add_bluefin_instance(name=kwargs.get("processor_instance_name", "azedge-init"))
+        manifest_builder.add_bluefin_instance(name=kwargs["processor_instance_name"])
 
     if kwargs.get("show_template"):
         return manifest_builder.manifest

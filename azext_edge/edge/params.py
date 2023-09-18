@@ -152,12 +152,13 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_location_name",
             options_list=["--custom-location"],
-            help="The custom location name corresponding to the PAS deployment.",
+            help="The custom location name corresponding to the PAS deployment. If no custom location name is provided"
+            " one will be generated in the form '{cluster_name}_azedge_init'.",
         )
         context.argument(
             "cluster_namespace",
             options_list=["--cluster-namespace"],
-            help="The cluster namespace PAS resources will be deployed to.",
+            help="The cluster namespace PAS resources will be deployed to. Must be lowercase.",
         )
         context.argument(
             "location",
@@ -189,7 +190,7 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "detail_aio_version",
-            options_list=["--detail-version"],
+            options_list=["--version-detail"],
             help="Summarize and show the versions of deployable components.",
             arg_type=get_three_state_flag(),
             arg_group="AIO Version",
@@ -255,6 +256,8 @@ def load_iotedge_arguments(self, _):
             "processor_instance_name",
             options_list=["--processor-instance"],
             arg_type=get_three_state_flag(),
-            help="Instance name for data processor. Used if data processor is part of the deployment.",
+            help="Instance name for data processor. Used if data processor is part of the deployment. "
+            "If no processor instance name is provided one will be generated in the form "
+            "'{cluster_name}-azedge-init-instance'.",
             arg_group="Data Processor",
         )

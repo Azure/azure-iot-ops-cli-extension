@@ -38,7 +38,7 @@ def check(
     as_object=None,
     context_name=None,
     edge_service: str = "e4k",
-    resource_kinds: List[str] = None
+    resource_kinds: List[str] = None,
 ) -> Union[dict, None]:
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
@@ -55,7 +55,7 @@ def check(
         as_list=not as_object,
         pre_deployment=run_pre,
         post_deployment=run_post,
-        resource_kinds=resource_kinds
+        resource_kinds=resource_kinds,
     )
 
 
@@ -64,8 +64,8 @@ def init(
     cluster_name: str,
     cluster_namespace: str,
     resource_group_name: str,
-    custom_location_name: str = "azedge_init",
     aio_version: str = "0.1.1",
+    custom_location_name: Optional[str] = None,
     detail_aio_version: Optional[bool] = None,
     custom_version: Optional[List[str]] = None,
     only_deploy_custom: Optional[bool] = None,
@@ -77,10 +77,21 @@ def init(
     kubernetes_distro: str = AkriK8sDistroType.k8s.value,
     create_sync_rules: Optional[bool] = None,
     no_progress: Optional[bool] = None,
-    processor_instance_name: str = "azedge-init",
+    processor_instance_name: Optional[str] = None,
 ) -> Union[dict, None]:
     from azure.cli.core.commands.client_factory import get_subscription_id
     from .providers.orchestration import deploy
+
+    # cluster namespace must be lowercase
+    cluster_namespace = cluster_namespace.lower()
+    if not custom_location_name:
+        custom_location_name = f"{cluster_name.lower()}_azedge_init"
+
+    if not processor_instance_name:
+        processor_instance_name = f"{cluster_name.lower()}-azedge-init-instance"
+
+    if simulate_plc and not opcua_discovery_endpoint:
+        opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
 
     return deploy(
         subscription_id=get_subscription_id(cmd.cli_ctx),
