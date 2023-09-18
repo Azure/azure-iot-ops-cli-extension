@@ -338,7 +338,7 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "name",
-            options_list=["--event-name", "--en"],
+            options_list=["--event-name", "--evn"],
             help="Event name.",
         )
         context.argument(
