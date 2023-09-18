@@ -276,6 +276,13 @@ def load_iotedge_help():
     """
 
     helps[
+        "edge asset event"
+    ] = """
+        type: group
+        short-summary: Manage events in an asset.
+    """
+
+    helps[
         "edge asset event add"
     ] = """
         type: command
