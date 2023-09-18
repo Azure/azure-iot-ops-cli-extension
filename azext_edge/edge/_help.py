@@ -91,6 +91,45 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Create an asset.
+
+        examples:
+        - name: Create an asset.
+          text: >
+            az edge asset create -n {asset_name} -g {resouce_group} --custom-location {custom_location}
+            --endpoint-profile {endpoint_profile}
+
+        - name: Create an asset with custom data point and event defaults.
+          text: >
+            az edge asset create -n {asset_name} -g {resouce_group} --custom-location {custom_location}
+            --endpoint-profile {endpoint_profile} --data-point-publishing-interval {data_point_publishing_interval}
+            --data-point-queue-size {data_point_queue_size} --data-point-sampling-interval {data_point_sampling_interval}
+            --event-publishing-interval {event_publishing_interval} --event-queue-size {event_queue_size}
+            --event-sampling-interval {event_sampling_interval}
+
+        - name: Create an asset with custom asset type, description, documentation uri, external asset id, hardware revision,
+                product code, and software revision.
+          text: >
+            az edge asset create -n {asset_name} -g {resouce_group} --custom-location {custom_location}
+            --endpoint-profile {endpoint_profile} --asset-type {asset_type} --description {description}
+            --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
+            --product-code {product_code} --software-revision {software_revision}
+
+        - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number. This asset will have two events.
+          text: >
+            az edge asset create -n {asset_name} -g {resouce_group} --custom-location {custom_location}
+            --endpoint-profile {endpoint_profile} --event 'capability_id'={capability_id} 'event_notifier'={event_notifier}
+            'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval} 'queue_size'={queue_size}
+            --event 'event_notifier'={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
+            --serial-number {serial_number}
+
+        - name: Create a disabled asset with two data points and specify a custom location found in a seperate subscription and
+                resource group.
+          text: >
+            az edge asset create -n {asset_name} -g {resouce_group} --custom-location {custom_location}
+            --custom-location-resource-group {custom_location_resource_group} --custom-location-subscription {custom_location_subscription}
+            --endpoint-profile {endpoint_profile} --disabled --data-point 'capability_id'={capability_id}
+            'data_source'={data_source} 'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval}
+            'queue_size'={queue_size} --data-point 'data_source'={data_source}
     """
 
     helps[
@@ -98,6 +137,15 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: List assets.
+
+        examples:
+        - name: List all assets in the current subscription.
+          text: >
+            az edge asset list
+
+        - name: List all assets in a resource group.
+          text: >
+            az edge asset list -g {resouce_group}
     """
 
     helps[
@@ -105,8 +153,13 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Show an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
-            the correct asset is retrieved.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the
+            resource group to ensure the correct asset is shown.
+
+        examples:
+        - name: Show the details of an asset.
+          text: >
+            az edge asset show -n {asset_name} -g {resouce_group}
     """
 
     helps[
@@ -114,8 +167,37 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Update an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
-            the correct asset is modified.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the
+            resource group to ensure the correct asset is updated.
+
+        examples:
+        - name: Update an asset's data point and event defaults.
+          text: >
+            az edge asset update -n {asset_name} -g {resouce_group} --data-point-publishing-interval {data_point_publishing_interval}
+            --data-point-queue-size {data_point_queue_size} --data-point-sampling-interval {data_point_sampling_interval}
+            --event-publishing-interval {event_publishing_interval} --event-queue-size {event_queue_size}
+            --event-sampling-interval {event_sampling_interval}
+
+        - name: Update an asset's asset type, description, documentation uri, external asset id, hardware revision, product code,
+                and software revision.
+          text: >
+            az edge asset update -n {asset_name} -g {resouce_group} --asset-type {asset_type} --description {description}
+            --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
+            --product-code {product_code} --software-revision {software_revision}
+
+        - name: Update an asset's events, manufacturer, manufacturer uri, model, serial number. This will overwrite the events
+                with the two given events.
+          text: >
+            az edge asset update -n {asset_name} -g {resouce_group} --event 'capability_id'={capability_id} 'event_notifier'={event_notifier}
+            'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval} 'queue_size'={queue_size}
+            --event 'event_notifier'={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
+            --serial-number {serial_number}
+
+        - name: Disable an asset and update it's data points. This will overwrite the data points with the two given data points.
+          text: >
+            az edge asset update -n {asset_name} -g {resouce_group} --disabled --data-point 'capability_id'={capability_id}
+            'data_source'={data_source} 'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval}
+            'queue_size'={queue_size} --data-point 'data_source'={data_source}
     """
 
     helps[
@@ -123,8 +205,12 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Delete an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
-            the correct asset is deleted.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the
+            resource group to ensure the correct asset is deleted.
+        examples:
+        - name: Delete an asset.
+          text: >
+            az edge asset delete -n {asset_name} -g {resouce_group}
     """
 
     helps[
@@ -139,10 +225,21 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Add a data point to an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
-            the correct asset is deleted.
-
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the
+            resource group to ensure the correct asset is retrieved.
             To modify multiple data points at once, please use `az edge asset update` instead.
+
+        examples:
+        - name: Add a data point to an asset.
+          text: >
+            az edge asset data-point add -n {asset_name} -g {resouce_group} --data-source {data_source}
+
+        - name: Add a data point to an asset with capability id, data point name, observability mode, custom queue size,
+                and custom sampling interval.
+          text: >
+            az edge asset data-point add -n {asset_name} -g {resouce_group} --data-source {data_source} --data-point-name
+            {data_point_name} --capability-id {capability_id} --observability-mode {observability_mode} --queue-size
+            {queue_size} --sampling-interval {sampling_interval}
     """
 
     helps[
@@ -150,8 +247,12 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: List data points in an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
-            the correct asset is deleted.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the
+            resource group to ensure the correct asset is retrieved.
+        examples:
+        - name: List all data-points in an asset.
+          text: >
+            az edge asset data-point list -n {asset_name} -g {resouce_group}
     """
 
     helps[
@@ -159,10 +260,19 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Remove a data point in an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
-            the correct asset is retrieved.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the
+            resource group to ensure the correct asset is retrieved.
 
             To modify multiple data points at once, please use `az edge asset update` instead.
+
+        examples:
+        - name: Remove a data point from an asset via the data source.
+          text: >
+            az edge asset data-point remove -n {asset_name} -g {resouce_group} --data-source {data_source}
+
+        - name: Remove a data point from an asset via the data point name.
+          text: >
+            az edge asset data-point remove -n {asset_name} -g {resouce_group} --data-point-name {data_point_name}
     """
 
     helps[
@@ -170,10 +280,21 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Add an event to an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
-            the correct asset is deleted.
-
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the
+            resource group to ensure the correct asset is retrieved.
             To modify multiple events at once, please use `az edge asset update` instead.
+
+        examples:
+        - name: Add an event to an asset.
+          text: >
+            az edge asset event add -n {asset_name} -g {resouce_group} --event-notifier {event_notifier}
+
+        - name: Add an event to an asset with capability id, event name, observability mode, custom queue size,
+                and custom sampling interval.
+          text: >
+            az edge asset event add -n {asset_name} -g {resouce_group} --event-notifier {event_notifier}
+            --event-name {event_name} --capability-id {capability_id} --observability-mode
+            {observability_mode} --queue-size {queue_size} --sampling-interval {sampling_interval}
     """
 
     helps[
@@ -181,8 +302,13 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: List events in an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
-            the correct asset is deleted.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the
+            resource group to ensure the correct asset is retrieved.
+
+        examples:
+        - name: List all events in an asset.
+          text: >
+            az edge asset event list -n {asset_name} -g {resouce_group}
     """
 
     helps[
@@ -190,8 +316,17 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Remove an event in an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the resource group to ensure
-            the correct asset is retrieved.
+        long-summary: If there are multiple assets with the same name within a subscription, please provide the
+            resource group to ensure the correct asset is retrieved.
 
             To modify multiple events at once, please use `az edge asset update` instead.
+
+        examples:
+        - name: Remove an event from an asset via the event notifier.
+          text: >
+            az edge asset event remove -n {asset_name} -g {resouce_group} --event-notifier {event_notifier}
+
+        - name: Remove an event from an asset via the event name.
+          text: >
+            az edge asset event remove -n {asset_name} -g {resouce_group} --event-name {event_name}
     """

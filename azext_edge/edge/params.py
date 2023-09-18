@@ -177,9 +177,9 @@ def load_iotedge_arguments(self, _):
             nargs="+",
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the data point to create. "
-            "The following key values are supported: `capability_id`, `data_point_configuration`, "
-            "`data_source` (required), `name`, `observability_mode` (none, gauge, counter, histogram, "
-            "or log), `sampling_interval` (int), `queue_size` (int) "
+            "The following key values are supported: `capability_id`, `data_source` (required), `name`, "
+            "`observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` (int), "
+            "`queue_size` (int). "
             "--data-point can be used 1 or more times. Review help examples for full parameter usage",
             arg_group="Additional Info",
         )
@@ -188,6 +188,13 @@ def load_iotedge_arguments(self, _):
             options_list=["--description", "-d"],
             help="Description.",
             arg_group="Additional Info",
+        )
+        context.argument(
+            "disabled",
+            options_list=["--disable"],
+            help="Disable an asset.",
+            arg_group="Additional Info",
+            arg_type=get_three_state_flag(),
         )
         context.argument(
             "documentation_uri",
@@ -201,9 +208,9 @@ def load_iotedge_arguments(self, _):
             nargs="+",
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the event to create. "
-            "The following key values are supported: `capability_id`, `data_point_configuration`, "
-            "`event_notifier` (required), `name`, `observability_mode` (none, gauge, counter, histogram, "
-            "or log), `sampling_interval` (int), `queue_size` (int) "
+            "The following key values are supported: `capability_id`, `event_notifier` (required), "
+            "`name`, `observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` "
+            "(int), `queue_size` (int). "
             "--event can be used 1 or more times. Review help examples for full parameter usage",
             arg_group="Additional Info",
         )
