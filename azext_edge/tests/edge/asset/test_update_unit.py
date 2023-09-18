@@ -101,9 +101,8 @@ from ...generators import generate_generic_id
     }
 ])
 @pytest.mark.parametrize("asset_helpers_fixture", [{
-    "process_dp_result": generate_generic_id(),
-    "process_ev_result": generate_generic_id(),
-    "update_properties_result": generate_generic_id(),
+    "process_asset_sub_points": generate_generic_id(),
+    "update_properties": generate_generic_id(),
 }], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
@@ -142,7 +141,7 @@ from ...generators import generate_generic_id
 def test_update_asset(
     mocker, fixture_cmd, embedded_cli_client, original_asset, asset_helpers_fixture, req
 ):
-    patched_dp, patched_ev, patched_up = asset_helpers_fixture
+    patched_sp, patched_up = asset_helpers_fixture
     # Required params
     asset_name = generate_generic_id()
     # patch show call
@@ -183,13 +182,15 @@ def test_update_asset(
 
     # Data points + events
     if req.get("data_points"):
-        assert patched_dp.call_args.args[0] == req["data_points"]
-        assert request_props["dataPoints"] == patched_dp.return_value
+        assert patched_sp.call_args_list[0].args[0] == "data_source"
+        assert patched_sp.call_args_list[0].args[1] == req["data_points"]
+        assert request_props["dataPoints"] == patched_sp.return_value
     else:
         assert request_props["dataPoints"] == original_props["dataPoints"]
 
     if req.get("events"):
-        assert patched_ev.call_args.args[0] == req["events"]
-        assert request_props["events"] == patched_ev.return_value
+        assert patched_sp.call_args_list[-1].args[0] == "event_notifier"
+        assert patched_sp.call_args_list[-1].args[1] == req["events"]
+        assert request_props["events"] == patched_sp.return_value
     else:
         assert request_props["events"] == original_props["events"]

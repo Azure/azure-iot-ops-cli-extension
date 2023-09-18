@@ -7,12 +7,59 @@
 import json
 import pytest
 
-from azure.cli.core.azclierror import RequiredArgumentMissingError
+from azure.cli.core.azclierror import InvalidArgumentValueError, RequiredArgumentMissingError
 from azext_edge.common.utility import assemble_nargs_to_dict
 
-from ....edge.commands_assets import build_configuration, process_data_points, process_events, update_properties
+from ....edge.commands_assets import (
+    _build_asset_sub_point,
+    _build_default_configuration,
+    _process_asset_sub_points,
+    _update_properties
+)
 
 from ...generators import generate_generic_id
+
+
+@pytest.mark.parametrize("data_source", [None, generate_generic_id()])
+@pytest.mark.parametrize("event_notifier", [None, generate_generic_id()])
+@pytest.mark.parametrize("capability_id", [None, generate_generic_id()])
+@pytest.mark.parametrize("name", [None, generate_generic_id()])
+@pytest.mark.parametrize("observability_mode", [None, generate_generic_id()])
+@pytest.mark.parametrize("queue_size", [None, 20])
+@pytest.mark.parametrize("sampling_interval", [None, 33])
+def test_build_asset_sub_point(
+    data_source, event_notifier, capability_id, name, observability_mode, queue_size, sampling_interval
+):
+    result = _build_asset_sub_point(
+        data_source=data_source,
+        event_notifier=event_notifier,
+        capability_id=capability_id,
+        name=name,
+        observability_mode=observability_mode,
+        queue_size=queue_size,
+        sampling_interval=sampling_interval
+    )
+
+    assert result["capabilityId"] == (capability_id or name)
+    assert result["name"] == name
+    assert result["observabilityMode"] == observability_mode
+
+    custom_configuration = {}
+    if data_source:
+        assert result["dataSource"] == data_source
+        assert result["dataPointConfiguration"]
+        custom_configuration = json.loads(result["dataPointConfiguration"])
+        assert "eventNotifier" not in result
+    elif event_notifier:
+        assert result["eventNotifier"] == event_notifier
+        assert result["eventConfiguration"]
+        custom_configuration = json.loads(result["eventConfiguration"])
+        assert "dataSource" not in result
+
+    assert custom_configuration.get("samplingInterval") == (
+        sampling_interval if data_source or event_notifier else None
+    )
+    assert custom_configuration.get("queueSize") == (queue_size if data_source or event_notifier else None)
 
 
 @pytest.mark.parametrize("original_configuration", [
@@ -22,8 +69,8 @@ from ...generators import generate_generic_id
 @pytest.mark.parametrize("publishing_interval", [None, 100])
 @pytest.mark.parametrize("sampling_interval", [None, 3000])
 @pytest.mark.parametrize("queue_size", [None, 4])
-def test_build_configuration(original_configuration, publishing_interval, sampling_interval, queue_size):
-    new_configuration = build_configuration(
+def test_build_default_configuration(original_configuration, publishing_interval, sampling_interval, queue_size):
+    new_configuration = _build_default_configuration(
         original_configuration=original_configuration,
         publishing_interval=publishing_interval,
         sampling_interval=sampling_interval,
@@ -41,16 +88,13 @@ def test_build_configuration(original_configuration, publishing_interval, sampli
     assert new_config == old_config
 
 
-@pytest.mark.parametrize("data_points", [
+@pytest.mark.parametrize("required_arg", ["data_source", "event_notifier"])
+@pytest.mark.parametrize("sub_points", [
     None,
-    [[f"data_source={generate_generic_id()}"]],
-    [
-        [f"data_source={generate_generic_id()}"],
-        [f"data_source={generate_generic_id()}"]
-    ],
+    [[]],
+    [[], []],
     [
         [
-            f"data_source={generate_generic_id()}",
             "sampling_interval=10",
             "queue_size=1000",
             f"capability_id={generate_generic_id()}",
@@ -60,21 +104,18 @@ def test_build_configuration(original_configuration, publishing_interval, sampli
     ],
     [
         [
-            f"data_source={generate_generic_id()}",
             f"name={generate_generic_id()}",
             f"observability_mode={generate_generic_id()}",
         ]
     ],
     [
         [
-            f"data_source={generate_generic_id()}",
             "sampling_interval=10",
             f"capability_id={generate_generic_id()}",
             f"name={generate_generic_id()}",
             f"observability_mode={generate_generic_id()}",
         ],
         [
-            f"data_source={generate_generic_id()}",
             "sampling_interval=10",
             "queue_size=1000",
             f"capability_id={generate_generic_id()}",
@@ -82,7 +123,6 @@ def test_build_configuration(original_configuration, publishing_interval, sampli
             f"observability_mode={generate_generic_id()}",
         ],
         [
-            f"data_source={generate_generic_id()}",
             "sampling_interval=10",
             "queue_size=1000",
             f"capability_id={generate_generic_id()}",
@@ -91,128 +131,42 @@ def test_build_configuration(original_configuration, publishing_interval, sampli
         ]
     ],
 ])
-def test_process_data_points(data_points):
-    expected_result = []
-    if data_points:
-        for item in data_points:
-            parsed_item = assemble_nargs_to_dict(item)
+def test_process_asset_sub_points(required_arg, sub_points):
+    sub_points_copy = sub_points
+    if sub_points_copy:
+        # Make a copy to avoid tests from conflicting
+        sub_points_copy = sub_points_copy[:]
+        for i in range(len(sub_points_copy)):
+            sub_points_copy[i] = sub_points_copy[i][:] + [f"{required_arg}={generate_generic_id()}"]
 
-            custom_configuration = {}
-            if parsed_item.get("sampling_interval"):
-                custom_configuration["samplingInterval"] = int(parsed_item.get("sampling_interval"))
-            if parsed_item.get("queue_size"):
-                custom_configuration["queueSize"] = int(parsed_item.get("queue_size"))
-
-            if not parsed_item.get("capability_id"):
-                parsed_item["capability_id"] = parsed_item.get("name")
-
-            final_item = {
-                "capabilityId": parsed_item.get("capability_id"),
-                "dataPointConfiguration": json.dumps(custom_configuration),
-                "dataSource": parsed_item.get("data_source"),
-                "name": parsed_item.get("name"),
-                "observabilityMode": parsed_item.get("observability_mode")
-            }
-            expected_result.append(final_item)
-
-    result = process_data_points(data_points)
-
-    assert result == expected_result
+    result = _process_asset_sub_points(required_arg, sub_points_copy)
+    if sub_points_copy is None:
+        sub_points_copy = []
+    assert len(result) == len(sub_points_copy)
+    for i in range(len(result)):
+        expected_item = _build_asset_sub_point(**assemble_nargs_to_dict(sub_points_copy[i]))
+        assert result[i] == expected_item
 
 
-def test_process_data_points_error():
+@pytest.mark.parametrize("required_arg", ["data_source", "event_notifier"])
+def test_process_asset_sub_points_error(required_arg):
+    point_type = "Data point" if required_arg == "data_source" else "Event"
     with pytest.raises(RequiredArgumentMissingError) as e:
-        process_data_points(
-            [["a=b", "c=d"]]
+        _process_asset_sub_points(
+            required_arg,
+            [["a=b"]]
         )
-    assert "missing the data_source" in e.value.error_msg
+    assert e.value.error_msg.startswith(point_type)
+    assert f"is missing the {required_arg}" in e.value.error_msg
 
-
-@pytest.mark.parametrize("events", [
-    None,
-    [[f"event_notifier={generate_generic_id()}"]],
-    [
-        [f"event_notifier={generate_generic_id()}"],
-        [f"event_notifier={generate_generic_id()}"]
-    ],
-    [
-        [
-            f"event_notifier={generate_generic_id()}",
-            "sampling_interval=10",
-            "queue_size=1000",
-            f"capability_id={generate_generic_id()}",
-            f"name={generate_generic_id()}",
-            f"observability_mode={generate_generic_id()}",
-        ]
-    ],
-    [
-        [
-            f"event_notifier={generate_generic_id()}",
-            f"name={generate_generic_id()}",
-            f"observability_mode={generate_generic_id()}",
-        ]
-    ],
-    [
-        [
-            f"event_notifier={generate_generic_id()}",
-            "sampling_interval=10",
-            f"capability_id={generate_generic_id()}",
-            f"name={generate_generic_id()}",
-            f"observability_mode={generate_generic_id()}",
-        ],
-        [
-            f"event_notifier={generate_generic_id()}",
-            "sampling_interval=10",
-            "queue_size=1000",
-            f"capability_id={generate_generic_id()}",
-            f"name={generate_generic_id()}",
-            f"observability_mode={generate_generic_id()}",
-        ],
-        [
-            f"event_notifier={generate_generic_id()}",
-            "sampling_interval=10",
-            "queue_size=1000",
-            f"capability_id={generate_generic_id()}",
-            f"name={generate_generic_id()}",
-            f"observability_mode={generate_generic_id()}",
-        ]
-    ],
-])
-def test_process_events(events):
-    expected_result = []
-    if events:
-        for item in events:
-            parsed_item = assemble_nargs_to_dict(item)
-
-            custom_configuration = {}
-            if parsed_item.get("sampling_interval"):
-                custom_configuration["samplingInterval"] = int(parsed_item.get("sampling_interval"))
-            if parsed_item.get("queue_size"):
-                custom_configuration["queueSize"] = int(parsed_item.get("queue_size"))
-
-            if not parsed_item.get("capability_id"):
-                parsed_item["capability_id"] = parsed_item.get("name")
-
-            final_item = {
-                "capabilityId": parsed_item.get("capability_id"),
-                "eventConfiguration": json.dumps(custom_configuration),
-                "eventNotifier": parsed_item.get("event_notifier"),
-                "name": parsed_item.get("name"),
-                "observabilityMode": parsed_item.get("observability_mode")
-            }
-            expected_result.append(final_item)
-
-    result = process_events(events)
-
-    assert result == expected_result
-
-
-def test_process_events_error():
-    with pytest.raises(RequiredArgumentMissingError) as e:
-        process_events(
-            [["a=b", "c=d"]]
+    invalid_arg = "event_notifier" if required_arg == "data_source" else "data_source"
+    with pytest.raises(InvalidArgumentValueError) as e:
+        _process_asset_sub_points(
+            required_arg,
+            [[f"{required_arg}={generate_generic_id()}", f"{invalid_arg}={generate_generic_id()}"]]
         )
-    assert "missing the event_notifier" in e.value.error_msg
+    assert e.value.error_msg.startswith(point_type)
+    assert f"does not support {invalid_arg}." in e.value.error_msg
 
 
 @pytest.mark.parametrize("properties", [
@@ -268,7 +222,7 @@ def test_process_events_error():
 def test_update_properties(properties, req):
     # lazy way of copying to avoid having to make sure we copy possible the lists
     original_properties = json.loads(json.dumps(properties))
-    update_properties(
+    _update_properties(
         properties=properties,
         **req
     )
@@ -294,7 +248,7 @@ def test_update_properties(properties, req):
         "software_revision", original_properties.get("softwareRevision")
     )
 
-    expected_default_data_points = build_configuration(
+    expected_default_data_points = _build_default_configuration(
         original_configuration=properties.get("defaultDataPointsConfiguration", "{}"),
         publishing_interval=req.get("dp_publishing_interval"),
         sampling_interval=req.get("dp_sampling_interval"),
@@ -302,7 +256,7 @@ def test_update_properties(properties, req):
     )
     assert properties["defaultDataPointsConfiguration"] == expected_default_data_points
 
-    expected_default_events = build_configuration(
+    expected_default_events = _build_default_configuration(
         original_configuration=properties.get("defaultEventsConfiguration", "{}"),
         publishing_interval=req.get("ev_publishing_interval"),
         sampling_interval=req.get("ev_sampling_interval"),

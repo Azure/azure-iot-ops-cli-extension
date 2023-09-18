@@ -6,6 +6,5 @@
 
 EMBEDDED_CLI_ASSETS_PATH = "azext_edge.edge.commands_assets.cli"
 
-UPDATE_PROPERTIES_ASSETS_PATH = "azext_edge.edge.commands_assets.update_properties"
-PROCESS_DP_ASSETS_PATH = "azext_edge.edge.commands_assets.process_data_points"
-PROCESS_EV_ASSETS_PATH = "azext_edge.edge.commands_assets.process_events"
+UPDATE_PROPERTIES_ASSETS_PATH = "azext_edge.edge.commands_assets._update_properties"
+PROCESS_SUB_POINTS_ASSETS_PATH = "azext_edge.edge.commands_assets._process_asset_sub_points"

@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Union
 
 from knack.log import get_logger
 
-from azure.cli.core.azclierror import ResourceNotFoundError, RequiredArgumentMissingError
+from azure.cli.core.azclierror import InvalidArgumentValueError, ResourceNotFoundError, RequiredArgumentMissingError
 from azure.cli.core.commands.client_factory import get_subscription_id
 from azext_edge.common.embedded_cli import EmbeddedCLI
 
@@ -20,57 +20,6 @@ logger = get_logger(__name__)
 # for some reason "2023-08-01-preview" doesnt work with custom location
 API_VERSION = "2023-06-21-preview"
 cli = EmbeddedCLI()
-
-
-def list_assets(
-    cmd,
-    resource_group_name: Optional[str] = None,
-) -> dict:
-    subscription = get_subscription_id(cmd.cli_ctx)
-    uri = f"/subscriptions/{subscription}"
-    if resource_group_name:
-        uri += f"/resourceGroups/{resource_group_name}"
-    uri += "/providers/Microsoft.DeviceRegistry/assets"
-    cli.invoke(f"rest --method GET --uri {uri}?api-version={API_VERSION}")
-    return cli.as_json()["value"]
-
-
-def show_asset(
-    cmd,
-    asset_name: str,
-    resource_group_name: Optional[str] = None
-) -> dict:
-    subscription = get_subscription_id(cmd.cli_ctx)
-    if resource_group_name:
-        resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/"\
-            f"Microsoft.DeviceRegistry/assets/{asset_name}"
-        cli.invoke(f"rest --method GET --uri {resource_path}?api-version={API_VERSION}")
-        return cli.as_json()
-
-    assets_list = list_assets(cmd)
-    for asset in assets_list:
-        if asset["name"] == asset_name:
-            return asset
-
-    raise ResourceNotFoundError(f"Asset {asset_name} not found in subscription {subscription}.")
-
-
-def delete_asset(
-    cmd,
-    asset_name: str,
-    resource_group_name: Optional[str] = None
-) -> dict:
-    subscription = get_subscription_id(cmd.cli_ctx)
-    if not resource_group_name:
-        assets_list = list_assets(cmd)
-        for asset in assets_list:
-            if asset["name"] == asset_name:
-                resource_group_name = asset["resourceGroup"]
-                break
-
-    resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/"\
-        f"Microsoft.DeviceRegistry/assets/{asset_name}"
-    cli.invoke(f"rest --method DELETE --uri {resource_path}?api-version={API_VERSION}")
 
 
 def create_asset(
@@ -125,12 +74,12 @@ def create_asset(
     # Properties
     properties = {
         "connectivityProfileUri": endpoint_profile,
-        "dataPoints": process_data_points(data_points),
-        "events": process_events(events),
+        "dataPoints": _process_asset_sub_points("data_source", data_points),
+        "events": _process_asset_sub_points("event_notifier", events),
     }
 
     # Other properties
-    update_properties(
+    _update_properties(
         properties,
         asset_type=asset_type,
         description=description,
@@ -163,6 +112,59 @@ def create_asset(
 
     cli.invoke(f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(asset_body)}'")
     return cli.as_json()
+
+
+def delete_asset(
+    cmd,
+    asset_name: str,
+    resource_group_name: Optional[str] = None
+) -> dict:
+    subscription = get_subscription_id(cmd.cli_ctx)
+    if not resource_group_name:
+        assets_list = list_assets(cmd)
+        for asset in assets_list:
+            if asset["name"] == asset_name:
+                resource_group_name = asset["resourceGroup"]
+                break
+
+    resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/"\
+        f"Microsoft.DeviceRegistry/assets/{asset_name}"
+    cli.invoke(f"rest --method DELETE --uri {resource_path}?api-version={API_VERSION}")
+
+
+def list_assets(
+    cmd,
+    resource_group_name: Optional[str] = None,
+) -> dict:
+    # Note the usage of az rest over resource
+    # az resource list will omit properties
+    subscription = get_subscription_id(cmd.cli_ctx)
+    uri = f"/subscriptions/{subscription}"
+    if resource_group_name:
+        uri += f"/resourceGroups/{resource_group_name}"
+    uri += "/providers/Microsoft.DeviceRegistry/assets"
+    cli.invoke(f"rest --method GET --uri {uri}?api-version={API_VERSION}")
+    return cli.as_json()["value"]
+
+
+def show_asset(
+    cmd,
+    asset_name: str,
+    resource_group_name: Optional[str] = None
+) -> dict:
+    subscription = get_subscription_id(cmd.cli_ctx)
+    if resource_group_name:
+        resource_path = f"/subscriptions/{subscription}/resourceGroups/{resource_group_name}/providers/"\
+            f"Microsoft.DeviceRegistry/assets/{asset_name}"
+        cli.invoke(f"rest --method GET --uri {resource_path}?api-version={API_VERSION}")
+        return cli.as_json()
+
+    assets_list = list_assets(cmd)
+    for asset in assets_list:
+        if asset["name"] == asset_name:
+            return asset
+
+    raise ResourceNotFoundError(f"Asset {asset_name} not found in subscription {subscription}.")
 
 
 def update_asset(
@@ -204,14 +206,14 @@ def update_asset(
     # Properties
     properties = original_asset.get("properties", {})
     if data_points:
-        properties["dataPoints"] = process_data_points(data_points)
+        properties["dataPoints"] = _process_asset_sub_points("data_source", data_points)
     if events:
-        properties["events"] = process_events(events)
+        properties["events"] = _process_asset_sub_points("event_notifier", events)
 
     # version cannot be bumped :D
 
     # Other properties
-    update_properties(
+    _update_properties(
         properties,
         asset_type=asset_type,
         description=description,
@@ -241,7 +243,199 @@ def update_asset(
     return cli.as_json()
 
 
-def build_configuration(
+# Data Point sub commands
+def add_asset_data_point(
+    cmd,
+    data_source: str,
+    asset_name: str,
+    capability_id: Optional[str] = None,
+    name: Optional[str] = None,
+    observability_mode: Optional[str] = None,
+    queue_size: Optional[int] = None,
+    sampling_interval: Optional[int] = None,
+    resource_group_name: Optional[str] = None
+):
+    asset = show_asset(
+        cmd=cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name
+    )
+
+    data_point = _build_asset_sub_point(
+        data_source=data_source,
+        capability_id=capability_id,
+        name=name,
+        observability_mode=observability_mode,
+        queue_size=queue_size,
+        sampling_interval=sampling_interval
+    )
+    asset["properties"]["dataPoints"].append(data_point)
+    resource_path = asset["id"]
+    # TODO: change to patch once supported
+    cli.invoke(
+        f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(asset)}'"
+    )
+    return cli.as_json()
+
+
+def list_asset_data_points(
+    cmd,
+    asset_name: str,
+    resource_group_name: Optional[str] = None
+):
+    return show_asset(
+        cmd=cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name
+    )["properties"]["dataPoints"]
+
+
+def remove_asset_data_point(
+    cmd,
+    asset_name: str,
+    data_source: Optional[str] = None,
+    name: Optional[str] = None,
+    resource_group_name: Optional[str] = None
+):
+    if not any([data_source, name]):
+        raise RequiredArgumentMissingError(
+            "Provide either the data source via --data-source or name via --name to identify the data point to remove."
+        )
+    asset = show_asset(
+        cmd=cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name
+    )
+
+    data_points = asset["properties"]["dataPoints"]
+    if data_source:
+        data_points = [dp for dp in data_points if dp["dataSource"] != data_source]
+    else:
+        data_points = [dp for dp in data_points if dp["name"] != name]
+
+    asset["properties"]["dataPoints"] = data_points
+
+    resource_path = asset["id"]
+    # TODO: change to patch once supported
+    cli.invoke(
+        f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(asset)}'"
+    )
+    return cli.as_json()
+
+
+# Event sub commands
+def add_asset_event(
+    cmd,
+    event_notifier: str,
+    asset_name: str,
+    capability_id: Optional[str] = None,
+    name: Optional[str] = None,
+    observability_mode: Optional[str] = None,
+    queue_size: Optional[int] = None,
+    sampling_interval: Optional[int] = None,
+    resource_group_name: Optional[str] = None
+):
+    asset = show_asset(
+        cmd=cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name
+    )
+
+    event = _build_asset_sub_point(
+        event_notifier=event_notifier,
+        capability_id=capability_id,
+        name=name,
+        observability_mode=observability_mode,
+        queue_size=queue_size,
+        sampling_interval=sampling_interval
+    )
+    asset["properties"]["events"].append(event)
+    resource_path = asset["id"]
+    # TODO: change to patch once supported
+    cli.invoke(
+        f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(asset)}'"
+    )
+    return cli.as_json()
+
+
+def list_asset_events(
+    cmd,
+    asset_name: str,
+    resource_group_name: Optional[str] = None
+):
+    return show_asset(
+        cmd=cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name
+    )["properties"]["events"]
+
+
+def remove_asset_event(
+    cmd,
+    asset_name: str,
+    event_notifier: Optional[str] = None,
+    name: Optional[str] = None,
+    resource_group_name: Optional[str] = None
+):
+    if not any([event_notifier, name]):
+        raise RequiredArgumentMissingError(
+            "Provide either the event notifier via --event-notifier or name via --name to identify the event to remove."
+        )
+    asset = show_asset(
+        cmd=cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name
+    )
+
+    events = asset["properties"]["events"]
+    if event_notifier:
+        events = [dp for dp in events if dp["dataSource"] != event_notifier]
+    else:
+        events = [dp for dp in events if dp["name"] != name]
+
+    asset["properties"]["events"] = events
+
+    resource_path = asset["id"]
+    # TODO: change to patch once supported
+    cli.invoke(
+        f"rest --method PUT --uri {resource_path}?api-version={API_VERSION} --body '{json.dumps(asset)}'"
+    )
+    return cli.as_json()
+
+
+# Helpers
+def _build_asset_sub_point(
+    data_source: Optional[str] = None,
+    event_notifier: Optional[str] = None,
+    capability_id: Optional[str] = None,
+    name: Optional[str] = None,
+    observability_mode: Optional[str] = None,
+    queue_size: Optional[int] = None,
+    sampling_interval: Optional[int] = None,
+) -> Dict[str, str]:
+    if capability_id is None:
+        capability_id = name
+    custom_configuration = {}
+    if sampling_interval:
+        custom_configuration["samplingInterval"] = int(sampling_interval)
+    if queue_size:
+        custom_configuration["queueSize"] = int(queue_size)
+    result = {
+        "capabilityId": capability_id,
+        "name": name,
+        "observabilityMode": observability_mode
+    }
+
+    if data_source:
+        result["dataSource"] = data_source
+        result["dataPointConfiguration"] = json.dumps(custom_configuration)
+    elif event_notifier:
+        result["eventNotifier"] = event_notifier
+        result["eventConfiguration"] = json.dumps(custom_configuration)
+    return result
+
+
+def _build_default_configuration(
     original_configuration: str,
     publishing_interval: Optional[int] = None,
     sampling_interval: Optional[int] = None,
@@ -257,69 +451,28 @@ def build_configuration(
     return json.dumps(defaults)
 
 
-def process_data_points(data_points: Optional[List[str]]) -> Dict[str, str]:
-    if not data_points:
+def _process_asset_sub_points(required_arg: str, sub_points: Optional[List[str]]) -> Dict[str, str]:
+    """This is for the main create/update asset commands"""
+    if not sub_points:
         return []
-    processed_dps = []
-    for data_point in data_points:
-        parsed_dp = assemble_nargs_to_dict(data_point)
+    point_type = "Data point" if required_arg == "data_source" else "Event"
+    invalid_arg = "event_notifier" if required_arg == "data_source" else "data_source"
+    processed_points = []
+    for point in sub_points:
+        parsed_points = assemble_nargs_to_dict(point)
 
-        if not parsed_dp.get("data_source"):
-            raise RequiredArgumentMissingError(f"Data point ({data_point}) is missing the data_source.")
+        if not parsed_points.get(required_arg):
+            raise RequiredArgumentMissingError(f"{point_type} ({point}) is missing the {required_arg}.")
+        if parsed_points.get(invalid_arg):
+            raise InvalidArgumentValueError(f"{point_type} does not support {invalid_arg}.")
 
-        custom_configuration = {}
-        if parsed_dp.get("sampling_interval"):
-            custom_configuration["samplingInterval"] = int(parsed_dp.get("sampling_interval"))
-        if parsed_dp.get("queue_size"):
-            custom_configuration["queueSize"] = int(parsed_dp.get("queue_size"))
+        processed_point = _build_asset_sub_point(**parsed_points)
+        processed_points.append(processed_point)
 
-        if not parsed_dp.get("capability_id"):
-            parsed_dp["capability_id"] = parsed_dp.get("name")
-
-        processed_dp = {
-            "capabilityId": parsed_dp.get("capability_id"),
-            "dataPointConfiguration": json.dumps(custom_configuration),
-            "dataSource": parsed_dp.get("data_source"),
-            "name": parsed_dp.get("name"),
-            "observabilityMode": parsed_dp.get("observability_mode")
-        }
-        processed_dps.append(processed_dp)
-
-    return processed_dps
+    return processed_points
 
 
-def process_events(events: Optional[List[List[str]]]) -> Dict[str, str]:
-    if not events:
-        return []
-    processed_events = []
-    for event in events:
-        parsed_event = assemble_nargs_to_dict(event)
-
-        if not parsed_event.get("event_notifier"):
-            raise RequiredArgumentMissingError(f"Event ({event}) is missing the event_notifier.")
-
-        custom_configuration = {}
-        if parsed_event.get("sampling_interval"):
-            custom_configuration["samplingInterval"] = int(parsed_event.get("sampling_interval"))
-        if parsed_event.get("queue_size"):
-            custom_configuration["queueSize"] = int(parsed_event.get("queue_size"))
-
-        if not parsed_event.get("capability_id"):
-            parsed_event["capability_id"] = parsed_event.get("name")
-
-        processed_event = {
-            "capabilityId": parsed_event.get("capability_id"),
-            "eventConfiguration": json.dumps(custom_configuration),
-            "eventNotifier": parsed_event.get("event_notifier"),
-            "name": parsed_event.get("name"),
-            "observabilityMode": parsed_event.get("observability_mode")
-        }
-        processed_events.append(processed_event)
-
-    return processed_events
-
-
-def update_properties(
+def _update_properties(
     properties: Dict[str, Union[str, List[Dict[str, str]]]],
     asset_type: Optional[str] = None,
     description: Optional[str] = None,
@@ -366,14 +519,14 @@ def update_properties(
         properties["softwareRevision"] = software_revision
 
     # Defaults
-    properties["defaultDataPointsConfiguration"] = build_configuration(
+    properties["defaultDataPointsConfiguration"] = _build_default_configuration(
         original_configuration=properties.get("defaultDataPointsConfiguration", "{}"),
         publishing_interval=dp_publishing_interval,
         sampling_interval=dp_sampling_interval,
         queue_size=dp_queue_size
     )
 
-    properties["defaultEventsConfiguration"] = build_configuration(
+    properties["defaultEventsConfiguration"] = _build_default_configuration(
         original_configuration=properties.get("defaultEventsConfiguration", "{}"),
         publishing_interval=ev_publishing_interval,
         sampling_interval=ev_sampling_interval,

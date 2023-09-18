@@ -19,9 +19,8 @@ from ...generators import generate_generic_id
     "as_json_result": {"result": generate_generic_id()}
 }], indirect=True)
 @pytest.mark.parametrize("asset_helpers_fixture", [{
-    "process_dp_result": generate_generic_id(),
-    "process_ev_result": generate_generic_id(),
-    "update_properties_result": generate_generic_id(),
+    "process_asset_sub_points": generate_generic_id(),
+    "update_properties": generate_generic_id(),
 }], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
@@ -61,7 +60,7 @@ from ...generators import generate_generic_id
     },
 ])
 def test_create_asset(fixture_cmd, embedded_cli_client, asset_helpers_fixture, req):
-    patched_dp, patched_ev, patched_up = asset_helpers_fixture
+    patched_sp, patched_up = asset_helpers_fixture
     # Required params
     asset_name = generate_generic_id()
     resource_group_name = generate_generic_id()
@@ -131,7 +130,9 @@ def test_create_asset(fixture_cmd, embedded_cli_client, asset_helpers_fixture, r
         assert request_props.get(arg) is None
 
     # Data points + events
-    assert patched_dp.call_args[0][0] == req.get("data_points")
-    assert request_props["dataPoints"] == patched_dp.return_value
-    assert patched_ev.call_args[0][0] == req.get("events")
-    assert request_props["events"] == patched_ev.return_value
+    assert patched_sp.call_args_list[0].args[0] == "data_source"
+    assert patched_sp.call_args_list[0].args[1] == req.get("data_points")
+    assert request_props["dataPoints"] == patched_sp.return_value
+    assert patched_sp.call_args_list[1].args[0] == "event_notifier"
+    assert patched_sp.call_args_list[1].args[1] == req.get("events")
+    assert request_props["events"] == patched_sp.return_value
