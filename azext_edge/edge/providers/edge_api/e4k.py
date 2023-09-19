@@ -19,9 +19,14 @@ class E4kResourceKinds(ListableEnum):
     MQTT_BRIDGE_CONNECTOR = "mqttbridgeconnector"
     DATALAKE_CONNECTOR = "datalakeconnector"
     DATALAKE_CONNECTOR_TOPIC_MAP = "datalakeconnectortopicmap"
+    KAFKA_CONNECTOR = "kafkaconnector"
+    KAFKA_CONNECTOR_TOPIC_MAP = "kafkaconnectortopicmap"
+    IOT_HUB_CONNECTOR = "iothubconnector"
+    IOT_HUB_CONNECTOR_ROUTE_MAP = "iothubconnectorroutesmap"
 
 
 E4K_API_V1A2 = EdgeResourceApi(group="az-edge.com", version="v1alpha2", moniker="e4k")
 E4K_API_V1A3 = EdgeResourceApi(group="az-edge.com", version="v1alpha3", moniker="e4k")
+E4K_API_V1A4 = EdgeResourceApi(group="az-edge.com", version="v1alpha4", moniker="e4k")
 
-E4K_ACTIVE_API = E4K_API_V1A3
+E4K_ACTIVE_API = E4K_API_V1A4
