@@ -25,3 +25,20 @@ def mocked_config(request, mocker):
 def mocked_urlopen(mocker):
     patched = mocker.patch("azext_edge.edge.providers.base.urlopen", autospec=True)
     yield patched
+
+
+@pytest.fixture
+def mocked_get_subscription_id(mocker):
+    from ..generators import get_zeroed_subscription
+
+    patched = mocker.patch("azure.cli.core.commands.client_factory.get_subscription_id", autospec=True)
+    patched.return_value = get_zeroed_subscription()
+    yield patched
+
+
+@pytest.fixture
+def mocked_cmd(mocker):
+    az_cli_mock = mocker.patch("azure.cli.core.AzCli", autospec=True)
+    config = {"cli_ctx": az_cli_mock}
+    patched = mocker.patch("azure.cli.core.commands.AzCliCommand", autospec=True, **config)
+    yield patched

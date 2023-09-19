@@ -208,7 +208,7 @@ class ManifestBuilder:
             self.symphony_components.append(
                 get_akri(
                     version=akri_version,
-                    opcua_discovery_endpoint=self.kwargs.get("opcua_discovery_endpoint", "opc.tcp://<notset>:50000/"),
+                    opcua_discovery_endpoint=self.kwargs.get("opcua_discovery_endpoint"),
                     kubernetes_distro=self.kwargs.get("kubernetes_distro", "k8s"),
                 )
             )

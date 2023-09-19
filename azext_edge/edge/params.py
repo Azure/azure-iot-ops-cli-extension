@@ -233,7 +233,8 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "opcua_discovery_endpoint",
             options_list=["--opcua-discovery-url"],
-            help="Configures an OPC-UA server endpoint for Akri discovery handlers.",
+            help="Configures an OPC-UA server endpoint for Akri discovery handlers. If not provided "
+            "and --simulate-plc is set, this value becomes 'opc.tcp://opcplc-000000.{cluster_namespace}:50000'.",
             arg_group="Akri",
         )
         context.argument(

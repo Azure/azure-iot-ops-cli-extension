@@ -11,7 +11,7 @@ from knack.log import get_logger
 
 from .providers.base import load_config_context
 from .providers.support.base import get_bundle_path
-from .common import AkriK8sDistroType
+from .common import AkriK8sDistroType, DeployableAioVersions
 
 logger = get_logger(__name__)
 
@@ -64,7 +64,7 @@ def init(
     cluster_name: str,
     cluster_namespace: str,
     resource_group_name: str,
-    aio_version: str = "0.1.1",
+    aio_version: str = DeployableAioVersions.v011.value,
     custom_location_name: Optional[str] = None,
     detail_aio_version: Optional[bool] = None,
     custom_version: Optional[List[str]] = None,
@@ -85,7 +85,7 @@ def init(
     # cluster namespace must be lowercase
     cluster_namespace = cluster_namespace.lower()
     if not custom_location_name:
-        custom_location_name = f"{cluster_name.lower()}_azedge_init"
+        custom_location_name = f"{cluster_name.lower()}-azedge-init"
 
     if not processor_instance_name:
         processor_instance_name = f"{cluster_name.lower()}-azedge-init-instance"
