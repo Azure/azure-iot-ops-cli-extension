@@ -23,11 +23,19 @@ from ..common import (
     AZEDGE_FRONTEND_PREFIX,
     AZEDGE_BACKEND_PREFIX,
     AZEDGE_AUTH_PREFIX,
+    BLUEFIN_NATS_PREFIX,
+    BLUEFIN_OPERATOR_CONTROLLER_MANAGER,
+    BLUEFIN_READER_WORKER_PREFIX,
+    BLUEFIN_REFDATA_STORE_PREFIX,
+    BLUEFIN_RUNNER_WORKER_PREFIX,
     CheckTaskStatus,
+    ProvisioningState,
     ResourceState,
 )
 
 from ..providers.edge_api import E4K_ACTIVE_API, E4kResourceKinds
+from ..providers.edge_api import BLUEFIN_API_V1, BluefinResourceKinds
+from .support.e4k import E4K_LABEL
 
 from .base import (
     client,
@@ -42,6 +50,8 @@ console = Console(width=100, highlight=False)
 
 
 def run_checks(
+    edge_service: str = "e4k",
+    extended: Optional[bool] = False,
     namespace: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
@@ -49,50 +59,97 @@ def run_checks(
 ):
     result = {}
 
-    with console.status("Analyzing cluster..."):
-        from time import sleep
+    # with console.status("Analyzing cluster..."):
+    from time import sleep
 
-        sleep(0.25)
+    sleep(0.25)
 
-        if pre_deployment:
-            result["preDeployment"] = []
-            desired_checks = {}
-            desired_checks.update(
-                {
-                    "checkK8sVersion": partial(check_k8s_version, as_list=as_list),
-                    "checkHelmVersion": partial(check_helm_version, as_list=as_list),
-                    "checkNodes": partial(check_nodes, as_list=as_list),
-                }
-            )
+    result["title"] = f"Evaluation for {{[bright_blue]{edge_service}[/bright_blue]}} edge service deployment"
 
-            for c in desired_checks:
-                output = desired_checks[c]()
-                result["preDeployment"].append(output)
+    if pre_deployment:
+        result["preDeployment"] = []
+        desired_checks = {}
+        desired_checks.update(
+            {
+                "checkK8sVersion": partial(check_k8s_version, as_list=as_list),
+                "checkHelmVersion": partial(check_helm_version, as_list=as_list),
+                "checkNodes": partial(check_nodes, as_list=as_list),
+            }
+        )
 
-        if post_deployment:
-            if not namespace:
-                from .base import DEFAULT_NAMESPACE
+        for c in desired_checks:
+            output = desired_checks[c]()
+            result["preDeployment"].append(output)
 
-                namespace = DEFAULT_NAMESPACE
-            result["postDeployment"] = []
+    if post_deployment:
+        if not namespace:
+            from .base import DEFAULT_NAMESPACE
 
-            resource_enumeration, api_resources = enumerate_e4k_resources(as_list=as_list)
-            result["postDeployment"].append(resource_enumeration)
-            if api_resources:
-                if "Broker" in api_resources:
-                    result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
-                if "BrokerListener" in api_resources:
-                    result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
-                if "DiagnosticService" in api_resources:
-                    result["postDeployment"].append(evaluate_diagnostics_service(namespace=namespace, as_list=as_list))
-                if "MqttBridgeConnector" in api_resources:
-                    # result["postDeployment"].append(evaluate_bridge_connectors(namespace=namespace, as_list=as_list))
-                    pass
+            namespace = DEFAULT_NAMESPACE
+        result["postDeployment"] = []
+        
+        # check post deployment according to edge_service type
+        if edge_service == "e4k":
+            check_e4k_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list)
+        elif edge_service == "bluefin":
+            check_bluefin_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list)
+
 
         if not as_list:
             return result
 
         process_as_list(result=result, namespace=namespace)
+
+
+def check_e4k_post_deployment(
+    namespace: str,
+    result: dict,
+    as_list: bool = False,
+    extended: Optional[bool] = False,
+):
+
+    resource_enumeration, api_resources = enumerate_edge_service_resources(
+        api_group=E4K_ACTIVE_API.group,
+        api_version=E4K_ACTIVE_API.version,
+        check_name="enumerateE4kApi",
+        check_desc="Enumerate E4K API resource",
+        target_api=E4K_ACTIVE_API.as_str(),
+        as_list=as_list)
+    result["postDeployment"].append(resource_enumeration)
+    if api_resources:
+        if "Broker" in api_resources:
+            result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
+        if "BrokerListener" in api_resources:
+            result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
+        if "DiagnosticService" in api_resources:
+            result["postDeployment"].append(evaluate_diagnostics_service(namespace=namespace, as_list=as_list))
+        if "MqttBridgeConnector" in api_resources:
+            # result["postDeployment"].append(evaluate_bridge_connectors(namespace=namespace, as_list=as_list))
+            pass
+
+
+def check_bluefin_post_deployment(
+    namespace: str,
+    result: dict,
+    as_list: bool = False,
+    extended: Optional[bool] = False,
+):
+
+    resource_enumeration, api_resources = enumerate_edge_service_resources(
+        api_group=BLUEFIN_API_V1.group,
+        api_version=BLUEFIN_API_V1.version,
+        check_name="enumerateBluefinApi",
+        check_desc="Enumerate Bluefin API resource",
+        target_api=BLUEFIN_API_V1.as_str(),
+        as_list=as_list)
+    result["postDeployment"].append(resource_enumeration)
+    if api_resources:
+        if "Instance" in api_resources:
+            result["postDeployment"].append(evaluate_instances(namespace=namespace, as_list=as_list))
+        if "Pipeline" in api_resources:
+            result["postDeployment"].append(evaluate_pipelines(extended=extended, namespace=namespace, as_list=as_list))
+        if "Dataset" in api_resources:
+            result["postDeployment"].append(evaluate_datasets(extended=extended, namespace=namespace, as_list=as_list))
 
 
 def process_as_list(result: Dict[str, dict], namespace: str):
@@ -147,6 +204,12 @@ def process_as_list(result: Dict[str, dict], namespace: str):
                     eval_status = e.get("status")
                     _increment_summary(eval_status)
             console.print(NewLine(1))
+        console.print(NewLine(1))
+
+    title: dict = result.get("title")
+    if title:
+        console.print(NewLine(1))
+        console.rule(title, align="center", style="blue bold")
         console.print(NewLine(1))
 
     pre_checks: List[dict] = result.get("preDeployment")
@@ -347,6 +410,7 @@ def evaluate_diagnostics_service(
             namespace=namespace,
             pod=AZEDGE_DIAGNOSTICS_SERVICE,
             display_padding=12,
+            service_label=E4K_LABEL
         )
 
     return check_manager.as_dict(as_list)
@@ -765,31 +829,531 @@ def evaluate_brokers(
                 (0, 0, 0, 8),
             ),
         )
+
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=AZEDGE_DIAGNOSTICS_PROBE_PREFIX, display_padding=12
+            check_manager=check_manager, namespace=namespace, pod=AZEDGE_DIAGNOSTICS_PROBE_PREFIX, display_padding=12, service_label=E4K_LABEL
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=AZEDGE_FRONTEND_PREFIX, display_padding=12
+            check_manager=check_manager, namespace=namespace, pod=AZEDGE_FRONTEND_PREFIX, display_padding=12, service_label=E4K_LABEL
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=AZEDGE_BACKEND_PREFIX, display_padding=12
+            check_manager=check_manager, namespace=namespace, pod=AZEDGE_BACKEND_PREFIX, display_padding=12, service_label=E4K_LABEL
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=AZEDGE_AUTH_PREFIX, display_padding=12
+            check_manager=check_manager, namespace=namespace, pod=AZEDGE_AUTH_PREFIX, display_padding=12, service_label=E4K_LABEL
         )
 
     return check_manager.as_dict(as_list)
 
 
-def enumerate_e4k_resources(
+def evaluate_instances(
+    namespace: str,
+    as_list: bool = False,
+):
+    check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Bluefin instance", namespace=namespace)
+
+    target_instances = "instances.bluefin.az-bluefin.com"
+    instance_conditions = ["len(instances)==1", "provisioningState"]
+    check_manager.add_target(target_name=target_instances, conditions=instance_conditions)
+
+    instance_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.INSTANCE, namespace=namespace)
+    if not instance_list:
+        fetch_instances_error_text = f"Unable to fetch namespace {BluefinResourceKinds.INSTANCE.value}s."
+        check_manager.add_target_eval(
+            target_name=target_instances, status=CheckTaskStatus.error.value, value=fetch_instances_error_text
+        )
+        check_manager.add_display(target_name=target_instances, display=Padding(fetch_instances_error_text, (0, 0, 0, 8)))
+        return check_manager.as_dict(as_list)
+
+    instances: List[dict] = instance_list.get("items", [])
+    instances_count = len(instances)
+    instances_count_text = "- Expecting [bright_blue]1[/bright_blue] instance resource per namespace. {}."
+    instance_eval_status = CheckTaskStatus.success.value
+
+    if instances_count == 1:
+        instances_count_text = instances_count_text.format(f"[green]Detected {instances_count}[/green]")
+    else:
+        instances_count_text = instances_count_text.format(f"[red]Detected {instances_count}[/red]")
+        check_manager.set_target_status(target_name=target_instances, status=CheckTaskStatus.error.value)
+    check_manager.add_display(target_name=target_instances, display=Padding(instances_count_text, (0, 0, 0, 8)))
+
+    for i in instances:
+        instance_name = i["metadata"]["name"]
+        instance_status = i["status"]["provisioningStatus"]["status"]
+
+        target_instance_text = (
+            f"\n- Instance {{[bright_blue]{instance_name}[/bright_blue]}} provisioning status {{{_decorate_resource_status(instance_status)}}}."
+        )
+        check_manager.add_display(target_name=target_instances, display=Padding(target_instance_text, (0, 0, 0, 8)))
+
+        instance_eval_value = {"provisioningState": instance_status}
+        instance_eval_status = CheckTaskStatus.success.value
+
+        if instance_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
+            instance_eval_status = CheckTaskStatus.error.value
+            error_message = i["status"]["provisioningStatus"]["error"]["message"]
+            error_display_text = f"[red]Error: {error_message}[/red]"
+            check_manager.add_display(target_name=target_instances, display=Padding(error_display_text, (0, 0, 0, 10)))
+        elif instance_status in [
+                ProvisioningState.updating.value,
+                ProvisioningState.provisioning.value,
+                ProvisioningState.deleting.value,
+                ProvisioningState.accepted.value
+            ]:
+            instance_eval_status = CheckTaskStatus.warning.value
+
+        check_manager.add_target_eval(
+            target_name=target_instances, status=instance_eval_status, value=instance_eval_value, resource_name=instance_name
+        )
+
+    if instances_count > 0:
+        check_manager.add_display(
+            target_name=target_instances,
+            display=Padding(
+                "\nRuntime Health",
+                (0, 0, 0, 8),
+            ),
+        )
+
+        from .support.bluefin import BLUEFIN_APP_LABEL
+
+        evaluate_pod_health(
+            check_manager=check_manager, namespace=namespace, pod=BLUEFIN_READER_WORKER_PREFIX, display_padding=12, service_label=BLUEFIN_APP_LABEL
+        )
+        evaluate_pod_health(
+            check_manager=check_manager, namespace=namespace, pod=BLUEFIN_RUNNER_WORKER_PREFIX, display_padding=12, service_label=BLUEFIN_APP_LABEL
+        )
+        evaluate_pod_health(
+            check_manager=check_manager, namespace=namespace, pod=BLUEFIN_REFDATA_STORE_PREFIX, display_padding=12, service_label=BLUEFIN_APP_LABEL
+        )
+        evaluate_pod_health(
+            check_manager=check_manager, namespace=namespace, pod=BLUEFIN_NATS_PREFIX, display_padding=12, service_label=BLUEFIN_APP_LABEL
+        )
+        evaluate_pod_health(
+            check_manager=check_manager, namespace=namespace, pod=BLUEFIN_OPERATOR_CONTROLLER_MANAGER, display_padding=12, service_label=BLUEFIN_APP_LABEL
+        )
+
+    return check_manager.as_dict(as_list)
+
+
+def evaluate_pipelines(
+    namespace: str,
+    as_list: bool = False,
+    extended: Optional[bool] = False,
+):
+    check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Bluefin pipeline", namespace=namespace)
+
+    target_pipelines = "pipelines.bluefin.az-bluefin.com"
+    pipeline_conditions = ["len(pipelines)>=1",
+                           "mode.enabled",
+                           "provisioningStatus",
+                           "sourceNodeCount == 1",
+                           "spec.input.broker",
+                           "len(spec.input.topics)>=1",
+                           "spec.input.format.type"
+                           "spec.input.partitionCount>=1",
+                           "intermediateStagesCount>=1",
+                           "destinationNodeCount==1"]
+    check_manager.add_target(target_name=target_pipelines, conditions=pipeline_conditions)
+
+    pipeline_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.PIPELINE, namespace=namespace)
+    if not pipeline_list:
+        fetch_pipelines_error_text = f"Unable to fetch namespace {BluefinResourceKinds.PIPELINE.value}s."
+        check_manager.add_target_eval(
+            target_name=target_pipelines, status=CheckTaskStatus.error.value, value=fetch_pipelines_error_text
+        )
+        check_manager.add_display(target_name=target_pipelines, display=Padding(fetch_pipelines_error_text, (0, 0, 0, 8)))
+        return check_manager.as_dict(as_list)
+
+    pipelines: List[dict] = pipeline_list.get("items", [])
+    pipelines_count = len(pipelines)
+    pipelines_count_text = "- Expecting [bright_blue]>=1[/bright_blue] pipeline resource per namespace. {}."
+    pipeline_eval_status = CheckTaskStatus.success.value
+
+    if pipelines_count >= 1:
+        pipelines_count_text = pipelines_count_text.format(f"[green]Detected {pipelines_count}[/green]")
+    else:
+        pipelines_count_text = pipelines_count_text.format(f"[red]Detected {pipelines_count}[/red]")
+        check_manager.set_target_status(target_name=target_pipelines, status=CheckTaskStatus.error.value)
+    check_manager.add_display(target_name=target_pipelines, display=Padding(pipelines_count_text, (0, 0, 0, 8)))
+
+    for p in pipelines:
+        pipeline_name = p["metadata"]["name"]
+        pipeline_running_status = "running" if p["spec"]["enabled"] else "not running"
+
+        pipeline_enabled_text = f"\n- Pipeline {{[bright_blue]{pipeline_name}[/bright_blue]}} is {{[bright_blue]{pipeline_running_status}[/bright_blue]}}."
+        pipeline_eval_value = {"mode.enabled": pipeline_running_status}
+        pipeline_eval_status = CheckTaskStatus.success.value
+
+        if pipeline_running_status == "not running":
+            check_manager.add_target_eval(target_name=target_pipelines, status=CheckTaskStatus.skipped.value, resource_name=pipeline_name)
+            pipieline_not_enabled_text = (
+                f"\n- Pipeline {{[bright_blue]{pipeline_name}[/bright_blue]}} is {{[yellow]not running[/yellow]}}."
+                "\n  [bright_white]Skipping pipeline evaluation[/bright_white]."
+            )
+            check_manager.add_display(target_name=target_pipelines, display=Padding(pipieline_not_enabled_text, (0, 0, 0, 8)))
+            continue
+        check_manager.add_display(target_name=target_pipelines, display=Padding(pipeline_enabled_text, (0, 0, 0, 8)))
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines, status=pipeline_eval_status, value=pipeline_eval_value, resource_name=pipeline_name
+        )
+
+        # check provisioning status
+        pipeline_status = p["status"]["provisioningStatus"]["status"]
+        status_display_text = f"- Provisioning status {{{_decorate_resource_status(pipeline_status)}}}."
+        check_manager.add_display(target_name=target_pipelines, display=Padding(status_display_text, (0, 0, 0, 12)))
+
+        pipeline_eval_value = {"provisioningStatus": pipeline_status}
+        pipeline_eval_status = CheckTaskStatus.success.value
+
+        if pipeline_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
+            pipeline_eval_status = CheckTaskStatus.error.value
+            error_message = p["status"]["provisioningStatus"]["error"]["message"]
+            error_display_text = f"[red]Error: {error_message}[/red]"
+            check_manager.add_display(target_name=target_pipelines, display=Padding(error_display_text, (0, 0, 0, 14)))
+        elif pipeline_status in [
+                ProvisioningState.updating.value,
+                ProvisioningState.provisioning.value,
+                ProvisioningState.deleting.value,
+                ProvisioningState.accepted.value
+            ]:
+            pipeline_eval_status = CheckTaskStatus.warning.value
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines, status=pipeline_eval_status, value=pipeline_eval_value, resource_name=pipeline_name
+        )
+
+        # check data source node count
+        pipeline_source_node = p["spec"]["input"]
+        pipeline_source_node_count = 1 if pipeline_source_node else 0
+        source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] MQTT data source node. [green]Detected {pipeline_source_node_count}[/green]."
+
+        pipeline_source_count_eval_value = {"sourceNodeCount": pipeline_source_node_count}
+        pipeline_source_count_eval_status = CheckTaskStatus.success.value
+
+        if pipeline_source_node_count != 1:
+            pipeline_source_count_eval_status = CheckTaskStatus.error.value
+            source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] MQTT data source node. {{[red]Detected {pipeline_source_node_count}[/red]}}."
+        check_manager.add_display(target_name=target_pipelines, display=Padding(source_count_display_text, (0, 0, 0, 12)))
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines, status=pipeline_source_count_eval_status, value=pipeline_source_count_eval_value, resource_name=pipeline_name
+        )
+
+        # check data source broker URL
+        pipeline_source_node_broker = pipeline_source_node["broker"]
+        source_broker_display_text = f"- Broker URL: {pipeline_source_node_broker}"
+
+        pipeline_source_broker_eval_value = {"spec.input.broker": pipeline_source_node_broker}
+        pipeline_source_broker_eval_status = CheckTaskStatus.success.value
+
+        if not pipeline_source_node_broker:
+            pipeline_source_broker_eval_status = CheckTaskStatus.error.value
+        check_manager.add_display(target_name=target_pipelines, display=Padding(source_broker_display_text, (0, 0, 0, 16)))
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines, status=pipeline_source_broker_eval_status, value=pipeline_source_broker_eval_value, resource_name=pipeline_name
+        )
+
+        # check data source topics
+        pipeline_source_node_topics = pipeline_source_node["topics"]
+        pipeline_source_node_topics_count = len(pipeline_source_node_topics)
+        source_topics_display_text = f"- Expecting [bright_blue]>=1[/bright_blue] and [bright_blue]<=50[/bright_blue] topics. [green]Detected {pipeline_source_node_topics_count}[/green]."
+
+        pipeline_source_topics_eval_value = {"spec.input.topics": pipeline_source_node["topics"]}
+        pipeline_source_topics_eval_status = CheckTaskStatus.success.value
+
+        if pipeline_source_node_topics_count < 1 or pipeline_source_node_topics_count > 50:
+            pipeline_source_topics_eval_status = CheckTaskStatus.error.value
+        check_manager.add_display(target_name=target_pipelines, display=Padding(source_topics_display_text, (0, 0, 0, 16)))
+
+        if extended:
+            for topic in pipeline_source_node_topics:
+                topic_display_text = f"Topic {{[bright_blue]{topic}[/bright_blue]}} detected."
+                check_manager.add_display(target_name=target_pipelines, display=Padding(topic_display_text, (0, 0, 0, 18)))
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines, status=pipeline_source_topics_eval_status, value=pipeline_source_topics_eval_value, resource_name=pipeline_name
+        )
+
+        # data source message format type
+        pipeline_source_node_format_type = pipeline_source_node["format"]["type"]
+        source_format_type_display_text = f"- Source message type: [bright_blue]{pipeline_source_node_format_type}[/bright_blue]"
+
+        check_manager.add_display(target_name=target_pipelines, display=Padding(source_format_type_display_text, (0, 0, 0, 16)))
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines, status=pipeline_source_topics_eval_status, value=pipeline_source_topics_eval_value, resource_name=pipeline_name
+        )
+
+        # check data source partition
+        pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
+        pipeline_source_node_partition_strategy = pipeline_source_node["partitionStrategy"]["type"]
+        source_partition_count_display_text = f"- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. [green]Detected {pipeline_source_node_partition_count}[/green]."
+        source_partition_strategy_display_text = f"The type of partitioning strategy is {{[bright_blue]{pipeline_source_node_partition_strategy}[/bright_blue]}}."
+
+        pipeline_source_partition_eval_value = {"spec.input.partitionCount": pipeline_source_node_partition_count}
+        pipeline_source_partition_eval_status = CheckTaskStatus.success.value
+
+        if pipeline_source_node_partition_count < 1 or pipeline_source_node_partition_count > 100:
+            pipeline_source_partition_eval_status = CheckTaskStatus.error.value
+        check_manager.add_display(target_name=target_pipelines, display=Padding(source_partition_count_display_text, (0, 0, 0, 16)))
+        check_manager.add_display(target_name=target_pipelines, display=Padding(source_partition_strategy_display_text, (0, 0, 0, 18)))
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines, status=pipeline_source_partition_eval_status, value=pipeline_source_partition_eval_value, resource_name=pipeline_name
+        )
+
+        if extended:
+            # data source qos
+            pipeline_source_node_qos = pipeline_source_node["qos"]
+            source_qos_display_text = f"- QoS: [bright_blue]{pipeline_source_node_qos}[/bright_blue]"
+            check_manager.add_display(target_name=target_pipelines, display=Padding(source_qos_display_text, (0, 0, 0, 16)))
+
+            # data source authentication
+            pipeline_source_node_authentication = pipeline_source_node["authentication"]["type"]
+            source_authentication_display_text = f"- Authentication type: [bright_blue]{pipeline_source_node_authentication}[/bright_blue]"
+            check_manager.add_display(target_name=target_pipelines, display=Padding(source_authentication_display_text, (0, 0, 0, 16)))
+
+        # check pipeline intermediate node
+        pipeline_stages_node = p["spec"]["stages"]
+        output_node: Tuple = ()
+        for s in pipeline_stages_node:
+            if "output" in pipeline_stages_node[s]["type"]:
+                output_node = (s, pipeline_stages_node[s])
+                break
+        # number of intermediate stages should be total len(stages) - len(output stage)
+        # pipeline_intermediate_stages_node is pipeline_stages_node removing output stage node
+        pipeline_intermediate_stages_node = pipeline_stages_node.copy()
+        pipeline_intermediate_stages_node_count = len(pipeline_stages_node)
+        if output_node:
+            pipeline_intermediate_stages_node.pop(output_node[0])
+            pipeline_intermediate_stages_node_count -= 1
+        stage_count_display_text = f"- Expecting [bright_blue]>=1[/bright_blue] intermediate stages. [green]Detected {pipeline_intermediate_stages_node_count}[/green]."
+
+        pipeline_stage_eval_value = {"intermediateStagesCount": pipeline_intermediate_stages_node_count}
+        pipeline_stage_eval_status = CheckTaskStatus.success.value
+
+        if pipeline_intermediate_stages_node_count < 1:
+            pipeline_stage_eval_status = CheckTaskStatus.error.value
+        check_manager.add_display(target_name=target_pipelines, display=Padding(stage_count_display_text, (0, 0, 0, 12)))
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines, status=pipeline_stage_eval_status, value=pipeline_stage_eval_value, resource_name=pipeline_name
+        )
+
+        if extended:
+            for s in pipeline_intermediate_stages_node:
+                stage_name = s
+                stage_type = pipeline_intermediate_stages_node[s]["type"]
+                stage_display_text = f"- Stage resource {{[bright_blue]{stage_name}[/bright_blue]}} of type {{[bright_blue]{stage_type}[/bright_blue]}}"
+                check_manager.add_display(target_name=target_pipelines, display=Padding(stage_display_text, (0, 0, 0, 16)))
+
+                for key, value in pipeline_intermediate_stages_node[s].items():
+                    property_display_text = f"Property [bright_blue]{key}[/bright_blue] : [bright_blue]{value}[/bright_blue]"
+                    check_manager.add_display(target_name=target_pipelines, display=Padding(property_display_text, (0, 0, 0, 20)))
+
+        # check pipeline destination node
+        pipeline_destination_node_count = 0
+        if output_node:
+            pipeline_destination_node_count = 1
+        destination_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] data destination node. [green]Detected {pipeline_destination_node_count}[/green]."
+
+        pipeline_destination_eval_value = {"destinationNodeCount": pipeline_destination_node_count}
+        pipeline_destination_eval_status = CheckTaskStatus.success.value
+
+        if pipeline_destination_node_count != 1:
+            pipeline_destination_eval_status = CheckTaskStatus.error.value
+        check_manager.add_display(target_name=target_pipelines, display=Padding(destination_count_display_text, (0, 0, 0, 12)))
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines, status=pipeline_destination_eval_status, value=pipeline_destination_eval_value, resource_name=pipeline_name
+        )
+
+        if output_node:
+            if extended:
+                for key, value in output_node[1].items():
+                    property_display_text = f"Property [bright_blue]{key}[/bright_blue] : [bright_blue]{value}[/bright_blue]"
+                    check_manager.add_display(target_name=target_pipelines, display=Padding(property_display_text, (0, 0, 0, 16)))
+            else:
+                # check pipeline destination type
+                pipeline_destination_type = output_node[1]["type"]
+                destination_type_display_text = f"- Message destination type {{[bright_blue]{pipeline_destination_type}[/bright_blue]}} detected"
+                check_manager.add_display(target_name=target_pipelines, display=Padding(destination_type_display_text, (0, 0, 0, 16)))
+
+                # check pipeline destination target endpoint
+                pipeline_destination_target = _get_destination_target_endpoint(output_node)
+                destination_target_display_text = f"- Target endpoint: [bright_blue]{pipeline_destination_target}[/bright_blue]"
+                check_manager.add_display(target_name=target_pipelines, display=Padding(destination_target_display_text, (0, 0, 0, 16)))
+
+    return check_manager.as_dict(as_list)
+
+
+def evaluate_datasets(
+    namespace: str,
+    as_list: bool = False,
+    extended: Optional[bool] = False,
+):
+    check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Bluefin dataset", namespace=namespace)
+
+    target_datasets = "datasets.bluefin.az-bluefin.com"
+    dataset_conditions = ["provisioningState"]
+    check_manager.add_target(target_name=target_datasets, conditions=dataset_conditions)
+
+    dataset_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.DATASET, namespace=namespace)
+    datasets: List[dict] = dataset_list.get("items", [])
+    datasets_count = len(datasets)
+
+    datasets_count_text = "- Checking dataset resource in namespace. {}."
+    dataset_eval_status = CheckTaskStatus.success.value
+
+    if datasets_count > 0:
+        datasets_count_text = datasets_count_text.format(f"[green]Detected {datasets_count}[/green]")
+    else:
+        check_manager.add_target_eval(target_name=target_datasets, status=CheckTaskStatus.skipped.value)
+        no_dataset_text = (
+            "Datasets [yellow]not[/yellow] detected."
+            "\n[bright_white]Skipping dataset evaluation[/bright_white]."
+        )
+        check_manager.add_display(target_name=target_datasets, display=Padding(no_dataset_text, (0, 0, 0, 8)))
+        return check_manager.as_dict(as_list)
+    check_manager.add_display(target_name=target_datasets, display=Padding(datasets_count_text, (0, 0, 0, 8)))
+
+    for d in datasets:
+        dataset_name = d["metadata"]["name"]
+        dataset_status = d["status"]["provisioningStatus"]["status"]
+
+        status_display_text = f"Provisiong Status: {{{_decorate_resource_status(dataset_status)}}}"
+
+        target_dataset_text = (
+            f"\n- Dataset resource {{[bright_blue]{dataset_name}[/bright_blue]}}"
+        )
+        check_manager.add_display(target_name=target_datasets, display=Padding(target_dataset_text, (0, 0, 0, 8)))
+        check_manager.add_display(target_name=target_datasets, display=Padding(status_display_text, (0, 0, 0, 12)))
+
+        dataset_eval_value = {"provisioningState": dataset_status}
+        dataset_eval_status = CheckTaskStatus.success.value
+
+        if dataset_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
+            dataset_eval_status = CheckTaskStatus.error.value
+            error_message = d["status"]["provisioningStatus"]["error"]["message"]
+            error_display_text = f"[red]Error: {error_message}[/red]"
+            check_manager.add_display(target_name=target_datasets, display=Padding(error_display_text, (0, 0, 0, 14)))
+        elif dataset_status in [
+                ProvisioningState.updating.value,
+                ProvisioningState.provisioning.value,
+                ProvisioningState.deleting.value,
+                ProvisioningState.accepted.value
+            ]:
+            dataset_eval_status = CheckTaskStatus.warning.value
+
+        check_manager.add_target_eval(
+            target_name=target_datasets, status=dataset_eval_status, value=dataset_eval_value, resource_name=dataset_name
+        )
+
+        if extended:
+            dataset_spec: dict = d["spec"]
+            import pdb; pdb.set_trace()
+            dataset_payload = dataset_spec.get("payload", "")
+            if dataset_payload:
+                check_manager.add_display(
+                    target_name=target_datasets,
+                    display=Padding(
+                        f"Payload path: [cyan]{dataset_payload}[/cyan]",
+                        (0, 0, 0, 12),
+                    ),
+                )
+
+            dataset_timestamp = dataset_spec.get("timestamp", "")
+            if dataset_timestamp:
+                check_manager.add_display(
+                    target_name=target_datasets,
+                    display=Padding(
+                        f"Timestamp: [cyan]{dataset_timestamp}[/cyan]",
+                        (0, 0, 0, 12),
+                    ),
+                )
+
+            dataset_ttl = dataset_spec.get("ttl", "")
+            if dataset_ttl:
+                check_manager.add_display(
+                    target_name=target_datasets,
+                    display=Padding(
+                        f"Expiration time: [cyan]{dataset_ttl}[/cyan]",
+                        (0, 0, 0, 12),
+                    ),
+                )
+
+            dataset_keys = dataset_spec.get("keys", {})
+            if dataset_keys:
+                check_manager.add_display(
+                    target_name=target_datasets,
+                    display=Padding(
+                        "Configuration keys:",
+                        (0, 0, 0, 12),
+                    ),
+                )
+
+                for key in dataset_keys:
+                    check_manager.add_display(
+                        target_name=target_datasets,
+                        display=Padding(
+                            f"Key {{[cyan]{key}[/cyan]}} detected",
+                            (0, 0, 0, 16),
+                        ),
+                    )
+
+            
+    return check_manager.as_dict(as_list)
+
+
+# def enumerate_e4k_resources(
+#     as_list: bool = False,
+# ) -> Tuple[dict, dict]:
+#     resource_kind_map = {}
+#     target_api = E4K_ACTIVE_API.as_str()
+#     check_manager = CheckManager(check_name="enumerateE4kApi", check_desc="Enumerate E4K API resources")
+#     check_manager.add_target(target_name=target_api)
+
+#     api_resources: V1APIResourceList = get_cluster_custom_api(group=E4K_ACTIVE_API.group, version=E4K_ACTIVE_API.version)
+
+#     if not api_resources:
+#         check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.skipped.value)
+#         missing_api_text = (
+#             f"[bright_blue]{target_api}[/bright_blue] API resources [red]not[/red] detected."
+#             "\n\n[bright_white]Skipping deployment evaluation[/bright_white]."
+#         )
+#         check_manager.add_display(target_name=target_api, display=Padding(missing_api_text, (0, 0, 0, 8)))
+#         return check_manager.as_dict(as_list), resource_kind_map
+
+#     api_header_display = Padding(f"[bright_blue]{target_api}[/bright_blue] API resources", (0, 0, 0, 8))
+#     check_manager.add_display(target_name=target_api, display=api_header_display)
+#     for resource in api_resources.resources:
+#         r: V1APIResource = resource
+#         if r.kind not in resource_kind_map:
+#             resource_kind_map[r.kind] = True
+#             check_manager.add_display(target_name=target_api, display=Padding(f"[cyan]{r.kind}[/cyan]", (0, 0, 0, 12)))
+
+#     check_manager.add_target_eval(
+#         target_name=target_api, status=CheckTaskStatus.success.value, value=list(resource_kind_map.keys())
+#     )
+#     return check_manager.as_dict(as_list), resource_kind_map
+
+
+def enumerate_edge_service_resources(
+    api_group: str,
+    api_version: str,
+    check_name: str,
+    check_desc: str,
+    target_api: str,
     as_list: bool = False,
 ) -> Tuple[dict, dict]:
     resource_kind_map = {}
-    target_api = E4K_ACTIVE_API.as_str()
-    check_manager = CheckManager(check_name="enumerateE4kApi", check_desc="Enumerate E4K API resources")
+    check_manager = CheckManager(check_name, check_desc)
     check_manager.add_target(target_name=target_api)
 
-    api_resources: V1APIResourceList = get_cluster_custom_api(group=E4K_ACTIVE_API.group, version=E4K_ACTIVE_API.version)
+    api_resources: V1APIResourceList = get_cluster_custom_api(group=api_group, version=api_version)
 
     if not api_resources:
         check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.skipped.value)
@@ -1005,6 +1569,26 @@ def _get_valid_references(kind: Union[Enum, str], namespace: str):
     return result
 
 
+def _get_destination_target_endpoint(output_node: Tuple) -> str:
+    target_endpoint = ""
+
+    if "dataexplorer" in output_node[1]["type"]:
+        target_endpoint = output_node[1]["clusterUrl"]
+    elif "fabric" in output_node[1]["type"] or "http" in output_node[1]["type"]:
+        target_endpoint = output_node[1]["url"]
+    elif "file" in output_node[1]["type"]:
+        target_endpoint = output_node[1]["filePath"]
+    elif "grpc" in output_node[1]["type"]:
+        target_endpoint = output_node[1]["serverAddress"]
+    elif "mqtt" in output_node[1]["type"]:
+        target_endpoint = output_node[1]["broker"]
+    elif "refdata" in output_node[1]["type"]:
+        target_endpoint = output_node[1]["dataset"]
+
+    return target_endpoint
+ 
+
+
 class CheckManager:
     """
     {
@@ -1113,12 +1697,10 @@ class CheckManager:
         return result
 
 
-def evaluate_pod_health(check_manager: CheckManager, namespace: str, pod: str, display_padding: int):
-    from .support.e4k import E4K_LABEL
-
+def evaluate_pod_health(check_manager: CheckManager, namespace: str, pod: str, display_padding: int, service_label: str):
     target_service_pod = f"pod/{pod}"
     check_manager.add_target(target_name=target_service_pod, conditions=["status.phase"])
-    diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=E4K_LABEL)
+    diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
     if not diagnostics_pods:
         check_manager.add_target_eval(target_name=target_service_pod, status=CheckTaskStatus.warning.value, value=None)
         check_manager.add_display(

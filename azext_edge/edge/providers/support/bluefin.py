@@ -23,14 +23,14 @@ logger = get_logger(__name__)
 
 
 BLUEFIN_APP_LABEL = (
-    "app in (bluefin-reader-worker,bluefin-refdata-store,bf-instance-nats-box"
-    ",bluefin-scheduler,bluefin-runner-worker,bluefin-portal,bluefin-api-proxy)"
+    "app in (bluefin-reader-worker,bluefin-refdata-store,nats"
+    ",bluefin-scheduler,bluefin-runner-worker,bluefin-portal"
+    ",bluefin-api-proxy,nats,bluefin-operator-controller-manager)"
 )
 BLUEFIN_RELEASE_LABEL = "release in (bf-instance)"
 BLUEFIN_INSTANCE_LABEL = "app.kubernetes.io/instance in (bf-instance)"
 BLUEFIN_PART_OF_LABEL = "app.kubernetes.io/part-of in (bluefin-operator)"
 BLUEFIN_ONEOFF_LABEL = "control-plane in (controller-manager)"
-
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     bluefin_pods = process_v1_pods(

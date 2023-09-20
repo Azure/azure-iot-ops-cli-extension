@@ -78,8 +78,14 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "edge_service",
             options_list=["--edge-service", "-e"],
-            choices=CaseInsensitiveList(["e4k"]),
+            choices=CaseInsensitiveList(["e4k", "bluefin"]),
             help="The edge service deployment that will be evaluated.",
+        )
+        context.argument(
+            "extended",
+            options_list=["--extended", "-x"],
+            help="The edge service deployment that will be evaluated.",
+            arg_type=get_three_state_flag(),
         )
 
     with self.argument_context("edge e4k get-password-hash") as context:

@@ -55,6 +55,20 @@ class PodState(Enum):
     unknown = "Unknown"
 
 
+class ProvisioningState(Enum):
+    """
+    edge resource provisioning state.
+    """
+
+    succeeded = "Succeeded"
+    failed = "Failed"
+    updating = "Updating"
+    canceled = "Canceled"
+    provisioning = "Provisioning",
+    deleting = "Deleting"
+    accepted = "Accepted"
+
+
 class E4kCheckType(Enum):
     """
     E4K environment check type.
@@ -99,6 +113,14 @@ AZEDGE_FRONTEND_PREFIX = "azedge-dmqtt-frontend"
 AZEDGE_BACKEND_PREFIX = "azedge-dmqtt-backend"
 AZEDGE_AUTH_PREFIX = "azedge-dmqtt-authentication"
 AZEDGE_KAFKA_CONFIG_PREFIX = "azedge-kafka-config"
+
+# Bluefin runtime attributes
+
+BLUEFIN_READER_WORKER_PREFIX = "bluefin-reader-worker"
+BLUEFIN_RUNNER_WORKER_PREFIX = "bluefin-runner-worker"
+BLUEFIN_REFDATA_STORE_PREFIX = "bluefin-refdata-store"
+BLUEFIN_NATS_PREFIX = "bluefin-nats"
+BLUEFIN_OPERATOR_CONTROLLER_MANAGER = "bluefin-operator-controller-manager"
 
 # Pre-deployment KPIs
 

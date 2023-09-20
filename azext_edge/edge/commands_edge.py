@@ -31,6 +31,7 @@ def support_bundle(
 
 def check(
     cmd,
+    extended: Optional[bool] = False,
     pre_deployment_checks: Optional[bool] = None,
     post_deployment_checks: Optional[bool] = None,
     namespace: Optional[str] = None,
@@ -49,6 +50,8 @@ def check(
         run_pre = False
 
     return run_checks(
+        edge_service=edge_service,
+        extended=extended,
         namespace=namespace,
         as_list=not as_object,
         pre_deployment=run_pre,
