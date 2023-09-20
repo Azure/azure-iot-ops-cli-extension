@@ -78,3 +78,15 @@ def load_iotedge_help():
         type: command
         short-summary: Generates a PBKDF2 hash of the passphrase applying PBKDF2-HMAC-SHA512. A 128-bit salt is used from os.urandom.
     """
+
+    helps[
+        "edge init"
+    ] = """
+        type: command
+        short-summary: Initialize and deploy an AIO service bundle to the target cluster.
+        long-summary: |
+            After this operation completes the desired suite of AIO edge services will
+            be deployed with baseline configuration on the target cluster. Deployment is done incrementally.
+
+            Customize AIO version via --aio-version or --custom-version.
+    """

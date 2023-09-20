@@ -8,10 +8,12 @@
 CLI parameter definitions.
 """
 
-from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag
-from .common import SupportForEdgeServiceType
-from .providers.edge_api.e4k import E4kResourceKinds
+from knack.arguments import CaseInsensitiveList
+
+from .common import AkriK8sDistroType, DeployableAioVersions, SupportForEdgeServiceType
+from .providers.edge_api import E4kResourceKinds
+from .providers.orchestration.aio_versions import EdgeServiceMoniker
 
 
 def load_iotedge_arguments(self, _):
@@ -86,13 +88,15 @@ def load_iotedge_arguments(self, _):
             "resource_kinds",
             nargs="*",
             options_list=["--resources"],
-            choices=CaseInsensitiveList([
-                E4kResourceKinds.BROKER.value,
-                E4kResourceKinds.BROKER_LISTENER.value,
-                E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
-                E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
-                E4kResourceKinds.DATALAKE_CONNECTOR.value,
-            ]),
+            choices=CaseInsensitiveList(
+                [
+                    E4kResourceKinds.BROKER.value,
+                    E4kResourceKinds.BROKER_LISTENER.value,
+                    E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
+                    E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+                    E4kResourceKinds.DATALAKE_CONNECTOR.value,
+                ]
+            ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
         )
 
@@ -137,4 +141,124 @@ def load_iotedge_arguments(self, _):
             options_list=["--raw"],
             arg_type=get_three_state_flag(),
             help="Return raw output from the metrics API.",
+        )
+
+    with self.argument_context("edge init") as context:
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster"],
+            help="Target cluster name for PAS deployment.",
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location"],
+            help="The custom location name corresponding to the PAS deployment. If no custom location name is provided"
+            " one will be generated in the form '{cluster_name}_azedge_init'.",
+        )
+        context.argument(
+            "cluster_namespace",
+            options_list=["--cluster-namespace"],
+            help="The cluster namespace PAS resources will be deployed to. Must be lowercase.",
+        )
+        context.argument(
+            "location",
+            options_list=["--location"],
+            help="The location that will be used for provisioned collateral. "
+            "If not provided the resource group location will be used.",
+        )
+        context.argument(
+            "what_if",
+            options_list=["--what-if"],
+            arg_type=get_three_state_flag(),
+            help="Flag when set, will show changes that will be made by the deployment "
+            "if executed at the scope of the resource group.",
+            arg_group="Template",
+        )
+        context.argument(
+            "show_template",
+            options_list=["--show-template"],
+            arg_type=get_three_state_flag(),
+            help="Flag when set, will output the generated template intended for deployment.",
+            arg_group="Template",
+        )
+        context.argument(
+            "aio_version",
+            options_list=["--aio-version"],
+            help="The AIO bundle version to deploy.",
+            choices=CaseInsensitiveList(DeployableAioVersions.list()),
+            arg_group="AIO Version",
+        )
+        context.argument(
+            "detail_aio_version",
+            options_list=["--version-detail"],
+            help="Summarize and show the versions of deployable components.",
+            arg_type=get_three_state_flag(),
+            arg_group="AIO Version",
+        )
+        context.argument(
+            "custom_version",
+            nargs="+",
+            options_list=["--custom-version"],
+            help="Customize AIO deployment by specifying edge service versions. Usage takes "
+            "precedence over --aio-version. Use space-separated {key}={value} pairs where {key} "
+            "is the edge service moniker and {value} is the desired version. The following monikers "
+            f"may be used: {', '.join(EdgeServiceMoniker.list())}. Example: e4k=0.5.0 bluefin=0.3.0",
+            arg_group="AIO Version",
+        )
+        context.argument(
+            "only_deploy_custom",
+            options_list=["--only-custom"],
+            arg_type=get_three_state_flag(),
+            help="Only deploy the edge services specified in --custom-version.",
+            arg_group="AIO Version",
+        )
+        context.argument(
+            "create_sync_rules",
+            options_list=["--create-sync-rules"],
+            arg_type=get_three_state_flag(),
+            help="Create sync rules for arc-enabled extensions.",
+        )
+        context.argument(
+            "no_progress",
+            options_list=["--no-progress"],
+            arg_type=get_three_state_flag(),
+            help="Disable deployment progress bar.",
+        )
+        context.argument(
+            "no_wait",
+            options_list=["--no-wait"],
+            help="Do not block.",
+        )
+        # Akri
+        context.argument(
+            "opcua_discovery_endpoint",
+            options_list=["--opcua-discovery-url"],
+            help="Configures an OPC-UA server endpoint for Akri discovery handlers. If not provided "
+            "and --simulate-plc is set, this value becomes 'opc.tcp://opcplc-000000.{cluster_namespace}:50000'.",
+            arg_group="Akri",
+        )
+        context.argument(
+            "kubernetes_distro",
+            options_list=["--kubernetes-distro"],
+            help="Optimizes the Akri deployment for a particular Kubernetes distribution.",
+            choices=CaseInsensitiveList(AkriK8sDistroType.list()),
+            arg_group="Akri",
+        )
+        # OPC-UA Broker
+        context.argument(
+            "simulate_plc",
+            options_list=["--simulate-plc"],
+            arg_type=get_three_state_flag(),
+            help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
+            arg_group="Opc-Ua Broker",
+        )
+        # Bluefin
+        context.argument(
+            "processor_instance_name",
+            options_list=["--processor-instance"],
+            arg_type=get_three_state_flag(),
+            help="Instance name for data processor. Used if data processor is part of the deployment. "
+            "If no processor instance name is provided one will be generated in the form "
+            "'{cluster_name}-azedge-init-instance'.",
+            arg_group="Data Processor",
         )
