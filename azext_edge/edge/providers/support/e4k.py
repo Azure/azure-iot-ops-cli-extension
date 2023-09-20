@@ -30,8 +30,6 @@ E4K_APP_LABELS = [
     'health-manager',
     'azedge-mqttbridge',
     'azedge-datalake',
-    'azedge-kafka-connector',
-    'azedge-iothub-connector'
 ]
 
 E4K_LABEL = f"app in ({','.join(E4K_APP_LABELS)})"
