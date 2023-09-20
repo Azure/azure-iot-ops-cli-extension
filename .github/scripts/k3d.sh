@@ -16,6 +16,6 @@ sudo cp "$k3d_binary" "$k3d_install_dir/$app"
 k3d cluster create
 
 # install e4k, e4i, opcua
-helm install e4k oci://e4kpreview.azurecr.io/helm/az-e4k --version 0.5.0 --set global.quickstart=true
+helm install e4k oci://e4kpreview.azurecr.io/helm/az-e4k --version 0.6.0-rc2 --set global.quickstart=true
 helm upgrade -i e4i oci://e4ipreview.azurecr.io/helm/az-e4i --version 0.5.1 --namespace e4i-runtime --create-namespace --set mqttBroker.authenticationMethod="serviceAccountToken" --set mqttBroker.name="azedge-dmqtt-frontend" --set mqttBroker.namespace="default" --set opcPlcSimulation.deploy=true --wait
 helm upgrade -i opcua oci://e4ipreview.azurecr.io/helm/az-e4i-opcua-connector --version 0.5.1 --namespace opcua --create-namespace --set payloadCompression="none" --set opcUaConnector.settings.discoveryUrl="opc.tcp://opcplc.e4i-runtime:50000" --set opcUaConnector.settings.autoAcceptUntrustedCertificates=true --set mqttBroker.name="azedge-dmqtt-frontend" --set mqttBroker.namespace="default" --set mqttBroker.authenticationMethod="serviceAccountToken" --wait
