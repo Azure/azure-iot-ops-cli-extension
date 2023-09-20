@@ -145,7 +145,8 @@ class ManifestBuilder:
                 sync_rule = {
                     "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                     "apiVersion": "2021-08-31-preview",
-                    "name": f"{self.custom_location_name}/{self.custom_location_name}-{extension_type.split()[-1]}-sync",
+                    "name": f"{self.custom_location_name}/"
+                    f"{self.custom_location_name}-{extension_type.split()[-1]}-sync",
                     "location": "[variables('location')]",
                     "properties": {
                         "priority": self.get_next_priority(),

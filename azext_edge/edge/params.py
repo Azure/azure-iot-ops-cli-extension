@@ -199,10 +199,10 @@ def load_iotedge_arguments(self, _):
             "custom_version",
             nargs="+",
             options_list=["--custom-version"],
-            help="Customize AIO deployment by specifying edge service versions. Usage takes precedence over --aio-version. "
-            "Use space-separated {key}={value} pairs where {key} is the edge service moniker and {value} "
-            f"is the desired version. The following monikers may be used: {', '.join(EdgeServiceMoniker.list())}. "
-            "Example: e4k=0.5.0 bluefin=0.3.0",
+            help="Customize AIO deployment by specifying edge service versions. Usage takes "
+            "precedence over --aio-version. Use space-separated {key}={value} pairs where {key} "
+            "is the edge service moniker and {value} is the desired version. The following monikers "
+            f"may be used: {', '.join(EdgeServiceMoniker.list())}. Example: e4k=0.5.0 bluefin=0.3.0",
             arg_group="AIO Version",
         )
         context.argument(

@@ -106,6 +106,7 @@ class DeployableAioVersions(ListableEnum):
 
     v011 = "0.1.1"
 
+
 # E4K runtime attributes
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
