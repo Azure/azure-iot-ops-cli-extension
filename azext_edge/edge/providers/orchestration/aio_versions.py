@@ -18,6 +18,13 @@ class EdgeServiceMoniker(ListableEnum):
     symphony = "symphony"
 
 
+class EdgeExtensionName(ListableEnum):
+    iotoperations = "iotoperations"
+    mq = "mq"
+    processor = "processor"
+    assets = "assets"
+
+
 class AioVersionDef:
     def __init__(self, version: str, ext_to_rp_map: dict, ext_to_vers_map: dict, moniker_to_vers_map: dict):
         self._version = version
@@ -51,10 +58,12 @@ class AioVersionDef:
         ext_to_vers_map = {}
         ext_to_rp_map = {}
         for key in self._moniker_to_vers_map:
-            moniker_to_extension_key = moniker_to_extension_map.get(key)
+            moniker_to_extension_key = moniker_to_extension_type_map.get(key)
             if moniker_to_extension_key:
-                ext_to_vers_map[moniker_to_extension_map[key]] = self._moniker_to_vers_map[key]
-                ext_to_rp_map[moniker_to_extension_map[key]] = self._ext_to_rp_map[moniker_to_extension_map[key]]
+                ext_to_vers_map[moniker_to_extension_type_map[key]] = self._moniker_to_vers_map[key]
+                ext_to_rp_map[moniker_to_extension_type_map[key]] = self._ext_to_rp_map[
+                    moniker_to_extension_type_map[key]
+                ]
         self._ext_to_vers_map = ext_to_vers_map
         self._ext_to_rp_map = ext_to_rp_map
 
@@ -94,9 +103,16 @@ v011_extension_to_version_map = {
     "microsoft.deviceregistry.assets": v011_moniker_to_version_map[EdgeServiceMoniker.adr.value],
 }
 
-moniker_to_extension_map = {
+moniker_to_extension_type_map = {
     EdgeServiceMoniker.symphony.value: "microsoft.alicesprings",
     EdgeServiceMoniker.e4k.value: "microsoft.alicesprings.dataplane",
     EdgeServiceMoniker.bluefin.value: "microsoft.alicesprings.processor",
     EdgeServiceMoniker.adr.value: "microsoft.deviceregistry.assets",
+}
+
+extension_name_to_type_map = {
+    EdgeExtensionName.iotoperations.value: "microsoft.alicesprings",
+    EdgeExtensionName.mq.value: "microsoft.alicesprings.dataplane",
+    EdgeExtensionName.processor.value: "microsoft.alicesprings.processor",
+    EdgeExtensionName.assets.value: "microsoft.deviceregistry.assets",
 }

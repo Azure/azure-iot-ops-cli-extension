@@ -5,7 +5,22 @@
 # --------------------------------------------------------------------------------------------
 
 from .base import deploy
+from .aio_versions import (
+    get_aio_version_def,
+    AioVersionDef,
+    EdgeServiceMoniker,
+    EdgeExtensionName,
+    extension_name_to_type_map,
+    moniker_to_extension_type_map,
+)
+
 
 __all__ = [
-    "deploy"
+    "deploy",
+    "get_aio_version_def",
+    "AioVersionDef",
+    "EdgeServiceMoniker",
+    "EdgeExtensionName",
+    "extension_name_to_type_map",
+    "moniker_to_extension_type_map",
 ]

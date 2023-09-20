@@ -59,9 +59,9 @@ def process_v1_pods(
         prefix_names = []
 
     pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
-    pod_logger_info = f"Detected {len(pods.items)} pods."
+    pod_logger_info = f"Detected {len(pods.items)} pods"
     if label_selector:
-        pod_logger_info = f"{pod_logger_info} with label {pod_logger_info}."
+        pod_logger_info = f"{pod_logger_info} with label '{label_selector}'."
     logger.info(pod_logger_info)
     for pod in pods.items:
         p: V1Pod = pod

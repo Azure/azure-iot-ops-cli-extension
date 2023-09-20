@@ -6,7 +6,13 @@
 
 from typing import List, Optional
 
-from .aio_versions import AioVersionDef, EdgeServiceMoniker, get_aio_version_def
+from .aio_versions import (
+    AioVersionDef,
+    EdgeServiceMoniker,
+    get_aio_version_def,
+    extension_name_to_type_map,
+    EdgeExtensionName,
+)
 
 
 def get_otel_collector_addr(namespace: str, prefix_protocol: bool = False):
@@ -42,6 +48,7 @@ class ManifestBuilder:
         self.version_def = version_def
 
         self.last_sync_priority: int = 0
+        self.target_name = f"{self.cluster_name}-azedge-init-target"
         self.symphony_components: List[dict] = []
         self.resources: List[dict] = []
         self.extension_ids: List[str] = []
@@ -54,7 +61,6 @@ class ManifestBuilder:
             "metadata": {"description": "Az Edge CLI PAS deployment."},
             "variables": {
                 "clusterId": f"[resourceId('Microsoft.Kubernetes/connectedClusters', '{self.cluster_name}')]",
-                "customLocationNamespace": self.custom_location_namespace,
                 "customLocationName": self.custom_location_name,
                 "extensionInfix": "/providers/Microsoft.KubernetesConfiguration/extensions/",
                 "location": self.location or "[resourceGroup().location]",
@@ -63,7 +69,7 @@ class ManifestBuilder:
         }
         self._symphony_target_template: dict = {
             "type": "Microsoft.Symphony/targets",
-            "name": "[variables('targetName')]",
+            "name": self.target_name,
             "location": "[variables('location')]",
             "apiVersion": "2023-05-22-preview",
             "extendedLocation": {
@@ -73,7 +79,7 @@ class ManifestBuilder:
             "properties": {
                 "scope": cluster_namespace,
                 "version": "0.1.1",
-                "displayName": "[variables('targetName')]",
+                "displayName": self.target_name,
                 "components": [],
                 "topologies": [
                     {
@@ -166,7 +172,7 @@ class ManifestBuilder:
             "location": "[variables('location')]",
             "properties": {
                 "hostResourceId": "[variables('clusterId')]",
-                "namespace": "[variables('customLocationNamespace')]",
+                "namespace": self.custom_location_namespace,
                 "displayName": self.custom_location_name,
                 "clusterExtensionIds": self.extension_ids,
             },
@@ -233,7 +239,6 @@ class ManifestBuilder:
         if self.resources:
             m["resources"].extend(self.resources)
         if self.symphony_components:
-            m["variables"]["targetName"] = f"{self.cluster_name}-{self.cluster_namespace}-init-target"
             t = deepcopy(self._symphony_target_template)
             t["properties"]["components"].extend(self.symphony_components)
             m["resources"].append(t)
@@ -287,8 +292,8 @@ def deploy(
     no_progress = kwargs.get("no_progress", False)
 
     manifest_builder.add_extension(
-        extension_type="microsoft.alicesprings",
-        name="iotoperations",
+        extension_type=extension_name_to_type_map[EdgeExtensionName.iotoperations.value],
+        name=EdgeExtensionName.iotoperations.value,
         configuration={
             "Microsoft.CustomLocation.ServiceAccount": "default",
             "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
@@ -296,16 +301,16 @@ def deploy(
         },
     )
     manifest_builder.add_extension(
-        extension_type="microsoft.alicesprings.dataplane",
-        name="mq",
+        extension_type=extension_name_to_type_map[EdgeExtensionName.mq.value],
+        name=EdgeExtensionName.mq.value,
         configuration={
             "global.quickstart": True,
             "global.openTelemetryCollectorAddr": get_otel_collector_addr(cluster_namespace, True),
         },
     )
     manifest_builder.add_extension(
-        extension_type="microsoft.alicesprings.processor",
-        name="dataprocessor",
+        extension_type=extension_name_to_type_map[EdgeExtensionName.processor.value],
+        name=EdgeExtensionName.processor.value,
         configuration={
             "Microsoft.CustomLocation.ServiceAccount": "microsoft.bluefin",
             "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
@@ -313,8 +318,8 @@ def deploy(
         },
     )
     manifest_builder.add_extension(
-        extension_type="microsoft.deviceregistry.assets",
-        name="assets",
+        extension_type=extension_name_to_type_map[EdgeExtensionName.assets.value],
+        name=EdgeExtensionName.assets.value,
     )
     manifest_builder.add_custom_location()
     manifest_builder.add_std_symphony_components()
