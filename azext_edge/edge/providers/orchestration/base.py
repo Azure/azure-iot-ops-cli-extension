@@ -48,7 +48,7 @@ class ManifestBuilder:
         self.version_def = version_def
 
         self.last_sync_priority: int = 0
-        self.target_name = f"{self.cluster_name}-azedge-init-target"
+        self.target_name = f"{self.cluster_name.lower()}-azedge-init-target"
         self.symphony_components: List[dict] = []
         self.resources: List[dict] = []
         self.extension_ids: List[str] = []
