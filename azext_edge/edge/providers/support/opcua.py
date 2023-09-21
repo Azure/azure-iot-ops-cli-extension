@@ -39,11 +39,18 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
     return opcua_pods
 
 
-def fetch_apollo_deployment():
-    return process_deployments(resource_api=OPCUA_API_V1, label_selector=OPCUA_ORCHESTRATOR_LABEL)
-
-
-support_runtime_elements = {"deployments": fetch_apollo_deployment}
+def fetch_apollo_deployments(since_seconds: int = 60 * 60 * 24):
+    processed = process_deployments(resource_api=OPCUA_API_V1, label_selector=OPCUA_ORCHESTRATOR_LABEL)
+    deployment_names = [d["data"]["metadata"]["name"] for d in processed]
+    if deployment_names:
+        associated_pods_label = f"app in ({','.join(deployment_names)})"
+        processed.extend(process_v1_pods(
+            resource_api=OPCUA_API_V1,
+            label_selector=associated_pods_label,
+            since_seconds=since_seconds,
+            capture_previous_logs=True,
+        ))
+    return processed
 
 
 def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
@@ -55,7 +62,10 @@ def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 
         )
     )
 
+    support_runtime_elements = {}
+    support_runtime_elements["deployments"] = partial(fetch_apollo_deployments, since_seconds=log_age_seconds)
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
+
     opcua_to_run.update(support_runtime_elements)
 
     return opcua_to_run
