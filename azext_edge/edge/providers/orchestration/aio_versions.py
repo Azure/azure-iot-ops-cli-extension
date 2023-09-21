@@ -19,8 +19,8 @@ class EdgeServiceMoniker(ListableEnum):
 
 
 class EdgeExtensionName(ListableEnum):
-    iotoperations = "iotoperations"
-    mq = "mq"
+    iotoperations = "alice-springs"
+    mq = "data-plane"
     processor = "processor"
     assets = "assets"
 

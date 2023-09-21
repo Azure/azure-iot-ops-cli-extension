@@ -18,9 +18,9 @@ from ...generators import generate_generic_id
 
 
 @pytest.mark.parametrize(
-    "cluster_name,cluster_namespace,rg,custom_location_name,location,aio_version,"
+    "cluster_name,cluster_namespace,rg,custom_location_name,location,pas_version,"
     "processor_instance_name,simulate_plc,opcua_discovery_endpoint,create_sync_rules,"
-    "custom_version",
+    "custom_version,target_name",
     [
         pytest.param(
             generate_generic_id(),
@@ -34,6 +34,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # opcua_discovery_endpoint
             True,  # create_sync_rules
             None,  # custom_version
+            generate_generic_id(),  # target_name
         ),
         pytest.param(
             generate_generic_id(),
@@ -47,6 +48,7 @@ from ...generators import generate_generic_id
             None,  # opcua_discovery_endpoint
             False,  # create_sync_rules
             ["e4k=1.0.0", "symphony=1.2.3"],  # custom_version
+            None,  # target_name
         ),
     ],
 )
@@ -58,12 +60,13 @@ def test_init_show_template(
     rg,
     custom_location_name,
     location,
-    aio_version,
+    pas_version,
     processor_instance_name,
     simulate_plc,
     opcua_discovery_endpoint,
     create_sync_rules,
     custom_version,
+    target_name,
 ):
     partial_init = partial(
         init,
@@ -78,11 +81,12 @@ def test_init_show_template(
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         create_sync_rules=create_sync_rules,
         custom_version=custom_version,
+        target_name=target_name,
     )
 
     template = partial_init(
         show_template=True,
-        aio_version=DeployableAioVersions.v011.value,
+        pas_version=DeployableAioVersions.v011.value,
     )
     assert template["$schema"] == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
     assert template["metadata"]["description"] == "Az Edge CLI PAS deployment."
@@ -101,12 +105,13 @@ def test_init_show_template(
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
         custom_location_name=custom_location_name,
-        aio_version=aio_version,
+        pas_version=pas_version,
         processor_instance_name=processor_instance_name,
         simulate_plc=simulate_plc,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         create_sync_rules=create_sync_rules,
         custom_version=custom_version,
+        target_name=target_name,
     )
 
 
@@ -131,12 +136,13 @@ def assert_resources(
     cluster_name: str,
     cluster_namespace: str,
     custom_location_name: str,
-    aio_version: str,
+    pas_version: str,
     processor_instance_name: Optional[str] = None,
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
     create_sync_rules: Optional[str] = None,
     custom_version: Optional[str] = None,
+    target_name: Optional[str] = None,
 ):
     if not custom_version:
         custom_version = {}
@@ -148,7 +154,7 @@ def assert_resources(
     )
     assert len(k8s_extensions) == len(extension_name_to_type_map)
     cluster_extension_ids = []
-    version_def = get_aio_version_def(version=aio_version)
+    version_def = get_aio_version_def(version=pas_version)
     version_def.set_moniker_to_version_map(moniker_map=custom_version)
     for ext_name in k8s_extensions:
         assert_k8s_extension_common(
@@ -184,6 +190,7 @@ def assert_resources(
     assert len(symphony_targets) == 1
     assert_symphony_target(
         target=next(iter(symphony_targets.values())),
+        name=target_name,
         cluster_name=cluster_name,
         namespace=cluster_namespace,
         versions=version_def.moniker_to_version_map,
@@ -256,6 +263,7 @@ def assert_custom_location(
 
 def assert_symphony_target(
     target: dict,
+    name: str,
     cluster_name: str,
     namespace: str,
     versions: dict,
@@ -271,9 +279,9 @@ def assert_symphony_target(
         "type": "CustomLocation",
     }
     assert target["location"] == "[variables('location')]"
-    assert target["name"] == f"{cluster_name}-azedge-init-target"
+    assert target["name"] == name if name else f"{cluster_name}-azedge-init-target"
     assert target["type"] == "Microsoft.Symphony/targets"
-    assert target["properties"]["displayName"] == f"{cluster_name}-azedge-init-target"
+    assert target["properties"]["displayName"] == name if name else f"{cluster_name}-azedge-init-target"
     assert target["properties"]["scope"] == namespace
     assert target["properties"]["topologies"] == default_symphony_target_topologies
 
