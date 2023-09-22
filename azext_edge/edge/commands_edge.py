@@ -64,9 +64,9 @@ def init(
     cluster_name: str,
     cluster_namespace: str,
     resource_group_name: str,
-    aio_version: str = DeployableAioVersions.v011.value,
+    pas_version: str = DeployableAioVersions.v011.value,
     custom_location_name: Optional[str] = None,
-    detail_aio_version: Optional[bool] = None,
+    show_pas_version: Optional[bool] = None,
     custom_version: Optional[List[str]] = None,
     only_deploy_custom: Optional[bool] = None,
     location: Optional[str] = None,
@@ -78,17 +78,24 @@ def init(
     create_sync_rules: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     processor_instance_name: Optional[str] = None,
+    target_name: Optional[str] = None,
 ) -> Union[dict, None]:
     from azure.cli.core.commands.client_factory import get_subscription_id
     from .providers.orchestration import deploy
 
     # cluster namespace must be lowercase
     cluster_namespace = cluster_namespace.lower()
+
+    cluster_name_lowered = cluster_name.lower()
+
     if not custom_location_name:
-        custom_location_name = f"{cluster_name.lower()}-azedge-init"
+        custom_location_name = f"{cluster_name_lowered}-azedge-init"
 
     if not processor_instance_name:
-        processor_instance_name = f"{cluster_name.lower()}-azedge-init-instance"
+        processor_instance_name = f"{cluster_name_lowered}-azedge-init-proc"
+
+    if not target_name:
+        target_name = f"{cluster_name_lowered}-azedge-init-target"
 
     if simulate_plc and not opcua_discovery_endpoint:
         opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
@@ -100,9 +107,9 @@ def init(
         custom_location_name=custom_location_name,
         custom_location_namespace=cluster_namespace,
         resource_group_name=resource_group_name,
-        aio_version=aio_version,
+        pas_version=pas_version,
         location=location,
-        detail_aio_version=detail_aio_version,
+        show_pas_version=show_pas_version,
         custom_version=custom_version,
         only_deploy_custom=only_deploy_custom,
         what_if=what_if,
@@ -113,4 +120,5 @@ def init(
         create_sync_rules=create_sync_rules,
         no_progress=no_progress,
         processor_instance_name=processor_instance_name,
+        target_name=target_name,
     )

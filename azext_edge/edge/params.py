@@ -153,7 +153,7 @@ def load_iotedge_arguments(self, _):
             "custom_location_name",
             options_list=["--custom-location"],
             help="The custom location name corresponding to the PAS deployment. If no custom location name is provided"
-            " one will be generated in the form '{cluster_name}_azedge_init'.",
+            " one will be generated in the form '{cluster_name}-azedge-init'.",
         )
         context.argument(
             "cluster_namespace",
@@ -182,35 +182,35 @@ def load_iotedge_arguments(self, _):
             arg_group="Template",
         )
         context.argument(
-            "aio_version",
-            options_list=["--aio-version"],
-            help="The AIO bundle version to deploy.",
+            "pas_version",
+            options_list=["--pas-version"],
+            help="The PAS bundle version to deploy.",
             choices=CaseInsensitiveList(DeployableAioVersions.list()),
-            arg_group="AIO Version",
+            arg_group="PAS Version",
         )
         context.argument(
-            "detail_aio_version",
-            options_list=["--version-detail"],
+            "show_pas_version",
+            options_list=["--show-version"],
             help="Summarize and show the versions of deployable components.",
             arg_type=get_three_state_flag(),
-            arg_group="AIO Version",
+            arg_group="PAS Version",
         )
         context.argument(
             "custom_version",
             nargs="+",
             options_list=["--custom-version"],
-            help="Customize AIO deployment by specifying edge service versions. Usage takes "
+            help="Customize PAS deployment by specifying edge service versions. Usage takes "
             "precedence over --aio-version. Use space-separated {key}={value} pairs where {key} "
             "is the edge service moniker and {value} is the desired version. The following monikers "
             f"may be used: {', '.join(EdgeServiceMoniker.list())}. Example: e4k=0.5.0 bluefin=0.3.0",
-            arg_group="AIO Version",
+            arg_group="PAS Version",
         )
         context.argument(
             "only_deploy_custom",
             options_list=["--only-custom"],
             arg_type=get_three_state_flag(),
             help="Only deploy the edge services specified in --custom-version.",
-            arg_group="AIO Version",
+            arg_group="PAS Version",
         )
         context.argument(
             "create_sync_rules",
@@ -256,9 +256,17 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "processor_instance_name",
             options_list=["--processor-instance"],
-            arg_type=get_three_state_flag(),
             help="Instance name for data processor. Used if data processor is part of the deployment. "
             "If no processor instance name is provided one will be generated in the form "
-            "'{cluster_name}-azedge-init-instance'.",
+            "'{cluster_name}-azedge-init-proc'.",
             arg_group="Data Processor",
+        )
+        # Symphony
+        context.argument(
+            "target_name",
+            options_list=["--target"],
+            help="Target name for edge orchestrator. Used if symphony is part of the deployment. "
+            "If no target name is provided one will be generated in the form "
+            "'{cluster_name}-azedge-init-target'.",
+            arg_group="Orchestration",
         )

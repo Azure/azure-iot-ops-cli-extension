@@ -37,23 +37,22 @@ class ManifestBuilder:
         custom_location_namespace: str,
         cluster_namespace: str,
         version_def: AioVersionDef,
-        location: str = None,
         **kwargs,
     ):
         self.cluster_name = cluster_name
         self.cluster_namespace = cluster_namespace
         self.custom_location_name = custom_location_name
         self.custom_location_namespace = custom_location_namespace
-        self.location = location
         self.version_def = version_def
 
         self.last_sync_priority: int = 0
-        self.target_name = f"{self.cluster_name.lower()}-azedge-init-target"
         self.symphony_components: List[dict] = []
         self.resources: List[dict] = []
         self.extension_ids: List[str] = []
+
         self.kwargs = kwargs
         self.create_sync_rules = self.kwargs.get("create_sync_rules")
+        self.target_name = self.kwargs["target_name"]
 
         self._manifest: dict = {
             "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -63,7 +62,7 @@ class ManifestBuilder:
                 "clusterId": f"[resourceId('Microsoft.Kubernetes/connectedClusters', '{self.cluster_name}')]",
                 "customLocationName": self.custom_location_name,
                 "extensionInfix": "/providers/Microsoft.KubernetesConfiguration/extensions/",
-                "location": self.location or "[resourceGroup().location]",
+                "location": self.kwargs.get("location") or "[resourceGroup().location]",
             },
             "resources": [],
         }
@@ -254,8 +253,7 @@ def deploy(
     resource_group_name: str,
     custom_location_name: str,
     custom_location_namespace: str,
-    aio_version: str,
-    location: Optional[str] = None,
+    pas_version: str,
     **kwargs,
 ):
     from uuid import uuid4
@@ -268,11 +266,11 @@ def deploy(
     from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
     from rich.table import Table
 
-    version_def = process_deployable_version(aio_version, **kwargs)
-    detail_aio_version = kwargs.get("detail_aio_version", False)
-    if detail_aio_version:
+    version_def = process_deployable_version(pas_version, **kwargs)
+    show_pas_version = kwargs.get("show_pas_version", False)
+    if show_pas_version:
         console = Console()
-        table = Table(title=f"Azure IoT Ops {version_def.version}")
+        table = Table(title=f"Project Alice Springs {version_def.version}")
         table.add_column("Component", justify="left", style="cyan")
         table.add_column("Version", justify="left", style="magenta")
         for moniker in version_def.moniker_to_version_map:
@@ -286,7 +284,6 @@ def deploy(
         custom_location_name=custom_location_name,
         custom_location_namespace=custom_location_namespace,
         cluster_namespace=cluster_namespace,
-        location=location,
         version_def=version_def,
         **kwargs,
     )
@@ -351,7 +348,7 @@ def deploy(
             if kwargs.get("what_if"):
                 from azure.cli.command_modules.resource.custom import format_what_if_operation_result
 
-                progress.add_task(description=f"What-if of deploying AIO version: {version_def.version}", total=None)
+                progress.add_task(description=f"What-if of deploying PAS version: {version_def.version}", total=None)
                 what_if_deployment = resource_client.deployments.begin_what_if(
                     resource_group_name=resource_group_name,
                     deployment_name=deployment_name,
@@ -362,7 +359,7 @@ def deploy(
 
                 return
 
-            progress.add_task(description=f"Deploying AIO version: {version_def.version}", total=None)
+            progress.add_task(description=f"Deploying PAS version: {version_def.version}", total=None)
             deployment = resource_client.deployments.begin_create_or_update(
                 resource_group_name=resource_group_name,
                 deployment_name=deployment_name,
@@ -379,7 +376,7 @@ def deploy(
         result["provisioningState"] = deployment.properties.provisioning_state
         result["correlationId"] = deployment.properties.correlation_id
         result["name"] = deployment.name
-        result["aioBundle"] = manifest_builder.version_def.moniker_to_version_map
+        result["pasBundle"] = manifest_builder.version_def.moniker_to_version_map
         result["resourceIds"] = [resource.id for resource in deployment.properties.output_resources]
 
         return result

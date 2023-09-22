@@ -83,10 +83,10 @@ def load_iotedge_help():
         "edge init"
     ] = """
         type: command
-        short-summary: Initialize and deploy an AIO service bundle to the target cluster.
+        short-summary: Initialize and deploy a PAS service bundle to the target cluster.
         long-summary: |
-            After this operation completes the desired suite of AIO edge services will
+            After this operation completes the desired suite of PAS edge services will
             be deployed with baseline configuration on the target cluster. Deployment is done incrementally.
 
-            Customize AIO version via --aio-version or --custom-version.
+            Customize deployable PAS version via --pas-version or --custom-version.
     """
