@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from ...common import DeployableAioVersions, ListableEnum
+from ...common import DeployablePasVersions, ListableEnum
 
 
 class EdgeServiceMoniker(ListableEnum):
@@ -19,13 +19,13 @@ class EdgeServiceMoniker(ListableEnum):
 
 
 class EdgeExtensionName(ListableEnum):
-    iotoperations = "alice-springs"
-    mq = "data-plane"
+    alicesprings = "alice-springs"
+    dataplane = "data-plane"
     processor = "processor"
     assets = "assets"
 
 
-class AioVersionDef:
+class PasVersionDef:
     def __init__(self, version: str, ext_to_rp_map: dict, ext_to_vers_map: dict, moniker_to_vers_map: dict):
         self._version = version
         self._ext_to_rp_map = ext_to_rp_map
@@ -68,9 +68,9 @@ class AioVersionDef:
         self._ext_to_rp_map = ext_to_rp_map
 
 
-def get_aio_version_def(version: str) -> AioVersionDef:
-    if version == DeployableAioVersions.v011.value:
-        return AioVersionDef(
+def get_pas_version_def(version: str) -> PasVersionDef:
+    if version == DeployablePasVersions.v011.value:
+        return PasVersionDef(
             version=version,
             ext_to_rp_map=v011_extension_to_rp_map,
             ext_to_vers_map=v011_extension_to_version_map,
@@ -111,8 +111,8 @@ moniker_to_extension_type_map = {
 }
 
 extension_name_to_type_map = {
-    EdgeExtensionName.iotoperations.value: "microsoft.alicesprings",
-    EdgeExtensionName.mq.value: "microsoft.alicesprings.dataplane",
+    EdgeExtensionName.alicesprings.value: "microsoft.alicesprings",
+    EdgeExtensionName.dataplane.value: "microsoft.alicesprings.dataplane",
     EdgeExtensionName.processor.value: "microsoft.alicesprings.processor",
     EdgeExtensionName.assets.value: "microsoft.deviceregistry.assets",
 }

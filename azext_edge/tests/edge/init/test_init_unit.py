@@ -10,8 +10,8 @@ from typing import Dict, Optional
 import pytest
 
 from azext_edge.edge.commands_edge import init
-from azext_edge.edge.common import DeployableAioVersions
-from azext_edge.edge.providers.orchestration import EdgeServiceMoniker, extension_name_to_type_map, get_aio_version_def
+from azext_edge.edge.common import DeployablePasVersions
+from azext_edge.edge.providers.orchestration import EdgeServiceMoniker, extension_name_to_type_map, get_pas_version_def
 from azext_edge.edge.util import assemble_nargs_to_dict
 
 from ...generators import generate_generic_id
@@ -28,7 +28,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # rg
             generate_generic_id(),  # custom_location_name
             generate_generic_id(),  # location
-            DeployableAioVersions.v011.value,
+            DeployablePasVersions.v011.value,
             generate_generic_id(),  # processor_instance_name
             False,  # simulate_plc
             generate_generic_id(),  # opcua_discovery_endpoint
@@ -42,7 +42,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # rg
             None,  # custom_location_name
             None,  # location
-            DeployableAioVersions.v011.value,
+            DeployablePasVersions.v011.value,
             None,  # processor_instance_name
             True,  # simulate_plc
             None,  # opcua_discovery_endpoint
@@ -86,7 +86,7 @@ def test_init_show_template(
 
     template = partial_init(
         show_template=True,
-        pas_version=DeployableAioVersions.v011.value,
+        pas_version=DeployablePasVersions.v011.value,
     )
     assert template["$schema"] == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
     assert template["metadata"]["description"] == "Az Edge CLI PAS deployment."
@@ -154,7 +154,7 @@ def assert_resources(
     )
     assert len(k8s_extensions) == len(extension_name_to_type_map)
     cluster_extension_ids = []
-    version_def = get_aio_version_def(version=pas_version)
+    version_def = get_pas_version_def(version=pas_version)
     version_def.set_moniker_to_version_map(moniker_map=custom_version)
     for ext_name in k8s_extensions:
         assert_k8s_extension_common(

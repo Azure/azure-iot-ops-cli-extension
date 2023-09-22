@@ -11,9 +11,9 @@ CLI parameter definitions.
 from azure.cli.core.commands.parameters import get_three_state_flag
 from knack.arguments import CaseInsensitiveList
 
-from .common import AkriK8sDistroType, DeployableAioVersions, SupportForEdgeServiceType
+from .common import AkriK8sDistroType, DeployablePasVersions, SupportForEdgeServiceType
 from .providers.edge_api import E4kResourceKinds
-from .providers.orchestration.aio_versions import EdgeServiceMoniker
+from .providers.orchestration.pas_versions import EdgeServiceMoniker
 
 
 def load_iotedge_arguments(self, _):
@@ -185,7 +185,7 @@ def load_iotedge_arguments(self, _):
             "pas_version",
             options_list=["--pas-version"],
             help="The PAS bundle version to deploy.",
-            choices=CaseInsensitiveList(DeployableAioVersions.list()),
+            choices=CaseInsensitiveList(DeployablePasVersions.list()),
             arg_group="PAS Version",
         )
         context.argument(

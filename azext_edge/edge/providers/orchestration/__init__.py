@@ -5,9 +5,9 @@
 # --------------------------------------------------------------------------------------------
 
 from .base import deploy
-from .aio_versions import (
-    get_aio_version_def,
-    AioVersionDef,
+from .pas_versions import (
+    get_pas_version_def,
+    PasVersionDef,
     EdgeServiceMoniker,
     EdgeExtensionName,
     extension_name_to_type_map,
@@ -17,8 +17,8 @@ from .aio_versions import (
 
 __all__ = [
     "deploy",
-    "get_aio_version_def",
-    "AioVersionDef",
+    "get_pas_version_def",
+    "PasVersionDef",
     "EdgeServiceMoniker",
     "EdgeExtensionName",
     "extension_name_to_type_map",

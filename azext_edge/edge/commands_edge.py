@@ -11,7 +11,7 @@ from knack.log import get_logger
 
 from .providers.base import load_config_context
 from .providers.support.base import get_bundle_path
-from .common import AkriK8sDistroType, DeployableAioVersions
+from .common import AkriK8sDistroType, DeployablePasVersions
 
 logger = get_logger(__name__)
 
@@ -64,7 +64,7 @@ def init(
     cluster_name: str,
     cluster_namespace: str,
     resource_group_name: str,
-    pas_version: str = DeployableAioVersions.v011.value,
+    pas_version: str = DeployablePasVersions.v011.value,
     custom_location_name: Optional[str] = None,
     show_pas_version: Optional[bool] = None,
     custom_version: Optional[List[str]] = None,
