@@ -6,12 +6,12 @@
 
 import pytest
 
-from azext_edge.edge.common import DeployableAioVersions
+from azext_edge.edge.common import DeployablePasVersions
 from azext_edge.edge.providers.orchestration import (
-    get_aio_version_def,
+    get_pas_version_def,
     EdgeServiceMoniker,
 )
-from azext_edge.edge.providers.orchestration.aio_versions import (
+from azext_edge.edge.providers.orchestration.pas_versions import (
     v011_moniker_to_version_map,
     v011_extension_to_rp_map,
     v011_extension_to_version_map,
@@ -22,13 +22,13 @@ from azext_edge.edge.providers.orchestration.aio_versions import (
     "aio_version",
     [
         pytest.param(
-            DeployableAioVersions.v011.value,
+            DeployablePasVersions.v011.value,
         ),
         pytest.param(None),
     ],
 )
 def test_get_aio_version_def(aio_version: str):
-    version_def = get_aio_version_def(aio_version)
+    version_def = get_pas_version_def(aio_version)
     if not aio_version:
         assert version_def is None
         return
@@ -62,7 +62,7 @@ def test_get_aio_version_def(aio_version: str):
     ],
 )
 def test_version_def_set_version(moniker_map, refresh, expected_set_mappings):
-    version_def = get_aio_version_def(DeployableAioVersions.v011.value)
+    version_def = get_pas_version_def(DeployablePasVersions.v011.value)
     version_def.set_moniker_to_version_map(moniker_map=moniker_map, refresh_mappings=refresh)
 
     assert version_def.version == "custom"

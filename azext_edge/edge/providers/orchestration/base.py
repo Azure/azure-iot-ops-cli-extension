@@ -6,10 +6,10 @@
 
 from typing import List, Optional
 
-from .aio_versions import (
-    AioVersionDef,
+from .pas_versions import (
+    PasVersionDef,
     EdgeServiceMoniker,
-    get_aio_version_def,
+    get_pas_version_def,
     extension_name_to_type_map,
     EdgeExtensionName,
 )
@@ -36,7 +36,7 @@ class ManifestBuilder:
         custom_location_name: str,
         custom_location_namespace: str,
         cluster_namespace: str,
-        version_def: AioVersionDef,
+        version_def: PasVersionDef,
         **kwargs,
     ):
         self.cluster_name = cluster_name
@@ -290,8 +290,8 @@ def deploy(
     no_progress = kwargs.get("no_progress", False)
 
     manifest_builder.add_extension(
-        extension_type=extension_name_to_type_map[EdgeExtensionName.iotoperations.value],
-        name=EdgeExtensionName.iotoperations.value,
+        extension_type=extension_name_to_type_map[EdgeExtensionName.alicesprings.value],
+        name=EdgeExtensionName.alicesprings.value,
         configuration={
             "Microsoft.CustomLocation.ServiceAccount": "default",
             "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
@@ -299,8 +299,8 @@ def deploy(
         },
     )
     manifest_builder.add_extension(
-        extension_type=extension_name_to_type_map[EdgeExtensionName.mq.value],
-        name=EdgeExtensionName.mq.value,
+        extension_type=extension_name_to_type_map[EdgeExtensionName.dataplane.value],
+        name=EdgeExtensionName.dataplane.value,
         configuration={
             "global.quickstart": True,
             "global.openTelemetryCollectorAddr": get_otel_collector_addr(cluster_namespace, True),
@@ -382,10 +382,10 @@ def deploy(
         return result
 
 
-def process_deployable_version(aio_version: str, **kwargs) -> AioVersionDef:
+def process_deployable_version(aio_version: str, **kwargs) -> PasVersionDef:
     from ...util import assemble_nargs_to_dict
 
-    base_version_def = get_aio_version_def(version=aio_version)
+    base_version_def = get_pas_version_def(version=aio_version)
     custom_version = kwargs.get("custom_version")
     only_deploy_custom = kwargs.get("only_deploy_custom")
 

@@ -99,9 +99,9 @@ class AkriK8sDistroType(ListableEnum):
     minik8s = "minik8s"
 
 
-class DeployableAioVersions(ListableEnum):
+class DeployablePasVersions(ListableEnum):
     """
-    Deployable AIO versions.
+    Deployable PAS versions.
     """
 
     v011 = "0.1.1"
