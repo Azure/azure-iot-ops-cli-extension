@@ -129,6 +129,24 @@ class SupportForEdgeServiceType(ListableEnum):
     symphony = "symphony"
 
 
+class AkriK8sDistroType(ListableEnum):
+    """
+    Akri K8s distro type.
+    """
+
+    k8s = "k8s"
+    k3s = "k3s"
+    minik8s = "minik8s"
+
+
+class DeployablePasVersions(ListableEnum):
+    """
+    Deployable PAS versions.
+    """
+
+    v011 = "0.1.1"
+
+
 # E4K runtime attributes
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
