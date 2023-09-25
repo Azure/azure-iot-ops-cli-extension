@@ -16,6 +16,32 @@ class ListableEnum(Enum):
     @classmethod
     def list(cls):
         return [c.value for c in cls]
+    
+
+class BluefinProcessorStageType(ListableEnum):
+    """
+    Bluefin data processor stage type.
+    """
+    aggregate = "processor/aggregate"
+    enrich = "processor/enrich"
+    filter = "processor/filter"
+    grpc = "processor/grpc"
+    http = "processor/http"
+    lkv = "processor/lkv"
+    transform = "processor/transform"
+
+
+class BluefinDestinationStageType(ListableEnum):
+    """
+    Bluefin data destination stage type.
+    """
+    data_explorer = "output/dataexplorer"
+    fabric = "output/fabric"
+    file = "output/file"
+    grpc = "output/grpc"
+    http = "output/http"
+    mqtt = "output/mqtt"
+    reference_data = "output/refdata"
 
 
 class CheckTaskStatus(Enum):

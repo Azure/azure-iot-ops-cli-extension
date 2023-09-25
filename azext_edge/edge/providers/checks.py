@@ -28,6 +28,8 @@ from ..common import (
     BLUEFIN_READER_WORKER_PREFIX,
     BLUEFIN_REFDATA_STORE_PREFIX,
     BLUEFIN_RUNNER_WORKER_PREFIX,
+    BluefinDestinationStageType,
+    BluefinProcessorStageType,
     CheckTaskStatus,
     ProvisioningState,
     ResourceState,
@@ -1087,34 +1089,41 @@ def evaluate_pipelines(
             target_name=target_pipelines, status=pipeline_source_topics_eval_status, value=pipeline_source_topics_eval_value, resource_name=pipeline_name
         )
 
-        # check data source partition
-        pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
-        pipeline_source_node_partition_strategy = pipeline_source_node["partitionStrategy"]["type"]
-        source_partition_count_display_text = f"- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. [green]Detected {pipeline_source_node_partition_count}[/green]."
-        source_partition_strategy_display_text = f"The type of partitioning strategy is {{[bright_blue]{pipeline_source_node_partition_strategy}[/bright_blue]}}."
-
-        pipeline_source_partition_eval_value = {"spec.input.partitionCount": pipeline_source_node_partition_count}
-        pipeline_source_partition_eval_status = CheckTaskStatus.success.value
-
-        if pipeline_source_node_partition_count < 1 or pipeline_source_node_partition_count > 100:
-            pipeline_source_partition_eval_status = CheckTaskStatus.error.value
-        check_manager.add_display(target_name=target_pipelines, display=Padding(source_partition_count_display_text, (0, 0, 0, 16)))
-        check_manager.add_display(target_name=target_pipelines, display=Padding(source_partition_strategy_display_text, (0, 0, 0, 18)))
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines, status=pipeline_source_partition_eval_status, value=pipeline_source_partition_eval_value, resource_name=pipeline_name
-        )
-
         if extended:
             # data source qos
             pipeline_source_node_qos = pipeline_source_node["qos"]
             source_qos_display_text = f"- QoS: [bright_blue]{pipeline_source_node_qos}[/bright_blue]"
             check_manager.add_display(target_name=target_pipelines, display=Padding(source_qos_display_text, (0, 0, 0, 16)))
 
-            # data source authentication
-            pipeline_source_node_authentication = pipeline_source_node["authentication"]["type"]
+            # check data source partition
+            pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
+            pipeline_source_node_partition_strategy = pipeline_source_node["partitionStrategy"]["type"]
+            source_partition_count_display_text = f"- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. [green]Detected {pipeline_source_node_partition_count}[/green]."
+            source_partition_strategy_display_text = f"The type of partitioning strategy is {{[bright_blue]{pipeline_source_node_partition_strategy}[/bright_blue]}}."
+
+            pipeline_source_partition_eval_value = {"spec.input.partitionCount": pipeline_source_node_partition_count}
+            pipeline_source_partition_eval_status = CheckTaskStatus.success.value
+
+            if pipeline_source_node_partition_count < 1 or pipeline_source_node_partition_count > 100:
+                pipeline_source_partition_eval_status = CheckTaskStatus.error.value
+            check_manager.add_display(target_name=target_pipelines, display=Padding(source_partition_count_display_text, (0, 0, 0, 16)))
+            check_manager.add_display(target_name=target_pipelines, display=Padding(source_partition_strategy_display_text, (0, 0, 0, 18)))
+
+            check_manager.add_target_eval(
+                target_name=target_pipelines, status=pipeline_source_partition_eval_status, value=pipeline_source_partition_eval_value, resource_name=pipeline_name
+            )
+
+        # data source authentication
+        pipeline_source_node_authentication = pipeline_source_node["authentication"]["type"]
+        if pipeline_source_node_authentication == "usernamePassword":
             source_authentication_display_text = f"- Authentication type: [bright_blue]{pipeline_source_node_authentication}[/bright_blue]"
             check_manager.add_display(target_name=target_pipelines, display=Padding(source_authentication_display_text, (0, 0, 0, 16)))
+            
+            if extended:
+                authentication_username = pipeline_source_node["authentication"]["username"]
+                authentication_password = pipeline_source_node["authentication"]["password"]
+                check_manager.add_display(target_name=target_pipelines, display=Padding(f"Username: [cyan]{authentication_username}[/cyan]", (0, 0, 0, 20)))
+                check_manager.add_display(target_name=target_pipelines, display=Padding(f"Password: [cyan]{authentication_password}[/cyan]", (0, 0, 0, 20)))
 
         # check pipeline intermediate node
         pipeline_stages_node = p["spec"]["stages"]
@@ -1130,18 +1139,9 @@ def evaluate_pipelines(
         if output_node:
             pipeline_intermediate_stages_node.pop(output_node[0])
             pipeline_intermediate_stages_node_count -= 1
-        stage_count_display_text = f"- Expecting [bright_blue]>=1[/bright_blue] intermediate stages. [green]Detected {pipeline_intermediate_stages_node_count}[/green]."
+        stage_count_display_text = f"- Pipeline contains [bright_blue]{pipeline_intermediate_stages_node_count}[/bright_blue] intermediate stages."
 
-        pipeline_stage_eval_value = {"intermediateStagesCount": pipeline_intermediate_stages_node_count}
-        pipeline_stage_eval_status = CheckTaskStatus.success.value
-
-        if pipeline_intermediate_stages_node_count < 1:
-            pipeline_stage_eval_status = CheckTaskStatus.error.value
         check_manager.add_display(target_name=target_pipelines, display=Padding(stage_count_display_text, (0, 0, 0, 12)))
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines, status=pipeline_stage_eval_status, value=pipeline_stage_eval_value, resource_name=pipeline_name
-        )
 
         if extended:
             for s in pipeline_intermediate_stages_node:
@@ -1150,9 +1150,7 @@ def evaluate_pipelines(
                 stage_display_text = f"- Stage resource {{[bright_blue]{stage_name}[/bright_blue]}} of type {{[bright_blue]{stage_type}[/bright_blue]}}"
                 check_manager.add_display(target_name=target_pipelines, display=Padding(stage_display_text, (0, 0, 0, 16)))
 
-                for key, value in pipeline_intermediate_stages_node[s].items():
-                    property_display_text = f"Property [bright_blue]{key}[/bright_blue] : [bright_blue]{value}[/bright_blue]"
-                    check_manager.add_display(target_name=target_pipelines, display=Padding(property_display_text, (0, 0, 0, 20)))
+                _process_intermediate_stage_properties(check_manager, target_name=target_pipelines, stage=pipeline_intermediate_stages_node[s])
 
         # check pipeline destination node
         pipeline_destination_node_count = 0
@@ -1173,9 +1171,11 @@ def evaluate_pipelines(
 
         if output_node:
             if extended:
-                for key, value in output_node[1].items():
-                    property_display_text = f"Property [bright_blue]{key}[/bright_blue] : [bright_blue]{value}[/bright_blue]"
-                    check_manager.add_display(target_name=target_pipelines, display=Padding(property_display_text, (0, 0, 0, 16)))
+                # for key, value in output_node[1].items():
+                #     property_display_text = f"Property [bright_blue]{key}[/bright_blue] : [bright_blue]{value}[/bright_blue]"
+                #     check_manager.add_display(target_name=target_pipelines, display=Padding(property_display_text, (0, 0, 0, 16)))
+                _process_destination_stage_properties(check_manager, target_name=target_pipelines, stage=output_node[1])
+                
             else:
                 # check pipeline destination type
                 pipeline_destination_type = output_node[1]["type"]
@@ -1254,7 +1254,6 @@ def evaluate_datasets(
 
         if extended:
             dataset_spec: dict = d["spec"]
-            import pdb; pdb.set_trace()
             dataset_payload = dataset_spec.get("payload", "")
             if dataset_payload:
                 check_manager.add_display(
@@ -1284,25 +1283,6 @@ def evaluate_datasets(
                         (0, 0, 0, 12),
                     ),
                 )
-
-            dataset_keys = dataset_spec.get("keys", {})
-            if dataset_keys:
-                check_manager.add_display(
-                    target_name=target_datasets,
-                    display=Padding(
-                        "Configuration keys:",
-                        (0, 0, 0, 12),
-                    ),
-                )
-
-                for key in dataset_keys:
-                    check_manager.add_display(
-                        target_name=target_datasets,
-                        display=Padding(
-                            f"Key {{[cyan]{key}[/cyan]}} detected",
-                            (0, 0, 0, 16),
-                        ),
-                    )
 
             
     return check_manager.as_dict(as_list)
@@ -1586,7 +1566,6 @@ def _get_destination_target_endpoint(output_node: Tuple) -> str:
         target_endpoint = output_node[1]["dataset"]
 
     return target_endpoint
- 
 
 
 class CheckManager:
@@ -1724,3 +1703,161 @@ def evaluate_pod_health(check_manager: CheckManager, namespace: str, pod: str, d
                     (0, 0, 0, display_padding),
                 ),
             )
+
+def _process_intermediate_stage_properties(check_manager: CheckManager, target_name: str, stage: dict):
+    stage_type = stage["type"]
+
+    if BluefinProcessorStageType.aggregate.value in stage_type:
+        stage_window_type = stage["window"]["type"]
+        stage_window_size = stage["window"]["size"]
+
+        stage_window_type_display_text = f"Aggregate window type: [bright_blue]{stage_window_type}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_window_type_display_text, (0, 0, 0, 20)))
+
+        stage_window_size_display_text = f"Aggregate window duration: [bright_blue]{stage_window_size}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_window_size_display_text, (0, 0, 0, 20)))
+    elif BluefinProcessorStageType.enrich.value in stage_type:
+        stage_dataset = stage["dataset"]
+
+        stage_dataset_display_text = f"Enrich dataset ID: [bright_blue]{stage_dataset}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_dataset_display_text, (0, 0, 0, 20)))
+    elif BluefinProcessorStageType.grpc.value in stage_type:
+        stage_server_address = stage["serverAddress"]
+        stage_rpcName = stage["rpcName"]
+        stage_descriptor = stage["descriptor"]
+
+        stage_server_address_display_text = f"gRPC server address: [bright_blue]{stage_server_address}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_server_address_display_text, (0, 0, 0, 20)))
+
+        stage_rpcName_display_text = f"gRPC RPC name: [bright_blue]{stage_rpcName}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_rpcName_display_text, (0, 0, 0, 20)))
+
+        # only show first 5 charactors of descriptor
+        stage_descriptor_display_text = f"gRPC descriptor: [bright_blue]{stage_descriptor[:5]}[/bright_blue]..."
+        check_manager.add_display(target_name=target_name, display=Padding(stage_descriptor_display_text, (0, 0, 0, 20)))
+    elif BluefinProcessorStageType.http.value in stage_type:
+        stage_url = stage["url"]
+        stage_method = stage["method"]
+
+        stage_url_display_text = f"Request URL: [bright_blue]{stage_url}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_url_display_text, (0, 0, 0, 20)))
+
+        stage_method_display_text = f"Request method: [bright_blue]{stage_method}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_method_display_text, (0, 0, 0, 20)))
+
+
+def _process_destination_stage_properties(check_manager: CheckManager, target_name: str, stage: dict):
+    stage_type = stage["type"]
+
+    if BluefinDestinationStageType.fabric.value in stage_type:
+        stage_fabric_url = stage["url"]
+        stage_fabric_workspace = stage["workspace"]
+        stage_fabric_lakehouse = stage["lakehouse"]
+        stage_fabric_lakehouse_table = stage["table"]
+        stage_authentication_type = stage["authentication"]["type"]
+        stage_auth_tenant_id = stage["authentication"]["tenantId"]
+        stage_auth_client_id = stage["authentication"]["clientId"]
+        stage_auth_client_secret = stage["authentication"]["clientSecret"]
+
+        stage_fabric_url_display_text = f"Fabric Endpoint: [bright_blue]{stage_fabric_url}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_fabric_url_display_text, (0, 0, 0, 16)))
+
+        stage_fabric_workspace_display_text = f"Fabric workspace ID: [bright_blue]{stage_fabric_workspace}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_fabric_workspace_display_text, (0, 0, 0, 16)))
+
+        stage_fabric_lakehouse_display_text = f"Fabric lakehouse ID: [bright_blue]{stage_fabric_lakehouse}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_fabric_lakehouse_display_text, (0, 0, 0, 16)))
+
+        stage_fabric_lakehouse_table_display_text = f"Fabric lakehouse table: [bright_blue]{stage_fabric_lakehouse_table}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_fabric_lakehouse_table_display_text, (0, 0, 0, 16)))
+
+        stage_authentication_type_display_text = f"Data Explorer authentication type: [bright_blue]{stage_authentication_type}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_authentication_type_display_text, (0, 0, 0, 16)))
+
+        stage_auth_tenant_id_display_text = f"Tenant ID: [bright_blue]{stage_auth_tenant_id}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_tenant_id_display_text, (0, 0, 0, 18)))
+
+        stage_auth_client_id_display_text = f"Client ID: [bright_blue]{stage_auth_client_id}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_client_id_display_text, (0, 0, 0, 18)))
+
+        stage_auth_client_secret_display_text = f"Client secret: [bright_blue]{stage_auth_client_secret}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_client_secret_display_text, (0, 0, 0, 18)))
+    elif BluefinDestinationStageType.grpc.value in stage_type:
+        stage_server_address = stage["serverAddress"]
+        stage_rpcName = stage["rpcName"]
+        stage_descriptor = stage["descriptor"]
+
+        stage_server_address_display_text = f"gRPC server address: [bright_blue]{stage_server_address}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_server_address_display_text, (0, 0, 0, 20)))
+
+        stage_rpcName_display_text = f"gRPC RPC name: [bright_blue]{stage_rpcName}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_rpcName_display_text, (0, 0, 0, 20)))
+
+        # only show first 5 charactors of descriptor
+        stage_descriptor_display_text = f"gRPC descriptor: [bright_blue]{stage_descriptor[:5]}[/bright_blue]..."
+        check_manager.add_display(target_name=target_name, display=Padding(stage_descriptor_display_text, (0, 0, 0, 20)))
+    elif BluefinDestinationStageType.data_explorer.value in stage_type:
+        stage_cluster_url = stage["clusterUrl"]
+        stage_database = stage["database"]
+        stage_table = stage["table"]
+        stage_authentication_type = stage["authentication"]["type"]
+        stage_auth_tenant_id = stage["authentication"]["tenantId"]
+        stage_auth_client_id = stage["authentication"]["clientId"]
+        stage_auth_client_secret = stage["authentication"]["clientSecret"]
+
+        stage_cluster_url_display_text = f"Data Explorer cluster URL: [bright_blue]{stage_cluster_url}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_cluster_url_display_text, (0, 0, 0, 16)))
+
+        stage_database_display_text = f"Data Explorer database: [bright_blue]{stage_database}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_database_display_text, (0, 0, 0, 16)))
+
+        stage_table_display_text = f"Data Explorer table: [bright_blue]{stage_table}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_table_display_text, (0, 0, 0, 16)))
+
+        stage_authentication_type_display_text = f"Data Explorer authentication type: [bright_blue]{stage_authentication_type}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_authentication_type_display_text, (0, 0, 0, 16)))
+
+        stage_auth_tenant_id_display_text = f"Tenant ID: [bright_blue]{stage_auth_tenant_id}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_tenant_id_display_text, (0, 0, 0, 18)))
+
+        stage_auth_client_id_display_text = f"Client ID: [bright_blue]{stage_auth_client_id}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_client_id_display_text, (0, 0, 0, 18)))
+
+        stage_auth_client_secret_display_text = f"Client secret: [bright_blue]{stage_auth_client_secret}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_client_secret_display_text, (0, 0, 0, 18)))
+    elif BluefinDestinationStageType.mqtt.value in stage_type:
+        stage_broker = stage["broker"]
+        stage_qos = stage.get("qos", "")
+        stage_topic = stage["topic"]
+        stage_authentication_type = stage["authentication"]["type"]
+        stage_format = stage["format"]["type"]
+
+        stage_broker_display_text = f"MQTT broker URL: [bright_blue]{stage_broker}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_broker_display_text, (0, 0, 0, 16)))
+
+        if stage_qos:
+            stage_qos_display_text = f"MQTT QoS: [bright_blue]{stage_qos}[/bright_blue]"
+            check_manager.add_display(target_name=target_name, display=Padding(stage_qos_display_text, (0, 0, 0, 16)))
+
+        stage_topic_display_text = f"MQTT topic: [bright_blue]{stage_topic}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_topic_display_text, (0, 0, 0, 16)))
+
+        if stage_authentication_type == "usernamePassword":
+            stage_authentication_type_display_text = f"MQTT authentication type: [bright_blue]{stage_authentication_type}[/bright_blue]"
+            check_manager.add_display(target_name=target_name, display=Padding(stage_authentication_type_display_text, (0, 0, 0, 16)))
+            stage_authentication_username = stage["authentication"]["username"]
+            stage_authentication_password = stage["authentication"]["password"]
+
+            stage_authentication_username_display_text = f"Username: [bright_blue]{stage_authentication_username}[/bright_blue]"
+            check_manager.add_display(target_name=target_name, display=Padding(stage_authentication_username_display_text, (0, 0, 0, 18)))
+
+            stage_authentication_password_display_text = f"Password: [bright_blue]{stage_authentication_password}[/bright_blue]"
+            check_manager.add_display(target_name=target_name, display=Padding(stage_authentication_password_display_text, (0, 0, 0, 18)))
+
+        stage_format_display_text = f"MQTT format: [bright_blue]{stage_format}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_format_display_text, (0, 0, 0, 16)))
+    elif BluefinDestinationStageType.reference_data.value in stage_type:
+        stage_dataset = stage["dataset"]
+
+        stage_dataset_display_text = f"Dataset ID: [bright_blue]{stage_dataset}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(stage_dataset_display_text, (0, 0, 0, 16)))
