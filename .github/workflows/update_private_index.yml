@@ -3,8 +3,8 @@ name: "[auto] Update Private Extension index"
 on:
   workflow_call:
 env:
-  storage_container_url: https://azedgecli.blob.core.windows.net/drop
   extensions_folder: azure-cli-extensions
+  storage_container_url: ${{ secrets.storage_container_url }}
   sas_token: ${{ secrets.sas_token }}
 jobs:
   update_index:
