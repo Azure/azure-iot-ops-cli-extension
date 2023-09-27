@@ -66,36 +66,36 @@ def run_checks(
     with console.status("Analyzing cluster..."):
         from time import sleep
 
-    sleep(0.25)
+        sleep(0.25)
 
-    result["title"] = f"Evaluation for {{[bright_blue]{edge_service}[/bright_blue]}} edge service deployment"
+        result["title"] = f"Evaluation for {{[bright_blue]{edge_service}[/bright_blue]}} edge service deployment"
 
-    if pre_deployment:
-        result["preDeployment"] = []
-        desired_checks = {}
-        desired_checks.update(
-            {
-                "checkK8sVersion": partial(check_k8s_version, as_list=as_list),
-                "checkNodes": partial(check_nodes, as_list=as_list),
-            }
-        )
+        if pre_deployment:
+            result["preDeployment"] = []
+            desired_checks = {}
+            desired_checks.update(
+                {
+                    "checkK8sVersion": partial(check_k8s_version, as_list=as_list),
+                    "checkNodes": partial(check_nodes, as_list=as_list),
+                }
+            )
 
-        for c in desired_checks:
-            output = desired_checks[c]()
-            result["preDeployment"].append(output)
+            for c in desired_checks:
+                output = desired_checks[c]()
+                result["preDeployment"].append(output)
 
-    if post_deployment:
-        if not namespace:
-            from .base import DEFAULT_NAMESPACE
+        if post_deployment:
+            if not namespace:
+                from .base import DEFAULT_NAMESPACE
 
-            namespace = DEFAULT_NAMESPACE
-        result["postDeployment"] = []
+                namespace = DEFAULT_NAMESPACE
+            result["postDeployment"] = []
 
-        # check post deployment according to edge_service type
-        if edge_service == "e4k":
-            check_e4k_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
-        elif edge_service == "bluefin":
-            check_bluefin_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
+            # check post deployment according to edge_service type
+            if edge_service == "e4k":
+                check_e4k_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
+            elif edge_service == "bluefin":
+                check_bluefin_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
 
         if not as_list:
             return result
@@ -1380,178 +1380,6 @@ def evaluate_pipelines(
     as_list: bool = False,
     extended: Optional[bool] = False,
 ):
-    # def add_display_and_eval(
-    #     target_name: str,
-    #     display_text: str,
-    #     eval_status: str,
-    #     eval_value: str,
-    #     resource_name: Optional[str] = None,
-    #     padding: Tuple[int, int, int, int] = (0, 0, 0, 8)
-    # ):
-    #     check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
-    #     check_manager.add_target_eval(target_name=target_name, status=eval_status, value=eval_value, resource_name=resource_name)
-
-    # def evaluate_source_node(
-    #     pipeline_source_node: dict,
-    #     target_pipelines: str,
-    #     pipeline_name: str,
-    #     check_manager: CheckManager,
-    #     extended: Optional[bool] = False,
-    # ):
-
-    #     # check data source node count
-    #     pipeline_source_node_count = 1 if pipeline_source_node else 0
-    #     source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] MQTT data source node. [green]Detected {pipeline_source_node_count}[/green]."
-
-    #     pipeline_source_count_eval_value = {"sourceNodeCount": pipeline_source_node_count}
-    #     pipeline_source_count_eval_status = CheckTaskStatus.success.value
-
-    #     if pipeline_source_node_count != 1:
-    #         pipeline_source_count_eval_status = CheckTaskStatus.error.value
-    #         source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] MQTT data source node. {{[red]Detected {pipeline_source_node_count}[/red]}}."
-    #     add_display_and_eval(target_pipelines, source_count_display_text, pipeline_source_count_eval_status, pipeline_source_count_eval_value, pipeline_name, (0, 0, 0, 12))
-
-    #     # data source broker URL
-    #     pipeline_source_node_broker = pipeline_source_node["broker"]
-    #     source_broker_display_text = f"- Broker URL: [bright_blue]{pipeline_source_node_broker}[/bright_blue]"
-
-    #     check_manager.add_display(target_name=target_pipelines, display=Padding(source_broker_display_text, (0, 0, 0, 16)))
-
-    #     # check data source topics
-    #     pipeline_source_node_topics = pipeline_source_node["topics"]
-    #     pipeline_source_node_topics_count = len(pipeline_source_node_topics)
-    #     source_topics_display_text = f"- Expecting [bright_blue]>=1[/bright_blue] and [bright_blue]<=50[/bright_blue] topics. [green]Detected {pipeline_source_node_topics_count}[/green]."
-
-    #     pipeline_source_topics_eval_value = {"len(spec.input.topics)": pipeline_source_node_topics_count}
-    #     pipeline_source_topics_eval_status = CheckTaskStatus.success.value
-
-    #     if pipeline_source_node_topics_count < 1 or pipeline_source_node_topics_count > 50:
-    #         pipeline_source_topics_eval_status = CheckTaskStatus.error.value
-    #     check_manager.add_display(target_name=target_pipelines, display=Padding(source_topics_display_text, (0, 0, 0, 16)))
-
-    #     if extended:
-    #         for topic in pipeline_source_node_topics:
-    #             topic_display_text = f"Topic {{[bright_blue]{topic}[/bright_blue]}} detected."
-    #             check_manager.add_display(target_name=target_pipelines, display=Padding(topic_display_text, (0, 0, 0, 18)))
-
-    #     check_manager.add_target_eval(
-    #         target_name=target_pipelines, status=pipeline_source_topics_eval_status, value=pipeline_source_topics_eval_value, resource_name=pipeline_name
-    #     )
-
-    #     # data source message format type
-    #     pipeline_source_node_format_type = pipeline_source_node["format"]["type"]
-    #     source_format_type_display_text = f"- Source message type: [bright_blue]{pipeline_source_node_format_type}[/bright_blue]"
-
-    #     check_manager.add_display(target_name=target_pipelines, display=Padding(source_format_type_display_text, (0, 0, 0, 16)))
-
-    #     if extended:
-    #         # data source qos
-    #         pipeline_source_node_qos = pipeline_source_node["qos"]
-    #         source_qos_display_text = f"- QoS: [bright_blue]{pipeline_source_node_qos}[/bright_blue]"
-    #         check_manager.add_display(target_name=target_pipelines, display=Padding(source_qos_display_text, (0, 0, 0, 16)))
-
-    #         # check data source partition
-    #         pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
-    #         pipeline_source_node_partition_strategy = pipeline_source_node["partitionStrategy"]["type"]
-    #         source_partition_count_display_text = f"- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. [green]Detected {pipeline_source_node_partition_count}[/green]."
-    #         source_partition_strategy_display_text = f"The type of partitioning strategy is {{[bright_blue]{pipeline_source_node_partition_strategy}[/bright_blue]}}."
-
-    #         pipeline_source_partition_eval_value = {"spec.input.partitionCount": pipeline_source_node_partition_count}
-    #         pipeline_source_partition_eval_status = CheckTaskStatus.success.value
-
-    #         if pipeline_source_node_partition_count < 1 or pipeline_source_node_partition_count > 100:
-    #             pipeline_source_partition_eval_status = CheckTaskStatus.error.value
-    #         check_manager.add_display(target_name=target_pipelines, display=Padding(source_partition_count_display_text, (0, 0, 0, 16)))
-    #         check_manager.add_display(target_name=target_pipelines, display=Padding(source_partition_strategy_display_text, (0, 0, 0, 18)))
-
-    #         check_manager.add_target_eval(
-    #             target_name=target_pipelines, status=pipeline_source_partition_eval_status, value=pipeline_source_partition_eval_value, resource_name=pipeline_name
-    #         )
-
-    #     # data source authentication
-    #     pipeline_source_node_authentication = pipeline_source_node["authentication"]["type"]
-    #     if pipeline_source_node_authentication == "usernamePassword":
-    #         source_authentication_display_text = f"- Authentication type: [bright_blue]{pipeline_source_node_authentication}[/bright_blue]"
-    #         check_manager.add_display(target_name=target_pipelines, display=Padding(source_authentication_display_text, (0, 0, 0, 16)))
-
-    #         if extended:
-    #             authentication_username = pipeline_source_node["authentication"]["username"]
-    #             authentication_password = pipeline_source_node["authentication"]["password"]
-    #             masked_password = '*' * len(authentication_password)
-    #             check_manager.add_display(target_name=target_pipelines, display=Padding(f"Username: [cyan]{authentication_username}[/cyan]", (0, 0, 0, 20)))
-    #             check_manager.add_display(target_name=target_pipelines, display=Padding(f"Password: [cyan]{masked_password}[/cyan]", (0, 0, 0, 20)))
-
-    # def evaluate_intermediate_nodes(
-    #     pipeline_stages_node: dict,
-    #     target_pipelines: str,
-    #     check_manager: CheckManager,
-    #     extended: Optional[bool] = False,
-    # ):
-
-    #     # number of intermediate stages should be total len(stages) - len(output stage)
-    #     pipeline_intermediate_stages_node = pipeline_stages_node.copy()
-    #     pipeline_intermediate_stages_node_count = len(pipeline_stages_node)
-    #     if output_node:
-    #         pipeline_intermediate_stages_node.pop(output_node[0])
-    #         pipeline_intermediate_stages_node_count -= 1
-    #     stage_count_display_text = f"- Pipeline contains [bright_blue]{pipeline_intermediate_stages_node_count}[/bright_blue] intermediate stages."
-
-    #     check_manager.add_display(target_name=target_pipelines, display=Padding(stage_count_display_text, (0, 0, 0, 12)))
-
-    #     if extended:
-    #         for s in pipeline_intermediate_stages_node:
-    #             stage_name = s
-    #             stage_type = pipeline_intermediate_stages_node[s]["type"]
-    #             stage_display_text = f"- Stage resource {{[bright_blue]{stage_name}[/bright_blue]}} of type {{[bright_blue]{stage_type}[/bright_blue]}}"
-    #             check_manager.add_display(target_name=target_pipelines, display=Padding(stage_display_text, (0, 0, 0, 16)))
-
-    #             _process_stage_properties(
-    #                 check_manager,
-    #                 target_name=target_pipelines,
-    #                 stage=pipeline_intermediate_stages_node[s],
-    #                 stage_properties=BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES,
-    #                 padding=(0, 0, 0, 20)
-    #             )
-
-    # def evaluate_destination_node(
-    #     output_node: dict,
-    #     target_pipelines: str,
-    #     pipeline_name: str,
-    #     check_manager: CheckManager,
-    #     extended: Optional[bool] = False,
-    # ):
-    #     pipeline_destination_node_count = 0
-    #     if output_node:
-    #         pipeline_destination_node_count = 1
-    #     destination_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] data destination node. [green]Detected {pipeline_destination_node_count}[/green]."
-
-    #     pipeline_destination_eval_value = {"destinationNodeCount": pipeline_destination_node_count}
-    #     pipeline_destination_eval_status = CheckTaskStatus.success.value
-
-    #     if pipeline_destination_node_count != 1:
-    #         pipeline_destination_eval_status = CheckTaskStatus.error.value
-    #     add_display_and_eval(target_pipelines, destination_count_display_text, pipeline_destination_eval_status, pipeline_destination_eval_value, pipeline_name, (0, 0, 0, 12))
-
-    #     if output_node:
-    #         if extended:
-    #             _process_stage_properties(
-    #                 check_manager,
-    #                 target_name=target_pipelines,
-    #                 stage=output_node[1],
-    #                 stage_properties=BLUEFIN_DESTINATION_STAGE_PROPERTIES,
-    #                 padding=(0, 0, 0, 16)
-    #             )
-    #         else:
-    #             # check pipeline destination type
-    #             pipeline_destination_type = output_node[1]["type"]
-    #             destination_type_display_text = f"- Message destination type {{[bright_blue]{pipeline_destination_type}[/bright_blue]}} detected"
-    #             check_manager.add_display(target_name=target_pipelines, display=Padding(destination_type_display_text, (0, 0, 0, 16)))
-
-    #             # check pipeline destination target endpoint
-    #             pipeline_destination_target = _get_destination_target_endpoint(output_node)
-    #             destination_target_display_text = f"- Target endpoint: [bright_blue]{pipeline_destination_target}[/bright_blue]"
-    #             check_manager.add_display(target_name=target_pipelines, display=Padding(destination_target_display_text, (0, 0, 0, 16)))
-
     check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Bluefin pipeline", namespace=namespace)
 
     target_pipelines = "pipelines.bluefin.az-bluefin.com"
