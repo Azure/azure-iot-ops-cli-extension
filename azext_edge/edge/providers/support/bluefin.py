@@ -32,6 +32,7 @@ BLUEFIN_INSTANCE_LABEL = "app.kubernetes.io/instance in (bf-instance)"
 BLUEFIN_PART_OF_LABEL = "app.kubernetes.io/part-of in (bluefin-operator)"
 BLUEFIN_ONEOFF_LABEL = "control-plane in (controller-manager)"
 
+
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     bluefin_pods = process_v1_pods(
         resource_api=BLUEFIN_API_V1,

@@ -202,14 +202,14 @@ def assert_check_manager_dict(
         ],
     ],
 )
-
 @pytest.mark.parametrize('edge_service', ['e4k'])
 def test_check_e4k_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
         E4kResourceKinds.BROKER.value: "azext_edge.edge.providers.checks.evaluate_brokers",
         E4kResourceKinds.BROKER_LISTENER.value: "azext_edge.edge.providers.checks.evaluate_broker_listeners",
         E4kResourceKinds.DIAGNOSTIC_SERVICE.value: "azext_edge.edge.providers.checks.evaluate_diagnostics_service",
-        E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value: "azext_edge.edge.providers.checks.evaluate_mqtt_bridge_connectors",
+        E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value:
+            "azext_edge.edge.providers.checks.evaluate_mqtt_bridge_connectors",
         E4kResourceKinds.DATALAKE_CONNECTOR.value: "azext_edge.edge.providers.checks.evaluate_datalake_connectors",
     }
 
@@ -235,7 +235,6 @@ def test_check_e4k_by_resource_types(edge_service, mocker, mock_resource_types, 
         ],
     ],
 )
-
 @pytest.mark.parametrize('edge_service', ['bluefin'])
 def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
@@ -743,13 +742,14 @@ def test_instance_checks(
                 }
             ],
             # conditions str
-            ["len(pipelines)>=1",
-                           "mode.enabled",
-                           "provisioningStatus",
-                           "sourceNodeCount == 1",
-                           "len(spec.input.topics)>=1",
-                           "spec.input.partitionCount>=1",
-                           "destinationNodeCount==1"
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "len(spec.input.topics)>=1",
+                "spec.input.partitionCount>=1",
+                "destinationNodeCount==1"
             ],
             # evaluations
             [
@@ -829,13 +829,14 @@ def test_instance_checks(
                 }
             ],
             # conditions str
-            ["len(pipelines)>=1",
-                           "mode.enabled",
-                           "provisioningStatus",
-                           "sourceNodeCount == 1",
-                           "len(spec.input.topics)>=1",
-                           "spec.input.partitionCount>=1",
-                           "destinationNodeCount==1"
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "len(spec.input.topics)>=1",
+                "spec.input.partitionCount>=1",
+                "destinationNodeCount==1"
             ],
             # evaluations
             [
@@ -870,13 +871,14 @@ def test_instance_checks(
                 }
             ],
             # conditions str
-            ["len(pipelines)>=1",
-                           "mode.enabled",
-                           "provisioningStatus",
-                           "sourceNodeCount == 1",
-                           "len(spec.input.topics)>=1",
-                           "spec.input.partitionCount>=1",
-                           "destinationNodeCount==1"
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "len(spec.input.topics)>=1",
+                "spec.input.partitionCount>=1",
+                "destinationNodeCount==1"
             ],
             # evaluations
             [

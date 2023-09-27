@@ -16,7 +16,7 @@ class ListableEnum(Enum):
     @classmethod
     def list(cls):
         return [c.value for c in cls]
-    
+
 
 class BluefinProcessorStageType(ListableEnum):
     """
