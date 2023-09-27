@@ -5,18 +5,22 @@
 # --------------------------------------------------------------------------------------------
 
 
+from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
 import pytest
 from typing import Dict, Any, List
-from azext_edge.edge.common import CheckTaskStatus
+from azext_edge.edge.common import CheckTaskStatus, ProvisioningState
 from azext_edge.edge.providers.checks import (
     CheckManager,
     E4kResourceKinds,
     ResourceState,
     evaluate_broker_listeners,
     evaluate_brokers,
+    evaluate_datasets,
     evaluate_diagnostics_service,
+    evaluate_instances,
     evaluate_mqtt_bridge_connectors,
     evaluate_datalake_connectors,
+    evaluate_pipelines,
     run_checks,
 )
 
@@ -198,48 +202,49 @@ def assert_check_manager_dict(
         ],
     ],
 )
-def test_check_by_resource_types(mocker, mock_e4k_resource_types, resource_kinds):
+
+@pytest.mark.parametrize('edge_service', ['e4k'])
+def test_check_e4k_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        E4kResourceKinds.BROKER.value: mocker.patch(
-            "azext_edge.edge.providers.checks.evaluate_brokers", return_value={}
-        ),
-        E4kResourceKinds.BROKER_LISTENER.value: mocker.patch(
-            "azext_edge.edge.providers.checks.evaluate_broker_listeners",
-            return_value={},
-        ),
-        E4kResourceKinds.DIAGNOSTIC_SERVICE.value: mocker.patch(
-            "azext_edge.edge.providers.checks.evaluate_diagnostics_service",
-            return_value={},
-        ),
-        E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value: mocker.patch(
-            "azext_edge.edge.providers.checks.evaluate_mqtt_bridge_connectors",
-            return_value={},
-        ),
-        E4kResourceKinds.DATALAKE_CONNECTOR.value: mocker.patch(
-            "azext_edge.edge.providers.checks.evaluate_datalake_connectors",
-            return_value={},
-        ),
+        E4kResourceKinds.BROKER.value: "azext_edge.edge.providers.checks.evaluate_brokers",
+        E4kResourceKinds.BROKER_LISTENER.value: "azext_edge.edge.providers.checks.evaluate_broker_listeners",
+        E4kResourceKinds.DIAGNOSTIC_SERVICE.value: "azext_edge.edge.providers.checks.evaluate_diagnostics_service",
+        E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value: "azext_edge.edge.providers.checks.evaluate_mqtt_bridge_connectors",
+        E4kResourceKinds.DATALAKE_CONNECTOR.value: "azext_edge.edge.providers.checks.evaluate_datalake_connectors",
     }
 
-    # run the checks
-    run_checks(
-        namespace="default",
-        pre_deployment=False,
-        post_deployment=True,
-        as_list=False,
-        resource_kinds=resource_kinds,
-    )
+    assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
 
-    if not resource_kinds:
-        # ensure all checks were run
-        [eval_lookup[evaluator].assert_called_once() for evaluator in eval_lookup]
-    else:
-        # ensure each individual resource kind check was run once
-        for resource_kind in resource_kinds:
-            eval_lookup[resource_kind].assert_called_once()
-            del eval_lookup[resource_kind]
-        # ensure no other checks were run
-        [eval_lookup[evaluator].assert_not_called() for evaluator in eval_lookup]
+
+@pytest.mark.parametrize(
+    "resource_kinds",
+    [
+        None,
+        [],
+        [BluefinResourceKinds.DATASET.value],
+        [BluefinResourceKinds.INSTANCE.value],
+        [BluefinResourceKinds.PIPELINE.value],
+        [
+            BluefinResourceKinds.DATASET.value,
+            BluefinResourceKinds.INSTANCE.value,
+        ],
+        [
+            BluefinResourceKinds.DATASET.value,
+            BluefinResourceKinds.INSTANCE.value,
+            BluefinResourceKinds.PIPELINE.value,
+        ],
+    ],
+)
+
+@pytest.mark.parametrize('edge_service', ['bluefin'])
+def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
+    eval_lookup = {
+        BluefinResourceKinds.DATASET.value: "azext_edge.edge.providers.checks.evaluate_datasets",
+        BluefinResourceKinds.INSTANCE.value: "azext_edge.edge.providers.checks.evaluate_instances",
+        BluefinResourceKinds.PIPELINE.value: "azext_edge.edge.providers.checks.evaluate_pipelines",
+    }
+
+    assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
 
 
 def _generate_resource_stub(
@@ -619,6 +624,368 @@ def test_datalake_checks(
     assert_evaluations(target, evaluations)
 
 
+@pytest.mark.parametrize(
+    "instance, conditions, evaluations",
+    [
+        (
+            # instance
+            {
+                "metadata": {"name": "test_instance"},
+                "status": {"provisioningStatus": {"status": ProvisioningState.succeeded.value}},
+            }
+            ,
+            # conditions str
+            ["len(instances)==1", "provisioningState"],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/provisioningState", ProvisioningState.succeeded.value),
+                ],
+            ],
+        ),
+        (
+            # instance
+            {
+                "metadata": {"name": "test_instance"},
+                "status": {"provisioningStatus": {
+                    "error": {"message": "test error"},
+                    "status": ProvisioningState.failed.value}
+                },
+            }
+            ,
+            # conditions str
+            ["len(instances)==1", "provisioningState"],
+            # evaluations
+            [
+                [
+                    ("status", "error"),
+                    ("value/provisioningState", ProvisioningState.failed.value),
+                ],
+            ],
+        ),
+    ],
+)
+def test_instance_checks(
+    mocker, mock_evaluate_pod_health, instance, conditions, evaluations
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": [instance]}],
+    )
+
+    namespace = generate_generic_id()
+    result = evaluate_instances(namespace=namespace)
+
+    assert result["name"] == "evalInstances"
+    assert result["namespace"] == namespace
+    assert result["targets"]["instances.bluefin.az-bluefin.com"]
+    target = result["targets"]["instances.bluefin.az-bluefin.com"]
+
+    assert_conditions(target, conditions)
+    assert_evaluations(target, evaluations)
+
+
+@pytest.mark.parametrize(
+    "pipelines, conditions, evaluations",
+    [
+        (
+            # pipelines
+            [
+                {
+                    "metadata": {
+                        "name": "test-pipeline",
+                    },
+                    "spec": {
+                        "enabled": True,
+                        "input": {
+                            "broker": "test-broker",
+                            "topics": ["topic1", "topic2"],
+                            "format": {
+                                "type": "json"
+                            },
+                            "qos": 1,
+                            "partitionCount": 1,
+                            "partitionStrategy": {
+                                "type": "roundRobin"
+                            },
+                            "authentication": {
+                                "type": "usernamePassword",
+                                "username": "test-user",
+                                "password": "test-password"
+                            }
+                        },
+                        "stages": {
+                            "stage1": {
+                                "type": "intermediate",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            },
+                            "stage2": {
+                                "type": "output",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            }
+                        }
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "Succeeded",
+                            "error": {
+                                "message": "No error"
+                            }
+                        }
+                    }
+                }
+            ],
+            # conditions str
+            ["len(pipelines)>=1",
+                           "mode.enabled",
+                           "provisioningStatus",
+                           "sourceNodeCount == 1",
+                           "len(spec.input.topics)>=1",
+                           "spec.input.partitionCount>=1",
+                           "destinationNodeCount==1"
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/mode.enabled", "running"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/provisioningStatus", ProvisioningState.succeeded.value),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/sourceNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/len(spec.input.topics)", 2),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/destinationNodeCount", 1),
+                ]
+            ],
+        ),
+        (
+            # pipelines
+            [
+                {
+                    "metadata": {
+                        "name": "test-pipeline",
+                    },
+                    "spec": {
+                        "enabled": True,
+                        "input": {
+                            "broker": "test-broker",
+                            "topics": ["topic1", "topic2"],
+                            "format": {
+                                "type": "json"
+                            },
+                            "qos": 1,
+                            "partitionCount": 1,
+                            "partitionStrategy": {
+                                "type": "roundRobin"
+                            },
+                            "authentication": {
+                                "type": "usernamePassword",
+                                "username": "test-user",
+                                "password": "test-password"
+                            }
+                        },
+                        "stages": {
+                            "stage1": {
+                                "type": "intermediate",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            },
+                            "stage2": {
+                                "type": "output",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            }
+                        }
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "Failed",
+                            "error": {
+                                "message": "error message"
+                            }
+                        }
+                    }
+                }
+            ],
+            # conditions str
+            ["len(pipelines)>=1",
+                           "mode.enabled",
+                           "provisioningStatus",
+                           "sourceNodeCount == 1",
+                           "len(spec.input.topics)>=1",
+                           "spec.input.partitionCount>=1",
+                           "destinationNodeCount==1"
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/mode.enabled", "running"),
+                ],
+                [
+                    ("status", "error"),
+                    ("value/provisioningStatus", ProvisioningState.failed.value),
+                ],
+            ],
+        ),
+        (
+            # pipelines
+            [
+                {
+                    "metadata": {
+                        "name": "test-pipeline",
+                    },
+                    "spec": {
+                        "enabled": False,
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "Failed",
+                            "error": {
+                                "message": "error message"
+                            }
+                        }
+                    }
+                }
+            ],
+            # conditions str
+            ["len(pipelines)>=1",
+                           "mode.enabled",
+                           "provisioningStatus",
+                           "sourceNodeCount == 1",
+                           "len(spec.input.topics)>=1",
+                           "spec.input.partitionCount>=1",
+                           "destinationNodeCount==1"
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "skipped"),
+                    ("value/mode.enabled", "not running"),
+                ],
+            ],
+        ),
+    ]
+)
+def test_pipeline_checks(
+    mocker, mock_evaluate_pod_health, pipelines, conditions, evaluations
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": pipelines}],
+    )
+
+    namespace = generate_generic_id()
+    result = evaluate_pipelines(namespace=namespace)
+
+    assert result["name"] == "evalPipelines"
+    assert result["namespace"] == namespace
+    assert result["targets"]["pipelines.bluefin.az-bluefin.com"]
+    target = result["targets"]["pipelines.bluefin.az-bluefin.com"]
+
+    assert_conditions(target, conditions)
+    assert_evaluations(target, evaluations)
+
+
+@pytest.mark.parametrize(
+    "datasets, conditions, evaluations",
+    [
+        (
+            # datasets
+            [
+                {
+                    "metadata": {
+                        "name": "test-dataset",
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "Succeeded",
+                        }
+                    },
+                    "spec": {}
+                }
+            ],
+            # conditions str
+            ["provisioningState"],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/provisioningState", ProvisioningState.succeeded.value),
+                ],
+            ],
+        ),
+        (
+            # datasets
+            [
+                {
+                    "metadata": {
+                        "name": "test-dataset",
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "Failed",
+                            "error": {
+                                "message": "error message"
+                            }
+                        }
+                    },
+                    "spec": {}
+                }
+            ],
+            # conditions str
+            ["provisioningState"],
+            # evaluations
+            [
+                [
+                    ("status", "error"),
+                    ("value/provisioningState", ProvisioningState.failed.value),
+                ],
+            ],
+        ),
+    ]
+)
+def test_dataset_checks(
+    mocker, mock_evaluate_pod_health, datasets, conditions, evaluations
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": datasets}],
+    )
+
+    namespace = generate_generic_id()
+    result = evaluate_datasets(namespace=namespace)
+
+    assert result["name"] == "evalDatasets"
+    assert result["namespace"] == namespace
+    assert result["targets"]["datasets.bluefin.az-bluefin.com"]
+    target = result["targets"]["datasets.bluefin.az-bluefin.com"]
+
+    assert_conditions(target, conditions)
+    assert_evaluations(target, evaluations)
+
+
 def assert_dict_props(path: str, expected: str, obj: Dict[str, str]):
     val = obj
     for key in path.split("/"):
@@ -640,3 +1007,30 @@ def assert_evaluations(target: Dict[str, Any], evaluations: List[List[tuple]]):
     for idx, evals in enumerate(evaluations):
         for eval in evals:
             assert_dict_props(path=eval[0], expected=eval[1], obj=result_evals[idx])
+
+
+def assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup):
+    # Mock the functions
+    for key, value in eval_lookup.items():
+        eval_lookup[key] = mocker.patch(value, return_value={})
+
+    # run the checks
+    run_checks(
+        edge_service,
+        namespace="default",
+        pre_deployment=False,
+        post_deployment=True,
+        as_list=False,
+        resource_kinds=resource_kinds,
+    )
+
+    if not resource_kinds:
+        # ensure all checks were run
+        [eval_lookup[evaluator].assert_called_once() for evaluator in eval_lookup]
+    else:
+        # ensure each individual resource kind check was run once
+        for resource_kind in resource_kinds:
+            eval_lookup[resource_kind].assert_called_once()
+            del eval_lookup[resource_kind]
+        # ensure no other checks were run
+        [eval_lookup[evaluator].assert_not_called() for evaluator in eval_lookup]

@@ -8,6 +8,7 @@
 CLI parameter definitions.
 """
 
+from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
 from azure.cli.core.commands.parameters import get_three_state_flag
 from knack.arguments import CaseInsensitiveList
 
@@ -101,6 +102,9 @@ def load_iotedge_arguments(self, _):
                     E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
                     E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
                     E4kResourceKinds.DATALAKE_CONNECTOR.value,
+                    BluefinResourceKinds.DATASET.value,
+                    BluefinResourceKinds.PIPELINE.value,
+                    BluefinResourceKinds.INSTANCE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",

@@ -13,16 +13,28 @@ def mock_evaluate_pod_health(mocker):
 
 
 @pytest.fixture
-def mock_e4k_resource_types(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.checks.enumerate_e4k_resources")
-    patched.return_value = (
-        {},
-        {
-            "Broker": [{}],
-            "BrokerListener": [{}],
-            "DiagnosticService": [{}],
-            "MqttBridgeConnector": [{}],
-            "DataLakeConnector": [{}]
-        }
-    )
-    yield patched
+def mock_resource_types(mocker, edge_service):
+    if edge_service == "e4k":
+        patched = mocker.patch("azext_edge.edge.providers.checks.enumerate_edge_service_resources")
+        patched.return_value = (
+            {},
+            {
+                "Broker": [{}],
+                "BrokerListener": [{}],
+                "DiagnosticService": [{}],
+                "MqttBridgeConnector": [{}],
+                "DataLakeConnector": [{}]
+            }
+        )
+        yield patched
+    elif edge_service == "bluefin":
+        patched = mocker.patch("azext_edge.edge.providers.checks.enumerate_edge_service_resources")
+        patched.return_value = (
+            {},
+            {
+                "Dataset": [{}],
+                "Instance": [{}],
+                "Pipeline": [{}]
+            }
+        )
+        yield patched

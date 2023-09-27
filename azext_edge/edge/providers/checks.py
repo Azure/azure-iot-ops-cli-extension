@@ -5,8 +5,9 @@
 # --------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from enum import Enum
+from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
@@ -23,13 +24,13 @@ from ..common import (
     AZEDGE_FRONTEND_PREFIX,
     AZEDGE_BACKEND_PREFIX,
     AZEDGE_AUTH_PREFIX,
+    BLUEFIN_DESTINATION_STAGE_PROPERTIES,
+    BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES,
     BLUEFIN_NATS_PREFIX,
     BLUEFIN_OPERATOR_CONTROLLER_MANAGER,
     BLUEFIN_READER_WORKER_PREFIX,
     BLUEFIN_REFDATA_STORE_PREFIX,
     BLUEFIN_RUNNER_WORKER_PREFIX,
-    BluefinDestinationStageType,
-    BluefinProcessorStageType,
     CheckTaskStatus,
     ProvisioningState,
     ResourceState,
@@ -94,7 +95,7 @@ def run_checks(
         if edge_service == "e4k":
             check_e4k_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
         elif edge_service == "bluefin":
-            check_bluefin_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list)
+            check_bluefin_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
 
         if not as_list:
             return result
@@ -102,51 +103,74 @@ def run_checks(
         process_as_list(result=result, namespace=namespace)
 
 
-def check_e4k_post_deployment(
+def check_post_deployment(
+    api_info: EdgeResourceApi,
+    check_name: str,
+    check_desc: str,
     namespace: str,
     result: dict,
+    resource_kinds_enum: Enum,
+    evaluate_funcs: dict,
     as_list: bool = False,
     extended: Optional[bool] = False,
     resource_kinds: List[str] = None,
 ):
-
     check_resources = {}
-    for resource in E4kResourceKinds:
+    for resource in resource_kinds_enum:
         check_resources[resource] = True if (not resource_kinds or resource.value in resource_kinds) else False
 
-    resource_enumeration, api_resources = enumerate_e4k_resources(as_list=as_list)
+    resource_enumeration, api_resources = enumerate_edge_service_resources(api_info, check_name, check_desc, as_list)
+    lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
     result["postDeployment"].append(resource_enumeration)
-    if api_resources:
-        if "Broker" in api_resources and check_resources[E4kResourceKinds.BROKER]:
-            result["postDeployment"].append(evaluate_brokers(namespace=namespace, as_list=as_list))
-        if "BrokerListener" in api_resources and check_resources[E4kResourceKinds.BROKER_LISTENER]:
-            result["postDeployment"].append(evaluate_broker_listeners(namespace=namespace, as_list=as_list))
-        if "DiagnosticService" in api_resources and check_resources[E4kResourceKinds.DIAGNOSTIC_SERVICE]:
-            result["postDeployment"].append(evaluate_diagnostics_service(namespace=namespace, as_list=as_list))
-        if "MqttBridgeConnector" in api_resources and check_resources[E4kResourceKinds.MQTT_BRIDGE_CONNECTOR]:
-            result["postDeployment"].append(
-                evaluate_mqtt_bridge_connectors(namespace=namespace, as_list=as_list)
-            )
-        if "DataLakeConnector" in api_resources and check_resources[E4kResourceKinds.DATALAKE_CONNECTOR]:
-            result["postDeployment"].append(evaluate_datalake_connectors(namespace=namespace, as_list=as_list))
+
+    if lowercase_api_resources:
+        for api_resource, evaluate_func in evaluate_funcs.items():
+            if api_resource.value in lowercase_api_resources and check_resources[api_resource]:
+                if extended:
+                    result["postDeployment"].append(evaluate_func(extended=extended, namespace=namespace, as_list=as_list))
+                else:
+                    result["postDeployment"].append(evaluate_func(namespace=namespace, as_list=as_list))
 
 
-def check_bluefin_post_deployment(
-    namespace: str,
-    result: dict,
-    as_list: bool = False,
-    extended: Optional[bool] = False,
-):
+def check_e4k_post_deployment(namespace: str, result: dict, as_list: bool = False, extended: Optional[bool] = False, resource_kinds: List[str] = None,):
+    evaluate_funcs = {
+        E4kResourceKinds.BROKER: evaluate_brokers,
+        E4kResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
+        E4kResourceKinds.DIAGNOSTIC_SERVICE: evaluate_diagnostics_service,
+        E4kResourceKinds.MQTT_BRIDGE_CONNECTOR: evaluate_mqtt_bridge_connectors,
+        E4kResourceKinds.DATALAKE_CONNECTOR: evaluate_datalake_connectors,
+    }
+    return check_post_deployment(
+        E4K_ACTIVE_API,
+        "enumerateE4kApi",
+        "Enumerate E4K API resources",
+        namespace,
+        result,
+        E4kResourceKinds,
+        evaluate_funcs,
+        as_list,
+        extended,
+        resource_kinds
+    )
 
-    resource_enumeration, api_resources = enumerate_bluefin_resources(as_list=as_list)
-    result["postDeployment"].append(resource_enumeration)
-    if api_resources:
-        if "Instance" in api_resources:
-            result["postDeployment"].append(evaluate_instances(namespace=namespace, as_list=as_list))
-        if "Pipeline" in api_resources:
-            result["postDeployment"].append(evaluate_pipelines(extended=extended, namespace=namespace, as_list=as_list))
-        if "Dataset" in api_resources:
-            result["postDeployment"].append(evaluate_datasets(extended=extended, namespace=namespace, as_list=as_list))
+def check_bluefin_post_deployment(namespace: str, result: dict, as_list: bool = False, extended: Optional[bool] = False, resource_kinds: List[str] = None,):
+    evaluate_funcs = {
+        BluefinResourceKinds.INSTANCE: evaluate_instances,
+        BluefinResourceKinds.PIPELINE: evaluate_pipelines,
+        BluefinResourceKinds.DATASET: evaluate_datasets,
+    }
+    return check_post_deployment(
+        BLUEFIN_API_V1,
+        "enumerateBluefinApi",
+        "Enumerate Bluefin API resources",
+        namespace,
+        result,
+        BluefinResourceKinds,
+        evaluate_funcs,
+        as_list,
+        extended,
+        resource_kinds
+    )
 
 
 def process_as_list(result: Dict[str, dict], namespace: str):
@@ -240,6 +264,7 @@ def get_emoji_from_status(status: str) -> str:
 def evaluate_diagnostics_service(
     namespace: str,
     as_list: bool = False,
+    extended: Optional[bool] = False,
 ):
     check_manager = CheckManager(
         check_name="evalBrokerDiag",
@@ -429,6 +454,7 @@ def evaluate_diagnostics_service(
 def evaluate_broker_listeners(
     namespace: str,
     as_list: bool = False,
+    extended: Optional[bool] = False,
 ):
     check_manager = CheckManager(
         check_name="evalBrokerListeners",
@@ -649,6 +675,7 @@ def evaluate_broker_listeners(
 def evaluate_brokers(
     namespace: str,
     as_list: bool = False,
+    extended: Optional[bool] = False,
 ):
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker", namespace=namespace)
 
@@ -927,6 +954,7 @@ def evaluate_brokers(
 def evaluate_instances(
     namespace: str,
     as_list: bool = False,
+    extended: Optional[bool] = False,
 ):
     check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Bluefin instance", namespace=namespace)
 
@@ -946,7 +974,6 @@ def evaluate_instances(
     instances: List[dict] = instance_list.get("items", [])
     instances_count = len(instances)
     instances_count_text = "- Expecting [bright_blue]1[/bright_blue] instance resource per namespace. {}."
-    instance_eval_status = CheckTaskStatus.success.value
 
     if instances_count == 1:
         instances_count_text = instances_count_text.format(f"[green]Detected {instances_count}[/green]")
@@ -956,6 +983,7 @@ def evaluate_instances(
     check_manager.add_display(target_name=target_instances, display=Padding(instances_count_text, (0, 0, 0, 8)))
 
     for i in instances:
+
         instance_name = i["metadata"]["name"]
         instance_status = i["status"]["provisioningStatus"]["status"]
 
@@ -996,19 +1024,39 @@ def evaluate_instances(
         from .support.bluefin import BLUEFIN_APP_LABEL
 
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=BLUEFIN_READER_WORKER_PREFIX, display_padding=12, service_label=BLUEFIN_APP_LABEL
+            check_manager=check_manager,
+            namespace=namespace,
+            pod=BLUEFIN_READER_WORKER_PREFIX,
+            display_padding=12,
+            service_label=BLUEFIN_APP_LABEL
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=BLUEFIN_RUNNER_WORKER_PREFIX, display_padding=12, service_label=BLUEFIN_APP_LABEL
+            check_manager=check_manager,
+            namespace=namespace,
+            pod=BLUEFIN_RUNNER_WORKER_PREFIX,
+            display_padding=12,
+            service_label=BLUEFIN_APP_LABEL
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=BLUEFIN_REFDATA_STORE_PREFIX, display_padding=12, service_label=BLUEFIN_APP_LABEL
+            check_manager=check_manager,
+            namespace=namespace,
+            pod=BLUEFIN_REFDATA_STORE_PREFIX,
+            display_padding=12,
+            service_label=BLUEFIN_APP_LABEL
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=BLUEFIN_NATS_PREFIX, display_padding=12, service_label=BLUEFIN_APP_LABEL
+            check_manager=check_manager,
+            namespace=namespace,
+            pod=BLUEFIN_NATS_PREFIX,
+            display_padding=12,
+            service_label=BLUEFIN_APP_LABEL
         )
         evaluate_pod_health(
-            check_manager=check_manager, namespace=namespace, pod=BLUEFIN_OPERATOR_CONTROLLER_MANAGER, display_padding=12, service_label=BLUEFIN_APP_LABEL
+            check_manager=check_manager,
+            namespace=namespace,
+            pod=BLUEFIN_OPERATOR_CONTROLLER_MANAGER,
+            display_padding=12,
+            service_label=BLUEFIN_APP_LABEL
         )
 
     return check_manager.as_dict(as_list)
@@ -1017,6 +1065,7 @@ def evaluate_instances(
 def evaluate_mqtt_bridge_connectors(
     namespace: str,
     as_list: bool = False,
+    extended: Optional[bool] = False,
 ):
     def add_routes_display(
         check_manager: CheckManager,
@@ -1330,91 +1379,27 @@ def evaluate_pipelines(
     as_list: bool = False,
     extended: Optional[bool] = False,
 ):
-    check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Bluefin pipeline", namespace=namespace)
+    def add_display_and_eval(
+            target_name: str,
+            display_text: str,
+            eval_status: str,
+            eval_value: str,
+            resource_name: Optional[str] = None,
+            padding: Tuple[int, int, int, int] = (0, 0, 0, 8)
+        ):
+        check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+        check_manager.add_target_eval(target_name=target_name, status=eval_status, value=eval_value, resource_name=resource_name)
+    
 
-    target_pipelines = "pipelines.bluefin.az-bluefin.com"
-    pipeline_conditions = ["len(pipelines)>=1",
-                           "mode.enabled",
-                           "provisioningStatus",
-                           "sourceNodeCount == 1",
-                           "spec.input.broker",
-                           "len(spec.input.topics)>=1",
-                           "spec.input.format.type"
-                           "spec.input.partitionCount>=1",
-                           "intermediateStagesCount>=1",
-                           "destinationNodeCount==1"]
-    check_manager.add_target(target_name=target_pipelines, conditions=pipeline_conditions)
-
-    pipeline_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.PIPELINE, namespace=namespace)
-    if not pipeline_list:
-        fetch_pipelines_error_text = f"Unable to fetch namespace {BluefinResourceKinds.PIPELINE.value}s."
-        check_manager.add_target_eval(
-            target_name=target_pipelines, status=CheckTaskStatus.error.value, value=fetch_pipelines_error_text
-        )
-        check_manager.add_display(target_name=target_pipelines, display=Padding(fetch_pipelines_error_text, (0, 0, 0, 8)))
-        return check_manager.as_dict(as_list)
-
-    pipelines: List[dict] = pipeline_list.get("items", [])
-    pipelines_count = len(pipelines)
-    pipelines_count_text = "- Expecting [bright_blue]>=1[/bright_blue] pipeline resource per namespace. {}."
-    pipeline_eval_status = CheckTaskStatus.success.value
-
-    if pipelines_count >= 1:
-        pipelines_count_text = pipelines_count_text.format(f"[green]Detected {pipelines_count}[/green]")
-    else:
-        pipelines_count_text = pipelines_count_text.format(f"[red]Detected {pipelines_count}[/red]")
-        check_manager.set_target_status(target_name=target_pipelines, status=CheckTaskStatus.error.value)
-    check_manager.add_display(target_name=target_pipelines, display=Padding(pipelines_count_text, (0, 0, 0, 8)))
-
-    for p in pipelines:
-        pipeline_name = p["metadata"]["name"]
-        pipeline_running_status = "running" if p["spec"]["enabled"] else "not running"
-
-        pipeline_enabled_text = f"\n- Pipeline {{[bright_blue]{pipeline_name}[/bright_blue]}} is {{[bright_blue]{pipeline_running_status}[/bright_blue]}}."
-        pipeline_eval_value = {"mode.enabled": pipeline_running_status}
-        pipeline_eval_status = CheckTaskStatus.success.value
-
-        if pipeline_running_status == "not running":
-            check_manager.add_target_eval(target_name=target_pipelines, status=CheckTaskStatus.skipped.value, resource_name=pipeline_name)
-            pipieline_not_enabled_text = (
-                f"\n- Pipeline {{[bright_blue]{pipeline_name}[/bright_blue]}} is {{[yellow]not running[/yellow]}}."
-                "\n  [bright_white]Skipping pipeline evaluation[/bright_white]."
-            )
-            check_manager.add_display(target_name=target_pipelines, display=Padding(pipieline_not_enabled_text, (0, 0, 0, 8)))
-            continue
-        check_manager.add_display(target_name=target_pipelines, display=Padding(pipeline_enabled_text, (0, 0, 0, 8)))
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines, status=pipeline_eval_status, value=pipeline_eval_value, resource_name=pipeline_name
-        )
-
-        # check provisioning status
-        pipeline_status = p["status"]["provisioningStatus"]["status"]
-        status_display_text = f"- Provisioning status {{{_decorate_resource_status(pipeline_status)}}}."
-        check_manager.add_display(target_name=target_pipelines, display=Padding(status_display_text, (0, 0, 0, 12)))
-
-        pipeline_eval_value = {"provisioningStatus": pipeline_status}
-        pipeline_eval_status = CheckTaskStatus.success.value
-
-        if pipeline_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
-            pipeline_eval_status = CheckTaskStatus.error.value
-            error_message = p["status"]["provisioningStatus"]["error"]["message"]
-            error_display_text = f"[red]Error: {error_message}[/red]"
-            check_manager.add_display(target_name=target_pipelines, display=Padding(error_display_text, (0, 0, 0, 14)))
-        elif pipeline_status in [
-                ProvisioningState.updating.value,
-                ProvisioningState.provisioning.value,
-                ProvisioningState.deleting.value,
-                ProvisioningState.accepted.value
-            ]:
-            pipeline_eval_status = CheckTaskStatus.warning.value
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines, status=pipeline_eval_status, value=pipeline_eval_value, resource_name=pipeline_name
-        )
+    def evaluate_source_node(
+            pipeline_source_node: dict,
+            target_pipelines: str,
+            pipeline_name: str,
+            check_manager: CheckManager,
+            extended: Optional[bool] = False,
+        ):
 
         # check data source node count
-        pipeline_source_node = p["spec"]["input"]
         pipeline_source_node_count = 1 if pipeline_source_node else 0
         source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] MQTT data source node. [green]Detected {pipeline_source_node_count}[/green]."
 
@@ -1424,33 +1409,20 @@ def evaluate_pipelines(
         if pipeline_source_node_count != 1:
             pipeline_source_count_eval_status = CheckTaskStatus.error.value
             source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] MQTT data source node. {{[red]Detected {pipeline_source_node_count}[/red]}}."
-        check_manager.add_display(target_name=target_pipelines, display=Padding(source_count_display_text, (0, 0, 0, 12)))
+        add_display_and_eval(target_pipelines, source_count_display_text, pipeline_source_count_eval_status, pipeline_source_count_eval_value, pipeline_name, (0, 0, 0, 12))
 
-        check_manager.add_target_eval(
-            target_name=target_pipelines, status=pipeline_source_count_eval_status, value=pipeline_source_count_eval_value, resource_name=pipeline_name
-        )
-
-        # check data source broker URL
+        # data source broker URL
         pipeline_source_node_broker = pipeline_source_node["broker"]
-        source_broker_display_text = f"- Broker URL: {pipeline_source_node_broker}"
+        source_broker_display_text = f"- Broker URL: [bright_blue]{pipeline_source_node_broker}[/bright_blue]"
 
-        pipeline_source_broker_eval_value = {"spec.input.broker": pipeline_source_node_broker}
-        pipeline_source_broker_eval_status = CheckTaskStatus.success.value
-
-        if not pipeline_source_node_broker:
-            pipeline_source_broker_eval_status = CheckTaskStatus.error.value
         check_manager.add_display(target_name=target_pipelines, display=Padding(source_broker_display_text, (0, 0, 0, 16)))
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines, status=pipeline_source_broker_eval_status, value=pipeline_source_broker_eval_value, resource_name=pipeline_name
-        )
 
         # check data source topics
         pipeline_source_node_topics = pipeline_source_node["topics"]
         pipeline_source_node_topics_count = len(pipeline_source_node_topics)
         source_topics_display_text = f"- Expecting [bright_blue]>=1[/bright_blue] and [bright_blue]<=50[/bright_blue] topics. [green]Detected {pipeline_source_node_topics_count}[/green]."
 
-        pipeline_source_topics_eval_value = {"spec.input.topics": pipeline_source_node["topics"]}
+        pipeline_source_topics_eval_value = {"len(spec.input.topics)": pipeline_source_node_topics_count}
         pipeline_source_topics_eval_status = CheckTaskStatus.success.value
 
         if pipeline_source_node_topics_count < 1 or pipeline_source_node_topics_count > 50:
@@ -1471,10 +1443,6 @@ def evaluate_pipelines(
         source_format_type_display_text = f"- Source message type: [bright_blue]{pipeline_source_node_format_type}[/bright_blue]"
 
         check_manager.add_display(target_name=target_pipelines, display=Padding(source_format_type_display_text, (0, 0, 0, 16)))
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines, status=pipeline_source_topics_eval_status, value=pipeline_source_topics_eval_value, resource_name=pipeline_name
-        )
 
         if extended:
             # data source qos
@@ -1509,18 +1477,19 @@ def evaluate_pipelines(
             if extended:
                 authentication_username = pipeline_source_node["authentication"]["username"]
                 authentication_password = pipeline_source_node["authentication"]["password"]
+                masked_password = '*' * len(authentication_password)
                 check_manager.add_display(target_name=target_pipelines, display=Padding(f"Username: [cyan]{authentication_username}[/cyan]", (0, 0, 0, 20)))
-                check_manager.add_display(target_name=target_pipelines, display=Padding(f"Password: [cyan]{authentication_password}[/cyan]", (0, 0, 0, 20)))
+                check_manager.add_display(target_name=target_pipelines, display=Padding(f"Password: [cyan]{masked_password}[/cyan]", (0, 0, 0, 20)))
 
-        # check pipeline intermediate node
-        pipeline_stages_node = p["spec"]["stages"]
-        output_node: Tuple = ()
-        for s in pipeline_stages_node:
-            if "output" in pipeline_stages_node[s]["type"]:
-                output_node = (s, pipeline_stages_node[s])
-                break
+
+    def evaluate_intermediate_nodes(
+            pipeline_stages_node: dict,
+            target_pipelines: str,
+            check_manager: CheckManager,
+            extended: Optional[bool] = False,
+        ):
+
         # number of intermediate stages should be total len(stages) - len(output stage)
-        # pipeline_intermediate_stages_node is pipeline_stages_node removing output stage node
         pipeline_intermediate_stages_node = pipeline_stages_node.copy()
         pipeline_intermediate_stages_node_count = len(pipeline_stages_node)
         if output_node:
@@ -1537,9 +1506,22 @@ def evaluate_pipelines(
                 stage_display_text = f"- Stage resource {{[bright_blue]{stage_name}[/bright_blue]}} of type {{[bright_blue]{stage_type}[/bright_blue]}}"
                 check_manager.add_display(target_name=target_pipelines, display=Padding(stage_display_text, (0, 0, 0, 16)))
 
-                _process_intermediate_stage_properties(check_manager, target_name=target_pipelines, stage=pipeline_intermediate_stages_node[s])
+                _process_stage_properties(
+                    check_manager,
+                    target_name=target_pipelines,
+                    stage=pipeline_intermediate_stages_node[s],
+                    stage_properties=BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES,
+                    padding=(0, 0, 0, 20)
+                )
+    
 
-        # check pipeline destination node
+    def evaluate_destination_node(
+            output_node: dict,
+            target_pipelines: str,
+            pipeline_name: str,
+            check_manager: CheckManager,
+            extended: Optional[bool] = False,
+        ):
         pipeline_destination_node_count = 0
         if output_node:
             pipeline_destination_node_count = 1
@@ -1550,18 +1532,18 @@ def evaluate_pipelines(
 
         if pipeline_destination_node_count != 1:
             pipeline_destination_eval_status = CheckTaskStatus.error.value
-        check_manager.add_display(target_name=target_pipelines, display=Padding(destination_count_display_text, (0, 0, 0, 12)))
+        add_display_and_eval(target_pipelines, destination_count_display_text, pipeline_destination_eval_status, pipeline_destination_eval_value, pipeline_name, (0, 0, 0, 12))
 
-        check_manager.add_target_eval(
-            target_name=target_pipelines, status=pipeline_destination_eval_status, value=pipeline_destination_eval_value, resource_name=pipeline_name
-        )
 
         if output_node:
             if extended:
-                # for key, value in output_node[1].items():
-                #     property_display_text = f"Property [bright_blue]{key}[/bright_blue] : [bright_blue]{value}[/bright_blue]"
-                #     check_manager.add_display(target_name=target_pipelines, display=Padding(property_display_text, (0, 0, 0, 16)))
-                _process_destination_stage_properties(check_manager, target_name=target_pipelines, stage=output_node[1])
+                _process_stage_properties(
+                    check_manager,
+                    target_name=target_pipelines,
+                    stage=output_node[1],
+                    stage_properties=BLUEFIN_DESTINATION_STAGE_PROPERTIES,
+                    padding=(0, 0, 0, 16)
+                )
                 
             else:
                 # check pipeline destination type
@@ -1573,6 +1555,112 @@ def evaluate_pipelines(
                 pipeline_destination_target = _get_destination_target_endpoint(output_node)
                 destination_target_display_text = f"- Target endpoint: [bright_blue]{pipeline_destination_target}[/bright_blue]"
                 check_manager.add_display(target_name=target_pipelines, display=Padding(destination_target_display_text, (0, 0, 0, 16)))
+
+    check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Bluefin pipeline", namespace=namespace)
+
+    target_pipelines = "pipelines.bluefin.az-bluefin.com"
+    pipeline_conditions = ["len(pipelines)>=1",
+                           "mode.enabled",
+                           "provisioningStatus",
+                           "sourceNodeCount == 1",
+                           "len(spec.input.topics)>=1",
+                           "spec.input.partitionCount>=1",
+                           "destinationNodeCount==1"]
+    check_manager.add_target(target_name=target_pipelines, conditions=pipeline_conditions)
+
+    pipeline_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.PIPELINE, namespace=namespace)
+    if not pipeline_list:
+        fetch_pipelines_error_text = f"Unable to fetch namespace {BluefinResourceKinds.PIPELINE.value}s."
+        add_display_and_eval(target_pipelines, fetch_pipelines_error_text, CheckTaskStatus.error.value, fetch_pipelines_error_text)
+        return check_manager.as_dict(as_list)
+
+    pipelines: List[dict] = pipeline_list.get("items", [])
+    pipelines_count = len(pipelines)
+    pipelines_count_text = "- Expecting [bright_blue]>=1[/bright_blue] pipeline resource per namespace. {}."
+    pipeline_eval_status = CheckTaskStatus.success.value
+
+    if pipelines_count >= 1:
+        pipelines_count_text = pipelines_count_text.format(f"[green]Detected {pipelines_count}[/green]")
+    else:
+        pipelines_count_text = pipelines_count_text.format(f"[red]Detected {pipelines_count}[/red]")
+        check_manager.set_target_status(target_name=target_pipelines, status=CheckTaskStatus.error.value)
+    check_manager.add_display(target_name=target_pipelines, display=Padding(pipelines_count_text, (0, 0, 0, 8)))
+
+    for p in pipelines:
+        pipeline_name = p["metadata"]["name"]
+        pipeline_running_status = "running" if p["spec"]["enabled"] else "not running"
+
+        pipeline_enabled_text = f"\n- Pipeline {{[bright_blue]{pipeline_name}[/bright_blue]}} is {{[bright_blue]{pipeline_running_status}[/bright_blue]}}."
+        pipeline_eval_value = {"mode.enabled": pipeline_running_status}
+        pipeline_eval_status = CheckTaskStatus.success.value
+
+        if pipeline_running_status == "not running":
+            pipieline_not_enabled_text = (
+                f"\n- Pipeline {{[bright_blue]{pipeline_name}[/bright_blue]}} is {{[yellow]not running[/yellow]}}."
+                "\n  [bright_white]Skipping pipeline evaluation[/bright_white]."
+            )
+            add_display_and_eval(target_pipelines, pipieline_not_enabled_text, CheckTaskStatus.skipped.value, pipeline_eval_value, pipeline_name)
+            continue
+
+        add_display_and_eval(target_pipelines, pipeline_enabled_text, pipeline_eval_status, pipeline_eval_value, pipeline_name)
+
+        # check provisioning status
+        pipeline_status = p["status"]["provisioningStatus"]["status"]
+        status_display_text = f"- Provisioning status {{{_decorate_resource_status(pipeline_status)}}}."
+
+        pipeline_provisioningStatus_eval_value = {"provisioningStatus": pipeline_status}
+        pipeline_provisioningStatus_eval_status = CheckTaskStatus.success.value
+
+        error_display_text = ""
+        if pipeline_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
+            pipeline_provisioningStatus_eval_status = CheckTaskStatus.error.value
+            error_message = p["status"]["provisioningStatus"]["error"]["message"]
+            error_display_text = f"[red]Error: {error_message}[/red]"
+        elif pipeline_status in [
+                ProvisioningState.updating.value,
+                ProvisioningState.provisioning.value,
+                ProvisioningState.deleting.value,
+                ProvisioningState.accepted.value
+            ]:
+            pipeline_provisioningStatus_eval_status = CheckTaskStatus.warning.value
+
+        add_display_and_eval(target_pipelines, status_display_text, pipeline_provisioningStatus_eval_status, pipeline_provisioningStatus_eval_value, pipeline_name, (0, 0, 0, 12))
+
+        if error_display_text:
+            check_manager.add_display(target_name=target_pipelines, display=Padding(error_display_text, (0, 0, 0, 14)))
+
+        # pipeline source node
+        evaluate_source_node(
+            pipeline_source_node=p["spec"]["input"],
+            target_pipelines=target_pipelines,
+            pipeline_name=pipeline_name,
+            check_manager=check_manager,
+            extended=extended
+        )
+
+        # pipeline intermediate node
+        pipeline_stages_node = p["spec"]["stages"]
+        output_node: Tuple = ()
+        for s in pipeline_stages_node:
+            if "output" in pipeline_stages_node[s]["type"]:
+                output_node = (s, pipeline_stages_node[s])
+                break
+
+        evaluate_intermediate_nodes(
+            pipeline_stages_node=pipeline_stages_node,
+            target_pipelines=target_pipelines,
+            check_manager=check_manager,
+            extended=extended
+        )
+
+        # pipeline destination node
+        evaluate_destination_node(
+            output_node=output_node,
+            target_pipelines=target_pipelines,
+            pipeline_name=pipeline_name,
+            check_manager=check_manager,
+            extended=extended
+        )
 
     return check_manager.as_dict(as_list)
 
@@ -1670,7 +1758,6 @@ def evaluate_datasets(
                         (0, 0, 0, 12),
                     ),
                 )
-
             
     return check_manager.as_dict(as_list)
 
@@ -1678,6 +1765,7 @@ def evaluate_datasets(
 def evaluate_datalake_connectors(
     namespace: str,
     as_list: bool = False,
+    extended: Optional[bool] = False,
 ):
     def create_schema_table(name: str, schema: List[Dict[str, str]]):
         from rich.table import Table
@@ -1948,56 +2036,20 @@ def evaluate_datalake_connectors(
     return check_manager.as_dict(as_list)
 
 
-def enumerate_e4k_resources(
-    as_list: bool = False,
+def enumerate_edge_service_resources(
+    api_info: str, 
+    check_name: str, 
+    check_desc: str, 
+    as_list: bool = False
 ) -> Tuple[dict, dict]:
+
     resource_kind_map = {}
-    target_api = E4K_ACTIVE_API.as_str()
-    check_manager = CheckManager(check_name="enumerateE4kApi", check_desc="Enumerate E4K API resources")
+    target_api = api_info.as_str()
+    check_manager = CheckManager(check_name=check_name, check_desc=check_desc)
     check_manager.add_target(target_name=target_api)
 
     api_resources: V1APIResourceList = get_cluster_custom_api(
-        group=E4K_ACTIVE_API.group, version=E4K_ACTIVE_API.version
-    )
-
-    if not api_resources:
-        check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.skipped.value)
-        missing_api_text = (
-            f"[bright_blue]{target_api}[/bright_blue] API resources [red]not[/red] detected."
-            "\n\n[bright_white]Skipping deployment evaluation[/bright_white]."
-        )
-        check_manager.add_display(target_name=target_api, display=Padding(missing_api_text, (0, 0, 0, 8)))
-        return check_manager.as_dict(as_list), resource_kind_map
-
-    api_header_display = Padding(f"[bright_blue]{target_api}[/bright_blue] API resources", (0, 0, 0, 8))
-    check_manager.add_display(target_name=target_api, display=api_header_display)
-    for resource in api_resources.resources:
-        r: V1APIResource = resource
-        if r.kind not in resource_kind_map:
-            resource_kind_map[r.kind] = True
-            check_manager.add_display(
-                target_name=target_api,
-                display=Padding(f"[cyan]{r.kind}[/cyan]", (0, 0, 0, 12)),
-            )
-
-    check_manager.add_target_eval(
-        target_name=target_api,
-        status=CheckTaskStatus.success.value,
-        value=list(resource_kind_map.keys()),
-    )
-    return check_manager.as_dict(as_list), resource_kind_map
-
-
-def enumerate_bluefin_resources(
-    as_list: bool = False,
-) -> Tuple[dict, dict]:
-    resource_kind_map = {}
-    target_api = BLUEFIN_API_V1.as_str()
-    check_manager = CheckManager(check_name="enumerateBluefinApi", check_desc="Enumerate Bluefin API resource")
-    check_manager.add_target(target_name=target_api)
-
-    api_resources: V1APIResourceList = get_cluster_custom_api(
-        group=BLUEFIN_API_V1.group, version=BLUEFIN_API_V1.version
+        group=api_info.group, version=api_info.version
     )
 
     if not api_resources:
@@ -2361,160 +2413,26 @@ def evaluate_pod_health(check_manager: CheckManager, namespace: str, pod: str, d
                 ),
             )
 
-def _process_intermediate_stage_properties(check_manager: CheckManager, target_name: str, stage: dict):
+
+def _process_stage_properties(
+        check_manager: CheckManager,
+        target_name: str,
+        stage: dict,
+        stage_properties: dict,
+        padding: tuple
+    ):
     stage_type = stage["type"]
 
-    if BluefinProcessorStageType.aggregate.value in stage_type:
-        stage_window_type = stage["window"]["type"]
-        stage_window_size = stage["window"]["size"]
-
-        stage_window_type_display_text = f"Aggregate window type: [bright_blue]{stage_window_type}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_window_type_display_text, (0, 0, 0, 20)))
-
-        stage_window_size_display_text = f"Aggregate window duration: [bright_blue]{stage_window_size}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_window_size_display_text, (0, 0, 0, 20)))
-    elif BluefinProcessorStageType.enrich.value in stage_type:
-        stage_dataset = stage["dataset"]
-
-        stage_dataset_display_text = f"Enrich dataset ID: [bright_blue]{stage_dataset}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_dataset_display_text, (0, 0, 0, 20)))
-    elif BluefinProcessorStageType.grpc.value in stage_type:
-        stage_server_address = stage["serverAddress"]
-        stage_rpcName = stage["rpcName"]
-        stage_descriptor = stage["descriptor"]
-
-        stage_server_address_display_text = f"gRPC server address: [bright_blue]{stage_server_address}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_server_address_display_text, (0, 0, 0, 20)))
-
-        stage_rpcName_display_text = f"gRPC RPC name: [bright_blue]{stage_rpcName}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_rpcName_display_text, (0, 0, 0, 20)))
-
-        # only show first 5 charactors of descriptor
-        stage_descriptor_display_text = f"gRPC descriptor: [bright_blue]{stage_descriptor[:5]}[/bright_blue]..."
-        check_manager.add_display(target_name=target_name, display=Padding(stage_descriptor_display_text, (0, 0, 0, 20)))
-    elif BluefinProcessorStageType.http.value in stage_type:
-        stage_url = stage["url"]
-        stage_method = stage["method"]
-
-        stage_url_display_text = f"Request URL: [bright_blue]{stage_url}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_url_display_text, (0, 0, 0, 20)))
-
-        stage_method_display_text = f"Request method: [bright_blue]{stage_method}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_method_display_text, (0, 0, 0, 20)))
-
-
-def _process_destination_stage_properties(check_manager: CheckManager, target_name: str, stage: dict):
-    stage_type = stage["type"]
-
-    if BluefinDestinationStageType.fabric.value in stage_type:
-        stage_fabric_url = stage["url"]
-        stage_fabric_workspace = stage["workspace"]
-        stage_fabric_lakehouse = stage["lakehouse"]
-        stage_fabric_lakehouse_table = stage["table"]
-        stage_authentication_type = stage["authentication"]["type"]
-        stage_auth_tenant_id = stage["authentication"]["tenantId"]
-        stage_auth_client_id = stage["authentication"]["clientId"]
-        stage_auth_client_secret = stage["authentication"]["clientSecret"]
-
-        stage_fabric_url_display_text = f"Fabric Endpoint: [bright_blue]{stage_fabric_url}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_fabric_url_display_text, (0, 0, 0, 16)))
-
-        stage_fabric_workspace_display_text = f"Fabric workspace ID: [bright_blue]{stage_fabric_workspace}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_fabric_workspace_display_text, (0, 0, 0, 16)))
-
-        stage_fabric_lakehouse_display_text = f"Fabric lakehouse ID: [bright_blue]{stage_fabric_lakehouse}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_fabric_lakehouse_display_text, (0, 0, 0, 16)))
-
-        stage_fabric_lakehouse_table_display_text = f"Fabric lakehouse table: [bright_blue]{stage_fabric_lakehouse_table}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_fabric_lakehouse_table_display_text, (0, 0, 0, 16)))
-
-        stage_authentication_type_display_text = f"Data Explorer authentication type: [bright_blue]{stage_authentication_type}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_authentication_type_display_text, (0, 0, 0, 16)))
-
-        stage_auth_tenant_id_display_text = f"Tenant ID: [bright_blue]{stage_auth_tenant_id}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_tenant_id_display_text, (0, 0, 0, 18)))
-
-        stage_auth_client_id_display_text = f"Client ID: [bright_blue]{stage_auth_client_id}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_client_id_display_text, (0, 0, 0, 18)))
-
-        stage_auth_client_secret_display_text = f"Client secret: [bright_blue]{stage_auth_client_secret}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_client_secret_display_text, (0, 0, 0, 18)))
-    elif BluefinDestinationStageType.grpc.value in stage_type:
-        stage_server_address = stage["serverAddress"]
-        stage_rpcName = stage["rpcName"]
-        stage_descriptor = stage["descriptor"]
-
-        stage_server_address_display_text = f"gRPC server address: [bright_blue]{stage_server_address}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_server_address_display_text, (0, 0, 0, 20)))
-
-        stage_rpcName_display_text = f"gRPC RPC name: [bright_blue]{stage_rpcName}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_rpcName_display_text, (0, 0, 0, 20)))
-
-        # only show first 5 charactors of descriptor
-        stage_descriptor_display_text = f"gRPC descriptor: [bright_blue]{stage_descriptor[:5]}[/bright_blue]..."
-        check_manager.add_display(target_name=target_name, display=Padding(stage_descriptor_display_text, (0, 0, 0, 20)))
-    elif BluefinDestinationStageType.data_explorer.value in stage_type:
-        stage_cluster_url = stage["clusterUrl"]
-        stage_database = stage["database"]
-        stage_table = stage["table"]
-        stage_authentication_type = stage["authentication"]["type"]
-        stage_auth_tenant_id = stage["authentication"]["tenantId"]
-        stage_auth_client_id = stage["authentication"]["clientId"]
-        stage_auth_client_secret = stage["authentication"]["clientSecret"]
-
-        stage_cluster_url_display_text = f"Data Explorer cluster URL: [bright_blue]{stage_cluster_url}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_cluster_url_display_text, (0, 0, 0, 16)))
-
-        stage_database_display_text = f"Data Explorer database: [bright_blue]{stage_database}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_database_display_text, (0, 0, 0, 16)))
-
-        stage_table_display_text = f"Data Explorer table: [bright_blue]{stage_table}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_table_display_text, (0, 0, 0, 16)))
-
-        stage_authentication_type_display_text = f"Data Explorer authentication type: [bright_blue]{stage_authentication_type}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_authentication_type_display_text, (0, 0, 0, 16)))
-
-        stage_auth_tenant_id_display_text = f"Tenant ID: [bright_blue]{stage_auth_tenant_id}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_tenant_id_display_text, (0, 0, 0, 18)))
-
-        stage_auth_client_id_display_text = f"Client ID: [bright_blue]{stage_auth_client_id}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_client_id_display_text, (0, 0, 0, 18)))
-
-        stage_auth_client_secret_display_text = f"Client secret: [bright_blue]{stage_auth_client_secret}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_auth_client_secret_display_text, (0, 0, 0, 18)))
-    elif BluefinDestinationStageType.mqtt.value in stage_type:
-        stage_broker = stage["broker"]
-        stage_qos = stage.get("qos", "")
-        stage_topic = stage["topic"]
-        stage_authentication_type = stage["authentication"]["type"]
-        stage_format = stage["format"]["type"]
-
-        stage_broker_display_text = f"MQTT broker URL: [bright_blue]{stage_broker}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_broker_display_text, (0, 0, 0, 16)))
-
-        if stage_qos:
-            stage_qos_display_text = f"MQTT QoS: [bright_blue]{stage_qos}[/bright_blue]"
-            check_manager.add_display(target_name=target_name, display=Padding(stage_qos_display_text, (0, 0, 0, 16)))
-
-        stage_topic_display_text = f"MQTT topic: [bright_blue]{stage_topic}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_topic_display_text, (0, 0, 0, 16)))
-
-        if stage_authentication_type == "usernamePassword":
-            stage_authentication_type_display_text = f"MQTT authentication type: [bright_blue]{stage_authentication_type}[/bright_blue]"
-            check_manager.add_display(target_name=target_name, display=Padding(stage_authentication_type_display_text, (0, 0, 0, 16)))
-            stage_authentication_username = stage["authentication"]["username"]
-            stage_authentication_password = stage["authentication"]["password"]
-
-            stage_authentication_username_display_text = f"Username: [bright_blue]{stage_authentication_username}[/bright_blue]"
-            check_manager.add_display(target_name=target_name, display=Padding(stage_authentication_username_display_text, (0, 0, 0, 18)))
-
-            stage_authentication_password_display_text = f"Password: [bright_blue]{stage_authentication_password}[/bright_blue]"
-            check_manager.add_display(target_name=target_name, display=Padding(stage_authentication_password_display_text, (0, 0, 0, 18)))
-
-        stage_format_display_text = f"MQTT format: [bright_blue]{stage_format}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_format_display_text, (0, 0, 0, 16)))
-    elif BluefinDestinationStageType.reference_data.value in stage_type:
-        stage_dataset = stage["dataset"]
-
-        stage_dataset_display_text = f"Dataset ID: [bright_blue]{stage_dataset}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(stage_dataset_display_text, (0, 0, 0, 16)))
+    for stage_value, properties in stage_properties.items():
+        if stage_value in stage_type:
+            for prop, display_name in properties:
+                keys = prop.split('.')
+                prop_value = stage
+                for key in keys:
+                    prop_value = prop_value.get(key)
+                if prop_value is None:
+                    continue
+                if prop == "descriptor":
+                    prop_value = prop_value[:5] + "..."
+                display_text = f"{display_name}: [bright_blue]{prop_value}[/bright_blue]"
+                check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
