@@ -62,8 +62,8 @@ def check(
 def init(
     cmd,
     cluster_name: str,
-    cluster_namespace: str,
     resource_group_name: str,
+    cluster_namespace: str = "default",
     pas_version: str = DeployablePasVersions.v011.value,
     custom_location_name: Optional[str] = None,
     show_pas_version: Optional[bool] = None,
@@ -98,7 +98,7 @@ def init(
         target_name = f"{cluster_name_lowered}-azedge-init-target"
 
     if simulate_plc and not opcua_discovery_endpoint:
-        opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
+        opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}.svc.cluster.local:50000"
 
     return deploy(
         subscription_id=get_subscription_id(cmd.cli_ctx),

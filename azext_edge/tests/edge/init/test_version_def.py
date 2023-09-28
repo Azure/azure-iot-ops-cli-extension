@@ -12,9 +12,9 @@ from azext_edge.edge.providers.orchestration import (
     EdgeServiceMoniker,
 )
 from azext_edge.edge.providers.orchestration.pas_versions import (
-    v011_moniker_to_version_map,
-    v011_extension_to_rp_map,
-    v011_extension_to_version_map,
+    v012_moniker_to_version_map,
+    v012_extension_to_rp_map,
+    v012_extension_to_version_map,
 )
 
 
@@ -34,9 +34,9 @@ def test_get_aio_version_def(aio_version: str):
         return
 
     assert version_def.version == aio_version
-    assert version_def.moniker_to_version_map == v011_moniker_to_version_map
-    assert version_def.extension_to_rp_map == v011_extension_to_rp_map
-    assert version_def.extension_to_vers_map == v011_extension_to_version_map
+    assert version_def.moniker_to_version_map == v012_moniker_to_version_map
+    assert version_def.extension_to_rp_map == v012_extension_to_rp_map
+    assert version_def.extension_to_vers_map == v012_extension_to_version_map
 
 
 @pytest.mark.parametrize(
@@ -46,8 +46,8 @@ def test_get_aio_version_def(aio_version: str):
             {EdgeServiceMoniker.e4k.value: "0.9.0"},
             False,
             {
-                "extension_to_vers_map": v011_extension_to_version_map,
-                "extension_to_rp_map": v011_extension_to_rp_map,
+                "extension_to_vers_map": v012_extension_to_version_map,
+                "extension_to_rp_map": v012_extension_to_rp_map,
             },
         ),
         pytest.param(
@@ -70,7 +70,7 @@ def test_version_def_set_version(moniker_map, refresh, expected_set_mappings):
     assert version_def.extension_to_rp_map == expected_set_mappings["extension_to_rp_map"]
 
     if not refresh:
-        expected_moniker_to_version_map = dict(v011_moniker_to_version_map)
+        expected_moniker_to_version_map = dict(v012_moniker_to_version_map)
         expected_moniker_to_version_map.update(moniker_map)
 
         assert version_def.moniker_to_version_map == expected_moniker_to_version_map

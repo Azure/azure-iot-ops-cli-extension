@@ -75,45 +75,66 @@ def get_e4in(version: str, **kwargs):
     return std
 
 
-def get_akri(version: str, opcua_discovery_endpoint: str, kubernetes_distro: str, **kwargs):
+def get_akri_opcua_asset(opcua_discovery_endpoint: str, **kwargs):
     std = {
-        "name": "akri",
-        "type": "helm.v3",
+        "name": "akri-opcua-asset",
+        "type": "yaml.k8s",
         "properties": {
-            "chart": {
-                "repo": "alicesprings.azurecr.io/helm/microsoft-managed-akri",
-                "version": version,
-            },
-            "values": {
-                "custom": {
-                    "configuration": {
-                        "enabled": True,
-                        "name": "akri-opcua-asset",
-                        "discoveryHandlerName": "opcua-asset",
+            "resource": {
+                "apiVersion": "akri.sh/v0",
+                "kind": "Configuration",
+                "metadata": {"name": "akri-opcua-asset"},
+                "spec": {
+                    "discoveryHandler": {
+                        "name": "opcua-asset",
                         "discoveryDetails": opcua_discovery_endpoint,
                     },
-                    "discovery": {
-                        "enabled": True,
-                        "name": "akri-opcua-asset-discovery",
-                        "image": {
-                            "repository": "e4ipreview.azurecr.io/e4i/workload/akri-opc-ua-asset-discovery",
-                            "tag": "latest",
-                            "pullPolicy": "Always",
-                        },
-                        "useNetworkConnection": True,
-                        "port": 80,
-                        "resources": {
-                            "memoryRequest": "64Mi",
-                            "cpuRequest": "10m",
-                            "memoryLimit": "512Mi",
-                            "cpuLimit": "1000m",
+                    "brokerProperties": {},
+                    "capacity": 1,
+                },
+            }
+        },
+    }
+    std.update(kwargs)
+    return std
+
+
+def get_akri_opcua_discovery_daemonset(version: str, kubernetes_distro: str, **kwargs):
+    std = {
+        "name": "akri-opcua-asset-discovery-daemonset",
+        "type": "yaml.k8s",
+        "properties": {
+            "resource": {
+                "apiVersion": "apps/v1",
+                "kind": "DaemonSet",
+                "metadata": {"name": "akri-opcua-asset-discovery-daemonset"},
+                "spec": {
+                    "selector": {"matchLabels": {"name": "akri-opcua-asset-discovery"}},
+                    "template": {
+                        "metadata": {"labels": {"name": "akri-opcua-asset-discovery"}},
+                        "spec": {
+                            "containers": [
+                                {
+                                    "name": "akri-opcua-asset-discovery",
+                                    "image": "e4ipreview.azurecr.io/e4i/workload/akri-opc-ua-asset-discovery:latest",
+                                    "imagePullPolicy": "Always",
+                                    "resources": {
+                                        "requests": {"memory": "64Mi", "cpu": "10m"},
+                                        "limits": {"memory": "512Mi", "cpu": "100m"},
+                                    },
+                                    "ports": [{"name": "discovery", "containerPort": 80}],
+                                    "env": [
+                                        {"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}},
+                                        {"name": "DISCOVERY_HANDLERS_DIRECTORY", "value": "/var/lib/akri"},
+                                    ],
+                                    "volumeMounts": [{"name": "discovery-handlers", "mountPath": "/var/lib/akri"}],
+                                }
+                            ],
+                            "volumes": [{"name": "discovery-handlers", "hostPath": {"path": "/var/lib/akri"}}],
                         },
                     },
                 },
-                "kubernetesDistro": kubernetes_distro,
-                "prometheus": {"enabled": True},
-                "opentelemetry": {"enabled": True},
-            },
+            }
         },
     }
     std.update(kwargs)

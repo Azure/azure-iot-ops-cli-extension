@@ -56,12 +56,11 @@ class ManifestBuilder:
 
         self._manifest: dict = {
             "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-            "contentVersion": "0.1.1.0",
+            "contentVersion": "0.1.2.0",
             "metadata": {"description": "Az Edge CLI PAS deployment."},
             "variables": {
                 "clusterId": f"[resourceId('Microsoft.Kubernetes/connectedClusters', '{self.cluster_name}')]",
                 "customLocationName": self.custom_location_name,
-                "extensionInfix": "/providers/Microsoft.KubernetesConfiguration/extensions/",
                 "location": self.kwargs.get("location") or "[resourceGroup().location]",
             },
             "resources": [],
@@ -77,7 +76,7 @@ class ManifestBuilder:
             },
             "properties": {
                 "scope": cluster_namespace,
-                "version": "0.1.1",
+                "version": "1.2.0",
                 "displayName": self.target_name,
                 "components": [],
                 "topologies": [
@@ -115,8 +114,11 @@ class ManifestBuilder:
         self,
         extension_type: str,
         name: str,
-        configuration: Optional[dict] = None,
         release_train: str = "private-preview",
+        configuration: Optional[dict] = None,
+        identity: Optional[dict] = None,
+        skip_sync_rule: bool = False,
+        skip_custom_location_dep: bool = False,
     ):
         target_version = self.version_def.extension_to_vers_map.get(extension_type)
         if target_version:
@@ -136,10 +138,15 @@ class ManifestBuilder:
             }
             if configuration:
                 extension["properties"]["configurationSettings"].update(configuration)
+            if identity:
+                extension["identity"] = identity
             self.resources.append(extension)
-            self.extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
+            if not skip_custom_location_dep:
+                self.extension_ids.append(
+                    f"[concat(variables('clusterId'), '/providers/Microsoft.KubernetesConfiguration/extensions/{name}')]"
+                )
 
-            if self.create_sync_rules:
+            if self.create_sync_rules and not skip_sync_rule and not skip_custom_location_dep:
                 # TODO: self.version_def.extension_to_rp_map
                 sync_rule = {
                     "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
@@ -198,7 +205,13 @@ class ManifestBuilder:
         self.resources.append(payload)
 
     def add_std_symphony_components(self):
-        from .components import get_akri, get_e4in, get_observability, get_opcua_broker
+        from .components import (
+            get_akri_opcua_asset,
+            get_akri_opcua_discovery_daemonset,
+            get_e4in,
+            get_observability,
+            get_opcua_broker,
+        )
 
         # TODO: Primitive pattern
         obs_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.obs.value)
@@ -292,6 +305,7 @@ def deploy(
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.alicesprings.value],
         name=EdgeExtensionName.alicesprings.value,
+        identity={"type": "SystemAssigned"},
         configuration={
             "Microsoft.CustomLocation.ServiceAccount": "default",
             "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
@@ -301,23 +315,31 @@ def deploy(
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.dataplane.value],
         name=EdgeExtensionName.dataplane.value,
+        identity={"type": "SystemAssigned"},
         configuration={
             "global.quickstart": True,
             "global.openTelemetryCollectorAddr": get_otel_collector_addr(cluster_namespace, True),
         },
+        skip_sync_rule=True,
+        skip_custom_location_dep=True,
     )
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.processor.value],
         name=EdgeExtensionName.processor.value,
         configuration={
-            "Microsoft.CustomLocation.ServiceAccount": "microsoft.bluefin",
+            "Microsoft.CustomLocation.ServiceAccount": "default",
             "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
             "genevaCollectorAddress": get_geneva_metrics_addr(cluster_namespace),
+            "tracePodFormat": "OFF",
         },
     )
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.assets.value],
         name=EdgeExtensionName.assets.value,
+    )
+    manifest_builder.add_extension(
+        extension_type=extension_name_to_type_map[EdgeExtensionName.akri.value],
+        name=EdgeExtensionName.akri.value,
     )
     manifest_builder.add_custom_location()
     manifest_builder.add_std_symphony_components()
