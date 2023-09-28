@@ -174,7 +174,6 @@ def enumerate_edge_service_resources(
     as_list: bool = False
 ) -> Tuple[dict, dict]:
 
-    import pdb; pdb.set_trace()
     resource_kind_map = {}
     target_api = api_info.as_str()
     check_manager = CheckManager(check_name=check_name, check_desc=check_desc)
