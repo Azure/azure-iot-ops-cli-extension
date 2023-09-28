@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 BLUEFIN_APP_LABEL = (
     "app in (bluefin-reader-worker,bluefin-refdata-store,nats"
     ",bluefin-scheduler,bluefin-runner-worker,bluefin-portal"
-    ",bluefin-api-proxy,nats,bluefin-operator-controller-manager)"
+    ",bluefin-api-proxy,bluefin-operator-controller-manager)"
 )
 BLUEFIN_RELEASE_LABEL = "release in (bf-instance)"
 BLUEFIN_INSTANCE_LABEL = "app.kubernetes.io/instance in (bf-instance)"

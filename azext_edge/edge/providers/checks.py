@@ -7,7 +7,6 @@
 from functools import partial
 from typing import Any, Dict, List, Optional, Tuple, Union
 from enum import Enum
-from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
@@ -36,8 +35,13 @@ from ..common import (
     ResourceState,
 )
 
-from ..providers.edge_api import E4K_ACTIVE_API, E4kResourceKinds
-from ..providers.edge_api import BLUEFIN_API_V1, BluefinResourceKinds
+from ..providers.edge_api import (
+    BLUEFIN_API_V1,
+    BluefinResourceKinds,
+    EdgeResourceApi,
+    E4K_ACTIVE_API,
+    E4kResourceKinds
+)
 from .support.e4k import E4K_LABEL
 
 from .base import (
