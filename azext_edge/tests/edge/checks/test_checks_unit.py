@@ -5,24 +5,25 @@
 # --------------------------------------------------------------------------------------------
 
 
-from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
 import pytest
 from typing import Dict, Any, List
-from azext_edge.edge.common import CheckTaskStatus, ProvisioningState
-from azext_edge.edge.providers.checks import (
-    CheckManager,
-    E4kResourceKinds,
-    ResourceState,
+from azext_edge.edge.common import CheckTaskStatus, ProvisioningState, ResourceState
+from azext_edge.edge.providers.check.base import CheckManager
+from azext_edge.edge.providers.check.e4k import (
     evaluate_broker_listeners,
     evaluate_brokers,
-    evaluate_datasets,
     evaluate_diagnostics_service,
-    evaluate_instances,
     evaluate_mqtt_bridge_connectors,
     evaluate_datalake_connectors,
-    evaluate_pipelines,
-    run_checks,
 )
+from azext_edge.edge.providers.check.bluefin import (
+    evaluate_datasets,
+    evaluate_instances,
+    evaluate_pipelines,
+)
+from azext_edge.edge.providers.checks import run_checks
+from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
+from azext_edge.edge.providers.edge_api.e4k import E4kResourceKinds
 
 from ...generators import generate_generic_id
 
@@ -205,12 +206,12 @@ def assert_check_manager_dict(
 @pytest.mark.parametrize('edge_service', ['e4k'])
 def test_check_e4k_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        E4kResourceKinds.BROKER.value: "azext_edge.edge.providers.checks.evaluate_brokers",
-        E4kResourceKinds.BROKER_LISTENER.value: "azext_edge.edge.providers.checks.evaluate_broker_listeners",
-        E4kResourceKinds.DIAGNOSTIC_SERVICE.value: "azext_edge.edge.providers.checks.evaluate_diagnostics_service",
+        E4kResourceKinds.BROKER.value: "azext_edge.edge.providers.check.e4k.evaluate_brokers",
+        E4kResourceKinds.BROKER_LISTENER.value: "azext_edge.edge.providers.check.e4k.evaluate_broker_listeners",
+        E4kResourceKinds.DIAGNOSTIC_SERVICE.value: "azext_edge.edge.providers.check.e4k.evaluate_diagnostics_service",
         E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value:
-            "azext_edge.edge.providers.checks.evaluate_mqtt_bridge_connectors",
-        E4kResourceKinds.DATALAKE_CONNECTOR.value: "azext_edge.edge.providers.checks.evaluate_datalake_connectors",
+            "azext_edge.edge.providers.check.e4k.evaluate_mqtt_bridge_connectors",
+        E4kResourceKinds.DATALAKE_CONNECTOR.value: "azext_edge.edge.providers.check.e4k.evaluate_datalake_connectors",
     }
 
     assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
@@ -238,9 +239,9 @@ def test_check_e4k_by_resource_types(edge_service, mocker, mock_resource_types, 
 @pytest.mark.parametrize('edge_service', ['bluefin'])
 def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        BluefinResourceKinds.DATASET.value: "azext_edge.edge.providers.checks.evaluate_datasets",
-        BluefinResourceKinds.INSTANCE.value: "azext_edge.edge.providers.checks.evaluate_instances",
-        BluefinResourceKinds.PIPELINE.value: "azext_edge.edge.providers.checks.evaluate_pipelines",
+        BluefinResourceKinds.DATASET.value: "azext_edge.edge.providers.check.bluefin.evaluate_datasets",
+        BluefinResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.bluefin.evaluate_instances",
+        BluefinResourceKinds.PIPELINE.value: "azext_edge.edge.providers.check.bluefin.evaluate_pipelines",
     }
 
     assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
@@ -348,7 +349,7 @@ def _generate_resource_stub(
     ],
 )
 def test_broker_checks(
-    mocker, mock_evaluate_pod_health, broker, conditions, evaluations
+    mocker, mock_evaluate_e4k_pod_health, broker, conditions, evaluations
 ):
     mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -413,7 +414,7 @@ def test_broker_checks(
     ],
 )
 def test_broker_listener_checks(
-    mocker, mock_evaluate_pod_health, listener, service, conditions, evaluations
+    mocker, mock_evaluate_e4k_pod_health, listener, service, conditions, evaluations
 ):
     # mock listener values
     mocker.patch(
@@ -422,11 +423,11 @@ def test_broker_listener_checks(
     )
     # broker ref
     mocker.patch(
-        "azext_edge.edge.providers.checks._get_valid_references",
+        "azext_edge.edge.providers.check.e4k._get_valid_references",
         return_value={"mock_broker": True},
     )
     mocker.patch(
-        "azext_edge.edge.providers.checks.get_namespaced_service", return_value=service
+        "azext_edge.edge.providers.check.e4k.get_namespaced_service", return_value=service
     )
 
     namespace = generate_generic_id()
@@ -485,7 +486,7 @@ def test_broker_listener_checks(
     ],
 )
 def test_diagnostic_service_checks(
-    mocker, mock_evaluate_pod_health, resource, service, conditions, evaluations
+    mocker, mock_evaluate_e4k_pod_health, resource, service, conditions, evaluations
 ):
     # mock service values
     mocker.patch(
@@ -494,7 +495,7 @@ def test_diagnostic_service_checks(
     )
 
     mocker.patch(
-        "azext_edge.edge.providers.checks.get_namespaced_service", return_value=service
+        "azext_edge.edge.providers.check.e4k.get_namespaced_service", return_value=service
     )
 
     namespace = generate_generic_id()
@@ -553,7 +554,7 @@ def test_diagnostic_service_checks(
     ],
 )
 def test_mqtt_checks(
-    mocker, mock_evaluate_pod_health, bridge, topic_map, conditions, evaluations
+    mocker, mock_evaluate_e4k_pod_health, bridge, topic_map, conditions, evaluations
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -604,7 +605,7 @@ def test_mqtt_checks(
     ],
 )
 def test_datalake_checks(
-    mocker, mock_evaluate_pod_health, connector, topic_map, conditions, evaluations
+    mocker, mock_evaluate_e4k_pod_health, connector, topic_map, conditions, evaluations
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -666,7 +667,7 @@ def test_datalake_checks(
     ],
 )
 def test_instance_checks(
-    mocker, mock_evaluate_pod_health, instance, conditions, evaluations
+    mocker, mock_evaluate_bluefin_pod_health, instance, conditions, evaluations
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -891,7 +892,7 @@ def test_instance_checks(
     ]
 )
 def test_pipeline_checks(
-    mocker, mock_evaluate_pod_health, pipelines, conditions, evaluations
+    mocker, mock_evaluate_bluefin_pod_health, pipelines, conditions, evaluations
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -969,7 +970,7 @@ def test_pipeline_checks(
     ]
 )
 def test_dataset_checks(
-    mocker, mock_evaluate_pod_health, datasets, conditions, evaluations
+    mocker, mock_evaluate_bluefin_pod_health, datasets, conditions, evaluations
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
