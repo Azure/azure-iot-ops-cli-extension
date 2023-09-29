@@ -23,6 +23,7 @@ class EdgeExtensionName(ListableEnum):
     dataplane = "data-plane"
     processor = "processor"
     assets = "assets"
+    akri = "akri"
 
 
 class PasVersionDef:
@@ -69,38 +70,39 @@ class PasVersionDef:
 
 
 def get_pas_version_def(version: str) -> PasVersionDef:
-    if version == DeployablePasVersions.v011.value:
+    if version == DeployablePasVersions.v012.value:
         return PasVersionDef(
             version=version,
-            ext_to_rp_map=v011_extension_to_rp_map,
-            ext_to_vers_map=v011_extension_to_version_map,
-            moniker_to_vers_map=v011_moniker_to_version_map,
+            ext_to_rp_map=v012_extension_to_rp_map,
+            ext_to_vers_map=v012_extension_to_version_map,
+            moniker_to_vers_map=v012_moniker_to_version_map,
         )
 
 
-v011_moniker_to_version_map = {
-    EdgeServiceMoniker.adr.value: "0.9.0",
-    EdgeServiceMoniker.akri.value: "0.1.0",
-    EdgeServiceMoniker.bluefin.value: "0.2.4",
-    EdgeServiceMoniker.e4k.value: "0.5.1",
-    EdgeServiceMoniker.e4in.value: "0.1.1",
+v012_moniker_to_version_map = {
+    EdgeServiceMoniker.adr.value: "0.10.0",
+    EdgeServiceMoniker.akri.value: "0.2.0-rc1",
+    EdgeServiceMoniker.bluefin.value: "0.2.6",
+    EdgeServiceMoniker.e4k.value: "0.6.0-rc4",
+    EdgeServiceMoniker.e4in.value: "0.1.2",
     EdgeServiceMoniker.obs.value: "0.62.3",
     EdgeServiceMoniker.opcua.value: "0.7.0",
-    EdgeServiceMoniker.symphony.value: "0.44.9",
+    EdgeServiceMoniker.symphony.value: "0.45.1",
 }
 
-v011_extension_to_rp_map = {
+v012_extension_to_rp_map = {
     "microsoft.alicesprings": "microsoft.symphony",
     "microsoft.alicesprings.dataplane": "microsoft.alicespringsdataplane",
     "microsoft.alicesprings.processor": "microsoft.bluefin",
     "microsoft.deviceregistry.assets": "microsoft.deviceregistry",
 }
 
-v011_extension_to_version_map = {
-    "microsoft.alicesprings": v011_moniker_to_version_map[EdgeServiceMoniker.symphony.value],
-    "microsoft.alicesprings.dataplane": v011_moniker_to_version_map[EdgeServiceMoniker.e4k.value],
-    "microsoft.alicesprings.processor": v011_moniker_to_version_map[EdgeServiceMoniker.bluefin.value],
-    "microsoft.deviceregistry.assets": v011_moniker_to_version_map[EdgeServiceMoniker.adr.value],
+v012_extension_to_version_map = {
+    "microsoft.alicesprings": v012_moniker_to_version_map[EdgeServiceMoniker.symphony.value],
+    "microsoft.alicesprings.dataplane": v012_moniker_to_version_map[EdgeServiceMoniker.e4k.value],
+    "microsoft.alicesprings.processor": v012_moniker_to_version_map[EdgeServiceMoniker.bluefin.value],
+    "microsoft.deviceregistry.assets": v012_moniker_to_version_map[EdgeServiceMoniker.adr.value],
+    "microsoft.akri": v012_moniker_to_version_map[EdgeServiceMoniker.akri.value],
 }
 
 moniker_to_extension_type_map = {
@@ -108,6 +110,7 @@ moniker_to_extension_type_map = {
     EdgeServiceMoniker.e4k.value: "microsoft.alicesprings.dataplane",
     EdgeServiceMoniker.bluefin.value: "microsoft.alicesprings.processor",
     EdgeServiceMoniker.adr.value: "microsoft.deviceregistry.assets",
+    EdgeServiceMoniker.akri.value: "microsoft.akri",
 }
 
 extension_name_to_type_map = {
@@ -115,4 +118,5 @@ extension_name_to_type_map = {
     EdgeExtensionName.dataplane.value: "microsoft.alicesprings.dataplane",
     EdgeExtensionName.processor.value: "microsoft.alicesprings.processor",
     EdgeExtensionName.assets.value: "microsoft.deviceregistry.assets",
+    EdgeExtensionName.akri.value: "microsoft.akri",
 }

@@ -13,6 +13,7 @@ from .pas_versions import (
     extension_name_to_type_map,
     EdgeExtensionName,
 )
+from ...util import get_timestamp_now_utc
 
 
 def get_otel_collector_addr(namespace: str, prefix_protocol: bool = False):
@@ -52,16 +53,15 @@ class ManifestBuilder:
 
         self.kwargs = kwargs
         self.create_sync_rules = self.kwargs.get("create_sync_rules")
-        self.target_name = self.kwargs["target_name"]
+        self.target_name = self.kwargs.get("target_name")
 
         self._manifest: dict = {
             "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-            "contentVersion": "0.1.1.0",
+            "contentVersion": "0.1.2.0",
             "metadata": {"description": "Az Edge CLI PAS deployment."},
             "variables": {
                 "clusterId": f"[resourceId('Microsoft.Kubernetes/connectedClusters', '{self.cluster_name}')]",
                 "customLocationName": self.custom_location_name,
-                "extensionInfix": "/providers/Microsoft.KubernetesConfiguration/extensions/",
                 "location": self.kwargs.get("location") or "[resourceGroup().location]",
             },
             "resources": [],
@@ -77,7 +77,7 @@ class ManifestBuilder:
             },
             "properties": {
                 "scope": cluster_namespace,
-                "version": "0.1.1",
+                "version": "1.2.0",
                 "displayName": self.target_name,
                 "components": [],
                 "topologies": [
@@ -115,8 +115,11 @@ class ManifestBuilder:
         self,
         extension_type: str,
         name: str,
-        configuration: Optional[dict] = None,
         release_train: str = "private-preview",
+        configuration: Optional[dict] = None,
+        identity: Optional[dict] = None,
+        skip_sync_rule: bool = False,
+        skip_custom_location_dep: bool = False,
     ):
         target_version = self.version_def.extension_to_vers_map.get(extension_type)
         if target_version:
@@ -136,10 +139,16 @@ class ManifestBuilder:
             }
             if configuration:
                 extension["properties"]["configurationSettings"].update(configuration)
+            if identity:
+                extension["identity"] = identity
             self.resources.append(extension)
-            self.extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{name}')]")
+            if not skip_custom_location_dep:
+                self.extension_ids.append(
+                    "[concat(variables('clusterId'), "
+                    f"'/providers/Microsoft.KubernetesConfiguration/extensions/{name}')]"
+                )
 
-            if self.create_sync_rules:
+            if self.create_sync_rules and not skip_sync_rule and not skip_custom_location_dep:
                 # TODO: self.version_def.extension_to_rp_map
                 sync_rule = {
                     "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
@@ -198,7 +207,13 @@ class ManifestBuilder:
         self.resources.append(payload)
 
     def add_std_symphony_components(self):
-        from .components import get_akri, get_e4in, get_observability, get_opcua_broker
+        from .components import (
+            get_akri_opcua_asset,
+            get_akri_opcua_discovery_daemonset,
+            get_e4in,
+            get_observability,
+            get_opcua_broker,
+        )
 
         # TODO: Primitive pattern
         obs_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.obs.value)
@@ -211,11 +226,10 @@ class ManifestBuilder:
 
         akri_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.akri.value)
         if akri_version:
+            self.symphony_components.append(get_akri_opcua_discovery_daemonset())
             self.symphony_components.append(
-                get_akri(
-                    version=akri_version,
+                get_akri_opcua_asset(
                     opcua_discovery_endpoint=self.kwargs.get("opcua_discovery_endpoint"),
-                    kubernetes_distro=self.kwargs.get("kubernetes_distro", "k8s"),
                 )
             )
 
@@ -287,11 +301,11 @@ def deploy(
         version_def=version_def,
         **kwargs,
     )
-    no_progress = kwargs.get("no_progress", False)
 
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.alicesprings.value],
         name=EdgeExtensionName.alicesprings.value,
+        identity={"type": "SystemAssigned"},
         configuration={
             "Microsoft.CustomLocation.ServiceAccount": "default",
             "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
@@ -301,23 +315,34 @@ def deploy(
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.dataplane.value],
         name=EdgeExtensionName.dataplane.value,
+        identity={"type": "SystemAssigned"},
         configuration={
             "global.quickstart": True,
             "global.openTelemetryCollectorAddr": get_otel_collector_addr(cluster_namespace, True),
         },
+        skip_sync_rule=True,
+        skip_custom_location_dep=True,
     )
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.processor.value],
         name=EdgeExtensionName.processor.value,
         configuration={
-            "Microsoft.CustomLocation.ServiceAccount": "microsoft.bluefin",
+            "Microsoft.CustomLocation.ServiceAccount": "default",
             "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
             "genevaCollectorAddress": get_geneva_metrics_addr(cluster_namespace),
+            "tracePodFormat": "OFF",
         },
     )
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.assets.value],
         name=EdgeExtensionName.assets.value,
+    )
+    manifest_builder.add_extension(
+        extension_type=extension_name_to_type_map[EdgeExtensionName.akri.value],
+        name=EdgeExtensionName.akri.value,
+        configuration={"webhookConfiguration.enabled": False},
+        skip_sync_rule=True,
+        skip_custom_location_dep=True,
     )
     manifest_builder.add_custom_location()
     manifest_builder.add_std_symphony_components()
@@ -328,13 +353,16 @@ def deploy(
     if kwargs.get("show_template"):
         return manifest_builder.manifest
 
+    no_progress: bool = kwargs.get("no_progress", False)
+    block: bool = kwargs.get("block", True)
+
     with Progress(
         SpinnerColumn(),
         *Progress.get_default_columns(),
         "Elapsed:",
         TimeElapsedColumn(),
         transient=False,
-        disable=no_progress,
+        disable=(no_progress is True) or (block is False),
     ) as progress:
         deployment_name = f"azedge.init.pas.{str(uuid4()).replace('-', '')}"
         deployment_params = {
@@ -356,7 +384,6 @@ def deploy(
                 ).result()
                 progress.stop()
                 print(format_what_if_operation_result(what_if_operation_result=what_if_deployment))
-
                 return
 
             progress.add_task(description=f"Deploying PAS version: {version_def.version}", total=None)
@@ -364,22 +391,35 @@ def deploy(
                 resource_group_name=resource_group_name,
                 deployment_name=deployment_name,
                 parameters=deployment_params,
-            ).result()
+            )
+
+            result = {
+                "deploymentName": deployment_name,
+                "resourceGroup": resource_group_name,
+                "clusterName": cluster_name,
+                "namespace": cluster_namespace,
+                "deploymentState": {"timestampUtc": {"started": get_timestamp_now_utc()}},
+            }
+            if not block:
+                result["deploymentState"]["status"] = deployment.status()
+                return result
+
+            deployment = deployment.result()
+            result["deploymentState"]["status"] = deployment.properties.provisioning_state
+            result["deploymentState"]["correlationId"] = deployment.properties.correlation_id
+            result["deploymentState"]["pasVersion"] = manifest_builder.version_def.moniker_to_version_map
+            result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
+            result["deploymentState"]["resourceIds"] = [
+                resource.id for resource in deployment.properties.output_resources
+            ]
+
+            return result
+
         except HttpResponseError as e:
             # TODO: repeated error messages.
             raise AzureResponseError(e.message)
         except KeyboardInterrupt:
             return
-
-        # TODO: result structure
-        result = {}
-        result["provisioningState"] = deployment.properties.provisioning_state
-        result["correlationId"] = deployment.properties.correlation_id
-        result["name"] = deployment.name
-        result["pasBundle"] = manifest_builder.version_def.moniker_to_version_map
-        result["resourceIds"] = [resource.id for resource in deployment.properties.output_resources]
-
-        return result
 
 
 def process_deployable_version(aio_version: str, **kwargs) -> PasVersionDef:
