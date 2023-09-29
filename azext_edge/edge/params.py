@@ -225,16 +225,18 @@ def load_iotedge_arguments(self, _):
             help="Disable deployment progress bar.",
         )
         context.argument(
-            "no_wait",
-            options_list=["--no-wait"],
-            help="Do not block.",
+            "block",
+            options_list=["--block"],
+            arg_type=get_three_state_flag(),
+            help="Determines whether the operation should block for completion.",
         )
         # Akri
         context.argument(
             "opcua_discovery_endpoint",
             options_list=["--opcua-discovery-url"],
             help="Configures an OPC-UA server endpoint for Akri discovery handlers. If not provided "
-            "and --simulate-plc is set, this value becomes 'opc.tcp://opcplc-000000.{cluster_namespace}:50000'.",
+            "and --simulate-plc is set, this value becomes "
+            "'opc.tcp://opcplc-000000.{cluster_namespace}.svc.cluster.local:50000'.",
             arg_group="Akri",
         )
         context.argument(

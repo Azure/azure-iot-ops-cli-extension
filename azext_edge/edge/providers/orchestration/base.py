@@ -13,6 +13,7 @@ from .pas_versions import (
     extension_name_to_type_map,
     EdgeExtensionName,
 )
+from ...util import get_timestamp_now_utc
 
 
 def get_otel_collector_addr(namespace: str, prefix_protocol: bool = False):
@@ -339,6 +340,7 @@ def deploy(
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.akri.value],
         name=EdgeExtensionName.akri.value,
+        configuration={"webhookConfiguration.enabled": False},
         skip_sync_rule=True,
         skip_custom_location_dep=True,
     )
@@ -379,30 +381,43 @@ def deploy(
                 ).result()
                 progress.stop()
                 print(format_what_if_operation_result(what_if_operation_result=what_if_deployment))
-
                 return
 
+            block: bool = kwargs.get("block", True)
             progress.add_task(description=f"Deploying PAS version: {version_def.version}", total=None)
             deployment = resource_client.deployments.begin_create_or_update(
                 resource_group_name=resource_group_name,
                 deployment_name=deployment_name,
                 parameters=deployment_params,
-            ).result()
+            )
+
+            result = {
+                "deploymentName": deployment_name,
+                "resourceGroup": resource_group_name,
+                "clusterName": cluster_name,
+                "namespace": cluster_namespace,
+                "startedUtc": get_timestamp_now_utc(),
+                "deploymentState": {},
+            }
+            if not block:
+                result["deploymentState"]["status"] = deployment.status()
+                return result
+
+            deployment = deployment.result()
+            result["deploymentState"]["status"] = deployment.properties.provisioning_state
+            result["deploymentState"]["correlationId"] = deployment.properties.correlation_id
+            result["deploymentState"]["pasVersion"] = manifest_builder.version_def.moniker_to_version_map
+            result["deploymentState"]["resources"] = [
+                resource.id for resource in deployment.properties.output_resources
+            ]
+
+            return result
+
         except HttpResponseError as e:
             # TODO: repeated error messages.
             raise AzureResponseError(e.message)
         except KeyboardInterrupt:
             return
-
-        # TODO: result structure
-        result = {}
-        result["provisioningState"] = deployment.properties.provisioning_state
-        result["correlationId"] = deployment.properties.correlation_id
-        result["name"] = deployment.name
-        result["pasBundle"] = manifest_builder.version_def.moniker_to_version_map
-        result["resourceIds"] = [resource.id for resource in deployment.properties.output_resources]
-
-        return result
 
 
 def process_deployable_version(aio_version: str, **kwargs) -> PasVersionDef:
