@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 from azext_edge.edge.providers.check.base import (
     CheckManager,
     decorate_resource_status,
@@ -29,6 +29,7 @@ from .common import (
     BLUEFIN_READER_WORKER_PREFIX,
     BLUEFIN_REFDATA_STORE_PREFIX,
     BLUEFIN_RUNNER_WORKER_PREFIX,
+    ResourceOutputDetailLevel,
 )
 
 from ...providers.edge_api import (
@@ -38,7 +39,7 @@ from ...providers.edge_api import (
 
 
 def check_bluefin_deployment(
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
     namespace: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
@@ -57,7 +58,7 @@ def check_bluefin_deployment(
         result["postDeployment"] = []
 
         # check post deployment according to edge_service type
-        check_bluefin_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
+        check_bluefin_post_deployment(detail_level=detail_level, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
 
     if not as_list:
         return result
@@ -69,7 +70,7 @@ def check_bluefin_post_deployment(
     namespace: str,
     result: dict,
     as_list: bool = False,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None
 ):
     evaluate_funcs = {
@@ -87,7 +88,7 @@ def check_bluefin_post_deployment(
         resource_kinds_enum=BluefinResourceKinds,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
-        extended=extended,
+        detail_level=detail_level,
         resource_kinds=resource_kinds
     )
 
@@ -95,7 +96,7 @@ def check_bluefin_post_deployment(
 def evaluate_instances(
     namespace: str,
     as_list: bool = False,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Bluefin instance", namespace=namespace)
 
@@ -206,7 +207,7 @@ def evaluate_instances(
 def evaluate_pipelines(
     namespace: str,
     as_list: bool = False,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Bluefin pipeline", namespace=namespace)
 
@@ -287,7 +288,7 @@ def evaluate_pipelines(
             target_pipelines=target_pipelines,
             pipeline_name=pipeline_name,
             check_manager=check_manager,
-            extended=extended
+            detail_level=detail_level
         )
 
         # pipeline intermediate node
@@ -303,7 +304,7 @@ def evaluate_pipelines(
             pipeline_stages_node=pipeline_stages_node,
             target_pipelines=target_pipelines,
             check_manager=check_manager,
-            extended=extended
+            detail_level=detail_level
         )
 
         # pipeline destination node
@@ -312,7 +313,7 @@ def evaluate_pipelines(
             target_pipelines=target_pipelines,
             pipeline_name=pipeline_name,
             check_manager=check_manager,
-            extended=extended
+            detail_level=detail_level
         )
 
     return check_manager.as_dict(as_list)
@@ -321,7 +322,7 @@ def evaluate_pipelines(
 def evaluate_datasets(
     namespace: str,
     as_list: bool = False,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Bluefin dataset", namespace=namespace)
 
@@ -380,7 +381,7 @@ def evaluate_datasets(
             target_name=target_datasets, status=dataset_eval_status, value=dataset_eval_value, resource_name=dataset_name
         )
 
-        if extended:
+        if detail_level != ResourceOutputDetailLevel.summary.value:
             dataset_spec: dict = d["spec"]
             dataset_payload = dataset_spec.get("payload", "")
             if dataset_payload:
@@ -412,30 +413,22 @@ def evaluate_datasets(
                     ),
                 )
 
+        if detail_level == ResourceOutputDetailLevel.verbose.value and dataset_spec.get("keys"):
+            _process_verbose_only_property(
+                check_manager=check_manager,
+                detail_level=detail_level,
+                target_name=target_datasets,
+                stage_properties=d["spec"]["keys"],
+                display_name="Dataset configuration key",
+                padding=(0, 0, 0, 12)
+            )
+
     return check_manager.as_dict(as_list)
-
-
-def _get_destination_target_endpoint(output_node: Tuple) -> str:
-    target_endpoint = ""
-
-    if "dataexplorer" in output_node[1]["type"]:
-        target_endpoint = output_node[1]["clusterUrl"]
-    elif "fabric" in output_node[1]["type"] or "http" in output_node[1]["type"]:
-        target_endpoint = output_node[1]["url"]
-    elif "file" in output_node[1]["type"]:
-        target_endpoint = output_node[1]["filePath"]
-    elif "grpc" in output_node[1]["type"]:
-        target_endpoint = output_node[1]["serverAddress"]
-    elif "mqtt" in output_node[1]["type"]:
-        target_endpoint = output_node[1]["broker"]
-    elif "refdata" in output_node[1]["type"]:
-        target_endpoint = output_node[1]["dataset"]
-
-    return target_endpoint
 
 
 def _process_stage_properties(
     check_manager: CheckManager,
+    detail_level: Optional[str],
     target_name: str,
     stage: dict,
     stage_properties: dict,
@@ -445,17 +438,66 @@ def _process_stage_properties(
 
     for stage_value, properties in stage_properties.items():
         if stage_value in stage_type:
-            for prop, display_name in properties:
+            for prop, display_name, verbose_only in properties:
                 keys = prop.split('.')
                 prop_value = stage
                 for key in keys:
                     prop_value = prop_value.get(key)
                 if prop_value is None:
                     continue
-                if prop == "descriptor":
-                    prop_value = prop_value[:5] + "..."
-                display_text = f"{display_name}: [bright_blue]{prop_value}[/bright_blue]"
+                if verbose_only:
+                    _process_verbose_only_property(
+                        check_manager,
+                        detail_level,
+                        target_name,
+                        stage_properties=prop_value,
+                        display_name=display_name,
+                        padding=padding
+                    )
+                else:
+                    if prop == "descriptor":
+                        prop_value = prop_value[:5] + "..."
+                    elif prop.endswith("clientSecret"):
+                        prop_value = "*" * len(prop_value)
+                    display_text = f"{display_name}: [bright_blue]{prop_value}[/bright_blue]"
+                    check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+
+
+def _process_verbose_only_property(
+    check_manager: CheckManager,
+    detail_level: Optional[str],
+    target_name: str,
+    stage_properties: Any,
+    display_name: str,
+    padding: tuple
+):
+    if detail_level != ResourceOutputDetailLevel.verbose.value:
+        return
+
+    if isinstance(stage_properties, list):
+        if len(stage_properties) == 0:
+            return
+
+        display_text = f"{display_name}:"
+        check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+
+        for property in stage_properties:
+            display_text = f"  - {display_name} [bright_blue]{stage_properties.index(property) + 1}[/bright_blue]"
+            check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+            for prop, value in property.items():
+                display_text = f"    {prop}: [bright_blue]{value}[/bright_blue]"
                 check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+            check_manager.add_display(target_name=target_name, display=Padding("", padding))
+    elif isinstance(stage_properties, str):
+        display_text = f"{display_name}: [bright_blue]{stage_properties}[/bright_blue]"
+        check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+    elif isinstance(stage_properties, dict):
+        display_text = f"{display_name}:"
+        check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+        for prop, value in stage_properties.items():
+            display_text = f"  {prop}: [bright_blue]{value}[/bright_blue]"
+            check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+        check_manager.add_display(target_name=target_name, display=Padding("", padding))
 
 
 def add_display_and_eval(
@@ -476,7 +518,7 @@ def _evaluate_source_node(
     target_pipelines: str,
     pipeline_name: str,
     check_manager: CheckManager,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
 
     # check data source node count
@@ -491,12 +533,6 @@ def _evaluate_source_node(
         source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] MQTT data source node. {{[red]Detected {pipeline_source_node_count}[/red]}}."
     add_display_and_eval(check_manager, target_pipelines, source_count_display_text, pipeline_source_count_eval_status, pipeline_source_count_eval_value, pipeline_name, (0, 0, 0, 12))
 
-    # data source broker URL
-    pipeline_source_node_broker = pipeline_source_node["broker"]
-    source_broker_display_text = f"- Broker URL: [bright_blue]{pipeline_source_node_broker}[/bright_blue]"
-
-    check_manager.add_display(target_name=target_pipelines, display=Padding(source_broker_display_text, (0, 0, 0, 16)))
-
     # check data source topics
     pipeline_source_node_topics = pipeline_source_node["topics"]
     pipeline_source_node_topics_count = len(pipeline_source_node_topics)
@@ -509,22 +545,27 @@ def _evaluate_source_node(
         pipeline_source_topics_eval_status = CheckTaskStatus.error.value
     check_manager.add_display(target_name=target_pipelines, display=Padding(source_topics_display_text, (0, 0, 0, 16)))
 
-    if extended:
-        for topic in pipeline_source_node_topics:
-            topic_display_text = f"Topic {{[bright_blue]{topic}[/bright_blue]}} detected."
-            check_manager.add_display(target_name=target_pipelines, display=Padding(topic_display_text, (0, 0, 0, 18)))
-
     check_manager.add_target_eval(
         target_name=target_pipelines, status=pipeline_source_topics_eval_status, value=pipeline_source_topics_eval_value, resource_name=pipeline_name
     )
 
-    # data source message format type
-    pipeline_source_node_format_type = pipeline_source_node["format"]["type"]
-    source_format_type_display_text = f"- Source message type: [bright_blue]{pipeline_source_node_format_type}[/bright_blue]"
+    if detail_level != ResourceOutputDetailLevel.summary.value:
+        # data source topics detail
+        for topic in pipeline_source_node_topics:
+            topic_display_text = f"Topic {{[bright_blue]{topic}[/bright_blue]}} detected."
+            check_manager.add_display(target_name=target_pipelines, display=Padding(topic_display_text, (0, 0, 0, 18)))
 
-    check_manager.add_display(target_name=target_pipelines, display=Padding(source_format_type_display_text, (0, 0, 0, 16)))
+        # data source broker URL
+        pipeline_source_node_broker = pipeline_source_node["broker"]
+        source_broker_display_text = f"- Broker URL: [bright_blue]{pipeline_source_node_broker}[/bright_blue]"
 
-    if extended:
+        check_manager.add_display(target_name=target_pipelines, display=Padding(source_broker_display_text, (0, 0, 0, 16)))
+
+        # data source message format type
+        pipeline_source_node_format_type = pipeline_source_node["format"]["type"]
+        source_format_type_display_text = f"- Source message type: [bright_blue]{pipeline_source_node_format_type}[/bright_blue]"
+        check_manager.add_display(target_name=target_pipelines, display=Padding(source_format_type_display_text, (0, 0, 0, 16)))
+
         # data source qos
         pipeline_source_node_qos = pipeline_source_node["qos"]
         source_qos_display_text = f"- QoS: [bright_blue]{pipeline_source_node_qos}[/bright_blue]"
@@ -554,7 +595,7 @@ def _evaluate_source_node(
         source_authentication_display_text = f"- Authentication type: [bright_blue]{pipeline_source_node_authentication}[/bright_blue]"
         check_manager.add_display(target_name=target_pipelines, display=Padding(source_authentication_display_text, (0, 0, 0, 16)))
 
-        if extended:
+        if detail_level != ResourceOutputDetailLevel.summary.value:
             authentication_username = pipeline_source_node["authentication"]["username"]
             authentication_password = pipeline_source_node["authentication"]["password"]
             masked_password = '*' * len(authentication_password)
@@ -567,7 +608,7 @@ def _evaluate_intermediate_nodes(
     pipeline_stages_node: dict,
     target_pipelines: str,
     check_manager: CheckManager,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
 
     # number of intermediate stages should be total len(stages) - len(output stage)
@@ -580,7 +621,7 @@ def _evaluate_intermediate_nodes(
 
     check_manager.add_display(target_name=target_pipelines, display=Padding(stage_count_display_text, (0, 0, 0, 12)))
 
-    if extended:
+    if detail_level != ResourceOutputDetailLevel.summary.value:
         for s in pipeline_intermediate_stages_node:
             stage_name = s
             stage_type = pipeline_intermediate_stages_node[s]["type"]
@@ -589,6 +630,7 @@ def _evaluate_intermediate_nodes(
 
             _process_stage_properties(
                 check_manager,
+                detail_level,
                 target_name=target_pipelines,
                 stage=pipeline_intermediate_stages_node[s],
                 stage_properties=BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES,
@@ -601,7 +643,7 @@ def _evaluate_destination_node(
     target_pipelines: str,
     pipeline_name: str,
     check_manager: CheckManager,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
     pipeline_destination_node_count = 0
     if output_node:
@@ -616,21 +658,12 @@ def _evaluate_destination_node(
     add_display_and_eval(check_manager, target_pipelines, destination_count_display_text, pipeline_destination_eval_status, pipeline_destination_eval_value, pipeline_name, (0, 0, 0, 12))
 
     if output_node:
-        if extended:
+        if detail_level != ResourceOutputDetailLevel.summary.value:
             _process_stage_properties(
                 check_manager,
+                detail_level,
                 target_name=target_pipelines,
                 stage=output_node[1],
                 stage_properties=BLUEFIN_DESTINATION_STAGE_PROPERTIES,
                 padding=(0, 0, 0, 16)
             )
-        else:
-            # check pipeline destination type
-            pipeline_destination_type = output_node[1]["type"]
-            destination_type_display_text = f"- Message destination type {{[bright_blue]{pipeline_destination_type}[/bright_blue]}} detected"
-            check_manager.add_display(target_name=target_pipelines, display=Padding(destination_type_display_text, (0, 0, 0, 16)))
-
-            # check pipeline destination target endpoint
-            pipeline_destination_target = _get_destination_target_endpoint(output_node)
-            destination_target_display_text = f"- Target endpoint: [bright_blue]{pipeline_destination_target}[/bright_blue]"
-            check_manager.add_display(target_name=target_pipelines, display=Padding(destination_target_display_text, (0, 0, 0, 16)))

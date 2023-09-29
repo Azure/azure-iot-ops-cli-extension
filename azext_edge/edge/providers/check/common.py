@@ -13,6 +13,16 @@ from enum import Enum
 from azext_edge.edge.common import ListableEnum
 
 
+class ResourceOutputDetailLevel(Enum):
+    """
+    Level of detail in check output.
+    """
+
+    summary = "summary"
+    detail = "detail"
+    verbose = "verbose"
+
+
 class BluefinProcessorStageType(ListableEnum):
     """
     Bluefin data processor stage type.
@@ -40,40 +50,64 @@ class BluefinDestinationStageType(ListableEnum):
 
 
 BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES = {
-    BluefinProcessorStageType.aggregate.value: [("window.type", "Aggregate window type"),
-                                                ("window.size", "Aggregate window duration")],
-    BluefinProcessorStageType.enrich.value: [("dataset", "Enrich dataset ID")],
-    BluefinProcessorStageType.grpc.value: [("serverAddress", "gRPC server address"),
-                                           ("rpcName", "gRPC RPC name"),
-                                           ("descriptor", "gRPC descriptor")],
-    BluefinProcessorStageType.http.value: [("url", "Request URL"),
-                                           ("method", "Request method")]
+    BluefinProcessorStageType.aggregate.value: [("window.type", "Aggregate window type", False),
+                                                ("window.size", "Aggregate window duration", False),
+                                                ("properties", "Aggregate property", True)],
+    BluefinProcessorStageType.enrich.value: [("dataset", "Enrich dataset ID", False),
+                                             ("conditions", "Enrich condition", True)],
+    BluefinProcessorStageType.filter.value: [("expression", "Filter expression", True)],
+    BluefinProcessorStageType.grpc.value: [("serverAddress", "gRPC server address", False),
+                                           ("rpcName", "gRPC RPC name", False),
+                                           ("descriptor", "gRPC descriptor", False),
+                                           ("request", "gRPC request", True),
+                                           ("response", "gRPC response", True),
+                                           ("retry", "gRPC retry mechanism", True)],
+    BluefinProcessorStageType.http.value: [("url", "Request URL", False),
+                                           ("method", "Request method", False),
+                                           ("request", "gRPC request", True),
+                                           ("response", "gRPC response", True),
+                                           ("retry", "gRPC retry mechanism", True)],
+    BluefinProcessorStageType.lkv.value: [("properties", "LKV property", True)],
+    BluefinProcessorStageType.transform.value: [("expression", "Transform expression", True)]
 }
 
 BLUEFIN_DESTINATION_STAGE_PROPERTIES = {
-    BluefinDestinationStageType.fabric.value: [("url", "Fabric Endpoint"),
-                                               ("workspace", "Fabric workspace ID"),
-                                               ("lakehouse", "Fabric lakehouse ID"),
-                                               ("table", "Fabric lakehouse table"),
-                                               ("authentication.type", "Data Explorer authentication type"),
-                                               ("authentication.tenantId", "Tenant ID"),
-                                               ("authentication.clientId", "Client ID"),
-                                               ("authentication.clientSecret", "Client secret")],
-    BluefinDestinationStageType.grpc.value: [("serverAddress", "gRPC server address"),
-                                             ("rpcName", "gRPC RPC name"),
-                                             ("descriptor", "gRPC descriptor")],
-    BluefinDestinationStageType.data_explorer.value: [("clusterUrl", "Data Explorer cluster URL"),
-                                                      ("database", "Data Explorer database"),
-                                                      ("table", "Data Explorer table"),
-                                                      ("authentication.type", "Data Explorer authentication type"),
-                                                      ("authentication.tenantId", "Tenant ID"),
-                                                      ("authentication.clientId", "Client ID"),
-                                                      ("authentication.clientSecret", "Client secret")],
-    BluefinDestinationStageType.mqtt.value: [("broker", "MQTT broker URL"), ("qos", "MQTT QoS"),
-                                             ("topic", "MQTT topic"),
-                                             ("authentication.type", "MQTT authentication type"),
-                                             ("format.type", "MQTT format")],
-    BluefinDestinationStageType.reference_data.value: [("dataset", "Dataset ID")]
+    BluefinDestinationStageType.fabric.value: [("url", "Fabric Endpoint", False),
+                                               ("workspace", "Fabric workspace ID", False),
+                                               ("lakehouse", "Fabric lakehouse ID", False),
+                                               ("table", "Fabric lakehouse table", False),
+                                               ("authentication.type", "Data Explorer authentication type", False),
+                                               ("authentication.tenantId", "Tenant ID", False),
+                                               ("authentication.clientId", "Client ID", False),
+                                               ("authentication.clientSecret", "Client secret", False),
+                                               ("filePath", "Fabric template file path", True),
+                                               ("batch", "Fabric batch method", True),
+                                               ("columns", "Fabric table column", True),
+                                               ("retry", "Fabric retry mechanism", True)],
+    BluefinDestinationStageType.grpc.value: [("serverAddress", "gRPC server address", False),
+                                             ("rpcName", "gRPC RPC name", False),
+                                             ("descriptor", "gRPC descriptor", False),
+                                             ("request", "gRPC request", True),
+                                             ("retry", "gRPC retry mechanism", True)],
+    BluefinDestinationStageType.data_explorer.value: [("clusterUrl", "Data Explorer cluster URL", False),
+                                                      ("database", "Data Explorer database", False),
+                                                      ("table", "Data Explorer table", False),
+                                                      ("authentication.type", "Data Explorer authentication type", False),
+                                                      ("authentication.tenantId", "Tenant ID", False),
+                                                      ("authentication.clientId", "Client ID", False),
+                                                      ("authentication.clientSecret", "Client secret", False),
+                                                      ("batch", "Data Explorer batch method", True),
+                                                      ("columns", "Data Explorer table column", True),
+                                                      ("retry", "Data Explorer retry mechanism", True)],
+    BluefinDestinationStageType.mqtt.value: [("broker", "MQTT broker URL", False), ("qos", "MQTT QoS", False),
+                                             ("topic", "MQTT topic", False),
+                                             ("authentication.type", "MQTT authentication type", False),
+                                             ("format.type", "MQTT format", False),
+                                             ("format", "MQTT format", True),
+                                             ("authentication", "MQTT authentication", True),
+                                             ("userProperties", "MQTT user property", True),
+                                             ("retry", "MQTT retry mechanism", True)],
+    BluefinDestinationStageType.reference_data.value: [("dataset", "Dataset ID", False)]
 }
 
 
@@ -105,4 +139,3 @@ AZEDGE_KAFKA_CONFIG_PREFIX = "azedge-kafka-config"
 # Pre-deployment KPIs
 
 MIN_K8S_VERSION = "1.20"
-MIN_HELM_VERSION = "3.8.0"

@@ -7,15 +7,17 @@
 from typing import List, Optional
 from rich.console import Console
 
+from ..common import SupportForEdgeServiceType
 from .check.bluefin import check_bluefin_deployment
 from .check.e4k import check_e4k_deployment
+from .check.common import ResourceOutputDetailLevel
 
 console = Console(width=100, highlight=False)
 
 
 def run_checks(
-    edge_service: str = "e4k",
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    edge_service: str = SupportForEdgeServiceType.e4k.value,
     namespace: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
@@ -31,9 +33,9 @@ def run_checks(
 
         result["title"] = f"Evaluation for {{[bright_blue]{edge_service}[/bright_blue]}} edge service deployment"
 
-        if edge_service == "e4k":
+        if edge_service == SupportForEdgeServiceType.e4k.value:
             result = check_e4k_deployment(
-                extended=extended,
+                detail_level=detail_level,
                 namespace=namespace,
                 pre_deployment=pre_deployment,
                 post_deployment=post_deployment,
@@ -41,9 +43,9 @@ def run_checks(
                 as_list=as_list,
                 resource_kinds=resource_kinds
             )
-        elif edge_service == "bluefin":
+        elif edge_service == SupportForEdgeServiceType.bluefin.value:
             result = check_bluefin_deployment(
-                extended=extended,
+                detail_level=detail_level,
                 namespace=namespace,
                 pre_deployment=pre_deployment,
                 post_deployment=post_deployment,

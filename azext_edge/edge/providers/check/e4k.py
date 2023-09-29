@@ -29,6 +29,7 @@ from .common import (
     AZEDGE_FRONTEND_PREFIX,
     AZEDGE_BACKEND_PREFIX,
     AZEDGE_AUTH_PREFIX,
+    ResourceOutputDetailLevel,
 )
 
 from ...providers.edge_api import (
@@ -41,7 +42,7 @@ from ..base import get_namespaced_service
 
 
 def check_e4k_deployment(
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
     namespace: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
@@ -60,7 +61,7 @@ def check_e4k_deployment(
         result["postDeployment"] = []
 
         # check post deployment according to edge_service type
-        check_e4k_post_deployment(extended=extended, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
+        check_e4k_post_deployment(detail_level=detail_level, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
 
     if not as_list:
         return result
@@ -68,7 +69,13 @@ def check_e4k_deployment(
     process_as_list(result=result, namespace=namespace)
 
 
-def check_e4k_post_deployment(namespace: str, result: dict, as_list: bool = False, extended: Optional[bool] = False, resource_kinds: List[str] = None,):
+def check_e4k_post_deployment(
+    namespace: str,
+    result: dict,
+    as_list: bool = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    resource_kinds: List[str] = None,
+):
     evaluate_funcs = {
         E4kResourceKinds.BROKER: evaluate_brokers,
         E4kResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
@@ -86,7 +93,7 @@ def check_e4k_post_deployment(namespace: str, result: dict, as_list: bool = Fals
         resource_kinds_enum=E4kResourceKinds,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
-        extended=extended,
+        detail_level=detail_level,
         resource_kinds=resource_kinds
     )
 
@@ -94,7 +101,7 @@ def check_e4k_post_deployment(namespace: str, result: dict, as_list: bool = Fals
 def evaluate_diagnostics_service(
     namespace: str,
     as_list: bool = False,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(
         check_name="evalBrokerDiag",
@@ -284,7 +291,7 @@ def evaluate_diagnostics_service(
 def evaluate_broker_listeners(
     namespace: str,
     as_list: bool = False,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(
         check_name="evalBrokerListeners",
@@ -505,7 +512,7 @@ def evaluate_broker_listeners(
 def evaluate_brokers(
     namespace: str,
     as_list: bool = False,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker", namespace=namespace)
 
@@ -784,7 +791,7 @@ def evaluate_brokers(
 def evaluate_mqtt_bridge_connectors(
     namespace: str,
     as_list: bool = False,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
     def add_routes_display(
         check_manager: CheckManager,
@@ -1096,7 +1103,7 @@ def evaluate_mqtt_bridge_connectors(
 def evaluate_datalake_connectors(
     namespace: str,
     as_list: bool = False,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
 ):
     def create_schema_table(name: str, schema: List[Dict[str, str]]):
         from rich.table import Table

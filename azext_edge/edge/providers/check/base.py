@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from enum import Enum
 
 from knack.log import get_logger
@@ -17,7 +17,7 @@ from kubernetes.client.models import (
 from rich.console import Console, NewLine
 from rich.padding import Padding
 
-from ...common import CheckTaskStatus
+from ...common import CheckTaskStatus, ListableEnum
 
 from ...providers.edge_api import EdgeResourceApi
 
@@ -57,9 +57,9 @@ def check_post_deployment(
     namespace: str,
     result: dict,
     resource_kinds_enum: Enum,
-    evaluate_funcs: dict,
+    evaluate_funcs: Dict[ListableEnum, Callable],
     as_list: bool = False,
-    extended: Optional[bool] = False,
+    detail_level: Optional[str] = "summary",
     resource_kinds: List[str] = None,
 ):
     check_resources = {}
@@ -73,10 +73,7 @@ def check_post_deployment(
     if lowercase_api_resources:
         for api_resource, evaluate_func in evaluate_funcs.items():
             if api_resource.value in lowercase_api_resources and check_resources[api_resource]:
-                if extended:
-                    result["postDeployment"].append(evaluate_func(extended=extended, namespace=namespace, as_list=as_list))
-                else:
-                    result["postDeployment"].append(evaluate_func(namespace=namespace, as_list=as_list))
+                result["postDeployment"].append(evaluate_func(detail_level=detail_level, namespace=namespace, as_list=as_list))
 
 
 def process_as_list(result: Dict[str, dict], namespace: str):

@@ -8,6 +8,7 @@
 CLI parameter definitions.
 """
 
+from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
 from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
 from azure.cli.core.commands.parameters import get_three_state_flag
 from knack.arguments import CaseInsensitiveList
@@ -86,12 +87,6 @@ def load_iotedge_arguments(self, _):
             help="The edge service deployment that will be evaluated.",
         )
         context.argument(
-            "extended",
-            options_list=["--extended", "-x"],
-            help="The edge service deployment that will be evaluated.",
-            arg_type=get_three_state_flag(),
-        )
-        context.argument(
             "resource_kinds",
             nargs="*",
             options_list=["--resources"],
@@ -108,6 +103,16 @@ def load_iotedge_arguments(self, _):
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
+        ),
+        context.argument(
+            "detail_level",
+            options_list=["--detail-level"],
+            choices=CaseInsensitiveList([
+                ResourceOutputDetailLevel.summary.value,
+                ResourceOutputDetailLevel.detail.value,
+                ResourceOutputDetailLevel.verbose.value,
+            ]),
+            help="This option controls the level of detail in the check output.",
         )
 
     with self.argument_context("edge e4k get-password-hash") as context:
