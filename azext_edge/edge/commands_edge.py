@@ -11,7 +11,7 @@ from knack.log import get_logger
 
 from .providers.base import load_config_context
 from .providers.support.base import get_bundle_path
-from .common import AkriK8sDistroType, DeployablePasVersions
+from .common import DeployablePasVersions
 
 logger = get_logger(__name__)
 
@@ -74,7 +74,6 @@ def init(
     show_template: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
-    kubernetes_distro: str = AkriK8sDistroType.k8s.value,
     create_sync_rules: Optional[bool] = None,
     block: Union[bool, str] = "true",
     no_progress: Optional[bool] = None,

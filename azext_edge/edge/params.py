@@ -11,7 +11,7 @@ CLI parameter definitions.
 from azure.cli.core.commands.parameters import get_three_state_flag
 from knack.arguments import CaseInsensitiveList
 
-from .common import AkriK8sDistroType, DeployablePasVersions, SupportForEdgeServiceType
+from .common import DeployablePasVersions, SupportForEdgeServiceType
 from .providers.edge_api import E4kResourceKinds
 from .providers.orchestration.pas_versions import EdgeServiceMoniker
 
@@ -237,13 +237,6 @@ def load_iotedge_arguments(self, _):
             help="Configures an OPC-UA server endpoint for Akri discovery handlers. If not provided "
             "and --simulate-plc is set, this value becomes "
             "'opc.tcp://opcplc-000000.{cluster_namespace}.svc.cluster.local:50000'.",
-            arg_group="Akri",
-        )
-        context.argument(
-            "kubernetes_distro",
-            options_list=["--kubernetes-distro"],
-            help="Optimizes the Akri deployment for a particular Kubernetes distribution.",
-            choices=CaseInsensitiveList(AkriK8sDistroType.list()),
             arg_group="Akri",
         )
         # OPC-UA Broker

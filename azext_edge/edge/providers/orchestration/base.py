@@ -53,7 +53,7 @@ class ManifestBuilder:
 
         self.kwargs = kwargs
         self.create_sync_rules = self.kwargs.get("create_sync_rules")
-        self.target_name = self.kwargs["target_name"]
+        self.target_name = self.kwargs.get("target_name")
 
         self._manifest: dict = {
             "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
