@@ -328,6 +328,5 @@ def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "pas") 
 
 
 def default_bundle_name(system_name: str) -> str:
-    timestamp = get_timestamp_now_utc()
-    timestamp = timestamp.replace(":", "-")
+    timestamp = get_timestamp_now_utc(format="%Y%m%dT%H%M%S")
     return f"support_bundle_{timestamp}_{system_name}.zip"

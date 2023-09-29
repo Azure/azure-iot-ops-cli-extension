@@ -300,7 +300,6 @@ def deploy(
         version_def=version_def,
         **kwargs,
     )
-    no_progress = kwargs.get("no_progress", False)
 
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.alicesprings.value],
@@ -353,13 +352,16 @@ def deploy(
     if kwargs.get("show_template"):
         return manifest_builder.manifest
 
+    no_progress: bool = kwargs.get("no_progress", False)
+    block: bool = kwargs.get("block", True)
+
     with Progress(
         SpinnerColumn(),
         *Progress.get_default_columns(),
         "Elapsed:",
         TimeElapsedColumn(),
         transient=False,
-        disable=no_progress,
+        disable=(no_progress is True) or (block is False),
     ) as progress:
         deployment_name = f"azedge.init.pas.{str(uuid4()).replace('-', '')}"
         deployment_params = {
@@ -383,7 +385,6 @@ def deploy(
                 print(format_what_if_operation_result(what_if_operation_result=what_if_deployment))
                 return
 
-            block: bool = kwargs.get("block", True)
             progress.add_task(description=f"Deploying PAS version: {version_def.version}", total=None)
             deployment = resource_client.deployments.begin_create_or_update(
                 resource_group_name=resource_group_name,
@@ -396,8 +397,7 @@ def deploy(
                 "resourceGroup": resource_group_name,
                 "clusterName": cluster_name,
                 "namespace": cluster_namespace,
-                "startedUtc": get_timestamp_now_utc(),
-                "deploymentState": {},
+                "deploymentState": {"timestampUtc": {"started": get_timestamp_now_utc()}},
             }
             if not block:
                 result["deploymentState"]["status"] = deployment.status()
@@ -407,7 +407,8 @@ def deploy(
             result["deploymentState"]["status"] = deployment.properties.provisioning_state
             result["deploymentState"]["correlationId"] = deployment.properties.correlation_id
             result["deploymentState"]["pasVersion"] = manifest_builder.version_def.moniker_to_version_map
-            result["deploymentState"]["resources"] = [
+            result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
+            result["deploymentState"]["resourceIds"] = [
                 resource.id for resource in deployment.properties.output_resources
             ]
 
