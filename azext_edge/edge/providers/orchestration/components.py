@@ -99,7 +99,7 @@ def get_akri_opcua_asset(opcua_discovery_endpoint: str, **kwargs):
     return std
 
 
-def get_akri_opcua_discovery_daemonset(version: str, kubernetes_distro: str, **kwargs):
+def get_akri_opcua_discovery_daemonset(**kwargs):
     std = {
         "name": "akri-opcua-asset-discovery-daemonset",
         "type": "yaml.k8s",

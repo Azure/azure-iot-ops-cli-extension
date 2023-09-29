@@ -216,7 +216,7 @@ def load_iotedge_arguments(self, _):
             "create_sync_rules",
             options_list=["--create-sync-rules"],
             arg_type=get_three_state_flag(),
-            help="Create sync rules for arc-enabled extensions.",
+            help="Create sync rules for arc-enabled extensions that support it.",
         )
         context.argument(
             "no_progress",

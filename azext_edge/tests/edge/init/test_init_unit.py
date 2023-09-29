@@ -23,12 +23,12 @@ from ...generators import generate_generic_id
     "custom_version,target_name",
     [
         pytest.param(
-            generate_generic_id(),
-            generate_generic_id(),
+            generate_generic_id(),  # cluster_name
+            generate_generic_id(),  # cluster_namespace
             generate_generic_id(),  # rg
             generate_generic_id(),  # custom_location_name
             generate_generic_id(),  # location
-            DeployablePasVersions.v011.value,
+            DeployablePasVersions.v012.value,
             generate_generic_id(),  # processor_instance_name
             False,  # simulate_plc
             generate_generic_id(),  # opcua_discovery_endpoint
@@ -37,12 +37,12 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # target_name
         ),
         pytest.param(
-            generate_generic_id(),
-            generate_generic_id(),
+            generate_generic_id(),  # cluster_name
+            "default",  # cluster_namespace
             generate_generic_id(),  # rg
             None,  # custom_location_name
             None,  # location
-            DeployablePasVersions.v011.value,
+            DeployablePasVersions.v012.value,
             None,  # processor_instance_name
             True,  # simulate_plc
             None,  # opcua_discovery_endpoint
@@ -86,12 +86,12 @@ def test_init_show_template(
 
     template = partial_init(
         show_template=True,
-        pas_version=DeployablePasVersions.v011.value,
+        pas_version=pas_version,
     )
     assert template["$schema"] == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
     assert template["metadata"]["description"] == "Az Edge CLI PAS deployment."
     # TODO template versioning. Think about custom.
-    assert template["contentVersion"] == "0.1.1.0"
+    assert template["contentVersion"] == f"{pas_version}.0"
 
     assert_template_variables(
         variables=template["variables"],
@@ -127,7 +127,6 @@ def assert_template_variables(
         if custom_location_name
         else f"{cluster_name}-azedge-init"
     )
-    assert variables["extensionInfix"] == "/providers/Microsoft.KubernetesConfiguration/extensions/"
     assert variables["location"] == location if location else "[resourceGroup().location]"
 
 
@@ -152,10 +151,12 @@ def assert_resources(
     k8s_extensions = find_resource_type(
         resources=resources, resource_type="Microsoft.KubernetesConfiguration/extensions"
     )
-    assert len(k8s_extensions) == len(extension_name_to_type_map)
     cluster_extension_ids = []
     version_def = get_pas_version_def(version=pas_version)
-    version_def.set_moniker_to_version_map(moniker_map=custom_version)
+    if custom_version:
+        version_def.set_moniker_to_version_map(moniker_map=custom_version)
+
+    deploy_extension_types = {}
     for ext_name in k8s_extensions:
         assert_k8s_extension_common(
             extension=k8s_extensions[ext_name],
@@ -165,7 +166,15 @@ def assert_resources(
             version=version_def.extension_to_vers_map[extension_name_to_type_map[ext_name]],
             config_settings=None,  # TODO
         )
-        cluster_extension_ids.append(f"[concat(variables('clusterId'), variables('extensionInfix'), '{ext_name}')]")
+        deploy_extension_types[extension_name_to_type_map[ext_name]] = True
+        # TODO: temporary condition
+        if ext_name not in ["data-plane", "akri"]:
+            cluster_extension_ids.append(
+                f"[concat(variables('clusterId'), '/providers/Microsoft.KubernetesConfiguration/extensions/{ext_name}')]"
+            )
+    assert len(deploy_extension_types) == len(version_def.extension_to_vers_map)
+    for extension in version_def.extension_to_vers_map:
+        assert extension in deploy_extension_types
 
     custom_locations = find_resource_type(
         resources=resources, resource_type="Microsoft.ExtendedLocation/customLocations"
@@ -296,18 +305,41 @@ def assert_symphony_target(
             assert component["properties"]["chart"]["version"] == versions[EdgeServiceMoniker.e4in.value]
             assert component["type"] == "helm.v3"
             continue
-        if component["name"] == "akri":
-            assert component["properties"]["chart"]["repo"] == "alicesprings.azurecr.io/helm/microsoft-managed-akri"
-            assert component["properties"]["chart"]["version"] == versions[EdgeServiceMoniker.akri.value]
-            assert component["type"] == "helm.v3"
+        if component["name"] == "akri-opcua-asset-discovery-daemonset":
+            assert component["type"] == "yaml.k8s"
+            assert component["properties"]["resource"]["apiVersion"] == "apps/v1"
+            assert component["properties"]["resource"]["kind"] == "DaemonSet"
+            assert component["properties"]["resource"]["spec"]["template"]["spec"]["containers"] == [
+                {
+                    "name": "akri-opcua-asset-discovery",
+                    "image": "e4ipreview.azurecr.io/e4i/workload/akri-opc-ua-asset-discovery:latest",
+                    "imagePullPolicy": "Always",
+                    "resources": {
+                        "requests": {"memory": "64Mi", "cpu": "10m"},
+                        "limits": {"memory": "512Mi", "cpu": "100m"},
+                    },
+                    "ports": [{"name": "discovery", "containerPort": 80}],
+                    "env": [
+                        {"name": "POD_IP", "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}}},
+                        {"name": "DISCOVERY_HANDLERS_DIRECTORY", "value": "/var/lib/akri"},
+                    ],
+                    "volumeMounts": [{"name": "discovery-handlers", "mountPath": "/var/lib/akri"}],
+                }
+            ]
+            continue
+        if component["name"] == "akri-opcua-asset":
+            assert component["type"] == "yaml.k8s"
+            assert component["properties"]["resource"]["apiVersion"] == "akri.sh/v0"
+            assert component["properties"]["resource"]["kind"] == "Configuration"
+            assert component["properties"]["resource"]["spec"]["discoveryHandler"]["name"] == "opcua-asset"
             if simulate_plc and not opcua_discovery_endpoint:
                 assert (
-                    component["properties"]["values"]["custom"]["configuration"]["discoveryDetails"]
-                    == f"opc.tcp://opcplc-000000.{namespace}:50000"
+                    component["properties"]["resource"]["spec"]["discoveryHandler"]["discoveryDetails"]
+                    == f"opc.tcp://opcplc-000000.{namespace}.svc.cluster.local:50000"
                 )
             if opcua_discovery_endpoint:
                 assert (
-                    component["properties"]["values"]["custom"]["configuration"]["discoveryDetails"]
+                    component["properties"]["resource"]["spec"]["discoveryHandler"]["discoveryDetails"]
                     == opcua_discovery_endpoint
                 )
             continue

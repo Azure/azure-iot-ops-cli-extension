@@ -224,11 +224,10 @@ class ManifestBuilder:
 
         akri_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.akri.value)
         if akri_version:
+            self.symphony_components.append(get_akri_opcua_discovery_daemonset())
             self.symphony_components.append(
-                get_akri(
-                    version=akri_version,
+                get_akri_opcua_asset(
                     opcua_discovery_endpoint=self.kwargs.get("opcua_discovery_endpoint"),
-                    kubernetes_distro=self.kwargs.get("kubernetes_distro", "k8s"),
                 )
             )
 
@@ -340,6 +339,8 @@ def deploy(
     manifest_builder.add_extension(
         extension_type=extension_name_to_type_map[EdgeExtensionName.akri.value],
         name=EdgeExtensionName.akri.value,
+        skip_sync_rule=True,
+        skip_custom_location_dep=True,
     )
     manifest_builder.add_custom_location()
     manifest_builder.add_std_symphony_components()

@@ -104,7 +104,7 @@ class DeployablePasVersions(ListableEnum):
     Deployable PAS versions.
     """
 
-    v011 = "0.1.1"
+    v012 = "0.1.2"
 
 
 # E4K runtime attributes

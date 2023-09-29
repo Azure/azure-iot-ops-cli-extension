@@ -70,7 +70,7 @@ class PasVersionDef:
 
 
 def get_pas_version_def(version: str) -> PasVersionDef:
-    if version == DeployablePasVersions.v011.value:
+    if version == DeployablePasVersions.v012.value:
         return PasVersionDef(
             version=version,
             ext_to_rp_map=v012_extension_to_rp_map,

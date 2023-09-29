@@ -22,7 +22,7 @@ from azext_edge.edge.providers.orchestration.pas_versions import (
     "aio_version",
     [
         pytest.param(
-            DeployablePasVersions.v011.value,
+            DeployablePasVersions.v012.value,
         ),
         pytest.param(None),
     ],
@@ -62,7 +62,7 @@ def test_get_aio_version_def(aio_version: str):
     ],
 )
 def test_version_def_set_version(moniker_map, refresh, expected_set_mappings):
-    version_def = get_pas_version_def(DeployablePasVersions.v011.value)
+    version_def = get_pas_version_def(DeployablePasVersions.v012.value)
     version_def.set_moniker_to_version_map(moniker_map=moniker_map, refresh_mappings=refresh)
 
     assert version_def.version == "custom"
