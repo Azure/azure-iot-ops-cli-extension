@@ -144,7 +144,8 @@ class ManifestBuilder:
             self.resources.append(extension)
             if not skip_custom_location_dep:
                 self.extension_ids.append(
-                    f"[concat(variables('clusterId'), '/providers/Microsoft.KubernetesConfiguration/extensions/{name}')]"
+                    "[concat(variables('clusterId'), "
+                    f"'/providers/Microsoft.KubernetesConfiguration/extensions/{name}')]"
                 )
 
             if self.create_sync_rules and not skip_sync_rule and not skip_custom_location_dep:

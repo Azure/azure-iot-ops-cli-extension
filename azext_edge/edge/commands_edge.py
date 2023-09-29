@@ -116,7 +116,6 @@ def init(
         what_if=what_if,
         show_template=show_template,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
-        kubernetes_distro=kubernetes_distro,
         simulate_plc=simulate_plc,
         create_sync_rules=create_sync_rules,
         block=block,

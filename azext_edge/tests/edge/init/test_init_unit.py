@@ -170,7 +170,8 @@ def assert_resources(
         # TODO: temporary condition
         if ext_name not in ["data-plane", "akri"]:
             cluster_extension_ids.append(
-                f"[concat(variables('clusterId'), '/providers/Microsoft.KubernetesConfiguration/extensions/{ext_name}')]"
+                "[concat(variables('clusterId'), "
+                f"'/providers/Microsoft.KubernetesConfiguration/extensions/{ext_name}')]"
             )
     assert len(deploy_extension_types) == len(version_def.extension_to_vers_map)
     for extension in version_def.extension_to_vers_map:
