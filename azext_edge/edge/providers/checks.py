@@ -29,7 +29,7 @@ def run_checks(
     with console.status("Analyzing cluster..."):
         from time import sleep
 
-        sleep(0.25)
+        sleep(0.5)
 
         result["title"] = f"Evaluation for {{[bright_blue]{edge_service}[/bright_blue]}} edge service deployment"
 
@@ -54,5 +54,4 @@ def run_checks(
                 resource_kinds=resource_kinds
             )
 
-        if not as_list:
-            return result
+        return result

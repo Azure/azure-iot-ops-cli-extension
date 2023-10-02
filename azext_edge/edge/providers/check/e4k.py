@@ -66,7 +66,7 @@ def check_e4k_deployment(
     if not as_list:
         return result
 
-    process_as_list(result=result, namespace=namespace)
+    return process_as_list(result=result, namespace=namespace)
 
 
 def check_e4k_post_deployment(

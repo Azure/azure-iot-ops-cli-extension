@@ -63,7 +63,7 @@ def check_bluefin_deployment(
     if not as_list:
         return result
 
-    process_as_list(result=result, namespace=namespace)
+    return process_as_list(result=result, namespace=namespace)
 
 
 def check_bluefin_post_deployment(

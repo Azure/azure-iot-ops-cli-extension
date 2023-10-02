@@ -12,6 +12,7 @@ from knack.log import get_logger
 from .providers.base import load_config_context
 from .providers.support.base import get_bundle_path
 from .common import AkriK8sDistroType, DeployablePasVersions
+from .providers.check.common import ResourceOutputDetailLevel
 
 logger = get_logger(__name__)
 
@@ -32,7 +33,7 @@ def support_bundle(
 
 def check(
     cmd,
-    detail_level: Optional[str] = "summary",
+    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
     pre_deployment_checks: Optional[bool] = None,
     post_deployment_checks: Optional[bool] = None,
     namespace: Optional[str] = None,
