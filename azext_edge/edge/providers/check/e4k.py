@@ -1668,7 +1668,20 @@ def evaluate_kafka_connectors(
     )
     connector_resources: List[dict] = connector_objects.get("items", [])
     if not connector_resources:
-        check_manager.add_target_eval(target_name=connector_target, status=CheckTaskStatus.skipped.value)
+        eval_str = "No Kafka Connector resources detected"
+        check_manager.add_target_eval(
+            target_name=connector_target,
+            status=CheckTaskStatus.skipped.value,
+            value=eval_str
+        )
+        check_manager.set_target_status(
+            target_name=connector_target,
+            status=CheckTaskStatus.skipped.value
+        )
+        check_manager.add_display(
+            target_name=connector_target,
+            display=Padding(eval_str, (0, 0, 0, 8))
+        )
 
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
         kind=E4kResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP, namespace=namespace
@@ -1702,13 +1715,23 @@ def evaluate_kafka_connectors(
         # remove all topic maps for this connector
         topic_maps_by_connector.pop(connector_name, None)
 
+    flattened_topic_maps = [key for maps in topic_maps_by_connector.values() for key in maps]
+    for map in flattened_topic_maps:
+        check_manager.add_display(
+            target_name=connector_target,
+            display=Padding(
+                f"\nTopic Map {{[red]{map['metadata']['name']}[/red]}}"
+                f" references invalid connector {{[red]{map['spec']['kafkaConnectorRef']}[/red]}}.",
+                (0, 0, 0, 8)
+            )
+        )
 
-    # TODO - topic maps without a valid connector ref
     # TODO - add conditions / evals to connector and topic maps
     # TODO - So much similar code between different cloud connectors with topic maps, perhaps we could simplify / DRY
    
 
     return check_manager.as_dict(as_list)
+
 
 def _get_valid_references(kind: Union[Enum, str], namespace: str) -> Dict[str, Any]:
     result = {}
