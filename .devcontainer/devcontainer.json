@@ -1,5 +1,10 @@
 {
 	"image": "mcr.microsoft.com/devcontainers/universal:2",
+	"hostRequirements": {
+		"cpus": 4,
+		"memory": "8gb",
+		"storage": "32gb"
+	 },
 	"features": {
 		"ghcr.io/devcontainers/features/azure-cli:1": {
 			"installUsingPython": true,
