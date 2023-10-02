@@ -1,0 +1,11 @@
+{
+	"image": "mcr.microsoft.com/devcontainers/universal:2",
+	"features": {
+		"ghcr.io/devcontainers/features/azure-cli:1": {
+			"installUsingPython": true,
+			"version": "latest"
+		},
+		"ghcr.io/rio/features/k3d:1": {},
+		"ghcr.io/rio/features/k9s:1": {}
+	}
+}
