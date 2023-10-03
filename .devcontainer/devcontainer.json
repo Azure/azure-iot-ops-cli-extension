@@ -13,5 +13,16 @@
 		"ghcr.io/rio/features/k3d:1": {},
 		"ghcr.io/rio/features/k9s:1": {}
 	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python"
+			],
+			"settings": {
+				"python.terminal.activateEnvInCurrentTerminal": true,
+				"python.defaultInterpreterPath": "./env/bin/python"
+			}
+		}
+	},
 	"postCreateCommand": "bash ./.devcontainer/post_create_commands.sh"
 }
