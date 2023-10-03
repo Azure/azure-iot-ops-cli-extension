@@ -157,7 +157,7 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "custom_location_namespace",
-            options_list=["--custom-location-namespace"],
+            options_list=["--custom-location-namespace", "--cln"],
             help="The namespace associated with the custom location mapped to the cluster. Must be lowercase. "
             "If not provided cluster namespace will be used.",
         )
