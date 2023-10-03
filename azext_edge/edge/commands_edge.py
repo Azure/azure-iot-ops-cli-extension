@@ -64,6 +64,7 @@ def init(
     cluster_name: str,
     resource_group_name: str,
     cluster_namespace: str = "default",
+    custom_location_namespace: Optional[str] = None,
     pas_version: str = DeployablePasVersions.v012.value,
     custom_location_name: Optional[str] = None,
     show_pas_version: Optional[bool] = None,
@@ -91,6 +92,9 @@ def init(
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-azedge-init"
 
+    if not custom_location_namespace:
+        custom_location_namespace = cluster_namespace
+
     if not processor_instance_name:
         processor_instance_name = f"{cluster_name_lowered}-azedge-init-proc"
         processor_instance_name = processor_instance_name.replace("_", "-")
@@ -106,7 +110,7 @@ def init(
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
         custom_location_name=custom_location_name,
-        custom_location_namespace=cluster_namespace,
+        custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
         pas_version=pas_version,
         location=location,
