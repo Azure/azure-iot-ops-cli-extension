@@ -17,6 +17,7 @@ from kubernetes.client.models import (
 from rich.console import Console, NewLine
 from rich.padding import Padding
 
+from .common import ResourceOutputDetailLevel
 from ...common import CheckTaskStatus, ListableEnum
 
 from ...providers.edge_api import EdgeResourceApi
@@ -28,8 +29,6 @@ from ..base import (
 )
 
 logger = get_logger(__name__)
-
-console = Console(width=100, highlight=False)
 
 
 def check_pre_deployment(
@@ -59,7 +58,7 @@ def check_post_deployment(
     resource_kinds_enum: Enum,
     evaluate_funcs: Dict[ListableEnum, Callable],
     as_list: bool = False,
-    detail_level: Optional[str] = "summary",
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
 ):
     check_resources = {}
@@ -76,7 +75,7 @@ def check_post_deployment(
                 result["postDeployment"].append(evaluate_func(detail_level=detail_level, namespace=namespace, as_list=as_list))
 
 
-def process_as_list(result: Dict[str, dict], namespace: str):
+def process_as_list(console: Console, result: Dict[str, dict], namespace: str):
     success_count: int = 0
     warning_count: int = 0
     error_count: int = 0

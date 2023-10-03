@@ -15,7 +15,7 @@ from azext_edge.edge.providers.check.base import (
     process_as_list
 )
 
-from rich.console import NewLine
+from rich.console import Console, NewLine
 from rich.padding import Padding
 
 from ...common import (
@@ -42,7 +42,8 @@ from ..base import get_namespaced_service
 
 
 def check_e4k_deployment(
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    console: Console,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
     namespace: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
@@ -66,14 +67,14 @@ def check_e4k_deployment(
     if not as_list:
         return result
 
-    return process_as_list(result=result, namespace=namespace)
+    return process_as_list(console=console, result=result, namespace=namespace)
 
 
 def check_e4k_post_deployment(
     namespace: str,
     result: dict,
     as_list: bool = False,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
 ):
     evaluate_funcs = {
@@ -101,7 +102,7 @@ def check_e4k_post_deployment(
 def evaluate_diagnostics_service(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(
         check_name="evalBrokerDiag",
@@ -291,7 +292,7 @@ def evaluate_diagnostics_service(
 def evaluate_broker_listeners(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(
         check_name="evalBrokerListeners",
@@ -512,7 +513,7 @@ def evaluate_broker_listeners(
 def evaluate_brokers(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker", namespace=namespace)
 
@@ -791,7 +792,7 @@ def evaluate_brokers(
 def evaluate_mqtt_bridge_connectors(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
     def add_routes_display(
         check_manager: CheckManager,
@@ -1103,7 +1104,7 @@ def evaluate_mqtt_bridge_connectors(
 def evaluate_datalake_connectors(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
     def create_schema_table(name: str, schema: List[Dict[str, str]]):
         from rich.table import Table

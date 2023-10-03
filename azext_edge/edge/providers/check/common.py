@@ -18,9 +18,9 @@ class ResourceOutputDetailLevel(Enum):
     Level of detail in check output.
     """
 
-    summary = "summary"
-    detail = "detail"
-    verbose = "verbose"
+    summary = 0  # summary
+    detail = 1  # detail
+    verbose = 2  # verbose
 
 
 class BluefinProcessorStageType(ListableEnum):

@@ -14,6 +14,7 @@ from azext_edge.edge.providers.check.base import (
     process_as_list,
 )
 
+from rich.console import Console
 from rich.padding import Padding
 
 from ...common import (
@@ -39,7 +40,8 @@ from ...providers.edge_api import (
 
 
 def check_bluefin_deployment(
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    console: Console,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
     namespace: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
@@ -63,14 +65,14 @@ def check_bluefin_deployment(
     if not as_list:
         return result
 
-    return process_as_list(result=result, namespace=namespace)
+    return process_as_list(console=console, result=result, namespace=namespace)
 
 
 def check_bluefin_post_deployment(
     namespace: str,
     result: dict,
     as_list: bool = False,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None
 ):
     evaluate_funcs = {
@@ -96,7 +98,7 @@ def check_bluefin_post_deployment(
 def evaluate_instances(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Bluefin instance", namespace=namespace)
 
@@ -207,7 +209,7 @@ def evaluate_instances(
 def evaluate_pipelines(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Bluefin pipeline", namespace=namespace)
 
@@ -322,7 +324,7 @@ def evaluate_pipelines(
 def evaluate_datasets(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
     check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Bluefin dataset", namespace=namespace)
 
@@ -428,7 +430,7 @@ def evaluate_datasets(
 
 def _process_stage_properties(
     check_manager: CheckManager,
-    detail_level: Optional[str],
+    detail_level: Optional[int],
     target_name: str,
     stage: dict,
     stage_properties: dict,
@@ -465,7 +467,7 @@ def _process_stage_properties(
 
 def _process_verbose_only_property(
     check_manager: CheckManager,
-    detail_level: Optional[str],
+    detail_level: Optional[int],
     target_name: str,
     stage_properties: Any,
     display_name: str,
@@ -518,7 +520,7 @@ def _evaluate_source_node(
     target_pipelines: str,
     pipeline_name: str,
     check_manager: CheckManager,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
 
     # check data source node count
@@ -608,7 +610,7 @@ def _evaluate_intermediate_nodes(
     pipeline_stages_node: dict,
     target_pipelines: str,
     check_manager: CheckManager,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
 
     # number of intermediate stages should be total len(stages) - len(output stage)
@@ -643,7 +645,7 @@ def _evaluate_destination_node(
     target_pipelines: str,
     pipeline_name: str,
     check_manager: CheckManager,
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
 ):
     pipeline_destination_node_count = 0
     if output_node:

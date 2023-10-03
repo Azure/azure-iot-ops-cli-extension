@@ -107,11 +107,12 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "detail_level",
             options_list=["--detail-level"],
-            choices=CaseInsensitiveList([
+            choices=[
                 ResourceOutputDetailLevel.summary.value,
                 ResourceOutputDetailLevel.detail.value,
                 ResourceOutputDetailLevel.verbose.value,
-            ]),
+            ],
+            type=int,
             help="This option controls the level of detail in the check output.",
         )
 

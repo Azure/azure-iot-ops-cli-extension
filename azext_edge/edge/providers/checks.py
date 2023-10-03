@@ -5,18 +5,22 @@
 # --------------------------------------------------------------------------------------------
 
 from typing import List, Optional
+from azure.cli.core.azclierror import ArgumentUsageError
+
 from rich.console import Console
 
 from ..common import SupportForEdgeServiceType
 from .check.bluefin import check_bluefin_deployment
 from .check.e4k import check_e4k_deployment
 from .check.common import ResourceOutputDetailLevel
+from .edge_api.e4k import E4kResourceKinds
+from .edge_api.bluefin import BluefinResourceKinds
 
 console = Console(width=100, highlight=False)
 
 
 def run_checks(
-    detail_level: Optional[str] = ResourceOutputDetailLevel.summary.value,
+    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
     edge_service: str = SupportForEdgeServiceType.e4k.value,
     namespace: Optional[str] = None,
     pre_deployment: bool = True,
@@ -26,7 +30,11 @@ def run_checks(
 ):
     result = {}
 
-    with console.status("Analyzing cluster..."):
+    # check if the resource_kinds is under edge_service
+    if resource_kinds:
+        _check_resource_kinds_under_edge_service(edge_service, resource_kinds)
+
+    with console.status(status="Analyzing cluster...", refresh_per_second=12.5):
         from time import sleep
 
         sleep(0.5)
@@ -35,6 +43,7 @@ def run_checks(
 
         if edge_service == SupportForEdgeServiceType.e4k.value:
             result = check_e4k_deployment(
+                console=console,
                 detail_level=detail_level,
                 namespace=namespace,
                 pre_deployment=pre_deployment,
@@ -45,6 +54,7 @@ def run_checks(
             )
         elif edge_service == SupportForEdgeServiceType.bluefin.value:
             result = check_bluefin_deployment(
+                console=console,
                 detail_level=detail_level,
                 namespace=namespace,
                 pre_deployment=pre_deployment,
@@ -55,3 +65,19 @@ def run_checks(
             )
 
         return result
+
+
+def _check_resource_kinds_under_edge_service(edge_service: str, resource_kinds: List[str]):
+    valid_resource_values = []
+
+    if edge_service == SupportForEdgeServiceType.bluefin.value:
+        valid_resource_values = [resource.value for resource in BluefinResourceKinds]
+    elif edge_service == SupportForEdgeServiceType.e4k.value:
+        valid_resource_values = [resource.value for resource in E4kResourceKinds]
+
+    for resource_kind in resource_kinds:
+        if resource_kind not in valid_resource_values:
+            raise ArgumentUsageError(
+                f"Resource kind {resource_kind} is not supported for edge service {edge_service}. "
+                f"Allowed values for this service are {valid_resource_values}"
+            )

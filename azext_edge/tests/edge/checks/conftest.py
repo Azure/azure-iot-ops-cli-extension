@@ -20,8 +20,9 @@ def mock_evaluate_bluefin_pod_health(mocker):
 
 @pytest.fixture
 def mock_resource_types(mocker, edge_service):
+    patched = mocker.patch("azext_edge.edge.providers.check.base.enumerate_edge_service_resources")
+
     if edge_service == "e4k":
-        patched = mocker.patch("azext_edge.edge.providers.check.base.enumerate_edge_service_resources")
         patched.return_value = (
             {},
             {
@@ -32,9 +33,7 @@ def mock_resource_types(mocker, edge_service):
                 "DataLakeConnector": [{}]
             }
         )
-        yield patched
     elif edge_service == "bluefin":
-        patched = mocker.patch("azext_edge.edge.providers.check.base.enumerate_edge_service_resources")
         patched.return_value = (
             {},
             {
@@ -43,4 +42,5 @@ def mock_resource_types(mocker, edge_service):
                 "Pipeline": [{}]
             }
         )
-        yield patched
+
+    yield patched
