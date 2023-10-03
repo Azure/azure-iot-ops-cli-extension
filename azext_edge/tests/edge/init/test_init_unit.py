@@ -18,7 +18,7 @@ from ...generators import generate_generic_id
 
 
 @pytest.mark.parametrize(
-    "cluster_name,cluster_namespace,rg,custom_location_name,location,pas_version,"
+    "cluster_name,cluster_namespace,rg,custom_location_name,custom_location_namespace,location,pas_version,"
     "processor_instance_name,simulate_plc,opcua_discovery_endpoint,create_sync_rules,"
     "custom_version,target_name",
     [
@@ -27,6 +27,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # cluster_namespace
             generate_generic_id(),  # rg
             generate_generic_id(),  # custom_location_name
+            generate_generic_id(),  # custom_location_namespace
             generate_generic_id(),  # location
             DeployablePasVersions.v012.value,
             generate_generic_id(),  # processor_instance_name
@@ -41,6 +42,7 @@ from ...generators import generate_generic_id
             "default",  # cluster_namespace
             generate_generic_id(),  # rg
             None,  # custom_location_name
+            None,  # custom_location_namespace
             None,  # location
             DeployablePasVersions.v012.value,
             None,  # processor_instance_name
@@ -59,6 +61,7 @@ def test_init_show_template(
     cluster_namespace,
     rg,
     custom_location_name,
+    custom_location_namespace,
     location,
     pas_version,
     processor_instance_name,
@@ -75,6 +78,7 @@ def test_init_show_template(
         cluster_namespace=cluster_namespace,
         resource_group_name=rg,
         custom_location_name=custom_location_name,
+        custom_location_namespace=custom_location_namespace,
         location=location,
         processor_instance_name=processor_instance_name,
         simulate_plc=simulate_plc,
@@ -105,6 +109,7 @@ def test_init_show_template(
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
         custom_location_name=custom_location_name,
+        custom_location_namespace=custom_location_namespace,
         pas_version=pas_version,
         processor_instance_name=processor_instance_name,
         simulate_plc=simulate_plc,
@@ -135,6 +140,7 @@ def assert_resources(
     cluster_name: str,
     cluster_namespace: str,
     custom_location_name: str,
+    custom_location_namespace: str,
     pas_version: str,
     processor_instance_name: Optional[str] = None,
     simulate_plc: Optional[bool] = None,
@@ -185,7 +191,7 @@ def assert_resources(
         custom_location=next(iter(custom_locations.values())),
         name=custom_location_name,
         cluster_name=cluster_name,
-        namespace=cluster_namespace,
+        namespace=custom_location_namespace or cluster_namespace,
         depends_on=cluster_extension_ids,
         cluster_ext_ids=cluster_extension_ids,
     )

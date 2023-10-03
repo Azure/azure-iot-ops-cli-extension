@@ -152,18 +152,24 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_location_name",
             options_list=["--custom-location"],
-            help="The custom location name corresponding to the PAS deployment. If no custom location name is provided"
+            help="The custom location name corresponding to PAS solution deployment. If no custom location name is provided"
             " one will be generated in the form '{cluster_name}-azedge-init'.",
+        )
+        context.argument(
+            "custom_location_namespace",
+            options_list=["--custom-location-namespace", "--cln"],
+            help="The namespace associated with the custom location mapped to the cluster. Must be lowercase. If not provided "
+            "cluster namespace will be used.",
         )
         context.argument(
             "cluster_namespace",
             options_list=["--cluster-namespace"],
-            help="The cluster namespace PAS resources will be deployed to. Must be lowercase.",
+            help="The cluster namespace PAS infrastructure will be deployed to. Must be lowercase.",
         )
         context.argument(
             "location",
             options_list=["--location"],
-            help="The location that will be used for provisioned collateral. "
+            help="The ARM location that will be used for provisioned ARM collateral. "
             "If not provided the resource group location will be used.",
         )
         context.argument(
