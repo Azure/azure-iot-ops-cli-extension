@@ -11,7 +11,7 @@ from knack.log import get_logger
 
 from .providers.base import load_config_context
 from .providers.support.base import get_bundle_path
-from .common import AkriK8sDistroType, DeployablePasVersions
+from .common import DeployablePasVersions
 from .providers.check.common import ResourceOutputDetailLevel
 
 logger = get_logger(__name__)
@@ -66,9 +66,10 @@ def check(
 def init(
     cmd,
     cluster_name: str,
-    cluster_namespace: str,
     resource_group_name: str,
-    pas_version: str = DeployablePasVersions.v011.value,
+    cluster_namespace: str = "default",
+    custom_location_namespace: Optional[str] = None,
+    pas_version: str = DeployablePasVersions.v012.value,
     custom_location_name: Optional[str] = None,
     show_pas_version: Optional[bool] = None,
     custom_version: Optional[List[str]] = None,
@@ -78,8 +79,8 @@ def init(
     show_template: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
-    kubernetes_distro: str = AkriK8sDistroType.k8s.value,
     create_sync_rules: Optional[bool] = None,
+    block: Union[bool, str] = "true",
     no_progress: Optional[bool] = None,
     processor_instance_name: Optional[str] = None,
     target_name: Optional[str] = None,
@@ -95,21 +96,25 @@ def init(
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-azedge-init"
 
+    if not custom_location_namespace:
+        custom_location_namespace = cluster_namespace
+
     if not processor_instance_name:
         processor_instance_name = f"{cluster_name_lowered}-azedge-init-proc"
+        processor_instance_name = processor_instance_name.replace("_", "-")
 
     if not target_name:
         target_name = f"{cluster_name_lowered}-azedge-init-target"
 
     if simulate_plc and not opcua_discovery_endpoint:
-        opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
+        opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}.svc.cluster.local:50000"
 
     return deploy(
         subscription_id=get_subscription_id(cmd.cli_ctx),
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
         custom_location_name=custom_location_name,
-        custom_location_namespace=cluster_namespace,
+        custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
         pas_version=pas_version,
         location=location,
@@ -119,9 +124,9 @@ def init(
         what_if=what_if,
         show_template=show_template,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
-        kubernetes_distro=kubernetes_distro,
         simulate_plc=simulate_plc,
         create_sync_rules=create_sync_rules,
+        block=block,
         no_progress=no_progress,
         processor_instance_name=processor_instance_name,
         target_name=target_name,

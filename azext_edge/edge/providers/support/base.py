@@ -16,6 +16,7 @@ from kubernetes.client.models import V1Container, V1ObjectMeta
 
 from ..edge_api import EdgeResourceApi
 from ..base import client
+from ...util import get_timestamp_now_utc
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
@@ -327,8 +328,5 @@ def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "pas") 
 
 
 def default_bundle_name(system_name: str) -> str:
-    from datetime import datetime, timezone
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    timestamp = timestamp.replace(":", "-")
+    timestamp = get_timestamp_now_utc(format="%Y%m%dT%H%M%S")
     return f"support_bundle_{timestamp}_{system_name}.zip"

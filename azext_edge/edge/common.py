@@ -94,22 +94,12 @@ class SupportForEdgeServiceType(ListableEnum):
     symphony = "symphony"
 
 
-class AkriK8sDistroType(ListableEnum):
-    """
-    Akri K8s distro type.
-    """
-
-    k8s = "k8s"
-    k3s = "k3s"
-    minik8s = "minik8s"
-
-
 class DeployablePasVersions(ListableEnum):
     """
     Deployable PAS versions.
     """
 
-    v011 = "0.1.1"
+    v012 = "0.1.2"
 
 
 # E4K runtime attributes

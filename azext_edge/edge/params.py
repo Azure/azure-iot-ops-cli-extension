@@ -13,7 +13,7 @@ from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
 from azure.cli.core.commands.parameters import get_three_state_flag
 from knack.arguments import CaseInsensitiveList
 
-from .common import AkriK8sDistroType, DeployablePasVersions, SupportForEdgeServiceType
+from .common import DeployablePasVersions, SupportForEdgeServiceType
 from .providers.edge_api import E4kResourceKinds
 from .providers.orchestration.pas_versions import EdgeServiceMoniker
 
@@ -113,7 +113,10 @@ def load_iotedge_arguments(self, _):
                 ResourceOutputDetailLevel.verbose.value,
             ],
             type=int,
-            help="This option controls the level of detail in the check output.",
+            help="Controls the level of detail displayed in the check output. "
+                 "Choose 0 for a summary view, (minimal output), "
+                 "1 for a detailed view, (more comprehensive information) "
+                 "or 2 for a verbose view, (all available information)."
         )
 
     with self.argument_context("edge e4k get-password-hash") as context:
@@ -168,18 +171,24 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_location_name",
             options_list=["--custom-location"],
-            help="The custom location name corresponding to the PAS deployment. If no custom location name is provided"
-            " one will be generated in the form '{cluster_name}-azedge-init'.",
+            help="The custom location name corresponding to PAS solution deployment. "
+            "If no custom location name is provided one will be generated in the form '{cluster_name}-azedge-init'.",
+        )
+        context.argument(
+            "custom_location_namespace",
+            options_list=["--custom-location-namespace", "--cln"],
+            help="The namespace associated with the custom location mapped to the cluster. Must be lowercase. "
+            "If not provided cluster namespace will be used.",
         )
         context.argument(
             "cluster_namespace",
             options_list=["--cluster-namespace"],
-            help="The cluster namespace PAS resources will be deployed to. Must be lowercase.",
+            help="The cluster namespace PAS infrastructure will be deployed to. Must be lowercase.",
         )
         context.argument(
             "location",
             options_list=["--location"],
-            help="The location that will be used for provisioned collateral. "
+            help="The ARM location that will be used for provisioned ARM collateral. "
             "If not provided the resource group location will be used.",
         )
         context.argument(
@@ -232,7 +241,7 @@ def load_iotedge_arguments(self, _):
             "create_sync_rules",
             options_list=["--create-sync-rules"],
             arg_type=get_three_state_flag(),
-            help="Create sync rules for arc-enabled extensions.",
+            help="Create sync rules for arc-enabled extensions that support it.",
         )
         context.argument(
             "no_progress",
@@ -241,23 +250,18 @@ def load_iotedge_arguments(self, _):
             help="Disable deployment progress bar.",
         )
         context.argument(
-            "no_wait",
-            options_list=["--no-wait"],
-            help="Do not block.",
+            "block",
+            options_list=["--block"],
+            arg_type=get_three_state_flag(),
+            help="Determines whether the operation should block for completion.",
         )
         # Akri
         context.argument(
             "opcua_discovery_endpoint",
             options_list=["--opcua-discovery-url"],
             help="Configures an OPC-UA server endpoint for Akri discovery handlers. If not provided "
-            "and --simulate-plc is set, this value becomes 'opc.tcp://opcplc-000000.{cluster_namespace}:50000'.",
-            arg_group="Akri",
-        )
-        context.argument(
-            "kubernetes_distro",
-            options_list=["--kubernetes-distro"],
-            help="Optimizes the Akri deployment for a particular Kubernetes distribution.",
-            choices=CaseInsensitiveList(AkriK8sDistroType.list()),
+            "and --simulate-plc is set, this value becomes "
+            "'opc.tcp://opcplc-000000.{cluster_namespace}.svc.cluster.local:50000'.",
             arg_group="Akri",
         )
         # OPC-UA Broker
