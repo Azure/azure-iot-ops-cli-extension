@@ -34,7 +34,7 @@ logger = get_logger(__name__)
 def check_pre_deployment(
     result: dict,
     as_list: bool = False,
-):
+) -> None:
     result["preDeployment"] = []
     desired_checks = {}
     desired_checks.update(
@@ -58,16 +58,16 @@ def check_post_deployment(
     resource_kinds_enum: Enum,
     evaluate_funcs: Dict[ListableEnum, Callable],
     as_list: bool = False,
-    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
-):
+) -> None:
     check_resources = {}
     for resource in resource_kinds_enum:
-        check_resources[resource] = True if (not resource_kinds or resource.value in resource_kinds) else False
+        check_resources[resource] = not resource_kinds or resource.value in resource_kinds
 
     resource_enumeration, api_resources = enumerate_edge_service_resources(api_info, check_name, check_desc, as_list)
-    lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
     result["postDeployment"].append(resource_enumeration)
+    lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
     if lowercase_api_resources:
         for api_resource, evaluate_func in evaluate_funcs.items():
@@ -75,13 +75,13 @@ def check_post_deployment(
                 result["postDeployment"].append(evaluate_func(detail_level=detail_level, namespace=namespace, as_list=as_list))
 
 
-def process_as_list(console: Console, result: Dict[str, dict], namespace: str):
+def process_as_list(console: Console, result: Dict[str, dict], namespace: str) -> None:
     success_count: int = 0
     warning_count: int = 0
     error_count: int = 0
     skipped_count: int = 0
 
-    def _increment_summary(status: str):
+    def _increment_summary(status: str) -> None:
         nonlocal success_count, warning_count, error_count, skipped_count
         if not status:
             return
@@ -94,7 +94,7 @@ def process_as_list(console: Console, result: Dict[str, dict], namespace: str):
         elif status == CheckTaskStatus.skipped.value:
             skipped_count = skipped_count + 1
 
-    def _print_summary():
+    def _print_summary() -> None:
         from rich.panel import Panel
 
         success_content = f"[green]{success_count} check(s) succeeded.[/green]"
@@ -108,7 +108,7 @@ def process_as_list(console: Console, result: Dict[str, dict], namespace: str):
         content = f"{success_content}\n{warning_content}\n{error_content}\n{skipped_content}"
         console.print(Panel(content, title="Check Summary", expand=False))
 
-    def _enumerate_displays(checks: List[Dict[str, dict]]):
+    def _enumerate_displays(checks: List[Dict[str, dict]]) -> None:
         for c in checks:
             status = c.get("status")
             prefix_emoji = get_emoji_from_status(status)
@@ -164,7 +164,7 @@ def get_emoji_from_status(status: str) -> str:
 
 
 def enumerate_edge_service_resources(
-    api_info: str,
+    api_info: EdgeResourceApi,
     check_name: str,
     check_desc: str,
     as_list: bool = False
@@ -207,7 +207,7 @@ def enumerate_edge_service_resources(
     return check_manager.as_dict(as_list), resource_kind_map
 
 
-def check_k8s_version(as_list: bool = False):
+def check_k8s_version(as_list: bool = False) -> dict:
     from kubernetes.client.models import VersionInfo
     from packaging import version
 
@@ -260,7 +260,7 @@ def check_k8s_version(as_list: bool = False):
     return check_manager.as_dict(as_list)
 
 
-def check_nodes(as_list: bool = False):
+def check_nodes(as_list: bool = False) -> dict:
     from kubernetes.client.models import V1Node, V1NodeList
 
     check_manager = CheckManager(check_name="evalClusterNodes", check_desc="Evaluate cluster nodes")
@@ -394,7 +394,7 @@ class CheckManager:
         self.target_displays = {}
         self.worst_status = CheckTaskStatus.success.value
 
-    def add_target(self, target_name: str, conditions: List[str] = None, description: str = None):
+    def add_target(self, target_name: str, conditions: List[str] = None, description: str = None) -> None:
         if target_name not in self.targets:
             self.targets[target_name] = {}
         self.targets[target_name]["conditions"] = conditions
@@ -403,10 +403,10 @@ class CheckManager:
         if description:
             self.targets[target_name]["description"] = description
 
-    def set_target_conditions(self, target_name: str, conditions: List[str]):
+    def set_target_conditions(self, target_name: str, conditions: List[str]) -> None:
         self.targets[target_name]["conditions"] = conditions
 
-    def set_target_status(self, target_name: str, status: str):
+    def set_target_status(self, target_name: str, status: str) -> None:
         self._process_status(target_name=target_name, status=status)
 
     def add_target_eval(
@@ -416,7 +416,7 @@ class CheckManager:
         value: Optional[Any] = None,
         resource_name: Optional[str] = None,
         resource_kind: Optional[str] = None,
-    ):
+    ) -> None:
         eval_dict = {"status": status}
         if resource_name:
             eval_dict["name"] = resource_name
@@ -427,7 +427,7 @@ class CheckManager:
         self.targets[target_name]["evaluations"].append(eval_dict)
         self._process_status(target_name, status)
 
-    def _process_status(self, target_name: str, status: str):
+    def _process_status(self, target_name: str, status: str) -> None:
         existing_status = self.targets[target_name].get("status", CheckTaskStatus.success.value)
         if existing_status != status:
             if existing_status == CheckTaskStatus.success.value and status in [
@@ -443,13 +443,13 @@ class CheckManager:
                 self.targets[target_name]["status"] = status
                 self.worst_status = status
 
-    def add_display(self, target_name: str, display: Any):
+    def add_display(self, target_name: str, display: Any) -> None:
         if target_name not in self.target_displays:
             self.target_displays[target_name] = []
         self.target_displays[target_name].append(display)
 
-    def as_dict(self, as_list: bool = False):
-        import copy
+    def as_dict(self, as_list: bool = False) -> dict:
+        from copy import deepcopy
 
         result = {
             "name": self.check_name,
@@ -458,10 +458,10 @@ class CheckManager:
             "targets": {},
             "status": self.worst_status,
         }
-        result["targets"] = copy.deepcopy(self.targets)
+        result["targets"] = deepcopy(self.targets)
         if as_list:
             for t in self.target_displays:
-                result["targets"][t]["displays"] = copy.deepcopy(self.target_displays[t])
+                result["targets"][t]["displays"] = deepcopy(self.target_displays[t])
 
             if self.namespace:
                 result["description"] = f"{result['description']} in namespace {{[cyan]{self.namespace}[/cyan]}}"
@@ -469,7 +469,13 @@ class CheckManager:
         return result
 
 
-def evaluate_pod_health(check_manager: CheckManager, namespace: str, pod: str, display_padding: int, service_label: str):
+def evaluate_pod_health(
+        check_manager: CheckManager,
+        namespace: str,
+        pod: str,
+        display_padding: int,
+        service_label: str
+) -> None:
     target_service_pod = f"pod/{pod}"
     check_manager.add_target(target_name=target_service_pod, conditions=["status.phase"])
     diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)

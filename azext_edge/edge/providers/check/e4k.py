@@ -6,7 +6,7 @@
 
 from typing import Dict, List, Optional, Union
 from enum import Enum
-from azext_edge.edge.providers.check.base import (
+from .base import (
     CheckManager,
     decorate_resource_status,
     check_post_deployment,
@@ -43,14 +43,14 @@ from ..base import get_namespaced_service
 
 def check_e4k_deployment(
     console: Console,
-    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
     namespace: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
     as_list: bool = False,
     resource_kinds: List[str] = None,
     result: dict = None,
-):
+) -> Union[dict, None]:
     if pre_deployment:
         check_pre_deployment(result, as_list)
 
@@ -74,9 +74,9 @@ def check_e4k_post_deployment(
     namespace: str,
     result: dict,
     as_list: bool = False,
-    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
-):
+) -> None:
     evaluate_funcs = {
         E4kResourceKinds.BROKER: evaluate_brokers,
         E4kResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
@@ -102,8 +102,8 @@ def check_e4k_post_deployment(
 def evaluate_diagnostics_service(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
-):
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> dict:
     check_manager = CheckManager(
         check_name="evalBrokerDiag",
         check_desc="Evaluate E4K Diagnostics Service",
@@ -292,8 +292,8 @@ def evaluate_diagnostics_service(
 def evaluate_broker_listeners(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
-):
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> dict:
     check_manager = CheckManager(
         check_name="evalBrokerListeners",
         check_desc="Evaluate E4K broker listeners",
@@ -513,8 +513,8 @@ def evaluate_broker_listeners(
 def evaluate_brokers(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
-):
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> dict:
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker", namespace=namespace)
 
     target_brokers = "brokers.az-edge.com"
@@ -757,34 +757,19 @@ def evaluate_brokers(
             ),
         )
 
-        evaluate_pod_health(
-            check_manager=check_manager,
-            namespace=namespace,
-            pod=AZEDGE_DIAGNOSTICS_PROBE_PREFIX,
-            display_padding=12,
-            service_label=E4K_LABEL
-        )
-        evaluate_pod_health(
-            check_manager=check_manager,
-            namespace=namespace,
-            pod=AZEDGE_FRONTEND_PREFIX,
-            display_padding=12,
-            service_label=E4K_LABEL
-        )
-        evaluate_pod_health(
-            check_manager=check_manager,
-            namespace=namespace,
-            pod=AZEDGE_BACKEND_PREFIX,
-            display_padding=12,
-            service_label=E4K_LABEL
-        )
-        evaluate_pod_health(
-            check_manager=check_manager,
-            namespace=namespace,
-            pod=AZEDGE_AUTH_PREFIX,
-            display_padding=12,
-            service_label=E4K_LABEL
-        )
+        for pod in [
+            AZEDGE_DIAGNOSTICS_PROBE_PREFIX,
+            AZEDGE_FRONTEND_PREFIX,
+            AZEDGE_BACKEND_PREFIX,
+            AZEDGE_AUTH_PREFIX
+        ]:
+            evaluate_pod_health(
+                check_manager=check_manager,
+                namespace=namespace,
+                pod=pod,
+                display_padding=12,
+                service_label=E4K_LABEL
+            )
 
     return check_manager.as_dict(as_list)
 
@@ -792,14 +777,16 @@ def evaluate_brokers(
 def evaluate_mqtt_bridge_connectors(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
-):
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> dict:
+    from rich.table import Table
+
     def add_routes_display(
         check_manager: CheckManager,
         target: str,
         routes: List[Dict[str, str]],
         padding: tuple,
-    ):
+    ) -> None:
         for route in routes:
             route_name = route.get("name")
             route_direction = route.get("direction")
@@ -814,8 +801,7 @@ def evaluate_mqtt_bridge_connectors(
                 ),
             )
 
-    def create_routes_table(name: str, routes: List[Dict[str, str]]):
-        from rich.table import Table
+    def create_routes_table(name: str, routes: List[Dict[str, str]]) -> Table:
 
         title = f"\nTopic map [blue]{{{name}}}[/blue]"
         table = Table(title=title, title_justify="left", title_style="None", show_lines=True)
@@ -840,7 +826,7 @@ def evaluate_mqtt_bridge_connectors(
         topic_maps: List[Dict[str, str]],
         padding: tuple,
         table: bool = False,
-    ):
+    ) -> None:
         # Show warning if no topic maps
         if not len(bridge_topic_maps):
             check_manager.add_display(
@@ -874,7 +860,7 @@ def evaluate_mqtt_bridge_connectors(
                     padding=route_padding,
                 )
 
-    def display_bridge_info(check_manager: CheckManager, target: str, bridge: Dict[str, str], padding: tuple):
+    def display_bridge_info(check_manager: CheckManager, target: str, bridge: Dict[str, str], padding: tuple) -> None:
         # bridge resource
         bridge_metadata = bridge.get("metadata", {})
         bridge_name = bridge_metadata.get("name")
@@ -1104,10 +1090,11 @@ def evaluate_mqtt_bridge_connectors(
 def evaluate_datalake_connectors(
     namespace: str,
     as_list: bool = False,
-    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
-):
-    def create_schema_table(name: str, schema: List[Dict[str, str]]):
-        from rich.table import Table
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> dict:
+    from rich.table import Table
+
+    def create_schema_table(name: str, schema: List[Dict[str, str]]) -> Table:
 
         table = Table(title=f"Data Lake Topic Map [blue]{{{name}}}[/blue] Schema")
 
@@ -1136,7 +1123,7 @@ def evaluate_datalake_connectors(
         topic_maps: List[Dict[str, str]],
         padding: tuple,
         table: bool = False,
-    ):
+    ) -> None:
         # Show warning if no topic maps
         if not len(connector_topic_maps):
             check_manager.add_display(
@@ -1196,7 +1183,7 @@ def evaluate_datalake_connectors(
         target: str,
         connector: Dict[str, str],
         padding: tuple,
-    ):
+    ) -> None:
         # connector resource status
         connector_status = connector.get("status", {})
         connector_status_level = connector_status.get("configStatusLevel", "N/A")
@@ -1375,7 +1362,7 @@ def evaluate_datalake_connectors(
     return check_manager.as_dict(as_list)
 
 
-def _get_valid_references(kind: Union[Enum, str], namespace: str):
+def _get_valid_references(kind: Union[Enum, str], namespace: str) -> dict:
     result = {}
     custom_objects = E4K_ACTIVE_API.get_resources(kind=kind, namespace=namespace)
     if custom_objects:

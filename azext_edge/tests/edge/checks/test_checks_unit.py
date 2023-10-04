@@ -7,7 +7,11 @@
 
 import pytest
 from typing import Dict, Any, List
-from azext_edge.edge.common import CheckTaskStatus, ProvisioningState, ResourceState
+from azext_edge.edge.common import (
+    CheckTaskStatus,
+    ProvisioningState,
+    ResourceState,
+)
 from azext_edge.edge.providers.check.base import CheckManager
 from azext_edge.edge.providers.check.e4k import (
     evaluate_broker_listeners,

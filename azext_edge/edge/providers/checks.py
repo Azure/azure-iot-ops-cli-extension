@@ -20,14 +20,14 @@ console = Console(width=100, highlight=False)
 
 
 def run_checks(
-    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
     edge_service: str = SupportForEdgeServiceType.e4k.value,
     namespace: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
     as_list: bool = False,
     resource_kinds: List[str] = None,
-):
+) -> dict:
     result = {}
 
     # check if the resource_kinds is under edge_service
@@ -67,13 +67,13 @@ def run_checks(
         return result
 
 
-def _check_resource_kinds_under_edge_service(edge_service: str, resource_kinds: List[str]):
+def _check_resource_kinds_under_edge_service(edge_service: str, resource_kinds: List[str]) -> None:
     valid_resource_values = []
 
     if edge_service == SupportForEdgeServiceType.bluefin.value:
-        valid_resource_values = [resource.value for resource in BluefinResourceKinds]
+        valid_resource_values = BluefinResourceKinds.list()
     elif edge_service == SupportForEdgeServiceType.e4k.value:
-        valid_resource_values = [resource.value for resource in E4kResourceKinds]
+        valid_resource_values = E4kResourceKinds.list()
 
     for resource_kind in resource_kinds:
         if resource_kind not in valid_resource_values:

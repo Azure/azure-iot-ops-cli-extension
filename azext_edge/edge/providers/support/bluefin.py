@@ -21,12 +21,19 @@ from .base import (
 
 logger = get_logger(__name__)
 
+BLUEFIN_APP_LABELS = [
+    'bluefin-reader-worker',
+    'bluefin-refdata-store',
+    'bf-instance-nats-box',
+    'nats',
+    'bluefin-scheduler',
+    'bluefin-runner-worker',
+    'bluefin-portal',
+    'bluefin-api-proxy',
+    'bluefin-operator-controller-manager'
+]
 
-BLUEFIN_APP_LABEL = (
-    "app in (bluefin-reader-worker,bluefin-refdata-store,bf-instance-nats-box,nats"
-    ",bluefin-scheduler,bluefin-runner-worker,bluefin-portal,bluefin-api-proxy"
-    ",bluefin-operator-controller-manager)"
-)
+BLUEFIN_LABEL = f"app in ({','.join(BLUEFIN_APP_LABELS)})"
 BLUEFIN_RELEASE_LABEL = "release in (bf-instance)"
 BLUEFIN_INSTANCE_LABEL = "app.kubernetes.io/instance in (bf-instance)"
 BLUEFIN_PART_OF_LABEL = "app.kubernetes.io/part-of in (bluefin-operator)"
@@ -36,7 +43,7 @@ BLUEFIN_ONEOFF_LABEL = "control-plane in (controller-manager)"
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     bluefin_pods = process_v1_pods(
         resource_api=BLUEFIN_API_V1,
-        label_selector=BLUEFIN_APP_LABEL,
+        label_selector=BLUEFIN_LABEL,
         since_seconds=since_seconds,
         capture_previous_logs=True,
     )
@@ -71,7 +78,7 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
 
 
 def fetch_deployments():
-    processed = process_deployments(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_APP_LABEL)
+    processed = process_deployments(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_LABEL)
     processed.extend(process_deployments(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_PART_OF_LABEL))
 
     return processed
@@ -80,7 +87,7 @@ def fetch_deployments():
 def fetch_statefulsets():
     processed = process_statefulset(
         resource_api=BLUEFIN_API_V1,
-        label_selector=BLUEFIN_APP_LABEL,
+        label_selector=BLUEFIN_LABEL,
     )
     processed.extend(process_statefulset(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_RELEASE_LABEL))
     processed.extend(process_statefulset(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_INSTANCE_LABEL))
@@ -89,7 +96,7 @@ def fetch_statefulsets():
 
 def fetch_replicasets():
     processed = []
-    processed.extend(process_replicasets(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_APP_LABEL))
+    processed.extend(process_replicasets(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_LABEL))
 
     # @digimaun - TODO, depends on consistent labels
     temp_oneoffs = process_replicasets(resource_api=BLUEFIN_API_V1, label_selector=BLUEFIN_ONEOFF_LABEL)

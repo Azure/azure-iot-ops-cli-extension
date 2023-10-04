@@ -10,7 +10,7 @@ shared: Define shared data types(enums) and constant strings for edge service ch
 """
 
 from enum import Enum
-from azext_edge.edge.common import ListableEnum
+from ...common import ListableEnum
 
 
 class ResourceOutputDetailLevel(Enum):

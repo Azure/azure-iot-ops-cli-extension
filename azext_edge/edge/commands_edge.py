@@ -33,7 +33,7 @@ def support_bundle(
 
 def check(
     cmd,
-    detail_level: Optional[int] = ResourceOutputDetailLevel.summary.value,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
     pre_deployment_checks: Optional[bool] = None,
     post_deployment_checks: Optional[bool] = None,
     namespace: Optional[str] = None,
