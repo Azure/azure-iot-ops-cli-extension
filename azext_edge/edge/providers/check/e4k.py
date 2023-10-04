@@ -1406,8 +1406,8 @@ def evaluate_kafka_connectors(
 
         clientIdPrefix = spec.get("clientIdPrefix")
         instances = spec.get("instances")
-        kafkaConnection = spec.get("kafkaConnection")
-        localBrokerConnection = spec.get("localBrokerConnection")
+        local_broker = spec.get("localBrokerConnection")
+        kafka_broker = spec.get("kafkaConnection")
         logLevel = spec.get("logLevel")
 
         connector_eval_status = (
@@ -1416,9 +1416,8 @@ def evaluate_kafka_connectors(
                 [
                     clientIdPrefix,
                     instances,
-                    kafkaConnection,
-                    localBrokerConnection,
-                    logLevel,
+                    local_broker,
+                    kafka_broker,
                 ]
             )
             else CheckTaskStatus.success.value
@@ -1445,23 +1444,49 @@ def evaluate_kafka_connectors(
             target_name=target, display=Padding(f"logLevel: [bright_blue]{logLevel}[/bright_blue]", detail_padding)
         )
 
-        # TODO - add properties of kafkaConnection
-        # check_manager.add_display(
-        #     target_name=target,
-        #     display=Padding(
-        #         f"Kafka Connection: [bright_blue]{kafkaConnection}[/bright_blue]",
-        #         detail_padding
-        #     )
-        # )
+        broker_detail_padding = (0, 0, 0, detail_padding[3] + 4)
 
-        # TODO - add properties of localBrokerConnection
-        # check_manager.add_display(
-        #     target_name=target,
-        #     display=Padding(
-        #         f"localBrokerConnection: [bright_blue]{localBrokerConnection}[/bright_blue]",
-        #         detail_padding
-        #     )
-        # )
+        # local broker endpoint
+        local_broker_endpoint = local_broker.get("endpoint")
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
+                detail_padding,
+            ),
+        )
+
+        local_broker_auth = next(iter(local_broker.get("authentication")))
+        local_broker_tls = local_broker.get("tls", {}).get("tlsEnabled", False)
+
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Auth: [bright_blue]{local_broker_auth}[/bright_blue] TLS: [bright_blue]{local_broker_tls}[/bright_blue]",
+                broker_detail_padding,
+            ),
+        )
+
+        # kafka endpoint
+        kafka_broker_endpoint = kafka_broker.get("endpoint")
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Remote Broker Connection: [bright_blue]{kafka_broker_endpoint}[/bright_blue]",
+                detail_padding,
+            ),
+        )
+
+        kafka_broker_auth = next(iter(kafka_broker.get("authentication")))
+        kafka_broker_tls = kafka_broker.get("tls", {}).get("tlsEnabled", False)
+
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Auth: [bright_blue]{kafka_broker_auth}[/bright_blue] TLS: [bright_blue]{kafka_broker_tls}[/bright_blue]",
+                broker_detail_padding,
+            ),
+        )
 
     def display_topic_maps(check_manager: CheckManager, target: str, topic_maps: List[Dict[str, Any]], padding: tuple):
         # Show warning if no topic maps
