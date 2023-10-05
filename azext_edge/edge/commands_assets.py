@@ -11,152 +11,16 @@ from knack.log import get_logger
 
 from azure.cli.core.azclierror import InvalidArgumentValueError, ResourceNotFoundError, RequiredArgumentMissingError
 from azure.cli.core.commands.client_factory import get_subscription_id
-from azext_edge.common.embedded_cli import EmbeddedCLI
 
-from azext_edge.common.utility import assemble_nargs_to_dict
+from ..common.embedded_cli import EmbeddedCLI
+from .util import assemble_nargs_to_dict, build_query
+from .common import ResourceTypeMapping
 
 logger = get_logger(__name__)
 
 # for some reason "2023-08-01-preview" doesnt work with custom location
 API_VERSION = "2023-06-21-preview"
-ASSET_NAMESPACE = "Microsoft.DeviceRegistry"
-ASSET_RESOURCE_TYPE = "assets"
-LOCATION_NAMESPACE = "Microsoft.ExtendedLocation"
-LOCATION_RESOURCE_TYPE = "customLocations"
-CLUSTER_NAMESPACE = "Microsoft.Kubernetes"
-CLUSTER_RESOURCE_TYPE = "connectedClusters"
-CLUSTER_EXTENSION_NAMESPACE = "Microsoft.KubernetesConfiguration"
-CLUSTER_EXTENSION_RESOURCE_TYPE = "extensions"
-# REQUIRED_LOCATION_EXTENSIONS = ["assets"] #["iotoperations", "mq", "dataprocessor", "assets"]
 cli = EmbeddedCLI()
-
-
-# check for cluster -> see if correct extensions are installed
-# find custom location (choose 1st for now), if provided, use that but make sure is connected to working cluster
-# use azure graph to see connections
-def _build_query(subscription_id, full_type, query=None):
-    rest_cmd = "rest --method POST --url '/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01' "
-    payload = {"subscriptions": [subscription_id], "query": "Resources ", "options": {}}
-    payload["query"] = payload["query"] + f'| where type =~ "{full_type}" '
-    if query:
-        payload["query"] += query
-    payload["query"] += "| project id, location, name, resourceGroup, properties, tags, type, subscriptionId, systemData "
-    print(rest_cmd)
-    print(payload["query"])
-
-    return _process_query(rest_cmd, payload)
-
-
-def _process_query(rest_cmd: str, payload: dict):
-    total_data = []
-    skip_token = "sentinel"
-    while skip_token:
-        try:
-            cli.invoke(rest_cmd + f" --body '{json.dumps(payload)}'")
-        except Exception as e:
-            raise e
-        result = cli.as_json()
-        page_data = result.get("data")
-        if page_data:
-            total_data.extend(page_data)
-        skip_token = result.get("$skipToken")
-        if skip_token:
-            payload["options"]["$skipToken"] = skip_token
-
-    return total_data
-
-
-def check_asset_cluster_and_custom_location(
-    subscription,
-    # asset_name: str,
-    # resource_group_name: str,
-    # endpoint_profile: str,
-    custom_location_name: str = None,
-    custom_location_resource_group: str = None,
-    custom_location_subscription: str = None,
-    cluster_name: str = None,
-    cluster_subscription: str = None,
-):
-    if not any([cluster_name, custom_location_name]):
-        raise Exception("need to provide either cluster name or custom location")
-    query = ""
-    cluster = None
-    if not custom_location_subscription:
-        custom_location_subscription = subscription
-    if not cluster_subscription:
-        cluster_subscription = subscription
-
-    # provide cluster name - start with checking for the cluster (if can)
-    if cluster_name:
-        query = f'| where name =~ "{cluster_name}" '
-        cluster_query_result = _build_query(cluster_subscription, f"{CLUSTER_NAMESPACE}/{CLUSTER_RESOURCE_TYPE}", query)
-        if len(cluster_query_result) == 0:
-            raise Exception(f"Cluster {cluster_name} does not exist")
-        cluster = cluster_query_result[0]
-        # reset query so the location query will ensure that the cluster is associated
-        query = f'| where hostResourceId =~ "{cluster["id"]}" '
-
-    # try to find location, either from given param and/or from cluster
-    # if only location is provided, will look just by location name
-    # if both cluster name and location are provided, should also include cluster id to narrow association
-    if custom_location_name:
-        query += f'| where name =~ "{custom_location_name}" '
-    if custom_location_resource_group:
-        query += f'| where resourceGroup =~ "{custom_location_resource_group}" '
-    location_query_result = _build_query(
-        custom_location_subscription, f"{LOCATION_NAMESPACE}/{LOCATION_RESOURCE_TYPE}", query
-    )
-    if len(location_query_result) == 0:
-        error_details = ""
-        if custom_location_name:
-            error_details += f"{custom_location_name} "
-        if cluster_name:
-            error_details += f"for cluster {cluster_name} "
-        raise Exception(f"Custom location {error_details} not found.")
-
-    if len(location_query_result) > 1 and cluster_name is None:
-        raise Exception(
-            f"Found {len(location_query_result)} custom locations with the name {custom_location_name}. Please "
-            "provide the resource group for the custom location."
-        )
-    # by this point there should be at least one custom location
-    # if cluster name was given (and no custom_location_names), there can be more than one
-    # otherwise, if no cluster name, needs to be only one
-
-    # should trigger if only the location name was provided - there should be one location
-    if not cluster_name:
-        query = f'| where id =~ "{location_query_result[0]["hostResourceId"]}"'
-        cluster_query_result = _build_query(cluster_subscription, f"{CLUSTER_NAMESPACE}/{CLUSTER_RESOURCE_TYPE}", query)
-        if len(cluster_query_result) == 0:
-            raise Exception(f"Cluster associated with custom location {custom_location_name} does not exist.")
-        cluster = cluster_query_result[0]
-    # by this point, cluster is populated
-
-    # extensions check - see that the cluster and the location have the same (correct) extension.
-    # start with getting all suitable extensions within the cluster.
-    query = f'| where id startswith "{cluster["id"]}" | where properties.extensionType =~ "microsoft.deviceregistry.assets" '
-    extension_query_result = _build_query(cluster_subscription, f"{CLUSTER_EXTENSION_NAMESPACE}/{CLUSTER_EXTENSION_RESOURCE_TYPE}", query)
-    # throw if there are no suitable extensions (in the cluster)
-    if len(extension_query_result) == 0:
-        raise Exception(f"Cluster {cluster['name']} is missing the microsoft.deviceregistry.assets extension.")
-    # here we warn about multiple custom locations (cluster name given, multiple locations possible)
-    if len(location_query_result) > 1:
-        logger.warn(
-            f"More than one custom location for cluster {cluster['id']} found. Will pick first one that satisfies "
-            "the conditions for asset creation."
-        )
-
-    # here we go through all locations + cluster extensions to narrow down to a location to use
-    # ideally these for loops will loop once (as both results should contain one object)
-    for location in location_query_result:
-        for extension in extension_query_result:
-            if extension["id"] in location["clusterExtensionIds"]:
-                return location["id"]
-
-    # here the location(s) do not have the correct extension
-    error_details = f"{custom_location_name} " if custom_location_name else "s "
-    error_details += f"for cluster {cluster_name} are" if cluster_name else "is"
-    raise Exception(f"Custom location{error_details} missing the microsoft.deviceregistry.assets extension.")
 
 
 def create_asset(
@@ -194,7 +58,7 @@ def create_asset(
     tags: Optional[Dict[str, str]] = None,
 ):
     subscription = get_subscription_id(cmd.cli_ctx)
-    custom_location_id = check_asset_cluster_and_custom_location(
+    custom_location_id = _check_asset_cluster_and_custom_location(
         subscription=subscription,
         custom_location_name=custom_location,
         custom_location_resource_group=custom_location_resource_group,
@@ -290,6 +154,65 @@ def list_assets(
     return cli.as_json()["value"]
 
 
+def query_assets(
+    cmd,
+    asset_type: Optional[str] = None,
+    custom_location: Optional[str] = None,
+    description: Optional[str] = None,
+    disabled: bool = False,
+    documentation_uri: Optional[str] = None,
+    endpoint_profile: Optional[str] = None,
+    external_asset_id: Optional[str] = None,
+    hardware_revision: Optional[str] = None,
+    location: Optional[str] = None,
+    manufacturer: Optional[str] = None,
+    manufacturer_uri: Optional[str] = None,
+    model: Optional[str] = None,
+    product_code: Optional[str] = None,
+    serial_number: Optional[str] = None,
+    software_revision: Optional[str] = None,
+    resource_group_name: Optional[str] = None,
+) -> dict:
+    subscription = get_subscription_id(cmd.cli_ctx)
+    query = ""
+    if asset_type:
+        query += f"| where properties.assetType =~ '{asset_type}'"
+    if custom_location:  # ##
+        query += f"| where extendedLocation contains '{asset_type}'"
+    if description:
+        query += f"| where properties.description =~ '{description}'"
+    if disabled:  # ###
+        query += f"| where properties.enabled == {not disabled}"
+    if documentation_uri:
+        query += f"| where properties.documentationUri =~ '{documentation_uri}'"
+    if endpoint_profile:
+        query += f"| where properties.connectivityProfileUri =~ '{endpoint_profile}'"
+    if external_asset_id:
+        query += f"| where properties.externalAssetId =~ '{external_asset_id}'"
+    if hardware_revision:
+        query += f"| where properties.hardwareRevision =~ '{hardware_revision}'"
+    if manufacturer:
+        query += f"| where properties.manufacturer =~ '{manufacturer}'"
+    if manufacturer_uri:
+        query += f"| where properties.manufacturerUri =~ '{manufacturer_uri}'"
+    if model:
+        query += f"| where properties.model =~ '{model}'"
+    if product_code:
+        query += f"| where properties.productCode =~ '{product_code}'"
+    if serial_number:
+        query += f"| where properties.serialNumber =~ '{serial_number}'"
+    if software_revision:
+        query += f"| where properties.softwareRevision =~ '{software_revision}'"
+
+    return build_query(
+        subscription_id=subscription,
+        custom_query=query,
+        location=location,
+        resource_group=resource_group_name,
+        type=ResourceTypeMapping.asset.value,
+    )
+
+
 def show_asset(
     cmd,
     asset_name: str,
@@ -353,7 +276,7 @@ def update_asset(
     if events:
         properties["events"] = _process_asset_sub_points("event_notifier", events)
 
-    # version cannot be bumped :D
+    # version cannot be bumped with PUT :D
 
     # Other properties
     _update_properties(
@@ -386,7 +309,7 @@ def update_asset(
     return cli.as_json()
 
 
-# Data Point sub commands
+# Data Point sub commands - TODO: there is some redundancy with Event
 def add_asset_data_point(
     cmd,
     asset_name: str,
@@ -592,6 +515,111 @@ def _build_default_configuration(
     if queue_size:
         defaults["queueSize"] = queue_size
     return json.dumps(defaults)
+
+
+def _check_asset_cluster_and_custom_location(
+    subscription,
+    custom_location_name: str = None,
+    custom_location_resource_group: str = None,
+    custom_location_subscription: str = None,
+    cluster_name: str = None,
+    cluster_subscription: str = None,
+):
+    if not any([cluster_name, custom_location_name]):
+        raise Exception("need to provide either cluster name or custom location")
+    query = ""
+    cluster = None
+    if not custom_location_subscription:
+        custom_location_subscription = subscription
+    if not cluster_subscription:
+        cluster_subscription = subscription
+
+    # provide cluster name - start with checking for the cluster (if can)
+    if cluster_name:
+        query = f'| where name =~ "{cluster_name}" '
+        cluster_query_result = build_query(
+            cluster_subscription,
+            custom_query=query,
+            type=ResourceTypeMapping.connected_cluster.value,
+        )
+        if len(cluster_query_result) == 0:
+            raise Exception(f"Cluster {cluster_name} does not exist")
+        cluster = cluster_query_result[0]
+        # reset query so the location query will ensure that the cluster is associated
+        query = f'| where hostResourceId =~ "{cluster["id"]}" '
+
+    # try to find location, either from given param and/or from cluster
+    # if only location is provided, will look just by location name
+    # if both cluster name and location are provided, should also include cluster id to narrow association
+    if custom_location_name:
+        query += f'| where name =~ "{custom_location_name}" '
+    if custom_location_resource_group:
+        query += f'| where resourceGroup =~ "{custom_location_resource_group}" '
+    location_query_result = build_query(
+        custom_location_subscription,
+        custom_query=query,
+        type=ResourceTypeMapping.custom_location.value
+    )
+    if len(location_query_result) == 0:
+        error_details = ""
+        if custom_location_name:
+            error_details += f"{custom_location_name} "
+        if cluster_name:
+            error_details += f"for cluster {cluster_name} "
+        raise Exception(f"Custom location {error_details} not found.")
+
+    if len(location_query_result) > 1 and cluster_name is None:
+        raise Exception(
+            f"Found {len(location_query_result)} custom locations with the name {custom_location_name}. Please "
+            "provide the resource group for the custom location."
+        )
+    # by this point there should be at least one custom location
+    # if cluster name was given (and no custom_location_names), there can be more than one
+    # otherwise, if no cluster name, needs to be only one
+
+    # should trigger if only the location name was provided - there should be one location
+    if not cluster_name:
+        query = f'| where id =~ "{location_query_result[0]["hostResourceId"]}"'
+        cluster_query_result = build_query(
+            cluster_subscription,
+            custom_query=query,
+            type=ResourceTypeMapping.connected_cluster.value
+        )
+        if len(cluster_query_result) == 0:
+            raise Exception(f"Cluster associated with custom location {custom_location_name} does not exist.")
+        cluster = cluster_query_result[0]
+    # by this point, cluster is populated
+
+    # extensions check - see that the cluster and the location have the same (correct) extension.
+    # start with getting all suitable extensions within the cluster.
+    query = f'| where id startswith "{cluster["id"]}" | where properties.extensionType =~ '\
+        '"microsoft.deviceregistry.assets" '
+    extension_query_result = build_query(
+        cluster_subscription,
+        custom_query=query,
+        type=ResourceTypeMapping.cluster_extensions.value
+    )
+    # throw if there are no suitable extensions (in the cluster)
+    if len(extension_query_result) == 0:
+        raise Exception(f"Cluster {cluster['name']} is missing the microsoft.deviceregistry.assets extension.")
+    # here we warn about multiple custom locations (cluster name given, multiple locations possible)
+    if len(location_query_result) > 1:
+        logger.warn(
+            f"More than one custom location for cluster {cluster['id']} found. Will pick first one that satisfies "
+            "the conditions for asset creation."
+        )
+
+    # here we go through all locations + cluster extensions to narrow down to a location to use
+    # ideally these for loops will loop once (as both results should contain one object)
+    for location in location_query_result:
+        for extension in extension_query_result:
+            if extension["id"] in location["clusterExtensionIds"]:
+                return location["id"]
+
+    # here the location(s) do not have the correct extension
+    error_details = f"{custom_location_name} " if custom_location_name else "s "
+    error_details += f"for cluster {cluster_name} are" if cluster_name else "is"
+    raise Exception(f"Custom location{error_details} missing the microsoft.deviceregistry.assets extension.")
 
 
 def _process_asset_sub_points(required_arg: str, sub_points: Optional[List[str]]) -> Dict[str, str]:
