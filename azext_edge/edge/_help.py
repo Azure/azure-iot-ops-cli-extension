@@ -161,6 +161,21 @@ def load_iotedge_help():
     """
 
     helps[
+        "edge asset query"
+    ] = """
+        type: command
+        short-summary: Query the Resource Graph for assets.
+
+        examples:
+        - name: Query for assets that are disabled within a given resource group.
+          text: >
+            az edge asset query -g {resouce_group} --disabled
+        - name: Query for assets that have the given model, manufacturer, and serial number.
+          text: >
+            az edge asset query --model {model} --manufacturer {manufacturer} --serial-number {serial_number}
+    """
+
+    helps[
         "edge asset show"
     ] = """
         type: command
@@ -349,4 +364,3 @@ def load_iotedge_help():
           text: >
             az edge asset event remove -n {asset_name} -g {resouce_group} --event-name {event_name}
     """
-   
