@@ -276,9 +276,10 @@ def deploy(
     from azure.core.exceptions import HttpResponseError
     from azure.identity import DefaultAzureCredential
     from azure.mgmt.resource import ResourceManagementClient
-    from rich.console import Console
+    from rich.console import Console, NewLine
     from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
     from rich.table import Table
+    from rich.live import Live
 
     version_def = process_deployable_version(**kwargs)
     show_pas_version = kwargs.get("show_pas_version", False)
@@ -356,14 +357,17 @@ def deploy(
     no_progress: bool = kwargs.get("no_progress", False)
     block: bool = kwargs.get("block", True)
 
-    with Progress(
-        SpinnerColumn(),
-        *Progress.get_default_columns(),
-        "Elapsed:",
-        TimeElapsedColumn(),
-        transient=False,
-        disable=(no_progress is True) or (block is False),
-    ) as progress:
+    grid = Table.grid(expand=False)
+    with Live(grid, transient=True, refresh_per_second=8) as live:
+        init_progress = Progress(
+            SpinnerColumn(),
+            *Progress.get_default_columns(),
+            "Elapsed:",
+            TimeElapsedColumn(),
+            transient=False,
+            disable=(no_progress is True) or (block is False),
+        )
+
         deployment_name = f"azedge.init.pas.{str(uuid4()).replace('-', '')}"
         deployment_params = {
             "properties": {
@@ -372,21 +376,36 @@ def deploy(
             }
         }
 
+        what_if = kwargs.get("what_if")
+        header = "Deployment: {} in progress..."
+        if what_if:
+            header = header.format("[orange3]What-If? analysis[/orange3]")
+        else:
+            header = header.format(f"[medium_purple4]{deployment_name}[/medium_purple4]")
+
+        grid = Table.grid(expand=False)
+        grid.add_column()
+
+        grid.add_row(NewLine(1))
+        grid.add_row(header)
+        grid.add_row(NewLine(1))
+        grid.add_row(init_progress)
+        live.update(grid, refresh=True)
+
         try:
-            if kwargs.get("what_if"):
+            init_progress.add_task(description=f"PAS version: {version_def.version}", total=None)
+            if what_if:
                 from azure.cli.command_modules.resource.custom import format_what_if_operation_result
 
-                progress.add_task(description=f"What-if of deploying PAS version: {version_def.version}", total=None)
                 what_if_deployment = resource_client.deployments.begin_what_if(
                     resource_group_name=resource_group_name,
                     deployment_name=deployment_name,
                     parameters=deployment_params,
                 ).result()
-                progress.stop()
+                init_progress.stop()
                 print(format_what_if_operation_result(what_if_operation_result=what_if_deployment))
                 return
 
-            progress.add_task(description=f"Deploying PAS version: {version_def.version}", total=None)
             deployment = resource_client.deployments.begin_create_or_update(
                 resource_group_name=resource_group_name,
                 deployment_name=deployment_name,
