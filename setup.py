@@ -42,6 +42,7 @@ DEPENDENCIES = [
     "rich",
     "kubernetes",
     "tomli",
+    "azure-identity",
 ]
 
 CLASSIFIERS = [

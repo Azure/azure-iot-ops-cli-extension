@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 
 
 BLUEFIN_APP_LABEL = (
-    "app in (bluefin-reader-worker,bluefin-refdata-store,bf-instance-nats-box"
+    "app in (bluefin-reader-worker,bluefin-refdata-store,bf-instance-nats-box,nats"
     ",bluefin-scheduler,bluefin-runner-worker,bluefin-portal,bluefin-api-proxy)"
 )
 BLUEFIN_RELEASE_LABEL = "release in (bf-instance)"

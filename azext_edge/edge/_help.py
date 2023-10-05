@@ -80,6 +80,18 @@ def load_iotedge_help():
     """
 
     helps[
+        "edge init"
+    ] = """
+        type: command
+        short-summary: Initialize and deploy a PAS service bundle to the target cluster.
+        long-summary: |
+            After this operation completes the desired suite of PAS edge services will
+            be deployed with baseline configuration on the target cluster. Deployment is done incrementally.
+
+            Customize deployable PAS version via --pas-version or --custom-version.
+    """
+
+    helps[
         "edge asset"
     ] = """
         type: group
@@ -337,3 +349,4 @@ def load_iotedge_help():
           text: >
             az edge asset event remove -n {asset_name} -g {resouce_group} --event-name {event_name}
     """
+   
