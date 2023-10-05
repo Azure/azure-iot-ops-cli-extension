@@ -17,7 +17,9 @@ def generate_names(prefix: str = "", count: int = 1, max_length: int = 48) -> Un
     Generic name generator that returns a list of names. If only one
     name is generated, returns only the name as a string.
     """
-    names = [
-        (prefix + generate_generic_id())[:max_length] for _ in range(count)
-    ]
+    names = [(prefix + generate_generic_id())[:max_length] for _ in range(count)]
     return names[0] if count == 1 else names
+
+
+def get_zeroed_subscription() -> str:
+    return "00000000-0000-0000-0000-000000000000"

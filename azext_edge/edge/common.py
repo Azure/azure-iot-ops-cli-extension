@@ -89,6 +89,14 @@ class SupportForEdgeServiceType(ListableEnum):
     symphony = "symphony"
 
 
+class DeployablePasVersions(ListableEnum):
+    """
+    Deployable PAS versions.
+    """
+
+    v012 = "0.1.2"
+
+
 # E4K runtime attributes
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"

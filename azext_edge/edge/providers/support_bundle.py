@@ -16,6 +16,7 @@ from ..providers.edge_api import (
     BLUEFIN_API_V1,
     E4K_API_V1A2,
     E4K_API_V1A3,
+    E4K_API_V1A4,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
     EdgeApiManager,
@@ -25,7 +26,7 @@ logger = get_logger(__name__)
 
 console = Console()
 
-COMPAT_E4K_APIS = EdgeApiManager(resource_apis=[E4K_API_V1A2, E4K_API_V1A3])
+COMPAT_E4K_APIS = EdgeApiManager(resource_apis=[E4K_API_V1A2, E4K_API_V1A3, E4K_API_V1A4])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_BLUEFIN_APIS = EdgeApiManager(resource_apis=[BLUEFIN_API_V1])
 COMPAT_SYMPHONY_APIS = EdgeApiManager(resource_apis=[SYMPHONY_API_V1])

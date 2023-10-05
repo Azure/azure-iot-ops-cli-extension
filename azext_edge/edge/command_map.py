@@ -23,6 +23,7 @@ def load_iotedge_commands(self, _):
         is_preview=True,
     ) as cmd_group:
         cmd_group.command("check", "check")
+        cmd_group.command("init", "init")
 
     with self.command_group(
         "edge support",

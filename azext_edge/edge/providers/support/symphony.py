@@ -15,7 +15,7 @@ from .base import assemble_crd_work, process_deployments, process_v1_pods, proce
 logger = get_logger(__name__)
 
 
-SYMPHONY_INSTANCE_LABEL = "app.kubernetes.io/instance in (project-alice-springs)"
+SYMPHONY_INSTANCE_LABEL = "app.kubernetes.io/instance in (alice-springs)"
 SYMPHONY_APP_LABEL = "app in (symphony-api)"
 GENERIC_CONTROLLER_LABEL = "control-plane in (controller-manager)"
 

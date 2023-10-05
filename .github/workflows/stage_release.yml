@@ -1,16 +1,10 @@
-name: Release
+name: "[auto] Draft Github Release"
 
 on:
   workflow_call:
-    inputs:
-      update_index:
-        type: boolean
-        description: 'Push this version to the extension index'
-        default: false
 
 jobs:
-  release:
-    environment: production
+  create_draft_release:
     runs-on: [self-hosted, 1ES.Pool=iotupx-github-hosted-pool, 1ES.ImageOverride=MMSUbuntu20.04]
     steps:
       - name: Download Wheel
@@ -45,8 +39,3 @@ jobs:
           gh release create "${{ env.tag }}" --generate-notes -d -t "azure-edge ${{ env.version }}" "${{ env.wheel }}" "./SBOM.zip#SBOM" --repo "${{ github.repository }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  index_update:
-    needs: [release]
-    if: ${{ github.event.inputs.update_index == 'true' }}
-    uses: ./.github/workflows/update_private_index.yml
-    secrets: inherit

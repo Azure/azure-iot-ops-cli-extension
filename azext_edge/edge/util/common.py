@@ -45,3 +45,10 @@ def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
                 key,
             )
     return result
+
+
+def get_timestamp_now_utc(format: str = "%Y-%m-%dT%H:%M:%S") -> str:
+    from datetime import datetime, timezone
+
+    timestamp = datetime.now(timezone.utc).strftime(format)
+    return timestamp

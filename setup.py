@@ -14,16 +14,10 @@ from setuptools import setup, find_packages
 EXTENSION_REF_NAME = "azext_edge"
 
 # Version extraction inspired from 'requests'
-with open(
-    os.path.join(EXTENSION_REF_NAME, "constants.py"), "r", encoding="utf-8"
-) as fd:
+with open(os.path.join(EXTENSION_REF_NAME, "constants.py"), "r", encoding="utf-8") as fd:
     constants_raw = fd.read()
-    VERSION = re.search(
-        r'^VERSION\s*=\s*[\'"]([^\'"]*)[\'"]', constants_raw, re.MULTILINE
-    ).group(1)
-    PACKAGE_NAME = re.search(
-        r'^EXTENSION_NAME\s*=\s*[\'"]([^\'"]*)[\'"]', constants_raw, re.MULTILINE
-    ).group(1)
+    VERSION = re.search(r'^VERSION\s*=\s*[\'"]([^\'"]*)[\'"]', constants_raw, re.MULTILINE).group(1)
+    PACKAGE_NAME = re.search(r'^EXTENSION_NAME\s*=\s*[\'"]([^\'"]*)[\'"]', constants_raw, re.MULTILINE).group(1)
 
 
 if not VERSION:
@@ -44,6 +38,7 @@ DEPENDENCIES = [
     "tomli",
     "protobuf",
     "opentelemetry-proto",
+    "azure-identity",
 ]
 
 CLASSIFIERS = [

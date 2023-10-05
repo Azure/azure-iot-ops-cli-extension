@@ -16,6 +16,7 @@ from kubernetes.client.models import V1Container, V1ObjectMeta
 
 from ..edge_api import EdgeResourceApi
 from ..base import client
+from ...util import get_timestamp_now_utc
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
@@ -59,9 +60,9 @@ def process_v1_pods(
         prefix_names = []
 
     pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
-    pod_logger_info = f"Detected {len(pods.items)} pods."
+    pod_logger_info = f"Detected {len(pods.items)} pods"
     if label_selector:
-        pod_logger_info = f"{pod_logger_info} with label {pod_logger_info}."
+        pod_logger_info = f"{pod_logger_info} with label '{label_selector}'."
     logger.info(pod_logger_info)
     for pod in pods.items:
         p: V1Pod = pod
@@ -335,12 +336,5 @@ def normalize_dir(dir_path: Optional[str] = None) -> PurePath:
 
 
 def default_bundle_name(system_name: str) -> str:
-    return f"support_bundle_{get_std_timestamp()}_{system_name}.zip"
-
-
-def get_std_timestamp() -> str:
-    from datetime import datetime, timezone
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    timestamp = timestamp.replace(":", "-")
-    return timestamp
+    timestamp = get_timestamp_now_utc(format="%Y%m%dT%H%M%S")
+    return f"support_bundle_{timestamp}_{system_name}.zip"
