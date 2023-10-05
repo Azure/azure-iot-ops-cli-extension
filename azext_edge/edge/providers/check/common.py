@@ -49,6 +49,8 @@ class BluefinDestinationStageType(ListableEnum):
     reference_data = "output/refdata"
 
 
+ERROR_NO_DETAIL = "<No detail available>"
+
 BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES = {
     BluefinProcessorStageType.aggregate.value: [("window.type", "Aggregate window type", False),
                                                 ("window.size", "Aggregate window duration", False),

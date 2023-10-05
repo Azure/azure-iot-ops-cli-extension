@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from .base import (
     CheckManager,
     decorate_resource_status,
@@ -30,6 +30,7 @@ from .common import (
     BLUEFIN_READER_WORKER_PREFIX,
     BLUEFIN_REFDATA_STORE_PREFIX,
     BLUEFIN_RUNNER_WORKER_PREFIX,
+    ERROR_NO_DETAIL,
     ResourceOutputDetailLevel,
 )
 
@@ -47,8 +48,8 @@ def check_bluefin_deployment(
     post_deployment: bool = True,
     as_list: bool = False,
     resource_kinds: List[str] = None,
-    result: dict = None,
-) -> Union[dict, None]:
+    result: Dict[str, Any] = None,
+) -> Union[Dict[str, Any], None]:
     if pre_deployment:
         check_pre_deployment(result, as_list)
 
@@ -70,7 +71,7 @@ def check_bluefin_deployment(
 
 def check_bluefin_post_deployment(
     namespace: str,
-    result: dict,
+    result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None
@@ -99,7 +100,7 @@ def evaluate_instances(
     namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> dict:
+) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Bluefin instance", namespace=namespace)
 
     target_instances = "instances.bluefin.az-bluefin.com"
@@ -142,7 +143,7 @@ def evaluate_instances(
 
         if instance_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
             instance_eval_status = CheckTaskStatus.error.value
-            error_message = instance_provisionint_status.get("error", {}).get("message", {})
+            error_message = instance_provisionint_status.get("error", {}).get("message", ERROR_NO_DETAIL)
             error_display_text = f"[red]Error: {error_message}[/red]"
             check_manager.add_display(target_name=target_instances, display=Padding(error_display_text, (0, 0, 0, 10)))
         elif instance_status in [
@@ -190,7 +191,7 @@ def evaluate_pipelines(
     namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> dict:
+) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Bluefin pipeline", namespace=namespace)
 
     target_pipelines = "pipelines.bluefin.az-bluefin.com"
@@ -249,7 +250,7 @@ def evaluate_pipelines(
         error_display_text = ""
         if pipeline_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
             pipeline_provisioningStatus_eval_status = CheckTaskStatus.error.value
-            error_message = pipeline_provisioning_status.get("error", {}).get("message", {})
+            error_message = pipeline_provisioning_status.get("error", {}).get("message", ERROR_NO_DETAIL)
             error_display_text = f"[red]Error: {error_message}[/red]"
         elif pipeline_status in [
             ProvisioningState.updating.value,
@@ -305,7 +306,7 @@ def evaluate_datasets(
     namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> dict:
+) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Bluefin dataset", namespace=namespace)
 
     target_datasets = "datasets.bluefin.az-bluefin.com"
@@ -412,8 +413,8 @@ def _process_stage_properties(
     check_manager: CheckManager,
     detail_level: int,
     target_name: str,
-    stage: dict,
-    stage_properties: dict,
+    stage: Dict[str, Any],
+    stage_properties: Dict[str, Any],
     padding: tuple
 ) -> None:
     stage_type = stage["type"]
@@ -438,7 +439,7 @@ def _process_stage_properties(
                     )
                 elif not verbose_only:
                     if prop == "descriptor":
-                        prop_value = prop_value[:5] + "..."
+                        prop_value = prop_value if detail_level == ResourceOutputDetailLevel.verbose.value else prop_value[:10] + "..."
                     elif prop.endswith("clientSecret"):
                         prop_value = "*" * len(prop_value)
                     display_text = f"{display_name}: [bright_blue]{prop_value}[/bright_blue]"
@@ -494,7 +495,7 @@ def add_display_and_eval(
 
 
 def _evaluate_source_node(
-    pipeline_source_node: dict,
+    pipeline_source_node: Dict[str, Any],
     target_pipelines: str,
     pipeline_name: str,
     check_manager: CheckManager,
@@ -585,7 +586,7 @@ def _evaluate_source_node(
 
 def _evaluate_intermediate_nodes(
     output_node: Tuple,
-    pipeline_stages_node: dict,
+    pipeline_stages_node: Dict[str, Any],
     target_pipelines: str,
     check_manager: CheckManager,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
@@ -618,7 +619,7 @@ def _evaluate_intermediate_nodes(
 
 
 def _evaluate_destination_node(
-    output_node: dict,
+    output_node: Dict[str, Any],
     target_pipelines: str,
     pipeline_name: str,
     check_manager: CheckManager,

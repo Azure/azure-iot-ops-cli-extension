@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from enum import Enum
 from .base import (
     CheckManager,
@@ -49,8 +49,8 @@ def check_e4k_deployment(
     post_deployment: bool = True,
     as_list: bool = False,
     resource_kinds: List[str] = None,
-    result: dict = None,
-) -> Union[dict, None]:
+    result: Dict[str, Any] = None,
+) -> Union[Dict[str, Any], None]:
     if pre_deployment:
         check_pre_deployment(result, as_list)
 
@@ -72,7 +72,7 @@ def check_e4k_deployment(
 
 def check_e4k_post_deployment(
     namespace: str,
-    result: dict,
+    result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
@@ -103,7 +103,7 @@ def evaluate_diagnostics_service(
     namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> dict:
+) -> Dict[str, Any]:
     check_manager = CheckManager(
         check_name="evalBrokerDiag",
         check_desc="Evaluate E4K Diagnostics Service",
@@ -293,7 +293,7 @@ def evaluate_broker_listeners(
     namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> dict:
+) -> Dict[str, Any]:
     check_manager = CheckManager(
         check_name="evalBrokerListeners",
         check_desc="Evaluate E4K broker listeners",
@@ -514,7 +514,7 @@ def evaluate_brokers(
     namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> dict:
+) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker", namespace=namespace)
 
     target_brokers = "brokers.az-edge.com"
@@ -778,7 +778,7 @@ def evaluate_mqtt_bridge_connectors(
     namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> dict:
+) -> Dict[str, Any]:
     from rich.table import Table
 
     def add_routes_display(
@@ -1091,7 +1091,7 @@ def evaluate_datalake_connectors(
     namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> dict:
+) -> Dict[str, Any]:
     from rich.table import Table
 
     def create_schema_table(name: str, schema: List[Dict[str, str]]) -> Table:
@@ -1362,7 +1362,7 @@ def evaluate_datalake_connectors(
     return check_manager.as_dict(as_list)
 
 
-def _get_valid_references(kind: Union[Enum, str], namespace: str) -> dict:
+def _get_valid_references(kind: Union[Enum, str], namespace: str) -> Dict[str, Any]:
     result = {}
     custom_objects = E4K_ACTIVE_API.get_resources(kind=kind, namespace=namespace)
     if custom_objects:

@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from azure.cli.core.azclierror import ArgumentUsageError
 
 from rich.console import Console
@@ -27,7 +27,7 @@ def run_checks(
     post_deployment: bool = True,
     as_list: bool = False,
     resource_kinds: List[str] = None,
-) -> dict:
+) -> Dict[str, Any]:
     result = {}
 
     # check if the resource_kinds is under edge_service

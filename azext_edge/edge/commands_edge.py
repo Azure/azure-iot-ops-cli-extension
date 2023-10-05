@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from pathlib import PurePath
-from typing import Optional, Union, List
+from typing import Any, Dict, Optional, Union, List
 
 from knack.log import get_logger
 
@@ -23,7 +23,7 @@ def support_bundle(
     edge_service: str = "auto",
     bundle_dir: Optional[str] = None,
     context_name: Optional[str] = None,
-) -> dict:
+) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.support_bundle import build_bundle
 
@@ -41,7 +41,7 @@ def check(
     context_name=None,
     edge_service: str = "e4k",
     resource_kinds: List[str] = None,
-) -> Union[dict, None]:
+) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
 
@@ -84,7 +84,7 @@ def init(
     no_progress: Optional[bool] = None,
     processor_instance_name: Optional[str] = None,
     target_name: Optional[str] = None,
-) -> Union[dict, None]:
+) -> Union[Dict[str, Any], None]:
     from azure.cli.core.commands.client_factory import get_subscription_id
     from .providers.orchestration import deploy
 

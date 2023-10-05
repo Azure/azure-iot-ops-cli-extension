@@ -32,7 +32,7 @@ logger = get_logger(__name__)
 
 
 def check_pre_deployment(
-    result: dict,
+    result: Dict[str, Any],
     as_list: bool = False,
 ) -> None:
     result["preDeployment"] = []
@@ -54,7 +54,7 @@ def check_post_deployment(
     check_name: str,
     check_desc: str,
     namespace: str,
-    result: dict,
+    result: Dict[str, Any],
     resource_kinds_enum: Enum,
     evaluate_funcs: Dict[ListableEnum, Callable],
     as_list: bool = False,
@@ -75,7 +75,7 @@ def check_post_deployment(
                 result["postDeployment"].append(evaluate_func(detail_level=detail_level, namespace=namespace, as_list=as_list))
 
 
-def process_as_list(console: Console, result: Dict[str, dict], namespace: str) -> None:
+def process_as_list(console: Console, result: Dict[str, Any], namespace: str) -> None:
     success_count: int = 0
     warning_count: int = 0
     error_count: int = 0
@@ -207,7 +207,7 @@ def enumerate_edge_service_resources(
     return check_manager.as_dict(as_list), resource_kind_map
 
 
-def check_k8s_version(as_list: bool = False) -> dict:
+def check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
     from kubernetes.client.models import VersionInfo
     from packaging import version
 
@@ -260,7 +260,7 @@ def check_k8s_version(as_list: bool = False) -> dict:
     return check_manager.as_dict(as_list)
 
 
-def check_nodes(as_list: bool = False) -> dict:
+def check_nodes(as_list: bool = False) -> Dict[str, Any]:
     from kubernetes.client.models import V1Node, V1NodeList
 
     check_manager = CheckManager(check_name="evalClusterNodes", check_desc="Evaluate cluster nodes")
@@ -448,7 +448,7 @@ class CheckManager:
             self.target_displays[target_name] = []
         self.target_displays[target_name].append(display)
 
-    def as_dict(self, as_list: bool = False) -> dict:
+    def as_dict(self, as_list: bool = False) -> Dict[str, Any]:
         from copy import deepcopy
 
         result = {
