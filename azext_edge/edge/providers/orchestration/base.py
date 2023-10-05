@@ -12,6 +12,7 @@ from .pas_versions import (
     get_pas_version_def,
     extension_name_to_type_map,
     EdgeExtensionName,
+    DEPLOYABLE_PAS_VERSION,
 )
 from ...util import get_timestamp_now_utc
 
@@ -267,7 +268,6 @@ def deploy(
     resource_group_name: str,
     custom_location_name: str,
     custom_location_namespace: str,
-    pas_version: str,
     **kwargs,
 ):
     from uuid import uuid4
@@ -280,7 +280,7 @@ def deploy(
     from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
     from rich.table import Table
 
-    version_def = process_deployable_version(pas_version, **kwargs)
+    version_def = process_deployable_version(**kwargs)
     show_pas_version = kwargs.get("show_pas_version", False)
     if show_pas_version:
         console = Console()
@@ -422,10 +422,10 @@ def deploy(
             return
 
 
-def process_deployable_version(aio_version: str, **kwargs) -> PasVersionDef:
+def process_deployable_version(**kwargs) -> PasVersionDef:
     from ...util import assemble_nargs_to_dict
 
-    base_version_def = get_pas_version_def(version=aio_version)
+    base_version_def = get_pas_version_def(version=DEPLOYABLE_PAS_VERSION)
     custom_version = kwargs.get("custom_version")
     only_deploy_custom = kwargs.get("only_deploy_custom")
 

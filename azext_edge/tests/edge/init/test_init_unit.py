@@ -4,21 +4,24 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from functools import partial
 from typing import Dict, Optional
 
 import pytest
 
 from azext_edge.edge.commands_edge import init
-from azext_edge.edge.common import DeployablePasVersions
-from azext_edge.edge.providers.orchestration import EdgeServiceMoniker, extension_name_to_type_map, get_pas_version_def
+from azext_edge.edge.providers.orchestration import (
+    EdgeServiceMoniker,
+    extension_name_to_type_map,
+    get_pas_version_def,
+    DEPLOYABLE_PAS_VERSION,
+)
 from azext_edge.edge.util import assemble_nargs_to_dict
 
 from ...generators import generate_generic_id
 
 
 @pytest.mark.parametrize(
-    "cluster_name,cluster_namespace,rg,custom_location_name,custom_location_namespace,location,pas_version,"
+    "cluster_name,cluster_namespace,rg,custom_location_name,custom_location_namespace,location,"
     "processor_instance_name,simulate_plc,opcua_discovery_endpoint,create_sync_rules,"
     "custom_version,target_name",
     [
@@ -29,7 +32,6 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # custom_location_name
             generate_generic_id(),  # custom_location_namespace
             generate_generic_id(),  # location
-            DeployablePasVersions.v012.value,
             generate_generic_id(),  # processor_instance_name
             False,  # simulate_plc
             generate_generic_id(),  # opcua_discovery_endpoint
@@ -44,7 +46,6 @@ from ...generators import generate_generic_id
             None,  # custom_location_name
             None,  # custom_location_namespace
             None,  # location
-            DeployablePasVersions.v012.value,
             None,  # processor_instance_name
             True,  # simulate_plc
             None,  # opcua_discovery_endpoint
@@ -63,7 +64,6 @@ def test_init_show_template(
     custom_location_name,
     custom_location_namespace,
     location,
-    pas_version,
     processor_instance_name,
     simulate_plc,
     opcua_discovery_endpoint,
@@ -71,8 +71,7 @@ def test_init_show_template(
     custom_version,
     target_name,
 ):
-    partial_init = partial(
-        init,
+    template = init(
         cmd=mocked_cmd,
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
@@ -86,16 +85,13 @@ def test_init_show_template(
         create_sync_rules=create_sync_rules,
         custom_version=custom_version,
         target_name=target_name,
+        show_template=True,
     )
 
-    template = partial_init(
-        show_template=True,
-        pas_version=pas_version,
-    )
     assert template["$schema"] == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
     assert template["metadata"]["description"] == "Az Edge CLI PAS deployment."
     # TODO template versioning. Think about custom.
-    assert template["contentVersion"] == f"{pas_version}.0"
+    assert template["contentVersion"] == f"{DEPLOYABLE_PAS_VERSION}.0"
 
     assert_template_variables(
         variables=template["variables"],
@@ -110,7 +106,7 @@ def test_init_show_template(
         cluster_namespace=cluster_namespace,
         custom_location_name=custom_location_name,
         custom_location_namespace=custom_location_namespace,
-        pas_version=pas_version,
+        pas_version=DEPLOYABLE_PAS_VERSION,
         processor_instance_name=processor_instance_name,
         simulate_plc=simulate_plc,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
