@@ -7,6 +7,12 @@ k3d_binary="k3d-linux-amd64"
 k3d_url="$release_url/$k3d_version/$k3d_binary"
 k3d_install_dir="/usr/local/bin"
 
+helm_version="v3.12.3"
+helm_url="https://get.helm.sh/helm-$helm_version-linux-amd64.tar.gz"
+wget $helm_url
+tar -zxvf "helm-$helm_version-linux-amd64.tar.gz"
+sudo mv linux-amd64/helm "$k3d_install_dir"
+
 # install k3d
 curl -sL $k3d_url -o "$k3d_binary"
 sudo chmod +x "$k3d_binary"
