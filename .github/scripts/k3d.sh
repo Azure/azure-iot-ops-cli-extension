@@ -15,9 +15,6 @@ sudo cp "$k3d_binary" "$k3d_install_dir/$app"
 # create cluster
 k3d cluster create
 
-# downgrade helm to temporarily fix issue with helm
-curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash -s -- --version v3.12.3
-
 # install e4k, e4i, opcua
 helm install e4k oci://e4kpreview.azurecr.io/helm/az-e4k --version 0.6.0 --set global.quickstart=true
 helm upgrade -i e4i oci://e4ipreview.azurecr.io/helm/az-e4i --version 0.5.1 --namespace e4i-runtime --create-namespace --set mqttBroker.authenticationMethod="serviceAccountToken" --set mqttBroker.name="azedge-dmqtt-frontend" --set mqttBroker.namespace="default" --set opcPlcSimulation.deploy=true --wait
