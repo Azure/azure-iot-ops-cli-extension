@@ -13,6 +13,7 @@ from knack.log import get_logger
 from rich.console import Console
 
 from ..common import AZEDGE_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT
+from ..util import get_timestamp_now_utc
 from .base import get_namespaced_pods_by_prefix, portforward_http, portforward_socket
 
 logger = get_logger(__name__)
@@ -209,15 +210,17 @@ def get_traces(
     """
     trace_ids: str hex representation.
     """
-    import json
     import binascii
-    from zipfile import ZipFile, ZIP_DEFLATED
+    import json
+    from zipfile import ZIP_DEFLATED, ZipFile
+
     from google.protobuf.json_format import MessageToDict
+    from rich.progress import MofNCompleteColumn, Progress
+
+    from .support.base import normalize_dir
 
     # pylint: disable=no-name-in-module
     from .support.diagnostics_service_pb2 import Request, Response, TraceRetrievalInfo
-    from .support.base import normalize_dir, get_std_timestamp
-    from rich.progress import Progress, MofNCompleteColumn
 
     if not trace_ids:
         trace_ids = []
@@ -238,7 +241,9 @@ def get_traces(
             traces: List[dict] = []
             if trace_dir:
                 normalized_dir_path = normalize_dir(dir_path=trace_dir)
-                normalized_dir_path = normalized_dir_path.joinpath(f"e4K_traces_{get_std_timestamp()}.zip")
+                normalized_dir_path = normalized_dir_path.joinpath(
+                    f"e4k_traces_{get_timestamp_now_utc(format='%Y%m%dT%H%M%S')}.zip"
+                )
                 # pylint: disable=consider-using-with
                 myzip = ZipFile(file=str(normalized_dir_path), mode="w", compression=ZIP_DEFLATED)
 

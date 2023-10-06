@@ -158,13 +158,13 @@ def load_iotedge_arguments(self, _):
             nargs="*",
             options_list=["--trace-ids"],
             help="Space-separated trace ids in hex format.",
-            arg_group="Trace"
+            arg_group="Trace",
         )
         context.argument(
             "trace_dir",
             options_list=["--trace-dir"],
             help="Local directory where traces will be bundled and stored at.",
-            arg_group="Trace"
+            arg_group="Trace",
         )
 
     with self.argument_context("edge init") as context:
