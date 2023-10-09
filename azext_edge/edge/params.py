@@ -8,7 +8,7 @@
 CLI parameter definitions.
 """
 
-from azure.cli.core.commands.parameters import get_three_state_flag
+from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type
 from knack.arguments import CaseInsensitiveList
 
 from .common import DeployablePasVersions, SupportForEdgeServiceType
@@ -109,12 +109,9 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "detail_level",
             options_list=["--detail-level"],
-            choices=[
-                ResourceOutputDetailLevel.summary.value,
-                ResourceOutputDetailLevel.detail.value,
-                ResourceOutputDetailLevel.verbose.value,
-            ],
-            type=int,
+            default=ResourceOutputDetailLevel.summary.value,
+            choices=ResourceOutputDetailLevel.list(),
+            arg_type=get_enum_type(ResourceOutputDetailLevel),
             help="Controls the level of detail displayed in the check output. "
             "Choose 0 for a summary view, (minimal output), "
             "1 for a detailed view, (more comprehensive information) "
