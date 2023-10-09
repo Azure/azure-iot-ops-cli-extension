@@ -55,13 +55,18 @@ class PodState(Enum):
     unknown = "Unknown"
 
 
-class E4kCheckType(Enum):
+class ProvisioningState(Enum):
     """
-    E4K environment check type.
+    edge resource provisioning state.
     """
 
-    pre = "pre"
-    post = "post"
+    succeeded = "Succeeded"
+    failed = "Failed"
+    updating = "Updating"
+    canceled = "Canceled"
+    provisioning = "Provisioning",
+    deleting = "Deleting"
+    accepted = "Accepted"
 
 
 class E4kDiagnosticPropertyIndex(Enum):
@@ -102,14 +107,3 @@ class DeployablePasVersions(ListableEnum):
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
 METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800
-
-AZEDGE_DIAGNOSTICS_PROBE_PREFIX = "azedge-diagnostics-probe"
-AZEDGE_FRONTEND_PREFIX = "azedge-dmqtt-frontend"
-AZEDGE_BACKEND_PREFIX = "azedge-dmqtt-backend"
-AZEDGE_AUTH_PREFIX = "azedge-dmqtt-authentication"
-AZEDGE_KAFKA_CONFIG_PREFIX = "azedge-kafka-config"
-
-# Pre-deployment KPIs
-
-MIN_K8S_VERSION = "1.20"
-MIN_HELM_VERSION = "3.8.0"

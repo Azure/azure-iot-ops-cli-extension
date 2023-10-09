@@ -14,6 +14,8 @@ from knack.arguments import CaseInsensitiveList
 from .common import DeployablePasVersions, SupportForEdgeServiceType
 from .providers.edge_api import E4kResourceKinds
 from .providers.orchestration.pas_versions import EdgeServiceMoniker
+from .providers.check.common import ResourceOutputDetailLevel
+from .providers.edge_api.bluefin import BluefinResourceKinds
 
 
 def load_iotedge_arguments(self, _):
@@ -81,7 +83,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "edge_service",
             options_list=["--edge-service", "-e"],
-            choices=CaseInsensitiveList(["e4k"]),
+            choices=CaseInsensitiveList(["e4k", "bluefin"]),
             help="The edge service deployment that will be evaluated.",
         )
         context.argument(
@@ -95,9 +97,26 @@ def load_iotedge_arguments(self, _):
                     E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
                     E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
                     E4kResourceKinds.DATALAKE_CONNECTOR.value,
+                    BluefinResourceKinds.DATASET.value,
+                    BluefinResourceKinds.PIPELINE.value,
+                    BluefinResourceKinds.INSTANCE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
+        ),
+        context.argument(
+            "detail_level",
+            options_list=["--detail-level"],
+            choices=[
+                ResourceOutputDetailLevel.summary.value,
+                ResourceOutputDetailLevel.detail.value,
+                ResourceOutputDetailLevel.verbose.value,
+            ],
+            type=int,
+            help="Controls the level of detail displayed in the check output. "
+            "Choose 0 for a summary view, (minimal output), "
+            "1 for a detailed view, (more comprehensive information) "
+            "or 2 for a verbose view, (all available information)."
         )
 
     with self.argument_context("edge e4k get-password-hash") as context:
