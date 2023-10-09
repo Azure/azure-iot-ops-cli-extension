@@ -65,14 +65,14 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "pre_deployment_checks",
             options_list=["--pre"],
-            help="Run only pre-requisite checks to determine if the minimum "
+            help="Run pre-requisite checks to determine if the minimum "
             "requirements of an edge service deployment are fulfilled.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
             "post_deployment_checks",
             options_list=["--post"],
-            help="Run only post-deployment checks.",
+            help="Run post-deployment checks.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
