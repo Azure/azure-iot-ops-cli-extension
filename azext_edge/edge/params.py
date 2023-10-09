@@ -16,6 +16,7 @@ from .providers.edge_api import E4kResourceKinds
 from .providers.orchestration.pas_versions import EdgeServiceMoniker
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.bluefin import BluefinResourceKinds
+from ._validators import validate_namespace
 
 
 def load_iotedge_arguments(self, _):
@@ -36,6 +37,7 @@ def load_iotedge_arguments(self, _):
             options_list=["--namespace", "-n"],
             help="K8s cluster namespace the command should operate against. "
             "If no namespace is provided `default` will be used.",
+            validator=validate_namespace
         )
 
     with self.argument_context("edge support") as context:
