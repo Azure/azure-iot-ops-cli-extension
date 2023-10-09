@@ -6,7 +6,7 @@
 
 from datetime import datetime
 from time import sleep
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
@@ -14,25 +14,16 @@ from rich.console import Console
 
 from ..common import AZEDGE_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT
 from ..util import get_timestamp_now_utc
-from .base import get_namespaced_pods_by_prefix, portforward_http, portforward_socket
+from .base import get_namespaced_pods_by_prefix, portforward_http, portforward_socket, V1Pod
 
 logger = get_logger(__name__)
 
 console = Console(highlight=True)
 
 
-def get_stats(
-    namespace: Optional[str] = None,
-    diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
-    pod_metrics_port: int = METRICS_SERVICE_API_PORT,
-    pod_protobuf_port: int = PROTOBUF_SERVICE_API_PORT,
-    raw_response=False,
-    raw_response_print=False,
-    refresh_in_seconds: int = 10,
-    watch: bool = False,
-    trace_ids: Optional[List[str]] = None,
-    trace_dir: Optional[str] = None,
-):
+def _preprocess_stats(
+    namespace: Optional[str] = None, diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE
+) -> Tuple[str, V1Pod]:
     if not namespace:
         from .base import DEFAULT_NAMESPACE
 
@@ -40,17 +31,24 @@ def get_stats(
 
     target_pods = get_namespaced_pods_by_prefix(prefix=diag_service_pod_prefix, namespace=namespace)
     if not target_pods:
-        raise ResourceNotFoundError(f"Diagnostics service does not exist in namespace {namespace}.")
+        raise ResourceNotFoundError(
+            f"Diagnostics service pod '{diag_service_pod_prefix}' does not exist in namespace '{namespace}'."
+        )
     diagnostic_pod = target_pods[0]
 
-    if trace_ids or trace_dir:
-        return get_traces(
-            namespace=namespace,
-            pod_name=diagnostic_pod.metadata.name,
-            pod_port=pod_protobuf_port,
-            trace_ids=trace_ids,
-            trace_dir=trace_dir,
-        )
+    return namespace, diagnostic_pod
+
+
+def get_stats(
+    namespace: Optional[str] = None,
+    diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
+    pod_metrics_port: int = METRICS_SERVICE_API_PORT,
+    raw_response=False,
+    raw_response_print=False,
+    refresh_in_seconds: int = 10,
+    watch: bool = False,
+) -> Union[dict, str, None]:
+    namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
 
     from rich import box
     from rich.live import Live
@@ -202,11 +200,11 @@ def _clean_stats(raw_stats: str) -> dict:
 
 def get_traces(
     namespace: str,
-    pod_name: str,
-    pod_port: str,
-    trace_ids: Optional[List[str]] = None,
+    diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
+    pod_protobuf_port: int = PROTOBUF_SERVICE_API_PORT,
+    trace_ids: List[str] = None,
     trace_dir: Optional[str] = None,
-):
+) -> Union[dict, None]:
     """
     trace_ids: str hex representation.
     """
@@ -222,6 +220,8 @@ def get_traces(
     # pylint: disable=no-name-in-module
     from .support.diagnostics_service_pb2 import Request, Response, TraceRetrievalInfo
 
+    namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
+
     if not trace_ids:
         trace_ids = []
     else:
@@ -230,7 +230,9 @@ def get_traces(
     with Progress(
         *Progress.get_default_columns(), MofNCompleteColumn(), transient=False, disable=bool(trace_ids)
     ) as progress:
-        with portforward_socket(namespace=namespace, pod_name=pod_name, pod_port=pod_port) as socket:
+        with portforward_socket(
+            namespace=namespace, pod_name=diagnostic_pod.metadata.name, pod_port=pod_protobuf_port
+        ) as socket:
             request = Request(get_traces=TraceRetrievalInfo(trace_ids=trace_ids))
             serialized_request = request.SerializeToString()
             request_len_b = len(serialized_request).to_bytes(4, byteorder="big")

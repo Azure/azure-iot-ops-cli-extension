@@ -62,7 +62,7 @@ def get_namespaced_pods_by_prefix(
     label_selector: str = None,
     as_dict: bool = False,
 ) -> Union[List[V1Pod], List[dict], None]:
-    target_pods_key = (prefix, namespace, label_selector)
+    target_pods_key = (namespace, label_selector)
     if target_pods_key in _namespaced_pods_cache:
         return _namespaced_pods_cache[target_pods_key]
 

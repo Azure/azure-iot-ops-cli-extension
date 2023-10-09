@@ -28,20 +28,24 @@ def stats(
 ):
     load_config_context(context_name=context_name)
     from .providers.edge_api import E4K_ACTIVE_API
-    from .providers.stats import get_stats
+    from .providers.stats import get_stats, get_traces
 
     E4K_ACTIVE_API.is_deployed(raise_on_404=True)
+    if trace_ids or trace_dir:
+        return get_traces(
+            namespace=namespace,
+            pod_protobuf_port=pod_protobuf_port,
+            trace_ids=trace_ids,
+            trace_dir=trace_dir,
+        )
 
     return get_stats(
         namespace=namespace,
         diag_service_pod_prefix=diag_service_pod_prefix,
         raw_response_print=raw_response_print,
         pod_metrics_port=pod_metrics_port,
-        pod_protobuf_port=pod_protobuf_port,
         refresh_in_seconds=refresh_in_seconds,
         watch=watch,
-        trace_ids=trace_ids,
-        trace_dir=trace_dir,
     )
 
 

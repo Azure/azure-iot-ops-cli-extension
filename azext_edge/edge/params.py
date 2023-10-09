@@ -35,7 +35,8 @@ def load_iotedge_arguments(self, _):
             "namespace",
             options_list=["--namespace", "-n"],
             help="K8s cluster namespace the command should operate against. "
-            "If no namespace is provided `default` will be used.",
+            "If no namespace is provided the kubeconfig current_context namespace will be used. "
+            "If not defined, the fallback value `default` will be used. ",
         )
 
     with self.argument_context("edge support") as context:
@@ -116,7 +117,7 @@ def load_iotedge_arguments(self, _):
             help="Controls the level of detail displayed in the check output. "
             "Choose 0 for a summary view, (minimal output), "
             "1 for a detailed view, (more comprehensive information) "
-            "or 2 for a verbose view, (all available information)."
+            "or 2 for a verbose view, (all available information).",
         )
 
     with self.argument_context("edge e4k get-password-hash") as context:
