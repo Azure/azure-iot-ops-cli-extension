@@ -24,7 +24,7 @@ from azext_edge.edge.providers.edge_api import (
 
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.bluefin import (
-    BLUEFIN_APP_LABEL,
+    BLUEFIN_LABEL,
     BLUEFIN_INSTANCE_LABEL,
     BLUEFIN_ONEOFF_LABEL,
     BLUEFIN_PART_OF_LABEL,
@@ -165,7 +165,7 @@ def test_create_bundle(
         if api in [BLUEFIN_API_V1]:
             # Assert runtime resources
             assert_list_deployments(
-                mocked_client, mocked_zipfile, label_selector=BLUEFIN_APP_LABEL, resource_api=BLUEFIN_API_V1
+                mocked_client, mocked_zipfile, label_selector=BLUEFIN_LABEL, resource_api=BLUEFIN_API_V1
             )
             assert_list_deployments(
                 mocked_client, mocked_zipfile, label_selector=BLUEFIN_PART_OF_LABEL, resource_api=BLUEFIN_API_V1
@@ -175,7 +175,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=BLUEFIN_APP_LABEL,
+                label_selector=BLUEFIN_LABEL,
                 resource_api=BLUEFIN_API_V1,
                 since_seconds=since_seconds,
             )
@@ -205,7 +205,7 @@ def test_create_bundle(
             )
 
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=BLUEFIN_APP_LABEL, resource_api=BLUEFIN_API_V1
+                mocked_client, mocked_zipfile, label_selector=BLUEFIN_LABEL, resource_api=BLUEFIN_API_V1
             )
             assert_list_replica_sets(
                 mocked_client, mocked_zipfile, label_selector=BLUEFIN_ONEOFF_LABEL, resource_api=BLUEFIN_API_V1
