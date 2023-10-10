@@ -142,7 +142,7 @@ def load_iotedge_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Return raw output from the metrics API.",
         )
-        
+
     with self.argument_context("edge init") as context:
         context.argument(
             "cluster_name",
@@ -291,7 +291,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_location_resource_group",
             options_list=["--custom-location-resource-group", "--clrg"],
-            help="Resource group for custom location. If not provided, asset resource group will be used.",
+            help="Resource group for custom location.",
         )
         context.argument(
             "custom_location_subscription",
@@ -451,6 +451,15 @@ def load_iotedge_arguments(self, _):
             "sampling_interval",
             options_list=["--sampling-interval", "--si"],
             help="Custom sampling interval (in milliseconds).",
+        )
+
+    with self.argument_context("edge asset query") as context:
+        context.argument(
+            "enabled",
+            options_list=["--enabled"],
+            help="State of asset.",
+            arg_group="Additional Info",
+            arg_type=get_three_state_flag(),
         )
 
     with self.argument_context("edge asset data-point") as context:

@@ -12,7 +12,7 @@ from knack.log import get_logger
 from azure.cli.core.azclierror import InvalidArgumentValueError, ResourceNotFoundError, RequiredArgumentMissingError
 from azure.cli.core.commands.client_factory import get_subscription_id
 
-from ..common.embedded_cli import EmbeddedCLI
+from .util.embedded_cli import EmbeddedCLI
 from .util import assemble_nargs_to_dict, build_query
 from .common import ResourceTypeMapping
 
@@ -30,9 +30,9 @@ def create_asset(
     endpoint_profile: str,
     asset_type: Optional[str] = None,
     cluster_name: Optional[str] = None,
-    # cluster_resource_group: Optional[str] = None, TODO: check if you can have multiple same name cluster within a sub
+    cluster_resource_group: Optional[str] = None,
     cluster_subscription: Optional[str] = None,
-    custom_location: Optional[str] = None,
+    custom_location_name: Optional[str] = None,
     custom_location_resource_group: Optional[str] = None,
     custom_location_subscription: Optional[str] = None,
     data_points: Optional[List[str]] = None,
@@ -60,10 +60,11 @@ def create_asset(
     subscription = get_subscription_id(cmd.cli_ctx)
     custom_location_id = _check_asset_cluster_and_custom_location(
         subscription=subscription,
-        custom_location_name=custom_location,
+        custom_location_name=custom_location_name,
         custom_location_resource_group=custom_location_resource_group,
         custom_location_subscription=custom_location_subscription,
         cluster_name=cluster_name,
+        cluster_resource_group=cluster_resource_group,
         cluster_subscription=cluster_subscription
     )
     resource_type = "Microsoft.DeviceRegistry/assets"
@@ -157,9 +158,9 @@ def list_assets(
 def query_assets(
     cmd,
     asset_type: Optional[str] = None,
-    custom_location: Optional[str] = None,
+    custom_location_name: Optional[str] = None,
     description: Optional[str] = None,
-    disabled: bool = False,
+    enabled: bool = False,
     documentation_uri: Optional[str] = None,
     endpoint_profile: Optional[str] = None,
     external_asset_id: Optional[str] = None,
@@ -176,33 +177,33 @@ def query_assets(
     subscription = get_subscription_id(cmd.cli_ctx)
     query = ""
     if asset_type:
-        query += f"| where properties.assetType =~ '{asset_type}'"
-    if custom_location:  # ##
-        query += f"| where extendedLocation contains '{asset_type}'"
+        query += f"| where properties.assetType =~ \"{asset_type}\""
+    if custom_location_name:  # ##
+        query += f"| where extendedLocation.name contains \"{custom_location_name}\""
     if description:
-        query += f"| where properties.description =~ '{description}'"
-    if disabled:  # ###
-        query += f"| where properties.enabled == {not disabled}"
+        query += f"| where properties.description =~ \"{description}\""
+    if enabled:
+        query += f"| where properties.enabled == {enabled}"
     if documentation_uri:
-        query += f"| where properties.documentationUri =~ '{documentation_uri}'"
+        query += f"| where properties.documentationUri =~ \"{documentation_uri}\""
     if endpoint_profile:
-        query += f"| where properties.connectivityProfileUri =~ '{endpoint_profile}'"
+        query += f"| where properties.connectivityProfileUri =~ \"{endpoint_profile}\""
     if external_asset_id:
-        query += f"| where properties.externalAssetId =~ '{external_asset_id}'"
+        query += f"| where properties.externalAssetId =~ \"{external_asset_id}\""
     if hardware_revision:
-        query += f"| where properties.hardwareRevision =~ '{hardware_revision}'"
+        query += f"| where properties.hardwareRevision =~ \"{hardware_revision}\""
     if manufacturer:
-        query += f"| where properties.manufacturer =~ '{manufacturer}'"
+        query += f"| where properties.manufacturer =~ \"{manufacturer}\""
     if manufacturer_uri:
-        query += f"| where properties.manufacturerUri =~ '{manufacturer_uri}'"
+        query += f"| where properties.manufacturerUri =~ \"{manufacturer_uri}\""
     if model:
-        query += f"| where properties.model =~ '{model}'"
+        query += f"| where properties.model =~ \"{model}\""
     if product_code:
-        query += f"| where properties.productCode =~ '{product_code}'"
+        query += f"| where properties.productCode =~ \"{product_code}\""
     if serial_number:
-        query += f"| where properties.serialNumber =~ '{serial_number}'"
+        query += f"| where properties.serialNumber =~ \"{serial_number}\""
     if software_revision:
-        query += f"| where properties.softwareRevision =~ '{software_revision}'"
+        query += f"| where properties.softwareRevision =~ \"{software_revision}\""
 
     return build_query(
         subscription_id=subscription,
@@ -210,6 +211,7 @@ def query_assets(
         location=location,
         resource_group=resource_group_name,
         type=ResourceTypeMapping.asset.value,
+        additional_project="extendedLocation"
     )
 
 
@@ -517,12 +519,14 @@ def _build_default_configuration(
     return json.dumps(defaults)
 
 
+# TODO: unit test + simplify
 def _check_asset_cluster_and_custom_location(
     subscription,
     custom_location_name: str = None,
     custom_location_resource_group: str = None,
     custom_location_subscription: str = None,
     cluster_name: str = None,
+    cluster_resource_group: str = None,
     cluster_subscription: str = None,
 ):
     if not any([cluster_name, custom_location_name]):
@@ -537,13 +541,20 @@ def _check_asset_cluster_and_custom_location(
     # provide cluster name - start with checking for the cluster (if can)
     if cluster_name:
         query = f'| where name =~ "{cluster_name}" '
+        if cluster_resource_group:
+            query += f'| where resourceGroup =~ "{cluster_resource_group}" '
         cluster_query_result = build_query(
             cluster_subscription,
             custom_query=query,
             type=ResourceTypeMapping.connected_cluster.value,
         )
         if len(cluster_query_result) == 0:
-            raise Exception(f"Cluster {cluster_name} does not exist")
+            raise Exception(f"Cluster {cluster_name} not found.")
+        if len(cluster_query_result) > 1:
+            raise Exception(
+                f"Found {len(cluster_query_result)} clusters with the name {cluster_name}. Please "
+                "provide the resource group for the cluster."
+            )
         cluster = cluster_query_result[0]
         # reset query so the location query will ensure that the cluster is associated
         query = f'| where hostResourceId =~ "{cluster["id"]}" '

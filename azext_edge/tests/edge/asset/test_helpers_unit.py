@@ -8,7 +8,7 @@ import json
 import pytest
 
 from azure.cli.core.azclierror import InvalidArgumentValueError, RequiredArgumentMissingError
-from azext_edge.common.utility import assemble_nargs_to_dict
+from ....edge.util.common import assemble_nargs_to_dict
 
 from ....edge.commands_assets import (
     _build_asset_sub_point,

@@ -8,19 +8,19 @@ import pytest
 
 from ....edge.commands_assets import list_assets
 
-from . import EMBEDDED_CLI_ASSETS_PATH
+from . import ASSETS_PATH
 from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
 
 @pytest.mark.parametrize("embedded_cli_client", [{
-    "path": EMBEDDED_CLI_ASSETS_PATH,
+    "path": ASSETS_PATH,
     "as_json_result": {"value": {"result": generate_generic_id()}}
-}], indirect=True)
+}], ids=["cli"], indirect=True)
 @pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
-def test_list_assets(fixture_cmd, embedded_cli_client, request, resource_group):
+def test_list_assets(mocked_cmd, embedded_cli_client, request, resource_group):
     result = list_assets(
-        cmd=fixture_cmd,
+        cmd=mocked_cmd,
         resource_group_name=resource_group
     )
     assert result == next(embedded_cli_client.as_json.side_effect)["value"]

@@ -10,7 +10,7 @@ import pytest
 from ....edge.commands_assets import update_asset
 
 from . import (
-    EMBEDDED_CLI_ASSETS_PATH,
+    ASSETS_PATH,
     MINIMUM_ASSET,
     FULL_ASSET
 )
@@ -19,14 +19,14 @@ from ...generators import generate_generic_id
 
 
 @pytest.mark.parametrize("embedded_cli_client", [{
-    "path": EMBEDDED_CLI_ASSETS_PATH,
+    "path": ASSETS_PATH,
     "as_json_result": {"result": generate_generic_id()}
-}], indirect=True)
+}], ids=["cli"], indirect=True)
 @pytest.mark.parametrize("show_asset_fixture", [MINIMUM_ASSET, FULL_ASSET], indirect=True)
 @pytest.mark.parametrize("asset_helpers_fixture", [{
     "process_asset_sub_points": generate_generic_id(),
     "update_properties": generate_generic_id(),
-}], indirect=True)
+}], ids=["update helpers"], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
     {
@@ -62,13 +62,13 @@ from ...generators import generate_generic_id
     },
 ])
 def test_update_asset(
-    mocker, fixture_cmd, embedded_cli_client, show_asset_fixture, asset_helpers_fixture, req
+    mocker, mocked_cmd, embedded_cli_client, show_asset_fixture, asset_helpers_fixture, req
 ):
     patched_sp, patched_up = asset_helpers_fixture
     # Required params
     asset_name = generate_generic_id()
     result = update_asset(
-        cmd=fixture_cmd,
+        cmd=mocked_cmd,
         asset_name=asset_name,
         **req
     )

@@ -7,9 +7,6 @@
 import pytest
 import os
 
-from azure.cli.core.commands import AzCliCommand
-from azure.cli.core.mock import DummyCli
-
 
 # Sets current working directory to the directory of the executing file
 @pytest.fixture
@@ -17,32 +14,29 @@ def set_cwd(request):
     os.chdir(os.path.dirname(os.path.abspath(str(request.fspath))))
 
 
-# Fixtures for unit tests
-@pytest.fixture()
-def fixture_cmd(mocker):
-    cli = DummyCli()
-    cli.loader = mocker.MagicMock()
-    cli.loader.cli_ctx = cli
-    cli.data['subscription_id'] = "mySub1"
-
-    def test_handler1():
-        pass
-
-    return AzCliCommand(cli.loader, "iot-extension command", test_handler1)
-
-
 @pytest.fixture
 def embedded_cli_client(mocker, request):
     assert request and request.param
     assert "path" in request.param
     assert "as_json_result" in request.param
-    patched_cli = mocker.patch(request.param["path"])
+    patched_cli = mocker.patch(request.param["path"] + ".cli")
     # invoke raises the error
     # as_json returns the value - set 2 since side_effect becomes an iterator
     patched_cli.as_json.side_effect = [request.param["as_json_result"]] * 2
 
-    # error handling to correct type
-    # patched_handler = mocker.patch("azext_iot.devices.commands_group.handle_service_exception")
+    # error handling to correct type - TODO future error handling
+    # patched_handler = mocker.patch(request.param["path"] + "._service_exception")
     # patched_handler.side_effect = CLIError("error")
 
     yield patched_cli
+
+
+@pytest.fixture
+def build_query_fixture(mocker, request):
+    assert request and request.param
+    assert "path" in request.param
+    assert "result" in request.param
+    patched_build_query = mocker.patch(request.param["path"] + ".build_query")
+    patched_build_query.return_value = request.param["result"]
+
+    yield patched_build_query

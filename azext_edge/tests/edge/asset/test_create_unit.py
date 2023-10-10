@@ -9,25 +9,30 @@ import pytest
 
 from ....edge.commands_assets import create_asset
 
-from . import EMBEDDED_CLI_ASSETS_PATH
+from . import ASSETS_PATH
 from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
 
 @pytest.mark.parametrize("embedded_cli_client", [{
-    "path": EMBEDDED_CLI_ASSETS_PATH,
+    "path": ASSETS_PATH,
     "as_json_result": {"result": generate_generic_id()}
-}], indirect=True)
+}], ids=["cli"], indirect=True)
 @pytest.mark.parametrize("asset_helpers_fixture", [{
     "process_asset_sub_points": generate_generic_id(),
     "update_properties": generate_generic_id(),
-}], indirect=True)
+    "check_asset_cluster_and_custom_location": generate_generic_id(),
+}], ids=["create helpers"], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
     {
         "asset_type": generate_generic_id(),
+        "custom_location_name": generate_generic_id(),
         "custom_location_resource_group": generate_generic_id(),
         "custom_location_subscription": generate_generic_id(),
+        "cluster_name": generate_generic_id(),
+        "cluster_resource_group": generate_generic_id(),
+        "cluster_subscription": generate_generic_id(),
         "data_points": generate_generic_id(),
         "description": generate_generic_id(),
         "disabled": True,
@@ -59,22 +64,13 @@ from ...generators import generate_generic_id
         "ev_queue_size": 888,
     },
 ])
-def test_create_asset(fixture_cmd, embedded_cli_client, asset_helpers_fixture, req):
-    patched_sp, patched_up = asset_helpers_fixture
+def test_create_asset(mocked_cmd, embedded_cli_client, asset_helpers_fixture, req):
+    patched_cap, patched_sp, patched_up = asset_helpers_fixture
     # Required params
     asset_name = generate_generic_id()
     resource_group_name = generate_generic_id()
     endpoint_profile = generate_generic_id()
-    custom_location = generate_generic_id()
     location = req.get("location")
-    custom_location_subscription = req.get(
-        "custom_location_subscription",
-        fixture_cmd.cli_ctx.data['subscription_id']
-    )
-    custom_location_resource_group = req.get(
-        "custom_location_resource_group",
-        resource_group_name
-    )
 
     # no location triggers rg call
     if not location:
@@ -84,11 +80,10 @@ def test_create_asset(fixture_cmd, embedded_cli_client, asset_helpers_fixture, r
         embedded_cli_client.as_json.side_effect = as_json_results
 
     result = create_asset(
-        cmd=fixture_cmd,
+        cmd=mocked_cmd,
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         endpoint_profile=endpoint_profile,
-        custom_location=custom_location,
         **req
     )
     assert result == next(embedded_cli_client.as_json.side_effect)
@@ -105,8 +100,12 @@ def test_create_asset(fixture_cmd, embedded_cli_client, asset_helpers_fixture, r
     assert request_body["location"] == location
     assert request_body["tags"] == req.get("tags")
     assert request_body["extendedLocation"]["type"] == "CustomLocation"
-    assert request_body["extendedLocation"]["name"] == f"/subscriptions/{custom_location_subscription}/resourcegroups"\
-        f"/{custom_location_resource_group}/providers/microsoft.extendedlocation/customlocations/{custom_location}"
+    assert request_body["extendedLocation"]["name"] == patched_cap.return_value
+
+    # Extended location helper call
+    for arg in patched_cap.call_args.kwargs:
+        expected_arg = mocked_cmd.cli_ctx.data['subscription_id'] if arg == "subscription" else req.get(arg)
+        assert patched_cap.call_args.kwargs[arg] == expected_arg
 
     # Properties
     request_props = request_body["properties"]

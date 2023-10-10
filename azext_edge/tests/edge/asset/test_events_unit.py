@@ -14,7 +14,7 @@ from ....edge.commands_assets import (
     remove_asset_event
 )
 from . import (
-    EMBEDDED_CLI_ASSETS_PATH,
+    ASSETS_PATH,
     MINIMUM_ASSET,
     FULL_ASSET
 )
@@ -26,9 +26,9 @@ FULL_EVENT = FULL_ASSET["properties"]["events"][0]
 
 
 @pytest.mark.parametrize("embedded_cli_client", [{
-    "path": EMBEDDED_CLI_ASSETS_PATH,
+    "path": ASSETS_PATH,
     "as_json_result": {"properties": {"events": {"result": generate_generic_id()}}}
-}], indirect=True)
+}], ids=["cli"], indirect=True)
 @pytest.mark.parametrize("show_asset_fixture", [MINIMUM_ASSET, FULL_ASSET], indirect=True)
 @pytest.mark.parametrize("capability_id", [None, generate_generic_id()])
 @pytest.mark.parametrize("name", [None, generate_generic_id()])
@@ -37,7 +37,7 @@ FULL_EVENT = FULL_ASSET["properties"]["events"][0]
 @pytest.mark.parametrize("sampling_interval", [None, 33])
 @pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
 def test_add_asset_event(
-    fixture_cmd,
+    mocked_cmd,
     embedded_cli_client,
     show_asset_fixture,
     capability_id,
@@ -50,7 +50,7 @@ def test_add_asset_event(
     asset_name = generate_generic_id()
     event_notifier = generate_generic_id()
     result_events = add_asset_event(
-        cmd=fixture_cmd,
+        cmd=mocked_cmd,
         asset_name=asset_name,
         event_notifier=event_notifier,
         capability_id=capability_id,
@@ -91,10 +91,10 @@ def test_add_asset_event(
 
 @pytest.mark.parametrize("show_asset_fixture", [MINIMUM_ASSET, FULL_ASSET], indirect=True)
 @pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
-def test_list_asset_events(fixture_cmd, show_asset_fixture, resource_group_name):
+def test_list_asset_events(mocked_cmd, show_asset_fixture, resource_group_name):
     asset_name = generate_generic_id()
     result_obj = list_asset_events(
-        cmd=fixture_cmd,
+        cmd=mocked_cmd,
         asset_name=asset_name,
         resource_group_name=resource_group_name
     )
@@ -107,9 +107,9 @@ def test_list_asset_events(fixture_cmd, show_asset_fixture, resource_group_name)
 
 
 @pytest.mark.parametrize("embedded_cli_client", [{
-    "path": EMBEDDED_CLI_ASSETS_PATH,
+    "path": ASSETS_PATH,
     "as_json_result": {"properties": {"events": {"result": generate_generic_id()}}}
-}], indirect=True)
+}], ids=["cli"], indirect=True)
 @pytest.mark.parametrize("show_asset_fixture", [FULL_ASSET], indirect=True)
 @pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
 @pytest.mark.parametrize("event_notifier, name", [
@@ -121,11 +121,11 @@ def test_list_asset_events(fixture_cmd, show_asset_fixture, resource_group_name)
     (None, generate_generic_id()),
 ])
 def test_remove_asset_event(
-    fixture_cmd, embedded_cli_client, show_asset_fixture, resource_group_name, event_notifier, name
+    mocked_cmd, embedded_cli_client, show_asset_fixture, resource_group_name, event_notifier, name
 ):
     asset_name = generate_generic_id()
     result_obj = remove_asset_event(
-        cmd=fixture_cmd,
+        cmd=mocked_cmd,
         asset_name=asset_name,
         event_notifier=event_notifier,
         name=name,
@@ -150,11 +150,11 @@ def test_remove_asset_event(
 
 
 @pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
-def test_remove_asset_event_error(fixture_cmd, resource_group_name):
+def test_remove_asset_event_error(mocked_cmd, resource_group_name):
     asset_name = generate_generic_id()
     with pytest.raises(RequiredArgumentMissingError) as e:
         remove_asset_event(
-            cmd=fixture_cmd,
+            cmd=mocked_cmd,
             asset_name=asset_name,
             resource_group_name=resource_group_name
         )

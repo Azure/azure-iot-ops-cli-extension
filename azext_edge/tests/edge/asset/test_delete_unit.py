@@ -8,17 +8,17 @@ import pytest
 
 from ....edge.commands_assets import delete_asset
 
-from . import EMBEDDED_CLI_ASSETS_PATH
+from . import ASSETS_PATH
 from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
 
 @pytest.mark.parametrize("embedded_cli_client", [{
-    "path": EMBEDDED_CLI_ASSETS_PATH,
+    "path": ASSETS_PATH,
     "as_json_result": {"result": generate_generic_id()}
-}], indirect=True)
+}], ids=["cli"], indirect=True)
 @pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
-def test_delete_asset(fixture_cmd, embedded_cli_client, resource_group):
+def test_delete_asset(mocked_cmd, embedded_cli_client, resource_group):
     asset_name = generate_generic_id()
     list_rg = generate_generic_id()
     if not resource_group:
@@ -31,7 +31,7 @@ def test_delete_asset(fixture_cmd, embedded_cli_client, resource_group):
         embedded_cli_client.as_json.side_effect = as_json_results
 
     result = delete_asset(
-        cmd=fixture_cmd,
+        cmd=mocked_cmd,
         asset_name=asset_name,
         resource_group_name=resource_group
     )

@@ -103,12 +103,36 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Create an asset.
+        long-summary: |
+                      Custom location or cluster name can be provided. This command will check for the
+                      existance of the associated custom location and cluster and ensure that both are
+                      set up correctly with the microsoft.deviceregistry.assets extension.
 
         examples:
-        - name: Create an asset.
+        - name: Create an asset using the given custom location.
           text: >
             az edge asset create -n {asset_name} -g {resouce_group} --custom-location {custom_location}
             --endpoint-profile {endpoint_profile}
+
+        - name: Create an asset using the given custom location and resource group for the custom location. The resource group should be included if there are multiple custom locations with the same name within a subscription.
+          text: >
+            az edge asset create -n {asset_name} -g {resouce_group} --custom-location {custom_location}
+            --custom-location-resource-group {custom_location_resource_group}--endpoint-profile {endpoint_profile}
+
+        - name: Create an asset using the given cluster name.  The resource group should be included if there are multiple clusters with the same name within a subscription.
+          text: >
+            az edge asset create -n {asset_name} -g {resouce_group} --cluster-name {cluster_name}
+            --endpoint-profile {endpoint_profile}
+
+        - name: Create an asset using the given cluster name. Note that if multiple custom locations are associated with the cluster, the first custom location will be picked.
+          text: >
+            az edge asset create -n {asset_name} -g {resouce_group} --cluster-name {cluster_name}
+            --endpoint-profile {endpoint_profile}
+
+        - name: Create an asset using the given cluster name and custom location.
+          text: >
+            az edge asset create -n {asset_name} -g {resouce_group} --cluster-name {cluster_name}
+            --custom-location {custom_location}
 
         - name: Create an asset with custom data point and event defaults.
           text: >
@@ -134,11 +158,9 @@ def load_iotedge_help():
             --event 'event_notifier'={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
             --serial-number {serial_number}
 
-        - name: Create a disabled asset with two data points and specify a custom location found in a seperate subscription and
-                resource group.
+        - name: Create a disabled asset with two data points.
           text: >
             az edge asset create -n {asset_name} -g {resouce_group} --custom-location {custom_location}
-            --custom-location-resource-group {custom_location_resource_group} --custom-location-subscription {custom_location_subscription}
             --endpoint-profile {endpoint_profile} --disabled --data-point 'capability_id'={capability_id}
             'data_source'={data_source} 'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval}
             'queue_size'={queue_size} --data-point 'data_source'={data_source}
@@ -169,7 +191,7 @@ def load_iotedge_help():
         examples:
         - name: Query for assets that are disabled within a given resource group.
           text: >
-            az edge asset query -g {resouce_group} --disabled
+            az edge asset query -g {resouce_group} --enabled False
         - name: Query for assets that have the given model, manufacturer, and serial number.
           text: >
             az edge asset query --model {model} --manufacturer {manufacturer} --serial-number {serial_number}

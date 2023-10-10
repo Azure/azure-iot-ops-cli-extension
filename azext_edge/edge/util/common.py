@@ -13,7 +13,7 @@ import json
 import os
 from typing import List, Dict, Optional
 from knack.log import get_logger
-from ...common.embedded_cli import EmbeddedCLI
+from .embedded_cli import EmbeddedCLI
 
 
 cli = EmbeddedCLI()
@@ -50,6 +50,7 @@ def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
     return result
 
 
+# TODO: unit test
 def build_query(subscription_id: str, custom_query: Optional[str] = None, **kwargs):
     rest_cmd = "rest --method POST --url '/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01' "
     payload = {"subscriptions": [subscription_id], "query": "Resources ", "options": {}}
@@ -64,6 +65,8 @@ def build_query(subscription_id: str, custom_query: Optional[str] = None, **kwar
     if custom_query:
         payload["query"] += custom_query
     payload["query"] += "| project id, location, name, resourceGroup, properties, tags, type, subscriptionId"
+    if kwargs.get("additional_project"):
+        payload["query"] += f', {kwargs.get("additional_project")}'
 
     return _process_query(rest_cmd, payload)
 

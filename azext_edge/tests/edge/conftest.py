@@ -39,6 +39,7 @@ def mocked_get_subscription_id(mocker):
 @pytest.fixture
 def mocked_cmd(mocker):
     az_cli_mock = mocker.patch("azure.cli.core.AzCli", autospec=True)
+    az_cli_mock.data = {"subscription_id": "mySub1"}
     config = {"cli_ctx": az_cli_mock}
     patched = mocker.patch("azure.cli.core.commands.AzCliCommand", autospec=True, **config)
     yield patched

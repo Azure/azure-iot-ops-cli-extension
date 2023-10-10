@@ -9,7 +9,7 @@ import os
 import pytest
 from knack.util import CLIError
 from azure.cli.core.azclierror import CLIInternalError
-from ...common.embedded_cli import EmbeddedCLI
+from ...edge.util.embedded_cli import EmbeddedCLI
 
 
 class TestCliInit(object):
