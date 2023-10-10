@@ -83,6 +83,7 @@ def check_e4k_post_deployment(
         E4kResourceKinds.DIAGNOSTIC_SERVICE: evaluate_diagnostics_service,
         E4kResourceKinds.MQTT_BRIDGE_CONNECTOR: evaluate_mqtt_bridge_connectors,
         E4kResourceKinds.DATALAKE_CONNECTOR: evaluate_datalake_connectors,
+        E4kResourceKinds.KAFKA_CONNECTOR: evaluate_kafka_connectors
     }
 
     return check_post_deployment(
@@ -1365,6 +1366,7 @@ def evaluate_datalake_connectors(
 def evaluate_kafka_connectors(
     namespace: str,
     as_list: bool = False,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
 ):
     def display_connector_info(check_manager: CheckManager, target: str, connector: Dict[str, Any], padding: tuple):
         metadata = connector.get("metadata", {})
@@ -1397,7 +1399,7 @@ def evaluate_kafka_connectors(
         check_manager.add_display(
             target_name=target,
             display=Padding(
-                f"\n- Connector {{[bright_blue]{connector_name}[/bright_blue]}} status {{{_decorate_resource_status(connector_status_level)}}}.{connector_status_text}",
+                f"\n- Connector {{[bright_blue]{connector_name}[/bright_blue]}} status {{{decorate_resource_status(connector_status_level)}}}.{connector_status_text}",
                 padding,
             ),
         )
