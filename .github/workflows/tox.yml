@@ -36,7 +36,8 @@ jobs:
     steps:
       - name: Run code coverage
         run: |
-          pytest --cov=azext_edge --cov-report=json --cov-report=html .\azext_edge\tests\
+          python -m pip install tox
+          tox -e coverage
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: Zip code coverage HTML
