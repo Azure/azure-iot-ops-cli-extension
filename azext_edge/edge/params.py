@@ -8,7 +8,7 @@
 CLI parameter definitions.
 """
 
-from azure.cli.core.commands.parameters import get_three_state_flag
+from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type
 from knack.arguments import CaseInsensitiveList
 
 from .common import DeployablePasVersions, SupportForEdgeServiceType
@@ -16,6 +16,7 @@ from .providers.edge_api import E4kResourceKinds
 from .providers.orchestration.pas_versions import EdgeServiceMoniker
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.bluefin import BluefinResourceKinds
+from ._validators import validate_namespace
 
 
 def load_iotedge_arguments(self, _):
@@ -37,6 +38,7 @@ def load_iotedge_arguments(self, _):
             help="K8s cluster namespace the command should operate against. "
             "If no namespace is provided the kubeconfig current_context namespace will be used. "
             "If not defined, the fallback value `default` will be used. ",
+            validator=validate_namespace
         )
 
     with self.argument_context("edge support") as context:
@@ -64,14 +66,14 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "pre_deployment_checks",
             options_list=["--pre"],
-            help="Run only pre-requisite checks to determine if the minimum "
+            help="Run pre-requisite checks to determine if the minimum "
             "requirements of an edge service deployment are fulfilled.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
             "post_deployment_checks",
             options_list=["--post"],
-            help="Run only post-deployment checks.",
+            help="Run post-deployment checks.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -108,12 +110,9 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "detail_level",
             options_list=["--detail-level"],
-            choices=[
-                ResourceOutputDetailLevel.summary.value,
-                ResourceOutputDetailLevel.detail.value,
-                ResourceOutputDetailLevel.verbose.value,
-            ],
-            type=int,
+            default=ResourceOutputDetailLevel.summary.value,
+            choices=ResourceOutputDetailLevel.list(),
+            arg_type=get_enum_type(ResourceOutputDetailLevel),
             help="Controls the level of detail displayed in the check output. "
             "Choose 0 for a summary view, (minimal output), "
             "1 for a detailed view, (more comprehensive information) "

@@ -13,7 +13,7 @@ on:
         description: |
           Post-build actions:
           Select 'upload-wheel' to upload wheel to storage.
-          Select 'prod-release' to draft a github release, upload wheel, and update the private index
+          Select 'prod-release' to draft a github release and then upload wheel
         type: choice
         required: true
         default: "none"
@@ -47,7 +47,7 @@ jobs:
           if [ "${{ inputs.release_strategy }}" == "upload-wheel"]; then
             echo "Wheel will be uploaded to storage account."
           elif [ "${{ inputs.release_strategy }}" == "prod-release"]; then
-            echo "Wheel will be uploaded to storage account and published to the private index."
+            echo "Wheel will be uploaded to storage account after drafting a github release"
           fi
   # occurs when release_strategy is prod-release
   draft_github_release:
@@ -60,10 +60,4 @@ jobs:
     needs: [approval]
     if: needs.approval.result == 'success' && inputs.release_strategy != 'none'
     uses: ./.github/workflows/upload_wheel.yml
-    secrets: inherit
-  # occurs when previous task succeeds and release_strategy is 'prod-release'
-  update_index:
-    needs: [approval, upload_wheel]
-    if: needs.approval.result == 'success' && needs.upload_wheel.outputs.upload_success == 'true' && inputs.release_strategy == 'prod-release'
-    uses: ./.github/workflows/update_private_index.yml
     secrets: inherit
