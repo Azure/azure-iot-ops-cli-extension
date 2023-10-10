@@ -89,7 +89,8 @@ def check_e4k_post_deployment(
         E4kResourceKinds.DIAGNOSTIC_SERVICE: evaluate_diagnostics_service,
         E4kResourceKinds.MQTT_BRIDGE_CONNECTOR: evaluate_mqtt_bridge_connectors,
         E4kResourceKinds.DATALAKE_CONNECTOR: evaluate_datalake_connectors,
-        E4kResourceKinds.KAFKA_CONNECTOR: evaluate_kafka_connectors
+        E4kResourceKinds.KAFKA_CONNECTOR: evaluate_kafka_connectors,
+        E4kResourceKinds.IOT_HUB_CONNECTOR: evaluate_hub_connectors,
     }
 
     return check_post_deployment(
@@ -1383,10 +1384,11 @@ def evaluate_kafka_connectors(
 
         clientIdPrefix = spec.get("clientIdPrefix")
         instances = spec.get("instances")
-        local_broker = spec.get("localBrokerConnection")
-        kafka_broker = spec.get("kafkaConnection")
         logLevel = spec.get("logLevel")
 
+        local_broker = spec.get("localBrokerConnection", {})
+        kafka_broker = spec.get("kafkaConnection", {})
+        
         connector_eval_status = (
             CheckTaskStatus.error.value
             if not all(
@@ -1423,47 +1425,49 @@ def evaluate_kafka_connectors(
 
         broker_detail_padding = (0, 0, 0, detail_padding[3] + 4)
 
-        # local broker endpoint
-        local_broker_endpoint = local_broker.get("endpoint")
-        check_manager.add_display(
-            target_name=target,
-            display=Padding(
-                f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
-                detail_padding,
-            ),
-        )
+        if local_broker:
+            # local broker endpoint
+            local_broker_endpoint = local_broker.get("endpoint")
+            check_manager.add_display(
+                target_name=target,
+                display=Padding(
+                    f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
+                    detail_padding,
+                ),
+            )
 
-        local_broker_auth = next(iter(local_broker.get("authentication")))
-        local_broker_tls = local_broker.get("tls", {}).get("tlsEnabled", False)
+            local_broker_auth = next(iter(local_broker.get("authentication")))
+            local_broker_tls = local_broker.get("tls", {}).get("tlsEnabled", False)
 
-        check_manager.add_display(
-            target_name=target,
-            display=Padding(
-                f"Auth: [bright_blue]{local_broker_auth}[/bright_blue] TLS: [bright_blue]{local_broker_tls}[/bright_blue]",
-                broker_detail_padding,
-            ),
-        )
+            check_manager.add_display(
+                target_name=target,
+                display=Padding(
+                    f"Auth: [bright_blue]{local_broker_auth}[/bright_blue] TLS: [bright_blue]{local_broker_tls}[/bright_blue]",
+                    broker_detail_padding,
+                ),
+            )
 
         # kafka endpoint
-        kafka_broker_endpoint = kafka_broker.get("endpoint")
-        check_manager.add_display(
-            target_name=target,
-            display=Padding(
-                f"Remote Broker Connection: [bright_blue]{kafka_broker_endpoint}[/bright_blue]",
-                detail_padding,
-            ),
-        )
+        if kafka_broker:
+            kafka_broker_endpoint = kafka_broker.get("endpoint")
+            check_manager.add_display(
+                target_name=target,
+                display=Padding(
+                    f"Remote Broker Connection: [bright_blue]{kafka_broker_endpoint}[/bright_blue]",
+                    detail_padding,
+                ),
+            )
 
-        kafka_broker_auth = next(iter(kafka_broker.get("authentication")))
-        kafka_broker_tls = kafka_broker.get("tls", {}).get("tlsEnabled", False)
+            kafka_broker_auth = next(iter(kafka_broker.get("authentication")))
+            kafka_broker_tls = kafka_broker.get("tls", {}).get("tlsEnabled", False)
 
-        check_manager.add_display(
-            target_name=target,
-            display=Padding(
-                f"Auth: [bright_blue]{kafka_broker_auth}[/bright_blue] TLS: [bright_blue]{kafka_broker_tls}[/bright_blue]",
-                broker_detail_padding,
-            ),
-        )
+            check_manager.add_display(
+                target_name=target,
+                display=Padding(
+                    f"Auth: [bright_blue]{kafka_broker_auth}[/bright_blue] TLS: [bright_blue]{kafka_broker_tls}[/bright_blue]",
+                    broker_detail_padding,
+                ),
+            )
 
     def display_topic_maps(check_manager: CheckManager, target: str, topic_maps: List[Dict[str, Any]], padding: tuple):
         # Show warning if no topic maps
@@ -1659,6 +1663,8 @@ def evaluate_kafka_connectors(
             message="No Kafka Connector resources detected",
             padding=connector_padding
         )
+    else:
+        check_manager.set_target_conditions(target_name=connector_target, conditions=["status", "valid(spec)"])
 
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
         kind=E4kResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP, namespace=namespace
@@ -1709,6 +1715,39 @@ def evaluate_kafka_connectors(
         connectors=connector_resources
     )
 
+    return check_manager.as_dict(as_list)
+
+
+def evaluate_hub_connectors(
+    namespace: str,
+    as_list: bool = False,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+):
+    check_manager = CheckManager(
+        check_name="evalIoTHubConnectors",
+        check_desc="Evaluate IoT Hub Connectors",
+        namespace=namespace,
+    )
+
+    connector_padding = (0, 0, 0, 8)
+    route_map_padding = (0, 0, 0, 12)
+
+    # These checks are purely informational, so mark as skipped
+    connector_target = "iothubconnectors.az-edge.com"
+    check_manager.add_target(target_name=connector_target)
+
+    connector_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.IOT_HUB_CONNECTOR, namespace=namespace)
+    connector_resources: List[dict] = connector_objects.get("items", [])
+    
+    if not connector_resources:
+         _mark_connector_target_as_skipped(
+            check_manager=check_manager,
+            target=connector_target,
+            message="No IoT Hub Connector resources detected",
+            padding=connector_padding
+        )
+    else:
+        import pdb; pdb.set_trace()
     return check_manager.as_dict(as_list)
 
 

@@ -19,6 +19,7 @@ from azext_edge.edge.providers.check.e4k import (
     evaluate_diagnostics_service,
     evaluate_mqtt_bridge_connectors,
     evaluate_datalake_connectors,
+    evaluate_kafka_connectors,
 )
 from azext_edge.edge.providers.check.bluefin import (
     evaluate_datasets,
@@ -544,14 +545,14 @@ def test_diagnostic_service_checks(
                 [
                     ("status", "success"),
                     (
-                        "value/localBrokerConnection/authentication/x509",
+                        "value/spec/localBrokerConnection/authentication/x509",
                         "localbrokerauth",
                     ),
                     (
-                        "value/remoteBrokerConnection/authentication/kubernetes",
+                        "value/spec/remoteBrokerConnection/authentication/kubernetes",
                         "remotebrokerauth",
                     ),
-                    ("value/tls/tlsEnabled", True),
+                    ("value/spec/tls/tlsEnabled", True),
                 ],
             ],
         ),
@@ -601,8 +602,8 @@ def test_mqtt_checks(
                 [("status", "success"), ("kind", "datalakeconnector")],
                 [
                     ("status", "success"),
-                    ("value/instances", 2),
-                    ("value/target/datalakeStorage/endpoint", "test_endpoint"),
+                    ("value/spec/instances", 2),
+                    ("value/spec/target/datalakeStorage/endpoint", "test_endpoint"),
                 ],
             ],
         ),
@@ -992,6 +993,72 @@ def test_dataset_checks(
     assert_conditions(target, conditions)
     assert_evaluations(target, evaluations)
 
+
+@pytest.mark.parametrize(
+        "connector, topic_map, conditions, evaluations",
+        [
+                (
+                    # kafka_connector
+                    _generate_resource_stub(
+                        metadata={
+                            'name': 'mock_kafka_connector'
+                        },
+                        spec={
+                            "clientIdPrefix": "kafka-prefix",
+                            "instances": 3,
+                            "localBrokerConnection": {
+                                "authentication": {"kubernetes": {}},
+                                "endpoint": 'local-auth-endpoint',
+                                "tls": {"tlsEnabled": True},
+                            },
+                            "kafkaConnection": {
+                                "authentication": {"authType": {"sasl": {}}},
+                                "endpoint": "kafka-endpoint",
+                                "tls": {"tlsEnabled": True},
+                            },
+                        },
+                        status={
+                            "configStatusLevel": ResourceState.running.value
+                        }
+                    ),
+                    # topic_map
+                    _generate_resource_stub(spec={"kafkaConnectorRef": "mock_kafka_connector"}),
+                    # conditions
+                    ["status", "valid(spec)"],
+                    # evals
+                    [
+                        [("status", "success"),],
+                        [
+                            ("status", "success"),
+                            ("value/spec/clientIdPrefix", "kafka-prefix"),
+                            ("value/spec/instances", 3),
+                            ("value/spec/localBrokerConnection/endpoint", "local-auth-endpoint"),
+                            ("value/spec/kafkaConnection/endpoint", "kafka-endpoint"),
+                            ("value/spec/clientIdPrefix", "kafka-prefix"),
+                        ]
+                    ]
+             )
+        ]
+)
+def test_kafka_checks(
+     mocker, mock_evaluate_e4k_pod_health, connector, topic_map, conditions, evaluations
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": [connector]}, {"items": [topic_map]}],
+    )
+
+    namespace = generate_generic_id()
+    result = evaluate_kafka_connectors(namespace=namespace)
+
+    assert result["name"] == "evalKafkaConnectors"
+    assert result["namespace"] == namespace
+    assert result["targets"]["kafkaconnectors.az-edge.com"]
+    target = result["targets"]["kafkaconnectors.az-edge.com"]
+
+    assert_conditions(target, conditions)
+    # import pdb; pdb.set_trace()
+    assert_evaluations(target, evaluations)
 
 def assert_dict_props(path: str, expected: str, obj: Dict[str, str]):
     val = obj
