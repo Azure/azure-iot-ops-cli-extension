@@ -30,4 +30,19 @@ jobs:
         run: tox r -vv --notest
       - name: Run test suite
         run: tox r --skip-pkg-install
-  
+  code-coverage:
+    name: Calculate code coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run code coverage
+        run: |
+          pytest --cov=azext_edge --cov-report=json --cov-report=html .\azext_edge\tests\
+          coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
+          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+      - name: Zip code coverage HTML
+        run: |
+          zip ./coverage_html.zip ./htmlcov -r
+      - name: Upload code coverage
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          path: ./coverage_html.zip
