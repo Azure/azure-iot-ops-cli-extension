@@ -4,9 +4,12 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
+import binascii
+import json
+
 from datetime import datetime
 from time import sleep
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict, TYPE_CHECKING
 
 from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
@@ -19,6 +22,10 @@ from .base import get_namespaced_pods_by_prefix, portforward_http, portforward_s
 logger = get_logger(__name__)
 
 console = Console(highlight=True)
+
+if TYPE_CHECKING:
+    # pylint: disable=no-name-in-module
+    from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
 
 def _preprocess_stats(
@@ -47,7 +54,7 @@ def get_stats(
     raw_response_print=False,
     refresh_in_seconds: int = 10,
     watch: bool = False,
-) -> Union[dict, str, None]:
+) -> Union[Dict[str, dict], str, None]:
     namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
 
     from rich import box
@@ -199,26 +206,26 @@ def _clean_stats(raw_stats: str) -> dict:
 
 
 def get_traces(
-    namespace: str,
+    namespace: Optional[str] = None,
     diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
     pod_protobuf_port: int = PROTOBUF_SERVICE_API_PORT,
-    trace_ids: List[str] = None,
+    trace_ids: Optional[List[str]] = None,
     trace_dir: Optional[str] = None,
-) -> Union[dict, None]:
+) -> Union[List["TracesData"], None]:
     """
-    trace_ids: str hex representation.
+    trace_ids: List[str] hex representation of trace Ids.
     """
-    import binascii
-    import json
+    if not any([trace_ids, trace_dir]):
+        raise ValueError("At least trace_ids or trace_dir is required.")
+
     from zipfile import ZIP_DEFLATED, ZipFile
 
     from google.protobuf.json_format import MessageToDict
     from rich.progress import MofNCompleteColumn, Progress
 
-    from .support.base import normalize_dir
-
     # pylint: disable=no-name-in-module
-    from .support.diagnostics_service_pb2 import Request, Response, TraceRetrievalInfo
+    from .proto.diagnostics_service_pb2 import Request, Response, TraceRetrievalInfo
+    from .support.base import normalize_dir
 
     namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
 

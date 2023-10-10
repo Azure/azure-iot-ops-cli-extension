@@ -172,11 +172,10 @@ def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> 
 
 
 @contextmanager
-def portforward_socket(pod_name: str, namespace: str, pod_port: str) -> Iterator[socket.socket]:
+def portforward_socket(namespace: str, pod_name: str, pod_port: str) -> Iterator[socket.socket]:
     from kubernetes.stream import portforward
 
     api = client.CoreV1Api()
-
     pf = portforward(
         api.connect_get_namespaced_pod_portforward,
         pod_name,

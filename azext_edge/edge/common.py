@@ -64,7 +64,7 @@ class ProvisioningState(Enum):
     failed = "Failed"
     updating = "Updating"
     canceled = "Canceled"
-    provisioning = "Provisioning",
+    provisioning = "Provisioning"
     deleting = "Deleting"
     accepted = "Accepted"
 
@@ -73,6 +73,7 @@ class E4kDiagnosticPropertyIndex(Enum):
     """
     E4K Diagnostic Property Index Strings
     """
+
     publishes_received_per_second = "e4k_publishes_received_per_second"
     publishes_sent_per_second = "e4k_publishes_sent_per_second"
     publish_route_replication_correctness = "e4k_publish_route_replication_correctness"
