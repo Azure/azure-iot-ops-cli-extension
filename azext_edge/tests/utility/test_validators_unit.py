@@ -4,12 +4,13 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
+
+from types import SimpleNamespace
+
 import pytest
 from azure.cli.core.azclierror import InvalidArgumentValueError
-from azext_edge.edge._validators import validate_namespace
 
-# create namespace object to assign arbirtrary attributes to
-namespace_obj = type("", (), {})()
+from azext_edge.edge._validators import validate_namespace
 
 
 @pytest.mark.parametrize(
@@ -22,15 +23,13 @@ namespace_obj = type("", (), {})()
     ],
 )
 def test_namespace_validator(namespace):
-    namespace_obj.namespace = namespace
-    validate_namespace(namespace_obj)
+    validate_namespace(SimpleNamespace(namespace=namespace))
 
 
 @pytest.mark.parametrize(
     "namespace",
     [
-        "edge\\"
-        "invalid.namespace",
+        "edge\\" "invalid.namespace",
         "bad namespace",
         "another_bad_namespace",
         "CAPS ARE ALSO NOT ALLOWED",
@@ -38,6 +37,5 @@ def test_namespace_validator(namespace):
     ],
 )
 def test_namespace_validator_errors(namespace):
-    namespace_obj.namespace = namespace
     with pytest.raises(InvalidArgumentValueError):
-        validate_namespace(namespace_obj)
+        validate_namespace(SimpleNamespace(namespace=namespace))
