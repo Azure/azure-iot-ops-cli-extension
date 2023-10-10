@@ -13,14 +13,14 @@ from enum import Enum
 from ...common import ListableEnum
 
 
-class ResourceOutputDetailLevel(Enum):
+class ResourceOutputDetailLevel(ListableEnum):
     """
     Level of detail in check output.
     """
 
-    summary = 0  # summary
-    detail = 1  # detail
-    verbose = 2  # verbose
+    summary = "0"  # summary
+    detail = "1"  # detail
+    verbose = "2"  # verbose
 
 
 class BluefinProcessorStageType(ListableEnum):
