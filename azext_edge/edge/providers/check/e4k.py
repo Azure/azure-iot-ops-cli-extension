@@ -29,6 +29,7 @@ from .common import (
     AZEDGE_FRONTEND_PREFIX,
     AZEDGE_BACKEND_PREFIX,
     AZEDGE_AUTH_PREFIX,
+    KafkaTopicMapRouteType,
     ResourceOutputDetailLevel,
 )
 
@@ -90,7 +91,6 @@ def check_e4k_post_deployment(
         E4kResourceKinds.MQTT_BRIDGE_CONNECTOR: evaluate_mqtt_bridge_connectors,
         E4kResourceKinds.DATALAKE_CONNECTOR: evaluate_datalake_connectors,
         E4kResourceKinds.KAFKA_CONNECTOR: evaluate_kafka_connectors,
-        E4kResourceKinds.IOT_HUB_CONNECTOR: evaluate_hub_connectors,
     }
 
     return check_post_deployment(
@@ -1388,7 +1388,7 @@ def evaluate_kafka_connectors(
 
         local_broker = spec.get("localBrokerConnection", {})
         kafka_broker = spec.get("kafkaConnection", {})
-        
+
         connector_eval_status = (
             CheckTaskStatus.error.value
             if not all(
@@ -1604,7 +1604,7 @@ def evaluate_kafka_connectors(
             )
 
             # TODO - replace with enum
-            if route_type == "mqttToKafka":
+            if route_type == KafkaTopicMapRouteType.mqtt_to_kafka.value:
                 kafkaAcks = route_details.get("kafkaAcks")
                 sharedSubscription = route_details.get("sharedSubscription", {})
                 groupName = sharedSubscription.get("groupName")
@@ -1657,7 +1657,7 @@ def evaluate_kafka_connectors(
     connector_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.KAFKA_CONNECTOR, namespace=namespace)
     connector_resources: List[dict] = connector_objects.get("items", [])
     if not connector_resources:
-         _mark_connector_target_as_skipped(
+        _mark_connector_target_as_skipped(
             check_manager=check_manager,
             target=connector_target,
             message="No Kafka Connector resources detected",
@@ -1718,39 +1718,6 @@ def evaluate_kafka_connectors(
     return check_manager.as_dict(as_list)
 
 
-def evaluate_hub_connectors(
-    namespace: str,
-    as_list: bool = False,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
-):
-    check_manager = CheckManager(
-        check_name="evalIoTHubConnectors",
-        check_desc="Evaluate IoT Hub Connectors",
-        namespace=namespace,
-    )
-
-    connector_padding = (0, 0, 0, 8)
-    route_map_padding = (0, 0, 0, 12)
-
-    # These checks are purely informational, so mark as skipped
-    connector_target = "iothubconnectors.az-edge.com"
-    check_manager.add_target(target_name=connector_target)
-
-    connector_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.IOT_HUB_CONNECTOR, namespace=namespace)
-    connector_resources: List[dict] = connector_objects.get("items", [])
-    
-    if not connector_resources:
-         _mark_connector_target_as_skipped(
-            check_manager=check_manager,
-            target=connector_target,
-            message="No IoT Hub Connector resources detected",
-            padding=connector_padding
-        )
-    else:
-        import pdb; pdb.set_trace()
-    return check_manager.as_dict(as_list)
-
-
 def _get_valid_references(kind: Union[Enum, str], namespace: str) -> Dict[str, Any]:
     result = {}
     custom_objects = E4K_ACTIVE_API.get_resources(kind=kind, namespace=namespace)
@@ -1794,7 +1761,7 @@ def _display_connector_runtime_health(
             )
 
 
-def _mark_connector_target_as_skipped(check_manager: CheckManager, target: str, message: str, padding: int=8):
+def _mark_connector_target_as_skipped(check_manager: CheckManager, target: str, message: str, padding: int = 8):
     check_manager.add_target_eval(
         target_name=target,
         status=CheckTaskStatus.skipped.value,
