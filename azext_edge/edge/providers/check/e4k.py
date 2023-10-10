@@ -1046,14 +1046,12 @@ def evaluate_mqtt_bridge_connectors(
             # remove topic map by bridge reference
             topic_maps_by_bridge.pop(bridge_name, None)
     else:
-        eval_str = "No MQTT Bridge Connector resources detected"
-        check_manager.add_target_eval(
-            target_name=bridge_target,
-            status=CheckTaskStatus.skipped.value,
-            value=eval_str,
+        _mark_connector_target_as_skipped(
+            check_manager=check_manager,
+            target=bridge_target,
+            message="No MQTT Bridge Connector resources detected",
+            padding=top_level_padding
         )
-        check_manager.set_target_status(target_name=bridge_target, status=CheckTaskStatus.skipped.value)
-        check_manager.add_display(target_name=bridge_target, display=Padding(eval_str, top_level_padding))
 
     # warn about topic maps with invalid bridge references
     invalid_bridge_refs = topic_maps_by_bridge.keys() if topic_maps_by_bridge else []
@@ -1307,14 +1305,12 @@ def evaluate_datalake_connectors(
             # remove all topic maps for this connector
             topic_maps_by_connector.pop(connector_name, None)
     else:
-        eval_str = "No Data Lake Connector resources detected"
-        check_manager.add_target_eval(
-            target_name=connector_target,
-            status=CheckTaskStatus.skipped.value,
-            value=eval_str,
+        _mark_connector_target_as_skipped(
+            check_manager=check_manager,
+            target=connector_target,
+            message="No Data Lake Connector resources detected",
+            padding=top_level_padding
         )
-        check_manager.set_target_status(target_name=connector_target, status=CheckTaskStatus.skipped.value)
-        check_manager.add_display(target_name=connector_target, display=Padding(eval_str, top_level_padding))
 
     # warn about topic maps with invalid references
     invalid_connector_refs = topic_maps_by_connector.keys() if topic_maps_by_connector else []
@@ -1657,12 +1653,12 @@ def evaluate_kafka_connectors(
     connector_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.KAFKA_CONNECTOR, namespace=namespace)
     connector_resources: List[dict] = connector_objects.get("items", [])
     if not connector_resources:
-        eval_str = "No Kafka Connector resources detected"
-        check_manager.add_target_eval(
-            target_name=connector_target, status=CheckTaskStatus.skipped.value, value=eval_str
+         _mark_connector_target_as_skipped(
+            check_manager=check_manager,
+            target=connector_target,
+            message="No Kafka Connector resources detected",
+            padding=connector_padding
         )
-        check_manager.set_target_status(target_name=connector_target, status=CheckTaskStatus.skipped.value)
-        check_manager.add_display(target_name=connector_target, display=Padding(eval_str, connector_padding))
 
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
         kind=E4kResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP, namespace=namespace
@@ -1757,3 +1753,13 @@ def _display_connector_runtime_health(
                 display_padding=padding,
                 service_label=E4K_LABEL
             )
+
+
+def _mark_connector_target_as_skipped(check_manager: CheckManager, target: str, message: str, padding: int=8):
+    check_manager.add_target_eval(
+        target_name=target,
+        status=CheckTaskStatus.skipped.value,
+        value=message,
+    )
+    check_manager.set_target_status(target_name=target, status=CheckTaskStatus.skipped.value)
+    check_manager.add_display(target_name=target, display=Padding(message, padding))
