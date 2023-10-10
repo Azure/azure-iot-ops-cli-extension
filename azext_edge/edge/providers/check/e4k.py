@@ -62,7 +62,13 @@ def check_e4k_deployment(
         result["postDeployment"] = []
 
         # check post deployment according to edge_service type
-        check_e4k_post_deployment(detail_level=detail_level, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
+        check_e4k_post_deployment(
+            detail_level=detail_level,
+            namespace=namespace,
+            result=result,
+            as_list=as_list,
+            resource_kinds=resource_kinds,
+        )
 
     if not as_list:
         return result
@@ -775,6 +781,8 @@ def evaluate_brokers(
     return check_manager.as_dict(as_list)
 
 
+# Cloud connector checks
+# TODO - So much similar code between different cloud connectors with topic maps, perhaps we could simplify / DRY
 def evaluate_mqtt_bridge_connectors(
     namespace: str,
     as_list: bool = False,
@@ -803,7 +811,6 @@ def evaluate_mqtt_bridge_connectors(
             )
 
     def create_routes_table(name: str, routes: List[Dict[str, str]]) -> Table:
-
         title = f"\nTopic map [blue]{{{name}}}[/blue]"
         table = Table(title=title, title_justify="left", title_style="None", show_lines=True)
 
@@ -917,7 +924,7 @@ def evaluate_mqtt_bridge_connectors(
         check_manager.add_target_eval(
             target_name=target,
             status=bridge_eval_status,
-            value=spec,
+            value={"spec": spec},
             resource_name=bridge_name,
             resource_kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
         )
@@ -1096,7 +1103,6 @@ def evaluate_datalake_connectors(
     from rich.table import Table
 
     def create_schema_table(name: str, schema: List[Dict[str, str]]) -> Table:
-
         table = Table(title=f"Data Lake Topic Map [blue]{{{name}}}[/blue] Schema")
 
         columns = [
@@ -1234,7 +1240,7 @@ def evaluate_datalake_connectors(
         check_manager.add_target_eval(
             target_name=target,
             status=connector_eval_status,
-            value=spec,
+            value={"spec": spec},
             resource_name=connector_name,
             resource_kind=E4kResourceKinds.DATALAKE_CONNECTOR.value,
         )
@@ -1430,7 +1436,7 @@ def evaluate_kafka_connectors(
         check_manager.add_target_eval(
             target_name=target,
             status=connector_eval_status,
-            value=spec,
+            value={"spec": spec},
             resource_name=connector_name,
             resource_kind=E4kResourceKinds.KAFKA_CONNECTOR.value,
         )
@@ -1727,9 +1733,6 @@ def evaluate_kafka_connectors(
                 connector_padding,
             ),
         )
-
-    # TODO - add conditions / evals to connector and topic maps
-    # TODO - So much similar code between different cloud connectors with topic maps, perhaps we could simplify / DRY
 
     return check_manager.as_dict(as_list)
 
