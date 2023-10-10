@@ -1009,9 +1009,6 @@ def evaluate_mqtt_bridge_connectors(
     )
     bridge_resources: List[dict] = bridge_objects.get("items", [])
 
-    # mqtt bridge pod prefix = azedge-[bridge_name]-[instance]
-    bridge_pod_name_prefixes = [f"azedge-{bridge['metadata']['name']}" for bridge in bridge_resources]
-
     # attempt to map each topic_map to its referenced bridge
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
         kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP, namespace=namespace
@@ -1074,23 +1071,12 @@ def evaluate_mqtt_bridge_connectors(
                 ),
             )
 
-    if len(bridge_pod_name_prefixes):
-        # evaluate resource health
-        check_manager.add_display(
-            target_name=bridge_target,
-            display=Padding(
-                "\nRuntime Health",
-                (0, 0, 0, 8),
-            ),
-        )
-        for pod_prefix in bridge_pod_name_prefixes:
-            evaluate_pod_health(
-                check_manager=check_manager,
-                namespace=namespace,
-                pod=pod_prefix,
-                display_padding=12,
-                service_label=E4K_LABEL
-            )
+    _display_connector_runtime_health(
+        check_manager=check_manager,
+        namespace=namespace,
+        target=bridge_target,
+        connectors=bridge_resources
+    )
 
     return check_manager.as_dict(as_list)
 
@@ -1282,9 +1268,6 @@ def evaluate_datalake_connectors(
     )
     connectors: List[dict] = connector_resources.get("items", [])
 
-    # connector pod prefix = azedge-[connector_name]-[instance]
-    connector_pod_name_prefixes = [f"azedge-{con['metadata']['name']}" for con in connectors]
-
     # attempt to map each topic_map to its referenced connector
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
         kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP, namespace=namespace
@@ -1349,22 +1332,12 @@ def evaluate_datalake_connectors(
             )
 
     # evaluate resource health
-    if len(connector_pod_name_prefixes):
-        check_manager.add_display(
-            target_name=connector_target,
-            display=Padding(
-                "\nRuntime Health",
-                (0, 0, 0, 8),
-            ),
-        )
-        for pod_prefix in connector_pod_name_prefixes:
-            evaluate_pod_health(
-                check_manager=check_manager,
-                namespace=namespace,
-                pod=pod_prefix,
-                display_padding=12,
-                service_label=E4K_LABEL
-            )
+    _display_connector_runtime_health(
+        check_manager=check_manager,
+        namespace=namespace,
+        target=connector_target,
+        connectors=connectors
+    )
 
     return check_manager.as_dict(as_list)
 
@@ -1733,6 +1706,12 @@ def evaluate_kafka_connectors(
                 connector_padding,
             ),
         )
+    _display_connector_runtime_health(
+        check_manager=check_manager,
+        namespace=namespace,
+        target=connector_target,
+        connectors=connector_resources
+    )
 
     return check_manager.as_dict(as_list)
 
@@ -1750,3 +1729,31 @@ def _get_valid_references(kind: Union[Enum, str], namespace: str) -> Dict[str, A
                 result[name] = True
 
     return result
+
+
+def _display_connector_runtime_health(
+    check_manager: CheckManager,
+    namespace: str,
+    target: str,
+    connectors: Optional[List[Dict[str, Any]]] = None,
+    prefix: str = 'azedge-',
+    padding: int = 8
+):
+    if connectors:
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                "\nRuntime Health",
+                (0, 0, 0, padding),
+            ),
+        )
+        padding += 4
+        pod_name_prefixes = [f"{prefix}{connector['metadata']['name']}" for connector in connectors]
+        for pod in pod_name_prefixes:
+            evaluate_pod_health(
+                check_manager=check_manager,
+                namespace=namespace,
+                pod=pod,
+                display_padding=padding,
+                service_label=E4K_LABEL
+            )
