@@ -783,11 +783,11 @@ def evaluate_brokers(
 
 
 # Cloud connector checks
-# TODO - So much similar code between different cloud connectors with topic maps, perhaps we could simplify / DRY
+# TODO - further consolidate / pull out duplicate connector logic
 def evaluate_mqtt_bridge_connectors(
     namespace: str,
     as_list: bool = False,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
+    detail_level: str = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
     from rich.table import Table
 
@@ -833,8 +833,8 @@ def evaluate_mqtt_bridge_connectors(
         check_manager: CheckManager,
         target: str,
         topic_maps: List[Dict[str, str]],
+        detail_level: str,
         padding: tuple,
-        table: bool = False,
     ) -> None:
         # Show warning if no topic maps
         if not len(bridge_topic_maps):
@@ -855,21 +855,22 @@ def evaluate_mqtt_bridge_connectors(
                 display=Padding(f"- Topic Map {{[blue]{name}[/blue]}}", padding),
             )
 
-            routes = topic_map.get("spec", {}).get("routes", [])
-            if table:
-                route_table = create_routes_table(name, routes)
-                check_manager.add_display(target_name=target, display=Padding(route_table, padding))
-                return
-            else:
-                route_padding = (0, 0, 0, padding[3] + 4)
-                add_routes_display(
-                    check_manager=check_manager,
-                    target=target,
-                    routes=routes,
-                    padding=route_padding,
-                )
+            if detail_level != ResourceOutputDetailLevel.summary.value:
+                routes = topic_map.get("spec", {}).get("routes", [])
+                if detail_level == ResourceOutputDetailLevel.verbose.value:
+                    route_table = create_routes_table(name, routes)
+                    check_manager.add_display(target_name=target, display=Padding(route_table, padding))
+                    return
+                else:
+                    route_padding = (0, 0, 0, padding[3] + 4)
+                    add_routes_display(
+                        check_manager=check_manager,
+                        target=target,
+                        routes=routes,
+                        padding=route_padding,
+                    )
 
-    def display_bridge_info(check_manager: CheckManager, target: str, bridge: Dict[str, str], padding: tuple) -> None:
+    def display_bridge_info(check_manager: CheckManager, target: str, bridge: Dict[str, str], detail_level: str, padding: tuple) -> None:
         # bridge resource
         bridge_metadata = bridge.get("metadata", {})
         bridge_name = bridge_metadata.get("name")
@@ -957,17 +958,16 @@ def evaluate_mqtt_bridge_connectors(
                 bridge_detail_padding,
             ),
         )
-
-        local_broker_auth = next(iter(local_broker.get("authentication")))
-        local_broker_tls = local_broker.get("tls", {}).get("tlsEnabled", False)
-
-        check_manager.add_display(
-            target_name=target,
-            display=Padding(
-                f"Auth: [bright_blue]{local_broker_auth}[/bright_blue] TLS: [bright_blue]{local_broker_tls}[/bright_blue]",
-                broker_detail_padding,
-            ),
-        )
+        if detail_level != ResourceOutputDetailLevel.summary.value:
+            local_broker_auth = next(iter(local_broker.get("authentication")))
+            local_broker_tls = local_broker.get("tls", {}).get("tlsEnabled", False)
+            check_manager.add_display(
+                target_name=target,
+                display=Padding(
+                    f"Auth: [bright_blue]{local_broker_auth}[/bright_blue] TLS: [bright_blue]{local_broker_tls}[/bright_blue]",
+                    broker_detail_padding,
+                ),
+            )
 
         # remote broker endpoint
         remote_broker = spec.get("remoteBrokerConnection", {})
@@ -980,16 +980,17 @@ def evaluate_mqtt_bridge_connectors(
             ),
         )
 
-        remote_broker_auth = next(iter(remote_broker.get("authentication")))
-        remote_broker_tls = remote_broker.get("tls", {}).get("tlsEnabled", False)
+        if detail_level != ResourceOutputDetailLevel.summary.value:
+            remote_broker_auth = next(iter(remote_broker.get("authentication")))
+            remote_broker_tls = remote_broker.get("tls", {}).get("tlsEnabled", False)
 
-        check_manager.add_display(
-            target_name=target,
-            display=Padding(
-                f"Auth: [bright_blue]{remote_broker_auth}[/bright_blue] TLS: [bright_blue]{remote_broker_tls}[/bright_blue]",
-                broker_detail_padding,
-            ),
-        )
+            check_manager.add_display(
+                target_name=target,
+                display=Padding(
+                    f"Auth: [bright_blue]{remote_broker_auth}[/bright_blue] TLS: [bright_blue]{remote_broker_tls}[/bright_blue]",
+                    broker_detail_padding,
+                ),
+            )
 
     check_manager = CheckManager(
         check_name="evalMQTTBridgeConnectors",
@@ -1035,6 +1036,7 @@ def evaluate_mqtt_bridge_connectors(
                 check_manager=check_manager,
                 target=bridge_target,
                 bridge=bridge,
+                detail_level=detail_level,
                 padding=top_level_padding,
             )
             # topic maps for this specific bridge
@@ -1042,6 +1044,7 @@ def evaluate_mqtt_bridge_connectors(
                 check_manager=check_manager,
                 target=bridge_target,
                 topic_maps=bridge_topic_maps,
+                detail_level=detail_level,
                 padding=bridge_detail_padding,
             )
             # remove topic map by bridge reference
@@ -1055,20 +1058,14 @@ def evaluate_mqtt_bridge_connectors(
         )
 
     # warn about topic maps with invalid bridge references
-    invalid_bridge_refs = topic_maps_by_bridge.keys() if topic_maps_by_bridge else []
-    for invalid_bridge_ref in invalid_bridge_refs:
-        invalid_ref_maps = topic_maps_by_bridge[invalid_bridge_ref]
-
-        # for each topic map that references this bridge
-        for ref_map in invalid_ref_maps:
-            topic_name = ref_map.get("metadata", {}).get("name")
-            check_manager.add_display(
-                target_name=bridge_target,
-                display=Padding(
-                    f"\n- MQTT Bridge Topic Map {{[red]{topic_name}[/red]}}.\n  [red]Invalid[/red] bridge reference {{[red]{invalid_bridge_ref}[/red]}}",
-                    top_level_padding,
-                ),
-            )
+    flattened_topic_maps = [key for maps in topic_maps_by_bridge.values() for key in maps]
+    _display_invalid_topic_maps(
+        check_manager=check_manager,
+        target=bridge_target,
+        topic_maps=flattened_topic_maps,
+        ref_key="mqttBridgeConnectorRef",
+        padding=top_level_padding
+    )
 
     _display_connector_runtime_health(
         check_manager=check_manager,
@@ -1113,8 +1110,8 @@ def evaluate_datalake_connectors(
         check_manager: CheckManager,
         target: str,
         topic_maps: List[Dict[str, str]],
+        detail_level: str,
         padding: tuple,
-        table: bool = False,
     ) -> None:
         # Show warning if no topic maps
         if not len(connector_topic_maps):
@@ -1136,44 +1133,43 @@ def evaluate_datalake_connectors(
                     padding,
                 ),
             )
+            if detail_level != ResourceOutputDetailLevel.summary.value:
+                topic_spec = topic_map.get("spec", {})
+                topic_mapping = topic_spec.get("mapping", {})
+                max_msg_per_batch = topic_mapping.get("maxMessagesPerBatch")
+                msg_payload_type = topic_mapping.get("messagePayloadType")
+                source_topic = topic_mapping.get("mqttSourceTopic")
+                qos = topic_mapping.get("qos")
 
-            topic_spec = topic_map.get("spec", {})
-            topic_mapping = topic_spec.get("mapping", {})
-            max_msg_per_batch = topic_mapping.get("maxMessagesPerBatch")
-            msg_payload_type = topic_mapping.get("messagePayloadType")
-            source_topic = topic_mapping.get("mqttSourceTopic")
-            qos = topic_mapping.get("qos")
+                delta_table = topic_mapping.get("deltaTable", {})
+                table_name = delta_table.get("tableName")
 
-            delta_table = topic_mapping.get("deltaTable", {})
-            table_name = delta_table.get("tableName")
-
-            detail_padding = (0, 0, 0, padding[3] + 4)
-            for row in [
-                ["Table Name", table_name],
-                ["Max Messages Per Batch", max_msg_per_batch],
-                ["Message Payload Type", msg_payload_type],
-                ["MQTT Source Topic", source_topic],
-                ["QOS", qos],
-            ]:
-                check_manager.add_display(
-                    target_name=target,
-                    display=Padding(
-                        f"- {row[0]}: [bright_blue]{row[1]}[/bright_blue]",
-                        detail_padding,
-                    ),
-                )
-
-            # Schema display
-            delta_table = topic_mapping.get("deltaTable", {})
-            schema = delta_table.get("schema", [])
-            if table:
-                route_table = create_schema_table(topic_name, schema)
-                check_manager.add_display(target_name=target, display=Padding(route_table, padding))
+                detail_padding = (0, 0, 0, padding[3] + 4)
+                for row in [
+                    ["Table Name", table_name],
+                    ["Max Messages Per Batch", max_msg_per_batch],
+                    ["Message Payload Type", msg_payload_type],
+                    ["MQTT Source Topic", source_topic],
+                    ["QOS", qos],
+                ]:
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            f"- {row[0]}: [bright_blue]{row[1]}[/bright_blue]",
+                            detail_padding,
+                        ),
+                    )
+                if detail_level == ResourceOutputDetailLevel.verbose.value:
+                    delta_table = topic_mapping.get("deltaTable", {})
+                    schema = delta_table.get("schema", [])
+                    route_table = create_schema_table(topic_name, schema)
+                    check_manager.add_display(target_name=target, display=Padding(route_table, padding))
 
     def display_connector_info(
         check_manager: CheckManager,
         target: str,
         connector: Dict[str, str],
+        detail_level: str,
         padding: tuple,
     ) -> None:
         # connector resource status
@@ -1295,12 +1291,14 @@ def evaluate_datalake_connectors(
                 check_manager=check_manager,
                 target=connector_target,
                 connector=connector,
+                detail_level=detail_level,
                 padding=top_level_padding,
             )
             display_topic_maps(
                 check_manager=check_manager,
                 target=connector_target,
                 topic_maps=connector_topic_maps,
+                detail_level=detail_level,
                 padding=connector_detail_padding,
             )
             # remove all topic maps for this connector
@@ -1314,20 +1312,14 @@ def evaluate_datalake_connectors(
         )
 
     # warn about topic maps with invalid references
-    invalid_connector_refs = topic_maps_by_connector.keys() if topic_maps_by_connector else []
-    for invalid_connector_ref in invalid_connector_refs:
-        invalid_ref_maps = topic_maps_by_connector[invalid_connector_ref]
-        # for each topic map that references this connector
-        for ref_map in invalid_ref_maps:
-            topic_name = ref_map.get("metadata", {}).get("name")
-            check_manager.add_display(
-                target_name=connector_target,
-                display=Padding(
-                    f"\n- Data Lake Connector Topic Map {{[red]{topic_name}[/red]}}.\n  [red]Invalid[/red] connector reference {{[red]{invalid_connector_ref}[/red]}}",
-                    top_level_padding,
-                ),
-            )
-
+    flattened_topic_maps = [key for maps in topic_maps_by_connector.values() for key in maps]
+    _display_invalid_topic_maps(
+        check_manager=check_manager,
+        target=connector_target,
+        topic_maps=flattened_topic_maps,
+        ref_key="dataLakeConnectorRef",
+        padding=top_level_padding
+    )
     # evaluate resource health
     _display_connector_runtime_health(
         check_manager=check_manager,
@@ -1344,7 +1336,7 @@ def evaluate_kafka_connectors(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ):
-    def display_connector_info(check_manager: CheckManager, target: str, connector: Dict[str, Any], padding: tuple):
+    def display_connector_info(check_manager: CheckManager, target: str, connector: Dict[str, Any], detail_level: str, padding: tuple):
         metadata = connector.get("metadata", {})
         connector_name = metadata.get("name")
         connector_status = connector.get("status", {})
@@ -1419,24 +1411,20 @@ def evaluate_kafka_connectors(
         check_manager.add_display(
             target_name=target, display=Padding(f"Instances: [bright_blue]{instances}[/bright_blue]", detail_padding)
         )
-        check_manager.add_display(
-            target_name=target, display=Padding(f"logLevel: [bright_blue]{logLevel}[/bright_blue]", detail_padding)
-        )
 
         broker_detail_padding = (0, 0, 0, detail_padding[3] + 4)
 
-        if local_broker:
-            # local broker endpoint
-            local_broker_endpoint = local_broker.get("endpoint")
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
-                    detail_padding,
-                ),
-            )
-
-            local_broker_auth = next(iter(local_broker.get("authentication")))
+        # local broker endpoint
+        local_broker_endpoint = local_broker.get("endpoint")
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
+                detail_padding,
+            ),
+        )
+        if detail_level != ResourceOutputDetailLevel.summary.value:
+            local_broker_auth = next(iter(local_broker.get("authentication", {})))
             local_broker_tls = local_broker.get("tls", {}).get("tlsEnabled", False)
 
             check_manager.add_display(
@@ -1446,19 +1434,21 @@ def evaluate_kafka_connectors(
                     broker_detail_padding,
                 ),
             )
-
-        # kafka endpoint
-        if kafka_broker:
-            kafka_broker_endpoint = kafka_broker.get("endpoint")
             check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"Remote Broker Connection: [bright_blue]{kafka_broker_endpoint}[/bright_blue]",
-                    detail_padding,
-                ),
+                target_name=target, display=Padding(f"logLevel: [bright_blue]{logLevel}[/bright_blue]", detail_padding)
             )
 
-            kafka_broker_auth = next(iter(kafka_broker.get("authentication")))
+        # kafka endpoint
+        kafka_broker_endpoint = kafka_broker.get("endpoint")
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Remote Broker Connection: [bright_blue]{kafka_broker_endpoint}[/bright_blue]",
+                detail_padding,
+            ),
+        )
+        if detail_level != ResourceOutputDetailLevel.summary.value:
+            kafka_broker_auth = next(iter(kafka_broker.get("authentication", {})))
             kafka_broker_tls = kafka_broker.get("tls", {}).get("tlsEnabled", False)
 
             check_manager.add_display(
@@ -1469,7 +1459,7 @@ def evaluate_kafka_connectors(
                 ),
             )
 
-    def display_topic_maps(check_manager: CheckManager, target: str, topic_maps: List[Dict[str, Any]], padding: tuple):
+    def display_topic_maps(check_manager: CheckManager, target: str, topic_maps: List[Dict[str, Any]], detail_level: str, padding: tuple):
         # Show warning if no topic maps
         if not len(connector_topic_maps):
             check_manager.add_display(
@@ -1490,75 +1480,75 @@ def evaluate_kafka_connectors(
                 ),
             )
 
-            detail_padding = (0, 0, 0, padding[3] + 4)
+            if detail_level != ResourceOutputDetailLevel.summary.value:
+                detail_padding = (0, 0, 0, padding[3] + 4)
+                spec = topic_map.get("spec", {})
+                compression = spec.get("compression")
+                partitionKeyProperty = spec.get("partitionKeyProperty")
+                partitionStrategy = spec.get("partitionStrategy")
 
-            spec = topic_map.get("spec", {})
-            compression = spec.get("compression")
-            partitionKeyProperty = spec.get("partitionKeyProperty")
-            partitionStrategy = spec.get("partitionStrategy")
+                check_manager.add_display(
+                    target_name=target,
+                    display=Padding(
+                        f"Compression: [bright_blue]{compression}[/bright_blue]",
+                        detail_padding,
+                    ),
+                )
+                check_manager.add_display(
+                    target_name=target,
+                    display=Padding(
+                        f"Partition Key: [bright_blue]{partitionKeyProperty}[/bright_blue]",
+                        detail_padding,
+                    ),
+                )
+                check_manager.add_display(
+                    target_name=target,
+                    display=Padding(
+                        f"Partition Strategy: [bright_blue]{partitionStrategy}[/bright_blue]",
+                        detail_padding,
+                    ),
+                )
+                if detail_level == ResourceOutputDetailLevel.verbose.value:
+                    batching = spec.get("batching", {})
+                    enabled = batching.get("enabled")
+                    latencyMs = batching.get("latencyMs")
+                    maxBytes = batching.get("maxBytes")
+                    maxMessages = batching.get("maxMessages")
 
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"Compression: [bright_blue]{compression}[/bright_blue]",
-                    detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"Partition Key: [bright_blue]{partitionKeyProperty}[/bright_blue]",
-                    detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"Partition Strategy: [bright_blue]{partitionStrategy}[/bright_blue]",
-                    detail_padding,
-                ),
-            )
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            f"Enabled: [bright_blue]{enabled}[/bright_blue]",
+                            detail_padding,
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            f"Latency (ms): [bright_blue]{latencyMs}[/bright_blue]",
+                            detail_padding,
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            f"Max bytes: [bright_blue]{maxBytes}[/bright_blue]",
+                            detail_padding,
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            f"Max messages: [bright_blue]{maxMessages}[/bright_blue]",
+                            detail_padding,
+                        ),
+                    )
 
-            batching = spec.get("batching", {})
-            enabled = batching.get("enabled")
-            latencyMs = batching.get("latencyMs")
-            maxBytes = batching.get("maxBytes")
-            maxMessages = batching.get("maxMessages")
+                display_routes(
+                    check_manager=check_manager, target=target, routes=spec.get("routes", []), detail_level=detail_level, padding=detail_padding
+                )
 
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"Enabled: [bright_blue]{enabled}[/bright_blue]",
-                    detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"Latency (ms): [bright_blue]{latencyMs}[/bright_blue]",
-                    detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"Max bytes: [bright_blue]{maxBytes}[/bright_blue]",
-                    detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"Max messages: [bright_blue]{maxMessages}[/bright_blue]",
-                    detail_padding,
-                ),
-            )
-
-            display_routes(
-                check_manager=check_manager, target=target, routes=spec.get("routes", []), padding=detail_padding
-            )
-
-    def display_routes(check_manager: CheckManager, target: str, routes: List[Dict[str, str]], padding: tuple):
+    def display_routes(check_manager: CheckManager, target: str, routes: List[Dict[str, str]], detail_level: str, padding: tuple):
         for route in routes:
             # route key is mqttToKafka | kafkaToMqtt
             route_type = next(iter(route))
@@ -1566,7 +1556,6 @@ def evaluate_kafka_connectors(
 
             # shared properties
             name = route_details.get("name")
-
             check_manager.add_display(
                 target_name=target,
                 display=Padding(
@@ -1575,71 +1564,72 @@ def evaluate_kafka_connectors(
                 ),
             )
 
-            route_detail_padding = (0, 0, 0, padding[3] + 4)
+            # route details are verbose
+            # TODO - table output?
+            if detail_level == ResourceOutputDetailLevel.verbose.value:
+                route_detail_padding = (0, 0, 0, padding[3] + 4)
 
-            kafkaTopic = route_details.get("kafkaTopic")
-            mqttTopic = route_details.get("mqttTopic")
-            qos = route_details.get("qos")
-
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"Kafka topic: [bright_blue]{kafkaTopic}[/bright_blue]",
-                    route_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"MQTT Topic: [bright_blue]{mqttTopic}[/bright_blue]",
-                    route_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    f"QOS: [bright_blue]{qos}[/bright_blue]",
-                    route_detail_padding,
-                ),
-            )
-
-            # TODO - replace with enum
-            if route_type == KafkaTopicMapRouteType.mqtt_to_kafka.value:
-                kafkaAcks = route_details.get("kafkaAcks")
-                sharedSubscription = route_details.get("sharedSubscription", {})
-                groupName = sharedSubscription.get("groupName")
-                groupMinimumShareNumber = sharedSubscription.get("groupMinimumShareNumber")
+                kafkaTopic = route_details.get("kafkaTopic")
+                mqttTopic = route_details.get("mqttTopic")
+                qos = route_details.get("qos")
 
                 check_manager.add_display(
                     target_name=target,
                     display=Padding(
-                        f"Kafka Acks: [bright_blue]{kafkaAcks}[/bright_blue]",
+                        f"Kafka topic: [bright_blue]{kafkaTopic}[/bright_blue]",
                         route_detail_padding,
                     ),
                 )
                 check_manager.add_display(
                     target_name=target,
                     display=Padding(
-                        f"Shared Subscription Group Name: [bright_blue]{groupName}[/bright_blue]",
+                        f"MQTT Topic: [bright_blue]{mqttTopic}[/bright_blue]",
                         route_detail_padding,
                     ),
                 )
                 check_manager.add_display(
                     target_name=target,
                     display=Padding(
-                        f"Shared Subscription Group Minimum Share: [bright_blue]{groupMinimumShareNumber}[/bright_blue]",
+                        f"QOS: [bright_blue]{qos}[/bright_blue]",
                         route_detail_padding,
                     ),
                 )
-            else:
-                consumerGroupId = route_details.get("consumerGroupId")
-                check_manager.add_display(
-                    target_name=target,
-                    display=Padding(
-                        f"Consumer Group ID: [bright_blue]{consumerGroupId}[/bright_blue]",
-                        route_detail_padding,
-                    ),
-                )
+                if route_type == KafkaTopicMapRouteType.mqtt_to_kafka.value:
+                    kafkaAcks = route_details.get("kafkaAcks")
+                    sharedSubscription = route_details.get("sharedSubscription", {})
+                    groupName = sharedSubscription.get("groupName")
+                    groupMinimumShareNumber = sharedSubscription.get("groupMinimumShareNumber")
+
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            f"Kafka Acks: [bright_blue]{kafkaAcks}[/bright_blue]",
+                            route_detail_padding,
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            f"Shared Subscription Group Name: [bright_blue]{groupName}[/bright_blue]",
+                            route_detail_padding,
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            f"Shared Subscription Group Minimum Share: [bright_blue]{groupMinimumShareNumber}[/bright_blue]",
+                            route_detail_padding,
+                        ),
+                    )
+                else:
+                    consumerGroupId = route_details.get("consumerGroupId")
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            f"Consumer Group ID: [bright_blue]{consumerGroupId}[/bright_blue]",
+                            route_detail_padding,
+                        ),
+                    )
 
     check_manager = CheckManager(
         check_name="evalKafkaConnectors",
@@ -1656,58 +1646,60 @@ def evaluate_kafka_connectors(
 
     connector_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.KAFKA_CONNECTOR, namespace=namespace)
     connector_resources: List[dict] = connector_objects.get("items", [])
-    if not connector_resources:
-        _mark_connector_target_as_skipped(
-            check_manager=check_manager,
-            target=connector_target,
-            message="No Kafka Connector resources detected",
-            padding=connector_padding
-        )
-    else:
-        check_manager.set_target_conditions(target_name=connector_target, conditions=["status", "valid(spec)"])
 
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
         kind=E4kResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP, namespace=namespace
     )
 
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
-    topic_maps_by_connector = {}
+
     connector_refs = {ref.get("spec", {}).get("kafkaConnectorRef") for ref in topic_map_list}
 
+    topic_maps_by_connector = {}
     for connector in connector_refs:
         topic_maps_by_connector[connector] = [
             topic for topic in topic_map_list if topic.get("spec", {}).get("kafkaConnectorRef") == connector
         ]
 
-    for connector in connector_resources:
-        connector_metadata = connector.get("metadata", {})
-        connector_name = connector_metadata.get("name")
-        connector_topic_maps = topic_maps_by_connector.get(connector_name, [])
-        display_connector_info(
+    if len(connector_resources):
+        check_manager.set_target_conditions(target_name=connector_target, conditions=["status", "valid(spec)"])
+
+        for connector in connector_resources:
+            connector_metadata = connector.get("metadata", {})
+            connector_name = connector_metadata.get("name")
+            connector_topic_maps = topic_maps_by_connector.get(connector_name, [])
+            display_connector_info(
+                check_manager=check_manager,
+                target=connector_target,
+                connector=connector,
+                detail_level=detail_level,
+                padding=connector_padding
+            )
+            display_topic_maps(
+                check_manager=check_manager,
+                target=connector_target,
+                topic_maps=connector_topic_maps,
+                detail_level=detail_level,
+                padding=topic_map_padding,
+            )
+            # remove all topic maps for this connector
+            topic_maps_by_connector.pop(connector_name, None)
+    else:
+        _mark_connector_target_as_skipped(
             check_manager=check_manager,
             target=connector_target,
-            connector=connector,
+            message="No Kafka Connector resources detected",
             padding=connector_padding
         )
-        display_topic_maps(
-            check_manager=check_manager,
-            target=connector_target,
-            topic_maps=connector_topic_maps,
-            padding=topic_map_padding,
-        )
-        # remove all topic maps for this connector
-        topic_maps_by_connector.pop(connector_name, None)
 
     flattened_topic_maps = [key for maps in topic_maps_by_connector.values() for key in maps]
-    for map in flattened_topic_maps:
-        check_manager.add_display(
-            target_name=connector_target,
-            display=Padding(
-                f"\nTopic Map {{[red]{map['metadata']['name']}[/red]}}"
-                f" references invalid connector {{[red]{map['spec']['kafkaConnectorRef']}[/red]}}.",
-                connector_padding,
-            ),
-        )
+    _display_invalid_topic_maps(
+        check_manager=check_manager,
+        target=connector_target,
+        topic_maps=flattened_topic_maps,
+        ref_key="kafkaConnectorRef",
+        padding=connector_padding
+    )
     _display_connector_runtime_health(
         check_manager=check_manager,
         namespace=namespace,
@@ -1759,6 +1751,26 @@ def _display_connector_runtime_health(
                 display_padding=padding,
                 service_label=E4K_LABEL
             )
+
+
+def _display_invalid_topic_maps(
+    check_manager: CheckManager,
+    target: str,
+    topic_maps: List[Dict[str, Any]],
+    ref_key: str,
+    padding: tuple
+):
+    for map in topic_maps:
+        name = map.get("metadata", {}).get("name")
+        ref = map.get("spec", {}).get(ref_key)
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"\nTopic map {{[red]{name}[/red]}}"
+                f" references invalid connector {{[red]{ref}[/red]}}.",
+                padding
+            )
+        )
 
 
 def _mark_connector_target_as_skipped(check_manager: CheckManager, target: str, message: str, padding: int = 8):
