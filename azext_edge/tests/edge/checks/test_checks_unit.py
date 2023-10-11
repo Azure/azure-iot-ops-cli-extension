@@ -30,7 +30,7 @@ from azext_edge.edge.providers.check.bluefin import (
 from azext_edge.edge.providers.checks import run_checks
 from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
 from azext_edge.edge.providers.edge_api.e4k import E4kResourceKinds
-from azext_edge.edge.providers.check.common import KafkaTopicMapRouteType
+from azext_edge.edge.providers.check.common import KafkaTopicMapRouteType, ResourceOutputDetailLevel
 
 from ...generators import generate_generic_id
 
@@ -662,19 +662,20 @@ def test_mqtt_checks(
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": [bridge]}, {"items": [topic_map]}],
     )
+    for detail_level in ResourceOutputDetailLevel.list():
+        mocker.side_effect = [{"items": [bridge]}, {"items": [topic_map]}]
+        namespace = generate_generic_id()
+        result = evaluate_mqtt_bridge_connectors(namespace=namespace, detail_level=detail_level)
 
-    namespace = generate_generic_id()
-    result = evaluate_mqtt_bridge_connectors(namespace=namespace)
+        assert result["name"] == "evalMQTTBridgeConnectors"
+        assert result["namespace"] == namespace
+        assert result["targets"]["mqttbridgeconnectors.az-edge.com"]
+        target = result["targets"]["mqttbridgeconnectors.az-edge.com"]
 
-    assert result["name"] == "evalMQTTBridgeConnectors"
-    assert result["namespace"] == namespace
-    assert result["targets"]["mqttbridgeconnectors.az-edge.com"]
-    target = result["targets"]["mqttbridgeconnectors.az-edge.com"]
-
-    assert_conditions(target, conditions)
-    assert_evaluations(target, evaluations)
+        assert_conditions(target, conditions)
+        assert_evaluations(target, evaluations)
+        mocker.reset_mock()
 
 
 @pytest.mark.parametrize(
@@ -713,19 +714,19 @@ def test_datalake_checks(
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": [connector]}, {"items": [topic_map]}],
     )
+    for detail_level in ResourceOutputDetailLevel.list():
+        mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
+        namespace = generate_generic_id()
+        result = evaluate_datalake_connectors(namespace=namespace, detail_level=detail_level)
 
-    namespace = generate_generic_id()
-    result = evaluate_datalake_connectors(namespace=namespace)
+        assert result["name"] == "evalDataLakeConnectors"
+        assert result["namespace"] == namespace
+        assert result["targets"]["datalakeconnectors.az-edge.com"]
+        target = result["targets"]["datalakeconnectors.az-edge.com"]
 
-    assert result["name"] == "evalDataLakeConnectors"
-    assert result["namespace"] == namespace
-    assert result["targets"]["datalakeconnectors.az-edge.com"]
-    target = result["targets"]["datalakeconnectors.az-edge.com"]
-
-    assert_conditions(target, conditions)
-    assert_evaluations(target, evaluations)
+        assert_conditions(target, conditions)
+        assert_evaluations(target, evaluations)
 
 
 @pytest.mark.parametrize(
@@ -1209,21 +1210,19 @@ def test_dataset_checks(
 def test_kafka_checks(
     mocker, mock_evaluate_e4k_pod_health, connector, topic_map, conditions, evaluations
 ):
-    mocker = mocker.patch(
-        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": [connector]}, {"items": [topic_map]}],
-    )
+    mocker = mocker.patch("azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources")
+    for detail_level in ResourceOutputDetailLevel.list():
+        mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
+        namespace = generate_generic_id()
+        result = evaluate_kafka_connectors(namespace=namespace, detail_level=detail_level)
 
-    namespace = generate_generic_id()
-    result = evaluate_kafka_connectors(namespace=namespace)
+        assert result["name"] == "evalKafkaConnectors"
+        assert result["namespace"] == namespace
+        assert result["targets"]["kafkaconnectors.az-edge.com"]
+        target = result["targets"]["kafkaconnectors.az-edge.com"]
 
-    assert result["name"] == "evalKafkaConnectors"
-    assert result["namespace"] == namespace
-    assert result["targets"]["kafkaconnectors.az-edge.com"]
-    target = result["targets"]["kafkaconnectors.az-edge.com"]
-
-    assert_conditions(target, conditions)
-    assert_evaluations(target, evaluations)
+        assert_conditions(target, conditions)
+        assert_evaluations(target, evaluations)
 
 
 @pytest.mark.parametrize(
