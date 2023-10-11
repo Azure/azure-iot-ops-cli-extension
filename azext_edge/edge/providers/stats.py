@@ -4,31 +4,33 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
+import binascii
+import json
+
 from datetime import datetime
 from time import sleep
-from typing import Optional
+from typing import List, Optional, Tuple, Union, Dict, TYPE_CHECKING
 
 from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
 
-from ..common import METRICS_SERVICE_API_PORT, AZEDGE_DIAGNOSTICS_SERVICE
-from .base import get_namespaced_pods_by_prefix, portforward_http
+from ..common import AZEDGE_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT
+from ..util import get_timestamp_now_utc
+from .base import get_namespaced_pods_by_prefix, portforward_http, portforward_socket, V1Pod
 
 logger = get_logger(__name__)
 
 console = Console(highlight=True)
 
+if TYPE_CHECKING:
+    # pylint: disable=no-name-in-module
+    from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
-def get_stats(
-    namespace: Optional[str] = None,
-    diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
-    pod_port: int = METRICS_SERVICE_API_PORT,
-    raw_response=False,
-    raw_response_print=False,
-    refresh_in_seconds: int = 10,
-    watch: bool = False,
-):
+
+def _preprocess_stats(
+    namespace: Optional[str] = None, diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE
+) -> Tuple[str, V1Pod]:
     if not namespace:
         from .base import DEFAULT_NAMESPACE
 
@@ -36,9 +38,24 @@ def get_stats(
 
     target_pods = get_namespaced_pods_by_prefix(prefix=diag_service_pod_prefix, namespace=namespace)
     if not target_pods:
-        raise ResourceNotFoundError(f"Diagnostics service does not exist in namespace {namespace}.")
+        raise ResourceNotFoundError(
+            f"Diagnostics service pod '{diag_service_pod_prefix}' does not exist in namespace '{namespace}'."
+        )
     diagnostic_pod = target_pods[0]
-    target_pod_port = pod_port
+
+    return namespace, diagnostic_pod
+
+
+def get_stats(
+    namespace: Optional[str] = None,
+    diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
+    pod_metrics_port: int = METRICS_SERVICE_API_PORT,
+    raw_response=False,
+    raw_response_print=False,
+    refresh_in_seconds: int = 10,
+    watch: bool = False,
+) -> Union[Dict[str, dict], str, None]:
+    namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
 
     from rich import box
     from rich.live import Live
@@ -52,7 +69,7 @@ def get_stats(
     with portforward_http(
         namespace=namespace,
         pod_name=diagnostic_pod.metadata.name,
-        pod_port=target_pod_port,
+        pod_port=pod_metrics_port,
     ) as pf:
         try:
             raw_metrics = pf.get("/metrics")
@@ -186,3 +203,166 @@ def _clean_stats(raw_stats: str) -> dict:
         return normalized
 
     return result
+
+
+def get_traces(
+    namespace: Optional[str] = None,
+    diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
+    pod_protobuf_port: int = PROTOBUF_SERVICE_API_PORT,
+    trace_ids: Optional[List[str]] = None,
+    trace_dir: Optional[str] = None,
+) -> Union[List["TracesData"], None]:
+    """
+    trace_ids: List[str] hex representation of trace Ids.
+    """
+    if not any([trace_ids, trace_dir]):
+        raise ValueError("At least trace_ids or trace_dir is required.")
+
+    from zipfile import ZIP_DEFLATED, ZipFile
+
+    from google.protobuf.json_format import MessageToDict
+    from rich.progress import MofNCompleteColumn, Progress
+
+    # pylint: disable=no-name-in-module
+    from .proto.diagnostics_service_pb2 import Request, Response, TraceRetrievalInfo
+    from .support.base import normalize_dir
+
+    namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
+
+    if not trace_ids:
+        trace_ids = []
+    else:
+        trace_ids = [binascii.unhexlify(t) for t in trace_ids]
+
+    with Progress(
+        *Progress.get_default_columns(), MofNCompleteColumn(), transient=False, disable=bool(trace_ids)
+    ) as progress:
+        with portforward_socket(
+            namespace=namespace, pod_name=diagnostic_pod.metadata.name, pod_port=pod_protobuf_port
+        ) as socket:
+            request = Request(get_traces=TraceRetrievalInfo(trace_ids=trace_ids))
+            serialized_request = request.SerializeToString()
+            request_len_b = len(serialized_request).to_bytes(4, byteorder="big")
+
+            socket.sendall(request_len_b)
+            socket.sendall(serialized_request)
+
+            traces: List[dict] = []
+            if trace_dir:
+                normalized_dir_path = normalize_dir(dir_path=trace_dir)
+                normalized_dir_path = normalized_dir_path.joinpath(
+                    f"e4k_traces_{get_timestamp_now_utc(format='%Y%m%dT%H%M%S')}.zip"
+                )
+                # pylint: disable=consider-using-with
+                myzip = ZipFile(file=str(normalized_dir_path), mode="w", compression=ZIP_DEFLATED)
+
+            progress_set = False
+            progress_task = None
+            total_trace_count = 0
+            current_trace_count = 0
+            try:
+                while True:
+                    if current_trace_count and current_trace_count >= total_trace_count:
+                        break
+
+                    rbytes = socket.recv(4)
+                    response_size = int.from_bytes(rbytes, byteorder="big")
+                    response_bytes = socket.recv(response_size)
+                    if response_bytes == b"":
+                        logger.warning("TCP socket closed. Processing aborted.")
+                        return
+
+                    response = Response.FromString(response_bytes)
+                    current_trace_count = current_trace_count + 1
+
+                    if not total_trace_count:
+                        total_trace_count = response.retrieved_trace.total_trace_count
+                        if total_trace_count == 0:
+                            logger.warning("No traces to fetch. Processing aborted.")
+                            break
+
+                    if not progress.disable and not progress_set:
+                        progress_task = progress.add_task(
+                            "[deep_sky_blue4]Gathering traces...", total=response.retrieved_trace.total_trace_count
+                        )
+                        progress_set = True
+
+                    msg_dict = MessageToDict(message=response.retrieved_trace.trace, use_integers_for_enums=True)
+                    root_span, resource_name = _determine_root_span(message_dict=msg_dict)
+
+                    if progress_set:
+                        progress.update(progress_task, advance=1)
+                    if not root_span:
+                        logger.warning("Could not determine root span. Skipping trace.")
+                        continue
+
+                    span_trace_id = root_span["traceId"]
+                    span_name = root_span["name"]
+
+                    if trace_ids:
+                        traces.append(msg_dict)
+                    if trace_dir:
+                        archive = f"{resource_name}.{span_name}.{span_trace_id}"
+                        pb_suffix = ".otlp.pb"
+                        tempo_suffix = ".tempo.json"
+
+                        # Original OLTP
+                        myzip.writestr(
+                            zinfo_or_arcname=f"{archive}{pb_suffix}",
+                            data=response.retrieved_trace.trace.SerializeToString(),
+                        )
+                        # Tempo
+                        myzip.writestr(
+                            zinfo_or_arcname=f"{archive}{tempo_suffix}",
+                            data=json.dumps(_convert_otlp_to_tempo(msg_dict), sort_keys=True),
+                        )
+
+                if traces:
+                    return traces
+
+            finally:
+                if trace_dir:
+                    myzip.close()
+
+
+def _determine_root_span(message_dict: dict) -> Tuple[str, str]:
+    """
+    Attempts to determine root span, and normalizes traceId and spaceId to hex.
+    """
+    import base64
+
+    root_span = None
+    resource_name = None
+
+    for resource_span in message_dict.get("resourceSpans", []):
+        for scope_span in resource_span.get("scopeSpans", []):
+            for span in scope_span.get("spans", []):
+                span["traceId"] = base64.b64decode(span["traceId"]).hex()
+                span["spanId"] = base64.b64decode(span["spanId"]).hex()
+                if not span.get("parentSpanId"):
+                    root_span = span
+                    # determine resource name
+                    resource = resource_span["resource"]
+                    attributes = resource["attributes"]
+                    for a in attributes:
+                        if a["key"] == "service.name":
+                            resource_name = a["value"].get("stringValue", "unknown")
+
+    return root_span, resource_name
+
+
+def _convert_otlp_to_tempo(message_dict: dict) -> dict:
+    """
+    Convert OTLP payload to Grafana Tempo.
+    """
+    from copy import deepcopy
+
+    new_dict = deepcopy(message_dict)
+
+    new_dict["batches"] = new_dict.pop("resourceSpans")
+    for batch in new_dict.get("batches", []):
+        batch["instrumentationLibrarySpans"] = batch.pop("scopeSpans", [])
+        for inst_lib_span in batch.get("instrumentationLibrarySpans", []):
+            inst_lib_span["instrumentationLibrary"] = inst_lib_span.pop("scope", {})
+
+    return new_dict

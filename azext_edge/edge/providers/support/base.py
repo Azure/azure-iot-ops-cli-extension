@@ -314,17 +314,25 @@ def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional
     return result
 
 
-def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "pas") -> PurePath:
-    if not bundle_dir:
-        bundle_dir = "."
-    if "~" in bundle_dir:
-        bundle_dir = expanduser(bundle_dir)
-    bundle_dir = abspath(bundle_dir)
-    bundle_dir_pure_path = PurePath(bundle_dir)
-    if not isdir(str(bundle_dir_pure_path)):
-        makedirs(bundle_dir_pure_path, exist_ok=True)
+def get_bundle_path(
+    bundle_dir: Optional[str] = None, system_name: str = "pas"
+) -> PurePath:
+    bundle_dir_pure_path = normalize_dir(bundle_dir)
     bundle_pure_path = bundle_dir_pure_path.joinpath(default_bundle_name(system_name))
     return bundle_pure_path
+
+
+def normalize_dir(dir_path: Optional[str] = None) -> PurePath:
+    if not dir_path:
+        dir_path = "."
+    if "~" in dir_path:
+        dir_path = expanduser(dir_path)
+    dir_path = abspath(dir_path)
+    dir_pure_path = PurePath(dir_path)
+    if not isdir(str(dir_pure_path)):
+        makedirs(dir_pure_path, exist_ok=True)
+
+    return dir_pure_path
 
 
 def default_bundle_name(system_name: str) -> str:
