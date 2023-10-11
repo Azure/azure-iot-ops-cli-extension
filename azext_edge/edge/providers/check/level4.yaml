@@ -1,0 +1,24 @@
+apiVersion: aio.com/v1
+kind: Lnm
+metadata:
+  name: level5
+  namespace: default
+spec:
+  image:
+    pullPolicy: Always
+    repository: mcr.microsoft.com/oss/envoyproxy/envoy-distroless
+    tag: v1.27.0
+  replicas: 1
+  logLevel: "debug"
+  openTelemetryMetricsCollectorAddr: "oc-opentelemetry-collector:4317"
+  level: 0
+  allowList:
+    enableArcDomains: true
+    domains:
+    - destinationUrl: "a.b.com"
+      destinationType: external
+    - destinationUrl: "a.b.c.com"
+      destinationType: external
+    sourceIpRange:
+    - addressPrefix: "0.0.0.0"
+      prefixLen: 0

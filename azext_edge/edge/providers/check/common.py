@@ -112,6 +112,11 @@ BLUEFIN_DESTINATION_STAGE_PROPERTIES = {
     BluefinDestinationStageType.reference_data.value: [("dataset", "Dataset ID", False)]
 }
 
+LNM_ALLOWLIST_PROPERTIES = [
+    ("domains.destinationType", "Aggregate window type", False),
+    ("window.size", "Aggregate window duration", False),
+    ("properties", "Aggregate property", True)
+]
 
 class E4kCheckType(Enum):
     """
@@ -137,6 +142,9 @@ AZEDGE_FRONTEND_PREFIX = "azedge-dmqtt-frontend"
 AZEDGE_BACKEND_PREFIX = "azedge-dmqtt-backend"
 AZEDGE_AUTH_PREFIX = "azedge-dmqtt-authentication"
 AZEDGE_KAFKA_CONFIG_PREFIX = "azedge-kafka-config"
+
+# Lnm runtime attributes
+AIO_LNM_PREFIX = "aio-lnm"
 
 # Pre-deployment KPIs
 

@@ -5,6 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from typing import Any, Dict, List, Optional
+from azext_edge.edge.providers.check.lnm import check_lnm_deployment
 from azure.cli.core.azclierror import ArgumentUsageError
 
 from rich.console import Console
@@ -54,6 +55,17 @@ def run_checks(
             )
         elif edge_service == SupportForEdgeServiceType.bluefin.value:
             result = check_bluefin_deployment(
+                console=console,
+                detail_level=detail_level,
+                namespace=namespace,
+                pre_deployment=pre_deployment,
+                post_deployment=post_deployment,
+                result=result,
+                as_list=as_list,
+                resource_kinds=resource_kinds
+            )
+        elif edge_service == SupportForEdgeServiceType.lnm.value:
+            result = check_lnm_deployment(
                 console=console,
                 detail_level=detail_level,
                 namespace=namespace,

@@ -85,7 +85,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "edge_service",
             options_list=["--edge-service", "-e"],
-            choices=CaseInsensitiveList(["e4k", "bluefin"]),
+            choices=CaseInsensitiveList(["e4k", "bluefin", "lnm"]),
             help="The edge service deployment that will be evaluated.",
         )
         context.argument(

@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from enum import Enum
-from typing import Dict, FrozenSet, Iterable, List, Union
+from typing import Dict, FrozenSet, Iterable, List, Optional, Union
 from kubernetes.client.models import V1APIResourceList
 from ...providers.base import get_cluster_custom_api, get_namespaced_custom_objects
 
@@ -42,13 +42,14 @@ class EdgeResourceApi:
             self._kinds = frozenset(r.kind.lower() for r in self._api.resources)
             return self._kinds
 
-    def get_resources(self, kind: Union[str, Enum], namespace: str):
+    def get_resources(self, kind: Union[str, Enum], namespace: str, plural: Optional[str] = None):
         if isinstance(kind, Enum):
             kind = kind.value
 
         if self.kinds and kind in self.kinds:
+            plural = plural or f"{kind}s"
             return get_namespaced_custom_objects(
-                group=self.group, version=self.version, namespace=namespace, plural=f"{kind}s"
+                group=self.group, version=self.version, namespace=namespace, plural=plural
             )
 
 
