@@ -258,15 +258,28 @@ def get_traces(
 
             progress_set = False
             progress_task = None
+            total_trace_count = 0
+            current_trace_count = 0
             try:
                 while True:
+                    if current_trace_count and current_trace_count >= total_trace_count:
+                        break
+
                     rbytes = socket.recv(4)
                     response_size = int.from_bytes(rbytes, byteorder="big")
                     response_bytes = socket.recv(response_size)
                     if response_bytes == b"":
                         logger.warning("TCP socket closed. Processing aborted.")
                         return
+
                     response = Response.FromString(response_bytes)
+                    current_trace_count = current_trace_count + 1
+
+                    if not total_trace_count:
+                        total_trace_count = response.retrieved_trace.total_trace_count
+                        if total_trace_count == 0:
+                            logger.warning("No traces to fetch. Processing aborted.")
+                            break
 
                     if not progress.disable and not progress_set:
                         progress_task = progress.add_task(
@@ -304,10 +317,7 @@ def get_traces(
                             data=json.dumps(_convert_otlp_to_tempo(msg_dict), sort_keys=True),
                         )
 
-                    if response.retrieved_trace.current_trace_count == response.retrieved_trace.total_trace_count:
-                        break
-
-                if trace_ids:
+                if traces:
                     return traces
 
             finally:

@@ -13,3 +13,9 @@ from io import BufferedReader
 def stub_raw_stats() -> BufferedReader:
     with open(PurePath(PurePath(__file__).parent, "raw_stats.txt"), mode="rb", encoding=None) as f:
         yield f
+
+
+@pytest.fixture
+def mocked_zipfile(mocker):
+    patched = mocker.patch("zipfile.ZipFile", autospec=True)
+    yield patched

@@ -5,19 +5,29 @@
 # --------------------------------------------------------------------------------------------
 
 import binascii
+import pytest
+
 from unittest.mock import MagicMock
 from kubernetes.client.models import V1ObjectMeta, V1Pod, V1PodList
+from google.protobuf.json_format import ParseDict
 
 from azext_edge.edge.commands_e4k import stats
 from azext_edge.edge.common import AZEDGE_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT
 
 # pylint: disable=no-name-in-module
-from azext_edge.edge.providers.proto.diagnostics_service_pb2 import Request, Response, TraceRetrievalInfo
+from azext_edge.edge.providers.proto.diagnostics_service_pb2 import (
+    Request,
+    Response,
+    RetrievedTraceWrapper,
+    TraceRetrievalInfo,
+)
+from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
 from ...generators import generate_generic_id
+from .traces_data import TEST_TRACES_DATA
 
 
-def test_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlopen, stub_raw_stats):
+def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlopen, stub_raw_stats):
     pods = [V1Pod(metadata=V1ObjectMeta(name=AZEDGE_DIAGNOSTICS_SERVICE, namespace="namespace"))]
     pod_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
@@ -38,23 +48,113 @@ def test_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlopen,
     stats(cmd=mocked_cmd, namespace=namespace, context_name=context_name, raw_response_print=True)
     console_mock.print.assert_called_once()
 
-    trace_id1 = "2f799d7a9d1e8e182a52dc190baebce2"
-    trace_id2 = "4a32aaad8f3c5483b5b4960a06b82dfd"
-    trace_ids = [trace_id1, trace_id2]
+
+@pytest.mark.parametrize(
+    "trace_ids,trace_dir,recv_side_effect",
+    [
+        pytest.param(["2f799d7a9d1e8e182a52dc190baebce2"], None, [int(1).to_bytes(length=4, byteorder="big"), b""]),
+        pytest.param(
+            ["2f799d7a9d1e8e182a52dc190baebce2", "4a32aaad8f3c5483b5b4960a06b82dfd"],
+            None,
+            [
+                int(2).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=1,
+                        total_trace_count=2,
+                    )
+                ).SerializeToString(),
+                int(2).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=2,
+                        total_trace_count=2,
+                    )
+                ).SerializeToString(),
+            ],
+        ),
+        pytest.param(
+            [],
+            ".",
+            [
+                int(2).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=1,
+                        total_trace_count=2,
+                    )
+                ).SerializeToString(),
+                int(2).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=2,
+                        total_trace_count=2,
+                    )
+                ).SerializeToString(),
+            ],
+        ),
+        pytest.param(
+            ["2f799d7a9d1e8e182a52dc190baebce2"],
+            ".",
+            [
+                int(2).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=1,
+                        total_trace_count=1,
+                    )
+                ).SerializeToString(),
+            ],
+        ),
+    ],
+)
+def test_get_traces(
+    mocker, mocked_cmd, mocked_client, mocked_config, mocked_zipfile, trace_ids, trace_dir, recv_side_effect
+):
+    pods = [V1Pod(metadata=V1ObjectMeta(name=AZEDGE_DIAGNOSTICS_SERVICE, namespace="namespace"))]
+    pod_list = V1PodList(items=pods)
+    mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
+
+    namespace = generate_generic_id()
+    context_name = generate_generic_id()
     trace_ids_hex = [binascii.unhexlify(t) for t in trace_ids]
 
     serialized_request = Request(get_traces=TraceRetrievalInfo(trace_ids=trace_ids_hex)).SerializeToString()
     request_len_b = len(serialized_request).to_bytes(4, byteorder="big")
 
     portforward_socket_mock = mocker.patch("azext_edge.edge.providers.stats.portforward_socket")
-    portforward_socket_mock().__enter__().recv.side_effect = [int(0).to_bytes(length=4, byteorder="big"), b""]
+    portforward_socket_mock().__enter__().recv.side_effect = recv_side_effect
+    result = stats(
+        cmd=mocked_cmd, namespace=namespace, context_name=context_name, trace_ids=trace_ids, trace_dir=trace_dir
+    )
 
-    result = stats(cmd=mocked_cmd, namespace=namespace, context_name=context_name, trace_ids=trace_ids)
     request_bytes_length = portforward_socket_mock().__enter__().sendall.call_args_list[0].args[0]
     assert request_bytes_length == request_len_b
-
     request_bytes_trace_ids = portforward_socket_mock().__enter__().sendall.call_args_list[1].args[0]
     assert request_bytes_trace_ids == serialized_request
+
+    if trace_ids:
+        if not recv_side_effect[1]:
+            assert not result
+            return
+        assert len(result) == len(recv_side_effect) / 2
+
+    if trace_dir:
+        zipfile_init_kwargs = mocked_zipfile.mock_calls.pop(0).kwargs
+        assert "e4k_traces_" in zipfile_init_kwargs["file"]
+        assert zipfile_init_kwargs["mode"] == "w"
+        # ZIP_DEFLATED == 8
+        assert zipfile_init_kwargs["compression"] == 8
+        mocked_zipfile.mock_calls.pop(-1)
+        # When writing to zip, the operation effectively writes 2 files per trace.
+        # One in vanilla OTLP one in Tempo format.
+        # TODO assert formats.
+        assert len(mocked_zipfile.mock_calls) == len(recv_side_effect)
 
 
 def min_stats_assert(stats_map: dict):
