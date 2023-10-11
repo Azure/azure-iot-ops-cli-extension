@@ -56,6 +56,10 @@ def build_query(subscription_id: str, custom_query: Optional[str] = None, **kwar
     payload = {"subscriptions": [subscription_id], "query": "Resources ", "options": {}}
 
     # TODO: add more query options as they pop up
+    if kwargs.get("name"):
+        payload["query"] += f'| where name =~ "{kwargs.get("name")}" '
+    if kwargs.get("resource_group"):
+        payload["query"] += f'| where resourceGroup =~ "{kwargs.get("resource_group")}" '
     if kwargs.get("location"):
         payload["query"] += f'| where location =~ "{kwargs.get("location")}" '
     if kwargs.get("resource_group"):

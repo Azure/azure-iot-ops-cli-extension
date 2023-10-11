@@ -519,7 +519,7 @@ def _build_default_configuration(
     return json.dumps(defaults)
 
 
-# TODO: unit test + simplify
+# TODO: unit test + @ryan - see if there is a way to simplify even more
 def _check_asset_cluster_and_custom_location(
     subscription,
     custom_location_name: str = None,
@@ -540,13 +540,12 @@ def _check_asset_cluster_and_custom_location(
 
     # provide cluster name - start with checking for the cluster (if can)
     if cluster_name:
-        query = f'| where name =~ "{cluster_name}" '
-        if cluster_resource_group:
-            query += f'| where resourceGroup =~ "{cluster_resource_group}" '
         cluster_query_result = build_query(
             cluster_subscription,
             custom_query=query,
             type=ResourceTypeMapping.connected_cluster.value,
+            name=cluster_name,
+            resource_group=cluster_resource_group
         )
         if len(cluster_query_result) == 0:
             raise Exception(f"Cluster {cluster_name} not found.")
@@ -562,14 +561,12 @@ def _check_asset_cluster_and_custom_location(
     # try to find location, either from given param and/or from cluster
     # if only location is provided, will look just by location name
     # if both cluster name and location are provided, should also include cluster id to narrow association
-    if custom_location_name:
-        query += f'| where name =~ "{custom_location_name}" '
-    if custom_location_resource_group:
-        query += f'| where resourceGroup =~ "{custom_location_resource_group}" '
     location_query_result = build_query(
         custom_location_subscription,
         custom_query=query,
-        type=ResourceTypeMapping.custom_location.value
+        type=ResourceTypeMapping.custom_location.value,
+        name=custom_location_name,
+        resource_group=custom_location_resource_group
     )
     if len(location_query_result) == 0:
         error_details = ""
