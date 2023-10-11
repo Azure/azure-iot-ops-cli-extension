@@ -34,6 +34,7 @@ def stats(
     if trace_ids or trace_dir:
         return get_traces(
             namespace=namespace,
+            diag_service_pod_prefix=diag_service_pod_prefix,
             pod_protobuf_port=pod_protobuf_port,
             trace_ids=trace_ids,
             trace_dir=trace_dir,
