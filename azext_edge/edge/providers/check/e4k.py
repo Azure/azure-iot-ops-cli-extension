@@ -1509,6 +1509,14 @@ def evaluate_kafka_connectors(
                     ),
                 )
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            "Batching:",
+                            detail_padding
+                        )
+                    )
+                    batch_detail_padding = (0, 0, 0, detail_padding[3] + 4)
                     batching = spec.get("batching", {})
                     enabled = batching.get("enabled")
                     latencyMs = batching.get("latencyMs")
@@ -1519,28 +1527,28 @@ def evaluate_kafka_connectors(
                         target_name=target,
                         display=Padding(
                             f"Enabled: [bright_blue]{enabled}[/bright_blue]",
-                            detail_padding,
+                            batch_detail_padding,
                         ),
                     )
                     check_manager.add_display(
                         target_name=target,
                         display=Padding(
                             f"Latency (ms): [bright_blue]{latencyMs}[/bright_blue]",
-                            detail_padding,
+                            batch_detail_padding,
                         ),
                     )
                     check_manager.add_display(
                         target_name=target,
                         display=Padding(
                             f"Max bytes: [bright_blue]{maxBytes}[/bright_blue]",
-                            detail_padding,
+                            batch_detail_padding,
                         ),
                     )
                     check_manager.add_display(
                         target_name=target,
                         display=Padding(
                             f"Max messages: [bright_blue]{maxMessages}[/bright_blue]",
-                            detail_padding,
+                            batch_detail_padding,
                         ),
                     )
 
