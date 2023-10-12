@@ -139,15 +139,6 @@ def evaluate_lnms(
 
         lnm_name = l["metadata"]["name"]
         lnm_names.append(lnm_name)
-
-        if detail_level == ResourceOutputDetailLevel.summary.value:
-            check_manager.add_display(
-                target_name=target_lnms,
-                display=Padding(
-                    f"- Lnm instance {{[bright_blue]{lnm_name}[/bright_blue]}} detected",
-                    (0, 0, 0, 12),
-                ),
-            )
         
         lnm_allowlist = l["spec"].get("allowList", None)
 
