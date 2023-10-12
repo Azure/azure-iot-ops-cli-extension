@@ -63,23 +63,24 @@ def get_namespaced_pods_by_prefix(
     label_selector: str = None,
     as_dict: bool = False,
 ) -> Union[List[V1Pod], List[dict], None]:
+
+    def filter_pods_by_prefix(pods: List[V1Pod], prefix: str) -> List[V1Pod]:
+        return [pod for pod in pods if pod.metadata.name.startswith(prefix)]
+
     target_pods_key = (namespace, label_selector)
     if target_pods_key in _namespaced_pods_cache:
-        return _namespaced_pods_cache[target_pods_key]
+        cached_pods = _namespaced_pods_cache[target_pods_key]
+        return filter_pods_by_prefix(pods=cached_pods, prefix=prefix)
 
     try:
         v1 = client.CoreV1Api()
         pods_list: V1PodList = v1.list_namespaced_pod(namespace, label_selector=label_selector)
-        matched_pods: List[V1Pod] = []
-        for pod in pods_list.items:
-            p: V1Pod = pod
-            if p.metadata.name.startswith(prefix):
-                matched_pods.append(p)
-        _namespaced_pods_cache[target_pods_key] = matched_pods
+        _namespaced_pods_cache[target_pods_key] = pods_list.items
     except ApiException as ae:
         logger.debug(str(ae))
     else:
-        result = _namespaced_pods_cache[target_pods_key]
+        cached_pods = _namespaced_pods_cache[target_pods_key]
+        result = filter_pods_by_prefix(pods=cached_pods, prefix=prefix)
         if as_dict:
             return generic.sanitize_for_serialization(obj=result)
         return result
