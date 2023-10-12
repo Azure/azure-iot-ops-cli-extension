@@ -6,7 +6,7 @@
 
 import pytest
 
-from ....edge.commands_assets import show_asset
+from azext_edge.edge.commands_assets import show_asset
 
 from . import ASSETS_PATH
 from ...helpers import parse_rest_command

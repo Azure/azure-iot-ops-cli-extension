@@ -8,7 +8,7 @@ import json
 import pytest
 
 from azure.cli.core.azclierror import RequiredArgumentMissingError
-from ....edge.commands_assets import (
+from azext_edge.edge.commands_assets import (
     add_asset_data_point,
     list_asset_data_points,
     remove_asset_data_point

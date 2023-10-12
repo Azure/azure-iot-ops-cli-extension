@@ -11,7 +11,7 @@ from azure.cli.core.commands import CliCommandType
 
 e4k_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_e4k#{}")
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
-asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
+asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets_alt#{}")
 
 
 def load_iotedge_commands(self, _):

@@ -6,8 +6,8 @@
 
 import pytest
 
-from ....edge.common import ResourceTypeMapping
-from ....edge.commands_assets import query_assets
+from azext_edge.edge.common import ResourceTypeMapping
+from azext_edge.edge.commands_assets import query_assets
 
 from . import ASSETS_PATH
 from ...generators import generate_generic_id
