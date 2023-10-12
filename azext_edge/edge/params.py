@@ -85,8 +85,8 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "edge_service",
-            options_list=[context.deprecate(hide=True, target="--edge-service")],
-            choices=CaseInsensitiveList(["e4k", "bluefin"]),
+            options_list=["--edge-service", "-e"],
+            choices=CaseInsensitiveList(["e4k", context.deprecate(hide=True, target="bluefin")]),
             help="The edge service deployment that will be evaluated.",
         )
         context.argument(
