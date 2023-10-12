@@ -1483,31 +1483,22 @@ def evaluate_kafka_connectors(
             if detail_level != ResourceOutputDetailLevel.summary.value:
                 detail_padding = (0, 0, 0, padding[3] + 4)
                 spec = topic_map.get("spec", {})
-                compression = spec.get("compression")
-                partitionKeyProperty = spec.get("partitionKeyProperty")
-                partitionStrategy = spec.get("partitionStrategy")
 
-                check_manager.add_display(
-                    target_name=target,
-                    display=Padding(
-                        f"Compression: [bright_blue]{compression}[/bright_blue]",
-                        detail_padding,
-                    ),
-                )
-                check_manager.add_display(
-                    target_name=target,
-                    display=Padding(
-                        f"Partition Key: [bright_blue]{partitionKeyProperty}[/bright_blue]",
-                        detail_padding,
-                    ),
-                )
-                check_manager.add_display(
-                    target_name=target,
-                    display=Padding(
-                        f"Partition Strategy: [bright_blue]{partitionStrategy}[/bright_blue]",
-                        detail_padding,
-                    ),
-                )
+                for label, key in [
+                    ("Compression", "compression"),
+                    ("Partition Key", "partitionKeyProperty"),
+                    ("Partition Strategy", "partitionStrategy"),
+                ]:
+                    val = spec.get(key)
+
+                    check_manager.add_display(
+                        target_name=target,
+                        display=Padding(
+                            f"{label}: [bright_blue]{val}[/bright_blue]",
+                            detail_padding,
+                        ),
+                    )
+
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
                     check_manager.add_display(
                         target_name=target,
@@ -1518,39 +1509,20 @@ def evaluate_kafka_connectors(
                     )
                     batch_detail_padding = (0, 0, 0, detail_padding[3] + 4)
                     batching = spec.get("batching", {})
-                    enabled = batching.get("enabled")
-                    latencyMs = batching.get("latencyMs")
-                    maxBytes = batching.get("maxBytes")
-                    maxMessages = batching.get("maxMessages")
-
-                    check_manager.add_display(
-                        target_name=target,
-                        display=Padding(
-                            f"Enabled: [bright_blue]{enabled}[/bright_blue]",
-                            batch_detail_padding,
-                        ),
-                    )
-                    check_manager.add_display(
-                        target_name=target,
-                        display=Padding(
-                            f"Latency (ms): [bright_blue]{latencyMs}[/bright_blue]",
-                            batch_detail_padding,
-                        ),
-                    )
-                    check_manager.add_display(
-                        target_name=target,
-                        display=Padding(
-                            f"Max bytes: [bright_blue]{maxBytes}[/bright_blue]",
-                            batch_detail_padding,
-                        ),
-                    )
-                    check_manager.add_display(
-                        target_name=target,
-                        display=Padding(
-                            f"Max messages: [bright_blue]{maxMessages}[/bright_blue]",
-                            batch_detail_padding,
-                        ),
-                    )
+                    for label, key in [
+                        ("Enabled", "enabled"),
+                        ("Latency (ms)", "latencyMs"),
+                        ("Max bytes", "maxBytes"),
+                        ("Max messages", "maxMessages"),
+                    ]:
+                        val = batching.get(key)
+                        check_manager.add_display(
+                            target_name=target,
+                            display=Padding(
+                                f"{label}: [bright_blue]{val}[/bright_blue]",
+                                batch_detail_padding,
+                            ),
+                        )
 
                 display_routes(
                     check_manager=check_manager, target=target, routes=spec.get("routes", []), detail_level=detail_level, padding=detail_padding
