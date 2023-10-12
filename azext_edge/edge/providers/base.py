@@ -5,6 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 import socket
+
 from contextlib import contextmanager
 from typing import List, Optional, Union, Iterator
 from urllib.request import urlopen
@@ -84,26 +85,30 @@ def get_namespaced_pods_by_prefix(
         return result
 
 
-_namespaced_object_cache: dict = {}
+_custom_object_cache: dict = {}
 
 
-def get_namespaced_custom_objects(group: str, version: str, namespace: str, plural: str) -> Union[List[dict], None]:
-    target_resource_key = (group, version, namespace, plural)
-    if target_resource_key in _namespaced_object_cache:
-        return _namespaced_object_cache[target_resource_key]
+def get_custom_objects(
+    group: str, version: str, plural: str, namespace: Optional[str] = None, use_cache: bool = True
+) -> Union[List[dict], None]:
+    target_resource_key = (group, version, plural, namespace)
+    if use_cache:
+        if target_resource_key in _custom_object_cache:
+            return _custom_object_cache[target_resource_key]
 
     try:
         custom_client = client.CustomObjectsApi()
-        _namespaced_object_cache[target_resource_key] = custom_client.list_namespaced_custom_object(
-            group=group,
-            version=version,
-            namespace=namespace,
-            plural=plural,
-        )
+        kwargs = {"group": group, "version": version, "plural": plural}
+        if namespace:
+            kwargs["namespace"] = namespace
+            f = custom_client.list_namespaced_custom_object
+        else:
+            f = custom_client.list_cluster_custom_object
+        _custom_object_cache[target_resource_key] = f(**kwargs)
     except ApiException as ae:
         logger.debug(str(ae))
     else:
-        return _namespaced_object_cache[target_resource_key]
+        return _custom_object_cache[target_resource_key]
 
 
 _cluster_resource_api_cache: dict = {}

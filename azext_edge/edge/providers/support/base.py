@@ -15,7 +15,7 @@ from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Container, V1ObjectMeta
 
 from ..edge_api import EdgeResourceApi
-from ..base import client
+from ..base import client, get_custom_objects
 from ...util import get_timestamp_now_utc
 
 logger = get_logger(__name__)
@@ -23,10 +23,11 @@ generic = client.ApiClient()
 
 
 def process_crd(group: str, version: str, kind: str, api_moniker: str, file_prefix: Optional[str] = None):
-    result: dict = client.CustomObjectsApi().list_cluster_custom_object(
+    result: dict = get_custom_objects(
         group=group,
         version=version,
         plural=f"{kind}s",
+        use_cache=False,
     )
     if not file_prefix:
         file_prefix = kind
@@ -314,9 +315,7 @@ def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional
     return result
 
 
-def get_bundle_path(
-    bundle_dir: Optional[str] = None, system_name: str = "pas"
-) -> PurePath:
+def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "pas") -> PurePath:
     bundle_dir_pure_path = normalize_dir(bundle_dir)
     bundle_pure_path = bundle_dir_pure_path.joinpath(default_bundle_name(system_name))
     return bundle_pure_path
