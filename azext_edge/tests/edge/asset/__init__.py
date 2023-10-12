@@ -8,7 +8,7 @@ from ...generators import generate_generic_id
 
 
 # Paths for mocking
-ASSETS_PATH = "azext_edge.edge.commands_assets"
+ASSETS_PATH = "azext_edge.edge.providers.assets"
 
 # Main command paths
 SHOW_ASSETS_PATH = f"{ASSETS_PATH}.show_asset"

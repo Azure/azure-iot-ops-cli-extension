@@ -37,9 +37,54 @@ def mocked_get_subscription_id(mocker):
 
 
 @pytest.fixture
-def mocked_cmd(mocker):
+def mocked_send_raw_request(request, mocker):
+    request_result = mocker.Mock()
+    raw_request_result = getattr(request, "param", {})
+    request_result.content = raw_request_result
+    request_result.json.return_value = {"value": raw_request_result}
+    patched = mocker.patch("azure.cli.core.util.send_raw_request", autospec=True)
+    patched.return_value = request_result
+    yield patched
+
+
+@pytest.fixture
+def mocked_resource_management_client(request, mocker):
+    import json
+
+    request_results = getattr(request, "param", {})
+    resource_mgmt_client = mocker.Mock()
+    # Resource group
+    rg_get = mocker.Mock()
+    rg_get.as_dict.return_value = request_results.get("resource_groups.get")
+    resource_mgmt_client.resource_groups.get.return_value = rg_get
+
+    # Resources
+    # Delete
+    resource_mgmt_client.resources.begin_delete.return_value = None
+
+    # Get + lazy way of ensuring original is present and result is a copy
+    resource_get = mocker.Mock()
+    get_result = request_results.get("resources.get")
+    resource_get.original = get_result
+    resource_get.as_dict.return_value = json.loads(json.dumps(get_result))
+    resource_mgmt_client.resources.get.return_value = resource_get
+
+    # Create
+    poller = mocker.Mock()
+    poller.wait.return_value = None
+    poller.result.return_value = request_results.get("resources.begin_create_or_update_by_id")
+
+    resource_mgmt_client.resources.begin_create_or_update_by_id.return_value = poller
+
+    patched = mocker.patch("azure.mgmt.resource.ResourceManagementClient", autospec=True)
+    patched.return_value = resource_mgmt_client
+
+    yield resource_mgmt_client
+
+
+@pytest.fixture
+def mocked_cmd(mocker, mocked_get_subscription_id):
     az_cli_mock = mocker.patch("azure.cli.core.AzCli", autospec=True)
-    az_cli_mock.data = {"subscription_id": "mySub1"}
     config = {"cli_ctx": az_cli_mock}
     patched = mocker.patch("azure.cli.core.commands.AzCliCommand", autospec=True, **config)
     yield patched

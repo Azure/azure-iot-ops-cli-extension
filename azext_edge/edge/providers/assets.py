@@ -8,11 +8,8 @@ import json
 from typing import Dict, List, Optional, Union
 
 from knack.log import get_logger
-from azure.identity import DefaultAzureCredential
-from azure.mgmt.resource import ResourceManagementClient
 
 from azure.cli.core.azclierror import InvalidArgumentValueError, ResourceNotFoundError, RequiredArgumentMissingError
-from azure.cli.core.commands.client_factory import get_subscription_id
 
 from ..util import assemble_nargs_to_dict, build_query
 from ..common import ResourceTypeMapping
@@ -25,6 +22,10 @@ API_VERSION = "2023-06-21-preview"
 
 class AssetProvider():
     def __init__(self, cmd):
+        from azure.cli.core.commands.client_factory import get_subscription_id
+        from azure.identity import DefaultAzureCredential
+        from azure.mgmt.resource import ResourceManagementClient
+
         self.cmd = cmd
         self.subscription = get_subscription_id(cmd.cli_ctx)
         self.resource_client = ResourceManagementClient(
@@ -391,7 +392,6 @@ class AssetProvider():
             resource_group_name=resource_group_name
         )
 
-        sub_point_type = "dataPoints" if data_source else "events"
         sub_points = asset["properties"][sub_point_type]
         if data_source:
             sub_points = [dp for dp in sub_points if dp["dataSource"] != data_source]

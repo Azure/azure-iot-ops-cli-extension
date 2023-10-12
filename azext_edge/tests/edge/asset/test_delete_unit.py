@@ -7,39 +7,43 @@
 import pytest
 
 from azext_edge.edge.commands_assets import delete_asset
+from azext_edge.edge.common import ResourceTypeMapping
+from azext_edge.edge.providers.assets import API_VERSION
 
-from . import ASSETS_PATH
-from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
 
-@pytest.mark.parametrize("embedded_cli_client", [{
-    "path": ASSETS_PATH,
-    "as_json_result": {"result": generate_generic_id()}
-}], ids=["cli"], indirect=True)
+@pytest.mark.parametrize("mocked_resource_management_client", [
+    {"resources.get": {"result": generate_generic_id()}}
+], ids=["resources.get"], indirect=True)
+@pytest.mark.parametrize("mocked_send_raw_request", [
+    [
+        {"name": generate_generic_id(), "resourceGroup": generate_generic_id()},
+        {"name": generate_generic_id(), "resourceGroup": generate_generic_id()}
+    ]
+], ids=["raw_request"], indirect=True)
 @pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
-def test_delete_asset(mocked_cmd, embedded_cli_client, resource_group):
-    asset_name = generate_generic_id()
-    list_rg = generate_generic_id()
-    if not resource_group:
-        as_json_results = list(embedded_cli_client.as_json.side_effect)
-        list_call = {"value": [{
-            "name": asset_name,
-            "resourceGroup": list_rg
-        }]}
-        as_json_results.insert(0, list_call)
-        embedded_cli_client.as_json.side_effect = as_json_results
+def test_delete_asset(
+    mocked_cmd,
+    mocked_resource_management_client,
+    mocked_send_raw_request,
+    resource_group
+):
+
+    expected_list_asset = mocked_send_raw_request.return_value.json.return_value["value"][1]
 
     result = delete_asset(
         cmd=mocked_cmd,
-        asset_name=asset_name,
+        asset_name=expected_list_asset["name"],
         resource_group_name=resource_group
     )
-    assert result is None
 
-    request = embedded_cli_client.invoke.call_args[0][-1]
-    request_dict = parse_rest_command(request)
-    assert request_dict["method"] == "DELETE"
-    assert f"/providers/Microsoft.DeviceRegistry/assets/{asset_name}?api-version=" in request_dict["uri"]
-    expected_rg = "/resourceGroups/" + (resource_group or list_rg)
-    assert expected_rg in request_dict["uri"]
+    assert result is None
+    mocked_resource_management_client.resources.begin_delete.assert_called_once()
+    call_kwargs = mocked_resource_management_client.resources.begin_delete.call_args.kwargs
+    assert call_kwargs["resource_group_name"] == (resource_group or expected_list_asset["resourceGroup"])
+    assert call_kwargs["resource_provider_namespace"] == ResourceTypeMapping.asset.value
+    assert call_kwargs["parent_resource_path"] == ""
+    assert call_kwargs["resource_type"] == ""
+    assert call_kwargs["resource_name"] == expected_list_asset["name"]
+    assert call_kwargs["api_version"] == API_VERSION

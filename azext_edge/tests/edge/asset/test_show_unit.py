@@ -7,44 +7,48 @@
 import pytest
 
 from azext_edge.edge.commands_assets import show_asset
+from azext_edge.edge.common import ResourceTypeMapping
+from azext_edge.edge.providers.assets import API_VERSION
 
-from . import ASSETS_PATH
-from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
 
-@pytest.mark.parametrize("embedded_cli_client", [{
-    "path": ASSETS_PATH,
-    "as_json_result": {"result": generate_generic_id()}
-}], ids=["cli"], indirect=True)
+@pytest.mark.parametrize("mocked_resource_management_client", [
+    {"resources.get": {"result": generate_generic_id()}}
+], ids=["resources.get"], indirect=True)
+@pytest.mark.parametrize("mocked_send_raw_request", [
+    [
+        {"name": generate_generic_id(), "result": generate_generic_id()},
+        {"name": generate_generic_id(), "result": generate_generic_id()}
+    ]
+], ids=["raw_request"], indirect=True)
 @pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
-def test_show_asset(mocked_cmd, embedded_cli_client, resource_group):
-    asset_name = generate_generic_id()
-    list_call = {"value": [{
-        "name": asset_name,
-        "result": generate_generic_id()
-    }]}
-    if not resource_group:
-        as_json_results = list(embedded_cli_client.as_json.side_effect)
-        as_json_results.insert(0, list_call)
-        embedded_cli_client.as_json.side_effect = as_json_results
+def test_show_asset(
+    mocked_cmd,
+    mocked_resource_management_client,
+    mocked_send_raw_request,
+    resource_group
+):
+
+    expected_list_asset = mocked_send_raw_request.return_value.json.return_value["value"][1]
 
     result = show_asset(
         cmd=mocked_cmd,
-        asset_name=asset_name,
+        asset_name=expected_list_asset["name"],
         resource_group_name=resource_group
     )
-    expected_result = next(embedded_cli_client.as_json.side_effect)
-    if not resource_group:
-        expected_result = list_call["value"][0]
-    assert result == expected_result
-
-    request = embedded_cli_client.invoke.call_args[0][-1]
-    request_dict = parse_rest_command(request)
-    assert request_dict["method"] == "GET"
     if resource_group:
-        assert f"/providers/Microsoft.DeviceRegistry/assets/{asset_name}?api-version=" in request_dict["uri"]
-        assert f"/resourceGroups/{resource_group}" in request_dict["uri"]
+        mocked_send_raw_request.assert_not_called()
+        mocked_resource_management_client.resources.get.assert_called_once()
+        call_kwargs = mocked_resource_management_client.resources.get.call_args.kwargs
+        assert call_kwargs["resource_group_name"] == resource_group
+        assert call_kwargs["resource_provider_namespace"] == ResourceTypeMapping.asset.value
+        assert call_kwargs["parent_resource_path"] == ""
+        assert call_kwargs["resource_type"] == ""
+        assert call_kwargs["resource_name"] == expected_list_asset["name"]
+        assert call_kwargs["api_version"] == API_VERSION
+        assert result == mocked_resource_management_client.resources.get.return_value.as_dict.return_value
     else:
-        assert "/providers/Microsoft.DeviceRegistry/assets?api-version=" in request_dict["uri"]
-        assert f"/resourceGroups/{resource_group}" not in request_dict["uri"]
+        mocked_resource_management_client.resources.get.assert_not_called()
+        mocked_send_raw_request.assert_called_once()
+        assert result == expected_list_asset

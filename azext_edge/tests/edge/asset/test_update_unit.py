@@ -4,25 +4,28 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-import json
 import pytest
 
 from azext_edge.edge.commands_assets import update_asset
+from azext_edge.edge.providers.assets import API_VERSION
 
 from . import (
-    ASSETS_PATH,
     MINIMUM_ASSET,
     FULL_ASSET
 )
-from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
 
-@pytest.mark.parametrize("embedded_cli_client", [{
-    "path": ASSETS_PATH,
-    "as_json_result": {"result": generate_generic_id()}
-}], ids=["cli"], indirect=True)
-@pytest.mark.parametrize("show_asset_fixture", [MINIMUM_ASSET, FULL_ASSET], indirect=True)
+@pytest.mark.parametrize("mocked_resource_management_client", [
+    {
+        "resources.get": MINIMUM_ASSET,
+        "resources.begin_create_or_update_by_id": {"result": generate_generic_id()}
+    },
+    {
+        "resources.get": FULL_ASSET,
+        "resources.begin_create_or_update_by_id": {"result": generate_generic_id()}
+    },
+], ids=["minimal", "full"], indirect=True)
 @pytest.mark.parametrize("asset_helpers_fixture", [{
     "process_asset_sub_points": generate_generic_id(),
     "update_properties": generate_generic_id(),
@@ -30,7 +33,6 @@ from ...generators import generate_generic_id
 @pytest.mark.parametrize("req", [
     {},
     {
-        "resource_group_name": generate_generic_id(),
         "asset_type": generate_generic_id(),
         "data_points": generate_generic_id(),
         "description": generate_generic_id(),
@@ -62,29 +64,33 @@ from ...generators import generate_generic_id
     },
 ])
 def test_update_asset(
-    mocker, mocked_cmd, embedded_cli_client, show_asset_fixture, asset_helpers_fixture, req
+    mocked_cmd, mocked_resource_management_client, asset_helpers_fixture, req
 ):
     patched_sp, patched_up = asset_helpers_fixture
     # Required params
     asset_name = generate_generic_id()
+    # force show call to one branch
+    resource_group_name = generate_generic_id()
     result = update_asset(
         cmd=mocked_cmd,
         asset_name=asset_name,
+        resource_group_name=resource_group_name,
         **req
-    )
+    ).result()
 
-    show_asset, original_asset = show_asset_fixture
-    assert show_asset.call_args.kwargs.get("resource_group_name") == req.get("resource_group_name")
-    assert result == next(embedded_cli_client.as_json.side_effect)
+    mocked_resource_management_client.resources.get.assert_called_once()
+    mocked_resource_management_client.resources.begin_create_or_update_by_id.assert_called_once()
+    original_asset = mocked_resource_management_client.resources.get.return_value.original
+    poller = mocked_resource_management_client.resources.begin_create_or_update_by_id.return_value
+    assert result == poller.result()
 
-    request = embedded_cli_client.invoke.call_args[0][-1]
-    request_dict = parse_rest_command(request)
-    assert request_dict["method"] == "PUT"
-
-    assert f"{original_asset['id']}?api-version=" in request_dict["uri"]
+    # Update call
+    call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
+    assert call_kwargs["resource_id"] == original_asset["id"]
+    assert call_kwargs["api_version"] == API_VERSION
 
     # Check update request
-    request_body = json.loads(request_dict["body"].strip("'"))
+    request_body = call_kwargs["parameters"]
     assert request_body["location"] == original_asset["location"]
     assert request_body["extendedLocation"] == original_asset["extendedLocation"]
     assert request_body.get("tags") == req.get("tags", original_asset.get("tags"))

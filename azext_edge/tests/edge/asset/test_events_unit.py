@@ -13,41 +13,48 @@ from azext_edge.edge.commands_assets import (
     list_asset_events,
     remove_asset_event
 )
+from azext_edge.edge.providers.assets import API_VERSION
+
 from . import (
-    ASSETS_PATH,
     MINIMUM_ASSET,
     FULL_ASSET
 )
-from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
 
 FULL_EVENT = FULL_ASSET["properties"]["events"][0]
 
 
-@pytest.mark.parametrize("embedded_cli_client", [{
-    "path": ASSETS_PATH,
-    "as_json_result": {"properties": {"events": {"result": generate_generic_id()}}}
-}], ids=["cli"], indirect=True)
-@pytest.mark.parametrize("show_asset_fixture", [MINIMUM_ASSET, FULL_ASSET], indirect=True)
+@pytest.mark.parametrize("mocked_resource_management_client", [
+    {
+        "resources.get": MINIMUM_ASSET,
+        "resources.begin_create_or_update_by_id": {
+            "properties": {"events": {"result": generate_generic_id()}}
+        }
+    },
+    {
+        "resources.get": FULL_ASSET,
+        "resources.begin_create_or_update_by_id": {
+            "properties": {"events": {"result": generate_generic_id()}}
+        }
+    },
+], ids=["minimal", "full"], indirect=True)
 @pytest.mark.parametrize("capability_id", [None, generate_generic_id()])
 @pytest.mark.parametrize("name", [None, generate_generic_id()])
 @pytest.mark.parametrize("observability_mode", [None, generate_generic_id()])
 @pytest.mark.parametrize("queue_size", [None, 20])
 @pytest.mark.parametrize("sampling_interval", [None, 33])
-@pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
 def test_add_asset_event(
     mocked_cmd,
-    embedded_cli_client,
-    show_asset_fixture,
+    mocked_resource_management_client,
     capability_id,
     name,
     observability_mode,
     queue_size,
     sampling_interval,
-    resource_group_name
 ):
     asset_name = generate_generic_id()
+    resource_group_name = generate_generic_id()
     event_notifier = generate_generic_id()
     result_events = add_asset_event(
         cmd=mocked_cmd,
@@ -60,18 +67,20 @@ def test_add_asset_event(
         sampling_interval=sampling_interval,
         resource_group_name=resource_group_name
     )
-    # Show
-    show_asset, original_asset = show_asset_fixture
-    assert show_asset.call_args.kwargs.get("resource_group_name") == resource_group_name
+    mocked_resource_management_client.resources.get.assert_called_once()
+    mocked_resource_management_client.resources.begin_create_or_update_by_id.assert_called_once()
+    original_asset = mocked_resource_management_client.resources.get.return_value.original
+    poller = mocked_resource_management_client.resources.begin_create_or_update_by_id.return_value
+    expected_asset = poller.result()
+    assert result_events == expected_asset["properties"]["events"]
 
     # Asset changes
-    assert result_events == next(embedded_cli_client.as_json.side_effect)["properties"]["events"]
+    call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
+    assert call_kwargs["resource_id"] == original_asset["id"]
+    assert call_kwargs["api_version"] == API_VERSION
 
-    request = embedded_cli_client.invoke.call_args[0][-1]
-    request_dict = parse_rest_command(request)
-    assert request_dict["method"] == "PUT"
-    assert f"{original_asset['id']}?api-version=" in request_dict["uri"]
-    request_events = json.loads(request_dict["body"].strip("'"))["properties"]["events"]
+    # Check update request
+    request_events = call_kwargs["parameters"]["properties"]["events"]
 
     assert request_events[:-1] == original_asset["properties"]["events"]
     added_event = request_events[-1]
@@ -89,29 +98,31 @@ def test_add_asset_event(
     assert custom_configuration.get("queueSize") == (queue_size if event_notifier else None)
 
 
-@pytest.mark.parametrize("show_asset_fixture", [MINIMUM_ASSET, FULL_ASSET], indirect=True)
-@pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
-def test_list_asset_events(mocked_cmd, show_asset_fixture, resource_group_name):
+@pytest.mark.parametrize("mocked_resource_management_client", [
+    {"resources.get": MINIMUM_ASSET},
+    {"resources.get": FULL_ASSET},
+], ids=["minimal", "full"], indirect=True)
+def test_list_asset_events(mocked_cmd, mocked_resource_management_client):
     asset_name = generate_generic_id()
-    result_obj = list_asset_events(
+    resource_group_name = generate_generic_id()
+    result_events = list_asset_events(
         cmd=mocked_cmd,
         asset_name=asset_name,
         resource_group_name=resource_group_name
     )
-    # Show
-    show_asset, original_asset = show_asset_fixture
-    assert show_asset.call_args.kwargs.get("resource_group_name") == resource_group_name
-
-    # Asset list
-    assert result_obj == original_asset["properties"]["events"]
+    mocked_resource_management_client.resources.get.assert_called_once()
+    original_asset = mocked_resource_management_client.resources.get.return_value.as_dict.return_value
+    assert result_events == original_asset["properties"]["events"]
 
 
-@pytest.mark.parametrize("embedded_cli_client", [{
-    "path": ASSETS_PATH,
-    "as_json_result": {"properties": {"events": {"result": generate_generic_id()}}}
-}], ids=["cli"], indirect=True)
-@pytest.mark.parametrize("show_asset_fixture", [FULL_ASSET], indirect=True)
-@pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
+@pytest.mark.parametrize("mocked_resource_management_client", [
+    {
+        "resources.get": FULL_ASSET,
+        "resources.begin_create_or_update_by_id": {
+            "properties": {"events": {"result": generate_generic_id()}}
+        }
+    },
+], ids=["full"], indirect=True)
 @pytest.mark.parametrize("event_notifier, name", [
     (FULL_EVENT["eventNotifier"], FULL_EVENT["name"]),
     (FULL_EVENT["eventNotifier"], None),
@@ -121,27 +132,33 @@ def test_list_asset_events(mocked_cmd, show_asset_fixture, resource_group_name):
     (None, generate_generic_id()),
 ])
 def test_remove_asset_event(
-    mocked_cmd, embedded_cli_client, show_asset_fixture, resource_group_name, event_notifier, name
+    mocked_cmd, mocked_resource_management_client, event_notifier, name
 ):
     asset_name = generate_generic_id()
-    result_obj = remove_asset_event(
+    resource_group_name = generate_generic_id()
+    result_events = remove_asset_event(
         cmd=mocked_cmd,
         asset_name=asset_name,
         event_notifier=event_notifier,
         name=name,
         resource_group_name=resource_group_name
     )
-    # show
-    show_asset, original_asset = show_asset_fixture
-    original_events = original_asset["properties"]["events"]
-    assert show_asset.call_args.kwargs.get("resource_group_name") == resource_group_name
-
-    assert result_obj == next(embedded_cli_client.as_json.side_effect)["properties"]["events"]
+    mocked_resource_management_client.resources.get.assert_called_once()
+    mocked_resource_management_client.resources.begin_create_or_update_by_id.assert_called_once()
+    original_asset = mocked_resource_management_client.resources.get.return_value.original
+    poller = mocked_resource_management_client.resources.begin_create_or_update_by_id.return_value
+    expected_asset = poller.result()
+    assert result_events == expected_asset["properties"]["events"]
 
     # Asset changes
-    request = embedded_cli_client.invoke.call_args[0][-1]
-    request_body = parse_rest_command(request)["body"]
-    request_events = json.loads(request_body.strip("'"))["properties"]["events"]
+    call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
+    assert call_kwargs["resource_id"] == original_asset["id"]
+    assert call_kwargs["api_version"] == API_VERSION
+
+    # Check update request
+    request_events = call_kwargs["parameters"]["properties"]["events"]
+    original_events = original_asset["properties"]["events"]
+
     if event_notifier == FULL_EVENT["eventNotifier"] or name == FULL_EVENT["name"]:
         assert len(request_events) + 1 == len(original_events)
         assert request_events == original_events[1:]

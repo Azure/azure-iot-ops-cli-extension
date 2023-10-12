@@ -7,26 +7,31 @@
 import pytest
 
 from azext_edge.edge.commands_assets import list_assets
+from azext_edge.edge.providers.assets import API_VERSION
 
-from . import ASSETS_PATH
-from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
 
-@pytest.mark.parametrize("embedded_cli_client", [{
-    "path": ASSETS_PATH,
-    "as_json_result": {"value": {"result": generate_generic_id()}}
-}], ids=["cli"], indirect=True)
+@pytest.mark.parametrize("mocked_send_raw_request", [
+    [
+        {"name": generate_generic_id(), "result": generate_generic_id()},
+        {"name": generate_generic_id(), "result": generate_generic_id()}
+    ]
+], ids=["raw_request"], indirect=True)
 @pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
-def test_list_assets(mocked_cmd, embedded_cli_client, request, resource_group):
+def test_list_assets(
+    mocked_cmd,
+    mocked_send_raw_request,
+    resource_group
+):
     result = list_assets(
         cmd=mocked_cmd,
         resource_group_name=resource_group
     )
-    assert result == next(embedded_cli_client.as_json.side_effect)["value"]
-
-    request = embedded_cli_client.invoke.call_args[0][0]
-    request_dict = parse_rest_command(request)
-    assert request_dict["method"] == "GET"
-    assert "/providers/Microsoft.DeviceRegistry/assets?api-version=" in request_dict["uri"]
-    assert (f"/resourceGroups/{resource_group}" in request_dict["uri"]) is (resource_group is not None)
+    assert result == mocked_send_raw_request.return_value.json.return_value["value"]
+    mocked_send_raw_request.assert_called_once()
+    call_kwargs = mocked_send_raw_request.call_args.kwargs
+    assert call_kwargs["cli_ctx"] == mocked_cmd.cli_ctx
+    assert call_kwargs["method"] == "GET"
+    assert f"/providers/Microsoft.DeviceRegistry/assets?api-version={API_VERSION}" in call_kwargs["url"]
+    assert (f"/resourceGroups/{resource_group}" in call_kwargs["url"]) is (resource_group is not None)

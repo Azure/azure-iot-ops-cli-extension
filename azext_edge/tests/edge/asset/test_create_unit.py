@@ -4,24 +4,22 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-import json
 import pytest
 
 from azext_edge.edge.commands_assets import create_asset
+from azext_edge.edge.common import ResourceTypeMapping
+from azext_edge.edge.providers.assets import API_VERSION
 
-from . import ASSETS_PATH
-from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
 
-@pytest.mark.parametrize("embedded_cli_client", [{
-    "path": ASSETS_PATH,
-    "as_json_result": {"result": generate_generic_id()}
-}], ids=["cli"], indirect=True)
+@pytest.mark.parametrize("mocked_resource_management_client", [{
+    "resource_groups.get": {"location": generate_generic_id()},
+    "resources.begin_create_or_update_by_id": {"result": generate_generic_id()}
+}], ids=["create"], indirect=True)
 @pytest.mark.parametrize("asset_helpers_fixture", [{
     "process_asset_sub_points": generate_generic_id(),
     "update_properties": generate_generic_id(),
-    "check_asset_cluster_and_custom_location": generate_generic_id(),
 }], ids=["create helpers"], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
@@ -64,20 +62,15 @@ from ...generators import generate_generic_id
         "ev_queue_size": 888,
     },
 ])
-def test_create_asset(mocked_cmd, embedded_cli_client, asset_helpers_fixture, req):
-    patched_cap, patched_sp, patched_up = asset_helpers_fixture
+def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, asset_helpers_fixture, req):
+    patched_sp, patched_up = asset_helpers_fixture
+    patched_cap = mocker.patch("azext_edge.edge.providers.assets.AssetProvider._check_asset_cluster_and_custom_location")
+    patched_cap.return_value = generate_generic_id()
+
     # Required params
     asset_name = generate_generic_id()
     resource_group_name = generate_generic_id()
     endpoint_profile = generate_generic_id()
-    location = req.get("location")
-
-    # no location triggers rg call
-    if not location:
-        location = generate_generic_id()
-        as_json_results = list(embedded_cli_client.as_json.side_effect)
-        as_json_results.insert(0, {"location": location})
-        embedded_cli_client.as_json.side_effect = as_json_results
 
     result = create_asset(
         cmd=mocked_cmd,
@@ -85,18 +78,30 @@ def test_create_asset(mocked_cmd, embedded_cli_client, asset_helpers_fixture, re
         resource_group_name=resource_group_name,
         endpoint_profile=endpoint_profile,
         **req
+    ).result()
+
+    # resource group call
+    location = req.get(
+        "location",
+        mocked_resource_management_client.resource_groups.get.return_value.as_dict.return_value["location"]
     )
-    assert result == next(embedded_cli_client.as_json.side_effect)
+    if req.get("location"):
+        mocked_resource_management_client.resource_groups.get.assert_not_called()
+    else:
+        mocked_resource_management_client.resource_groups.get.assert_called_once()
 
-    request = embedded_cli_client.invoke.call_args[0][-1]
-    request_dict = parse_rest_command(request)
-    assert request_dict["method"] == "PUT"
+    # create call
+    poller = mocked_resource_management_client.resources.begin_create_or_update_by_id.return_value
+    assert result == poller.result()
+    mocked_resource_management_client.resources.begin_create_or_update_by_id.assert_called_once()
+    call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
+    expected_resource_path = f"/resourceGroups/{resource_group_name}/providers/{ResourceTypeMapping.asset.value}"\
+        f"/{asset_name}"
+    assert expected_resource_path in call_kwargs["resource_id"]
+    assert call_kwargs["api_version"] == API_VERSION
 
-    assert f"/resourceGroups/{resource_group_name}/providers/Microsoft.DeviceRegistry"\
-        f"/assets/{asset_name}?api-version=" in request_dict["uri"]
-
-    # Check create request
-    request_body = json.loads(request_dict["body"].strip("'"))
+    # asset body
+    request_body = call_kwargs["parameters"]
     assert request_body["location"] == location
     assert request_body["tags"] == req.get("tags")
     assert request_body["extendedLocation"]["type"] == "CustomLocation"
@@ -135,3 +140,8 @@ def test_create_asset(mocked_cmd, embedded_cli_client, asset_helpers_fixture, re
     assert patched_sp.call_args_list[1].args[0] == "event_notifier"
     assert patched_sp.call_args_list[1].args[1] == req.get("events")
     assert request_props["events"] == patched_sp.return_value
+
+
+# def test_check_asset_cluster_and_custom_location(
+#     mocked_cmd
+# ):

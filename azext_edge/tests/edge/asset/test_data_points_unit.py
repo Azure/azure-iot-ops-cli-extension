@@ -13,43 +13,50 @@ from azext_edge.edge.commands_assets import (
     list_asset_data_points,
     remove_asset_data_point
 )
+from azext_edge.edge.providers.assets import API_VERSION
+
 from . import (
-    ASSETS_PATH,
     MINIMUM_ASSET,
     FULL_ASSET
 )
-from ...helpers import parse_rest_command
 from ...generators import generate_generic_id
 
 
-FULL_DATA_POINT = FULL_ASSET["properties"]["dataPoints"][0]
+FULL_EVENT = FULL_ASSET["properties"]["dataPoints"][0]
 
 
-@pytest.mark.parametrize("embedded_cli_client", [{
-    "path": ASSETS_PATH,
-    "as_json_result": {"properties": {"dataPoints": {"result": generate_generic_id()}}}
-}], ids=["cli"], indirect=True)
-@pytest.mark.parametrize("show_asset_fixture", [MINIMUM_ASSET, FULL_ASSET], indirect=True)
+@pytest.mark.parametrize("mocked_resource_management_client", [
+    {
+        "resources.get": MINIMUM_ASSET,
+        "resources.begin_create_or_update_by_id": {
+            "properties": {"dataPoints": {"result": generate_generic_id()}}
+        }
+    },
+    {
+        "resources.get": FULL_ASSET,
+        "resources.begin_create_or_update_by_id": {
+            "properties": {"dataPoints": {"result": generate_generic_id()}}
+        }
+    },
+], ids=["minimal", "full"], indirect=True)
 @pytest.mark.parametrize("capability_id", [None, generate_generic_id()])
 @pytest.mark.parametrize("name", [None, generate_generic_id()])
 @pytest.mark.parametrize("observability_mode", [None, generate_generic_id()])
 @pytest.mark.parametrize("queue_size", [None, 20])
 @pytest.mark.parametrize("sampling_interval", [None, 33])
-@pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
 def test_add_asset_data_point(
     mocked_cmd,
-    embedded_cli_client,
-    show_asset_fixture,
+    mocked_resource_management_client,
     capability_id,
     name,
     observability_mode,
     queue_size,
     sampling_interval,
-    resource_group_name
 ):
     asset_name = generate_generic_id()
+    resource_group_name = generate_generic_id()
     data_source = generate_generic_id()
-    result_data_points = add_asset_data_point(
+    result_events = add_asset_data_point(
         cmd=mocked_cmd,
         asset_name=asset_name,
         data_source=data_source,
@@ -60,93 +67,103 @@ def test_add_asset_data_point(
         sampling_interval=sampling_interval,
         resource_group_name=resource_group_name
     )
-    # Show
-    show_asset, original_asset = show_asset_fixture
-    assert show_asset.call_args.kwargs.get("resource_group_name") == resource_group_name
+    mocked_resource_management_client.resources.get.assert_called_once()
+    mocked_resource_management_client.resources.begin_create_or_update_by_id.assert_called_once()
+    original_asset = mocked_resource_management_client.resources.get.return_value.original
+    poller = mocked_resource_management_client.resources.begin_create_or_update_by_id.return_value
+    expected_asset = poller.result()
+    assert result_events == expected_asset["properties"]["dataPoints"]
 
     # Asset changes
-    assert result_data_points == next(embedded_cli_client.as_json.side_effect)["properties"]["dataPoints"]
+    call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
+    assert call_kwargs["resource_id"] == original_asset["id"]
+    assert call_kwargs["api_version"] == API_VERSION
 
-    request = embedded_cli_client.invoke.call_args[0][-1]
-    request_dict = parse_rest_command(request)
-    assert request_dict["method"] == "PUT"
-    assert f"{original_asset['id']}?api-version=" in request_dict["uri"]
-    request_data_points = json.loads(request_dict["body"].strip("'"))["properties"]["dataPoints"]
+    # Check update request
+    request_data_points = call_kwargs["parameters"]["properties"]["dataPoints"]
 
     assert request_data_points[:-1] == original_asset["properties"]["dataPoints"]
-    added_data_point = request_data_points[-1]
-    assert added_data_point["capabilityId"] == (capability_id or name)
-    assert added_data_point["name"] == name
-    assert added_data_point["observabilityMode"] == observability_mode
+    added_event = request_data_points[-1]
+    assert added_event["capabilityId"] == (capability_id or name)
+    assert added_event["name"] == name
+    assert added_event["observabilityMode"] == observability_mode
 
-    assert added_data_point["dataSource"] == data_source
-    assert added_data_point["dataPointConfiguration"]
-    assert "eventNotifier" not in added_data_point
-    custom_configuration = json.loads(added_data_point["dataPointConfiguration"])
+    assert added_event["dataSource"] == data_source
+    assert added_event["dataPointConfiguration"]
+    assert "eventNotifier" not in added_event
+    custom_configuration = json.loads(added_event["dataPointConfiguration"])
     assert custom_configuration.get("samplingInterval") == (
         sampling_interval if data_source else None
     )
     assert custom_configuration.get("queueSize") == (queue_size if data_source else None)
 
 
-@pytest.mark.parametrize("show_asset_fixture", [MINIMUM_ASSET, FULL_ASSET], indirect=True)
-@pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
-def test_list_asset_data_points(mocked_cmd, show_asset_fixture, resource_group_name):
+@pytest.mark.parametrize("mocked_resource_management_client", [
+    {"resources.get": MINIMUM_ASSET},
+    {"resources.get": FULL_ASSET},
+], ids=["minimal", "full"], indirect=True)
+def test_list_asset_data_points(mocked_cmd, mocked_resource_management_client):
     asset_name = generate_generic_id()
-    result_obj = list_asset_data_points(
+    resource_group_name = generate_generic_id()
+    result_events = list_asset_data_points(
         cmd=mocked_cmd,
         asset_name=asset_name,
         resource_group_name=resource_group_name
     )
-    # Show
-    show_asset, original_asset = show_asset_fixture
-    assert show_asset.call_args.kwargs.get("resource_group_name") == resource_group_name
-
-    # Asset list
-    assert result_obj == original_asset["properties"]["dataPoints"]
+    mocked_resource_management_client.resources.get.assert_called_once()
+    original_asset = mocked_resource_management_client.resources.get.return_value.as_dict.return_value
+    assert result_events == original_asset["properties"]["dataPoints"]
 
 
-@pytest.mark.parametrize("embedded_cli_client", [{
-    "path": ASSETS_PATH,
-    "as_json_result": {"properties": {"dataPoints": {"result": generate_generic_id()}}}
-}], ids=["cli"], indirect=True)
-@pytest.mark.parametrize("show_asset_fixture", [FULL_ASSET], indirect=True)
-@pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
+@pytest.mark.parametrize("mocked_resource_management_client", [
+    {
+        "resources.get": FULL_ASSET,
+        "resources.begin_create_or_update_by_id": {
+            "properties": {"dataPoints": {"result": generate_generic_id()}}
+        }
+    },
+], ids=["full"], indirect=True)
 @pytest.mark.parametrize("data_source, name", [
-    (FULL_DATA_POINT["dataSource"], FULL_DATA_POINT["name"]),
-    (FULL_DATA_POINT["dataSource"], None),
-    (None, FULL_DATA_POINT["name"]),
+    (FULL_EVENT["dataSource"], FULL_EVENT["name"]),
+    (FULL_EVENT["dataSource"], None),
+    (None, FULL_EVENT["name"]),
     (generate_generic_id(), generate_generic_id()),
     (generate_generic_id(), None),
     (None, generate_generic_id()),
 ])
 def test_remove_asset_data_point(
-    mocked_cmd, embedded_cli_client, show_asset_fixture, resource_group_name, data_source, name
+    mocked_cmd, mocked_resource_management_client, data_source, name
 ):
     asset_name = generate_generic_id()
-    result_obj = remove_asset_data_point(
+    resource_group_name = generate_generic_id()
+    result_events = remove_asset_data_point(
         cmd=mocked_cmd,
         asset_name=asset_name,
         data_source=data_source,
         name=name,
         resource_group_name=resource_group_name
     )
-    # show
-    show_asset, original_asset = show_asset_fixture
-    original_data_points = original_asset["properties"]["dataPoints"]
-    assert show_asset.call_args.kwargs.get("resource_group_name") == resource_group_name
-
-    assert result_obj == next(embedded_cli_client.as_json.side_effect)["properties"]["dataPoints"]
+    mocked_resource_management_client.resources.get.assert_called_once()
+    mocked_resource_management_client.resources.begin_create_or_update_by_id.assert_called_once()
+    original_asset = mocked_resource_management_client.resources.get.return_value.original
+    poller = mocked_resource_management_client.resources.begin_create_or_update_by_id.return_value
+    expected_asset = poller.result()
+    assert result_events == expected_asset["properties"]["dataPoints"]
 
     # Asset changes
-    request = embedded_cli_client.invoke.call_args[0][-1]
-    request_body = parse_rest_command(request)["body"]
-    request_data_points = json.loads(request_body.strip("'"))["properties"]["dataPoints"]
-    if data_source == FULL_DATA_POINT["dataSource"] or name == FULL_DATA_POINT["name"]:
-        assert len(request_data_points) + 1 == len(original_data_points)
-        assert request_data_points == original_data_points[1:]
+    call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
+    assert call_kwargs["resource_id"] == original_asset["id"]
+    assert call_kwargs["api_version"] == API_VERSION
+
+    # Check update request
+    request_data_points = call_kwargs["parameters"]["properties"]["dataPoints"]
+    original_events = original_asset["properties"]["dataPoints"]
+
+    if data_source == FULL_EVENT["dataSource"] or name == FULL_EVENT["name"]:
+        assert len(request_data_points) + 1 == len(original_events)
+        assert request_data_points == original_events[1:]
     else:
-        assert request_data_points == original_data_points
+        assert request_data_points == original_events
 
 
 @pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
