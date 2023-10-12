@@ -67,7 +67,7 @@ def test_create_bundle(
     mocked_config,
     mocked_os_makedirs,
     mocked_zipfile,
-    mocked_list_cluster_custom_objects,
+    mocked_get_custom_objects,
     mocked_list_deployments,
     mocked_list_pods,
     mocked_list_replicasets,
@@ -118,8 +118,8 @@ def test_create_bundle(
                 if kind == OpcuaResourceKinds.ASSET_TYPE.value:
                     target_file_prefix = "asset_type"
 
-            assert_list_custom_resources(
-                mocked_client, mocked_zipfile, api, kind, file_prefix=target_file_prefix
+            assert_get_custom_resources(
+                mocked_get_custom_objects, mocked_zipfile, api, kind, file_prefix=target_file_prefix
             )
 
         if api in [E4K_API_V1A2, E4K_API_V1A3]:
@@ -254,12 +254,10 @@ def test_create_bundle(
         assert_shared_kpis(mocked_client, mocked_zipfile)
 
 
-def assert_list_custom_resources(
-    mocked_client, mocked_zipfile, api: EdgeResourceApi, kind: str, file_prefix: str = None
+def assert_get_custom_resources(
+    mocked_get_custom_objects, mocked_zipfile, api: EdgeResourceApi, kind: str, file_prefix: str = None
 ):
-    mocked_client.CustomObjectsApi().list_cluster_custom_object.assert_any_call(
-        group=api.group, version=api.version, plural=f"{kind}s"
-    )
+    mocked_get_custom_objects.assert_any_call(group=api.group, version=api.version, plural=f"{kind}s", use_cache=False)
     if not file_prefix:
         file_prefix = kind
 

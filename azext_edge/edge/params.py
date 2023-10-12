@@ -36,7 +36,8 @@ def load_iotedge_arguments(self, _):
             "namespace",
             options_list=["--namespace", "-n"],
             help="K8s cluster namespace the command should operate against. "
-            "If no namespace is provided `default` will be used.",
+            "If no namespace is provided the kubeconfig current_context namespace will be used. "
+            "If not defined, the fallback value `default` will be used. ",
             validator=validate_namespace
         )
 
@@ -116,7 +117,7 @@ def load_iotedge_arguments(self, _):
             help="Controls the level of detail displayed in the check output. "
             "Choose 0 for a summary view, (minimal output), "
             "1 for a detailed view, (more comprehensive information) "
-            "or 2 for a verbose view, (all available information)."
+            "or 2 for a verbose view, (all available information).",
         )
 
     with self.argument_context("edge e4k get-password-hash") as context:
@@ -149,17 +150,41 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "diag_service_pod_prefix",
             options_list=["--diag-svc-pod"],
-            help="The diagnostic service pod prefix. The first pod fulfilling the condition " "will be connected to.",
-            arg_group="Pod",
+            help="The diagnostic service pod prefix. The first pod fulfilling the condition will be connected to.",
+            arg_group="Diagnostics Pod",
         )
         context.argument(
-            "pod_port", type=int, options_list=["--port"], help="The pod port to connect through.", arg_group="Pod"
+            "pod_metrics_port",
+            type=int,
+            options_list=["--metrics-port"],
+            help="Diagnostic service metrics API port.",
+            arg_group="Diagnostics Pod",
+        )
+        context.argument(
+            "pod_protobuf_port",
+            type=int,
+            options_list=["--protobuf-port"],
+            help="Diagnostic service protobuf API port.",
+            arg_group="Diagnostics Pod",
         )
         context.argument(
             "raw_response_print",
             options_list=["--raw"],
             arg_type=get_three_state_flag(),
             help="Return raw output from the metrics API.",
+        )
+        context.argument(
+            "trace_ids",
+            nargs="*",
+            options_list=["--trace-ids"],
+            help="Space-separated trace ids in hex format.",
+            arg_group="Trace",
+        )
+        context.argument(
+            "trace_dir",
+            options_list=["--trace-dir"],
+            help="Local directory where traces will be bundled and stored at.",
+            arg_group="Trace",
         )
 
     with self.argument_context("edge init") as context:

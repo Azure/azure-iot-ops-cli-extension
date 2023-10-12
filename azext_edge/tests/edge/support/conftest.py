@@ -151,7 +151,9 @@ def mocked_list_pods(mocked_client):
 
 
 @pytest.fixture
-def mocked_list_cluster_custom_objects(mocked_client):
+def mocked_get_custom_objects(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.support.base.get_custom_objects", autospec=True)
+
     def _handle_list_custom_object(*args, **kwargs):
         result = {}
         items = []
@@ -160,9 +162,8 @@ def mocked_list_cluster_custom_objects(mocked_client):
         result["items"] = items
         return result
 
-    mocked_client.CustomObjectsApi().list_cluster_custom_object.side_effect = _handle_list_custom_object
-
-    yield mocked_client.CustomObjectsApi().list_cluster_custom_object
+    patched.side_effect = _handle_list_custom_object
+    yield patched
 
 
 @pytest.fixture

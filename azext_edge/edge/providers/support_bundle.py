@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from typing import List, Optional
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_DEFLATED
 
 import yaml
 from knack.log import get_logger
@@ -121,7 +121,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
 
 
 def write_zip(bundle: dict, file_path: str):
-    with ZipFile(file=file_path, mode="w") as myzip:
+    with ZipFile(file=file_path, mode="w", compression=ZIP_DEFLATED) as myzip:
         todo: List[dict] = []
         for edge_service in bundle:
             for element in bundle[edge_service]:

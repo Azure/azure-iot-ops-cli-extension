@@ -5,8 +5,9 @@
 # --------------------------------------------------------------------------------------------
 
 import socket
+
 from contextlib import contextmanager
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Iterator
 from urllib.request import urlopen
 
 from azure.cli.core.azclierror import ResourceNotFoundError
@@ -62,7 +63,7 @@ def get_namespaced_pods_by_prefix(
     label_selector: str = None,
     as_dict: bool = False,
 ) -> Union[List[V1Pod], List[dict], None]:
-    target_pods_key = (prefix, namespace, label_selector)
+    target_pods_key = (namespace, label_selector)
     if target_pods_key in _namespaced_pods_cache:
         return _namespaced_pods_cache[target_pods_key]
 
@@ -84,26 +85,30 @@ def get_namespaced_pods_by_prefix(
         return result
 
 
-_namespaced_object_cache: dict = {}
+_custom_object_cache: dict = {}
 
 
-def get_namespaced_custom_objects(group: str, version: str, namespace: str, plural: str) -> Union[List[dict], None]:
-    target_resource_key = (group, version, namespace, plural)
-    if target_resource_key in _namespaced_object_cache:
-        return _namespaced_object_cache[target_resource_key]
+def get_custom_objects(
+    group: str, version: str, plural: str, namespace: Optional[str] = None, use_cache: bool = True
+) -> Union[List[dict], None]:
+    target_resource_key = (group, version, plural, namespace)
+    if use_cache:
+        if target_resource_key in _custom_object_cache:
+            return _custom_object_cache[target_resource_key]
 
     try:
         custom_client = client.CustomObjectsApi()
-        _namespaced_object_cache[target_resource_key] = custom_client.list_namespaced_custom_object(
-            group=group,
-            version=version,
-            namespace=namespace,
-            plural=plural,
-        )
+        kwargs = {"group": group, "version": version, "plural": plural}
+        if namespace:
+            kwargs["namespace"] = namespace
+            f = custom_client.list_namespaced_custom_object
+        else:
+            f = custom_client.list_cluster_custom_object
+        _custom_object_cache[target_resource_key] = f(**kwargs)
     except ApiException as ae:
         logger.debug(str(ae))
     else:
-        return _namespaced_object_cache[target_resource_key]
+        return _custom_object_cache[target_resource_key]
 
 
 _cluster_resource_api_cache: dict = {}
@@ -142,7 +147,7 @@ class PodRequest:
 
 
 @contextmanager
-def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> PodRequest:
+def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> Iterator[PodRequest]:
     from kubernetes.stream import portforward
 
     api = client.CoreV1Api()
@@ -169,3 +174,22 @@ def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> 
         yield pod_request
     finally:
         socket.create_connection = socket_create_connection
+
+
+@contextmanager
+def portforward_socket(namespace: str, pod_name: str, pod_port: str) -> Iterator[socket.socket]:
+    from kubernetes.stream import portforward
+
+    api = client.CoreV1Api()
+    pf = portforward(
+        api.connect_get_namespaced_pod_portforward,
+        pod_name,
+        namespace,
+        ports=str(pod_port),
+    )
+
+    target_socket: socket.socket = pf.socket(int(pod_port))._socket
+    target_socket.settimeout(10.0)
+    yield target_socket
+    target_socket.shutdown(socket.SHUT_RDWR)
+    target_socket.close()
