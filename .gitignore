@@ -319,6 +319,7 @@ src/build
 
 # Code coverage
 .coverage
+coverage.json
 
 
 /extensions
