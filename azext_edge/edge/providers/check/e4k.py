@@ -799,32 +799,27 @@ def evaluate_mqtt_bridge_connectors(
     ) -> None:
         for route in routes:
             route_name = route.get("name")
-            route_direction = route.get("direction")
-            route_qos = route.get("qos")
-            qos_formatted = f" QOS [blue]{route_qos}[/blue]" if route_qos else ""
-
             check_manager.add_display(
                 target_name=target,
                 display=Padding(
-                    f"- Route {{[blue]{route_name}[/blue]}} direction [blue]{route_direction}[/blue]{qos_formatted}",
+                    f"- Route {{[blue]{route_name}[/blue]}}",
                     padding,
                 ),
             )
 
-    def create_routes_table(name: str, routes: List[Dict[str, str]]) -> Table:
-        title = f"\nTopic map [blue]{{{name}}}[/blue]"
-        table = Table(title=title, title_justify="left", title_style="None", show_lines=True)
+    def create_routes_table(routes: List[Dict[str, str]]) -> Table:
+        table = Table(title="Route Details", title_justify="left", title_style="None", show_lines=True)
 
-        columns = ["Route", "Direction", "QOS"]
+        columns = ["Route", "Direction", "Source/Target", "QOS"]
 
         for column in columns:
-            table.add_column(column, justify="left", style="blue", no_wrap=True)
+            table.add_column(column, justify="left", style="blue", no_wrap=False)
 
         for route in routes:
             table.add_row(
                 f"{route.get('name')}",
                 f"{route.get('direction')}",
-                # f"From:\n  {route.get('source')}\nTo:\n  {route.get('target')}",
+                f"{route.get('source')} -> {route.get('target')}",
                 f"{route.get('qos')}",
             )
         return table
@@ -856,13 +851,13 @@ def evaluate_mqtt_bridge_connectors(
             )
 
             if detail_level != ResourceOutputDetailLevel.summary.value:
+                route_padding = (0, 0, 0, padding[3] + 4)
                 routes = topic_map.get("spec", {}).get("routes", [])
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
-                    route_table = create_routes_table(name, routes)
-                    check_manager.add_display(target_name=target, display=Padding(route_table, padding))
+                    route_table = create_routes_table(routes)
+                    check_manager.add_display(target_name=target, display=Padding(route_table, route_padding))
                     return
                 else:
-                    route_padding = (0, 0, 0, padding[3] + 4)
                     add_routes_display(
                         check_manager=check_manager,
                         target=target,
@@ -1085,7 +1080,7 @@ def evaluate_datalake_connectors(
     from rich.table import Table
 
     def create_schema_table(name: str, schema: List[Dict[str, str]]) -> Table:
-        table = Table(title=f"Data Lake Topic Map [blue]{{{name}}}[/blue] Schema")
+        table = Table(title="Topic Map Schema", title_justify="left")
 
         columns = [
             {"name": "Name", "style": "white"},
