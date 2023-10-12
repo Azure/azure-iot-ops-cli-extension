@@ -11,7 +11,7 @@ CLI parameter definitions.
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type
 from knack.arguments import CaseInsensitiveList
 
-from .common import DeployablePasVersions, SupportForEdgeServiceType
+from .common import SupportForEdgeServiceType
 from .providers.edge_api import E4kResourceKinds
 from .providers.orchestration.pas_versions import EdgeServiceMoniker
 from .providers.check.common import ResourceOutputDetailLevel
