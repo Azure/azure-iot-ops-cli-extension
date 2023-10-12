@@ -11,7 +11,6 @@ from knack.log import get_logger
 
 from .providers.base import load_config_context
 from .providers.support.base import get_bundle_path
-from .common import DeployablePasVersions
 from .providers.check.common import ResourceOutputDetailLevel
 
 logger = get_logger(__name__)
