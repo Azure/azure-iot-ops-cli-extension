@@ -6,33 +6,33 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from azext_edge.edge.providers.edge_api.lnm import LNM_API_V1, LnmResourceKinds
 from .base import (
     CheckManager,
-    decorate_resource_status,
+    add_display_and_eval,
     check_post_deployment,
     check_pre_deployment,
     evaluate_pod_health,
     process_as_list,
+    process_properties,
 )
 
 from rich.console import Console
 from rich.padding import Padding
 from rich.table import Table
 
-from ...common import (
-    CheckTaskStatus,
-    ProvisioningState,
-)
+from ...common import CheckTaskStatus
 
 from .common import (
     AIO_LNM_PREFIX,
+    LNM_ALLOWLIST_PROPERTIES,
+    LNM_IMAGE_PROPERTIES,
+    LNM_PROPERTIES,
     ResourceOutputDetailLevel,
 )
 
 from ..edge_api import (
-    BLUEFIN_API_V1,
-    BluefinResourceKinds,
+    LNM_API_V1,
+    LnmResourceKinds,
 )
 
 
@@ -98,7 +98,7 @@ def evaluate_lnms(
     check_manager = CheckManager(check_name="evalLnms", check_desc="Evaluate Lnm instance", namespace=namespace)
 
     target_lnms = "lnmz.aio.com"
-    lnm_conditions = ["len(lnms)>=1", "spec.allowList", "spec.image"]
+    lnm_conditions = ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"]
     check_manager.add_target(target_name=target_lnms, conditions=lnm_conditions)
 
     lnm_list: dict = LNM_API_V1.get_resources(LnmResourceKinds.LNM, namespace=namespace, plural="lnmz")
@@ -136,81 +136,36 @@ def evaluate_lnms(
     lnm_image_table.add_column("tag", justify="center", style="cyan", no_wrap=True)
 
     for l in lnms:
-
         lnm_name = l["metadata"]["name"]
         lnm_names.append(lnm_name)
+        status = l["status"]["configStatusLevel"]
+
+        lnm_status_eval_value = {"status.configStatusLevel": status}
+        lnm_status_eval_status = CheckTaskStatus.success.value
+
+        lnm_status_text = (
+            f"- Lnm instance {{[bright_blue]{lnm_name}[/bright_blue]}} detected. Configuration status "
+        )
+
+        if status == "warn":
+            lnm_status_eval_status = CheckTaskStatus.warning.value
+            lnm_status_text = lnm_status_text + f"{{[yellow]{status}[/yellow]}}."
+        else:
+            lnm_status_text = lnm_status_text + f"{{[green]{status}[/green]}}."
+
+        add_display_and_eval(
+            check_manager=check_manager,
+            target_name=target_lnms,
+            display_text=lnm_status_text,
+            eval_status=lnm_status_eval_status,
+            eval_value=lnm_status_eval_value,
+            resource_name=lnm_name,
+            padding=(0, 0, 0, 12)
+        )
         
         lnm_allowlist = l["spec"].get("allowList", None)
 
-        # if detail_level == ResourceOutputDetailLevel.detail.value:
-        #     is_allowlist_detected = True
-
-        #     lnm_allowlist_eval_value = {"spec.allowList": lnm_allowlist}
-        #     lnm_allowlist_eval_status = CheckTaskStatus.success.value
-
-        #     if lnm_allowlist is None:
-        #         is_allowlist_detected = False
-
-        #     if is_allowlist_detected:
-        #         domains_length = len(lnm_allowlist.get("domains", []))
-        #         enableArcDomains = lnm_allowlist.get("enableArcDomains", "--")
-        #         sourceIpRange_length = len(lnm_allowlist.get("sourceIpRange", []))
-
-        #         lnm_allowlist_table.add_row(
-        #             lnm_name,
-        #             f"{domains_length} domain detected",
-        #             str(enableArcDomains),
-        #             f"{sourceIpRange_length} sourceIpRange detected"
-        #         )
-        #     # check_manager.add_display(
-        #     #     target_name=target_lnms,
-        #     #     display=Padding(
-        #     #         lnm_allow_list_text,
-        #     #         (0, 0, 0, 16),
-        #     #     ),
-        #     # )
-        #     check_manager.add_target_eval(
-        #         target_name=target_lnms, status=lnm_allowlist_eval_status, value=lnm_allowlist_eval_value, resource_name=lnm_name
-        #     )
-
-        #     lnm_image = l["spec"].get("image", None)
-        #     is_image_detected = True
-
-        #     lnm_image_eval_value = {"spec.image": lnm_image}
-        #     lnm_image_eval_status = CheckTaskStatus.success.value
-
-        #     if lnm_image is None:
-        #         is_image_detected = False
-
-        #     if is_image_detected:
-        #         pullPolicy = lnm_image.get("pullPolicy", "--")
-        #         pullSecrets = lnm_image.get("pullSecrets", "--")
-        #         repository = lnm_image.get("repository", None)
-        #         tag = lnm_image.get("tag", None)
-
-        #         # if repository is None:
-        #         # if tag is None:
-
-        #         lnm_image_table.add_row(
-        #             lnm_name,
-        #             pullPolicy,
-        #             pullSecrets,
-        #             repository,
-        #             tag
-        #         )
-            
-        #     check_manager.add_target_eval(
-        #         target_name=target_lnms, status=lnm_image_eval_status, value=lnm_image_eval_value, resource_name=lnm_name
-        #     )
-
         if detail_level > ResourceOutputDetailLevel.summary.value:
-            check_manager.add_display(
-                target_name=target_lnms,
-                display=Padding(
-                    f"- Lnm instance {{[bright_blue]{lnm_name}[/bright_blue]}} detected",
-                    (0, 0, 0, 12),
-                ),
-            )
 
             lnm_allowlist_text = (
                 "- Allow List property [green]detected[/green]."
@@ -223,115 +178,34 @@ def evaluate_lnms(
                 lnm_allowlist_text = (
                     "- Allow List property [red]not detected[/red]."
                 )
-
-            check_manager.add_display(
-                target_name=target_lnms,
-                display=Padding(
-                    lnm_allowlist_text,
-                    (0, 0, 0, 16),
-                ),
-            )
-            check_manager.add_target_eval(
-                target_name=target_lnms, status=lnm_allowlist_eval_status, value=lnm_allowlist_eval_value, resource_name=lnm_name
-            )
-
-            # domains
-            lnm_allowlist_domains = lnm_allowlist.get("domains", None)
-            if lnm_allowlist_domains:
-                lnm_allowlist_domains_text = (
-                    "[bright_blue]Domains[/bright_blue]"
-                )
-
-                check_manager.add_display(
-                    target_name=target_lnms,
-                    display=Padding(
-                        lnm_allowlist_domains_text,
-                        (0, 0, 0, 18),
-                    ),
-                )
-                
-                for domain in lnm_allowlist_domains:
-                    destination_type = domain.get("destinationType", None)
-                    destination_url = domain.get("destinationUrl", None)
-
-                    lnm_domain_eval_value = {"spec.allowList.domains.item": domain}
-                    lnm_domain_eval_status = CheckTaskStatus.success.value
-
-                    if destination_type and destination_url:
-                        check_manager.add_display(
-                            target_name=target_lnms,
-                            display=Padding(
-                                f"- Destination type {{[bright_blue]{destination_type}[/bright_blue]}} with url {{[bright_blue]{destination_url}[/bright_blue]}}",
-                                (0, 0, 0, 20),
-                            ),
-                        )
-                    else:
-                        lnm_domain_eval_status = CheckTaskStatus.error.value
-                        check_manager.add_display(
-                            target_name=target_lnms,
-                            display=Padding(
-                                "- Destination type or url [red]not detected[/red]",
-                                (0, 0, 0, 20),
-                            ),
-                        )
-                    check_manager.add_target_eval(
-                        target_name=target_lnms, status=lnm_domain_eval_status, value=lnm_domain_eval_value, resource_name=lnm_name
-                    )
-
-            # enableArcDomains
-            lnm_allowlist_enableArcDomains = lnm_allowlist.get("enableArcDomains", None)
-
-            if lnm_allowlist_enableArcDomains:
-                check_manager.add_display(
-                    target_name=target_lnms,
-                    display=Padding(
-                        f"[bright_blue]Enable Arc Domains[/bright_blue]: {{[bright_blue]{lnm_allowlist_enableArcDomains}[/bright_blue]}}",
-                        (0, 0, 0, 18),
-                    ),
-                )
             
-            # source IP range
-            lnm_allowlist_ip_range = lnm_allowlist.get("sourceIpRange", None)
-            if lnm_allowlist_ip_range:
-                lnm_allowlist_ip_range_text = (
-                    "[bright_blue]Source IP Range[/bright_blue]"
-                )
+            add_display_and_eval(
+                check_manager=check_manager,
+                target_name=target_lnms,
+                display_text=lnm_allowlist_text,
+                eval_status=lnm_allowlist_eval_status,
+                eval_value=lnm_allowlist_eval_value,
+                resource_name=lnm_name,
+                padding=(0, 0, 0, 16)
+            )
 
-                check_manager.add_display(
-                    target_name=target_lnms,
-                    display=Padding(
-                        lnm_allowlist_ip_range_text,
-                        (0, 0, 0, 18),
-                    ),
-                )
-                
-                for ip_range in lnm_allowlist_ip_range:
-                    address_prefix = ip_range.get("addressPrefix", None)
-                    prefix_len = ip_range.get("prefixLen", None)
+            process_properties(
+                check_manager=check_manager,
+                detail_level=detail_level,
+                target_name=target_lnms,
+                prop_value=lnm_allowlist,
+                properties=LNM_ALLOWLIST_PROPERTIES,
+                padding=(0, 0, 0, 18)
+            )
 
-                    lnm_ip_range_eval_value = {"spec.allowList.sourceIpRange.item": domain}
-                    lnm_ip_range_eval_status = CheckTaskStatus.success.value
-
-                    if address_prefix != None and prefix_len != None:
-                        check_manager.add_display(
-                            target_name=target_lnms,
-                            display=Padding(
-                                f"- Address prefix {{[bright_blue]{address_prefix}[/bright_blue]}} with length {{[bright_blue]{prefix_len}[/bright_blue]}}",
-                                (0, 0, 0, 20),
-                            ),
-                        )
-                    else:
-                        lnm_ip_range_eval_status = CheckTaskStatus.error.value
-                        check_manager.add_display(
-                            target_name=target_lnms,
-                            display=Padding(
-                                "- Address prefix or length [red]not detected[/red]",
-                                (0, 0, 0, 20),
-                            ),
-                        )
-                    check_manager.add_target_eval(
-                        target_name=target_lnms, status=lnm_ip_range_eval_status, value=lnm_ip_range_eval_value, resource_name=lnm_name
-                    )
+            process_properties(
+                check_manager=check_manager,
+                detail_level=detail_level,
+                target_name=target_lnms,
+                prop_value=l["spec"],
+                properties=LNM_PROPERTIES,
+                padding=(0, 0, 0, 16)
+            )
 
         if detail_level == ResourceOutputDetailLevel.verbose.value:
             # image
@@ -348,96 +222,24 @@ def evaluate_lnms(
                     "- Image property [red]not detected[/red]."
                 )
 
-            check_manager.add_display(
+            add_display_and_eval(
+                check_manager=check_manager,
                 target_name=target_lnms,
-                display=Padding(
-                    lnm_image_text,
-                    (0, 0, 0, 16),
-                ),
-            )
-            check_manager.add_target_eval(
-                target_name=target_lnms, status=lnm_image_eval_status, value=lnm_image_eval_value, resource_name=lnm_name
+                display_text=lnm_image_text,
+                eval_status=lnm_image_eval_status,
+                eval_value=lnm_image_eval_value,
+                resource_name=lnm_name,
+                padding=(0, 0, 0, 16)
             )
 
-            # pullPolicy
-            lnm_image_pullPolicy = lnm_image.get("pullPolicy", None)
-
-            if lnm_image_pullPolicy:
-                check_manager.add_display(
-                    target_name=target_lnms,
-                    display=Padding(
-                        f"[bright_blue]Pull Policy[/bright_blue]: {{[bright_blue]{lnm_image_pullPolicy}[/bright_blue]}}",
-                        (0, 0, 0, 18),
-                    ),
-                )
-            
-            # pullSecrets
-            lnm_image_pullSecrets = lnm_image.get("pullSecrets", None)
-
-            if lnm_image_pullSecrets:
-                check_manager.add_display(
-                    target_name=target_lnms,
-                    display=Padding(
-                        f"[bright_blue]Pull Secrets[/bright_blue]: {{[bright_blue]{lnm_image_pullSecrets}[/bright_blue]}}",
-                        (0, 0, 0, 18),
-                    ),
-                )
-            
-            # repository
-            lnm_image_repository = lnm_image.get("repository", None)
-
-            if lnm_image_repository:
-                check_manager.add_display(
-                    target_name=target_lnms,
-                    display=Padding(
-                        f"[bright_blue]Repository[/bright_blue]: {{[bright_blue]{lnm_image_repository}[/bright_blue]}}",
-                        (0, 0, 0, 18),
-                    ),
-                )
-            
-            # tag
-            lnm_image_tag = lnm_image.get("tag", None)
-
-            if lnm_image_tag:
-                check_manager.add_display(
-                    target_name=target_lnms,
-                    display=Padding(
-                        f"[bright_blue]Tag[/bright_blue]: {{[bright_blue]{lnm_image_tag}[/bright_blue]}}",
-                        (0, 0, 0, 18),
-                    ),
-                )
-
-    
-    # if detail_level == ResourceOutputDetailLevel.detail.value:
-    #     check_manager.add_display(
-    #         target_name=target_lnms,
-    #         display=Padding(
-    #             "\nAllowList:",
-    #             (0, 0, 0, 10),
-    #         ),
-    #     )
-    #     check_manager.add_display(
-    #         target_name=target_lnms,
-    #         display=Padding(
-    #             lnm_allowlist_table,
-    #             (0, 0, 0, 12),
-    #         ),
-    #     )
-
-    #     check_manager.add_display(
-    #         target_name=target_lnms,
-    #         display=Padding(
-    #             "\nImage:",
-    #             (0, 0, 0, 10),
-    #         ),
-    #     )
-    #     check_manager.add_display(
-    #         target_name=target_lnms,
-    #         display=Padding(
-    #             lnm_image_table,
-    #             (0, 0, 0, 12),
-    #         ),
-    #     )
+            process_properties(
+                check_manager=check_manager,
+                detail_level=detail_level,
+                target_name=target_lnms,
+                prop_value=lnm_image,
+                properties=LNM_IMAGE_PROPERTIES,
+                padding=(0, 0, 0, 18)
+            )
 
     if lnms_count > 0:
         check_manager.add_display(

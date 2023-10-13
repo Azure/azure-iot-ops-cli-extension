@@ -511,3 +511,79 @@ def evaluate_pod_health(
                     (0, 0, 0, display_padding),
                 ),
             )
+
+
+def process_properties(
+    check_manager: CheckManager,
+    detail_level: int,
+    target_name: str,
+    prop_value: Dict[str, Any],
+    properties: Dict[str, Any],
+    padding: tuple
+) -> None:
+
+    for prop, display_name, verbose_only in properties:
+        keys = prop.split('.')
+        value = prop_value
+        for key in keys:
+            value = value.get(key)
+        if value is None:
+            continue
+        if prop == "descriptor":
+                value = value if detail_level == ResourceOutputDetailLevel.verbose.value else value[:10] + "..."
+        elif prop.endswith("clientSecret"):
+            value = "*" * len(value)
+        if verbose_only and detail_level != ResourceOutputDetailLevel.verbose.value:
+            continue
+        process_property_by_type(
+            check_manager,
+            target_name,
+            properties=value,
+            display_name=display_name,
+            padding=padding
+        )
+
+
+def process_property_by_type(
+    check_manager: CheckManager,
+    target_name: str,
+    properties: Any,
+    display_name: str,
+    padding: tuple
+) -> None:
+    padding_left = padding[3]
+    if isinstance(properties, list):
+        if len(properties) == 0:
+            return
+
+        display_text = f"{display_name}:"
+        check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+
+        for property in properties:
+            display_text = f"- {display_name} {properties.index(property) + 1}"
+            check_manager.add_display(target_name=target_name, display=Padding(display_text, (0, 0, 0, padding_left + 2)))
+            for prop, value in property.items():
+                display_text = f"{prop}: [cyan]{value}[/cyan]"
+                check_manager.add_display(target_name=target_name, display=Padding(display_text, (0, 0, 0, padding_left + 4)))
+    elif isinstance(properties, str) or isinstance(properties, bool) or isinstance(properties, int):
+        display_text = f"{display_name}: [cyan]{properties}[/cyan]"
+        check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+    elif isinstance(properties, dict):
+        display_text = f"{display_name}:"
+        check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+        for prop, value in properties.items():
+            display_text = f"{prop}: [cyan]{value}[/cyan]"
+            check_manager.add_display(target_name=target_name, display=Padding(display_text, (0, 0, 0, padding_left + 2)))
+
+
+def add_display_and_eval(
+    check_manager: CheckManager,
+    target_name: str,
+    display_text: str,
+    eval_status: str,
+    eval_value: str,
+    resource_name: Optional[str] = None,
+    padding: Tuple[int, int, int, int] = (0, 0, 0, 8)
+) -> None:
+    check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+    check_manager.add_target_eval(target_name=target_name, status=eval_status, value=eval_value, resource_name=resource_name)

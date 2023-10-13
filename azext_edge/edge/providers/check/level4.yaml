@@ -10,6 +10,14 @@ spec:
     tag: v1.27.0
   replicas: 1
   logLevel: "debug"
+  parentIpAddr: "0.0.0.0"
+  parentPort: 2.0
+  port: 2
+  nodeTolerations: 
+  - effect: "NoSchedule"
+    key: "node-role.kubernetes.io/master"
+    operator: "Exists"
+    value: "hi"
   openTelemetryMetricsCollectorAddr: "oc-opentelemetry-collector:4317"
   level: 0
   allowList:
