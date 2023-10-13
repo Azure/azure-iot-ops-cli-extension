@@ -56,5 +56,5 @@ def get_timestamp_now_utc(format: str = "%Y-%m-%dT%H:%M:%S") -> str:
 
 
 def set_log_level(log_name: str, log_level: int = logging.DEBUG):
-    test = logging.getLogger(log_name)
-    test.setLevel(log_level)
+    lgr = logging.getLogger(log_name)
+    lgr.setLevel(log_level)
