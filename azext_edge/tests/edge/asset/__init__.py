@@ -10,15 +10,6 @@ from ...generators import generate_generic_id
 # Paths for mocking
 ASSETS_PATH = "azext_edge.edge.providers.assets"
 
-# Main command paths
-SHOW_ASSETS_PATH = f"{ASSETS_PATH}.show_asset"
-
-# Helper paths
-BUILD_SUB_POINT_ASSETS_PATH = f"{ASSETS_PATH}._build_asset_sub_point"
-CHECK_ASSET_PREREQS_PATH = f"{ASSETS_PATH}._check_asset_cluster_and_custom_location"
-PROCESS_SUB_POINTS_ASSETS_PATH = f"{ASSETS_PATH}._process_asset_sub_points"
-UPDATE_PROPERTIES_ASSETS_PATH = f"{ASSETS_PATH}._update_properties"
-
 # Generic objects
 MINIMUM_ASSET = {
     "extendedLocation": {

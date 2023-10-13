@@ -5,9 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 import pytest
-from . import (
-    ASSETS_PATH
-)
+from . import ASSETS_PATH
 
 
 @pytest.fixture()

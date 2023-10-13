@@ -421,7 +421,7 @@ class AssetProvider():
         cluster_subscription: str = None,
     ):
         if not any([cluster_name, custom_location_name]):
-            raise RequiredArgumentMissingError("need to provide either cluster name or custom location")
+            raise RequiredArgumentMissingError("Need to provide either cluster name or custom location")
         query = ""
         cluster = None
         if not custom_location_subscription:
@@ -432,8 +432,7 @@ class AssetProvider():
         # provide cluster name - start with checking for the cluster (if can)
         if cluster_name:
             cluster_query_result = build_query(
-                cluster_subscription,
-                custom_query=query,
+                subscription_id=cluster_subscription,
                 type=ResourceTypeMapping.connected_cluster.value,
                 name=cluster_name,
                 resource_group=cluster_resource_group
@@ -453,7 +452,7 @@ class AssetProvider():
         # if only location is provided, will look just by location name
         # if both cluster name and location are provided, should also include cluster id to narrow association
         location_query_result = build_query(
-            custom_location_subscription,
+            subscription_id=custom_location_subscription,
             custom_query=query,
             type=ResourceTypeMapping.custom_location.value,
             name=custom_location_name,
@@ -465,7 +464,7 @@ class AssetProvider():
                 error_details += f"{custom_location_name} "
             if cluster_name:
                 error_details += f"for cluster {cluster_name} "
-            raise ResourceNotFoundError(f"Custom location {error_details} not found.")
+            raise ResourceNotFoundError(f"Custom location {error_details}not found.")
 
         if len(location_query_result) > 1 and cluster_name is None:
             raise InvalidArgumentValueError(
@@ -480,7 +479,7 @@ class AssetProvider():
         if not cluster_name:
             query = f'| where id =~ "{location_query_result[0]["properties"]["hostResourceId"]}"'
             cluster_query_result = build_query(
-                cluster_subscription,
+                subscription_id=cluster_subscription,
                 custom_query=query,
                 type=ResourceTypeMapping.connected_cluster.value
             )
