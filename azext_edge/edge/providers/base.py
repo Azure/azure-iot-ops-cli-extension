@@ -37,9 +37,16 @@ _namespaced_service_cache: dict = {}
 
 
 def get_namespaced_service(name: str, namespace: str, as_dict: bool = False) -> Union[V1Service, dict, None]:
+
+    def retrieve_namespaced_service_from_cache(key: tuple):
+        result = _namespaced_service_cache[key]
+        if as_dict:
+            return generic.sanitize_for_serialization(obj=result)
+        return result
+
     target_service_key = (name, namespace)
     if target_service_key in _namespaced_service_cache:
-        return _namespaced_service_cache[target_service_key]
+        return retrieve_namespaced_service_from_cache(target_service_key)
 
     try:
         v1 = client.CoreV1Api()
@@ -48,10 +55,7 @@ def get_namespaced_service(name: str, namespace: str, as_dict: bool = False) -> 
     except ApiException as ae:
         logger.debug(str(ae))
     else:
-        result = _namespaced_service_cache[target_service_key]
-        if as_dict:
-            return generic.sanitize_for_serialization(obj=result)
-        return result
+        return retrieve_namespaced_service_from_cache(target_service_key)
 
 
 _namespaced_pods_cache: dict = {}
@@ -63,26 +67,28 @@ def get_namespaced_pods_by_prefix(
     label_selector: str = None,
     as_dict: bool = False,
 ) -> Union[List[V1Pod], List[dict], None]:
-    target_pods_key = (namespace, label_selector)
-    if target_pods_key in _namespaced_pods_cache:
-        return _namespaced_pods_cache[target_pods_key]
 
-    try:
-        v1 = client.CoreV1Api()
-        pods_list: V1PodList = v1.list_namespaced_pod(namespace, label_selector=label_selector)
-        matched_pods: List[V1Pod] = []
-        for pod in pods_list.items:
-            p: V1Pod = pod
-            if p.metadata.name.startswith(prefix):
-                matched_pods.append(p)
-        _namespaced_pods_cache[target_pods_key] = matched_pods
-    except ApiException as ae:
-        logger.debug(str(ae))
-    else:
-        result = _namespaced_pods_cache[target_pods_key]
+    def filter_pods_by_prefix(pods: List[V1Pod], prefix: str) -> List[V1Pod]:
+        return [pod for pod in pods if pod.metadata.name.startswith(prefix)]
+
+    def filter_pods_from_cache(key: tuple):
+        cached_pods = _namespaced_pods_cache[key]
+        result = filter_pods_by_prefix(pods=cached_pods, prefix=prefix)
         if as_dict:
             return generic.sanitize_for_serialization(obj=result)
         return result
+
+    target_pods_key = (namespace, label_selector)
+    if target_pods_key in _namespaced_pods_cache:
+        return filter_pods_from_cache(target_pods_key)
+    try:
+        v1 = client.CoreV1Api()
+        pods_list: V1PodList = v1.list_namespaced_pod(namespace, label_selector=label_selector)
+        _namespaced_pods_cache[target_pods_key] = pods_list.items
+    except ApiException as ae:
+        logger.debug(str(ae))
+    else:
+        return filter_pods_from_cache(target_pods_key)
 
 
 _custom_object_cache: dict = {}
