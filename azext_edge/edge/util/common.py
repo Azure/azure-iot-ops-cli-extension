@@ -13,10 +13,6 @@ import json
 import os
 from typing import List, Dict, Optional
 from knack.log import get_logger
-from .embedded_cli import EmbeddedCLI
-
-
-cli = EmbeddedCLI()
 logger = get_logger(__name__)
 
 

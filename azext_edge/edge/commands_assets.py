@@ -10,7 +10,6 @@ from knack.log import get_logger
 
 from azure.cli.core.azclierror import RequiredArgumentMissingError
 
-from .common import ResourceTypeMapping
 from .providers.assets import AssetProvider
 
 logger = get_logger(__name__)
