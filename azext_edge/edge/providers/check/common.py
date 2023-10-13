@@ -137,6 +137,7 @@ LNM_PROPERTIES = [
     ("replicas", "Replicas", False),
 ]
 
+
 class E4kCheckType(Enum):
     """
     E4K environment check type.

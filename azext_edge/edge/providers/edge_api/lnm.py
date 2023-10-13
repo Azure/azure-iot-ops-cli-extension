@@ -9,7 +9,8 @@ from ...common import ListableEnum
 
 
 class LnmResourceKinds(ListableEnum):
-    LNM="lnm"
-    SCALE="scale"
+    LNM = "lnm"
+    SCALE = "scale"
+
 
 LNM_API_V1 = EdgeResourceApi(group="aio.com", version="v1", moniker="Lnm")

@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 from .base import (
     CheckManager,
@@ -135,10 +135,10 @@ def evaluate_lnms(
     lnm_image_table.add_column("repository", justify="center", style="cyan", no_wrap=True, width=20)
     lnm_image_table.add_column("tag", justify="center", style="cyan", no_wrap=True)
 
-    for l in lnms:
-        lnm_name = l["metadata"]["name"]
+    for lnm in lnms:
+        lnm_name = lnm["metadata"]["name"]
         lnm_names.append(lnm_name)
-        status = l["status"]["configStatusLevel"]
+        status = lnm["status"]["configStatusLevel"]
 
         lnm_status_eval_value = {"status.configStatusLevel": status}
         lnm_status_eval_status = CheckTaskStatus.success.value
@@ -162,8 +162,8 @@ def evaluate_lnms(
             resource_name=lnm_name,
             padding=(0, 0, 0, 12)
         )
-        
-        lnm_allowlist = l["spec"].get("allowList", None)
+
+        lnm_allowlist = lnm["spec"].get("allowList", None)
 
         if detail_level > ResourceOutputDetailLevel.summary.value:
 
@@ -178,7 +178,7 @@ def evaluate_lnms(
                 lnm_allowlist_text = (
                     "- Allow List property [red]not detected[/red]."
                 )
-            
+
             add_display_and_eval(
                 check_manager=check_manager,
                 target_name=target_lnms,
@@ -202,14 +202,14 @@ def evaluate_lnms(
                 check_manager=check_manager,
                 detail_level=detail_level,
                 target_name=target_lnms,
-                prop_value=l["spec"],
+                prop_value=lnm["spec"],
                 properties=LNM_PROPERTIES,
                 padding=(0, 0, 0, 16)
             )
 
         if detail_level == ResourceOutputDetailLevel.verbose.value:
             # image
-            lnm_image = l["spec"].get("image", None)
+            lnm_image = lnm["spec"].get("image", None)
             lnm_image_text = (
                 "- Image property [green]detected[/green]."
             )
@@ -256,7 +256,7 @@ def evaluate_lnms(
         lnm_app_lables = LNM_APP_LABELS
         for lnm_name in lnm_names:
             LNM_APP_LABELS.append(f"aio-lnm-{lnm_name}")
-        
+
         lnm_label = f"app in ({','.join(lnm_app_lables)})"
 
         for pod in [

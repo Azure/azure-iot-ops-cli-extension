@@ -530,7 +530,7 @@ def process_properties(
         if value is None:
             continue
         if prop == "descriptor":
-                value = value if detail_level == ResourceOutputDetailLevel.verbose.value else value[:10] + "..."
+            value = value if detail_level == ResourceOutputDetailLevel.verbose.value else value[:10] + "..."
         elif prop.endswith("clientSecret"):
             value = "*" * len(value)
         if verbose_only and detail_level != ResourceOutputDetailLevel.verbose.value:

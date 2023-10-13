@@ -5,6 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 
+from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
 import pytest
 from typing import Dict, Any, List
 from azext_edge.edge.common import (
@@ -25,6 +26,7 @@ from azext_edge.edge.providers.check.bluefin import (
     evaluate_instances,
     evaluate_pipelines,
 )
+from azext_edge.edge.providers.check.lnm import evaluate_lnms
 from azext_edge.edge.providers.checks import run_checks
 from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
 from azext_edge.edge.providers.edge_api.e4k import E4kResourceKinds
@@ -246,6 +248,23 @@ def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_typ
         BluefinResourceKinds.DATASET.value: "azext_edge.edge.providers.check.bluefin.evaluate_datasets",
         BluefinResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.bluefin.evaluate_instances",
         BluefinResourceKinds.PIPELINE.value: "azext_edge.edge.providers.check.bluefin.evaluate_pipelines",
+    }
+
+    assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
+
+
+@pytest.mark.parametrize(
+    "resource_kinds",
+    [
+        None,
+        [],
+        [LnmResourceKinds.LNM.value],
+    ],
+)
+@pytest.mark.parametrize('edge_service', ['lnm'])
+def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
+    eval_lookup = {
+        LnmResourceKinds.LNM.value: "azext_edge.edge.providers.check.lnm.evaluate_lnms",
     }
 
     assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
@@ -988,6 +1007,119 @@ def test_dataset_checks(
     assert result["namespace"] == namespace
     assert result["targets"]["datasets.bluefin.az-bluefin.com"]
     target = result["targets"]["datasets.bluefin.az-bluefin.com"]
+
+    assert_conditions(target, conditions)
+    assert_evaluations(target, evaluations)
+
+
+@pytest.mark.parametrize(
+    "lnms, conditions, evaluations",
+    [
+        (
+            # lnms
+            [
+                {
+                    "metadata": {
+                        "name": "test-lnm",
+                    },
+                    "status": {
+                        "configStatusLevel": "ok"
+                    },
+                    "spec": {
+                        "allowList": {
+                            "domains": [
+                                "microsoft.com",
+                                "microsoftonline.com"
+                            ],
+                            "enableArcDomains": True,
+                            "sourceIpRange": ""
+                        },
+                        "image": {
+                            "pullPolicy": "IfNotPresent",
+                            "pullSecrets": [
+                                {
+                                    "name": "regcred"
+                                }
+                            ],
+                            "repository": "mcr.microsoft.com/azureiotedge-lnm",
+                            "tag": "1.0.0"
+                        },
+                        "endpointType": "mqtt",
+                        "level": "debug",
+                        "logLevel": "debug",
+                        "nodeTolerations": [
+                            {
+                                "effect": "NoSchedule",
+                                "key": "node-role.kubernetes.io/master"
+                            }
+                        ],
+                        "openTelemetryMetricsCollectorAddr": "",
+                        "parentIpAddr": "",
+                        "parentPort": 0,
+                        "port": 0,
+                        "replicas": 0
+                    }
+                }
+            ],
+            # conditions str
+            ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/status.configStatusLevel", "ok"),
+                ],
+            ],
+        ),
+        (
+            # lnms
+            [
+                {
+                    "metadata": {
+                        "name": "test-lnm2",
+                    },
+                    "status": {
+                        "configStatusLevel": "warn"
+                    },
+                    "spec": {
+                        "allowList": {
+                            "domains": [
+                                "microsoft.com",
+                                "microsoftonline.com"
+                            ],
+                            "enableArcDomains": True,
+                            "sourceIpRange": ""
+                        }
+                    }
+                }
+            ],
+            # conditions str
+            ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"],
+            # evaluations
+            [
+                [
+                    ("status", "warning"),
+                    ("value/status.configStatusLevel", "warn"),
+                ],
+            ],
+        ),
+    ]
+)
+def test_lnm_checks(
+    mocker, mock_evaluate_lnm_pod_health, lnms, conditions, evaluations
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": lnms}],
+    )
+
+    namespace = generate_generic_id()
+    result = evaluate_lnms(namespace=namespace)
+
+    assert result["name"] == "evalLnms"
+    assert result["namespace"] == namespace
+    assert result["targets"]["lnmz.aio.com"]
+    target = result["targets"]["lnmz.aio.com"]
 
     assert_conditions(target, conditions)
     assert_evaluations(target, evaluations)

@@ -6,6 +6,7 @@
 
 from typing import Any, Dict, List, Optional
 from azext_edge.edge.providers.check.lnm import check_lnm_deployment
+from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
 from azure.cli.core.azclierror import ArgumentUsageError
 
 from rich.console import Console
@@ -86,6 +87,8 @@ def _check_resource_kinds_under_edge_service(edge_service: str, resource_kinds: 
         valid_resource_values = BluefinResourceKinds.list()
     elif edge_service == SupportForEdgeServiceType.e4k.value:
         valid_resource_values = E4kResourceKinds.list()
+    elif edge_service == SupportForEdgeServiceType.lnm.value:
+        valid_resource_values = LnmResourceKinds.list()
 
     for resource_kind in resource_kinds:
         if resource_kind not in valid_resource_values:
