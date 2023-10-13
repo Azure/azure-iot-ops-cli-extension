@@ -38,7 +38,7 @@ def load_iotedge_arguments(self, _):
             help="K8s cluster namespace the command should operate against. "
             "If no namespace is provided the kubeconfig current_context namespace will be used. "
             "If not defined, the fallback value `default` will be used. ",
-            validator=validate_namespace
+            validator=validate_namespace,
         )
 
     with self.argument_context("edge support") as context:
@@ -269,10 +269,10 @@ def load_iotedge_arguments(self, _):
             help="Disable deployment progress bar.",
         )
         context.argument(
-            "block",
-            options_list=["--block"],
+            "no_block",
+            options_list=["--no-block"],
             arg_type=get_three_state_flag(),
-            help="Determines whether the operation should block for completion.",
+            help="Disable blocking until completion.",
         )
         # Akri
         context.argument(
