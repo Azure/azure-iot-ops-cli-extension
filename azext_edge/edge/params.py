@@ -246,6 +246,7 @@ def load_iotedge_arguments(self, _):
             "is the edge service moniker and {value} is the desired version. The following monikers "
             f"may be used: {', '.join(EdgeServiceMoniker.list())}. Example: e4k=0.5.0 bluefin=0.3.0",
             arg_group="PAS Version",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "only_deploy_custom",
@@ -253,6 +254,7 @@ def load_iotedge_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Only deploy the edge services specified in --custom-version.",
             arg_group="PAS Version",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "create_sync_rules",
