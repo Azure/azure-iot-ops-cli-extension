@@ -26,6 +26,11 @@ azdev setup -c EDGE
 echo "Installing local dev extension"
 pip install -U --target ~/.azure/cliextensions/azure-edge .
 
+# setup tox environment dependencies in parallel, but don't run tests
+echo "Creating local tox environments"
+python -m pip install tox
+tox -np -e lint,python,coverage
+
 echo "Install complete, please activate your environment with 'source env/bin/activate'"
 echo "This should automatically occur the next time you connect to the codespace"
 

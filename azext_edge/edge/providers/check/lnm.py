@@ -101,7 +101,7 @@ def evaluate_lnms(
     lnm_conditions = ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"]
     check_manager.add_target(target_name=target_lnms, conditions=lnm_conditions)
 
-    lnm_list: dict = LNM_API_V1.get_resources(LnmResourceKinds.LNM, namespace=namespace, plural="lnmz")
+    lnm_list: dict = LNM_API_V1.get_resources(LnmResourceKinds.LNM, namespace=namespace)
     if not lnm_list:
         fetch_lnms_error_text = f"Unable to fetch namespace {LnmResourceKinds.LNM.value}s."
         check_manager.add_target_eval(

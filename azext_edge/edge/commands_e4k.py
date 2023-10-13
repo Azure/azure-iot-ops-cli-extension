@@ -4,11 +4,11 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import Optional
+from typing import Optional, List
 
 from knack.log import get_logger
 from .providers.base import load_config_context
-from .common import AZEDGE_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT
+from .common import AZEDGE_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT
 
 logger = get_logger(__name__)
 
@@ -18,21 +18,33 @@ def stats(
     namespace: Optional[str] = None,
     context_name: Optional[str] = None,
     diag_service_pod_prefix: str = AZEDGE_DIAGNOSTICS_SERVICE,
-    pod_port: int = METRICS_SERVICE_API_PORT,
+    pod_metrics_port: int = METRICS_SERVICE_API_PORT,
+    pod_protobuf_port: int = PROTOBUF_SERVICE_API_PORT,
     raw_response_print: Optional[bool] = None,
     refresh_in_seconds: int = 10,
     watch: Optional[bool] = None,
+    trace_ids: Optional[List[str]] = None,
+    trace_dir: Optional[str] = None,
 ):
     load_config_context(context_name=context_name)
     from .providers.edge_api import E4K_ACTIVE_API
-    from .providers.stats import get_stats
+    from .providers.stats import get_stats, get_traces
+
     E4K_ACTIVE_API.is_deployed(raise_on_404=True)
+    if trace_ids or trace_dir:
+        return get_traces(
+            namespace=namespace,
+            diag_service_pod_prefix=diag_service_pod_prefix,
+            pod_protobuf_port=pod_protobuf_port,
+            trace_ids=trace_ids,
+            trace_dir=trace_dir,
+        )
 
     return get_stats(
         namespace=namespace,
         diag_service_pod_prefix=diag_service_pod_prefix,
         raw_response_print=raw_response_print,
-        pod_port=pod_port,
+        pod_metrics_port=pod_metrics_port,
         refresh_in_seconds=refresh_in_seconds,
         watch=watch,
     )
