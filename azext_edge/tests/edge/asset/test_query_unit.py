@@ -13,7 +13,7 @@ from . import ASSETS_PATH
 from ...generators import generate_generic_id
 
 
-@pytest.mark.parametrize("build_query_fixture", [{
+@pytest.mark.parametrize("mocked_build_query", [{
     "path": ASSETS_PATH,
     "result": [{"result": generate_generic_id()}]
 }], ids=["query"], indirect=True)
@@ -43,14 +43,14 @@ from ...generators import generate_generic_id
         "resource_group_name": generate_generic_id(),
     },
 ])
-def test_query_assets(mocked_cmd, build_query_fixture, req):
+def test_query_assets(mocked_cmd, mocked_get_subscription_id, mocked_build_query, req):
     result = query_assets(
         cmd=mocked_cmd,
         **req
     )
-    assert result == build_query_fixture.return_value
-    query_args = build_query_fixture.call_args.kwargs
-    assert query_args["subscription_id"] == mocked_cmd.cli_ctx.data['subscription_id']
+    assert result == mocked_build_query.return_value
+    query_args = mocked_build_query.call_args.kwargs
+    assert query_args["subscription_id"] == mocked_get_subscription_id.return_value
     assert query_args["location"] == req.get("location")
     assert query_args["resource_group"] == req.get("resource_group_name")
     assert query_args["type"] == ResourceTypeMapping.asset.value

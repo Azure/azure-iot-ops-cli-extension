@@ -216,6 +216,7 @@ class AssetProvider():
             query += f"| where properties.softwareRevision =~ \"{software_revision}\""
 
         return build_query(
+            self.cmd,
             subscription_id=self.subscription,
             custom_query=query,
             location=location,
@@ -432,6 +433,7 @@ class AssetProvider():
         # provide cluster name - start with checking for the cluster (if can)
         if cluster_name:
             cluster_query_result = build_query(
+                self.cmd,
                 subscription_id=cluster_subscription,
                 type=ResourceTypeMapping.connected_cluster.value,
                 name=cluster_name,
@@ -452,6 +454,7 @@ class AssetProvider():
         # if only location is provided, will look just by location name
         # if both cluster name and location are provided, should also include cluster id to narrow association
         location_query_result = build_query(
+            self.cmd,
             subscription_id=custom_location_subscription,
             custom_query=query,
             type=ResourceTypeMapping.custom_location.value,
@@ -479,6 +482,7 @@ class AssetProvider():
         if not cluster_name:
             query = f'| where id =~ "{location_query_result[0]["properties"]["hostResourceId"]}"'
             cluster_query_result = build_query(
+                self.cmd,
                 subscription_id=cluster_subscription,
                 custom_query=query,
                 type=ResourceTypeMapping.connected_cluster.value

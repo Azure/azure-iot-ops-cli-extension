@@ -9,9 +9,7 @@ from typing import Dict, List, Optional
 from knack.log import get_logger
 
 from azure.cli.core.azclierror import RequiredArgumentMissingError
-from azure.cli.core.commands.client_factory import get_subscription_id
 
-from .util import build_query
 from .common import ResourceTypeMapping
 from .providers.assets import AssetProvider
 
@@ -124,44 +122,24 @@ def query_assets(
     software_revision: Optional[str] = None,
     resource_group_name: Optional[str] = None,
 ) -> dict:
-    subscription = get_subscription_id(cmd.cli_ctx)
-    query = ""
-    if asset_type:
-        query += f"| where properties.assetType =~ \"{asset_type}\""
-    if custom_location_name:  # ##
-        query += f"| where extendedLocation.name contains \"{custom_location_name}\""
-    if description:
-        query += f"| where properties.description =~ \"{description}\""
-    if enabled:
-        query += f"| where properties.enabled == {enabled}"
-    if documentation_uri:
-        query += f"| where properties.documentationUri =~ \"{documentation_uri}\""
-    if endpoint_profile:
-        query += f"| where properties.connectivityProfileUri =~ \"{endpoint_profile}\""
-    if external_asset_id:
-        query += f"| where properties.externalAssetId =~ \"{external_asset_id}\""
-    if hardware_revision:
-        query += f"| where properties.hardwareRevision =~ \"{hardware_revision}\""
-    if manufacturer:
-        query += f"| where properties.manufacturer =~ \"{manufacturer}\""
-    if manufacturer_uri:
-        query += f"| where properties.manufacturerUri =~ \"{manufacturer_uri}\""
-    if model:
-        query += f"| where properties.model =~ \"{model}\""
-    if product_code:
-        query += f"| where properties.productCode =~ \"{product_code}\""
-    if serial_number:
-        query += f"| where properties.serialNumber =~ \"{serial_number}\""
-    if software_revision:
-        query += f"| where properties.softwareRevision =~ \"{software_revision}\""
-
-    return build_query(
-        subscription_id=subscription,
-        custom_query=query,
+    asset_provider = AssetProvider(cmd)
+    return asset_provider.query(
+        asset_type=asset_type,
+        custom_location_name=custom_location_name,
+        description=description,
+        enabled=enabled,
+        documentation_uri=documentation_uri,
+        endpoint_profile=endpoint_profile,
+        external_asset_id=external_asset_id,
+        hardware_revision=hardware_revision,
         location=location,
-        resource_group=resource_group_name,
-        type=ResourceTypeMapping.asset.value,
-        additional_project="extendedLocation"
+        manufacturer=manufacturer,
+        manufacturer_uri=manufacturer_uri,
+        model=model,
+        product_code=product_code,
+        serial_number=serial_number,
+        software_revision=software_revision,
+        resource_group_name=resource_group_name
     )
 
 

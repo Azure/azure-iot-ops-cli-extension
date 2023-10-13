@@ -28,11 +28,3 @@ def asset_helpers_fixture(mocker, request):
     patched_up.side_effect = mock_update_properties
     helper_fixtures.append(patched_up)
     yield helper_fixtures
-
-
-# @pytest.fixture()
-# def show_asset_fixture(mocker, request):
-#     patched_show = mocker.patch(SHOW_ASSETS_PATH)
-#     copy = json.loads(json.dumps(request.param))
-#     patched_show.return_value = copy
-#     yield patched_show, request.param

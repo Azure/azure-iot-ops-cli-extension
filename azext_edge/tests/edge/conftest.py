@@ -28,26 +28,6 @@ def mocked_urlopen(mocker):
 
 
 @pytest.fixture
-def mocked_get_subscription_id(mocker):
-    from ..generators import get_zeroed_subscription
-
-    patched = mocker.patch("azure.cli.core.commands.client_factory.get_subscription_id", autospec=True)
-    patched.return_value = get_zeroed_subscription()
-    yield patched
-
-
-@pytest.fixture
-def mocked_send_raw_request(request, mocker):
-    request_result = mocker.Mock()
-    raw_request_result = getattr(request, "param", {})
-    request_result.content = raw_request_result
-    request_result.json.return_value = {"value": raw_request_result}
-    patched = mocker.patch("azure.cli.core.util.send_raw_request", autospec=True)
-    patched.return_value = request_result
-    yield patched
-
-
-@pytest.fixture
 def mocked_resource_management_client(request, mocker):
     import json
 
@@ -87,14 +67,6 @@ def mocked_resource_management_client(request, mocker):
     patched.return_value = resource_mgmt_client
 
     yield resource_mgmt_client
-
-
-@pytest.fixture
-def mocked_cmd(mocker, mocked_get_subscription_id):
-    az_cli_mock = mocker.patch("azure.cli.core.AzCli", autospec=True)
-    config = {"cli_ctx": az_cli_mock}
-    patched = mocker.patch("azure.cli.core.commands.AzCliCommand", autospec=True, **config)
-    yield patched
 
 
 @pytest.fixture

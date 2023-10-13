@@ -17,10 +17,12 @@ from ...generators import generate_generic_id
     {"resources.get": {"result": generate_generic_id()}}
 ], ids=["resources.get"], indirect=True)
 @pytest.mark.parametrize("mocked_send_raw_request", [
-    [
-        {"name": generate_generic_id(), "resourceGroup": generate_generic_id()},
-        {"name": generate_generic_id(), "resourceGroup": generate_generic_id()}
-    ]
+    {
+        "value": [
+            {"name": generate_generic_id(), "resourceGroup": generate_generic_id()},
+            {"name": generate_generic_id(), "resourceGroup": generate_generic_id()}
+        ]
+    }
 ], ids=["raw_request"], indirect=True)
 @pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
 def test_delete_asset(

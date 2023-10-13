@@ -51,8 +51,8 @@ def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
 
 
 # TODO: unit test
-def build_query(subscription_id: str, custom_query: Optional[str] = None, **kwargs):
-    rest_cmd = "rest --method POST --url '/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01' "
+def build_query(cmd, subscription_id: str, custom_query: Optional[str] = None, **kwargs):
+    url = '/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01'
     payload = {"subscriptions": [subscription_id], "query": "Resources ", "options": {}}
 
     # TODO: add more query options as they pop up
@@ -62,8 +62,6 @@ def build_query(subscription_id: str, custom_query: Optional[str] = None, **kwar
         payload["query"] += f'| where resourceGroup =~ "{kwargs.get("resource_group")}" '
     if kwargs.get("location"):
         payload["query"] += f'| where location =~ "{kwargs.get("location")}" '
-    if kwargs.get("resource_group"):
-        payload["query"] += f'| where resourceGroup =~ "{kwargs.get("resource_group")}" '
     if kwargs.get("type"):
         payload["query"] += f'| where type =~ "{kwargs.get("type")}" '
     if custom_query:
@@ -72,26 +70,19 @@ def build_query(subscription_id: str, custom_query: Optional[str] = None, **kwar
     if kwargs.get("additional_project"):
         payload["query"] += f', {kwargs.get("additional_project")}'
 
-    return _process_query(rest_cmd, payload)
+    return _process_query(cmd, url, "POST", payload)
 
 
-def _process_query(rest_cmd: str, payload: dict):
-    total_data = []
-    skip_token = "sentinel"
-    while skip_token:
-        try:
-            cli.invoke(rest_cmd + f" --body '{json.dumps(payload)}'")
-        except Exception as e:
-            raise e
-        result = cli.as_json()
-        page_data = result.get("data")
-        if page_data:
-            total_data.extend(page_data)
-        skip_token = result.get("$skipToken")
-        if skip_token:
-            payload["options"]["$skipToken"] = skip_token
+def _process_query(cmd, url: str, method: str, payload: dict):
+    # since we don't want to download the resourcegraph sdk - we are stuck with this
+    from azure.cli.core.util import send_raw_request
 
-    return total_data
+    r = send_raw_request(
+        cli_ctx=cmd.cli_ctx, url=url, method=method, body=json.dumps(payload)
+    )
+
+    if r.content:
+        return r.json()["data"]
 
 
 def get_timestamp_now_utc(format: str = "%Y-%m-%dT%H:%M:%S") -> str:

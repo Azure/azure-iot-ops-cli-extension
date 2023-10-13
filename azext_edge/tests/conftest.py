@@ -32,11 +32,28 @@ def embedded_cli_client(mocker, request):
 
 
 @pytest.fixture
-def build_query_fixture(mocker, request):
-    assert request and request.param
-    assert "path" in request.param
-    assert "result" in request.param
-    patched_build_query = mocker.patch(request.param["path"] + ".build_query")
-    patched_build_query.return_value = request.param["result"]
+def mocked_get_subscription_id(mocker):
+    from .generators import get_zeroed_subscription
 
-    yield patched_build_query
+    patched = mocker.patch("azure.cli.core.commands.client_factory.get_subscription_id", autospec=True)
+    patched.return_value = get_zeroed_subscription()
+    yield patched
+
+
+@pytest.fixture
+def mocked_cmd(mocker, mocked_get_subscription_id):
+    az_cli_mock = mocker.patch("azure.cli.core.AzCli", autospec=True)
+    config = {"cli_ctx": az_cli_mock}
+    patched = mocker.patch("azure.cli.core.commands.AzCliCommand", autospec=True, **config)
+    yield patched
+
+
+@pytest.fixture
+def mocked_send_raw_request(request, mocker):
+    request_mock = mocker.Mock()
+    raw_request_result = getattr(request, "param", {})
+    request_mock.content = True
+    request_mock.json.return_value = raw_request_result
+    patched = mocker.patch("azure.cli.core.util.send_raw_request", autospec=True)
+    patched.return_value = request_mock
+    yield patched
