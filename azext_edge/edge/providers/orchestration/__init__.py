@@ -12,6 +12,7 @@ from .pas_versions import (
     EdgeExtensionName,
     extension_name_to_type_map,
     moniker_to_extension_type_map,
+    DEPLOYABLE_PAS_VERSION,
 )
 
 
@@ -23,4 +24,5 @@ __all__ = [
     "EdgeExtensionName",
     "extension_name_to_type_map",
     "moniker_to_extension_type_map",
+    "DEPLOYABLE_PAS_VERSION",
 ]

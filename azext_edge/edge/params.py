@@ -11,7 +11,7 @@ CLI parameter definitions.
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type
 from knack.arguments import CaseInsensitiveList
 
-from .common import DeployablePasVersions, SupportForEdgeServiceType
+from .common import SupportForEdgeServiceType
 from .providers.edge_api import E4kResourceKinds
 from .providers.orchestration.pas_versions import EdgeServiceMoniker
 from .providers.check.common import ResourceOutputDetailLevel
@@ -38,7 +38,7 @@ def load_iotedge_arguments(self, _):
             help="K8s cluster namespace the command should operate against. "
             "If no namespace is provided the kubeconfig current_context namespace will be used. "
             "If not defined, the fallback value `default` will be used. ",
-            validator=validate_namespace
+            validator=validate_namespace,
         )
 
     with self.argument_context("edge support") as context:
@@ -231,15 +231,8 @@ def load_iotedge_arguments(self, _):
             arg_group="Template",
         )
         context.argument(
-            "pas_version",
-            options_list=["--pas-version"],
-            help="The PAS bundle version to deploy.",
-            choices=CaseInsensitiveList(DeployablePasVersions.list()),
-            arg_group="PAS Version",
-        )
-        context.argument(
             "show_pas_version",
-            options_list=["--show-version"],
+            options_list=["--pas-version"],
             help="Summarize and show the versions of deployable components.",
             arg_type=get_three_state_flag(),
             arg_group="PAS Version",
@@ -247,19 +240,21 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_version",
             nargs="+",
-            options_list=["--custom-version"],
+            options_list=[context.deprecate(hide=True, target="--custom-version")],
             help="Customize PAS deployment by specifying edge service versions. Usage takes "
             "precedence over --aio-version. Use space-separated {key}={value} pairs where {key} "
             "is the edge service moniker and {value} is the desired version. The following monikers "
             f"may be used: {', '.join(EdgeServiceMoniker.list())}. Example: e4k=0.5.0 bluefin=0.3.0",
             arg_group="PAS Version",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "only_deploy_custom",
-            options_list=["--only-custom"],
+            options_list=[context.deprecate(hide=True, target="--only-custom")],
             arg_type=get_three_state_flag(),
             help="Only deploy the edge services specified in --custom-version.",
             arg_group="PAS Version",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "create_sync_rules",
@@ -274,10 +269,10 @@ def load_iotedge_arguments(self, _):
             help="Disable deployment progress bar.",
         )
         context.argument(
-            "block",
-            options_list=["--block"],
+            "no_block",
+            options_list=["--no-block"],
             arg_type=get_three_state_flag(),
-            help="Determines whether the operation should block for completion.",
+            help="Disable blocking until completion.",
         )
         # Akri
         context.argument(

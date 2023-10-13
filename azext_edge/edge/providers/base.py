@@ -27,6 +27,11 @@ def load_config_context(context_name: Optional[str] = None):
     """
     Load default config using a specific context or 'current-context' if not specified.
     """
+    from ..util import set_log_level
+
+    # This will ensure --debug works with http(s) k8s interactions
+    set_log_level("urllib3.connectionpool")
+
     config.load_kube_config(context=context_name)
     _, current_config = config.list_kube_config_contexts()
     global DEFAULT_NAMESPACE
