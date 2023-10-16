@@ -122,6 +122,16 @@ class E4kCheckType(Enum):
     post = "post"
 
 
+# E4k connector enums
+class KafkaTopicMapRouteType(Enum):
+    """
+    Kafka Connector Topic Map Route type:
+    """
+
+    kafka_to_mqtt = "kafkaToMqtt"
+    mqtt_to_kafka = "mqttToKafka"
+
+
 # Bluefin runtime attributes
 
 BLUEFIN_READER_WORKER_PREFIX = "bluefin-reader-worker"

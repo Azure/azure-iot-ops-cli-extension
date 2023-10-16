@@ -100,6 +100,7 @@ def load_iotedge_arguments(self, _):
                     E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
                     E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
                     E4kResourceKinds.DATALAKE_CONNECTOR.value,
+                    E4kResourceKinds.KAFKA_CONNECTOR.value,
                     BluefinResourceKinds.DATASET.value,
                     BluefinResourceKinds.PIPELINE.value,
                     BluefinResourceKinds.INSTANCE.value,
