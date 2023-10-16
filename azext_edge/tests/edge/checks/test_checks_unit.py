@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 
-from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
+from functools import partial
 import pytest
 from typing import Dict, Any, List
 from azext_edge.edge.common import (
@@ -20,16 +20,19 @@ from azext_edge.edge.providers.check.e4k import (
     evaluate_diagnostics_service,
     evaluate_mqtt_bridge_connectors,
     evaluate_datalake_connectors,
+    evaluate_kafka_connectors,
 )
 from azext_edge.edge.providers.check.bluefin import (
     evaluate_datasets,
     evaluate_instances,
     evaluate_pipelines,
 )
+from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
 from azext_edge.edge.providers.check.lnm import evaluate_lnms
 from azext_edge.edge.providers.checks import run_checks
 from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
 from azext_edge.edge.providers.edge_api.e4k import E4kResourceKinds
+from azext_edge.edge.providers.check.common import KafkaTopicMapRouteType, ResourceOutputDetailLevel
 
 from ...generators import generate_generic_id
 
@@ -400,7 +403,7 @@ def test_broker_checks(
             _generate_resource_stub(
                 spec={
                     "serviceName": "name",
-                    "serviceType": "type",
+                    "serviceType": "loadbalancer",
                     "brokerRef": "mock_broker",
                     "port": 8080,
                     "authenticationEnabled": "True",
@@ -426,7 +429,46 @@ def test_broker_checks(
                     ("status", "success"),
                     ("name", "mock_name"),
                     ("value/spec/serviceName", "name"),
-                    ("value/spec/serviceType", "type"),
+                    ("value/spec/serviceType", "loadbalancer"),
+                    ("value/spec/brokerRef", "mock_broker"),
+                    ("value/spec/port", 8080),
+                    ("value/spec/authenticationEnabled", "True"),
+                    ("value/valid(spec.brokerRef)", True),
+                ],
+            ],
+        ),
+        (
+            # listener with valid broker ref
+            _generate_resource_stub(
+                spec={
+                    "serviceName": "name",
+                    "serviceType": "clusterip",
+                    "brokerRef": "mock_broker",
+                    "port": 8080,
+                    "authenticationEnabled": "True",
+                },
+                status={"status": ResourceState.running.value, "statusDescription": ""},
+            ),
+            # service obj
+            _generate_resource_stub(
+                status={"loadBalancer": {"ingress": [{"ip": "127.0.0.1"}]}},
+                spec={"clusterIP": "127.0.0.1"},
+            ),
+            # conditions str
+            [
+                "len(brokerlisteners)>=1",
+                "spec",
+                "valid(spec.brokerRef)",
+                "spec.serviceName",
+                "status",
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("name", "mock_name"),
+                    ("value/spec/serviceName", "name"),
+                    ("value/spec/serviceType", "clusterip"),
                     ("value/spec/brokerRef", "mock_broker"),
                     ("value/spec/port", 8080),
                     ("value/spec/authenticationEnabled", "True"),
@@ -563,14 +605,72 @@ def test_diagnostic_service_checks(
                 [
                     ("status", "success"),
                     (
-                        "value/localBrokerConnection/authentication/x509",
+                        "value/spec/localBrokerConnection/authentication/x509",
                         "localbrokerauth",
                     ),
                     (
-                        "value/remoteBrokerConnection/authentication/kubernetes",
+                        "value/spec/remoteBrokerConnection/authentication/kubernetes",
                         "remotebrokerauth",
                     ),
-                    ("value/tls/tlsEnabled", True),
+                    ("value/spec/tls/tlsEnabled", True),
+                ],
+            ],
+        ),
+        (
+            # mqtt bridge
+            _generate_resource_stub(
+                metadata={"name": "test_bridge"},
+                spec={
+                    "localBrokerConnection": {
+                        "authentication": {"x509": "localbrokerauth"}
+                    },
+                    "remoteBrokerConnection": {
+                        "authentication": {"kubernetes": "remotebrokerauth"}
+                    },
+                    "tls": {"tlsEnabled": True},
+                },
+                status={
+                    "configStatusLevel": ResourceState.running.value
+                }
+            ),
+            # topic map with routes
+            _generate_resource_stub(
+                spec={
+                    "mqttBridgeConnectorRef": "test_bridge",
+                    "routes": [
+                        {
+                            "name": "route1",
+                            "direction": "local-to-remote",
+                            "source": "local",
+                            "target": "remote",
+                            "qos": 0
+                        },
+                        {
+                            "name": "route2",
+                            "direction": "remote-to-local",
+                            "source": "remote",
+                            "target": "local",
+                            "qos": 1
+                        }
+                    ]
+                }
+            ),
+            # conditions str
+            ["status", "valid(spec)"],
+            # evaluations
+            [
+                [("status", "success"), ("kind", "mqttbridgeconnector")],
+                [
+                    ("status", "success"),
+                    (
+                        "value/spec/localBrokerConnection/authentication/x509",
+                        "localbrokerauth",
+                    ),
+                    (
+                        "value/spec/remoteBrokerConnection/authentication/kubernetes",
+                        "remotebrokerauth",
+                    ),
+                    ("value/spec/tls/tlsEnabled", True),
                 ],
             ],
         ),
@@ -581,19 +681,20 @@ def test_mqtt_checks(
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": [bridge]}, {"items": [topic_map]}],
     )
+    for detail_level in ResourceOutputDetailLevel.list():
+        mocker.side_effect = [{"items": [bridge]}, {"items": [topic_map]}]
+        namespace = generate_generic_id()
+        result = evaluate_mqtt_bridge_connectors(namespace=namespace, detail_level=detail_level)
 
-    namespace = generate_generic_id()
-    result = evaluate_mqtt_bridge_connectors(namespace=namespace)
+        assert result["name"] == "evalMQTTBridgeConnectors"
+        assert result["namespace"] == namespace
+        assert result["targets"]["mqttbridgeconnectors.az-edge.com"]
+        target = result["targets"]["mqttbridgeconnectors.az-edge.com"]
 
-    assert result["name"] == "evalMQTTBridgeConnectors"
-    assert result["namespace"] == namespace
-    assert result["targets"]["mqttbridgeconnectors.az-edge.com"]
-    target = result["targets"]["mqttbridgeconnectors.az-edge.com"]
-
-    assert_conditions(target, conditions)
-    assert_evaluations(target, evaluations)
+        assert_conditions(target, conditions)
+        assert_evaluations(target, evaluations)
+        mocker.reset_mock()
 
 
 @pytest.mark.parametrize(
@@ -620,8 +721,8 @@ def test_mqtt_checks(
                 [("status", "success"), ("kind", "datalakeconnector")],
                 [
                     ("status", "success"),
-                    ("value/instances", 2),
-                    ("value/target/datalakeStorage/endpoint", "test_endpoint"),
+                    ("value/spec/instances", 2),
+                    ("value/spec/target/datalakeStorage/endpoint", "test_endpoint"),
                 ],
             ],
         ),
@@ -632,19 +733,19 @@ def test_datalake_checks(
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": [connector]}, {"items": [topic_map]}],
     )
+    for detail_level in ResourceOutputDetailLevel.list():
+        mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
+        namespace = generate_generic_id()
+        result = evaluate_datalake_connectors(namespace=namespace, detail_level=detail_level)
 
-    namespace = generate_generic_id()
-    result = evaluate_datalake_connectors(namespace=namespace)
+        assert result["name"] == "evalDataLakeConnectors"
+        assert result["namespace"] == namespace
+        assert result["targets"]["datalakeconnectors.az-edge.com"]
+        target = result["targets"]["datalakeconnectors.az-edge.com"]
 
-    assert result["name"] == "evalDataLakeConnectors"
-    assert result["namespace"] == namespace
-    assert result["targets"]["datalakeconnectors.az-edge.com"]
-    target = result["targets"]["datalakeconnectors.az-edge.com"]
-
-    assert_conditions(target, conditions)
-    assert_evaluations(target, evaluations)
+        assert_conditions(target, conditions)
+        assert_evaluations(target, evaluations)
 
 
 @pytest.mark.parametrize(
@@ -1124,6 +1225,164 @@ def test_lnm_checks(
 
     assert_conditions(target, conditions)
     assert_evaluations(target, evaluations)
+
+
+@pytest.mark.parametrize(
+    "connector, topic_map, conditions, evaluations",
+    [
+        (
+            # kafka_connector
+            _generate_resource_stub(
+                metadata={
+                    'name': 'mock_kafka_connector'
+                },
+                spec={
+                    "clientIdPrefix": "kafka-prefix",
+                    "instances": 3,
+                    "localBrokerConnection": {
+                        "authentication": {"kubernetes": {}},
+                        "endpoint": 'local-auth-endpoint',
+                        "tls": {"tlsEnabled": True},
+                    },
+                    "kafkaConnection": {
+                        "authentication": {"authType": {"sasl": {}}},
+                        "endpoint": "kafka-endpoint",
+                        "tls": {"tlsEnabled": True},
+                    },
+                },
+                status={
+                    "configStatusLevel": ResourceState.running.value
+                }
+            ),
+            # topic_map
+            _generate_resource_stub(spec={"kafkaConnectorRef": "mock_kafka_connector"}),
+            # conditions
+            ["status", "valid(spec)"],
+            # evals
+            [
+                [("status", "success")],
+                [
+                    ("status", "success"),
+                    ("value/spec/clientIdPrefix", "kafka-prefix"),
+                    ("value/spec/instances", 3),
+                    ("value/spec/localBrokerConnection/endpoint", "local-auth-endpoint"),
+                    ("value/spec/kafkaConnection/endpoint", "kafka-endpoint"),
+                    ("value/spec/clientIdPrefix", "kafka-prefix"),
+                ]
+            ]
+        ),
+        (
+            # kafka_connector
+            _generate_resource_stub(
+                metadata={
+                    'name': 'mock_kafka_connector'
+                },
+                spec={
+                    "clientIdPrefix": "kafka-prefix",
+                    "instances": 2,
+                    "localBrokerConnection": {
+                        "authentication": {"kubernetes": {}},
+                        "endpoint": 'local-auth-endpoint',
+                        "tls": {"tlsEnabled": True},
+                    },
+                    "kafkaConnection": {
+                        "authentication": {"authType": {"sasl": {}}},
+                        "endpoint": "kafka-endpoint",
+                        "tls": {"tlsEnabled": True},
+                    },
+                },
+                status={
+                    "configStatusLevel": ResourceState.running.value
+                }
+            ),
+            # topic_map with routes
+            _generate_resource_stub(
+                spec={
+                    "kafkaConnectorRef": "mock_kafka_connector",
+                    "routes": [
+                        {
+                            KafkaTopicMapRouteType.mqtt_to_kafka.value: {
+                                "kafkaTopic": "kafka_topic",
+                                "mqttTopic": "mqtt_topic",
+                                "qos": 1,
+                                "kafkaAcks": 3,
+                                "sharedSubscription": {
+                                    "groupName": "test_group",
+                                    "groupMinimumShareNumber": 1
+                                }
+                            }
+                        },
+                        {
+                            KafkaTopicMapRouteType.kafka_to_mqtt.value: {
+                                "kafkaTopic": "kafka_topic",
+                                "mqttTopic": "mqtt_topic",
+                                "qos": 0,
+                                "consumerGroupId": "$default"
+                            }
+                        }
+                    ]
+                }
+            ),
+            # conditions
+            ["status", "valid(spec)"],
+            # evals
+            [
+                [("status", "success")],
+                [
+                    ("status", "success"),
+                    ("value/spec/clientIdPrefix", "kafka-prefix"),
+                    ("value/spec/instances", 2),
+                    ("value/spec/localBrokerConnection/endpoint", "local-auth-endpoint"),
+                    ("value/spec/kafkaConnection/endpoint", "kafka-endpoint"),
+                    ("value/spec/clientIdPrefix", "kafka-prefix"),
+                ]
+            ]
+        )
+    ]
+)
+def test_kafka_checks(
+    mocker, mock_evaluate_e4k_pod_health, connector, topic_map, conditions, evaluations
+):
+    mocker = mocker.patch("azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources")
+    for detail_level in ResourceOutputDetailLevel.list():
+        mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
+        namespace = generate_generic_id()
+        result = evaluate_kafka_connectors(namespace=namespace, detail_level=detail_level)
+
+        assert result["name"] == "evalKafkaConnectors"
+        assert result["namespace"] == namespace
+        assert result["targets"]["kafkaconnectors.az-edge.com"]
+        target = result["targets"]["kafkaconnectors.az-edge.com"]
+
+        assert_conditions(target, conditions)
+        assert_evaluations(target, evaluations)
+
+
+@pytest.mark.parametrize(
+    "eval_func, name, target",
+    (
+        (evaluate_mqtt_bridge_connectors, "evalMQTTBridgeConnectors", "mqttbridgeconnectors.az-edge.com"),
+        (evaluate_datalake_connectors, "evalDataLakeConnectors", "datalakeconnectors.az-edge.com"),
+        (evaluate_kafka_connectors, "evalKafkaConnectors", "kafkaconnectors.az-edge.com"),
+    )
+)
+def test_empty_connector_results(mocker, mock_evaluate_e4k_pod_health, eval_func: partial, name, target):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        return_value={"items": []},
+    )
+
+    namespace = generate_generic_id()
+    result = eval_func(namespace=namespace)
+    assert result['name'] == name
+    assert all(
+        [
+            result['targets'][target],
+            not result['targets'][target]['conditions'],
+            result['targets'][target]['evaluations'][0]['status'] == CheckTaskStatus.skipped.value,
+            result['targets'][target]['status'] == CheckTaskStatus.skipped.value,
+        ]
+    )
 
 
 def assert_dict_props(path: str, expected: str, obj: Dict[str, str]):

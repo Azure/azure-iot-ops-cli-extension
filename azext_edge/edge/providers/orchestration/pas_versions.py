@@ -120,3 +120,6 @@ extension_name_to_type_map = {
     EdgeExtensionName.assets.value: "microsoft.deviceregistry.assets",
     EdgeExtensionName.akri.value: "microsoft.akri",
 }
+
+
+DEPLOYABLE_PAS_VERSION = DeployablePasVersions.v012.value

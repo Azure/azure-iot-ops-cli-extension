@@ -11,7 +11,6 @@ from knack.log import get_logger
 
 from .providers.base import load_config_context
 from .providers.support.base import get_bundle_path
-from .common import DeployablePasVersions
 from .providers.check.common import ResourceOutputDetailLevel
 
 logger = get_logger(__name__)
@@ -69,7 +68,6 @@ def init(
     resource_group_name: str,
     cluster_namespace: str = "default",
     custom_location_namespace: Optional[str] = None,
-    pas_version: str = DeployablePasVersions.v012.value,
     custom_location_name: Optional[str] = None,
     show_pas_version: Optional[bool] = None,
     custom_version: Optional[List[str]] = None,
@@ -80,7 +78,7 @@ def init(
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
     create_sync_rules: Optional[bool] = None,
-    block: Union[bool, str] = "true",
+    no_block: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     processor_instance_name: Optional[str] = None,
     target_name: Optional[str] = None,
@@ -116,7 +114,6 @@ def init(
         custom_location_name=custom_location_name,
         custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
-        pas_version=pas_version,
         location=location,
         show_pas_version=show_pas_version,
         custom_version=custom_version,
@@ -126,7 +123,7 @@ def init(
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         simulate_plc=simulate_plc,
         create_sync_rules=create_sync_rules,
-        block=block,
+        no_block=no_block,
         no_progress=no_progress,
         processor_instance_name=processor_instance_name,
         target_name=target_name,
