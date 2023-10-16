@@ -546,18 +546,17 @@ def evaluate_broker_listeners(
 
 def evaluate_brokers(
     as_list: bool = False,
-    namespace: Optional[str] = None,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker")
 
     target_brokers = "brokers.az-edge.com"
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
-    check_manager.add_target(target_name=target_brokers, conditions=broker_conditions)
+    broker_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER)
+    brokers: List[dict] = broker_list.get("items", [])
 
-    broker_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER, namespace=namespace)
-    if not broker_list:
-        fetch_brokers_error_text = f"Unable to fetch namespace {E4kResourceKinds.BROKER.value}s."
+    if not brokers:
+        fetch_brokers_error_text = f"Unable to fetch {E4kResourceKinds.BROKER.value}s in any namespaces"
         check_manager.add_target_eval(
             target_name=target_brokers,
             status=CheckTaskStatus.error.value,
@@ -569,241 +568,247 @@ def evaluate_brokers(
         )
         return check_manager.as_dict(as_list)
 
-    brokers: List[dict] = broker_list.get("items", [])
-    brokers_count = len(brokers)
-    brokers_count_text = "- Expecting [bright_blue]1[/bright_blue] broker resource per namespace. {}."
-    broker_eval_status = CheckTaskStatus.success.value
+    brokers_by_namespace = {}
+    namespaces = {res.get("metadata", {}).get("namespace") for res in brokers}
+    for namespace in namespaces:
+        brokers_by_namespace[namespace] = [
+            res for res in brokers if res.get("metadata", {}).get("namespace") == namespace
+        ]
 
-    if brokers_count == 1:
-        brokers_count_text = brokers_count_text.format(f"[green]Detected {brokers_count}[/green]")
-    else:
-        brokers_count_text = brokers_count_text.format(f"[red]Detected {brokers_count}[/red]")
-        check_manager.set_target_status(target_name=target_brokers, status=CheckTaskStatus.error.value)
-    check_manager.add_display(target_name=target_brokers, display=Padding(brokers_count_text, (0, 0, 0, 8)))
-
-    added_distributed_conditions = False
-    for b in brokers:
-        broker_name = b["metadata"]["name"]
-        broker_spec: dict = b["spec"]
-        broker_diagnostics = broker_spec["diagnostics"]
-        broker_mode = broker_spec.get("mode")
-        broker_status_state = b.get("status", {})
-        broker_status = broker_status_state.get("status", "N/A")
-        broker_status_desc = broker_status_state.get("statusDescription")
-
-        status_display_text = f"Status {{{decorate_resource_status(broker_status)}}}."
-
-        if broker_status_state:
-            status_display_text = f"{status_display_text} {broker_status_desc}."
-
-        target_broker_text = (
-            f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}} mode [bright_blue]{broker_mode}[/bright_blue]."
-        )
+    for namespace in brokers_by_namespace:
+    
+        check_manager.add_target(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
         check_manager.add_display(
             target_name=target_brokers,
-            display=Padding(target_broker_text, (0, 0, 0, 8)),
+            namespace=namespace,
+            display=Padding(
+                f"E4K Brokers in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 8)
+            )
         )
+        broker_list = brokers_by_namespace[namespace]
 
-        broker_eval_value = {"status": {"status": broker_status, "statusDescription": broker_status_desc}}
+        brokers_count = len(brokers)
+        brokers_count_text = "- Expecting [bright_blue]1[/bright_blue] broker resource per namespace. {}."
         broker_eval_status = CheckTaskStatus.success.value
 
-        if broker_status in [ResourceState.error.value, ResourceState.failed.value]:
-            broker_eval_status = CheckTaskStatus.error.value
-        elif broker_status in [
-            ResourceState.recovering.value,
-            ResourceState.warn.value,
-            ResourceState.starting.value,
-            "N/A",
-        ]:
-            broker_eval_status = CheckTaskStatus.warning.value
-        check_manager.add_display(
-            target_name=target_brokers,
-            display=Padding(status_display_text, (0, 0, 0, 12)),
-        )
-
-        if broker_mode == "distributed":
-            if not added_distributed_conditions:
-                # TODO - conditional evaluations
-                broker_conditions.append("spec.cardinality")
-                broker_conditions.append("spec.cardinality.backendChain.partitions>=1")
-                broker_conditions.append("spec.cardinality.backendChain.replicas>=1")
-                broker_conditions.append("spec.cardinality.backendChain.workers>=1")
-                broker_conditions.append("spec.cardinality.frontend.replicas>=1")
-                added_distributed_conditions = True
-
-            check_manager.set_target_conditions(target_name=target_brokers, conditions=broker_conditions)
-            check_manager.add_display(
-                target_name=target_brokers,
-                display=Padding("\nCardinality", (0, 0, 0, 12)),
-            )
-            broker_cardinality: dict = broker_spec.get("cardinality")
-            broker_eval_value["spec.cardinality"] = broker_cardinality
-            broker_eval_value["spec.mode"] = broker_mode
-            if not broker_cardinality:
-                broker_eval_status = CheckTaskStatus.error.value
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(
-                        "[magenta]spec.cardinality is undefined![/magenta]",
-                        (0, 0, 0, 16),
-                    ),
-                )
-            else:
-                backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
-                backend_replicas_desc = "- Expecting backend replicas [bright_blue]>=1[/bright_blue]. {}"
-                backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
-
-                backend_chain = broker_cardinality.get("backendChain", {})
-                backend_partition_count: Optional[int] = backend_chain.get("partitions")
-                backend_replicas: Optional[int] = backend_chain.get("replicas")
-                backend_workers: Optional[int] = backend_chain.get("workers")
-
-                if backend_partition_count and backend_partition_count >= 1:
-                    backend_chain_count_colored = f"[green]Actual {backend_partition_count}[/green]."
-                else:
-                    backend_chain_count_colored = f"[red]Actual {backend_partition_count}[/red]."
-                    broker_eval_status = CheckTaskStatus.error.value
-
-                if backend_replicas and backend_replicas >= 1:
-                    backend_replicas_colored = f"[green]Actual {backend_replicas}[/green]."
-                else:
-                    backend_replicas_colored = f"[red]Actual {backend_replicas}[/red]."
-                    broker_eval_status = CheckTaskStatus.error.value
-
-                if backend_workers and backend_workers >= 1:
-                    backend_workers_colored = f"[green]Actual {backend_workers}[/green]."
-                else:
-                    backend_workers_colored = f"[red]Actual {backend_workers}[/red]."
-                    broker_eval_status = CheckTaskStatus.error.value
-
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(
-                        backend_cardinality_desc.format(backend_chain_count_colored),
-                        (0, 0, 0, 16),
-                    ),
-                )
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(
-                        backend_replicas_desc.format(backend_replicas_colored),
-                        (0, 0, 0, 16),
-                    ),
-                )
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(
-                        backend_workers_desc.format(backend_workers_colored),
-                        (0, 0, 0, 16),
-                    ),
-                )
-
-                frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
-                frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
-
-                if frontend_replicas and frontend_replicas >= 1:
-                    frontend_replicas_colored = f"[green]Actual {frontend_replicas}[/green]."
-                else:
-                    frontend_replicas_colored = f"[red]Actual {frontend_replicas}[/red]."
-
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    display=Padding(
-                        frontend_cardinality_desc.format(frontend_replicas_colored),
-                        (0, 0, 0, 16),
-                    ),
-                )
-
-        diagnostic_detail_padding = (0, 0, 0, 16)
-        if broker_diagnostics:
-            check_manager.add_display(
-                target_name=target_brokers,
-                display=Padding("\nBroker Diagnostics", (0, 0, 0, 12)),
-            )
-            diag_endpoint = broker_diagnostics.get("diagnosticServiceEndpoint")
-            diag_enable_metrics = broker_diagnostics.get("enableMetrics")
-            diag_enable_selfcheck = broker_diagnostics.get("enableSelfCheck")
-            diag_enable_tracing = broker_diagnostics.get("enableTracing")
-            diag_loglevel = broker_diagnostics.get("logLevel")
-
-            check_manager.add_display(
-                target_name=target_brokers,
-                display=Padding(
-                    f"Diagnostic Service Endpoint: [cyan]{diag_endpoint}[/cyan]",
-                    diagnostic_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_brokers,
-                display=Padding(
-                    f"Enable Metrics: [bright_blue]{diag_enable_metrics}[/bright_blue]",
-                    diagnostic_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_brokers,
-                display=Padding(
-                    f"Enable Self-Check: [bright_blue]{diag_enable_selfcheck}[/bright_blue]",
-                    diagnostic_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_brokers,
-                display=Padding(
-                    f"Enable Tracing: [bright_blue]{diag_enable_tracing}[/bright_blue]",
-                    diagnostic_detail_padding,
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_brokers,
-                display=Padding(
-                    f"Log Level: [cyan]{diag_loglevel}[/cyan]",
-                    diagnostic_detail_padding,
-                ),
-            )
+        if brokers_count == 1:
+            brokers_count_text = brokers_count_text.format(f"[green]Detected {brokers_count}[/green]")
         else:
+            brokers_count_text = brokers_count_text.format(f"[red]Detected {brokers_count}[/red]")
+            check_manager.set_target_status(target_name=target_brokers, namespace=namespace, status=CheckTaskStatus.error.value)
+        check_manager.add_display(target_name=target_brokers, namespace=namespace, display=Padding(brokers_count_text, (0, 0, 0, 8)))
+
+        added_distributed_conditions = False
+        for b in brokers:
+            broker_name = b["metadata"]["name"]
+            broker_spec: dict = b["spec"]
+            broker_diagnostics = broker_spec["diagnostics"]
+            broker_mode = broker_spec.get("mode")
+            broker_status_state = b.get("status", {})
+            broker_status = broker_status_state.get("status", "N/A")
+            broker_status_desc = broker_status_state.get("statusDescription")
+
+            status_display_text = f"Status {{{decorate_resource_status(broker_status)}}}."
+
+            if broker_status_state:
+                status_display_text = f"{status_display_text} {broker_status_desc}."
+
+            target_broker_text = (
+                f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}} mode [bright_blue]{broker_mode}[/bright_blue]."
+            )
+            check_manager.add_display(
+                target_name=target_brokers,
+                namespace=namespace,
+                display=Padding(target_broker_text, (0, 0, 0, 8)),
+            )
+
+            broker_eval_value = {"status": {"status": broker_status, "statusDescription": broker_status_desc}}
+            broker_eval_status = CheckTaskStatus.success.value
+
+            if broker_status in [ResourceState.error.value, ResourceState.failed.value]:
+                broker_eval_status = CheckTaskStatus.error.value
+            elif broker_status in [
+                ResourceState.recovering.value,
+                ResourceState.warn.value,
+                ResourceState.starting.value,
+                "N/A",
+            ]:
+                broker_eval_status = CheckTaskStatus.warning.value
+            check_manager.add_display(
+                target_name=target_brokers,
+                namespace=namespace,
+                display=Padding(status_display_text, (0, 0, 0, 12)),
+            )
+
+            if broker_mode == "distributed":
+                if not added_distributed_conditions:
+                    # TODO - conditional evaluations
+                    broker_conditions.append("spec.cardinality")
+                    broker_conditions.append("spec.cardinality.backendChain.partitions>=1")
+                    broker_conditions.append("spec.cardinality.backendChain.replicas>=1")
+                    broker_conditions.append("spec.cardinality.backendChain.workers>=1")
+                    broker_conditions.append("spec.cardinality.frontend.replicas>=1")
+                    added_distributed_conditions = True
+
+                check_manager.set_target_conditions(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    display=Padding("\nCardinality", (0, 0, 0, 12)),
+                )
+                broker_cardinality: dict = broker_spec.get("cardinality")
+                broker_eval_value["spec.cardinality"] = broker_cardinality
+                broker_eval_value["spec.mode"] = broker_mode
+                if not broker_cardinality:
+                    broker_eval_status = CheckTaskStatus.error.value
+                    check_manager.add_display(
+                        target_name=target_brokers,
+                        namespace=namespace,
+                        display=Padding(
+                            "[magenta]spec.cardinality is undefined![/magenta]",
+                            (0, 0, 0, 16),
+                        ),
+                    )
+                else:
+                    backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
+                    backend_replicas_desc = "- Expecting backend replicas [bright_blue]>=1[/bright_blue]. {}"
+                    backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
+
+                    backend_chain = broker_cardinality.get("backendChain", {})
+                    backend_partition_count: Optional[int] = backend_chain.get("partitions")
+                    backend_replicas: Optional[int] = backend_chain.get("replicas")
+                    backend_workers: Optional[int] = backend_chain.get("workers")
+
+                    if backend_partition_count and backend_partition_count >= 1:
+                        backend_chain_count_colored = f"[green]Actual {backend_partition_count}[/green]."
+                    else:
+                        backend_chain_count_colored = f"[red]Actual {backend_partition_count}[/red]."
+                        broker_eval_status = CheckTaskStatus.error.value
+
+                    if backend_replicas and backend_replicas >= 1:
+                        backend_replicas_colored = f"[green]Actual {backend_replicas}[/green]."
+                    else:
+                        backend_replicas_colored = f"[red]Actual {backend_replicas}[/red]."
+                        broker_eval_status = CheckTaskStatus.error.value
+
+                    if backend_workers and backend_workers >= 1:
+                        backend_workers_colored = f"[green]Actual {backend_workers}[/green]."
+                    else:
+                        backend_workers_colored = f"[red]Actual {backend_workers}[/red]."
+                        broker_eval_status = CheckTaskStatus.error.value
+
+                    check_manager.add_display(
+                        target_name=target_brokers,
+                        namespace=namespace,
+                        display=Padding(
+                            backend_cardinality_desc.format(backend_chain_count_colored),
+                            (0, 0, 0, 16),
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=target_brokers,
+                        namespace=namespace,
+                        display=Padding(
+                            backend_replicas_desc.format(backend_replicas_colored),
+                            (0, 0, 0, 16),
+                        ),
+                    )
+                    check_manager.add_display(
+                        target_name=target_brokers,
+                        namespace=namespace,
+                        display=Padding(
+                            backend_workers_desc.format(backend_workers_colored),
+                            (0, 0, 0, 16),
+                        ),
+                    )
+
+                    frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
+                    frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
+
+                    if frontend_replicas and frontend_replicas >= 1:
+                        frontend_replicas_colored = f"[green]Actual {frontend_replicas}[/green]."
+                    else:
+                        frontend_replicas_colored = f"[red]Actual {frontend_replicas}[/red]."
+
+                    check_manager.add_display(
+                        target_name=target_brokers,
+                        namespace=namespace,
+                        display=Padding(
+                            frontend_cardinality_desc.format(frontend_replicas_colored),
+                            (0, 0, 0, 16),
+                        ),
+                    )
+
+            diagnostic_detail_padding = (0, 0, 0, 16)
+            if broker_diagnostics:
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    display=Padding("\nBroker Diagnostics", (0, 0, 0, 12)),
+                )
+                for (key, label) in [
+                    ("diagnosticServiceEndpoint", "Diagnostic Service Endpoint"),
+                    ("enableMetrics", "Enable Metrics"),
+                    ("enableSelfCheck", "Enable Self-Check"),
+                    ("enableTracing", "Enable Tracing"),
+                    ("logLevel", "Log Level"),
+                ]:
+                    val = broker_diagnostics.get(key)
+                    check_manager.add_display(
+                        target_name=target_brokers,
+                        namespace=namespace,
+                        display=Padding(
+                            f"{label}: [cyan]{val}[/cyan]",
+                            diagnostic_detail_padding,
+                        ),
+                    )
+            else:
+                check_manager.add_target_eval(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    status=CheckTaskStatus.warning.value,
+                    value=None,
+                )
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    display=Padding(
+                        "[yellow]Unable to fetch broker diagnostics.[/yellow]",
+                        diagnostic_detail_padding,
+                    ),
+                )
+
             check_manager.add_target_eval(
                 target_name=target_brokers,
-                status=CheckTaskStatus.warning.value,
-                value=None,
+                namespace=namespace,
+                status=broker_eval_status,
+                value=broker_eval_value,
+                resource_name=broker_name,
             )
+
+        if brokers_count > 0:
             check_manager.add_display(
                 target_name=target_brokers,
                 display=Padding(
-                    "[yellow]Unable to fetch broker diagnostics.[/yellow]",
-                    diagnostic_detail_padding,
+                    "\nRuntime Health",
+                    (0, 0, 0, 8),
                 ),
             )
 
-        check_manager.add_target_eval(
-            target_name=target_brokers,
-            status=broker_eval_status,
-            value=broker_eval_value,
-            resource_name=broker_name,
-        )
-
-    if brokers_count > 0:
-        check_manager.add_display(
-            target_name=target_brokers,
-            display=Padding(
-                "\nRuntime Health",
-                (0, 0, 0, 8),
-            ),
-        )
-
-        for pod in [
-            AZEDGE_DIAGNOSTICS_PROBE_PREFIX,
-            AZEDGE_FRONTEND_PREFIX,
-            AZEDGE_BACKEND_PREFIX,
-            AZEDGE_AUTH_PREFIX
-        ]:
-            evaluate_pod_health(
-                check_manager=check_manager,
-                namespace=namespace,
-                pod=pod,
-                display_padding=12,
-                service_label=E4K_LABEL
-            )
+            for pod in [
+                AZEDGE_DIAGNOSTICS_PROBE_PREFIX,
+                AZEDGE_FRONTEND_PREFIX,
+                AZEDGE_BACKEND_PREFIX,
+                AZEDGE_AUTH_PREFIX
+            ]:
+                evaluate_pod_health(
+                    check_manager=check_manager,
+                    namespace=namespace,
+                    pod=pod,
+                    display_padding=12,
+                    service_label=E4K_LABEL
+                )
 
     return check_manager.as_dict(as_list)
 
