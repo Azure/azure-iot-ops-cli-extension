@@ -287,7 +287,6 @@ def evaluate_diagnostics_service(
 
 
 def evaluate_broker_listeners(
-    namespace: Optional[str] = None,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
@@ -304,13 +303,13 @@ def evaluate_broker_listeners(
         "spec.serviceName",
         "status",
     ]
-    check_manager.add_target(target_name=target_listeners, conditions=listener_conditions)
 
-    valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER, namespace=namespace)
-    listener_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER_LISTENER, namespace=namespace)
-
-    if not listener_list:
+    valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER)
+    listener_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER_LISTENER)
+    listeners: List[dict] = listener_list.get("items", [])
+    if not listeners:
         fetch_listeners_error_text = f"Unable to fetch {E4kResourceKinds.BROKER_LISTENER.value}s."
+
         check_manager.add_target_eval(
             target_name=target_listeners,
             status=CheckTaskStatus.error.value,
@@ -320,189 +319,227 @@ def evaluate_broker_listeners(
             target_name=target_listeners,
             display=Padding(fetch_listeners_error_text, (0, 0, 0, 8)),
         )
-        return check_manager.as_dict(as_list)
+        return check_manager.as_dict()
 
-    listeners: List[dict] = listener_list.get("items", [])
-    listeners_count = len(listeners)
-    listener_count_desc = "- Expecting [bright_blue]>=1[/bright_blue] broker listeners per namespace. {}"
-    listeners_eval_status = CheckTaskStatus.success.value
+    listeners_by_namespace = {}
+    namespaces = {res.get("metadata", {}).get("namespace") for res in listeners}
+    for namespace in namespaces:
+        listeners_by_namespace[namespace] = [
+            res for res in listeners if res.get("metadata", {}).get("namespace") == namespace
+        ]
 
-    if listeners_count >= 1:
-        listener_count_desc = listener_count_desc.format(f"[green]Detected {listeners_count}[/green].")
-    else:
-        listener_count_desc = listener_count_desc.format(f"[yellow]Detected {listeners_count}[/yellow].")
-        check_manager.set_target_status(target_name=target_listeners, status=CheckTaskStatus.warning.value)
-        # TODO listeners_eval_status = CheckTaskStatus.warning.value
-    check_manager.add_display(target_name=target_listeners, display=Padding(listener_count_desc, (0, 0, 0, 8)))
+    for namespace in listeners_by_namespace:
+        check_manager.add_target(
+            target_name=target_listeners,
+            namespace=namespace,
+            conditions=listener_conditions,
+        )
+        check_manager.add_display(
+            target_name=target_listeners,
+            namespace=namespace,
+            display=Padding(
+                f"Broker Listeners in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 8)
+            )
+        )
 
-    processed_services = {}
-    for listener in listeners:
-        namespace: str = namespace or listener["metadata"]["namespace"]
-        listener_name: str = listener["metadata"]["name"]
-        listener_spec_service_name: str = listener["spec"]["serviceName"]
-        listener_spec_service_type: str = listener["spec"]["serviceType"]
-        listener_broker_ref: str = listener["spec"]["brokerRef"]
+        listener_list = listeners_by_namespace[namespace]
+        listeners_count = len(listener_list)
+        listener_count_desc = "- Expecting [bright_blue]>=1[/bright_blue] broker listeners per namespace. {}"
+        listeners_eval_status = CheckTaskStatus.success.value
 
-        listener_eval_value = {}
-        listener_eval_value["spec"] = listener["spec"]
-
-        if listener_broker_ref not in valid_broker_refs:
-            ref_display = f"[red]Invalid[/red] broker reference {{[red]{listener_broker_ref}[/red]}}."
-            listeners_eval_status = CheckTaskStatus.error.value
-            listener_eval_value["valid(spec.brokerRef)"] = False
+        if listeners_count >= 1:
+            listener_count_desc = listener_count_desc.format(f"[green]Detected {listeners_count}[/green].")
         else:
-            ref_display = f"[green]Valid[/green] broker reference {{[green]{listener_broker_ref}[/green]}}."
-            listener_eval_value["valid(spec.brokerRef)"] = True
+            listener_count_desc = listener_count_desc.format(f"[yellow]Detected {listeners_count}[/yellow].")
+            check_manager.set_target_status(target_name=target_listeners, namespace=namespace, status=CheckTaskStatus.warning.value)
+            # TODO listeners_eval_status = CheckTaskStatus.warning.value
+        check_manager.add_display(target_name=target_listeners, namespace=namespace, display=Padding(listener_count_desc, (0, 0, 0, 8)))
 
-        listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}. {ref_display}"
-        check_manager.add_display(target_name=target_listeners, display=Padding(listener_desc, (0, 0, 0, 8)))
-        check_manager.add_display(
-            target_name=target_listeners,
-            display=Padding(
-                f"Port: [bright_blue]{listener['spec']['port']}[/bright_blue]",
-                (0, 0, 0, 12),
-            ),
-        )
-        check_manager.add_display(
-            target_name=target_listeners,
-            display=Padding(
-                f"AuthN enabled: [bright_blue]{listener['spec']['authenticationEnabled']}[/bright_blue]",
-                (0, 0, 0, 12),
-            ),
-        )
-        check_manager.add_display(
-            target_name=target_listeners,
-            display=Padding(
-                f"AuthZ enabled: [bright_blue]{listener['spec']['authenticationEnabled']}[/bright_blue]",
-                (0, 0, 0, 12),
-            ),
-        )
-        node_port = listener["spec"].get("nodePort")
-        if node_port:
+        processed_services = {}
+        for listener in listeners:
+            namespace: str = namespace or listener["metadata"]["namespace"]
+            listener_name: str = listener["metadata"]["name"]
+            listener_spec_service_name: str = listener["spec"]["serviceName"]
+            listener_spec_service_type: str = listener["spec"]["serviceType"]
+            listener_broker_ref: str = listener["spec"]["brokerRef"]
+
+            listener_eval_value = {}
+            listener_eval_value["spec"] = listener["spec"]
+
+            if listener_broker_ref not in valid_broker_refs:
+                ref_display = f"[red]Invalid[/red] broker reference {{[red]{listener_broker_ref}[/red]}}."
+                listeners_eval_status = CheckTaskStatus.error.value
+                listener_eval_value["valid(spec.brokerRef)"] = False
+            else:
+                ref_display = f"[green]Valid[/green] broker reference {{[green]{listener_broker_ref}[/green]}}."
+                listener_eval_value["valid(spec.brokerRef)"] = True
+
+            listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}. {ref_display}"
+            check_manager.add_display(target_name=target_listeners, namespace=namespace, display=Padding(listener_desc, (0, 0, 0, 8)))
             check_manager.add_display(
                 target_name=target_listeners,
+                namespace=namespace,
                 display=Padding(
-                    f"Node Port: [bright_blue]{node_port}[/bright_blue]",
+                    f"Port: [bright_blue]{listener['spec']['port']}[/bright_blue]",
                     (0, 0, 0, 12),
                 ),
             )
-
-        if listener_spec_service_name not in processed_services:
-            target_listener_service = f"service/{listener_spec_service_name}"
-            listener_service_eval_status = CheckTaskStatus.success.value
-            check_manager.add_target(target_name=target_listener_service)
-
-            associated_service: dict = get_namespaced_service(
-                name=listener_spec_service_name, namespace=namespace, as_dict=True
+            check_manager.add_display(
+                target_name=target_listeners,
+                namespace=namespace,
+                display=Padding(
+                    f"AuthN enabled: [bright_blue]{listener['spec']['authenticationEnabled']}[/bright_blue]",
+                    (0, 0, 0, 12),
+                ),
             )
-            processed_services[listener_spec_service_name] = True
-            if not associated_service:
-                listener_service_eval_status = CheckTaskStatus.warning.value
+            check_manager.add_display(
+                target_name=target_listeners,
+                namespace=namespace,
+                display=Padding(
+                    f"AuthZ enabled: [bright_blue]{listener['spec']['authenticationEnabled']}[/bright_blue]",
+                    (0, 0, 0, 12),
+                ),
+            )
+            node_port = listener["spec"].get("nodePort")
+            if node_port:
                 check_manager.add_display(
                     target_name=target_listeners,
+                    namespace=namespace,
                     display=Padding(
-                        f"\n[red]Unable[/red] to fetch service {{[red]{listener_spec_service_name}[/red]}}.",
+                        f"Node Port: [bright_blue]{node_port}[/bright_blue]",
                         (0, 0, 0, 12),
                     ),
                 )
-                check_manager.add_target_eval(
-                    target_name=target_listener_service,
-                    status=listener_service_eval_status,
-                    value="Unable to fetch service.",
+
+            if listener_spec_service_name not in processed_services:
+                target_listener_service = f"service/{listener_spec_service_name}"
+                listener_service_eval_status = CheckTaskStatus.success.value
+                check_manager.add_target(target_name=target_listener_service, namespace=namespace)
+
+                associated_service: dict = get_namespaced_service(
+                    name=listener_spec_service_name, namespace=namespace, as_dict=True
                 )
-            else:
-                check_manager.add_display(
-                    target_name=target_listener_service,
-                    display=Padding(
-                        f"\nService {{[bright_blue]{listener_spec_service_name}[/bright_blue]}} of type [bright_blue]{listener_spec_service_type}[/bright_blue]",
-                        (0, 0, 0, 8),
-                    ),
-                )
-
-                if listener_spec_service_type.lower() == "loadbalancer":
-                    check_manager.set_target_conditions(
-                        target_name=target_listener_service,
-                        conditions=[
-                            "status",
-                            "len(status.loadBalancer.ingress[*].ip)>=1",
-                        ],
-                    )
-                    ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
-
-                    service_status = associated_service.get("status", {})
-                    load_balancer = service_status.get("loadBalancer", {})
-                    ingress_rules: List[dict] = load_balancer.get("ingress", [])
-
-                    if not ingress_rules:
-                        listener_service_eval_status = CheckTaskStatus.warning.value
-                        ingress_count_colored = "[red]Detected 0[/red]."
-                    else:
-                        ingress_count_colored = f"[green]Detected {len(ingress_rules)}[/green]."
-
+                processed_services[listener_spec_service_name] = True
+                if not associated_service:
+                    listener_service_eval_status = CheckTaskStatus.warning.value
                     check_manager.add_display(
-                        target_name=target_listener_service,
+                        target_name=target_listeners,
+                        namespace=namespace,
                         display=Padding(
-                            ingress_rules_desc.format(ingress_count_colored),
+                            f"\n[red]Unable[/red] to fetch service {{[red]{listener_spec_service_name}[/red]}}.",
                             (0, 0, 0, 12),
                         ),
                     )
-
-                    if ingress_rules:
-                        check_manager.add_display(
-                            target_name=target_listener_service,
-                            display=Padding("\nIngress", (0, 0, 0, 12)),
-                        )
-
-                    for ingress in ingress_rules:
-                        ip = ingress.get("ip")
-                        if ip:
-                            rule_desc = f"- ip: [green]{ip}[/green]"
-                            check_manager.add_display(
-                                target_name=target_listener_service,
-                                display=Padding(rule_desc, (0, 0, 0, 16)),
-                            )
-                        else:
-                            listener_service_eval_status = CheckTaskStatus.warning.value
-
                     check_manager.add_target_eval(
                         target_name=target_listener_service,
+                        namespace=namespace,
                         status=listener_service_eval_status,
-                        value=service_status,
+                        value="Unable to fetch service.",
                     )
-
-                if listener_spec_service_type.lower() == "clusterip":
-                    check_manager.set_target_conditions(
-                        target_name=target_listener_service,
-                        conditions=["spec.clusterIP"],
-                    )
-                    cluster_ip = associated_service.get("spec", {}).get("clusterIP")
-
-                    cluster_ip_desc = "Cluster IP: {}"
-                    if not cluster_ip:
-                        listener_service_eval_status = CheckTaskStatus.warning.value
-                        cluster_ip_desc = cluster_ip_desc.format("[yellow]Undetermined[/yellow]")
-                    else:
-                        cluster_ip_desc = cluster_ip_desc.format(f"[cyan]{cluster_ip}[/cyan]")
-
+                else:
                     check_manager.add_display(
                         target_name=target_listener_service,
-                        display=Padding(cluster_ip_desc, (0, 0, 0, 12)),
-                    )
-                    check_manager.add_target_eval(
-                        target_name=target_listener_service,
-                        status=listener_service_eval_status,
-                        value={"spec.clusterIP": cluster_ip},
+                        namespace=namespace,
+                        display=Padding(
+                            f"\nService {{[bright_blue]{listener_spec_service_name}[/bright_blue]}} of type [bright_blue]{listener_spec_service_type}[/bright_blue]",
+                            (0, 0, 0, 8),
+                        ),
                     )
 
-                if listener_spec_service_type.lower() == "nodeport":
-                    pass
+                    if listener_spec_service_type.lower() == "loadbalancer":
+                        check_manager.set_target_conditions(
+                            target_name=target_listener_service,
+                            namespace=namespace,
+                            conditions=[
+                                "status",
+                                "len(status.loadBalancer.ingress[*].ip)>=1",
+                            ],
+                        )
+                        ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
 
-        check_manager.add_target_eval(
-            target_name=target_listeners,
-            status=listeners_eval_status,
-            value=listener_eval_value,
-            resource_name=listener_name,
-        )
+                        service_status = associated_service.get("status", {})
+                        load_balancer = service_status.get("loadBalancer", {})
+                        ingress_rules: List[dict] = load_balancer.get("ingress", [])
+
+                        if not ingress_rules:
+                            listener_service_eval_status = CheckTaskStatus.warning.value
+                            ingress_count_colored = "[red]Detected 0[/red]."
+                        else:
+                            ingress_count_colored = f"[green]Detected {len(ingress_rules)}[/green]."
+
+                        check_manager.add_display(
+                            target_name=target_listener_service,
+                            namespace=namespace,
+                            display=Padding(
+                                ingress_rules_desc.format(ingress_count_colored),
+                                (0, 0, 0, 12),
+                            ),
+                        )
+
+                        if ingress_rules:
+                            check_manager.add_display(
+                                target_name=target_listener_service,
+                                namespace=namespace,
+                                display=Padding("\nIngress", (0, 0, 0, 12)),
+                            )
+
+                        for ingress in ingress_rules:
+                            ip = ingress.get("ip")
+                            if ip:
+                                rule_desc = f"- ip: [green]{ip}[/green]"
+                                check_manager.add_display(
+                                    target_name=target_listener_service,
+                                    namespace=namespace,
+                                    display=Padding(rule_desc, (0, 0, 0, 16)),
+                                )
+                            else:
+                                listener_service_eval_status = CheckTaskStatus.warning.value
+
+                        check_manager.add_target_eval(
+                            target_name=target_listener_service,
+                            namespace=namespace,
+                            status=listener_service_eval_status,
+                            value=service_status,
+                        )
+
+                    if listener_spec_service_type.lower() == "clusterip":
+                        check_manager.set_target_conditions(
+                            target_name=target_listener_service,
+                            namespace=namespace,
+                            conditions=["spec.clusterIP"],
+                        )
+                        cluster_ip = associated_service.get("spec", {}).get("clusterIP")
+
+                        cluster_ip_desc = "Cluster IP: {}"
+                        if not cluster_ip:
+                            listener_service_eval_status = CheckTaskStatus.warning.value
+                            cluster_ip_desc = cluster_ip_desc.format("[yellow]Undetermined[/yellow]")
+                        else:
+                            cluster_ip_desc = cluster_ip_desc.format(f"[cyan]{cluster_ip}[/cyan]")
+
+                        check_manager.add_display(
+                            target_name=target_listener_service,
+                            namespace=namespace,
+                            display=Padding(cluster_ip_desc, (0, 0, 0, 12)),
+                        )
+                        check_manager.add_target_eval(
+                            target_name=target_listener_service,
+                            namespace=namespace,
+                            status=listener_service_eval_status,
+                            value={"spec.clusterIP": cluster_ip},
+                        )
+
+                    if listener_spec_service_type.lower() == "nodeport":
+                        pass
+
+            check_manager.add_target_eval(
+                target_name=target_listeners,
+                namespace=namespace,
+                status=listeners_eval_status,
+                value=listener_eval_value,
+                resource_name=listener_name,
+            )
 
     return check_manager.as_dict(as_list)
 
