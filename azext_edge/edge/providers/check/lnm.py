@@ -137,7 +137,7 @@ def evaluate_lnms(
         if status == "warn":
             lnm_status_eval_status = CheckTaskStatus.warning.value
             status_description = lnm["status"].get("configStatusDescription", "")
-            lnm_status_text = lnm_status_text + f"{{[yellow]{status}[/yellow]}}. {{[yellow]{status_description}[/yellow]}}"
+            lnm_status_text = lnm_status_text + f"{{[yellow]{status}[/yellow]}}. [yellow]{status_description}[/yellow]"
         else:
             lnm_status_text = lnm_status_text + f"{{[green]{status}[/green]}}."
 
