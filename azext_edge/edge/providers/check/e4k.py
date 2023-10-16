@@ -65,7 +65,6 @@ def check_e4k_deployment(
         # check post deployment according to edge_service type
         check_e4k_post_deployment(
             detail_level=detail_level,
-            namespace=namespace,
             result=result,
             as_list=as_list,
             resource_kinds=resource_kinds,
@@ -74,11 +73,10 @@ def check_e4k_deployment(
     if not as_list:
         return result
 
-    return process_as_list(console=console, result=result, namespace=namespace)
+    return process_as_list(console=console, result=result)
 
 
 def check_e4k_post_deployment(
-    namespace: str,
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
@@ -97,7 +95,6 @@ def check_e4k_post_deployment(
         api_info=E4K_ACTIVE_API,
         check_name="enumerateE4kApi",
         check_desc="Enumerate E4K API resources",
-        namespace=namespace,
         result=result,
         resource_kinds_enum=E4kResourceKinds,
         evaluate_funcs=evaluate_funcs,
@@ -108,204 +105,195 @@ def check_e4k_post_deployment(
 
 
 def evaluate_diagnostics_service(
-    namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(
         check_name="evalBrokerDiag",
         check_desc="Evaluate E4K Diagnostics Service",
-        namespace=namespace,
     )
     diagnostics_service_list: dict = E4K_ACTIVE_API.get_resources(
-        kind=E4kResourceKinds.DIAGNOSTIC_SERVICE, namespace=namespace
+        kind=E4kResourceKinds.DIAGNOSTIC_SERVICE
     )
     diagnostics_service_resources = diagnostics_service_list.get("items", [])
     target_diagnostic_service = "diagnosticservices.az-edge.com"
 
-    check_manager.add_target(
-        target_name=target_diagnostic_service,
-        conditions=["len(diagnosticservices)==1", "spec"],
-    )
+    namespaces = {res.get("metadata", {}).get("namespace") for res in diagnostics_service_resources}
 
-    diagnostics_count_text = "- Expecting [bright_blue]1[/bright_blue] diagnostics service resource per namespace. {}."
-    diagnostic_service_count = len(diagnostics_service_resources)
+    diagnostic_service_resources_by_namespace = {}
 
-    service_count_status = CheckTaskStatus.success.value
-    service_status_color = "green"
-
-    # warn if we have <0, >1 diagnostic service resources
-    if diagnostic_service_count != 1:
-        service_count_status = CheckTaskStatus.warning.value
-        service_status_color = "yellow"
-
-    diagnostics_count_text = diagnostics_count_text.format(
-        f"[{service_status_color}]Detected {diagnostic_service_count}[/{service_status_color}]"
-    )
-
-    check_manager.add_target_eval(
-        target_name=target_diagnostic_service,
-        status=service_count_status,
-        value=diagnostic_service_count,
-    )
-    check_manager.add_display(
-        target_name=target_diagnostic_service,
-        display=Padding(diagnostics_count_text, (0, 0, 0, 8)),
-    )
-
-    if not diagnostics_service_resources:
-        return check_manager.as_dict(as_list)
-
-    for diag_service_resource in diagnostics_service_resources:
-        diag_service_resource_name = diag_service_resource["metadata"]["name"]
-        diag_service_resource_spec: dict = diag_service_resource["spec"]
-
-        check_manager.add_display(
+    for namespace in namespaces:
+        diagnostic_service_resources_by_namespace[namespace] = [
+            res for res in diagnostics_service_resources if res.get("metadata", {}).get("namespace") == namespace
+        ]
+    
+    for namespace in diagnostic_service_resources_by_namespace:
+        check_manager.add_target(
             target_name=target_diagnostic_service,
-            display=Padding(
-                f"\n- Diagnostic service resource {{[bright_blue]{diag_service_resource_name}[/bright_blue]}}.",
-                (0, 0, 0, 8),
-            ),
-        )
-
-        diag_service_spec_data_export_freq = diag_service_resource_spec.get("dataExportFrequencySeconds")
-        diag_service_spec_log_format = diag_service_resource_spec.get("logFormat")
-        diag_service_spec_log_level = diag_service_resource_spec.get("logLevel")
-        diag_service_spec_max_data_storage_size = diag_service_resource_spec.get("maxDataStorageSize")
-        diag_service_spec_metrics_port = diag_service_resource_spec.get("metricsPort")
-        diag_service_spec_stale_data_timeout = diag_service_resource_spec.get("staleDataTimeoutSeconds")
-
-        check_manager.add_display(
-            target_name=target_diagnostic_service,
-            display=Padding(
-                f"Data Export Frequency: [bright_blue]{diag_service_spec_data_export_freq}[/bright_blue] seconds",
-                (0, 0, 0, 12),
-            ),
+            namespace=namespace,
+            conditions=["len(diagnosticservices)==1", "spec"],
         )
         check_manager.add_display(
             target_name=target_diagnostic_service,
+            namespace=namespace,
             display=Padding(
-                f"Log Format: [bright_blue]{diag_service_spec_log_format}[/bright_blue]",
-                (0, 0, 0, 12),
-            ),
+                f"Diagnostic Service Resources in namespace {{[purple]{namespace}[/purple]}}",
+                (0,0,0,8)
+            )
         )
-        check_manager.add_display(
-            target_name=target_diagnostic_service,
-            display=Padding(
-                f"Log Level: [bright_blue]{diag_service_spec_log_level}[/bright_blue]",
-                (0, 0, 0, 12),
-            ),
-        )
-        check_manager.add_display(
-            target_name=target_diagnostic_service,
-            display=Padding(
-                f"Max Data Storage Size: [bright_blue]{diag_service_spec_max_data_storage_size}[/bright_blue]",
-                (0, 0, 0, 12),
-            ),
-        )
-        check_manager.add_display(
-            target_name=target_diagnostic_service,
-            display=Padding(
-                f"Metrics Port: [bright_blue]{diag_service_spec_metrics_port}[/bright_blue]",
-                (0, 0, 0, 12),
-            ),
-        )
-        check_manager.add_display(
-            target_name=target_diagnostic_service,
-            display=Padding(
-                f"Stale Data Timeout: [bright_blue]{diag_service_spec_stale_data_timeout}[/bright_blue] seconds",
-                (0, 0, 0, 12),
-            ),
+        diagnostics_service_resources = diagnostic_service_resources_by_namespace[namespace]
+
+        diagnostics_count_text = "- Expecting [bright_blue]1[/bright_blue] diagnostics service resource per namespace. {}."
+        diagnostic_service_count = len(diagnostics_service_resources)
+
+        service_count_status = CheckTaskStatus.success.value
+        service_status_color = "green"
+
+        # warn if we have <0, >1 diagnostic service resources
+        if diagnostic_service_count != 1:
+            service_count_status = CheckTaskStatus.warning.value
+            service_status_color = "yellow"
+
+        diagnostics_count_text = diagnostics_count_text.format(
+            f"[{service_status_color}]Detected {diagnostic_service_count}[/{service_status_color}]"
         )
 
         check_manager.add_target_eval(
             target_name=target_diagnostic_service,
-            status=CheckTaskStatus.success.value,
-            value={"spec": diag_service_resource_spec},
-        )
-
-    target_service_deployed = f"service/{AZEDGE_DIAGNOSTICS_SERVICE}"
-    check_manager.add_target(target_name=target_service_deployed, conditions=["spec.clusterIP", "spec.ports"])
-    check_manager.add_display(
-        target_name=target_service_deployed,
-        display=Padding(
-            "\nService Status",
-            (0, 0, 0, 8),
-        ),
-    )
-
-    diagnostics_service = get_namespaced_service(name=AZEDGE_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True)
-    if not diagnostics_service:
-        check_manager.add_target_eval(
-            target_name=target_service_deployed,
-            status=CheckTaskStatus.error.value,
-            value=None,
-        )
-        diag_service_desc_suffix = "[red]not detected[/red]."
-        diag_service_desc = (
-            f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+            namespace=namespace,
+            status=service_count_status,
+            value=diagnostic_service_count,
         )
         check_manager.add_display(
-            target_name=target_service_deployed,
-            display=Padding(
-                diag_service_desc,
-                (0, 0, 0, 12),
-            ),
+            target_name=target_diagnostic_service,
+            namespace=namespace,
+            display=Padding(diagnostics_count_text, (0, 0, 0, 8)),
         )
-    else:
-        clusterIP = diagnostics_service.get("spec", {}).get("clusterIP")
-        ports: List[dict] = diagnostics_service.get("spec", {}).get("ports", [])
 
-        check_manager.add_target_eval(
-            target_name=target_service_deployed,
-            status=CheckTaskStatus.success.value,
-            value={"spec": {"clusterIP": clusterIP, "ports": ports}},
-            resource_name=diagnostics_service["metadata"]["name"],
-        )
-        diag_service_desc_suffix = "[green]detected[/green]."
-        diag_service_desc = (
-            f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
-        )
-        check_manager.add_display(
-            target_name=target_service_deployed,
-            display=Padding(
-                diag_service_desc,
-                (0, 0, 0, 12),
-            ),
-        )
-        if ports:
-            for port in ports:
+        for diag_service_resource in diagnostics_service_resources:
+            diag_service_resource_name = diag_service_resource["metadata"]["name"]
+            diag_service_resource_spec: dict = diag_service_resource["spec"]
+
+            check_manager.add_display(
+                target_name=target_diagnostic_service,
+                namespace=namespace,
+                display=Padding(
+                    f"\n- Diagnostic service resource {{[bright_blue]{diag_service_resource_name}[/bright_blue]}}.",
+                    (0, 0, 0, 8),
+                ),
+            )
+
+            for (key, label, suffix) in [
+                ("dataExportFrequencySeconds", "Data Export Frequency", " seconds"),
+                ("logFormat", "Log Format", None),
+                ("logLevel", "Log Level", None),
+                ("maxDataStorageSize", "Max Data Storage Size", None),
+                ("metricsPort", "Metrics Port", None),
+                ("staleDataTimeoutSeconds", "Stale Data Timeout", " seconds"),
+            ]:
+                val = diag_service_resource_spec.get(key)
+                check_manager.add_display(
+                target_name=target_diagnostic_service,
+                namespace=namespace,
+                display=Padding(
+                    f"{label}: [bright_blue]{val}[/bright_blue]{suffix or ''}",
+                    (0, 0, 0, 12),
+                ),
+            )
+            check_manager.add_target_eval(
+                target_name=target_diagnostic_service,
+                namespace=namespace,
+                status=CheckTaskStatus.success.value,
+                value={"spec": diag_service_resource_spec},
+            )
+
+            target_service_deployed = f"service/{AZEDGE_DIAGNOSTICS_SERVICE}"
+            check_manager.add_target(target_name=target_service_deployed, namespace=namespace, conditions=["spec.clusterIP", "spec.ports"])
+            check_manager.add_display(
+                target_name=target_service_deployed,
+                namespace=namespace,
+                display=Padding(
+                    "\nService Status",
+                    (0, 0, 0, 8),
+                ),
+            )
+
+            diagnostics_service = get_namespaced_service(name=AZEDGE_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True)
+            if not diagnostics_service:
+                check_manager.add_target_eval(
+                    target_name=target_service_deployed,
+                    namespace=namespace,
+                    status=CheckTaskStatus.error.value,
+                    value=None,
+                )
+                diag_service_desc_suffix = "[red]not detected[/red]."
+                diag_service_desc = (
+                    f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+                )
                 check_manager.add_display(
                     target_name=target_service_deployed,
+                    namespace=namespace,
                     display=Padding(
-                        f"[cyan]{port.get('name')}[/cyan] "
-                        f"port [bright_blue]{port.get('port')}[/bright_blue] "
-                        f"protocol [cyan]{port.get('protocol')}[/cyan]",
-                        (0, 0, 0, 16),
+                        diag_service_desc,
+                        (0, 0, 0, 12),
                     ),
                 )
-            check_manager.add_display(target_name=target_service_deployed, display=NewLine())
+            else:
+                clusterIP = diagnostics_service.get("spec", {}).get("clusterIP")
+                ports: List[dict] = diagnostics_service.get("spec", {}).get("ports", [])
 
-        evaluate_pod_health(
-            check_manager=check_manager,
-            namespace=namespace,
-            pod=AZEDGE_DIAGNOSTICS_SERVICE,
-            display_padding=12,
-            service_label=E4K_LABEL
-        )
+                check_manager.add_target_eval(
+                    target_name=target_service_deployed,
+                    namespace=namespace,
+                    status=CheckTaskStatus.success.value,
+                    value={"spec": {"clusterIP": clusterIP, "ports": ports}},
+                    resource_name=diagnostics_service["metadata"]["name"],
+                )
+                diag_service_desc_suffix = "[green]detected[/green]."
+                diag_service_desc = (
+                    f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+                )
+                check_manager.add_display(
+                    target_name=target_service_deployed,
+                    namespace=namespace,
+                    display=Padding(
+                        diag_service_desc,
+                        (0, 0, 0, 12),
+                    ),
+                )
+                if ports:
+                    for port in ports:
+                        check_manager.add_display(
+                            target_name=target_service_deployed,
+                            namespace=namespace,
+                            display=Padding(
+                                f"[cyan]{port.get('name')}[/cyan] "
+                                f"port [bright_blue]{port.get('port')}[/bright_blue] "
+                                f"protocol [cyan]{port.get('protocol')}[/cyan]",
+                                (0, 0, 0, 16),
+                            ),
+                        )
+                    check_manager.add_display(target_name=target_service_deployed, namespace=namespace, display=NewLine())
+
+                evaluate_pod_health(
+                    check_manager=check_manager,
+                    namespace=namespace,
+                    pod=AZEDGE_DIAGNOSTICS_SERVICE,
+                    display_padding=12,
+                    service_label=E4K_LABEL
+                )
 
     return check_manager.as_dict(as_list)
 
 
 def evaluate_broker_listeners(
-    namespace: str,
+    namespace: Optional[str] = None,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(
         check_name="evalBrokerListeners",
         check_desc="Evaluate E4K broker listeners",
-        namespace=namespace,
     )
 
     target_listeners = "brokerlisteners.az-edge.com"
@@ -349,6 +337,7 @@ def evaluate_broker_listeners(
 
     processed_services = {}
     for listener in listeners:
+        namespace: str = namespace or listener["metadata"]["namespace"]
         listener_name: str = listener["metadata"]["name"]
         listener_spec_service_name: str = listener["spec"]["serviceName"]
         listener_spec_service_type: str = listener["spec"]["serviceType"]
@@ -519,11 +508,11 @@ def evaluate_broker_listeners(
 
 
 def evaluate_brokers(
-    namespace: str,
     as_list: bool = False,
+    namespace: Optional[str] = None,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker", namespace=namespace)
+    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker")
 
     target_brokers = "brokers.az-edge.com"
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
@@ -785,8 +774,8 @@ def evaluate_brokers(
 # Cloud connector checks
 # TODO - further consolidate / pull out duplicate connector logic
 def evaluate_mqtt_bridge_connectors(
-    namespace: str,
     as_list: bool = False,
+    namespace: Optional[str]=None,
     detail_level: str = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
     from rich.table import Table
@@ -990,7 +979,6 @@ def evaluate_mqtt_bridge_connectors(
     check_manager = CheckManager(
         check_name="evalMQTTBridgeConnectors",
         check_desc="Evaluate MQTT Bridge Connectors",
-        namespace=namespace,
     )
 
     # MQTT Bridge Connector checks are purely informational, so mark as skipped
@@ -1002,13 +990,13 @@ def evaluate_mqtt_bridge_connectors(
     broker_detail_padding = (0, 0, 0, 16)
 
     bridge_objects: dict = E4K_ACTIVE_API.get_resources(
-        kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR, namespace=namespace
+        kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR
     )
     bridge_resources: List[dict] = bridge_objects.get("items", [])
 
     # attempt to map each topic_map to its referenced bridge
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
-        kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP, namespace=namespace
+        kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP
     )
     topic_map_list: List[dict] = topic_map_objects.get("items", [])
     topic_maps_by_bridge = {}
@@ -1044,6 +1032,13 @@ def evaluate_mqtt_bridge_connectors(
             )
             # remove topic map by bridge reference
             topic_maps_by_bridge.pop(bridge_name, None)
+        
+        _display_connector_runtime_health(
+           check_manager=check_manager,
+            namespace=namespace,
+            target=bridge_target,
+            connectors=bridge_resources
+        )
     else:
         _mark_connector_target_as_skipped(
             check_manager=check_manager,
@@ -1062,18 +1057,11 @@ def evaluate_mqtt_bridge_connectors(
         padding=top_level_padding
     )
 
-    _display_connector_runtime_health(
-        check_manager=check_manager,
-        namespace=namespace,
-        target=bridge_target,
-        connectors=bridge_resources
-    )
-
     return check_manager.as_dict(as_list)
 
 
 def evaluate_datalake_connectors(
-    namespace: str,
+    namespace: Optional[str] = None,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
@@ -1243,7 +1231,6 @@ def evaluate_datalake_connectors(
     check_manager = CheckManager(
         check_name="evalDataLakeConnectors",
         check_desc="Evaluate Data Lake Connectors",
-        namespace=namespace,
     )
 
     # These checks are purely informational, so mark as skipped
@@ -1327,7 +1314,7 @@ def evaluate_datalake_connectors(
 
 
 def evaluate_kafka_connectors(
-    namespace: str,
+    namespace: Optional[str] = None,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ):
@@ -1609,7 +1596,6 @@ def evaluate_kafka_connectors(
     check_manager = CheckManager(
         check_name="evalKafkaConnectors",
         check_desc="Evaluate Kafka Connectors",
-        namespace=namespace,
     )
 
     connector_padding = (0, 0, 0, 8)
@@ -1685,7 +1671,7 @@ def evaluate_kafka_connectors(
     return check_manager.as_dict(as_list)
 
 
-def _get_valid_references(kind: Union[Enum, str], namespace: str) -> Dict[str, Any]:
+def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = None) -> Dict[str, Any]:
     result = {}
     custom_objects = E4K_ACTIVE_API.get_resources(kind=kind, namespace=namespace)
     if custom_objects:
