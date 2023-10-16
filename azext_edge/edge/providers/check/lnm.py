@@ -18,7 +18,6 @@ from .base import (
 
 from rich.console import Console
 from rich.padding import Padding
-from rich.table import Table
 
 from ...common import CheckTaskStatus
 
@@ -26,7 +25,7 @@ from .common import (
     AIO_LNM_PREFIX,
     LNM_ALLOWLIST_PROPERTIES,
     LNM_IMAGE_PROPERTIES,
-    LNM_PROPERTIES,
+    LNM_REST_PROPERTIES,
     ResourceOutputDetailLevel,
 )
 
@@ -122,18 +121,6 @@ def evaluate_lnms(
     check_manager.add_display(target_name=target_lnms, display=Padding(lnms_count_text, (0, 0, 0, 8)))
 
     lnm_names = []
-    lnm_allowlist_table = Table(show_lines=True, expand=True)
-    lnm_allowlist_table.add_column("Lnm name", justify="center", style="cyan", no_wrap=True, min_width=10)
-    lnm_allowlist_table.add_column("Domains", justify="center", style="cyan", no_wrap=True, min_width=10)
-    lnm_allowlist_table.add_column("EnableArcDomains", justify="center", style="cyan", no_wrap=True, min_width=10)
-    lnm_allowlist_table.add_column("SourceIpRange", justify="center", style="cyan", no_wrap=True, min_width=10)
-
-    lnm_image_table = Table(show_lines=True, expand=True)
-    lnm_image_table.add_column("Lnm name", justify="center", style="cyan", no_wrap=True)
-    lnm_image_table.add_column("PullPolicy", justify="center", style="cyan", no_wrap=True)
-    lnm_image_table.add_column("pullSecrets", justify="center", style="cyan", no_wrap=True)
-    lnm_image_table.add_column("repository", justify="center", style="cyan", no_wrap=True, width=20)
-    lnm_image_table.add_column("tag", justify="center", style="cyan", no_wrap=True)
 
     for lnm in lnms:
         lnm_name = lnm["metadata"]["name"]
@@ -149,7 +136,8 @@ def evaluate_lnms(
 
         if status == "warn":
             lnm_status_eval_status = CheckTaskStatus.warning.value
-            lnm_status_text = lnm_status_text + f"{{[yellow]{status}[/yellow]}}."
+            status_description = lnm["status"].get("configStatusDescription", "")
+            lnm_status_text = lnm_status_text + f"{{[yellow]{status}[/yellow]}}. {{[yellow]{status_description}[/yellow]}}"
         else:
             lnm_status_text = lnm_status_text + f"{{[green]{status}[/green]}}."
 
@@ -203,7 +191,7 @@ def evaluate_lnms(
                 detail_level=detail_level,
                 target_name=target_lnms,
                 prop_value=lnm["spec"],
-                properties=LNM_PROPERTIES,
+                properties=LNM_REST_PROPERTIES,
                 padding=(0, 0, 0, 16)
             )
 

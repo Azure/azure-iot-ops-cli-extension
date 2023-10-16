@@ -1079,7 +1079,8 @@ def test_dataset_checks(
                         "name": "test-lnm2",
                     },
                     "status": {
-                        "configStatusLevel": "warn"
+                        "configStatusLevel": "warn",
+                        "configStatusDescription": "test warning"
                     },
                     "spec": {
                         "allowList": {

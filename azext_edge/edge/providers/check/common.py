@@ -125,7 +125,7 @@ LNM_IMAGE_PROPERTIES = [
     ("tag", "[bright_blue]Tag[/bright_blue]", True),
 ]
 
-LNM_PROPERTIES = [
+LNM_REST_PROPERTIES = [
     ("endpointType", "Endpoint Type", False),
     ("level", "Level", True),
     ("logLevel", "Log Level", True),
