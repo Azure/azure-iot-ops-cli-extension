@@ -5,12 +5,13 @@
 # --------------------------------------------------------------------------------------------
 
 """
-utility: Defines common utility functions and components.
+common: Defines common utility functions and components.
 
 """
 
 import json
 import os
+import logging
 from typing import List, Dict, Optional
 from knack.log import get_logger
 logger = get_logger(__name__)
@@ -46,7 +47,6 @@ def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
     return result
 
 
-# TODO: unit test
 def build_query(cmd, subscription_id: str, custom_query: Optional[str] = None, **kwargs):
     url = '/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01'
     payload = {"subscriptions": [subscription_id], "query": "Resources ", "options": {}}
@@ -86,3 +86,8 @@ def get_timestamp_now_utc(format: str = "%Y-%m-%dT%H:%M:%S") -> str:
 
     timestamp = datetime.now(timezone.utc).strftime(format)
     return timestamp
+
+
+def set_log_level(log_name: str, log_level: int = logging.DEBUG):
+    lgr = logging.getLogger(log_name)
+    lgr.setLevel(log_level)

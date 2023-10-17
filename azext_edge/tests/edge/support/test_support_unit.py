@@ -24,7 +24,7 @@ from azext_edge.edge.providers.edge_api import (
 
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.bluefin import (
-    BLUEFIN_APP_LABEL,
+    BLUEFIN_LABEL,
     BLUEFIN_INSTANCE_LABEL,
     BLUEFIN_ONEOFF_LABEL,
     BLUEFIN_PART_OF_LABEL,
@@ -67,7 +67,7 @@ def test_create_bundle(
     mocked_config,
     mocked_os_makedirs,
     mocked_zipfile,
-    mocked_list_cluster_custom_objects,
+    mocked_get_custom_objects,
     mocked_list_deployments,
     mocked_list_pods,
     mocked_list_replicasets,
@@ -118,8 +118,8 @@ def test_create_bundle(
                 if kind == OpcuaResourceKinds.ASSET_TYPE.value:
                     target_file_prefix = "asset_type"
 
-            assert_list_custom_resources(
-                mocked_client, mocked_zipfile, api, kind, file_prefix=target_file_prefix
+            assert_get_custom_resources(
+                mocked_get_custom_objects, mocked_zipfile, api, kind, file_prefix=target_file_prefix
             )
 
         if api in [E4K_API_V1A2, E4K_API_V1A3]:
@@ -165,7 +165,7 @@ def test_create_bundle(
         if api in [BLUEFIN_API_V1]:
             # Assert runtime resources
             assert_list_deployments(
-                mocked_client, mocked_zipfile, label_selector=BLUEFIN_APP_LABEL, resource_api=BLUEFIN_API_V1
+                mocked_client, mocked_zipfile, label_selector=BLUEFIN_LABEL, resource_api=BLUEFIN_API_V1
             )
             assert_list_deployments(
                 mocked_client, mocked_zipfile, label_selector=BLUEFIN_PART_OF_LABEL, resource_api=BLUEFIN_API_V1
@@ -175,7 +175,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=BLUEFIN_APP_LABEL,
+                label_selector=BLUEFIN_LABEL,
                 resource_api=BLUEFIN_API_V1,
                 since_seconds=since_seconds,
             )
@@ -205,7 +205,7 @@ def test_create_bundle(
             )
 
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=BLUEFIN_APP_LABEL, resource_api=BLUEFIN_API_V1
+                mocked_client, mocked_zipfile, label_selector=BLUEFIN_LABEL, resource_api=BLUEFIN_API_V1
             )
             assert_list_replica_sets(
                 mocked_client, mocked_zipfile, label_selector=BLUEFIN_ONEOFF_LABEL, resource_api=BLUEFIN_API_V1
@@ -254,12 +254,10 @@ def test_create_bundle(
         assert_shared_kpis(mocked_client, mocked_zipfile)
 
 
-def assert_list_custom_resources(
-    mocked_client, mocked_zipfile, api: EdgeResourceApi, kind: str, file_prefix: str = None
+def assert_get_custom_resources(
+    mocked_get_custom_objects, mocked_zipfile, api: EdgeResourceApi, kind: str, file_prefix: str = None
 ):
-    mocked_client.CustomObjectsApi().list_cluster_custom_object.assert_any_call(
-        group=api.group, version=api.version, plural=f"{kind}s"
-    )
+    mocked_get_custom_objects.assert_any_call(group=api.group, version=api.version, plural=f"{kind}s", use_cache=False)
     if not file_prefix:
         file_prefix = kind
 

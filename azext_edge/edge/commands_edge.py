@@ -5,13 +5,13 @@
 # --------------------------------------------------------------------------------------------
 
 from pathlib import PurePath
-from typing import Optional, Union, List
+from typing import Any, Dict, Optional, Union, List
 
 from knack.log import get_logger
 
 from .providers.base import load_config_context
 from .providers.support.base import get_bundle_path
-from .common import DeployablePasVersions
+from .providers.check.common import ResourceOutputDetailLevel
 
 logger = get_logger(__name__)
 
@@ -22,7 +22,7 @@ def support_bundle(
     edge_service: str = "auto",
     bundle_dir: Optional[str] = None,
     context_name: Optional[str] = None,
-) -> dict:
+) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.support_bundle import build_bundle
 
@@ -32,6 +32,7 @@ def support_bundle(
 
 def check(
     cmd,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
     pre_deployment_checks: Optional[bool] = None,
     post_deployment_checks: Optional[bool] = None,
     namespace: Optional[str] = None,
@@ -39,7 +40,7 @@ def check(
     context_name=None,
     edge_service: str = "e4k",
     resource_kinds: List[str] = None,
-) -> Union[dict, None]:
+) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
 
@@ -51,6 +52,8 @@ def check(
         run_pre = False
 
     return run_checks(
+        edge_service=edge_service,
+        detail_level=detail_level,
         namespace=namespace,
         as_list=not as_object,
         pre_deployment=run_pre,
@@ -65,7 +68,6 @@ def init(
     resource_group_name: str,
     cluster_namespace: str = "default",
     custom_location_namespace: Optional[str] = None,
-    pas_version: str = DeployablePasVersions.v012.value,
     custom_location_name: Optional[str] = None,
     show_pas_version: Optional[bool] = None,
     custom_version: Optional[List[str]] = None,
@@ -76,11 +78,11 @@ def init(
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
     create_sync_rules: Optional[bool] = None,
-    block: Union[bool, str] = "true",
+    no_block: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     processor_instance_name: Optional[str] = None,
     target_name: Optional[str] = None,
-) -> Union[dict, None]:
+) -> Union[Dict[str, Any], None]:
     from azure.cli.core.commands.client_factory import get_subscription_id
     from .providers.orchestration import deploy
 
@@ -112,7 +114,6 @@ def init(
         custom_location_name=custom_location_name,
         custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
-        pas_version=pas_version,
         location=location,
         show_pas_version=show_pas_version,
         custom_version=custom_version,
@@ -122,7 +123,7 @@ def init(
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         simulate_plc=simulate_plc,
         create_sync_rules=create_sync_rules,
-        block=block,
+        no_block=no_block,
         no_progress=no_progress,
         processor_instance_name=processor_instance_name,
         target_name=target_name,

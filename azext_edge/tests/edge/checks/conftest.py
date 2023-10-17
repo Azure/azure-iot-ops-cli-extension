@@ -7,22 +7,40 @@ import pytest
 
 
 @pytest.fixture
-def mock_evaluate_pod_health(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.checks.evaluate_pod_health", return_value={})
+def mock_evaluate_e4k_pod_health(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.e4k.evaluate_pod_health", return_value={})
     yield patched
 
 
 @pytest.fixture
-def mock_e4k_resource_types(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.checks.enumerate_e4k_resources")
-    patched.return_value = (
-        {},
-        {
-            "Broker": [{}],
-            "BrokerListener": [{}],
-            "DiagnosticService": [{}],
-            "MqttBridgeConnector": [{}],
-            "DataLakeConnector": [{}]
-        }
-    )
+def mock_evaluate_bluefin_pod_health(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.bluefin.evaluate_pod_health", return_value={})
+    yield patched
+
+
+@pytest.fixture
+def mock_resource_types(mocker, edge_service):
+    patched = mocker.patch("azext_edge.edge.providers.check.base.enumerate_edge_service_resources")
+
+    if edge_service == "e4k":
+        patched.return_value = (
+            {},
+            {
+                "Broker": [{}],
+                "BrokerListener": [{}],
+                "DiagnosticService": [{}],
+                "MqttBridgeConnector": [{}],
+                "DataLakeConnector": [{}]
+            }
+        )
+    elif edge_service == "bluefin":
+        patched.return_value = (
+            {},
+            {
+                "Dataset": [{}],
+                "Instance": [{}],
+                "Pipeline": [{}]
+            }
+        )
+
     yield patched

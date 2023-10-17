@@ -4,23 +4,27 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from functools import partial
 from typing import Dict, Optional
 
 import pytest
 
 from azext_edge.edge.commands_edge import init
-from azext_edge.edge.common import DeployablePasVersions
-from azext_edge.edge.providers.orchestration import EdgeServiceMoniker, extension_name_to_type_map, get_pas_version_def
+from azext_edge.edge.providers.orchestration import (
+    EdgeServiceMoniker,
+    extension_name_to_type_map,
+    get_pas_version_def,
+    DEPLOYABLE_PAS_VERSION,
+    moniker_to_extension_type_map,
+)
 from azext_edge.edge.util import assemble_nargs_to_dict
 
 from ...generators import generate_generic_id
 
 
 @pytest.mark.parametrize(
-    "cluster_name,cluster_namespace,rg,custom_location_name,custom_location_namespace,location,pas_version,"
+    "cluster_name,cluster_namespace,rg,custom_location_name,custom_location_namespace,location,"
     "processor_instance_name,simulate_plc,opcua_discovery_endpoint,create_sync_rules,"
-    "custom_version,target_name",
+    "custom_version,only_deploy_custom,target_name",
     [
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -29,12 +33,12 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # custom_location_name
             generate_generic_id(),  # custom_location_namespace
             generate_generic_id(),  # location
-            DeployablePasVersions.v012.value,
             generate_generic_id(),  # processor_instance_name
             False,  # simulate_plc
             generate_generic_id(),  # opcua_discovery_endpoint
             True,  # create_sync_rules
             None,  # custom_version
+            False,  # only_deploy_custom
             generate_generic_id(),  # target_name
         ),
         pytest.param(
@@ -44,12 +48,27 @@ from ...generators import generate_generic_id
             None,  # custom_location_name
             None,  # custom_location_namespace
             None,  # location
-            DeployablePasVersions.v012.value,
             None,  # processor_instance_name
             True,  # simulate_plc
             None,  # opcua_discovery_endpoint
             False,  # create_sync_rules
             ["e4k=1.0.0", "symphony=1.2.3"],  # custom_version
+            False,  # only_deploy_custom
+            None,  # target_name
+        ),
+        pytest.param(
+            generate_generic_id(),  # cluster_name
+            "default",  # cluster_namespace
+            generate_generic_id(),  # rg
+            None,  # custom_location_name
+            None,  # custom_location_namespace
+            None,  # location
+            None,  # processor_instance_name
+            True,  # simulate_plc
+            None,  # opcua_discovery_endpoint
+            False,  # create_sync_rules
+            ["e4k=1.0.0", "opcua=3.2.1"],  # custom_version
+            True,  # only_deploy_custom
             None,  # target_name
         ),
     ],
@@ -63,16 +82,15 @@ def test_init_show_template(
     custom_location_name,
     custom_location_namespace,
     location,
-    pas_version,
     processor_instance_name,
     simulate_plc,
     opcua_discovery_endpoint,
     create_sync_rules,
     custom_version,
+    only_deploy_custom,
     target_name,
 ):
-    partial_init = partial(
-        init,
+    template = init(
         cmd=mocked_cmd,
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
@@ -85,17 +103,15 @@ def test_init_show_template(
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         create_sync_rules=create_sync_rules,
         custom_version=custom_version,
+        only_deploy_custom=only_deploy_custom,
         target_name=target_name,
+        show_template=True,
     )
 
-    template = partial_init(
-        show_template=True,
-        pas_version=pas_version,
-    )
     assert template["$schema"] == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
     assert template["metadata"]["description"] == "Az Edge CLI PAS deployment."
     # TODO template versioning. Think about custom.
-    assert template["contentVersion"] == f"{pas_version}.0"
+    assert template["contentVersion"] == f"{DEPLOYABLE_PAS_VERSION}.0"
 
     assert_template_variables(
         variables=template["variables"],
@@ -110,12 +126,13 @@ def test_init_show_template(
         cluster_namespace=cluster_namespace,
         custom_location_name=custom_location_name,
         custom_location_namespace=custom_location_namespace,
-        pas_version=pas_version,
+        pas_version=DEPLOYABLE_PAS_VERSION,
         processor_instance_name=processor_instance_name,
         simulate_plc=simulate_plc,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         create_sync_rules=create_sync_rules,
         custom_version=custom_version,
+        only_deploy_custom=only_deploy_custom,
         target_name=target_name,
     )
 
@@ -147,6 +164,7 @@ def assert_resources(
     opcua_discovery_endpoint: Optional[str] = None,
     create_sync_rules: Optional[str] = None,
     custom_version: Optional[str] = None,
+    only_deploy_custom: bool = False,
     target_name: Optional[str] = None,
 ):
     if not custom_version:
@@ -160,7 +178,7 @@ def assert_resources(
     cluster_extension_ids = []
     version_def = get_pas_version_def(version=pas_version)
     if custom_version:
-        version_def.set_moniker_to_version_map(moniker_map=custom_version)
+        version_def.set_moniker_to_version_map(moniker_map=custom_version, refresh_mappings=only_deploy_custom)
 
     deploy_extension_types = {}
     for ext_name in k8s_extensions:
@@ -197,22 +215,32 @@ def assert_resources(
     )
 
     bluefin_instances = find_resource_type(resources=resources, resource_type="Microsoft.Bluefin/instances")
-    assert len(bluefin_instances) == 1
-    assert_bluefin_instance(
-        instance=next(iter(bluefin_instances.values())), cluster_name=cluster_name, name=processor_instance_name
-    )
+    if moniker_to_extension_type_map[EdgeServiceMoniker.bluefin.value] in version_def.extension_to_vers_map:
+        assert len(bluefin_instances) == 1
+        assert_bluefin_instance(
+            instance=next(iter(bluefin_instances.values())), cluster_name=cluster_name, name=processor_instance_name
+        )
+    else:
+        assert len(bluefin_instances) == 0
 
     symphony_targets = find_resource_type(resources=resources, resource_type="Microsoft.Symphony/targets")
-    assert len(symphony_targets) == 1
-    assert_symphony_target(
-        target=next(iter(symphony_targets.values())),
-        name=target_name,
-        cluster_name=cluster_name,
-        namespace=cluster_namespace,
-        versions=version_def.moniker_to_version_map,
-        simulate_plc=simulate_plc,
-        opcua_discovery_endpoint=opcua_discovery_endpoint,
-    )
+    if (
+        version_def.moniker_to_version_map.get(EdgeServiceMoniker.obs.value)
+        or version_def.moniker_to_version_map.get(EdgeServiceMoniker.akri.value)
+        or version_def.moniker_to_version_map.get(EdgeServiceMoniker.opcua.value)
+    ):
+        assert len(symphony_targets) == 1
+        assert_symphony_target(
+            target=next(iter(symphony_targets.values())),
+            name=target_name,
+            cluster_name=cluster_name,
+            namespace=cluster_namespace,
+            versions=version_def.moniker_to_version_map,
+            simulate_plc=simulate_plc,
+            opcua_discovery_endpoint=opcua_discovery_endpoint,
+        )
+    else:
+        assert len(symphony_targets) == 0
 
     if create_sync_rules:
         resource_sync_rules = find_resource_type(

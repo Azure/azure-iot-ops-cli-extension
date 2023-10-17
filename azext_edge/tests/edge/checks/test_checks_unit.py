@@ -5,20 +5,32 @@
 # --------------------------------------------------------------------------------------------
 
 
+from functools import partial
 import pytest
 from typing import Dict, Any, List
-from azext_edge.edge.common import CheckTaskStatus
-from azext_edge.edge.providers.checks import (
-    CheckManager,
-    E4kResourceKinds,
+from azext_edge.edge.common import (
+    CheckTaskStatus,
+    ProvisioningState,
     ResourceState,
+)
+from azext_edge.edge.providers.check.base import CheckManager
+from azext_edge.edge.providers.check.e4k import (
     evaluate_broker_listeners,
     evaluate_brokers,
     evaluate_diagnostics_service,
     evaluate_mqtt_bridge_connectors,
     evaluate_datalake_connectors,
-    run_checks,
+    evaluate_kafka_connectors,
 )
+from azext_edge.edge.providers.check.bluefin import (
+    evaluate_datasets,
+    evaluate_instances,
+    evaluate_pipelines,
+)
+from azext_edge.edge.providers.checks import run_checks
+from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
+from azext_edge.edge.providers.edge_api.e4k import E4kResourceKinds
+from azext_edge.edge.providers.check.common import KafkaTopicMapRouteType, ResourceOutputDetailLevel
 
 from ...generators import generate_generic_id
 
@@ -198,48 +210,48 @@ def assert_check_manager_dict(
         ],
     ],
 )
-def test_check_by_resource_types(mocker, mock_e4k_resource_types, resource_kinds):
+@pytest.mark.parametrize('edge_service', ['e4k'])
+def test_check_e4k_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        E4kResourceKinds.BROKER.value: mocker.patch(
-            "azext_edge.edge.providers.checks.evaluate_brokers", return_value={}
-        ),
-        E4kResourceKinds.BROKER_LISTENER.value: mocker.patch(
-            "azext_edge.edge.providers.checks.evaluate_broker_listeners",
-            return_value={},
-        ),
-        E4kResourceKinds.DIAGNOSTIC_SERVICE.value: mocker.patch(
-            "azext_edge.edge.providers.checks.evaluate_diagnostics_service",
-            return_value={},
-        ),
-        E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value: mocker.patch(
-            "azext_edge.edge.providers.checks.evaluate_mqtt_bridge_connectors",
-            return_value={},
-        ),
-        E4kResourceKinds.DATALAKE_CONNECTOR.value: mocker.patch(
-            "azext_edge.edge.providers.checks.evaluate_datalake_connectors",
-            return_value={},
-        ),
+        E4kResourceKinds.BROKER.value: "azext_edge.edge.providers.check.e4k.evaluate_brokers",
+        E4kResourceKinds.BROKER_LISTENER.value: "azext_edge.edge.providers.check.e4k.evaluate_broker_listeners",
+        E4kResourceKinds.DIAGNOSTIC_SERVICE.value: "azext_edge.edge.providers.check.e4k.evaluate_diagnostics_service",
+        E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value:
+            "azext_edge.edge.providers.check.e4k.evaluate_mqtt_bridge_connectors",
+        E4kResourceKinds.DATALAKE_CONNECTOR.value: "azext_edge.edge.providers.check.e4k.evaluate_datalake_connectors",
     }
 
-    # run the checks
-    run_checks(
-        namespace="default",
-        pre_deployment=False,
-        post_deployment=True,
-        as_list=False,
-        resource_kinds=resource_kinds,
-    )
+    assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
 
-    if not resource_kinds:
-        # ensure all checks were run
-        [eval_lookup[evaluator].assert_called_once() for evaluator in eval_lookup]
-    else:
-        # ensure each individual resource kind check was run once
-        for resource_kind in resource_kinds:
-            eval_lookup[resource_kind].assert_called_once()
-            del eval_lookup[resource_kind]
-        # ensure no other checks were run
-        [eval_lookup[evaluator].assert_not_called() for evaluator in eval_lookup]
+
+@pytest.mark.parametrize(
+    "resource_kinds",
+    [
+        None,
+        [],
+        [BluefinResourceKinds.DATASET.value],
+        [BluefinResourceKinds.INSTANCE.value],
+        [BluefinResourceKinds.PIPELINE.value],
+        [
+            BluefinResourceKinds.DATASET.value,
+            BluefinResourceKinds.INSTANCE.value,
+        ],
+        [
+            BluefinResourceKinds.DATASET.value,
+            BluefinResourceKinds.INSTANCE.value,
+            BluefinResourceKinds.PIPELINE.value,
+        ],
+    ],
+)
+@pytest.mark.parametrize('edge_service', ['bluefin'])
+def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
+    eval_lookup = {
+        BluefinResourceKinds.DATASET.value: "azext_edge.edge.providers.check.bluefin.evaluate_datasets",
+        BluefinResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.bluefin.evaluate_instances",
+        BluefinResourceKinds.PIPELINE.value: "azext_edge.edge.providers.check.bluefin.evaluate_pipelines",
+    }
+
+    assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
 
 
 def _generate_resource_stub(
@@ -344,7 +356,7 @@ def _generate_resource_stub(
     ],
 )
 def test_broker_checks(
-    mocker, mock_evaluate_pod_health, broker, conditions, evaluations
+    mocker, mock_evaluate_e4k_pod_health, broker, conditions, evaluations
 ):
     mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -372,7 +384,7 @@ def test_broker_checks(
             _generate_resource_stub(
                 spec={
                     "serviceName": "name",
-                    "serviceType": "type",
+                    "serviceType": "loadbalancer",
                     "brokerRef": "mock_broker",
                     "port": 8080,
                     "authenticationEnabled": "True",
@@ -398,7 +410,46 @@ def test_broker_checks(
                     ("status", "success"),
                     ("name", "mock_name"),
                     ("value/spec/serviceName", "name"),
-                    ("value/spec/serviceType", "type"),
+                    ("value/spec/serviceType", "loadbalancer"),
+                    ("value/spec/brokerRef", "mock_broker"),
+                    ("value/spec/port", 8080),
+                    ("value/spec/authenticationEnabled", "True"),
+                    ("value/valid(spec.brokerRef)", True),
+                ],
+            ],
+        ),
+        (
+            # listener with valid broker ref
+            _generate_resource_stub(
+                spec={
+                    "serviceName": "name",
+                    "serviceType": "clusterip",
+                    "brokerRef": "mock_broker",
+                    "port": 8080,
+                    "authenticationEnabled": "True",
+                },
+                status={"status": ResourceState.running.value, "statusDescription": ""},
+            ),
+            # service obj
+            _generate_resource_stub(
+                status={"loadBalancer": {"ingress": [{"ip": "127.0.0.1"}]}},
+                spec={"clusterIP": "127.0.0.1"},
+            ),
+            # conditions str
+            [
+                "len(brokerlisteners)>=1",
+                "spec",
+                "valid(spec.brokerRef)",
+                "spec.serviceName",
+                "status",
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("name", "mock_name"),
+                    ("value/spec/serviceName", "name"),
+                    ("value/spec/serviceType", "clusterip"),
                     ("value/spec/brokerRef", "mock_broker"),
                     ("value/spec/port", 8080),
                     ("value/spec/authenticationEnabled", "True"),
@@ -409,7 +460,7 @@ def test_broker_checks(
     ],
 )
 def test_broker_listener_checks(
-    mocker, mock_evaluate_pod_health, listener, service, conditions, evaluations
+    mocker, mock_evaluate_e4k_pod_health, listener, service, conditions, evaluations
 ):
     # mock listener values
     mocker.patch(
@@ -418,11 +469,11 @@ def test_broker_listener_checks(
     )
     # broker ref
     mocker.patch(
-        "azext_edge.edge.providers.checks._get_valid_references",
+        "azext_edge.edge.providers.check.e4k._get_valid_references",
         return_value={"mock_broker": True},
     )
     mocker.patch(
-        "azext_edge.edge.providers.checks.get_namespaced_service", return_value=service
+        "azext_edge.edge.providers.check.e4k.get_namespaced_service", return_value=service
     )
 
     namespace = generate_generic_id()
@@ -481,7 +532,7 @@ def test_broker_listener_checks(
     ],
 )
 def test_diagnostic_service_checks(
-    mocker, mock_evaluate_pod_health, resource, service, conditions, evaluations
+    mocker, mock_evaluate_e4k_pod_health, resource, service, conditions, evaluations
 ):
     # mock service values
     mocker.patch(
@@ -490,7 +541,7 @@ def test_diagnostic_service_checks(
     )
 
     mocker.patch(
-        "azext_edge.edge.providers.checks.get_namespaced_service", return_value=service
+        "azext_edge.edge.providers.check.e4k.get_namespaced_service", return_value=service
     )
 
     namespace = generate_generic_id()
@@ -535,37 +586,96 @@ def test_diagnostic_service_checks(
                 [
                     ("status", "success"),
                     (
-                        "value/localBrokerConnection/authentication/x509",
+                        "value/spec/localBrokerConnection/authentication/x509",
                         "localbrokerauth",
                     ),
                     (
-                        "value/remoteBrokerConnection/authentication/kubernetes",
+                        "value/spec/remoteBrokerConnection/authentication/kubernetes",
                         "remotebrokerauth",
                     ),
-                    ("value/tls/tlsEnabled", True),
+                    ("value/spec/tls/tlsEnabled", True),
+                ],
+            ],
+        ),
+        (
+            # mqtt bridge
+            _generate_resource_stub(
+                metadata={"name": "test_bridge"},
+                spec={
+                    "localBrokerConnection": {
+                        "authentication": {"x509": "localbrokerauth"}
+                    },
+                    "remoteBrokerConnection": {
+                        "authentication": {"kubernetes": "remotebrokerauth"}
+                    },
+                    "tls": {"tlsEnabled": True},
+                },
+                status={
+                    "configStatusLevel": ResourceState.running.value
+                }
+            ),
+            # topic map with routes
+            _generate_resource_stub(
+                spec={
+                    "mqttBridgeConnectorRef": "test_bridge",
+                    "routes": [
+                        {
+                            "name": "route1",
+                            "direction": "local-to-remote",
+                            "source": "local",
+                            "target": "remote",
+                            "qos": 0
+                        },
+                        {
+                            "name": "route2",
+                            "direction": "remote-to-local",
+                            "source": "remote",
+                            "target": "local",
+                            "qos": 1
+                        }
+                    ]
+                }
+            ),
+            # conditions str
+            ["status", "valid(spec)"],
+            # evaluations
+            [
+                [("status", "success"), ("kind", "mqttbridgeconnector")],
+                [
+                    ("status", "success"),
+                    (
+                        "value/spec/localBrokerConnection/authentication/x509",
+                        "localbrokerauth",
+                    ),
+                    (
+                        "value/spec/remoteBrokerConnection/authentication/kubernetes",
+                        "remotebrokerauth",
+                    ),
+                    ("value/spec/tls/tlsEnabled", True),
                 ],
             ],
         ),
     ],
 )
 def test_mqtt_checks(
-    mocker, mock_evaluate_pod_health, bridge, topic_map, conditions, evaluations
+    mocker, mock_evaluate_e4k_pod_health, bridge, topic_map, conditions, evaluations
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": [bridge]}, {"items": [topic_map]}],
     )
+    for detail_level in ResourceOutputDetailLevel.list():
+        mocker.side_effect = [{"items": [bridge]}, {"items": [topic_map]}]
+        namespace = generate_generic_id()
+        result = evaluate_mqtt_bridge_connectors(namespace=namespace, detail_level=detail_level)
 
-    namespace = generate_generic_id()
-    result = evaluate_mqtt_bridge_connectors(namespace=namespace)
+        assert result["name"] == "evalMQTTBridgeConnectors"
+        assert result["namespace"] == namespace
+        assert result["targets"]["mqttbridgeconnectors.az-edge.com"]
+        target = result["targets"]["mqttbridgeconnectors.az-edge.com"]
 
-    assert result["name"] == "evalMQTTBridgeConnectors"
-    assert result["namespace"] == namespace
-    assert result["targets"]["mqttbridgeconnectors.az-edge.com"]
-    target = result["targets"]["mqttbridgeconnectors.az-edge.com"]
-
-    assert_conditions(target, conditions)
-    assert_evaluations(target, evaluations)
+        assert_conditions(target, conditions)
+        assert_evaluations(target, evaluations)
+        mocker.reset_mock()
 
 
 @pytest.mark.parametrize(
@@ -592,31 +702,554 @@ def test_mqtt_checks(
                 [("status", "success"), ("kind", "datalakeconnector")],
                 [
                     ("status", "success"),
-                    ("value/instances", 2),
-                    ("value/target/datalakeStorage/endpoint", "test_endpoint"),
+                    ("value/spec/instances", 2),
+                    ("value/spec/target/datalakeStorage/endpoint", "test_endpoint"),
                 ],
             ],
         ),
     ],
 )
 def test_datalake_checks(
-    mocker, mock_evaluate_pod_health, connector, topic_map, conditions, evaluations
+    mocker, mock_evaluate_e4k_pod_health, connector, topic_map, conditions, evaluations
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": [connector]}, {"items": [topic_map]}],
+    )
+    for detail_level in ResourceOutputDetailLevel.list():
+        mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
+        namespace = generate_generic_id()
+        result = evaluate_datalake_connectors(namespace=namespace, detail_level=detail_level)
+
+        assert result["name"] == "evalDataLakeConnectors"
+        assert result["namespace"] == namespace
+        assert result["targets"]["datalakeconnectors.az-edge.com"]
+        target = result["targets"]["datalakeconnectors.az-edge.com"]
+
+        assert_conditions(target, conditions)
+        assert_evaluations(target, evaluations)
+
+
+@pytest.mark.parametrize(
+    "instance, conditions, evaluations",
+    [
+        (
+            # instance
+            {
+                "metadata": {"name": "test_instance"},
+                "status": {"provisioningStatus": {"status": ProvisioningState.succeeded.value}},
+            }
+            ,
+            # conditions str
+            ["len(instances)==1", "provisioningState"],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/provisioningState", ProvisioningState.succeeded.value),
+                ],
+            ],
+        ),
+        (
+            # instance
+            {
+                "metadata": {"name": "test_instance"},
+                "status": {"provisioningStatus": {
+                    "error": {"message": "test error"},
+                    "status": ProvisioningState.failed.value}
+                },
+            }
+            ,
+            # conditions str
+            ["len(instances)==1", "provisioningState"],
+            # evaluations
+            [
+                [
+                    ("status", "error"),
+                    ("value/provisioningState", ProvisioningState.failed.value),
+                ],
+            ],
+        ),
+    ],
+)
+def test_instance_checks(
+    mocker, mock_evaluate_bluefin_pod_health, instance, conditions, evaluations
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": [instance]}],
     )
 
     namespace = generate_generic_id()
-    result = evaluate_datalake_connectors(namespace=namespace)
+    result = evaluate_instances(namespace=namespace)
 
-    assert result["name"] == "evalDataLakeConnectors"
+    assert result["name"] == "evalInstances"
     assert result["namespace"] == namespace
-    assert result["targets"]["datalakeconnectors.az-edge.com"]
-    target = result["targets"]["datalakeconnectors.az-edge.com"]
+    assert result["targets"]["instances.bluefin.az-bluefin.com"]
+    target = result["targets"]["instances.bluefin.az-bluefin.com"]
 
     assert_conditions(target, conditions)
     assert_evaluations(target, evaluations)
+
+
+@pytest.mark.parametrize(
+    "pipelines, conditions, evaluations",
+    [
+        (
+            # pipelines
+            [
+                {
+                    "metadata": {
+                        "name": "test-pipeline",
+                    },
+                    "spec": {
+                        "enabled": True,
+                        "input": {
+                            "broker": "test-broker",
+                            "topics": ["topic1", "topic2"],
+                            "format": {
+                                "type": "json"
+                            },
+                            "qos": 1,
+                            "partitionCount": 1,
+                            "partitionStrategy": {
+                                "type": "roundRobin"
+                            },
+                            "authentication": {
+                                "type": "usernamePassword",
+                                "username": "test-user",
+                                "password": "test-password"
+                            }
+                        },
+                        "stages": {
+                            "stage1": {
+                                "type": "intermediate",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            },
+                            "stage2": {
+                                "type": "output",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            }
+                        }
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "Succeeded",
+                            "error": {
+                                "message": "No error"
+                            }
+                        }
+                    }
+                }
+            ],
+            # conditions str
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "len(spec.input.topics)>=1",
+                "spec.input.partitionCount>=1",
+                "destinationNodeCount==1"
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/mode.enabled", "running"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/provisioningStatus", ProvisioningState.succeeded.value),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/sourceNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/len(spec.input.topics)", 2),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/destinationNodeCount", 1),
+                ]
+            ],
+        ),
+        (
+            # pipelines
+            [
+                {
+                    "metadata": {
+                        "name": "test-pipeline",
+                    },
+                    "spec": {
+                        "enabled": True,
+                        "input": {
+                            "broker": "test-broker",
+                            "topics": ["topic1", "topic2"],
+                            "format": {
+                                "type": "json"
+                            },
+                            "qos": 1,
+                            "partitionCount": 1,
+                            "partitionStrategy": {
+                                "type": "roundRobin"
+                            },
+                            "authentication": {
+                                "type": "usernamePassword",
+                                "username": "test-user",
+                                "password": "test-password"
+                            }
+                        },
+                        "stages": {
+                            "stage1": {
+                                "type": "intermediate",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            },
+                            "stage2": {
+                                "type": "output",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            }
+                        }
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "Failed",
+                            "error": {
+                                "message": "error message"
+                            }
+                        }
+                    }
+                }
+            ],
+            # conditions str
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "len(spec.input.topics)>=1",
+                "spec.input.partitionCount>=1",
+                "destinationNodeCount==1"
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/mode.enabled", "running"),
+                ],
+                [
+                    ("status", "error"),
+                    ("value/provisioningStatus", ProvisioningState.failed.value),
+                ],
+            ],
+        ),
+        (
+            # pipelines
+            [
+                {
+                    "metadata": {
+                        "name": "test-pipeline",
+                    },
+                    "spec": {
+                        "enabled": False,
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "Failed",
+                            "error": {
+                                "message": "error message"
+                            }
+                        }
+                    }
+                }
+            ],
+            # conditions str
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "len(spec.input.topics)>=1",
+                "spec.input.partitionCount>=1",
+                "destinationNodeCount==1"
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "skipped"),
+                    ("value/mode.enabled", "not running"),
+                ],
+            ],
+        ),
+    ]
+)
+def test_pipeline_checks(
+    mocker, mock_evaluate_bluefin_pod_health, pipelines, conditions, evaluations
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": pipelines}],
+    )
+
+    namespace = generate_generic_id()
+    result = evaluate_pipelines(namespace=namespace)
+
+    assert result["name"] == "evalPipelines"
+    assert result["namespace"] == namespace
+    assert result["targets"]["pipelines.bluefin.az-bluefin.com"]
+    target = result["targets"]["pipelines.bluefin.az-bluefin.com"]
+
+    assert_conditions(target, conditions)
+    assert_evaluations(target, evaluations)
+
+
+@pytest.mark.parametrize(
+    "datasets, conditions, evaluations",
+    [
+        (
+            # datasets
+            [
+                {
+                    "metadata": {
+                        "name": "test-dataset",
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "Succeeded",
+                        }
+                    },
+                    "spec": {}
+                }
+            ],
+            # conditions str
+            ["provisioningState"],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/provisioningState", ProvisioningState.succeeded.value),
+                ],
+            ],
+        ),
+        (
+            # datasets
+            [
+                {
+                    "metadata": {
+                        "name": "test-dataset",
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "Failed",
+                            "error": {
+                                "message": "error message"
+                            }
+                        }
+                    },
+                    "spec": {}
+                }
+            ],
+            # conditions str
+            ["provisioningState"],
+            # evaluations
+            [
+                [
+                    ("status", "error"),
+                    ("value/provisioningState", ProvisioningState.failed.value),
+                ],
+            ],
+        ),
+    ]
+)
+def test_dataset_checks(
+    mocker, mock_evaluate_bluefin_pod_health, datasets, conditions, evaluations
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": datasets}],
+    )
+
+    namespace = generate_generic_id()
+    result = evaluate_datasets(namespace=namespace)
+
+    assert result["name"] == "evalDatasets"
+    assert result["namespace"] == namespace
+    assert result["targets"]["datasets.bluefin.az-bluefin.com"]
+    target = result["targets"]["datasets.bluefin.az-bluefin.com"]
+
+    assert_conditions(target, conditions)
+    assert_evaluations(target, evaluations)
+
+
+@pytest.mark.parametrize(
+    "connector, topic_map, conditions, evaluations",
+    [
+        (
+            # kafka_connector
+            _generate_resource_stub(
+                metadata={
+                    'name': 'mock_kafka_connector'
+                },
+                spec={
+                    "clientIdPrefix": "kafka-prefix",
+                    "instances": 3,
+                    "localBrokerConnection": {
+                        "authentication": {"kubernetes": {}},
+                        "endpoint": 'local-auth-endpoint',
+                        "tls": {"tlsEnabled": True},
+                    },
+                    "kafkaConnection": {
+                        "authentication": {"authType": {"sasl": {}}},
+                        "endpoint": "kafka-endpoint",
+                        "tls": {"tlsEnabled": True},
+                    },
+                },
+                status={
+                    "configStatusLevel": ResourceState.running.value
+                }
+            ),
+            # topic_map
+            _generate_resource_stub(spec={"kafkaConnectorRef": "mock_kafka_connector"}),
+            # conditions
+            ["status", "valid(spec)"],
+            # evals
+            [
+                [("status", "success")],
+                [
+                    ("status", "success"),
+                    ("value/spec/clientIdPrefix", "kafka-prefix"),
+                    ("value/spec/instances", 3),
+                    ("value/spec/localBrokerConnection/endpoint", "local-auth-endpoint"),
+                    ("value/spec/kafkaConnection/endpoint", "kafka-endpoint"),
+                    ("value/spec/clientIdPrefix", "kafka-prefix"),
+                ]
+            ]
+        ),
+        (
+            # kafka_connector
+            _generate_resource_stub(
+                metadata={
+                    'name': 'mock_kafka_connector'
+                },
+                spec={
+                    "clientIdPrefix": "kafka-prefix",
+                    "instances": 2,
+                    "localBrokerConnection": {
+                        "authentication": {"kubernetes": {}},
+                        "endpoint": 'local-auth-endpoint',
+                        "tls": {"tlsEnabled": True},
+                    },
+                    "kafkaConnection": {
+                        "authentication": {"authType": {"sasl": {}}},
+                        "endpoint": "kafka-endpoint",
+                        "tls": {"tlsEnabled": True},
+                    },
+                },
+                status={
+                    "configStatusLevel": ResourceState.running.value
+                }
+            ),
+            # topic_map with routes
+            _generate_resource_stub(
+                spec={
+                    "kafkaConnectorRef": "mock_kafka_connector",
+                    "routes": [
+                        {
+                            KafkaTopicMapRouteType.mqtt_to_kafka.value: {
+                                "kafkaTopic": "kafka_topic",
+                                "mqttTopic": "mqtt_topic",
+                                "qos": 1,
+                                "kafkaAcks": 3,
+                                "sharedSubscription": {
+                                    "groupName": "test_group",
+                                    "groupMinimumShareNumber": 1
+                                }
+                            }
+                        },
+                        {
+                            KafkaTopicMapRouteType.kafka_to_mqtt.value: {
+                                "kafkaTopic": "kafka_topic",
+                                "mqttTopic": "mqtt_topic",
+                                "qos": 0,
+                                "consumerGroupId": "$default"
+                            }
+                        }
+                    ]
+                }
+            ),
+            # conditions
+            ["status", "valid(spec)"],
+            # evals
+            [
+                [("status", "success")],
+                [
+                    ("status", "success"),
+                    ("value/spec/clientIdPrefix", "kafka-prefix"),
+                    ("value/spec/instances", 2),
+                    ("value/spec/localBrokerConnection/endpoint", "local-auth-endpoint"),
+                    ("value/spec/kafkaConnection/endpoint", "kafka-endpoint"),
+                    ("value/spec/clientIdPrefix", "kafka-prefix"),
+                ]
+            ]
+        )
+    ]
+)
+def test_kafka_checks(
+    mocker, mock_evaluate_e4k_pod_health, connector, topic_map, conditions, evaluations
+):
+    mocker = mocker.patch("azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources")
+    for detail_level in ResourceOutputDetailLevel.list():
+        mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
+        namespace = generate_generic_id()
+        result = evaluate_kafka_connectors(namespace=namespace, detail_level=detail_level)
+
+        assert result["name"] == "evalKafkaConnectors"
+        assert result["namespace"] == namespace
+        assert result["targets"]["kafkaconnectors.az-edge.com"]
+        target = result["targets"]["kafkaconnectors.az-edge.com"]
+
+        assert_conditions(target, conditions)
+        assert_evaluations(target, evaluations)
+
+
+@pytest.mark.parametrize(
+    "eval_func, name, target",
+    (
+        (evaluate_mqtt_bridge_connectors, "evalMQTTBridgeConnectors", "mqttbridgeconnectors.az-edge.com"),
+        (evaluate_datalake_connectors, "evalDataLakeConnectors", "datalakeconnectors.az-edge.com"),
+        (evaluate_kafka_connectors, "evalKafkaConnectors", "kafkaconnectors.az-edge.com"),
+    )
+)
+def test_empty_connector_results(mocker, mock_evaluate_e4k_pod_health, eval_func: partial, name, target):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        return_value={"items": []},
+    )
+
+    namespace = generate_generic_id()
+    result = eval_func(namespace=namespace)
+    assert result['name'] == name
+    assert all(
+        [
+            result['targets'][target],
+            not result['targets'][target]['conditions'],
+            result['targets'][target]['evaluations'][0]['status'] == CheckTaskStatus.skipped.value,
+            result['targets'][target]['status'] == CheckTaskStatus.skipped.value,
+        ]
+    )
 
 
 def assert_dict_props(path: str, expected: str, obj: Dict[str, str]):
@@ -640,3 +1273,30 @@ def assert_evaluations(target: Dict[str, Any], evaluations: List[List[tuple]]):
     for idx, evals in enumerate(evaluations):
         for eval in evals:
             assert_dict_props(path=eval[0], expected=eval[1], obj=result_evals[idx])
+
+
+def assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup):
+    # Mock the functions
+    for key, value in eval_lookup.items():
+        eval_lookup[key] = mocker.patch(value, return_value={})
+
+    # run the checks
+    run_checks(
+        edge_service=edge_service,
+        namespace="default",
+        pre_deployment=False,
+        post_deployment=True,
+        as_list=False,
+        resource_kinds=resource_kinds,
+    )
+
+    if not resource_kinds:
+        # ensure all checks were run
+        [eval_lookup[evaluator].assert_called_once() for evaluator in eval_lookup]
+    else:
+        # ensure each individual resource kind check was run once
+        for resource_kind in resource_kinds:
+            eval_lookup[resource_kind].assert_called_once()
+            del eval_lookup[resource_kind]
+        # ensure no other checks were run
+        [eval_lookup[evaluator].assert_not_called() for evaluator in eval_lookup]

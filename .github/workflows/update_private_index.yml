@@ -1,3 +1,5 @@
+# TODO - currently private index is not used.
+# TODO - Trigger PRs against public index using github release artifact URL
 name: "[auto] Update Private Extension index"
 
 on:

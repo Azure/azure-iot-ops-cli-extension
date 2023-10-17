@@ -9,11 +9,14 @@ CLI parameter definitions.
 """
 
 from knack.arguments import CaseInsensitiveList
-from azure.cli.core.commands.parameters import get_three_state_flag, tags_type
+from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
-from .common import DeployablePasVersions, SupportForEdgeServiceType
+from .common import SupportForEdgeServiceType
 from .providers.edge_api import E4kResourceKinds
 from .providers.orchestration.pas_versions import EdgeServiceMoniker
+from .providers.check.common import ResourceOutputDetailLevel
+from .providers.edge_api.bluefin import BluefinResourceKinds
+from ._validators import validate_namespace
 
 
 def load_iotedge_arguments(self, _):
@@ -33,7 +36,9 @@ def load_iotedge_arguments(self, _):
             "namespace",
             options_list=["--namespace", "-n"],
             help="K8s cluster namespace the command should operate against. "
-            "If no namespace is provided `default` will be used.",
+            "If no namespace is provided the kubeconfig current_context namespace will be used. "
+            "If not defined, the fallback value `default` will be used. ",
+            validator=validate_namespace,
         )
 
     with self.argument_context("edge support") as context:
@@ -61,14 +66,14 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "pre_deployment_checks",
             options_list=["--pre"],
-            help="Run only pre-requisite checks to determine if the minimum "
+            help="Run pre-requisite checks to determine if the minimum "
             "requirements of an edge service deployment are fulfilled.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
             "post_deployment_checks",
             options_list=["--post"],
-            help="Run only post-deployment checks.",
+            help="Run post-deployment checks.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -95,9 +100,24 @@ def load_iotedge_arguments(self, _):
                     E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
                     E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
                     E4kResourceKinds.DATALAKE_CONNECTOR.value,
+                    E4kResourceKinds.KAFKA_CONNECTOR.value,
+                    BluefinResourceKinds.DATASET.value,
+                    BluefinResourceKinds.PIPELINE.value,
+                    BluefinResourceKinds.INSTANCE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
+        ),
+        context.argument(
+            "detail_level",
+            options_list=["--detail-level"],
+            default=ResourceOutputDetailLevel.summary.value,
+            choices=ResourceOutputDetailLevel.list(),
+            arg_type=get_enum_type(ResourceOutputDetailLevel),
+            help="Controls the level of detail displayed in the check output. "
+            "Choose 0 for a summary view, (minimal output), "
+            "1 for a detailed view, (more comprehensive information) "
+            "or 2 for a verbose view, (all available information).",
         )
 
     with self.argument_context("edge e4k get-password-hash") as context:
@@ -130,17 +150,41 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "diag_service_pod_prefix",
             options_list=["--diag-svc-pod"],
-            help="The diagnostic service pod prefix. The first pod fulfilling the condition " "will be connected to.",
-            arg_group="Pod",
+            help="The diagnostic service pod prefix. The first pod fulfilling the condition will be connected to.",
+            arg_group="Diagnostics Pod",
         )
         context.argument(
-            "pod_port", type=int, options_list=["--port"], help="The pod port to connect through.", arg_group="Pod"
+            "pod_metrics_port",
+            type=int,
+            options_list=["--metrics-port"],
+            help="Diagnostic service metrics API port.",
+            arg_group="Diagnostics Pod",
+        )
+        context.argument(
+            "pod_protobuf_port",
+            type=int,
+            options_list=["--protobuf-port"],
+            help="Diagnostic service protobuf API port.",
+            arg_group="Diagnostics Pod",
         )
         context.argument(
             "raw_response_print",
             options_list=["--raw"],
             arg_type=get_three_state_flag(),
             help="Return raw output from the metrics API.",
+        )
+        context.argument(
+            "trace_ids",
+            nargs="*",
+            options_list=["--trace-ids"],
+            help="Space-separated trace ids in hex format.",
+            arg_group="Trace",
+        )
+        context.argument(
+            "trace_dir",
+            options_list=["--trace-dir"],
+            help="Local directory where traces will be bundled and stored at.",
+            arg_group="Trace",
         )
 
     with self.argument_context("edge init") as context:
@@ -188,15 +232,8 @@ def load_iotedge_arguments(self, _):
             arg_group="Template",
         )
         context.argument(
-            "pas_version",
-            options_list=["--pas-version"],
-            help="The PAS bundle version to deploy.",
-            choices=CaseInsensitiveList(DeployablePasVersions.list()),
-            arg_group="PAS Version",
-        )
-        context.argument(
             "show_pas_version",
-            options_list=["--show-version"],
+            options_list=["--pas-version"],
             help="Summarize and show the versions of deployable components.",
             arg_type=get_three_state_flag(),
             arg_group="PAS Version",
@@ -204,19 +241,21 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_version",
             nargs="+",
-            options_list=["--custom-version"],
+            options_list=[context.deprecate(hide=True, target="--custom-version")],
             help="Customize PAS deployment by specifying edge service versions. Usage takes "
             "precedence over --aio-version. Use space-separated {key}={value} pairs where {key} "
             "is the edge service moniker and {value} is the desired version. The following monikers "
             f"may be used: {', '.join(EdgeServiceMoniker.list())}. Example: e4k=0.5.0 bluefin=0.3.0",
             arg_group="PAS Version",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "only_deploy_custom",
-            options_list=["--only-custom"],
+            options_list=[context.deprecate(hide=True, target="--only-custom")],
             arg_type=get_three_state_flag(),
             help="Only deploy the edge services specified in --custom-version.",
             arg_group="PAS Version",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "create_sync_rules",
@@ -231,10 +270,10 @@ def load_iotedge_arguments(self, _):
             help="Disable deployment progress bar.",
         )
         context.argument(
-            "block",
-            options_list=["--block"],
+            "no_block",
+            options_list=["--no-block"],
             arg_type=get_three_state_flag(),
-            help="Determines whether the operation should block for completion.",
+            help="Disable blocking until completion.",
         )
         # Akri
         context.argument(
