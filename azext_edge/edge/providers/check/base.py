@@ -17,7 +17,7 @@ from kubernetes.client.models import (
 from rich.console import Console, NewLine
 from rich.padding import Padding
 
-from .common import ResourceOutputDetailLevel
+from .common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 from ...common import CheckTaskStatus, ListableEnum
 
 from ...providers.edge_api import EdgeResourceApi
@@ -393,10 +393,10 @@ class CheckManager:
         self.target_displays = {}
         self.worst_status = CheckTaskStatus.success.value
 
-    def add_target(self, target_name: str, namespace: Optional[str] = None, conditions: List[str] = None, description: str = None) -> None:
+    def add_target(self, target_name: str, namespace: str = ALL_NAMESPACES_TARGET, conditions: List[str] = None, description: str = None) -> None:
         if target_name not in self.targets:
             # Create a default `None` namespace target for targets with no namespace
-            self.targets[target_name] = {None: {}}
+            self.targets[target_name] = {}
         if namespace and namespace not in self.targets[target_name]:
             self.targets[target_name][namespace] = {}
         self.targets[target_name][namespace]["conditions"] = conditions
@@ -405,10 +405,10 @@ class CheckManager:
         if description:
             self.targets[target_name][namespace]["description"] = description
 
-    def set_target_conditions(self, target_name: str, conditions: List[str], namespace: Optional[str] = None) -> None:
+    def set_target_conditions(self, target_name: str, conditions: List[str], namespace: str = ALL_NAMESPACES_TARGET) -> None:
         self.targets[target_name][namespace]["conditions"] = conditions
 
-    def set_target_status(self, target_name: str, status: str, namespace: Optional[str] = None) -> None:
+    def set_target_status(self, target_name: str, status: str, namespace: str = ALL_NAMESPACES_TARGET) -> None:
         self._process_status(target_name=target_name, namespace=namespace, status=status)
 
     def add_target_eval(
@@ -416,7 +416,7 @@ class CheckManager:
         target_name: str,
         status: str,
         value: Optional[Any] = None,
-        namespace: Optional[str] = None,
+        namespace: str = ALL_NAMESPACES_TARGET,
         resource_name: Optional[str] = None,
         resource_kind: Optional[str] = None,
     ) -> None:
@@ -430,7 +430,7 @@ class CheckManager:
         self.targets[target_name][namespace]["evaluations"].append(eval_dict)
         self._process_status(target_name, status, namespace)
 
-    def _process_status(self, target_name: str, status: str, namespace: Optional[str] = None) -> None:
+    def _process_status(self, target_name: str, status: str, namespace: str = ALL_NAMESPACES_TARGET) -> None:
         existing_status = self.targets[target_name].get("status", CheckTaskStatus.success.value)
         if existing_status != status:
             if existing_status == CheckTaskStatus.success.value and status in [
@@ -446,7 +446,7 @@ class CheckManager:
                 self.targets[target_name][namespace]["status"] = status
                 self.worst_status = status
 
-    def add_display(self, target_name: str, display: Any, namespace: Optional[str] = None) -> None:
+    def add_display(self, target_name: str, display: Any, namespace: str = ALL_NAMESPACES_TARGET) -> None:
         if target_name not in self.target_displays:
             self.target_displays[target_name] = {}
         if namespace not in self.target_displays[target_name]:
@@ -468,29 +468,29 @@ class CheckManager:
                 for namespace in self.target_displays[type]:
                     result["targets"][type][namespace]["displays"] = deepcopy(self.target_displays[type][namespace])
 
-        result["description"] = f"{result['description']} in all namespaces"
         return result
 
 
 def evaluate_pod_health(
     check_manager: CheckManager,
     namespace: str,
+    target: str,
     pod: str,
     display_padding: int,
     service_label: str
 ) -> None:
-    target_service_pod = f"pod/{pod}"
-    check_manager.add_target(target_name=target_service_pod, namespace=namespace, conditions=["status.phase"])
+    check_manager.add_target(target_name=target, namespace=namespace, conditions=["status.phase"])
     diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
     if not diagnostics_pods:
+        target_service_pod = f"pod/{pod}"
         check_manager.add_target_eval(
-            target_name=target_service_pod,
+            target_name=target,
             namespace=namespace,
             status=CheckTaskStatus.warning.value,
             value=None,
         )
         check_manager.add_display(
-            target_name=target_service_pod,
+            target_name=target,
             namespace=namespace,
             display=Padding(
                 f"{target_service_pod}* [yellow]not detected[/yellow].",
@@ -505,13 +505,13 @@ def evaluate_pod_health(
             pod_phase_deco, status = _decorate_pod_phase(pod_phase)
 
             check_manager.add_target_eval(
-                target_name=target_service_pod,
+                target_name=target,
                 namespace=namespace,
                 status=status,
                 value={"name": pod_name, "status.phase": pod_phase},
             )
             check_manager.add_display(
-                target_name=target_service_pod,
+                target_name=target,
                 namespace=namespace,
                 display=Padding(
                     f"Pod {{[bright_blue]{pod_name}[/bright_blue]}} in phase {{{pod_phase_deco}}}.",
