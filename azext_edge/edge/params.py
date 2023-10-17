@@ -515,8 +515,8 @@ def load_iotedge_arguments(self, _):
 
     with self.argument_context("edge asset query") as context:
         context.argument(
-            "enabled",
-            options_list=["--enabled"],
+            "disabled",
+            options_list=["--disabled"],
             help="State of asset.",
             arg_group="Additional Info",
             arg_type=get_three_state_flag(),

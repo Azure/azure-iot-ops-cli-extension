@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 # for some reason "2023-08-01-preview" doesnt work with custom location
 # API_VERSION = "2023-06-21-preview"
 API_VERSION = "2023-08-01-preview"
-# API_VERSION = "2023-10-01-preview"
+API_VERSION = "2023-10-01-preview"
 
 
 class AssetProvider():

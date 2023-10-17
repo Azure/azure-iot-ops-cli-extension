@@ -47,7 +47,7 @@ def load_iotedge_commands(self, _):
         cmd_group.command("delete", "delete_asset")
         cmd_group.command("list", "list_assets")
         cmd_group.command("query", "query_assets")
-        cmd_group.command("show", "show_asset")
+        cmd_group.show_command("show", "show_asset")
         cmd_group.command("update", "update_asset")
 
     with self.command_group(
