@@ -279,12 +279,12 @@ def load_iotedge_arguments(self, _):
             help="Asset name.",
         )
         context.argument(
-            "endpoint_profile",
-            options_list=["--endpoint-profile", "--ep"],
-            help="Endpoint profile.",
+            "endpoint",
+            options_list=["--endpoint"],
+            help="Endpoint Uri.",
         )
         context.argument(
-            "custom_location",
+            "custom_location_name",
             options_list=["--custom-location", "--cl"],
             help="Custom location used to associate asset with cluster.",
         )
@@ -296,6 +296,21 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_location_subscription",
             options_list=["--custom-location-subscription", "--cls"],
+            help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
+        )
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster", "-c"],
+            help="Custom location used to associate asset with cluster.",
+        )
+        context.argument(
+            "cluster_resource_group",
+            options_list=["--cluster-resource-group", "--crg"],
+            help="Resource group for custom location.",
+        )
+        context.argument(
+            "cluster_subscription",
+            options_list=["--cluster-subscription", "--cs"],
             help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
         )
         context.argument(
@@ -320,6 +335,12 @@ def load_iotedge_arguments(self, _):
             "description",
             options_list=["--description", "-d"],
             help="Description.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "display_name",
+            options_list=["--display-name", "--dn"],
+            help="Display name.",
             arg_group="Additional Info",
         )
         context.argument(

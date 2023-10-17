@@ -19,7 +19,7 @@ def create_asset(
     cmd,
     asset_name: str,
     resource_group_name: str,
-    endpoint_profile: str,
+    endpoint: str,
     asset_type: Optional[str] = None,
     cluster_name: Optional[str] = None,
     cluster_resource_group: Optional[str] = None,
@@ -30,6 +30,7 @@ def create_asset(
     data_points: Optional[List[str]] = None,
     description: Optional[str] = None,
     disabled: bool = False,
+    # display_name: Optional[str] = None,
     documentation_uri: Optional[str] = None,
     events: Optional[List[str]] = None,
     external_asset_id: Optional[str] = None,
@@ -53,7 +54,7 @@ def create_asset(
     return asset_provider.create(
         asset_name=asset_name,
         resource_group_name=resource_group_name,
-        endpoint_profile=endpoint_profile,
+        endpoint=endpoint,
         asset_type=asset_type,
         cluster_name=cluster_name,
         cluster_resource_group=cluster_resource_group,
@@ -64,6 +65,7 @@ def create_asset(
         data_points=data_points,
         description=description,
         disabled=disabled,
+        # display_name=display_name,
         documentation_uri=documentation_uri,
         events=events,
         external_asset_id=external_asset_id,
@@ -88,7 +90,7 @@ def create_asset(
 def delete_asset(
     cmd,
     asset_name: str,
-    resource_group_name: Optional[str] = None
+    resource_group_name: str,
 ) -> dict:
     asset_provider = AssetProvider(cmd)
     return asset_provider.delete(asset_name=asset_name, resource_group_name=resource_group_name)
@@ -107,9 +109,10 @@ def query_assets(
     asset_type: Optional[str] = None,
     custom_location_name: Optional[str] = None,
     description: Optional[str] = None,
-    enabled: Optional[bool] = None,
+    disabled: Optional[bool] = None,
     documentation_uri: Optional[str] = None,
-    endpoint_profile: Optional[str] = None,
+    # display_name: Optional[str] = None,
+    endpoint: Optional[str] = None,
     external_asset_id: Optional[str] = None,
     hardware_revision: Optional[str] = None,
     location: Optional[str] = None,
@@ -126,9 +129,10 @@ def query_assets(
         asset_type=asset_type,
         custom_location_name=custom_location_name,
         description=description,
-        enabled=enabled,
+        # display_name=display_name,
+        disabled=disabled,
         documentation_uri=documentation_uri,
-        endpoint_profile=endpoint_profile,
+        endpoint=endpoint,
         external_asset_id=external_asset_id,
         hardware_revision=hardware_revision,
         location=location,
@@ -145,7 +149,7 @@ def query_assets(
 def show_asset(
     cmd,
     asset_name: str,
-    resource_group_name: Optional[str] = None
+    resource_group_name: str,
 ) -> dict:
     asset_provider = AssetProvider(cmd)
     return asset_provider.show(asset_name=asset_name, resource_group_name=resource_group_name)
@@ -154,13 +158,12 @@ def show_asset(
 def update_asset(
     cmd,
     asset_name: str,
-    resource_group_name: Optional[str] = None,
+    resource_group_name: str,
     asset_type: Optional[str] = None,
-    data_points: Optional[List[str]] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
+    # display_name: Optional[str] = None,
     documentation_uri: Optional[str] = None,
-    events: Optional[List[str]] = None,
     external_asset_id: Optional[str] = None,
     hardware_revision: Optional[str] = None,
     manufacturer: Optional[str] = None,
@@ -182,11 +185,10 @@ def update_asset(
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         asset_type=asset_type,
-        data_points=data_points,
         description=description,
         disabled=disabled,
+        # display_name=display_name,
         documentation_uri=documentation_uri,
-        events=events,
         external_asset_id=external_asset_id,
         hardware_revision=hardware_revision,
         manufacturer=manufacturer,
@@ -205,17 +207,17 @@ def update_asset(
     )
 
 
-# Data Point sub commands - TODO: there is some redundancy with Event
+# Data Point sub commands
 def add_asset_data_point(
     cmd,
     asset_name: str,
     data_source: str,
+    resource_group_name: str,
     capability_id: Optional[str] = None,
     name: Optional[str] = None,
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
-    resource_group_name: Optional[str] = None
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.add_sub_point(
@@ -233,7 +235,7 @@ def add_asset_data_point(
 def list_asset_data_points(
     cmd,
     asset_name: str,
-    resource_group_name: Optional[str] = None
+    resource_group_name: str,
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.list_sub_points(
@@ -246,9 +248,9 @@ def list_asset_data_points(
 def remove_asset_data_point(
     cmd,
     asset_name: str,
+    resource_group_name: str,
     data_source: Optional[str] = None,
     name: Optional[str] = None,
-    resource_group_name: Optional[str] = None
 ):
     if not any([data_source, name]):
         raise RequiredArgumentMissingError(
@@ -269,12 +271,12 @@ def add_asset_event(
     cmd,
     asset_name: str,
     event_notifier: str,
+    resource_group_name: str,
     capability_id: Optional[str] = None,
     name: Optional[str] = None,
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
-    resource_group_name: Optional[str] = None
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.add_sub_point(
@@ -292,7 +294,7 @@ def add_asset_event(
 def list_asset_events(
     cmd,
     asset_name: str,
-    resource_group_name: Optional[str] = None
+    resource_group_name: str,
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.list_sub_points(
@@ -305,9 +307,9 @@ def list_asset_events(
 def remove_asset_event(
     cmd,
     asset_name: str,
+    resource_group_name: str,
     event_notifier: Optional[str] = None,
     name: Optional[str] = None,
-    resource_group_name: Optional[str] = None
 ):
     if not any([event_notifier, name]):
         raise RequiredArgumentMissingError(

@@ -166,14 +166,12 @@ def test_remove_asset_data_point(
         assert request_data_points == original_events
 
 
-@pytest.mark.parametrize("resource_group_name", [None, generate_generic_id()])
-def test_remove_asset_data_point_error(mocked_cmd, resource_group_name):
-    asset_name = generate_generic_id()
+def test_remove_asset_data_point_error(mocked_cmd):
     with pytest.raises(RequiredArgumentMissingError) as e:
         remove_asset_data_point(
             cmd=mocked_cmd,
-            asset_name=asset_name,
-            resource_group_name=resource_group_name
+            asset_name=generate_generic_id(),
+            resource_group_name=generate_generic_id()
         )
     assert e.value.error_msg == "Provide either the data source via --data-source or name via --name"\
         " to identify the data point to remove."

@@ -202,8 +202,6 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Show an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the
-            resource group to ensure the correct asset is shown.
 
         examples:
         - name: Show the details of an asset.
@@ -216,8 +214,8 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Update an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the
-            resource group to ensure the correct asset is updated.
+        long-summary: To update data points and events, please use the command groups `az edge asset data-point` and
+            `az edge asset events` respectively.
 
         examples:
         - name: Update an asset's data point and event defaults.
@@ -254,8 +252,6 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Delete an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the
-            resource group to ensure the correct asset is deleted.
         examples:
         - name: Delete an asset.
           text: >
@@ -274,9 +270,6 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Add a data point to an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the
-            resource group to ensure the correct asset is retrieved.
-            To modify multiple data points at once, please use `az edge asset update` instead.
 
         examples:
         - name: Add a data point to an asset.
@@ -296,8 +289,6 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: List data points in an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the
-            resource group to ensure the correct asset is retrieved.
         examples:
         - name: List all data-points in an asset.
           text: >
@@ -309,10 +300,6 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Remove a data point in an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the
-            resource group to ensure the correct asset is retrieved.
-
-            To modify multiple data points at once, please use `az edge asset update` instead.
 
         examples:
         - name: Remove a data point from an asset via the data source.
@@ -336,9 +323,6 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Add an event to an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the
-            resource group to ensure the correct asset is retrieved.
-            To modify multiple events at once, please use `az edge asset update` instead.
 
         examples:
         - name: Add an event to an asset.
@@ -358,8 +342,6 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: List events in an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the
-            resource group to ensure the correct asset is retrieved.
 
         examples:
         - name: List all events in an asset.
@@ -372,10 +354,6 @@ def load_iotedge_help():
     ] = """
         type: command
         short-summary: Remove an event in an asset.
-        long-summary: If there are multiple assets with the same name within a subscription, please provide the
-            resource group to ensure the correct asset is retrieved.
-
-            To modify multiple events at once, please use `az edge asset update` instead.
 
         examples:
         - name: Remove an event from an asset via the event notifier.

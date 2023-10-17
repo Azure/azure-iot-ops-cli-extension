@@ -178,6 +178,7 @@ def test_process_asset_sub_points_error(required_arg):
         "defaultEventsConfiguration": "{\"publishingInterval\": \"200\", \"samplingInterval\": "
         "\"20\", \"queueSize\": \"3\"}",
         "description": generate_generic_id(),
+        "displayName": generate_generic_id(),
         "documentationUri": generate_generic_id(),
         "enabled": True,
         "externalAssetId": generate_generic_id(),
@@ -202,6 +203,7 @@ def test_process_asset_sub_points_error(required_arg):
         "asset_type": generate_generic_id(),
         "description": generate_generic_id(),
         "disabled": True,
+        "display_name": generate_generic_id(),
         "documentation_uri": generate_generic_id(),
         "external_asset_id": generate_generic_id(),
         "hardware_revision": generate_generic_id(),
@@ -232,6 +234,9 @@ def test_update_properties(properties, req):
     assert properties.get("enabled") is not req.get("disabled", not original_properties.get("enabled"))
     assert properties.get("documentationUri") == req.get(
         "documentation_uri", original_properties.get("documentationUri")
+    )
+    assert properties.get("displayName") == req.get(
+        "display_name", original_properties.get("displayName")
     )
     assert properties.get("externalAssetId") == req.get(
         "external_asset_id", original_properties.get("externalAssetId")

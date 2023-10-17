@@ -6,7 +6,9 @@
 
 import pytest
 
-from azure.cli.core.azclierror import InvalidArgumentValueError, ResourceNotFoundError, RequiredArgumentMissingError
+from azure.cli.core.azclierror import (
+    ResourceNotFoundError, RequiredArgumentMissingError, ValidationError
+)
 
 from azext_edge.edge.commands_assets import create_asset
 from azext_edge.edge.common import ResourceTypeMapping
@@ -81,7 +83,7 @@ def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, ass
         cmd=mocked_cmd,
         asset_name=asset_name,
         resource_group_name=resource_group_name,
-        endpoint_profile=endpoint_profile,
+        endpoint=endpoint_profile,
         **req
     ).result()
 
@@ -307,10 +309,6 @@ def test_check_asset_cluster_and_custom_location_build_query_error(
     cluster_name = req.get("cluster_name")
 
     expected_result = mocked_build_query.return_value
-    if all([custom_location_name, cluster_name, len(expected_result) > 1]):
-        # note that if there are too many allowed values, cluster, and location, this will pass
-        # as only the first value will be chosen (with warning)
-        return
 
     with pytest.raises(Exception) as e:
         asset_provider._check_asset_cluster_and_custom_location(
@@ -321,7 +319,7 @@ def test_check_asset_cluster_and_custom_location_build_query_error(
     if len(expected_result) == 0:
         assert isinstance(e.value, ResourceNotFoundError)
     if len(expected_result) > 1:
-        assert isinstance(e.value, InvalidArgumentValueError)
+        assert isinstance(e.value, ValidationError)
 
     if custom_location_name and not cluster_name:
         assert "custom location" in e.value.error_msg.lower()
@@ -364,5 +362,5 @@ def test_check_asset_cluster_and_custom_location_no_extension_error(
     assert mocked_build_query.call_count == 2
     mocked_resource_management_client.resources.get_by_id.assert_called_once()
 
-    assert isinstance(e.value, InvalidArgumentValueError)
+    assert isinstance(e.value, ValidationError)
     assert "missing the microsoft.deviceregistry.assets extension" in e.value.error_msg.lower()

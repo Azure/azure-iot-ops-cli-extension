@@ -34,11 +34,9 @@ from ...generators import generate_generic_id
     {},
     {
         "asset_type": generate_generic_id(),
-        "data_points": generate_generic_id(),
         "description": generate_generic_id(),
         "disabled": True,
         "documentation_uri": generate_generic_id(),
-        "events": generate_generic_id(),
         "external_asset_id": generate_generic_id(),
         "hardware_revision": generate_generic_id(),
         "manufacturer": generate_generic_id(),
@@ -66,7 +64,7 @@ from ...generators import generate_generic_id
 def test_update_asset(
     mocked_cmd, mocked_resource_management_client, asset_helpers_fixture, req
 ):
-    patched_sp, patched_up = asset_helpers_fixture
+    _, patched_up = asset_helpers_fixture
     # Required params
     asset_name = generate_generic_id()
     # force show call to one branch
@@ -107,18 +105,3 @@ def test_update_asset(
     for arg in patched_up.call_args.kwargs:
         assert patched_up.call_args.kwargs[arg] == req.get(arg)
         assert request_props.get(arg) is None
-
-    # Data points + events
-    if req.get("data_points"):
-        assert patched_sp.call_args_list[0].args[0] == "data_source"
-        assert patched_sp.call_args_list[0].args[1] == req["data_points"]
-        assert request_props["dataPoints"] == patched_sp.return_value
-    else:
-        assert request_props["dataPoints"] == original_props["dataPoints"]
-
-    if req.get("events"):
-        assert patched_sp.call_args_list[-1].args[0] == "event_notifier"
-        assert patched_sp.call_args_list[-1].args[1] == req["events"]
-        assert request_props["events"] == patched_sp.return_value
-    else:
-        assert request_props["events"] == original_props["events"]

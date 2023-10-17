@@ -9,7 +9,12 @@ from typing import Dict, List, Optional, Union
 
 from knack.log import get_logger
 
-from azure.cli.core.azclierror import InvalidArgumentValueError, ResourceNotFoundError, RequiredArgumentMissingError
+from azure.cli.core.azclierror import (
+    InvalidArgumentValueError,
+    ResourceNotFoundError,
+    RequiredArgumentMissingError,
+    ValidationError
+)
 
 from ..util import assemble_nargs_to_dict, build_query
 from ..common import ResourceTypeMapping
@@ -17,7 +22,9 @@ from ..common import ResourceTypeMapping
 logger = get_logger(__name__)
 
 # for some reason "2023-08-01-preview" doesnt work with custom location
-API_VERSION = "2023-06-21-preview"
+# API_VERSION = "2023-06-21-preview"
+API_VERSION = "2023-08-01-preview"
+# API_VERSION = "2023-10-01-preview"
 
 
 class AssetProvider():
@@ -38,7 +45,7 @@ class AssetProvider():
         self,
         asset_name: str,
         resource_group_name: str,
-        endpoint_profile: str,
+        endpoint: str,
         asset_type: Optional[str] = None,
         cluster_name: Optional[str] = None,
         cluster_resource_group: Optional[str] = None,
@@ -49,6 +56,7 @@ class AssetProvider():
         data_points: Optional[List[str]] = None,
         description: Optional[str] = None,
         disabled: bool = False,
+        display_name: Optional[str] = None,
         documentation_uri: Optional[str] = None,
         events: Optional[List[str]] = None,
         external_asset_id: Optional[str] = None,
@@ -89,7 +97,8 @@ class AssetProvider():
 
         # Properties
         properties = {
-            "connectivityProfileUri": endpoint_profile,
+            # "assetEndpointProfileUri": endpoint,
+            "connectivityProfileUri": endpoint,
             "dataPoints": _process_asset_sub_points("data_source", data_points),
             "events": _process_asset_sub_points("event_notifier", events),
         }
@@ -99,6 +108,7 @@ class AssetProvider():
             properties,
             asset_type=asset_type,
             description=description,
+            display_name=display_name,
             disabled=disabled,
             documentation_uri=documentation_uri,
             external_asset_id=external_asset_id,
@@ -135,12 +145,8 @@ class AssetProvider():
     def delete(
         self,
         asset_name: str,
-        resource_group_name: Optional[str] = None
+        resource_group_name: str
     ):
-        if not resource_group_name:
-            asset = self.show(asset_name)
-            resource_group_name = asset["resourceGroup"]
-
         self.resource_client.resources.begin_delete(
             resource_group_name=resource_group_name,
             resource_provider_namespace=self.resource_type,
@@ -160,7 +166,7 @@ class AssetProvider():
         uri = f"/subscriptions/{self.subscription}"
         if resource_group_name:
             uri += f"/resourceGroups/{resource_group_name}"
-        uri += f"/providers/Microsoft.DeviceRegistry/assets?api-version={API_VERSION}"
+        uri += f"/providers/{self.resource_type}?api-version={API_VERSION}"
         r = send_raw_request(cli_ctx=self.cmd.cli_ctx, method="GET", url=uri)
 
         if r.content:
@@ -168,12 +174,14 @@ class AssetProvider():
 
     def query(
         self,
+        asset_name: Optional[str] = None,
         asset_type: Optional[str] = None,
         custom_location_name: Optional[str] = None,
         description: Optional[str] = None,
-        enabled: bool = False,
+        disabled: bool = False,
         documentation_uri: Optional[str] = None,
-        endpoint_profile: Optional[str] = None,
+        display_name: Optional[str] = None,
+        endpoint: Optional[str] = None,
         external_asset_id: Optional[str] = None,
         hardware_revision: Optional[str] = None,
         location: Optional[str] = None,
@@ -186,18 +194,22 @@ class AssetProvider():
         resource_group_name: Optional[str] = None,
     ) -> dict:
         query = ""
+        if asset_name:
+            query += f"| where assetName =~ \"{asset_name}\""
         if asset_type:
             query += f"| where properties.assetType =~ \"{asset_type}\""
         if custom_location_name:  # ##
             query += f"| where extendedLocation.name contains \"{custom_location_name}\""
         if description:
             query += f"| where properties.description =~ \"{description}\""
-        if enabled:
-            query += f"| where properties.enabled == {enabled}"
+        if display_name:
+            query += f"| where properties.displayName =~ \"{display_name}\""
+        if disabled:
+            query += f"| where properties.enabled == {not disabled}"
         if documentation_uri:
             query += f"| where properties.documentationUri =~ \"{documentation_uri}\""
-        if endpoint_profile:
-            query += f"| where properties.connectivityProfileUri =~ \"{endpoint_profile}\""
+        if endpoint:
+            query += f"| where properties.connectivityProfileUri =~ \"{endpoint}\""
         if external_asset_id:
             query += f"| where properties.externalAssetId =~ \"{external_asset_id}\""
         if hardware_revision:
@@ -228,41 +240,27 @@ class AssetProvider():
     def show(
         self,
         asset_name: str,
-        resource_group_name: Optional[str] = None
+        resource_group_name: str
     ) -> dict:
-        if resource_group_name:
-            result = self.resource_client.resources.get(
-                resource_group_name=resource_group_name,
-                resource_provider_namespace=ResourceTypeMapping.asset.value,
-                parent_resource_path="",
-                resource_type="",
-                resource_name=asset_name,
-                api_version=API_VERSION
-            )
-            return result.as_dict()
-
-        assets_list = self.list()
-        results = []
-        for asset in assets_list:
-            if asset["name"] == asset_name:
-                results.append(asset)
-        if len(results) > 1:
-            logger.warn(f"{len(results)} assets found with the name {asset_name}.")
-        if len(results) > 0:
-            return results[0]
-
-        raise ResourceNotFoundError(f"Asset {asset_name} not found in subscription {self.subscription}.")
+        result = self.resource_client.resources.get(
+            resource_group_name=resource_group_name,
+            resource_provider_namespace=ResourceTypeMapping.asset.value,
+            parent_resource_path="",
+            resource_type="",
+            resource_name=asset_name,
+            api_version=API_VERSION
+        )
+        return result.as_dict()
 
     def update(
         self,
         asset_name: str,
-        resource_group_name: Optional[str] = None,
+        resource_group_name: str,
         asset_type: Optional[str] = None,
-        data_points: Optional[List[str]] = None,
         description: Optional[str] = None,
         disabled: Optional[bool] = None,
+        display_name: Optional[str] = None,
         documentation_uri: Optional[str] = None,
-        events: Optional[List[str]] = None,
         external_asset_id: Optional[str] = None,
         hardware_revision: Optional[str] = None,
         manufacturer: Optional[str] = None,
@@ -290,10 +288,6 @@ class AssetProvider():
         # modify the asset
         # Properties
         properties = original_asset.get("properties", {})
-        if data_points:
-            properties["dataPoints"] = _process_asset_sub_points("data_source", data_points)
-        if events:
-            properties["events"] = _process_asset_sub_points("event_notifier", events)
 
         # version cannot be bumped with PUT :D
 
@@ -304,6 +298,7 @@ class AssetProvider():
             description=description,
             disabled=disabled,
             documentation_uri=documentation_uri,
+            display_name=display_name,
             external_asset_id=external_asset_id,
             hardware_revision=hardware_revision,
             manufacturer=manufacturer,
@@ -331,6 +326,7 @@ class AssetProvider():
     def add_sub_point(
         self,
         asset_name: str,
+        resource_group_name: str,
         data_source: Optional[str] = None,
         event_notifier: Optional[str] = None,
         capability_id: Optional[str] = None,
@@ -338,7 +334,6 @@ class AssetProvider():
         observability_mode: Optional[str] = None,
         queue_size: Optional[int] = None,
         sampling_interval: Optional[int] = None,
-        resource_group_name: Optional[str] = None
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -370,7 +365,7 @@ class AssetProvider():
         self,
         asset_name: str,
         sub_point_type: str,
-        resource_group_name: Optional[str] = None
+        resource_group_name: str
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -383,10 +378,10 @@ class AssetProvider():
         self,
         asset_name: str,
         sub_point_type: str,
+        resource_group_name: str,
         data_source: Optional[str] = None,
         event_notifier: Optional[str] = None,
         name: Optional[str] = None,
-        resource_group_name: Optional[str] = None
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -442,7 +437,7 @@ class AssetProvider():
             if len(cluster_query_result) == 0:
                 raise ResourceNotFoundError(f"Cluster {cluster_name} not found.")
             if len(cluster_query_result) > 1:
-                raise InvalidArgumentValueError(
+                raise ValidationError(
                     f"Found {len(cluster_query_result)} clusters with the name {cluster_name}. Please "
                     "provide the resource group for the cluster."
                 )
@@ -470,7 +465,7 @@ class AssetProvider():
             raise ResourceNotFoundError(f"Custom location {error_details}not found.")
 
         if len(location_query_result) > 1 and cluster_name is None:
-            raise InvalidArgumentValueError(
+            raise ValidationError(
                 f"Found {len(location_query_result)} custom locations with the name {custom_location_name}. Please "
                 "provide the resource group for the custom location."
             )
@@ -488,7 +483,7 @@ class AssetProvider():
                 type=ResourceTypeMapping.connected_cluster.value
             )
             if len(cluster_query_result) == 0:
-                raise ResourceNotFoundError(
+                raise ValidationError(
                     f"Cluster associated with custom location {custom_location_name} does not exist."
                 )
             cluster = cluster_query_result[0]
@@ -511,14 +506,15 @@ class AssetProvider():
 
         # throw if there are no suitable extensions (in the cluster)
         if len(possible_locations) == 0:
-            raise InvalidArgumentValueError(
+            raise ValidationError(
                 f"Cluster {cluster['name']} is missing the microsoft.deviceregistry.assets extension."
             )
         # here we warn about multiple custom locations (cluster name given, multiple locations possible)
         if len(possible_locations) > 1:
-            logger.warn(
-                f"More than one custom location for cluster {cluster['id']} found. Will pick first one that satisfies "
-                "the conditions for asset creation."
+            possible_locations = "\n".join(possible_locations)
+            raise ValidationError(
+                f"The following custom locations were found for cluster {cluster['id']}: \n{possible_locations}. "
+                "Please specify which custom location to use."
             )
 
         return possible_locations[0]
@@ -598,6 +594,7 @@ def _update_properties(
     asset_type: Optional[str] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
+    display_name: Optional[str] = None,
     documentation_uri: Optional[str] = None,
     external_asset_id: Optional[str] = None,
     hardware_revision: Optional[str] = None,
@@ -620,6 +617,8 @@ def _update_properties(
         properties["description"] = description
     if disabled is not None:
         properties["enabled"] = not disabled
+    if display_name:
+        properties["displayName"] = display_name
     if documentation_uri:
         properties["documentationUri"] = documentation_uri
     if external_asset_id:
