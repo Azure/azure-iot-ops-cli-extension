@@ -120,7 +120,7 @@ def load_iotedge_help():
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
             --custom-location-resource-group {custom_location_resource_group} --endpoint {endpoint}
 
-        - name: Create an asset using the given cluster name.  The resource group should be included if there are multiple clusters
+        - name: Create an asset using the given cluster name. The resource group should be included if there are multiple clusters
                 with the same name within a subscription.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --cluster {cluster} --cluster-resource-group {cluster_resource_group}
