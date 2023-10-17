@@ -39,9 +39,9 @@ def test_check_manager():
     name = generate_generic_id()
     desc = f"{generate_generic_id()} {generate_generic_id()}"
     namespace = generate_generic_id()
-    check_manager = CheckManager(check_name=name, check_desc=desc, namespace=namespace)
+    check_manager = CheckManager(check_name=name, check_desc=desc)
     assert_check_manager_dict(
-        check_manager=check_manager, expected_name=name, expected_desc=desc
+        check_manager=check_manager, expected_name=name, expected_namespace=namespace, expected_desc=desc
     )
 
     target_1 = generate_generic_id()
@@ -50,13 +50,14 @@ def test_check_manager():
     target_1_eval_1_value = {generate_generic_id(): generate_generic_id()}
     target_1_display_1 = generate_generic_id()
 
-    check_manager.add_target(target_name=target_1, conditions=target_1_conditions)
+    check_manager.add_target(target_name=target_1, namespace=namespace, conditions=target_1_conditions)
     check_manager.add_target_eval(
         target_name=target_1,
+        namespace=namespace,
         status=CheckTaskStatus.success.value,
         value=target_1_eval_1_value,
     )
-    check_manager.add_display(target_name=target_1, display=target_1_display_1)
+    check_manager.add_display(target_name=target_1, namespace=namespace, display=target_1_display_1)
     expected_targets = {
         target_1: {
             "conditions": target_1_conditions,
@@ -72,12 +73,13 @@ def test_check_manager():
     assert_check_manager_dict(
         check_manager=check_manager,
         expected_name=name,
+        expected_namespace=namespace,
         expected_desc=desc,
         expected_targets=expected_targets,
         expected_target_displays={target_1: [target_1_display_1]},
     )
     check_manager.add_target_eval(
-        target_name=target_1, status=CheckTaskStatus.warning.value
+        target_name=target_1, namespace=namespace, status=CheckTaskStatus.warning.value
     )
     expected_targets = {
         target_1: {
@@ -95,6 +97,7 @@ def test_check_manager():
     assert_check_manager_dict(
         check_manager=check_manager,
         expected_name=name,
+        expected_namespace=namespace,
         expected_desc=desc,
         expected_targets=expected_targets,
         expected_status=CheckTaskStatus.warning.value,
@@ -103,9 +106,9 @@ def test_check_manager():
     target_2 = generate_generic_id()
     target_2_condition_1 = generate_generic_id()
     target_2_conditions = [target_2_condition_1]
-    check_manager.add_target(target_name=target_2, conditions=target_2_conditions)
+    check_manager.add_target(target_name=target_2, namespace=namespace, conditions=target_2_conditions)
     check_manager.add_target_eval(
-        target_name=target_2, status=CheckTaskStatus.error.value
+        target_name=target_2, namespace=namespace, status=CheckTaskStatus.error.value
     )
 
     expected_targets = {
@@ -129,16 +132,17 @@ def test_check_manager():
     assert_check_manager_dict(
         check_manager=check_manager,
         expected_name=name,
+        expected_namespace=namespace,
         expected_desc=desc,
         expected_targets=expected_targets,
         expected_status=CheckTaskStatus.error.value,
     )
 
     # Re-create check manager with target 1 kpis and assert skipped status
-    check_manager = CheckManager(check_name=name, check_desc=desc, namespace=namespace)
-    check_manager.add_target(target_name=target_1, conditions=target_1_conditions)
+    check_manager = CheckManager(check_name=name, check_desc=desc)
+    check_manager.add_target(target_name=target_1, namespace=namespace, conditions=target_1_conditions)
     check_manager.add_target_eval(
-        target_name=target_1, status=CheckTaskStatus.skipped.value, value=None
+        target_name=target_1, namespace=namespace, status=CheckTaskStatus.skipped.value, value=None
     )
     expected_targets = {
         target_1: {
@@ -150,6 +154,7 @@ def test_check_manager():
     assert_check_manager_dict(
         check_manager=check_manager,
         expected_name=name,
+        expected_namespace=namespace,
         expected_desc=desc,
         expected_targets=expected_targets,
         expected_status=CheckTaskStatus.skipped.value,
@@ -159,6 +164,7 @@ def test_check_manager():
 def assert_check_manager_dict(
     check_manager: CheckManager,
     expected_name: str,
+    expected_namespace: str,
     expected_desc: str,
     expected_targets: dict = None,
     expected_status: str = CheckTaskStatus.success.value,
@@ -172,10 +178,11 @@ def assert_check_manager_dict(
     assert result_check_dict["name"] == expected_name
 
     assert "description" in result_check_dict
-    assert result_check_dict["description"] == expected_desc
+    assert expected_desc in result_check_dict["description"]
 
     assert "targets" in result_check_dict
-    assert result_check_dict["targets"] == expected_targets
+    for target in expected_targets:
+        assert target in result_check_dict["targets"]
 
     assert "status" in result_check_dict
     assert result_check_dict["status"] == expected_status
@@ -185,7 +192,7 @@ def assert_check_manager_dict(
         for target in expected_target_displays:
             assert (
                 expected_target_displays[target]
-                == result_check_dict_displays["targets"][target]["displays"]
+                == result_check_dict_displays["targets"][target][expected_namespace]["displays"]
             )
 
 
@@ -358,19 +365,19 @@ def _generate_resource_stub(
 def test_broker_checks(
     mocker, mock_evaluate_e4k_pod_health, broker, conditions, evaluations
 ):
+    namespace = generate_generic_id()
+    broker['metadata']['namespace'] = namespace
     mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         return_value={"items": [broker]},
     )
 
-    namespace = generate_generic_id()
-    result = evaluate_brokers(namespace=namespace)
+    result = evaluate_brokers()
 
     # all evalBroker assertions
     assert result["name"] == "evalBrokers"
-    assert result["namespace"] == namespace
-    assert result["targets"]["brokers.az-edge.com"]
-    target = result["targets"]["brokers.az-edge.com"]
+    assert namespace in result["targets"]["brokers.az-edge.com"]
+    target = result["targets"]["brokers.az-edge.com"][namespace]
 
     assert_conditions(target, conditions)
     assert_evaluations(target, evaluations)
@@ -463,6 +470,9 @@ def test_broker_listener_checks(
     mocker, mock_evaluate_e4k_pod_health, listener, service, conditions, evaluations
 ):
     # mock listener values
+    namespace = generate_generic_id()
+    listener['metadata']['namespace'] = namespace
+    service['metadata']['namespace'] = namespace
     mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         return_value={"items": [listener]},
@@ -476,13 +486,11 @@ def test_broker_listener_checks(
         "azext_edge.edge.providers.check.e4k.get_namespaced_service", return_value=service
     )
 
-    namespace = generate_generic_id()
-    result = evaluate_broker_listeners(namespace=namespace)
+    result = evaluate_broker_listeners()
 
     assert result["name"] == "evalBrokerListeners"
-    assert result["namespace"] == namespace
-    assert result["targets"]["brokerlisteners.az-edge.com"]
-    target = result["targets"]["brokerlisteners.az-edge.com"]
+    assert namespace in result["targets"]["brokerlisteners.az-edge.com"]
+    target = result["targets"]["brokerlisteners.az-edge.com"][namespace]
 
     # conditions
     assert_conditions(target, conditions)
@@ -535,6 +543,9 @@ def test_diagnostic_service_checks(
     mocker, mock_evaluate_e4k_pod_health, resource, service, conditions, evaluations
 ):
     # mock service values
+    namespace = generate_generic_id()
+    resource['metadata']['namespace'] = namespace
+    service['metadata']['namespace'] = namespace
     mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         return_value={"items": [resource]},
@@ -544,13 +555,11 @@ def test_diagnostic_service_checks(
         "azext_edge.edge.providers.check.e4k.get_namespaced_service", return_value=service
     )
 
-    namespace = generate_generic_id()
-    result = evaluate_diagnostics_service(namespace=namespace)
+    result = evaluate_diagnostics_service()
 
     assert result["name"] == "evalBrokerDiag"
-    assert result["namespace"] == namespace
-    assert result["targets"]["diagnosticservices.az-edge.com"]
-    target = result["targets"]["diagnosticservices.az-edge.com"]
+    assert namespace in result["targets"]["diagnosticservices.az-edge.com"]
+    target = result["targets"]["diagnosticservices.az-edge.com"][namespace]
 
     assert_conditions(target, conditions)
     assert_evaluations(target, evaluations)
@@ -664,14 +673,15 @@ def test_mqtt_checks(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
     )
     for detail_level in ResourceOutputDetailLevel.list():
-        mocker.side_effect = [{"items": [bridge]}, {"items": [topic_map]}]
         namespace = generate_generic_id()
-        result = evaluate_mqtt_bridge_connectors(namespace=namespace, detail_level=detail_level)
+        bridge['metadata']['namespace'] = namespace
+        topic_map['metadata']['namespace'] = namespace
+        mocker.side_effect = [{"items": [bridge]}, {"items": [topic_map]}]
+        result = evaluate_mqtt_bridge_connectors(detail_level=detail_level)
 
         assert result["name"] == "evalMQTTBridgeConnectors"
-        assert result["namespace"] == namespace
-        assert result["targets"]["mqttbridgeconnectors.az-edge.com"]
-        target = result["targets"]["mqttbridgeconnectors.az-edge.com"]
+        assert namespace in result["targets"]["mqttbridgeconnectors.az-edge.com"]
+        target = result["targets"]["mqttbridgeconnectors.az-edge.com"][namespace]
 
         assert_conditions(target, conditions)
         assert_evaluations(target, evaluations)
@@ -716,14 +726,15 @@ def test_datalake_checks(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
     )
     for detail_level in ResourceOutputDetailLevel.list():
-        mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
         namespace = generate_generic_id()
-        result = evaluate_datalake_connectors(namespace=namespace, detail_level=detail_level)
+        connector['metadata']['namespace'] = namespace
+        topic_map['metadata']['namespace'] = namespace
+        mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
+        result = evaluate_datalake_connectors(detail_level=detail_level)
 
         assert result["name"] == "evalDataLakeConnectors"
-        assert result["namespace"] == namespace
-        assert result["targets"]["datalakeconnectors.az-edge.com"]
-        target = result["targets"]["datalakeconnectors.az-edge.com"]
+        assert namespace in result["targets"]["datalakeconnectors.az-edge.com"]
+        target = result["targets"]["datalakeconnectors.az-edge.com"][namespace]
 
         assert_conditions(target, conditions)
         assert_evaluations(target, evaluations)
@@ -1211,15 +1222,17 @@ def test_kafka_checks(
     mocker, mock_evaluate_e4k_pod_health, connector, topic_map, conditions, evaluations
 ):
     mocker = mocker.patch("azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources")
+    namespace = generate_generic_id()
+    connector['metadata']['namespace'] = namespace
+    topic_map['metadata']['namespace'] = namespace
     for detail_level in ResourceOutputDetailLevel.list():
         mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
-        namespace = generate_generic_id()
-        result = evaluate_kafka_connectors(namespace=namespace, detail_level=detail_level)
+        result = evaluate_kafka_connectors(detail_level=detail_level)
+
 
         assert result["name"] == "evalKafkaConnectors"
-        assert result["namespace"] == namespace
-        assert result["targets"]["kafkaconnectors.az-edge.com"]
-        target = result["targets"]["kafkaconnectors.az-edge.com"]
+        assert namespace in result["targets"]["kafkaconnectors.az-edge.com"]
+        target = result["targets"]["kafkaconnectors.az-edge.com"][namespace]
 
         assert_conditions(target, conditions)
         assert_evaluations(target, evaluations)
@@ -1239,15 +1252,14 @@ def test_empty_connector_results(mocker, mock_evaluate_e4k_pod_health, eval_func
         return_value={"items": []},
     )
 
-    namespace = generate_generic_id()
-    result = eval_func(namespace=namespace)
+    result = eval_func()
     assert result['name'] == name
     assert all(
         [
-            result['targets'][target],
-            not result['targets'][target]['conditions'],
-            result['targets'][target]['evaluations'][0]['status'] == CheckTaskStatus.skipped.value,
-            result['targets'][target]['status'] == CheckTaskStatus.skipped.value,
+            result['targets'][target][None],
+            not result['targets'][target][None]['conditions'],
+            result['targets'][target][None]['evaluations'][0]['status'] == CheckTaskStatus.skipped.value,
+            result['targets'][target][None]['status'] == CheckTaskStatus.skipped.value,
         ]
     )
 

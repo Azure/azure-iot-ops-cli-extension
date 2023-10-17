@@ -1697,7 +1697,7 @@ def evaluate_kafka_connectors(  # noqa: C901
         topic_maps = topic_maps_by_namespace[namespace]
 
         check_manager.add_target(target_name=connector_target, namespace=namespace)
-        check_manager.set_target_conditions(target_name=connector_target, conditions=["status", "valid(spec)"])
+        check_manager.set_target_conditions(target_name=connector_target, namespace=namespace, conditions=["status", "valid(spec)"])
         check_manager.add_display(target_name=connector_target, namespace=namespace, display=Padding(
             f"Kafka Connectors in namespace {{[purple]{namespace}[/purple]}}",
             (0, 0, 0, 8)
@@ -1823,6 +1823,9 @@ def _display_invalid_topic_maps(
 
 
 def _mark_connector_target_as_skipped(check_manager: CheckManager, target: str, message: str, padding: int = 8):
+    check_manager.add_target(
+        target_name=target
+    )
     check_manager.add_target_eval(
         target_name=target,
         status=CheckTaskStatus.skipped.value,
