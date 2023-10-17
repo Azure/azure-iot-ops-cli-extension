@@ -821,24 +821,6 @@ def evaluate_mqtt_bridge_connectors(
 ) -> Dict[str, Any]:
     from rich.table import Table
 
-    def add_routes_display(
-        check_manager: CheckManager,
-        target: str,
-        namespace: str,
-        routes: List[Dict[str, str]],
-        padding: tuple,
-    ) -> None:
-        for route in routes:
-            route_name = route.get("name")
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(
-                    f"- Route {{[blue]{route_name}[/blue]}}",
-                    padding,
-                ),
-            )
-
     def create_routes_table(routes: List[Dict[str, str]]) -> Table:
         table = Table(title="Route Details", title_justify="left", title_style="None", show_lines=True)
 
@@ -891,14 +873,16 @@ def evaluate_mqtt_bridge_connectors(
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
                     route_table = create_routes_table(routes)
                     check_manager.add_display(target_name=target, namespace=namespace, display=Padding(route_table, route_padding))
-                    return
-                else:
-                    add_routes_display(
-                        check_manager=check_manager,
-                        target=target,
+                    continue
+                for route in routes:
+                    route_name = route.get("name")
+                    check_manager.add_display(
+                        target_name=target,
                         namespace=namespace,
-                        routes=routes,
-                        padding=route_padding,
+                        display=Padding(
+                            f"- Route {{[blue]{route_name}[/blue]}}",
+                            padding,
+                        ),
                     )
 
     def display_bridge_info(check_manager: CheckManager, target: str, namespace: str, bridge: Dict[str, str], detail_level: str, padding: tuple) -> None:
@@ -984,53 +968,33 @@ def evaluate_mqtt_bridge_connectors(
                 bridge_detail_padding,
             ),
         )
+        # TODO - reduce complexity
         # local broker endpoint
-        local_broker = spec.get("localBrokerConnection", {})
-        local_broker_endpoint = local_broker.get("endpoint")
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(
-                f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
-                bridge_detail_padding,
-            ),
-        )
-        if detail_level != ResourceOutputDetailLevel.summary.value:
-            local_broker_auth = next(iter(local_broker.get("authentication")))
-            local_broker_tls = local_broker.get("tls", {}).get("tlsEnabled", False)
+        for (label, key) in [
+            ("Local Broker Connection", "localBrokerConnection"),
+            ("Remote Broker Connection", "remoteBrokerConnection")
+        ]:
+            broker = spec.get(key, {})
+            endpoint = broker.get("endpoint")
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
                 display=Padding(
-                    f"Auth: [bright_blue]{local_broker_auth}[/bright_blue] TLS: [bright_blue]{local_broker_tls}[/bright_blue]",
-                    broker_detail_padding,
+                    f"{label}: [bright_blue]{endpoint}[/bright_blue]",
+                    bridge_detail_padding,
                 ),
             )
-
-        # remote broker endpoint
-        remote_broker = spec.get("remoteBrokerConnection", {})
-        remote_broker_endpoint = remote_broker.get("endpoint")
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(
-                f"Remote Broker Connection: [bright_blue]{remote_broker_endpoint}[/bright_blue]",
-                bridge_detail_padding,
-            ),
-        )
-
-        if detail_level != ResourceOutputDetailLevel.summary.value:
-            remote_broker_auth = next(iter(remote_broker.get("authentication")))
-            remote_broker_tls = remote_broker.get("tls", {}).get("tlsEnabled", False)
-
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(
-                    f"Auth: [bright_blue]{remote_broker_auth}[/bright_blue] TLS: [bright_blue]{remote_broker_tls}[/bright_blue]",
-                    broker_detail_padding,
-                ),
-            )
+            if detail_level != ResourceOutputDetailLevel.summary.value:
+                auth = next(iter(broker.get("authentication")))
+                tls = broker.get("tls", {}).get("tlsEnabled", False)
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(
+                        f"Auth: [bright_blue]{auth}[/bright_blue] TLS: [bright_blue]{tls}[/bright_blue]",
+                        broker_detail_padding,
+                    ),
+                )
 
     check_manager = CheckManager(
         check_name="evalMQTTBridgeConnectors",
@@ -1524,6 +1488,7 @@ def evaluate_kafka_connectors(
         broker_detail_padding = (0, 0, 0, detail_padding[3] + 4)
 
         # local broker endpoint
+        # TODO - reduce complexity
         local_broker_endpoint = local_broker.get("endpoint")
         check_manager.add_display(
             target_name=target,
