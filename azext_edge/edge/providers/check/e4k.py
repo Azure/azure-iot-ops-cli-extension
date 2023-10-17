@@ -1436,11 +1436,10 @@ def evaluate_datalake_connectors(
 
 
 def evaluate_kafka_connectors(
-    namespace: Optional[str] = None,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ):
-    def display_connector_info(check_manager: CheckManager, target: str, connector: Dict[str, Any], detail_level: str, padding: tuple):
+    def display_connector_info(check_manager: CheckManager, target: str, namespace: str, connector: Dict[str, Any], detail_level: str, padding: tuple):
         metadata = connector.get("metadata", {})
         connector_name = metadata.get("name")
         connector_status = connector.get("status", {})
@@ -1459,6 +1458,7 @@ def evaluate_kafka_connectors(
 
         check_manager.add_target_eval(
             target_name=target,
+            namespace=namespace,
             status=eval_status,
             value=connector_status,
             resource_name=connector_name,
@@ -1470,6 +1470,7 @@ def evaluate_kafka_connectors(
         connector_status_text = f" {connector_status_desc}" if connector_status_desc else ""
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(
                 f"\n- Connector {{[bright_blue]{connector_name}[/bright_blue]}} status {{{decorate_resource_status(connector_status_level)}}}.{connector_status_text}",
                 padding,
@@ -1502,6 +1503,7 @@ def evaluate_kafka_connectors(
 
         check_manager.add_target_eval(
             target_name=target,
+            namespace=namespace,
             status=connector_eval_status,
             value={"spec": spec},
             resource_name=connector_name,
@@ -1510,10 +1512,13 @@ def evaluate_kafka_connectors(
 
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(f"Client ID Prefix: [bright_blue]{clientIdPrefix}[/bright_blue]", detail_padding),
         )
         check_manager.add_display(
-            target_name=target, display=Padding(f"Instances: [bright_blue]{instances}[/bright_blue]", detail_padding)
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"Instances: [bright_blue]{instances}[/bright_blue]", detail_padding)
         )
 
         broker_detail_padding = (0, 0, 0, detail_padding[3] + 4)
@@ -1522,6 +1527,7 @@ def evaluate_kafka_connectors(
         local_broker_endpoint = local_broker.get("endpoint")
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(
                 f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
                 detail_padding,
@@ -1533,19 +1539,23 @@ def evaluate_kafka_connectors(
 
             check_manager.add_display(
                 target_name=target,
+                namespace=namespace,
                 display=Padding(
                     f"Auth: [bright_blue]{local_broker_auth}[/bright_blue] TLS: [bright_blue]{local_broker_tls}[/bright_blue]",
                     broker_detail_padding,
                 ),
             )
             check_manager.add_display(
-                target_name=target, display=Padding(f"logLevel: [bright_blue]{logLevel}[/bright_blue]", detail_padding)
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"logLevel: [bright_blue]{logLevel}[/bright_blue]", detail_padding)
             )
 
         # kafka endpoint
         kafka_broker_endpoint = kafka_broker.get("endpoint")
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(
                 f"Remote Broker Connection: [bright_blue]{kafka_broker_endpoint}[/bright_blue]",
                 detail_padding,
@@ -1557,17 +1567,19 @@ def evaluate_kafka_connectors(
 
             check_manager.add_display(
                 target_name=target,
+                namespace=namespace,
                 display=Padding(
                     f"Auth: [bright_blue]{kafka_broker_auth}[/bright_blue] TLS: [bright_blue]{kafka_broker_tls}[/bright_blue]",
                     broker_detail_padding,
                 ),
             )
 
-    def display_topic_maps(check_manager: CheckManager, target: str, topic_maps: List[Dict[str, Any]], detail_level: str, padding: tuple):
+    def display_topic_maps(check_manager: CheckManager, target: str, namespace: str, topic_maps: List[Dict[str, Any]], detail_level: str, padding: tuple):
         # Show warning if no topic maps
         if not len(connector_topic_maps):
             check_manager.add_display(
                 target_name=target,
+                namespace=namespace,
                 display=Padding(
                     "[yellow]No Kafka Topic Maps reference this resource[/yellow]",
                     padding,
@@ -1578,6 +1590,7 @@ def evaluate_kafka_connectors(
             topic_name = topic_map.get("metadata", {}).get("name")
             check_manager.add_display(
                 target_name=target,
+                namespace=namespace,
                 display=Padding(
                     f"- Topic Map {{[bright_blue]{topic_name}[/bright_blue]}}",
                     padding,
@@ -1597,6 +1610,7 @@ def evaluate_kafka_connectors(
 
                     check_manager.add_display(
                         target_name=target,
+                        namespace=namespace,
                         display=Padding(
                             f"{label}: [bright_blue]{val}[/bright_blue]",
                             detail_padding,
@@ -1606,6 +1620,7 @@ def evaluate_kafka_connectors(
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
                     check_manager.add_display(
                         target_name=target,
+                        namespace=namespace,
                         display=Padding(
                             "Batching:",
                             detail_padding
@@ -1622,6 +1637,7 @@ def evaluate_kafka_connectors(
                         val = batching.get(key)
                         check_manager.add_display(
                             target_name=target,
+                            namespace=namespace,
                             display=Padding(
                                 f"{label}: [bright_blue]{val}[/bright_blue]",
                                 batch_detail_padding,
@@ -1629,10 +1645,10 @@ def evaluate_kafka_connectors(
                         )
 
                 display_routes(
-                    check_manager=check_manager, target=target, routes=spec.get("routes", []), detail_level=detail_level, padding=detail_padding
+                    check_manager=check_manager, target=target, namespace=namespace, routes=spec.get("routes", []), detail_level=detail_level, padding=detail_padding
                 )
 
-    def display_routes(check_manager: CheckManager, target: str, routes: List[Dict[str, str]], detail_level: str, padding: tuple):
+    def display_routes(check_manager: CheckManager, target: str, namespace: str, routes: List[Dict[str, str]], detail_level: str, padding: tuple):
         for route in routes:
             # route key is mqttToKafka | kafkaToMqtt
             route_type = next(iter(route))
@@ -1642,6 +1658,7 @@ def evaluate_kafka_connectors(
             name = route_details.get("name")
             check_manager.add_display(
                 target_name=target,
+                namespace=namespace,
                 display=Padding(
                     f"- Route: {{[bright_blue]{name}[/bright_blue]}}",
                     padding,
@@ -1659,6 +1676,7 @@ def evaluate_kafka_connectors(
 
                 check_manager.add_display(
                     target_name=target,
+                    namespace=namespace,
                     display=Padding(
                         f"Kafka topic: [bright_blue]{kafkaTopic}[/bright_blue]",
                         route_detail_padding,
@@ -1666,6 +1684,7 @@ def evaluate_kafka_connectors(
                 )
                 check_manager.add_display(
                     target_name=target,
+                    namespace=namespace,
                     display=Padding(
                         f"MQTT Topic: [bright_blue]{mqttTopic}[/bright_blue]",
                         route_detail_padding,
@@ -1673,6 +1692,7 @@ def evaluate_kafka_connectors(
                 )
                 check_manager.add_display(
                     target_name=target,
+                    namespace=namespace,
                     display=Padding(
                         f"QOS: [bright_blue]{qos}[/bright_blue]",
                         route_detail_padding,
@@ -1686,6 +1706,7 @@ def evaluate_kafka_connectors(
 
                     check_manager.add_display(
                         target_name=target,
+                        namespace=namespace,
                         display=Padding(
                             f"Kafka Acks: [bright_blue]{kafkaAcks}[/bright_blue]",
                             route_detail_padding,
@@ -1693,6 +1714,7 @@ def evaluate_kafka_connectors(
                     )
                     check_manager.add_display(
                         target_name=target,
+                        namespace=namespace,
                         display=Padding(
                             f"Shared Subscription Group Name: [bright_blue]{groupName}[/bright_blue]",
                             route_detail_padding,
@@ -1700,6 +1722,7 @@ def evaluate_kafka_connectors(
                     )
                     check_manager.add_display(
                         target_name=target,
+                        namespace=namespace,
                         display=Padding(
                             f"Shared Subscription Group Minimum Share: [bright_blue]{groupMinimumShareNumber}[/bright_blue]",
                             route_detail_padding,
@@ -1709,6 +1732,7 @@ def evaluate_kafka_connectors(
                     consumerGroupId = route_details.get("consumerGroupId")
                     check_manager.add_display(
                         target_name=target,
+                        namespace=namespace,
                         display=Padding(
                             f"Consumer Group ID: [bright_blue]{consumerGroupId}[/bright_blue]",
                             route_detail_padding,
@@ -1725,70 +1749,97 @@ def evaluate_kafka_connectors(
 
     # These checks are purely informational, so mark as skipped
     connector_target = "kafkaconnectors.az-edge.com"
-    check_manager.add_target(target_name=connector_target)
+    connector_ref_key = "kafkaConnectorRef"
 
-    connector_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.KAFKA_CONNECTOR, namespace=namespace)
-    connector_resources: List[dict] = connector_objects.get("items", [])
+    connector_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.KAFKA_CONNECTOR)
+    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP)
 
-    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
-        kind=E4kResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP, namespace=namespace
-    )
+    connectors: List[dict] = connector_objects.get("items", [])
+    topic_maps: List[dict] = topic_map_objects.get("items", [])
 
-    topic_map_list: List[dict] = topic_map_objects.get("items", [])
+    connector_namespaces = {res.get("metadata", {}).get("namespace") for res in connectors}
+    topic_map_namespaces = {res.get("metadata", {}).get("namespace") for res in topic_maps}
 
-    connector_refs = {ref.get("spec", {}).get("kafkaConnectorRef") for ref in topic_map_list}
+    connectors_by_namespace = {}
+    topic_maps_by_namespace = {}
 
-    topic_maps_by_connector = {}
-    for connector in connector_refs:
-        topic_maps_by_connector[connector] = [
-            topic for topic in topic_map_list if topic.get("spec", {}).get("kafkaConnectorRef") == connector
+    for namespace in connector_namespaces:
+        connectors_by_namespace[namespace] = [
+            res for res in connectors if res.get("metadata", {}).get("namespace") == namespace
+        ]
+    for namespace in topic_map_namespaces:
+        topic_maps_by_namespace[namespace] = [
+            map for map in topic_maps if map.get("metadata", {}).get("namespace") == namespace
         ]
 
-    if len(connector_resources):
-        check_manager.set_target_conditions(target_name=connector_target, conditions=["status", "valid(spec)"])
-
-        for connector in connector_resources:
-            connector_metadata = connector.get("metadata", {})
-            connector_name = connector_metadata.get("name")
-            connector_topic_maps = topic_maps_by_connector.get(connector_name, [])
-            display_connector_info(
-                check_manager=check_manager,
-                target=connector_target,
-                connector=connector,
-                detail_level=detail_level,
-                padding=connector_padding
-            )
-            display_topic_maps(
-                check_manager=check_manager,
-                target=connector_target,
-                topic_maps=connector_topic_maps,
-                detail_level=detail_level,
-                padding=topic_map_padding,
-            )
-            # remove all topic maps for this connector
-            topic_maps_by_connector.pop(connector_name, None)
-    else:
+    if not connectors:
         _mark_connector_target_as_skipped(
             check_manager=check_manager,
             target=connector_target,
             message="No Kafka Connector resources detected",
             padding=connector_padding
         )
+        for namespace in topic_map_namespaces:
+            _display_invalid_topic_maps(
+                check_manager=check_manager,
+                target=connector_target,
+                namespace=namespace,
+                topic_maps=topic_maps_by_namespace[namespace],
+                ref_key=connector_ref_key,
+                padding=connector_padding
+            )
 
-    flattened_topic_maps = [key for maps in topic_maps_by_connector.values() for key in maps]
-    _display_invalid_topic_maps(
-        check_manager=check_manager,
-        target=connector_target,
-        topic_maps=flattened_topic_maps,
-        ref_key="kafkaConnectorRef",
-        padding=connector_padding
-    )
-    _display_connector_runtime_health(
-        check_manager=check_manager,
-        namespace=namespace,
-        target=connector_target,
-        connectors=connector_resources
-    )
+    for namespace in connectors_by_namespace:
+        connectors = connectors_by_namespace[namespace]
+        topic_maps = topic_maps_by_namespace[namespace]
+
+        check_manager.add_target(target_name=connector_target, namespace=namespace)
+        check_manager.set_target_conditions(target_name=connector_target, conditions=["status", "valid(spec)"])
+        check_manager.add_display(target_name=connector_target, namespace=namespace, display=Padding(
+            f"Kafka Connectors in namespace {{[purple]{namespace}[/purple]}}",
+            (0, 0, 0, 8)
+        ))
+        for connector in connectors:
+            connector_metadata = connector.get("metadata", {})
+            connector_name = connector_metadata.get("name")
+
+            display_connector_info(
+                check_manager=check_manager,
+                target=connector_target,
+                namespace=namespace,
+                connector=connector,
+                detail_level=detail_level,
+                padding=connector_padding
+            )
+
+            connector_topic_maps = [
+                map for map in topic_maps if map.get("spec", {}).get(connector_ref_key) == connector_name
+            ]
+
+            display_topic_maps(
+                check_manager=check_manager,
+                target=connector_target,
+                namespace=namespace,
+                topic_maps=connector_topic_maps,
+                detail_level=detail_level,
+                padding=topic_map_padding,
+            )
+
+        invalid_ref_topic_maps = [map for map in topic_maps if map not in connector_topic_maps]
+        _display_invalid_topic_maps(
+            check_manager=check_manager,
+            target=connector_target,
+            namespace=namespace,
+            topic_maps=invalid_ref_topic_maps,
+            ref_key="kafkaConnectorRef",
+            padding=connector_padding
+        )
+        _display_connector_runtime_health(
+            check_manager=check_manager,
+            namespace=namespace,
+            target=connector_target,
+            connectors=connectors
+        )
 
     return check_manager.as_dict(as_list)
 
