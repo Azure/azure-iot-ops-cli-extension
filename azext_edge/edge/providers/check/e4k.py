@@ -1870,6 +1870,7 @@ def _display_connector_runtime_health(
     if connectors:
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(
                 "\nRuntime Health",
                 (0, 0, 0, padding),
@@ -1890,18 +1891,29 @@ def _display_connector_runtime_health(
 def _display_invalid_topic_maps(
     check_manager: CheckManager,
     target: str,
+    namespace: str,
     topic_maps: List[Dict[str, Any]],
     ref_key: str,
     padding: tuple
 ):
+    if topic_maps:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"Invalid topic maps in namespace {{[purple]{namespace}[/purple]}}",
+                padding,
+            )
+        )
     for map in topic_maps:
         name = map.get("metadata", {}).get("name")
         ref = map.get("spec", {}).get(ref_key)
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(
-                f"\nTopic map {{[red]{name}[/red]}}"
-                f" references invalid connector {{[red]{ref}[/red]}}.",
+                f"\n- Topic map {{[red]{name}[/red]}}"
+                f" references invalid connector {{[red]{ref}[/red]}} in namespace {{[purple]{namespace}[/purple]}}.",
                 padding
             )
         )
