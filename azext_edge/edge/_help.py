@@ -112,22 +112,25 @@ def load_iotedge_help():
         - name: Create an asset using the given custom location.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint-profile {endpoint_profile}
+            --endpoint {endpoint}
 
-        - name: Create an asset using the given custom location and resource group for the custom location. The resource group should be included if there are multiple custom locations with the same name within a subscription.
+        - name: Create an asset using the given custom location and resource group for the custom location. The resource group
+                should be included if there are multiple custom locations with the same name within a subscription.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
-            --custom-location-resource-group {custom_location_resource_group}--endpoint-profile {endpoint_profile}
+            --custom-location-resource-group {custom_location_resource_group}--endpoint {endpoint}
 
-        - name: Create an asset using the given cluster name.  The resource group should be included if there are multiple clusters with the same name within a subscription.
+        - name: Create an asset using the given cluster name.  The resource group should be included if there are multiple clusters
+                with the same name within a subscription.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --cluster-name {cluster_name}
-            --endpoint-profile {endpoint_profile}
+            --endpoint {endpoint}
 
-        - name: Create an asset using the given cluster name. Note that if multiple custom locations are associated with the cluster, the first custom location will be picked.
+        - name: Create an asset using the given cluster name. Note that if multiple custom locations are associated with the cluster,
+                the first custom location will be picked.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --cluster-name {cluster_name}
-            --endpoint-profile {endpoint_profile}
+            --endpoint {endpoint}
 
         - name: Create an asset using the given cluster name and custom location.
           text: >
@@ -137,7 +140,7 @@ def load_iotedge_help():
         - name: Create an asset with custom data point and event defaults.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint-profile {endpoint_profile} --data-point-publishing-interval {data_point_publishing_interval}
+            --endpoint {endpoint} --data-point-publishing-interval {data_point_publishing_interval}
             --data-point-queue-size {data_point_queue_size} --data-point-sampling-interval {data_point_sampling_interval}
             --event-publishing-interval {event_publishing_interval} --event-queue-size {event_queue_size}
             --event-sampling-interval {event_sampling_interval}
@@ -146,14 +149,14 @@ def load_iotedge_help():
                 product code, and software revision.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint-profile {endpoint_profile} --asset-type {asset_type} --description {description}
+            --endpoint {endpoint} --asset-type {asset_type} --description {description}
             --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
             --product-code {product_code} --software-revision {software_revision}
 
         - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number. This asset will have two events.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint-profile {endpoint_profile} --event 'capability_id'={capability_id} 'event_notifier'={event_notifier}
+            --endpoint {endpoint} --event 'capability_id'={capability_id} 'event_notifier'={event_notifier}
             'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval} 'queue_size'={queue_size}
             --event 'event_notifier'={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
             --serial-number {serial_number}
@@ -161,7 +164,7 @@ def load_iotedge_help():
         - name: Create a disabled asset with two data points.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint-profile {endpoint_profile} --disabled --data-point 'capability_id'={capability_id}
+            --endpoint {endpoint} --disabled --data-point 'capability_id'={capability_id}
             'data_source'={data_source} 'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval}
             'queue_size'={queue_size} --data-point 'data_source'={data_source}
     """
@@ -191,7 +194,7 @@ def load_iotedge_help():
         examples:
         - name: Query for assets that are disabled within a given resource group.
           text: >
-            az edge asset query -g {resource_group} --enabled False
+            az edge asset query -g {resource_group} --disabled
         - name: Query for assets that have the given model, manufacturer, and serial number.
           text: >
             az edge asset query --model {model} --manufacturer {manufacturer} --serial-number {serial_number}
@@ -232,19 +235,14 @@ def load_iotedge_help():
             --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
             --product-code {product_code} --software-revision {software_revision}
 
-        - name: Update an asset's events, manufacturer, manufacturer uri, model, serial number. This will overwrite the events
-                with the two given events.
+        - name: Update an asset's manufacturer, manufacturer uri, model, serial number.
           text: >
-            az edge asset update -n {asset_name} -g {resource_group} --event 'capability_id'={capability_id} 'event_notifier'={event_notifier}
-            'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval} 'queue_size'={queue_size}
-            --event 'event_notifier'={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
+            az edge asset update -n {asset_name} -g {resource_group} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
             --serial-number {serial_number}
 
-        - name: Disable an asset and update it's data points. This will overwrite the data points with the two given data points.
+        - name: Disable an asset.
           text: >
-            az edge asset update -n {asset_name} -g {resource_group} --disabled --data-point 'capability_id'={capability_id}
-            'data_source'={data_source} 'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval}
-            'queue_size'={queue_size} --data-point 'data_source'={data_source}
+            az edge asset update -n {asset_name} -g {resource_group} --disabled
     """
 
     helps[
