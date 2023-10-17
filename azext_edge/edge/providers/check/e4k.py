@@ -624,17 +624,8 @@ def evaluate_brokers(
             )
 
             broker_eval_value = {"status": {"status": broker_status, "statusDescription": broker_status_desc}}
-            broker_eval_status = CheckTaskStatus.success.value
+            broker_eval_status = _calculate_connector_status(broker_status)
 
-            if broker_status in [ResourceState.error.value, ResourceState.failed.value]:
-                broker_eval_status = CheckTaskStatus.error.value
-            elif broker_status in [
-                ResourceState.recovering.value,
-                ResourceState.warn.value,
-                ResourceState.starting.value,
-                "N/A",
-            ]:
-                broker_eval_status = CheckTaskStatus.warning.value
             check_manager.add_display(
                 target_name=target_brokers,
                 namespace=namespace,
@@ -894,18 +885,7 @@ def evaluate_mqtt_bridge_connectors(
         bridge_status = bridge.get("status", {})
         bridge_status_level = bridge_status.get("configStatusLevel", "N/A")
 
-        bridge_eval_status = CheckTaskStatus.success.value
-
-        if bridge_status_level in [ResourceState.error.value, ResourceState.failed.value]:
-            bridge_eval_status = CheckTaskStatus.error.value
-        elif bridge_status_level in [
-            ResourceState.recovering.value,
-            ResourceState.warn.value,
-            ResourceState.starting.value,
-            "N/A",
-        ]:
-            bridge_eval_status = CheckTaskStatus.warning.value
-
+        bridge_eval_status = _calculate_connector_status(bridge_status_level)
         check_manager.add_target_eval(
             target_name=target,
             namespace=namespace,
@@ -1198,11 +1178,11 @@ def evaluate_datalake_connectors(
                             detail_padding,
                         ),
                     )
-                if detail_level == ResourceOutputDetailLevel.verbose.value:
-                    delta_table = topic_mapping.get("deltaTable", {})
-                    schema = delta_table.get("schema", [])
-                    route_table = create_schema_table(schema)
-                    check_manager.add_display(target_name=target, namespace=namespace, display=Padding(route_table, padding))
+            if detail_level == ResourceOutputDetailLevel.verbose.value:
+                delta_table = topic_mapping.get("deltaTable", {})
+                schema = delta_table.get("schema", [])
+                route_table = create_schema_table(schema)
+                check_manager.add_display(target_name=target, namespace=namespace, display=Padding(route_table, padding))
 
     def display_connector_info(
         check_manager: CheckManager,
@@ -1216,17 +1196,7 @@ def evaluate_datalake_connectors(
         connector_status = connector.get("status", {})
         connector_status_level = connector_status.get("configStatusLevel", "N/A")
 
-        connector_eval_status = CheckTaskStatus.success.value
-
-        if connector_status_level in [ResourceState.error.value, ResourceState.failed.value]:
-            connector_eval_status = CheckTaskStatus.error.value
-        elif connector_status_level in [
-            ResourceState.recovering.value,
-            ResourceState.warn.value,
-            ResourceState.starting.value,
-            "N/A",
-        ]:
-            connector_eval_status = CheckTaskStatus.warning.value
+        connector_eval_status = _calculate_connector_status(connector_status_level)
 
         check_manager.add_target_eval(
             target_name=target,
@@ -1399,7 +1369,7 @@ def evaluate_datalake_connectors(
     return check_manager.as_dict(as_list)
 
 
-def evaluate_kafka_connectors(
+def evaluate_kafka_connectors(  # noqa: C901
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ):
@@ -1408,17 +1378,7 @@ def evaluate_kafka_connectors(
         connector_name = metadata.get("name")
         connector_status = connector.get("status", {})
         connector_status_level = connector_status.get("configStatusLevel", "N/A")
-        eval_status = CheckTaskStatus.success.value
-
-        if connector_status_level in [ResourceState.error.value, ResourceState.failed.value]:
-            eval_status = CheckTaskStatus.error.value
-        elif connector_status_level in [
-            ResourceState.recovering.value,
-            ResourceState.warn.value,
-            ResourceState.starting.value,
-            "N/A",
-        ]:
-            eval_status = CheckTaskStatus.warning.value
+        eval_status = _calculate_connector_status(connector_status_level)
 
         check_manager.add_target_eval(
             target_name=target,
@@ -1446,9 +1406,8 @@ def evaluate_kafka_connectors(
         clientIdPrefix = spec.get("clientIdPrefix")
         instances = spec.get("instances")
         logLevel = spec.get("logLevel")
-
-        local_broker = spec.get("localBrokerConnection", {})
-        kafka_broker = spec.get("kafkaConnection", {})
+        broker = spec.get("localBrokerConnection")
+        kafka_broker = spec.get("kafkaConnection")
 
         connector_eval_status = (
             CheckTaskStatus.error.value
@@ -1456,7 +1415,7 @@ def evaluate_kafka_connectors(
                 [
                     clientIdPrefix,
                     instances,
-                    local_broker,
+                    broker,
                     kafka_broker,
                 ]
             )
@@ -1484,60 +1443,39 @@ def evaluate_kafka_connectors(
             namespace=namespace,
             display=Padding(f"Instances: [bright_blue]{instances}[/bright_blue]", detail_padding)
         )
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"logLevel: [bright_blue]{logLevel}[/bright_blue]", detail_padding)
+        )
 
         broker_detail_padding = (0, 0, 0, detail_padding[3] + 4)
 
-        # local broker endpoint
-        # TODO - reduce complexity
-        local_broker_endpoint = local_broker.get("endpoint")
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(
-                f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
-                detail_padding,
-            ),
-        )
-        if detail_level != ResourceOutputDetailLevel.summary.value:
-            local_broker_auth = next(iter(local_broker.get("authentication", {})))
-            local_broker_tls = local_broker.get("tls", {}).get("tlsEnabled", False)
-
+        for (label, broker) in [
+            ("Local Broker Connection", broker),
+            ("Kafka Broker Connection", kafka_broker)
+        ]:
+            endpoint = broker.get("endpoint")
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
                 display=Padding(
-                    f"Auth: [bright_blue]{local_broker_auth}[/bright_blue] TLS: [bright_blue]{local_broker_tls}[/bright_blue]",
-                    broker_detail_padding,
+                    f"{label}: [bright_blue]{endpoint}[/bright_blue]",
+                    detail_padding,
                 ),
             )
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"logLevel: [bright_blue]{logLevel}[/bright_blue]", detail_padding)
-            )
+            if detail_level != ResourceOutputDetailLevel.summary.value:
+                auth = next(iter(broker.get("authentication", {})))
+                tls = broker.get("tls", {}).get("tlsEnabled", False)
 
-        # kafka endpoint
-        kafka_broker_endpoint = kafka_broker.get("endpoint")
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(
-                f"Remote Broker Connection: [bright_blue]{kafka_broker_endpoint}[/bright_blue]",
-                detail_padding,
-            ),
-        )
-        if detail_level != ResourceOutputDetailLevel.summary.value:
-            kafka_broker_auth = next(iter(kafka_broker.get("authentication", {})))
-            kafka_broker_tls = kafka_broker.get("tls", {}).get("tlsEnabled", False)
-
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(
-                    f"Auth: [bright_blue]{kafka_broker_auth}[/bright_blue] TLS: [bright_blue]{kafka_broker_tls}[/bright_blue]",
-                    broker_detail_padding,
-                ),
-            )
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(
+                        f"Auth: [bright_blue]{auth}[/bright_blue] TLS: [bright_blue]{tls}[/bright_blue]",
+                        broker_detail_padding,
+                    ),
+                )
 
     def display_topic_maps(check_manager: CheckManager, target: str, namespace: str, topic_maps: List[Dict[str, Any]], detail_level: str, padding: tuple):
         # Show warning if no topic maps
@@ -1892,3 +1830,18 @@ def _mark_connector_target_as_skipped(check_manager: CheckManager, target: str, 
     )
     check_manager.set_target_status(target_name=target, status=CheckTaskStatus.skipped.value)
     check_manager.add_display(target_name=target, display=Padding(message, padding))
+
+
+def _calculate_connector_status(resource_state: str):
+    eval_status = CheckTaskStatus.success.value
+
+    if resource_state in [ResourceState.error.value, ResourceState.failed.value]:
+        eval_status = CheckTaskStatus.error.value
+    elif resource_state in [
+        ResourceState.recovering.value,
+        ResourceState.warn.value,
+        ResourceState.starting.value,
+        "N/A",
+    ]:
+        eval_status = CheckTaskStatus.warning.value
+    return eval_status
