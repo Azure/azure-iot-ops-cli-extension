@@ -118,24 +118,18 @@ def load_iotedge_help():
                 should be included if there are multiple custom locations with the same name within a subscription.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
-            --custom-location-resource-group {custom_location_resource_group}--endpoint {endpoint}
+            --custom-location-resource-group {custom_location_resource_group} --endpoint {endpoint}
 
         - name: Create an asset using the given cluster name.  The resource group should be included if there are multiple clusters
                 with the same name within a subscription.
           text: >
-            az edge asset create -n {asset_name} -g {resource_group} --cluster {cluster}
-            --endpoint {endpoint}
-
-        - name: Create an asset using the given cluster name. Note that if multiple custom locations are associated with the cluster,
-                the first custom location will be picked.
-          text: >
-            az edge asset create -n {asset_name} -g {resource_group} --cluster {cluster}
+            az edge asset create -n {asset_name} -g {resource_group} --cluster {cluster} --cluster-resource-group {cluster_resource_group}
             --endpoint {endpoint}
 
         - name: Create an asset using the given cluster name and custom location.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --cluster {cluster}
-            --custom-location {custom_location}
+            --custom-location {custom_location} --endpoint {endpoint}
 
         - name: Create an asset with custom data point and event defaults.
           text: >
