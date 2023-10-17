@@ -366,20 +366,37 @@ class CheckManager:
     {
         "name":"evaluateBrokerListeners",
         "description": "Evaluate E4K broker listeners",
-        "namespace": "default,
+        "namespace": "default",
+        "status": "warning"
         "targets": {
-            "len(listeners)": {
-                "displays": [],
-                "conditions": ["==1"],
-                "evaluations": [
-                    {
-                        "name"?: "listeners",
-                        "kind"?: "brokerListener
-                        "value"?: 2,
-                        "status": "warning"
-                    }
-                ],
-                "status": "warning"
+            "brokerlisteners.az-edge.com": {
+                "default": {
+                    "displays": [],
+                    "conditions": [
+                        "len(brokerlisteners)>=1",
+                        "spec",
+                        "valid(spec.brokerRef)",
+                        ...
+                    ],
+                    "evaluations": [
+                        {
+                            "name"?: "listener",
+                            "kind"?: "brokerListener
+                            "value"?: {
+                                "spec": { ... },
+                                "valid(spec.brokerRef)": true
+                            },
+                            "status": "warning"
+                        }
+                    ],
+                    "status": "warning"
+                },
+                "other-namespace": {
+                    "displays": [],
+                    "conditions": []
+                    ...
+                }
+            }
             }
         },
         "status": "warning",
