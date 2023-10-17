@@ -126,7 +126,7 @@ def evaluate_diagnostics_service(
         diagnostic_service_resources_by_namespace[namespace] = [
             res for res in diagnostics_service_resources if res.get("metadata", {}).get("namespace") == namespace
         ]
-    
+
     for namespace in diagnostic_service_resources_by_namespace:
         check_manager.add_target(
             target_name=target_diagnostic_service,
@@ -138,7 +138,7 @@ def evaluate_diagnostics_service(
             namespace=namespace,
             display=Padding(
                 f"Diagnostic Service Resources in namespace {{[purple]{namespace}[/purple]}}",
-                (0,0,0,8)
+                (0, 0, 0, 8)
             )
         )
         diagnostics_service_resources = diagnostic_service_resources_by_namespace[namespace]
@@ -193,13 +193,13 @@ def evaluate_diagnostics_service(
             ]:
                 val = diag_service_resource_spec.get(key)
                 check_manager.add_display(
-                target_name=target_diagnostic_service,
-                namespace=namespace,
-                display=Padding(
-                    f"{label}: [bright_blue]{val}[/bright_blue]{suffix or ''}",
-                    (0, 0, 0, 12),
-                ),
-            )
+                    target_name=target_diagnostic_service,
+                    namespace=namespace,
+                    display=Padding(
+                        f"{label}: [bright_blue]{val}[/bright_blue]{suffix or ''}",
+                        (0, 0, 0, 12),
+                    ),
+                )
             check_manager.add_target_eval(
                 target_name=target_diagnostic_service,
                 namespace=namespace,
@@ -576,7 +576,7 @@ def evaluate_brokers(
         ]
 
     for namespace in brokers_by_namespace:
-    
+
         check_manager.add_target(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
         check_manager.add_display(
             target_name=target_brokers,
@@ -1045,7 +1045,7 @@ def evaluate_mqtt_bridge_connectors(
 
     bridge_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR)
     topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP)
-    
+
     bridges: List[dict] = bridge_objects.get("items", [])
     topic_maps: List[dict] = topic_map_objects.get("items", [])
 
@@ -1121,12 +1121,12 @@ def evaluate_mqtt_bridge_connectors(
         invalid_ref_topic_maps = [map for map in topic_maps if map not in bridge_topic_maps]
         _display_invalid_topic_maps(
             check_manager=check_manager,
-                target=bridge_target,
-                namespace=namespace,
-                topic_maps=invalid_ref_topic_maps,
-                ref_key="mqttBridgeConnectorRef",
-                padding=top_level_padding
-            )
+            target=bridge_target,
+            namespace=namespace,
+            topic_maps=invalid_ref_topic_maps,
+            ref_key="mqttBridgeConnectorRef",
+            padding=top_level_padding
+        )
         _display_connector_runtime_health(
             check_manager=check_manager,
             target=bridge_target,
@@ -1134,7 +1134,7 @@ def evaluate_mqtt_bridge_connectors(
             connectors=bridges
         )
 
-    invalid_topic_map_namespaces = {namespace for namespace in topic_map_namespaces if namespace not in bridge_namespaces}  
+    invalid_topic_map_namespaces = {namespace for namespace in topic_map_namespaces if namespace not in bridge_namespaces}
     for namespace in invalid_topic_map_namespaces:
         topic_maps = topic_maps_by_namespace[namespace]
         _display_invalid_topic_maps(
@@ -1402,7 +1402,7 @@ def evaluate_datalake_connectors(
                 padding=top_level_padding,
             )
 
-            connector_topic_maps =  [
+            connector_topic_maps = [
                 map for map in topic_maps if map.get("spec", {}).get(connector_ref_key) == connector_name
             ]
 
