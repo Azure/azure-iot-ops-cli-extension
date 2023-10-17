@@ -817,7 +817,6 @@ def evaluate_brokers(
 # TODO - further consolidate / pull out duplicate connector logic
 def evaluate_mqtt_bridge_connectors(
     as_list: bool = False,
-    namespace: Optional[str]=None,
     detail_level: str = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
     from rich.table import Table
@@ -825,6 +824,7 @@ def evaluate_mqtt_bridge_connectors(
     def add_routes_display(
         check_manager: CheckManager,
         target: str,
+        namespace: str,
         routes: List[Dict[str, str]],
         padding: tuple,
     ) -> None:
@@ -832,6 +832,7 @@ def evaluate_mqtt_bridge_connectors(
             route_name = route.get("name")
             check_manager.add_display(
                 target_name=target,
+                namespace=namespace,
                 display=Padding(
                     f"- Route {{[blue]{route_name}[/blue]}}",
                     padding,
@@ -858,6 +859,7 @@ def evaluate_mqtt_bridge_connectors(
     def display_topic_maps(
         check_manager: CheckManager,
         target: str,
+        namespace: str,
         topic_maps: List[Dict[str, str]],
         detail_level: str,
         padding: tuple,
@@ -866,6 +868,7 @@ def evaluate_mqtt_bridge_connectors(
         if not len(bridge_topic_maps):
             check_manager.add_display(
                 target_name=target,
+                namespace=namespace,
                 display=Padding(
                     "[yellow]No MQTT Bridge Topic Maps reference this resource[/yellow]",
                     padding,
@@ -878,6 +881,7 @@ def evaluate_mqtt_bridge_connectors(
 
             check_manager.add_display(
                 target_name=target,
+                namespace=namespace,
                 display=Padding(f"- Topic Map {{[blue]{name}[/blue]}}", padding),
             )
 
@@ -886,17 +890,18 @@ def evaluate_mqtt_bridge_connectors(
                 routes = topic_map.get("spec", {}).get("routes", [])
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
                     route_table = create_routes_table(routes)
-                    check_manager.add_display(target_name=target, display=Padding(route_table, route_padding))
+                    check_manager.add_display(target_name=target, namespace=namespace, display=Padding(route_table, route_padding))
                     return
                 else:
                     add_routes_display(
                         check_manager=check_manager,
                         target=target,
+                        namespace=namespace,
                         routes=routes,
                         padding=route_padding,
                     )
 
-    def display_bridge_info(check_manager: CheckManager, target: str, bridge: Dict[str, str], detail_level: str, padding: tuple) -> None:
+    def display_bridge_info(check_manager: CheckManager, target: str, namespace: str, bridge: Dict[str, str], detail_level: str, padding: tuple) -> None:
         # bridge resource
         bridge_metadata = bridge.get("metadata", {})
         bridge_name = bridge_metadata.get("name")
@@ -919,6 +924,7 @@ def evaluate_mqtt_bridge_connectors(
 
         check_manager.add_target_eval(
             target_name=target,
+            namespace=namespace,
             status=bridge_eval_status,
             value=bridge_status,
             resource_name=bridge_name,
@@ -930,6 +936,7 @@ def evaluate_mqtt_bridge_connectors(
         bridge_status_text = f" {bridge_status_desc}" if bridge_status_desc else ""
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(
                 f"\n- Bridge {{[bright_blue]{bridge_name}[/bright_blue]}} status {{{decorate_resource_status(bridge_status_level)}}}.{bridge_status_text}",
                 padding,
@@ -951,6 +958,7 @@ def evaluate_mqtt_bridge_connectors(
 
         check_manager.add_target_eval(
             target_name=target,
+            namespace=namespace,
             status=bridge_eval_status,
             value={"spec": spec},
             resource_name=bridge_name,
@@ -962,6 +970,7 @@ def evaluate_mqtt_bridge_connectors(
 
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(
                 f"Bridge instances: [bright_blue]{bridge_instances}[/bright_blue]",
                 bridge_detail_padding,
@@ -969,6 +978,7 @@ def evaluate_mqtt_bridge_connectors(
         )
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(
                 f"Client Prefix: [bright_blue]{client_prefix}[/bright_blue]",
                 bridge_detail_padding,
@@ -979,6 +989,7 @@ def evaluate_mqtt_bridge_connectors(
         local_broker_endpoint = local_broker.get("endpoint")
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(
                 f"Local Broker Connection: [bright_blue]{local_broker_endpoint}[/bright_blue]",
                 bridge_detail_padding,
@@ -989,6 +1000,7 @@ def evaluate_mqtt_bridge_connectors(
             local_broker_tls = local_broker.get("tls", {}).get("tlsEnabled", False)
             check_manager.add_display(
                 target_name=target,
+                namespace=namespace,
                 display=Padding(
                     f"Auth: [bright_blue]{local_broker_auth}[/bright_blue] TLS: [bright_blue]{local_broker_tls}[/bright_blue]",
                     broker_detail_padding,
@@ -1000,6 +1012,7 @@ def evaluate_mqtt_bridge_connectors(
         remote_broker_endpoint = remote_broker.get("endpoint")
         check_manager.add_display(
             target_name=target,
+            namespace=namespace,
             display=Padding(
                 f"Remote Broker Connection: [bright_blue]{remote_broker_endpoint}[/bright_blue]",
                 bridge_detail_padding,
@@ -1012,6 +1025,7 @@ def evaluate_mqtt_bridge_connectors(
 
             check_manager.add_display(
                 target_name=target,
+                namespace=namespace,
                 display=Padding(
                     f"Auth: [bright_blue]{remote_broker_auth}[/bright_blue] TLS: [bright_blue]{remote_broker_tls}[/bright_blue]",
                     broker_detail_padding,
@@ -1022,82 +1036,115 @@ def evaluate_mqtt_bridge_connectors(
         check_name="evalMQTTBridgeConnectors",
         check_desc="Evaluate MQTT Bridge Connectors",
     )
-
-    # MQTT Bridge Connector checks are purely informational, so mark as skipped
-    bridge_target = "mqttbridgeconnectors.az-edge.com"
-    check_manager.add_target(target_name=bridge_target)
-
     top_level_padding = (0, 0, 0, 8)
     bridge_detail_padding = (0, 0, 0, 12)
     broker_detail_padding = (0, 0, 0, 16)
 
-    bridge_objects: dict = E4K_ACTIVE_API.get_resources(
-        kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR
-    )
-    bridge_resources: List[dict] = bridge_objects.get("items", [])
+    bridge_target = "mqttbridgeconnectors.az-edge.com"
+    bridge_ref_key = "mqttBridgeConnectorRef"
 
-    # attempt to map each topic_map to its referenced bridge
-    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(
-        kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP
-    )
-    topic_map_list: List[dict] = topic_map_objects.get("items", [])
-    topic_maps_by_bridge = {}
-    bridge_refs = {ref.get("spec", {}).get("mqttBridgeConnectorRef") for ref in topic_map_list}
+    bridge_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR)
+    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP)
+    
+    bridges: List[dict] = bridge_objects.get("items", [])
+    topic_maps: List[dict] = topic_map_objects.get("items", [])
 
-    for bridge in bridge_refs:
-        topic_maps_by_bridge[bridge] = [
-            topic for topic in topic_map_list if topic.get("spec", {}).get("mqttBridgeConnectorRef") == bridge
+    bridge_namespaces = {res.get("metadata", {}).get("namespace") for res in bridges}
+    topic_map_namespaces = {res.get("metadata", {}).get("namespace") for res in topic_maps}
+
+    bridges_by_namespace = {}
+    topic_maps_by_namespace = {}
+
+    # TODO - optimize set comprehensions
+    for namespace in bridge_namespaces:
+        bridges_by_namespace[namespace] = [
+            res for res in bridges if res.get("metadata", {}).get("namespace") == namespace
+        ]
+    for namespace in topic_map_namespaces:
+        topic_maps_by_namespace[namespace] = [
+            map for map in topic_maps if map.get("metadata", {}).get("namespace") == namespace
         ]
 
-    if len(bridge_resources):
-        check_manager.set_target_conditions(target_name=bridge_target, conditions=["status", "valid(spec)"])
-
-        for bridge in bridge_resources:
-            bridge_metadata = bridge.get("metadata", {})
-            bridge_name = bridge_metadata.get("name")
-            bridge_topic_maps = topic_maps_by_bridge.get(bridge_name, [])
-
-            display_bridge_info(
-                check_manager=check_manager,
-                target=bridge_target,
-                bridge=bridge,
-                detail_level=detail_level,
-                padding=top_level_padding,
-            )
-            # topic maps for this specific bridge
-            display_topic_maps(
-                check_manager=check_manager,
-                target=bridge_target,
-                topic_maps=bridge_topic_maps,
-                detail_level=detail_level,
-                padding=bridge_detail_padding,
-            )
-            # remove topic map by bridge reference
-            topic_maps_by_bridge.pop(bridge_name, None)
-        
-        _display_connector_runtime_health(
-           check_manager=check_manager,
-            namespace=namespace,
-            target=bridge_target,
-            connectors=bridge_resources
-        )
-    else:
+    if not bridges:
         _mark_connector_target_as_skipped(
             check_manager=check_manager,
             target=bridge_target,
             message="No MQTT Bridge Connector resources detected",
             padding=top_level_padding
         )
+        for namespace in topic_map_namespaces:
+            _display_invalid_topic_maps(
+                check_manager=check_manager,
+                target=bridge_target,
+                namespace=namespace,
+                topic_maps=topic_maps_by_namespace[namespace],
+                ref_key=bridge_ref_key,
+                padding=top_level_padding
+            )
 
-    # warn about topic maps with invalid bridge references
-    flattened_topic_maps = [key for maps in topic_maps_by_bridge.values() for key in maps]
-    _display_invalid_topic_maps(
-        check_manager=check_manager,
-        target=bridge_target,
-        topic_maps=flattened_topic_maps,
-        ref_key="mqttBridgeConnectorRef",
-        padding=top_level_padding
-    )
+        return check_manager.as_dict(as_list=as_list)
+
+    for namespace in bridges_by_namespace:
+        bridges = bridges_by_namespace[namespace]
+        topic_maps = topic_maps_by_namespace[namespace]
+
+        check_manager.add_target(target_name=bridge_target, namespace=namespace)
+        check_manager.set_target_conditions(target_name=bridge_target, namespace=namespace, conditions=["status", "valid(spec)"])
+        check_manager.add_display(target_name=bridge_target, namespace=namespace, display=Padding(
+            f"MQTT Bridge Connectors in namespace {{[purple]{namespace}[/purple]}}",
+            (0, 0, 0, 8)
+        ))
+
+        for bridge in bridges:
+
+            bridge_metadata = bridge.get("metadata", {})
+            bridge_name = bridge_metadata.get("name")
+
+            display_bridge_info(
+                check_manager=check_manager,
+                target=bridge_target,
+                namespace=namespace,
+                bridge=bridge,
+                detail_level=detail_level,
+                padding=top_level_padding,
+            )
+            # topic maps for this specific bridge
+            bridge_topic_maps = [map for map in topic_maps if map.get("spec", {}).get(bridge_ref_key) == bridge_name]
+            display_topic_maps(
+                check_manager=check_manager,
+                target=bridge_target,
+                namespace=namespace,
+                topic_maps=bridge_topic_maps,
+                detail_level=detail_level,
+                padding=bridge_detail_padding,
+            )
+        invalid_ref_topic_maps = [map for map in topic_maps if map not in bridge_topic_maps]
+        _display_invalid_topic_maps(
+            check_manager=check_manager,
+                target=bridge_target,
+                namespace=namespace,
+                topic_maps=invalid_ref_topic_maps,
+                ref_key="mqttBridgeConnectorRef",
+                padding=top_level_padding
+            )
+        _display_connector_runtime_health(
+            check_manager=check_manager,
+            target=bridge_target,
+            namespace=namespace,
+            connectors=bridges
+        )
+
+    invalid_topic_map_namespaces = {namespace for namespace in topic_map_namespaces if namespace not in bridge_namespaces}  
+    for namespace in invalid_topic_map_namespaces:
+        topic_maps = topic_maps_by_namespace[namespace]
+        _display_invalid_topic_maps(
+            check_manager=check_manager,
+            target=bridge_target,
+            namespace=namespace,
+            topic_maps=topic_maps,
+            ref_key=bridge_ref_key,
+            padding=top_level_padding
+        )
 
     return check_manager.as_dict(as_list)
 
