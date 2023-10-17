@@ -408,6 +408,9 @@ class CheckManager:
     def set_target_conditions(self, target_name: str, conditions: List[str], namespace: str = ALL_NAMESPACES_TARGET) -> None:
         self.targets[target_name][namespace]["conditions"] = conditions
 
+    def add_target_conditions(self, target_name: str, conditions: List[str], namespace: str = ALL_NAMESPACES_TARGET) -> None:
+        self.targets[target_name][namespace]["conditions"].extend(conditions)
+
     def set_target_status(self, target_name: str, status: str, namespace: str = ALL_NAMESPACES_TARGET) -> None:
         self._process_status(target_name=target_name, namespace=namespace, status=status)
 
@@ -479,11 +482,12 @@ def evaluate_pod_health(
     display_padding: int,
     service_label: str
 ) -> None:
-    check_manager.add_target(target_name=target, namespace=namespace, conditions=["status.phase"])
+    target_service_pod = f"pod/{pod}"
+    check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=[f"{target_service_pod}.status.phase"])
     diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
     if not diagnostics_pods:
-        target_service_pod = f"pod/{pod}"
         check_manager.add_target_eval(
+            resource_name=target_service_pod,
             target_name=target,
             namespace=namespace,
             status=CheckTaskStatus.warning.value,
@@ -508,6 +512,7 @@ def evaluate_pod_health(
                 target_name=target,
                 namespace=namespace,
                 status=status,
+                resource_name=target_service_pod,
                 value={"name": pod_name, "status.phase": pod_phase},
             )
             check_manager.add_display(
