@@ -104,9 +104,9 @@ def load_iotedge_help():
         type: command
         short-summary: Create an asset.
         long-summary: |
-                      Custom location or cluster name can be provided. This command will check for the
-                      existance of the associated custom location and cluster and ensure that both are
-                      set up correctly with the microsoft.deviceregistry.assets extension.
+                      Either custom location or cluster name must be provided. This command will check
+                      for the existance of the associated custom location and cluster and ensure that
+                      both are set up correctly with the microsoft.deviceregistry.assets extension.
 
         examples:
         - name: Create an asset using the given custom location.
@@ -115,12 +115,12 @@ def load_iotedge_help():
             --endpoint {endpoint}
 
         - name: Create an asset using the given custom location and resource group for the custom location. The resource group
-                should be included if there are multiple custom locations with the same name within a subscription.
+                must be included if there are multiple custom locations with the same name within a subscription.
           text: >
             az edge asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
             --custom-location-resource-group {custom_location_resource_group} --endpoint {endpoint}
 
-        - name: Create an asset using the given cluster name. The resource group should be included if there are multiple clusters
+        - name: Create an asset using the given cluster name. The resource group must be included if there are multiple clusters
                 with the same name within a subscription.
           text: >
             az edge asset create --asset {asset} -g {resource_group} --cluster {cluster} --cluster-resource-group {cluster_resource_group}
@@ -147,7 +147,7 @@ def load_iotedge_help():
             --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
             --product-code {product_code} --software-revision {software_revision}
 
-        - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number. This asset will have two events.
+        - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number.
           text: >
             az edge asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
             --endpoint {endpoint} --event capability_id={capability_id} event_notifier={event_notifier}
@@ -164,7 +164,7 @@ def load_iotedge_help():
 
         - name: Create an asset with the given pre-filled values.
           text: >
-            az edge asset create -n MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
+            az edge asset create --asset MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
             --data capability_id=myTagId data_source=nodeId1 name=myTagName1
             observability_mode=counter sampling_interval=10 queue_size=2 --data-point
             data_source=nodeId2 --data-publish-int 1000 --data-queue-size 1 --data-sample-int 30
@@ -288,7 +288,7 @@ def load_iotedge_help():
 
         - name: Add a data point to an asset with the given pre-filled values.
           text: >
-            az edge asset data-point add -n MyAsset -g MyRG --data-source nodeId1 --data-point-name tagName1
+            az edge asset data-point add --asset MyAsset -g MyRG --data-source nodeId1 --data-point-name tagName1
             --capability-id tagId1 --observability-mode log --queue-size 5 --sampling-interval 200
     """
 
@@ -346,7 +346,7 @@ def load_iotedge_help():
 
         - name: Add an event to an asset with the given pre-filled values.
           text: >
-            az edge asset event add -n myAsset -g myRG --event-notifier eventId --event-name eventName
+            az edge asset event add --asset MyAsset -g MyRG --event-notifier eventId --event-name eventName
             --capability-id tagId1 --observability-mode histogram --queue-size 2 --sampling-interval 500
     """
 
