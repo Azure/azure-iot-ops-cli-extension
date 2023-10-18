@@ -134,9 +134,6 @@ def evaluate_lnms(
             f"- Lnm instance {{[bright_blue]{lnm_name}[/bright_blue]}} detected. Configuration status "
         )
 
-        if lnm_name == "level6":
-            import pdb; pdb.set_trace()
-
         if status == "ok":
             lnm_status_text = lnm_status_text + f"{{[green]{status}[/green]}}."
         else:
