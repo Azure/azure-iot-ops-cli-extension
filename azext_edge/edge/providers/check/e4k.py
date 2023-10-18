@@ -137,7 +137,7 @@ def evaluate_diagnostics_service(
             target_name=target_diagnostic_service,
             namespace=namespace,
             display=Padding(
-                f"\nDiagnostic Service Resources in namespace {{[purple]{namespace}[/purple]}}",
+                f"Diagnostic Service Resources in namespace {{[purple]{namespace}[/purple]}}",
                 (0, 0, 0, 8)
             )
         )
@@ -213,7 +213,7 @@ def evaluate_diagnostics_service(
                 target_name=target_service_deployed,
                 namespace=namespace,
                 display=Padding(
-                    "\nService Status",
+                    "Service Status",
                     (0, 0, 0, 8),
                 ),
             )
@@ -339,7 +339,7 @@ def evaluate_broker_listeners(
             target_name=target_listeners,
             namespace=namespace,
             display=Padding(
-                f"\nBroker Listeners in namespace {{[purple]{namespace}[/purple]}}",
+                f"Broker Listeners in namespace {{[purple]{namespace}[/purple]}}",
                 (0, 0, 0, 8)
             )
         )
@@ -443,7 +443,7 @@ def evaluate_broker_listeners(
                         target_name=target_listener_service,
                         namespace=namespace,
                         display=Padding(
-                            f"\nService {{[bright_blue]{listener_spec_service_name}[/bright_blue]}} of type [bright_blue]{listener_spec_service_type}[/bright_blue]",
+                            f"Service {{[bright_blue]{listener_spec_service_name}[/bright_blue]}} of type [bright_blue]{listener_spec_service_type}[/bright_blue]",
                             (0, 0, 0, 8),
                         ),
                     )
@@ -583,7 +583,7 @@ def evaluate_brokers(
             target_name=target_brokers,
             namespace=namespace,
             display=Padding(
-                f"\nE4K Brokers in namespace {{[purple]{namespace}[/purple]}}",
+                f"E4K Brokers in namespace {{[purple]{namespace}[/purple]}}",
                 (0, 0, 0, 8)
             )
         )
@@ -1033,12 +1033,12 @@ def evaluate_mqtt_bridge_connectors(
 
     for namespace in bridges_by_namespace:
         bridges = bridges_by_namespace[namespace]
-        topic_maps = topic_maps_by_namespace[namespace]
+        topic_maps = topic_maps_by_namespace.get(namespace, [])
 
         check_manager.add_target(target_name=bridge_target, namespace=namespace)
         check_manager.set_target_conditions(target_name=bridge_target, namespace=namespace, conditions=["status", "valid(spec)"])
         check_manager.add_display(target_name=bridge_target, namespace=namespace, display=Padding(
-            f"\nMQTT Bridge Connectors in namespace {{[purple]{namespace}[/purple]}}",
+            f"MQTT Bridge Connectors in namespace {{[purple]{namespace}[/purple]}}",
             (0, 0, 0, 8)
         ))
 
@@ -1083,7 +1083,7 @@ def evaluate_mqtt_bridge_connectors(
 
     invalid_topic_map_namespaces = {namespace for namespace in topic_map_namespaces if namespace not in bridge_namespaces}
     for namespace in invalid_topic_map_namespaces:
-        topic_maps = topic_maps_by_namespace[namespace]
+        topic_maps = topic_maps_by_namespace.get(namespace, [])
         _display_invalid_topic_maps(
             check_manager=check_manager,
             target=bridge_target,
@@ -1313,7 +1313,7 @@ def evaluate_datalake_connectors(
 
     for namespace in connectors_by_namespace:
         connectors = connectors_by_namespace[namespace]
-        topic_maps = topic_maps_by_namespace[namespace]
+        topic_maps = topic_maps_by_namespace.get(namespace, [])
 
         check_manager.add_target(target_name=connector_target, namespace=namespace)
         check_manager.set_target_conditions(
@@ -1322,7 +1322,7 @@ def evaluate_datalake_connectors(
             conditions=["status", "valid(spec)", "len(spec.instances)>=1"],
         )
         check_manager.add_display(target_name=connector_target, namespace=namespace, display=Padding(
-            f"\nData Lake Connectors in namespace {{[purple]{namespace}[/purple]}}",
+            f"Data Lake Connectors in namespace {{[purple]{namespace}[/purple]}}",
             (0, 0, 0, 8)
         ))
 
@@ -1697,12 +1697,12 @@ def evaluate_kafka_connectors(  # noqa: C901
 
     for namespace in connectors_by_namespace:
         connectors = connectors_by_namespace[namespace]
-        topic_maps = topic_maps_by_namespace[namespace]
+        topic_maps = topic_maps_by_namespace.get(namespace, [])
 
         check_manager.add_target(target_name=connector_target, namespace=namespace)
         check_manager.set_target_conditions(target_name=connector_target, namespace=namespace, conditions=["status", "valid(spec)"])
         check_manager.add_display(target_name=connector_target, namespace=namespace, display=Padding(
-            f"\nKafka Connectors in namespace {{[purple]{namespace}[/purple]}}",
+            f"Kafka Connectors in namespace {{[purple]{namespace}[/purple]}}",
             (0, 0, 0, 8)
         ))
         for connector in connectors:

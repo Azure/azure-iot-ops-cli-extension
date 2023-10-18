@@ -108,17 +108,24 @@ def process_as_list(console: Console, result: Dict[str, Any]) -> None:
         console.print(Panel(content, title="Check Summary", expand=False))
 
     def _enumerate_displays(checks: List[Dict[str, dict]]) -> None:
-        for c in checks:
-            status = c.get("status")
+        for check in checks:
+            status = check.get("status")
             prefix_emoji = get_emoji_from_status(status)
-            console.print(Padding(f"{prefix_emoji} {c['description']}", (0, 0, 0, 4)))
+            console.print(Padding(f"{prefix_emoji} {check['description']}", (0, 0, 0, 4)))
 
-            targets = c.get("targets", {})
+            targets = check.get("targets", {})
             for type in targets:
                 for namespace in targets[type]:
-                    displays = targets[type][namespace].get("displays", [])
-                    for d in displays:
-                        console.print(d)
+                    namespace_target = targets[type][namespace]
+                    displays = namespace_target.get("displays", [])
+                    status = namespace_target.get("status")
+                    for (idx, disp) in enumerate(displays):
+                        # display status indicator on each 'namespaced' grouping of displays
+                        if all([idx == 0, namespace != ALL_NAMESPACES_TARGET, status]):
+                            prefix_emoji = get_emoji_from_status(status)
+                            console.print(Padding(f"\n{prefix_emoji} {disp.renderable}", (0, 0, 0, 6)))
+                        else:
+                            console.print(disp)
                     target_status = targets[type][namespace].get("status")
                     evaluations = targets[type][namespace].get("evaluations", [])
                     if not evaluations:
