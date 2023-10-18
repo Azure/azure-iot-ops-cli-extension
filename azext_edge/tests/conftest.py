@@ -53,7 +53,11 @@ def mocked_send_raw_request(request, mocker):
     request_mock = mocker.Mock()
     raw_request_result = getattr(request, "param", {})
     request_mock.content = True
-    request_mock.json.return_value = raw_request_result
+    if raw_request_result.get("side_effect"):
+        request_mock.json.side_effect = raw_request_result["side_effect"]
+        request_mock.json.side_effect_values = raw_request_result["side_effect"]
+    if raw_request_result.get("return_value"):
+        request_mock.json.return_value = raw_request_result["return_value"]
     patched = mocker.patch("azure.cli.core.util.send_raw_request", autospec=True)
     patched.return_value = request_mock
     yield patched

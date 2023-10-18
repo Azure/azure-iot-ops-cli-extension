@@ -161,15 +161,14 @@ class AssetProvider():
     ) -> dict:
         # Note the usage of az rest/send_raw_request over resource
         # az resource list/resource_client.resources.list will omit properties
-        from azure.cli.core.util import send_raw_request
+        from ..util.common import _process_raw_request
         uri = f"/subscriptions/{self.subscription}"
         if resource_group_name:
             uri += f"/resourceGroups/{resource_group_name}"
         uri += f"/providers/{self.resource_type}?api-version={API_VERSION}"
-        r = send_raw_request(cli_ctx=self.cmd.cli_ctx, method="GET", url=uri)
-
-        if r.content:
-            return r.json()["value"]
+        return _process_raw_request(
+            cmd=self.cmd, method="GET", url=uri, keyword="value"
+        )
 
     def query(
         self,
@@ -288,8 +287,6 @@ class AssetProvider():
         # Properties
         properties = original_asset.get("properties", {})
 
-        # version cannot be bumped with PUT :D
-
         # Other properties
         _update_properties(
             properties,
@@ -314,7 +311,6 @@ class AssetProvider():
             ev_queue_size=ev_queue_size,
         )
 
-        # TODO: change to patch once supported
         poller = self.resource_client.resources.begin_create_or_update_by_id(
             resource_id=original_asset["id"],
             api_version=API_VERSION,
@@ -351,14 +347,16 @@ class AssetProvider():
         sub_point_type = "dataPoints" if data_source else "events"
         asset["properties"][sub_point_type].append(sub_point)
 
-        # TODO: change to patch once supported
         poller = self.resource_client.resources.begin_create_or_update_by_id(
             resource_id=asset["id"],
             api_version=API_VERSION,
-            parameters=asset
+            parameters=asset,
         )
         poller.wait()
-        return poller.result()["properties"][sub_point_type]
+        asset = poller.result()
+        if not isinstance(asset, dict):
+            asset = asset.as_dict()
+        return asset["properties"][sub_point_type]
 
     def list_sub_points(
         self,
@@ -397,14 +395,16 @@ class AssetProvider():
 
         asset["properties"][sub_point_type] = sub_points
 
-        # TODO: change to patch once supported
         poller = self.resource_client.resources.begin_create_or_update_by_id(
             resource_id=asset["id"],
             api_version=API_VERSION,
             parameters=asset
         )
         poller.wait()
-        return poller.result()["properties"][sub_point_type]
+        asset = poller.result()
+        if not isinstance(asset, dict):
+            asset = asset.as_dict()
+        return asset["properties"][sub_point_type]
 
     def _check_asset_cluster_and_custom_location(
         self,

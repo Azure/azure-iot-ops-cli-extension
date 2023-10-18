@@ -14,10 +14,12 @@ from ...generators import generate_generic_id
 
 @pytest.mark.parametrize("mocked_send_raw_request", [
     {
-        "value": [
-            {"name": generate_generic_id(), "result": generate_generic_id()},
-            {"name": generate_generic_id(), "result": generate_generic_id()}
-        ]
+        "return_value": {
+            "value": [
+                {"name": generate_generic_id(), "result": generate_generic_id()},
+                {"name": generate_generic_id(), "result": generate_generic_id()}
+            ]
+        }
     }
 ], ids=["value"], indirect=True)
 @pytest.mark.parametrize("resource_group", [None, generate_generic_id()])

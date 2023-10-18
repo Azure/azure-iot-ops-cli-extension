@@ -66,19 +66,39 @@ def build_query(cmd, subscription_id: str, custom_query: Optional[str] = None, *
     if kwargs.get("additional_project"):
         payload["query"] += f', {kwargs.get("additional_project")}'
 
-    return _process_query(cmd, url, "POST", payload)
+    return _process_raw_request(cmd, url, "POST", payload)
 
 
-def _process_query(cmd, url: str, method: str, payload: dict):
-    # since we don't want to download the resourcegraph sdk - we are stuck with this
+def _process_raw_request(
+    cmd, url: str, method: str, payload: Optional[dict] = None, keyword: str = "data"
+):
+    # since I don't want to download the resourcegraph sdk - we are stuck with this
+    # note that we are trying to limit dependencies
     from azure.cli.core.util import send_raw_request
 
-    r = send_raw_request(
-        cli_ctx=cmd.cli_ctx, url=url, method=method, body=json.dumps(payload)
-    )
+    result = []
+    skip_token = "sentinel"
+    while skip_token:
+        try:
+            body = json.dumps(payload) if payload is not None else None
+            res = send_raw_request(
+                cli_ctx=cmd.cli_ctx, url=url, method=method, body=body
+            )
+        except Exception as e:
+            raise e
+        if not res.content:
+            return
+        json_response = res.json()
+        result.extend(json_response[keyword])
+        skip_token = json_response.get("$skipToken")
+        if skip_token:
+            if not payload:
+                payload = {"options": {}}
+            if "options" not in payload:
+                payload["options"] = {}
+            payload["options"]["$skipToken"] = skip_token
 
-    if r.content:
-        return r.json()["data"]
+    return result
 
 
 def get_timestamp_now_utc(format: str = "%Y-%m-%dT%H:%M:%S") -> str:

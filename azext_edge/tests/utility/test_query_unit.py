@@ -28,7 +28,7 @@ def test_build_query(
 ):
     subscription_id = generate_generic_id()
     expected_result = generate_generic_id()
-    mocked_process_query = mocker.patch("azext_edge.edge.util.common._process_query")
+    mocked_process_query = mocker.patch("azext_edge.edge.util.common._process_raw_request")
     mocked_process_query.return_value = expected_result
 
     result = build_query(
@@ -65,34 +65,120 @@ def test_build_query(
 
 @pytest.mark.parametrize("mocked_send_raw_request", [
     {
-        "data": [
-            {"name": generate_generic_id(), "result": generate_generic_id()},
-            {"name": generate_generic_id(), "result": generate_generic_id()}
-        ]
+        "return_value": {
+            "data": [
+                {"name": generate_generic_id(), "result": generate_generic_id()},
+                {"name": generate_generic_id(), "result": generate_generic_id()}
+            ]
+        }
+    },
+    {
+        "return_value": {
+            "value": [
+                {"name": generate_generic_id(), "result": generate_generic_id()},
+                {"name": generate_generic_id(), "result": generate_generic_id()}
+            ]
+        }
     }
-], ids=["data"], indirect=True)
+], ids=["data", "value"], indirect=True)
 @pytest.mark.parametrize("url", [
     '/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01',
     generate_generic_id()
 ])
 @pytest.mark.parametrize("method", ["POST", generate_generic_id()])
 @pytest.mark.parametrize("payload", [
+    None,
     {},
     {generate_generic_id(): generate_generic_id()}
 ])
-def test_process_query(mocked_cmd, mocked_send_raw_request, url, method, payload):
-    from azext_edge.edge.util.common import _process_query
+def test_process_raw_request(mocked_cmd, mocked_send_raw_request, url, method, payload):
+    from azext_edge.edge.util.common import _process_raw_request
+    keyword = list(mocked_send_raw_request.return_value.json.return_value.keys())[0]
 
-    result = _process_query(
+    result = _process_raw_request(
         mocked_cmd,
         url=url,
         method=method,
-        payload=payload
+        payload=payload,
+        keyword=keyword
     )
-    assert result == mocked_send_raw_request.return_value.json.return_value["data"]
+    assert result == mocked_send_raw_request.return_value.json.return_value[keyword]
     mocked_send_raw_request.assert_called_once()
     call_kwargs = mocked_send_raw_request.call_args.kwargs
     assert call_kwargs["cli_ctx"] == mocked_cmd.cli_ctx
     assert call_kwargs["method"] == method
     assert call_kwargs["url"] == url
-    assert call_kwargs["body"] == json.dumps(payload)
+    assert call_kwargs["body"] == (json.dumps(payload) if payload is not None else None)
+
+
+@pytest.mark.parametrize("mocked_send_raw_request", [
+    {
+        "side_effect": [{
+            "data": [
+                {"result": generate_generic_id()},
+                {"result": generate_generic_id()}
+            ]
+        }]
+    },
+    {
+        "side_effect": [
+            {
+                "$skipToken": generate_generic_id(),
+                "data": [
+                    {"result": generate_generic_id()},
+                    {"result": generate_generic_id()}
+                ]
+            },
+            {
+                "$skipToken": generate_generic_id(),
+                "data": [
+                    {"result": generate_generic_id()},
+                    {"result": generate_generic_id()}
+                ]
+            },
+            {
+                "data": [
+                    {"result": generate_generic_id()},
+                    {"result": generate_generic_id()}
+                ]
+            }
+        ]
+    }
+], ids=["one_page", "three_pages"], indirect=True)
+@pytest.mark.parametrize("payload", [
+    None,
+    {},
+    {generate_generic_id(): generate_generic_id()}
+])
+def test_process_raw_request_paging(mocked_cmd, mocked_send_raw_request, payload):
+    from azext_edge.edge.util.common import _process_raw_request
+    keyword = "data"
+    url = generate_generic_id()
+    method = generate_generic_id()
+    expected_result = []
+    side_effects = mocked_send_raw_request.return_value.json.side_effect_values
+    for effect in side_effects:
+        expected_result.extend(effect[keyword])
+
+    result = _process_raw_request(
+        mocked_cmd,
+        url=url,
+        method=method,
+        payload=payload,
+        keyword=keyword
+    )
+    assert result == expected_result
+    mocked_send_raw_request.call_count == len(side_effects)
+    skip_token = None
+    for i in range(len(side_effects)):
+        effect = side_effects[i]
+        call_kwargs = mocked_send_raw_request.call_args_list[i].kwargs
+        assert call_kwargs["cli_ctx"] == mocked_cmd.cli_ctx
+        assert call_kwargs["method"] == method
+        assert call_kwargs["url"] == url
+        if payload is None and skip_token is None:
+            assert call_kwargs["body"] is None
+        else:
+            loaded_body = json.loads(call_kwargs["body"])
+            assert loaded_body.get("options", {}).get("$skipToken") == skip_token
+        skip_token = effect.get("$skipToken")
