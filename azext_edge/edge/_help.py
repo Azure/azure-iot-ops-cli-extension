@@ -158,7 +158,7 @@ def load_iotedge_help():
         - name: Create a disabled asset with two data points.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --disabled --data-point capability_id={capability_id}
+            --endpoint {endpoint} --disable --data-point capability_id={capability_id}
             data_source={data_source} name={name} observability_mode={observability_mode} sampling_interval={sampling_interval}
             queue_size={queue_size} --data-point data_source={data_source}
 
