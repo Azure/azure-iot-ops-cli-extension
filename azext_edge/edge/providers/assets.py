@@ -21,7 +21,6 @@ from ..common import ResourceTypeMapping
 
 logger = get_logger(__name__)
 
-# API_VERSION = "2023-06-21-preview"
 API_VERSION = "2023-08-01-preview"
 # API_VERSION = "2023-10-01-preview"
 
