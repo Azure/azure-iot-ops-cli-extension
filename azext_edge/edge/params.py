@@ -314,7 +314,7 @@ def load_iotedge_arguments(self, _):
     with self.argument_context("edge asset") as context:
         context.argument(
             "asset_name",
-            options_list=["--asset-name", "-n"],
+            options_list=["--asset"],
             help="Asset name.",
         )
         context.argument(
@@ -340,17 +340,17 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "cluster_name",
             options_list=["--cluster", "-c"],
-            help="Custom location used to associate asset with cluster.",
+            help="Cluster to associate the asset with.",
         )
         context.argument(
             "cluster_resource_group",
             options_list=["--cluster-resource-group", "--crg"],
-            help="Resource group for custom location.",
+            help="Resource group for cluster.",
         )
         context.argument(
             "cluster_subscription",
             options_list=["--cluster-subscription", "--cs"],
-            help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
+            help="Subscription Id for cluster. If not provided, asset subscription Id will be used.",
         )
         context.argument(
             "asset_type",
@@ -360,14 +360,14 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "data_points",
-            options_list=["--data-point", "--dp"],
+            options_list=["--data"],
             nargs="+",
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the data point to create. "
             "The following key values are supported: `capability_id`, `data_source` (required), `name`, "
             "`observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` (int), "
             "`queue_size` (int). "
-            "--data-point can be used 1 or more times. Review help examples for full parameter usage",
+            "--data can be used 1 or more times. Review help examples for full parameter usage",
             arg_group="Additional Info",
         )
         context.argument(
@@ -397,7 +397,7 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "events",
-            options_list=["--event", "-e"],
+            options_list=["--event"],
             nargs="+",
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the event to create. "
@@ -457,31 +457,31 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "dp_publishing_interval",
-            options_list=["--data-point-publishing-interval", "--dppi"],
+            options_list=["--data-publish-int", "--dpi"],
             help="Default publishing interval for data points.",
             arg_group="Data Point Default",
         )
         context.argument(
             "dp_sampling_interval",
-            options_list=["--data-point-sampling-interval", "--dpsi"],
+            options_list=["--data-sample-int", "--dsi"],
             help="Default sampling interval (in milliseconds) for data points.",
             arg_group="Data Point Default",
         )
         context.argument(
             "dp_queue_size",
-            options_list=["--data-point-queue-size", "--dpqs"],
+            options_list=["--data-queue-size", "--dqs"],
             help="Default queue size for data points.",
             arg_group="Data Point Default",
         )
         context.argument(
             "ev_publishing_interval",
-            options_list=["--event-publishing-interval", "--epi"],
+            options_list=["--event-publish-int", "--epi"],
             help="Default publishing interval for events.",
             arg_group="Event Default",
         )
         context.argument(
             "ev_sampling_interval",
-            options_list=["--event-sampling-interval", "--esi"],
+            options_list=["--event-sample-int", "--esi"],
             help="Default sampling interval (in milliseconds) for events.",
             arg_group="Event Default",
         )

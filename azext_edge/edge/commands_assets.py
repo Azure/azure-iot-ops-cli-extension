@@ -254,7 +254,8 @@ def remove_asset_data_point(
 ):
     if not any([data_source, name]):
         raise RequiredArgumentMissingError(
-            "Provide either the data source via --data-source or name via --name to identify the data point to remove."
+            "Provide either the data source via --data-source or name via --data-point-name to identify "
+            "the data point to remove."
         )
     asset_provider = AssetProvider(cmd)
     return asset_provider.remove_sub_point(
@@ -313,7 +314,8 @@ def remove_asset_event(
 ):
     if not any([event_notifier, name]):
         raise RequiredArgumentMissingError(
-            "Provide either the event notifier via --event-notifier or name via --name to identify the event to remove."
+            "Provide either the event notifier via --event-notifier or name via --event-name to identify "
+            "the event to remove."
         )
     asset_provider = AssetProvider(cmd)
     return asset_provider.remove_sub_point(

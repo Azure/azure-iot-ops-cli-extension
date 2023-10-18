@@ -15,7 +15,7 @@ from azext_edge.edge.commands_assets import (
 )
 from azext_edge.edge.providers.assets import API_VERSION
 
-from . import (
+from .conftest import (
     MINIMUM_ASSET,
     FULL_ASSET
 )
@@ -173,5 +173,5 @@ def test_remove_asset_event_error(mocked_cmd):
             asset_name=generate_generic_id(),
             resource_group_name=generate_generic_id()
         )
-    assert e.value.error_msg == "Provide either the event notifier via --event-notifier or name via --name"\
-        " to identify the event to remove."
+    assert e.value.error_msg == "Provide either the event notifier via --event-notifier or name via "\
+        "--event-name to identify the event to remove."

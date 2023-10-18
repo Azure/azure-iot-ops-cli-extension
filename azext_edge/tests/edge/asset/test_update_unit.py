@@ -9,7 +9,7 @@ import pytest
 from azext_edge.edge.commands_assets import update_asset
 from azext_edge.edge.providers.assets import API_VERSION
 
-from . import (
+from .conftest import (
     MINIMUM_ASSET,
     FULL_ASSET
 )

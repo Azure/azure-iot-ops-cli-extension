@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 import pytest
-from . import ASSETS_PATH
+from ...generators import generate_generic_id
 
 
 @pytest.fixture()
@@ -28,3 +28,112 @@ def asset_helpers_fixture(mocker, request):
     patched_up.side_effect = mock_update_properties
     helper_fixtures.append(patched_up)
     yield helper_fixtures
+
+
+# Paths for mocking
+ASSETS_PATH = "azext_edge.edge.providers.assets"
+
+# Generic objects
+MINIMUM_ASSET = {
+    "extendedLocation": {
+        "name": generate_generic_id(),
+        "type": generate_generic_id(),
+    },
+    "id": generate_generic_id(),
+    "location": "westus3",
+    "name": "props-test-min",
+    "properties": {
+        "connectivityProfileUri": generate_generic_id(),
+        "dataPoints": [],
+        "defaultDataPointsConfiguration": "{\"publishingInterval\": 1000, \"samplingInterval\": 500, "
+        "\"queueSize\": 1}",
+        "defaultEventsConfiguration": "{\"publishingInterval\": 1000, \"samplingInterval\": 500, \"queueSize\": 1}",
+        "displayName": "props-test-min",
+        "enabled": True,
+        "events": [],
+        "externalAssetId": generate_generic_id(),
+        "provisioningState": "Accepted",
+        "uuid": generate_generic_id(),
+        "version": 1
+    },
+    "resourceGroup": generate_generic_id(),
+    "type": "microsoft.deviceregistry/assets"
+}
+FULL_ASSET = {
+    "extendedLocation": {
+        "name": generate_generic_id(),
+        "type": generate_generic_id(),
+    },
+    "id": generate_generic_id(),
+    "location": "westus3",
+    "name": "props-test-max",
+    "properties": {
+        "assetType": generate_generic_id(),
+        "connectivityProfileUri": generate_generic_id(),
+        "dataPoints": [
+            {
+                "capabilityId": generate_generic_id(),
+                "dataPointConfiguration": "{\"samplingInterval\": 100, \"queueSize\": 50}",
+                "dataSource": generate_generic_id(),
+                "name": generate_generic_id(),
+                "observabilityMode": generate_generic_id()
+            },
+            {
+                "dataPointConfiguration": "{}",
+                "dataSource": generate_generic_id(),
+            },
+            {
+                "capabilityId": generate_generic_id(),
+                "dataPointConfiguration": "{\"samplingInterval\": 100}",
+                "dataSource": generate_generic_id(),
+                "name": generate_generic_id(),
+                "observabilityMode": generate_generic_id()
+            }
+        ],
+        "defaultDataPointsConfiguration": "{\"publishingInterval\": \"100\", \"samplingInterval\": \"10\","
+        " \"queueSize\": \"2\"}",
+        "defaultEventsConfiguration": "{\"publishingInterval\": \"200\", \"samplingInterval\": \"20\", "
+        "\"queueSize\": \"3\"}",
+        "description": generate_generic_id(),
+        "displayName": "props-test-max",
+        "documentationUri": generate_generic_id(),
+        "enabled": False,
+        "events": [
+            {
+                "capabilityId": generate_generic_id(),
+                "eventConfiguration": "{\"samplingInterval\": 100}",
+                "eventNotifier": generate_generic_id(),
+                "name": generate_generic_id(),
+                "observabilityMode": generate_generic_id()
+            },
+            {
+                "eventConfiguration": "{}",
+                "eventNotifier": generate_generic_id(),
+            },
+            {
+                "capabilityId": generate_generic_id(),
+                "eventConfiguration": "{\"samplingInterval\": 100, \"queueSize\": 50}",
+                "eventNotifier": generate_generic_id(),
+                "name": generate_generic_id(),
+                "observabilityMode": generate_generic_id()
+            },
+        ],
+        "externalAssetId": generate_generic_id(),
+        "hardwareRevision": generate_generic_id(),
+        "manufacturer": generate_generic_id(),
+        "manufacturerUri": generate_generic_id(),
+        "model": generate_generic_id(),
+        "productCode": generate_generic_id(),
+        "provisioningState": "Failed",
+        "serialNumber": generate_generic_id(),
+        "softwareRevision": generate_generic_id(),
+        "uuid": generate_generic_id(),
+        "version": 1
+    },
+    "resourceGroup": generate_generic_id(),
+    "tags": {
+        generate_generic_id(): generate_generic_id(),
+        generate_generic_id(): generate_generic_id()
+    },
+    "type": "microsoft.deviceregistry/assets"
+}

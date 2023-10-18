@@ -15,7 +15,7 @@ from azext_edge.edge.common import ResourceTypeMapping
 from azext_edge.edge.providers.assets import API_VERSION
 
 from ...generators import generate_generic_id
-from . import ASSETS_PATH
+from .conftest import ASSETS_PATH
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [{
