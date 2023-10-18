@@ -45,7 +45,6 @@ from ..base import get_namespaced_service
 def check_e4k_deployment(
     console: Console,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    namespace: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
     as_list: bool = False,
@@ -56,12 +55,7 @@ def check_e4k_deployment(
         check_pre_deployment(result, as_list)
 
     if post_deployment:
-        if not namespace:
-            from ..base import DEFAULT_NAMESPACE
-
-            namespace = DEFAULT_NAMESPACE
         result["postDeployment"] = []
-
         # check post deployment according to edge_service type
         check_e4k_post_deployment(
             detail_level=detail_level,

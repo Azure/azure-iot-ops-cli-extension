@@ -35,7 +35,6 @@ def check(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     pre_deployment_checks: Optional[bool] = None,
     post_deployment_checks: Optional[bool] = None,
-    namespace: Optional[str] = None,
     as_object=None,
     context_name=None,
     edge_service: str = "e4k",
@@ -54,7 +53,6 @@ def check(
     return run_checks(
         edge_service=edge_service,
         detail_level=detail_level,
-        namespace=namespace,
         as_list=not as_object,
         pre_deployment=run_pre,
         post_deployment=run_post,

@@ -22,7 +22,6 @@ console = Console(width=100, highlight=False)
 def run_checks(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     edge_service: str = SupportForEdgeServiceType.e4k.value,
-    namespace: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
     as_list: bool = False,
@@ -45,7 +44,6 @@ def run_checks(
             result = check_e4k_deployment(
                 console=console,
                 detail_level=detail_level,
-                namespace=namespace,
                 pre_deployment=pre_deployment,
                 post_deployment=post_deployment,
                 result=result,
@@ -56,7 +54,6 @@ def run_checks(
             result = check_bluefin_deployment(
                 console=console,
                 detail_level=detail_level,
-                namespace=namespace,
                 pre_deployment=pre_deployment,
                 post_deployment=post_deployment,
                 result=result,
