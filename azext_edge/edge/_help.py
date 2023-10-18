@@ -166,7 +166,7 @@ def load_iotedge_help():
           text: >
             az edge asset create --asset MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
             --data capability_id=myTagId data_source=nodeId1 name=myTagName1
-            observability_mode=counter sampling_interval=10 queue_size=2 --data-point
+            observability_mode=counter sampling_interval=10 queue_size=2 --data
             data_source=nodeId2 --data-publish-int 1000 --data-queue-size 1 --data-sample-int 30
             --asset-type customAsset --description 'Description for a test asset.'
             --documentation-uri www.help.com --external-asset-id 000-000-0000 --hardware-revision 10.0
