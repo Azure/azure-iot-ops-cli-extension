@@ -125,7 +125,7 @@ def evaluate_lnms(
     for lnm in lnms:
         lnm_name = lnm["metadata"]["name"]
         lnm_names.append(lnm_name)
-        status = lnm["status"]["configStatusLevel"]
+        status = lnm.get("status", {}).get("configStatusLevel", "undefined")
 
         lnm_status_eval_value = {"status.configStatusLevel": status}
         lnm_status_eval_status = CheckTaskStatus.success.value
@@ -134,12 +134,15 @@ def evaluate_lnms(
             f"- Lnm instance {{[bright_blue]{lnm_name}[/bright_blue]}} detected. Configuration status "
         )
 
-        if status == "warn":
-            lnm_status_eval_status = CheckTaskStatus.warning.value
-            status_description = lnm["status"].get("configStatusDescription", "")
-            lnm_status_text = lnm_status_text + f"{{[yellow]{status}[/yellow]}}. [yellow]{status_description}[/yellow]"
-        else:
+        if lnm_name == "level6":
+            import pdb; pdb.set_trace()
+
+        if status == "ok":
             lnm_status_text = lnm_status_text + f"{{[green]{status}[/green]}}."
+        else:
+            lnm_status_eval_status = CheckTaskStatus.warning.value
+            status_description = lnm.get("status", {}).get("configStatusDescription", "")
+            lnm_status_text = lnm_status_text + f"{{[yellow]{status}[/yellow]}}. [yellow]{status_description}[/yellow]"
 
         add_display_and_eval(
             check_manager=check_manager,

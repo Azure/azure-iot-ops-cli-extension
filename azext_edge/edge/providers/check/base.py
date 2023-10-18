@@ -566,6 +566,7 @@ def process_property_by_type(
                 display_text = f"{prop}: [cyan]{value}[/cyan]"
                 check_manager.add_display(target_name=target_name, display=Padding(display_text, (0, 0, 0, padding_left + 4)))
     elif isinstance(properties, str) or isinstance(properties, bool) or isinstance(properties, int):
+        properties = str(properties) if properties else "undefined"
         display_text = f"{display_name}: [cyan]{properties}[/cyan]"
         check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
     elif isinstance(properties, dict):

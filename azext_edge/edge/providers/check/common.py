@@ -119,8 +119,6 @@ LNM_ALLOWLIST_PROPERTIES = [
 ]
 
 LNM_IMAGE_PROPERTIES = [
-    ("pullPolicy", "[bright_blue]Pull Policy[/bright_blue]", True),
-    ("pullSecrets", "[bright_blue]Pull Secrets[/bright_blue]", True),
     ("repository", "[bright_blue]Repository[/bright_blue]", True),
     ("tag", "[bright_blue]Tag[/bright_blue]", True),
 ]
