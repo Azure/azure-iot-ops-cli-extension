@@ -8,8 +8,8 @@
 CLI parameter definitions.
 """
 
-from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type
 from knack.arguments import CaseInsensitiveList
+from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
 from .common import SupportForEdgeServiceType
 from .providers.edge_api import E4kResourceKinds
@@ -309,4 +309,249 @@ def load_iotedge_arguments(self, _):
             "If no target name is provided one will be generated in the form "
             "'{cluster_name}-azedge-init-target'.",
             arg_group="Orchestration",
+        )
+
+    with self.argument_context("edge asset") as context:
+        context.argument(
+            "asset_name",
+            options_list=["--asset"],
+            help="Asset name.",
+        )
+        context.argument(
+            "endpoint",
+            options_list=["--endpoint"],
+            help="Endpoint Uri.",
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location", "--cl"],
+            help="Custom location used to associate asset with cluster.",
+        )
+        context.argument(
+            "custom_location_resource_group",
+            options_list=["--custom-location-resource-group", "--clrg"],
+            help="Resource group for custom location.",
+        )
+        context.argument(
+            "custom_location_subscription",
+            options_list=["--custom-location-subscription", "--cls"],
+            help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
+        )
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster", "-c"],
+            help="Cluster to associate the asset with.",
+        )
+        context.argument(
+            "cluster_resource_group",
+            options_list=["--cluster-resource-group", "--crg"],
+            help="Resource group for cluster.",
+        )
+        context.argument(
+            "cluster_subscription",
+            options_list=["--cluster-subscription", "--cs"],
+            help="Subscription Id for cluster. If not provided, asset subscription Id will be used.",
+        )
+        context.argument(
+            "asset_type",
+            options_list=["--asset-type", "--at"],
+            help="Asset type.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "data_points",
+            options_list=["--data"],
+            nargs="+",
+            action="append",
+            help="Space-separated key=value pairs corresponding to properties of the data point to create. "
+            "The following key values are supported: `capability_id`, `data_source` (required), `name`, "
+            "`observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` (int), "
+            "`queue_size` (int). "
+            "--data can be used 1 or more times. Review help examples for full parameter usage",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "description",
+            options_list=["--description", "-d"],
+            help="Description.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "display_name",
+            options_list=["--display-name", "--dn"],
+            help="Display name.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "disabled",
+            options_list=["--disable"],
+            help="Disable an asset.",
+            arg_group="Additional Info",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "documentation_uri",
+            options_list=["--documentation-uri", "--du"],
+            help="Documentation URI.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "events",
+            options_list=["--event"],
+            nargs="+",
+            action="append",
+            help="Space-separated key=value pairs corresponding to properties of the event to create. "
+            "The following key values are supported: `capability_id`, `event_notifier` (required), "
+            "`name`, `observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` "
+            "(int), `queue_size` (int). "
+            "--event can be used 1 or more times. Review help examples for full parameter usage",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "external_asset_id",
+            options_list=["--external-asset-id", "--eai"],
+            help="External asset Id.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "hardware_revision",
+            options_list=["--hardware-revision", "--hr"],
+            help="Hardware revision.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "manufacturer",
+            options_list=["--manufacturer"],
+            help="Manufacturer.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "manufacturer_uri",
+            options_list=["--manufacturer-uri", "--mu"],
+            help="Manufacturer URI.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "model",
+            options_list=["--model"],
+            help="Model.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "product_code",
+            options_list=["--product-code", "--pc"],
+            help="Product code.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "serial_number",
+            options_list=["--serial-number", "--sn"],
+            help="Serial number.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "software_revision",
+            options_list=["--software-revision", "--sr"],
+            help="Software revision.",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "dp_publishing_interval",
+            options_list=["--data-publish-int", "--dpi"],
+            help="Default publishing interval for data points.",
+            arg_group="Data Point Default",
+        )
+        context.argument(
+            "dp_sampling_interval",
+            options_list=["--data-sample-int", "--dsi"],
+            help="Default sampling interval (in milliseconds) for data points.",
+            arg_group="Data Point Default",
+        )
+        context.argument(
+            "dp_queue_size",
+            options_list=["--data-queue-size", "--dqs"],
+            help="Default queue size for data points.",
+            arg_group="Data Point Default",
+        )
+        context.argument(
+            "ev_publishing_interval",
+            options_list=["--event-publish-int", "--epi"],
+            help="Default publishing interval for events.",
+            arg_group="Event Default",
+        )
+        context.argument(
+            "ev_sampling_interval",
+            options_list=["--event-sample-int", "--esi"],
+            help="Default sampling interval (in milliseconds) for events.",
+            arg_group="Event Default",
+        )
+        context.argument(
+            "ev_queue_size",
+            options_list=["--event-queue-size", "--eqs"],
+            help="Default queue size for events.",
+            arg_group="Event Default",
+        )
+        context.argument(
+            "tags",
+            options_list=["--tags"],
+            help="Asset tags. Property bag in key-value pairs with the following format: a=b c=d",
+            arg_type=tags_type,
+        )
+        context.argument(
+            "observability_mode",
+            options_list=["--observability-mode", "--om"],
+            help="Observability mode.",
+        )
+        context.argument(
+            "queue_size",
+            options_list=["--queue-size", "--qs"],
+            help="Custom queue size.",
+        )
+        context.argument(
+            "sampling_interval",
+            options_list=["--sampling-interval", "--si"],
+            help="Custom sampling interval (in milliseconds).",
+        )
+
+    with self.argument_context("edge asset query") as context:
+        context.argument(
+            "disabled",
+            options_list=["--disabled"],
+            help="State of asset.",
+            arg_group="Additional Info",
+            arg_type=get_three_state_flag(),
+        )
+
+    with self.argument_context("edge asset data-point") as context:
+        context.argument(
+            "capability_id",
+            options_list=["--capability-id", "--ci"],
+            help="Capability Id. If not provided, data point name will be used.",
+        )
+        context.argument(
+            "name",
+            options_list=["--data-point-name", "--dpn"],
+            help="Data point name.",
+        )
+        context.argument(
+            "data_source",
+            options_list=["--data-source", "--ds"],
+            help="Data source.",
+        )
+
+    with self.argument_context("edge asset event") as context:
+        context.argument(
+            "capability_id",
+            options_list=["--capability-id", "--ci"],
+            help="Capability Id. If not provided, event name will be used.",
+        )
+        context.argument(
+            "name",
+            options_list=["--event-name", "--evn"],
+            help="Event name.",
+        )
+        context.argument(
+            "event_notifier",
+            options_list=["--event-notifier", "--en"],
+            help="Event notifier.",
         )

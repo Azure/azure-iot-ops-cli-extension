@@ -103,6 +103,16 @@ class DeployablePasVersions(ListableEnum):
     v012 = "0.1.2"
 
 
+class ResourceTypeMapping(Enum):
+    """
+    Resource type mappings for graph queries.
+    """
+    asset = "Microsoft.DeviceRegistry/assets"
+    custom_location = "Microsoft.ExtendedLocation/customLocations"
+    connected_cluster = "Microsoft.Kubernetes/connectedClusters"
+    cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
+
+
 # E4K runtime attributes
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"

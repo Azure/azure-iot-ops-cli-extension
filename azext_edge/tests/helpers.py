@@ -4,6 +4,15 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from .common import assemble_nargs_to_dict, build_query, scantree, get_timestamp_now_utc, set_log_level
+from typing import Dict
 
-__all__ = ["assemble_nargs_to_dict", "build_query", "scantree", "get_timestamp_now_utc", "set_log_level"]
+
+def parse_rest_command(rest_command: str) -> Dict[str, str]:
+    """Simple az rest command parsing."""
+    assert rest_command.startswith("rest")
+    rest_list = rest_command.split("--")[1:]
+    result = {}
+    for rest_input in rest_list:
+        key, value = rest_input.split(maxsplit=1)
+        result[key] = value.strip()
+    return result
