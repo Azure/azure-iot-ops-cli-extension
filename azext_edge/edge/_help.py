@@ -150,17 +150,27 @@ def load_iotedge_help():
         - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number. This asset will have two events.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --event 'capability_id'={capability_id} 'event_notifier'={event_notifier}
-            'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval} 'queue_size'={queue_size}
-            --event 'event_notifier'={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
+            --endpoint {endpoint} --event capability_id={capability_id} event_notifier={event_notifier}
+            name={name} observability_mode={observability_mode} sampling_interval={sampling_interval} queue_size={queue_size}
+            --event event_notifier={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
             --serial-number {serial_number}
 
         - name: Create a disabled asset with two data points.
           text: >
             az edge asset create -n {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --disabled --data-point 'capability_id'={capability_id}
-            'data_source'={data_source} 'name'={name} 'observability_mode'={observability_mode} 'sampling_interval'={sampling_interval}
-            'queue_size'={queue_size} --data-point 'data_source'={data_source}
+            --endpoint {endpoint} --disabled --data-point capability_id={capability_id}
+            data_source={data_source} name={name} observability_mode={observability_mode} sampling_interval={sampling_interval}
+            queue_size={queue_size} --data-point data_source={data_source}
+
+        - name: Create an asset with the given pre-filled values.
+          text: >
+            az edge asset create -n MyAsset -g MyRg --custom-location MyLocation --endpoint example.com --data-point
+            capability_id=myTagId data_source=nodeId1 name=myTagName1 observability_mode=counter sampling_interval=10
+            queue_size=2 --data-point data_source=nodeId2 --data-point-publishing-interval 1000 --data-point-queue-size 1
+            --data-point-sampling-interval 30 --asset-type customAsset --description 'Description for a test asset.'
+            --documentation-uri www.help.com --external-asset-id 000-000-0000 --hardware-revision 10.0 --product-code XXX100
+            --software-revision 0.1 --manufacturer Contoso --manufacturer-uri constoso.com --model AssetModel
+            --serial-number 000-000-ABC10
     """
 
     helps[
@@ -274,6 +284,11 @@ def load_iotedge_help():
             az edge asset data-point add -n {asset_name} -g {resource_group} --data-source {data_source} --data-point-name
             {data_point_name} --capability-id {capability_id} --observability-mode {observability_mode} --queue-size
             {queue_size} --sampling-interval {sampling_interval}
+
+        - name: Add a data point to an asset with the given pre-filled values.
+          text: >
+            az edge asset data-point add -n MyAsset -g MyRG --data-source nodeId1 --data-point-name tagName1
+            --capability-id tagId1 --observability-mode log --queue-size 5 --sampling-interval 200
     """
 
     helps[
@@ -327,6 +342,11 @@ def load_iotedge_help():
             az edge asset event add -n {asset_name} -g {resource_group} --event-notifier {event_notifier}
             --event-name {event_name} --capability-id {capability_id} --observability-mode
             {observability_mode} --queue-size {queue_size} --sampling-interval {sampling_interval}
+
+        - name: Add an event to an asset with the given pre-filled values.
+          text: >
+            az edge asset event add -n myAsset -g myRG --event-notifier eventId --event-name eventName
+            --capability-id tagId1 --observability-mode histogram --queue-size 2 --sampling-interval 500
     """
 
     helps[

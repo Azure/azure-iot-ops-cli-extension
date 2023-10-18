@@ -196,7 +196,7 @@ class AssetProvider():
             query += f"| where assetName =~ \"{asset_name}\""
         if asset_type:
             query += f"| where properties.assetType =~ \"{asset_type}\""
-        if custom_location_name:  # ##
+        if custom_location_name:
             query += f"| where extendedLocation.name contains \"{custom_location_name}\""
         if description:
             query += f"| where properties.description =~ \"{description}\""

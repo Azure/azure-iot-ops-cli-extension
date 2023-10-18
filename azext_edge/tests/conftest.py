@@ -15,23 +15,6 @@ def set_cwd(request):
 
 
 @pytest.fixture
-def embedded_cli_client(mocker, request):
-    assert request and request.param
-    assert "path" in request.param
-    assert "as_json_result" in request.param
-    patched_cli = mocker.patch(request.param["path"] + ".cli")
-    # invoke raises the error
-    # as_json returns the value - set 2 since side_effect becomes an iterator
-    patched_cli.as_json.side_effect = [request.param["as_json_result"]] * 2
-
-    # error handling to correct type - TODO future error handling
-    # patched_handler = mocker.patch(request.param["path"] + "._service_exception")
-    # patched_handler.side_effect = CLIError("error")
-
-    yield patched_cli
-
-
-@pytest.fixture
 def mocked_get_subscription_id(mocker):
     from .generators import get_zeroed_subscription
 
