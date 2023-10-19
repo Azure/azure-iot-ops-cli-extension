@@ -108,6 +108,7 @@ class ResourceTypeMapping(Enum):
     Resource type mappings for graph queries.
     """
     asset = "Microsoft.DeviceRegistry/assets"
+    asset_endpoint_profile = "Microsoft.DeviceRegistry/assetEndpointProfiles"
     custom_location = "Microsoft.ExtendedLocation/customLocations"
     connected_cluster = "Microsoft.Kubernetes/connectedClusters"
     cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
