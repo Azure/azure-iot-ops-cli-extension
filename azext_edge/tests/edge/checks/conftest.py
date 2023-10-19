@@ -101,7 +101,6 @@ def assert_check_by_resource_types(edge_service, mocker, mock_resource_types, re
     # run the checks
     run_checks(
         edge_service=edge_service,
-        namespace="default",
         pre_deployment=False,
         post_deployment=True,
         as_list=False,
