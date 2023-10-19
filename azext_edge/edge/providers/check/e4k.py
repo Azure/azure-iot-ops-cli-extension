@@ -106,22 +106,18 @@ def evaluate_diagnostics_service(
         check_name="evalBrokerDiag",
         check_desc="Evaluate E4K Diagnostics Service",
     )
-    diagnostics_service_list: dict = E4K_ACTIVE_API.get_resources(
+    all_diagnostic_services = E4K_ACTIVE_API.get_resources(
         kind=E4kResourceKinds.DIAGNOSTIC_SERVICE
-    )
-    diagnostics_service_resources = diagnostics_service_list.get("items", [])
+    ).get("items", [])
     target_diagnostic_service = "diagnosticservices.az-edge.com"
 
-    namespaces = {res.get("metadata", {}).get("namespace") for res in diagnostics_service_resources}
-
-    diagnostic_service_resources_by_namespace = {}
+    namespaces = {res.get("metadata", {}).get("namespace") for res in all_diagnostic_services}
 
     for namespace in namespaces:
-        diagnostic_service_resources_by_namespace[namespace] = [
-            res for res in diagnostics_service_resources if res.get("metadata", {}).get("namespace") == namespace
+        diagnostic_services = [
+            res for res in all_diagnostic_services if res.get("metadata", {}).get("namespace") == namespace
         ]
 
-    for namespace in diagnostic_service_resources_by_namespace:
         check_manager.add_target(
             target_name=target_diagnostic_service,
             namespace=namespace,
@@ -135,10 +131,9 @@ def evaluate_diagnostics_service(
                 (0, 0, 0, 8)
             )
         )
-        diagnostics_service_resources = diagnostic_service_resources_by_namespace[namespace]
 
         diagnostics_count_text = "- Expecting [bright_blue]1[/bright_blue] diagnostics service resource per namespace. {}."
-        diagnostic_service_count = len(diagnostics_service_resources)
+        diagnostic_service_count = len(diagnostic_services)
 
         service_count_status = CheckTaskStatus.success.value
         service_status_color = "green"
@@ -164,7 +159,7 @@ def evaluate_diagnostics_service(
             display=Padding(diagnostics_count_text, (0, 0, 0, 8)),
         )
 
-        for diag_service_resource in diagnostics_service_resources:
+        for diag_service_resource in diagnostic_services:
             diag_service_resource_name = diag_service_resource["metadata"]["name"]
             diag_service_resource_spec: dict = diag_service_resource["spec"]
 
@@ -299,10 +294,9 @@ def evaluate_broker_listeners(
         "status",
     ]
 
-    valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER)
-    listener_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER_LISTENER)
-    listeners: List[dict] = listener_list.get("items", [])
-    if not listeners:
+
+    all_listeners = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER_LISTENER).get("items", [])
+    if not all_listeners:
         fetch_listeners_error_text = f"Unable to fetch {E4kResourceKinds.BROKER_LISTENER.value}s."
 
         check_manager.add_target_eval(
@@ -316,14 +310,13 @@ def evaluate_broker_listeners(
         )
         return check_manager.as_dict()
 
-    listeners_by_namespace = {}
-    namespaces = {res.get("metadata", {}).get("namespace") for res in listeners}
+    namespaces = {res.get("metadata", {}).get("namespace") for res in all_listeners}
     for namespace in namespaces:
-        listeners_by_namespace[namespace] = [
-            res for res in listeners if res.get("metadata", {}).get("namespace") == namespace
+        listeners = [
+            res for res in all_listeners if res.get("metadata", {}).get("namespace") == namespace
         ]
+        valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER, namespace=namespace)
 
-    for namespace in listeners_by_namespace:
         check_manager.add_target(
             target_name=target_listeners,
             namespace=namespace,
@@ -338,8 +331,7 @@ def evaluate_broker_listeners(
             )
         )
 
-        listener_list = listeners_by_namespace[namespace]
-        listeners_count = len(listener_list)
+        listeners_count = len(listeners)
         listener_count_desc = "- Expecting [bright_blue]>=1[/bright_blue] broker listeners per namespace. {}"
         listeners_eval_status = CheckTaskStatus.success.value
 
@@ -547,10 +539,9 @@ def evaluate_brokers(
 
     target_brokers = "brokers.az-edge.com"
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
-    broker_list: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER)
-    brokers: List[dict] = broker_list.get("items", [])
+    all_brokers: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER).get("items", [])
 
-    if not brokers:
+    if not all_brokers:
         fetch_brokers_error_text = f"Unable to fetch {E4kResourceKinds.BROKER.value}s in any namespaces"
         check_manager.add_target_eval(
             target_name=target_brokers,
@@ -563,14 +554,11 @@ def evaluate_brokers(
         )
         return check_manager.as_dict(as_list)
 
-    brokers_by_namespace = {}
-    namespaces = {res.get("metadata", {}).get("namespace") for res in brokers}
+    namespaces = {res.get("metadata", {}).get("namespace") for res in all_brokers}
     for namespace in namespaces:
-        brokers_by_namespace[namespace] = [
+        brokers = [
             res for res in brokers if res.get("metadata", {}).get("namespace") == namespace
         ]
-
-    for namespace in brokers_by_namespace:
 
         check_manager.add_target(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
         check_manager.add_display(
@@ -581,7 +569,6 @@ def evaluate_brokers(
                 (0, 0, 0, 8)
             )
         )
-        broker_list = brokers_by_namespace[namespace]
 
         brokers_count = len(brokers)
         brokers_count_text = "- Expecting [bright_blue]1[/bright_blue] broker resource per namespace. {}."
