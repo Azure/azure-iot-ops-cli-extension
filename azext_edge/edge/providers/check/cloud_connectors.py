@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from .base import (
     CheckManager,
     evaluate_pod_health,
@@ -31,10 +31,10 @@ def process_cloud_connector(
     connector_resource_kind: E4kResourceKinds,
     topic_map_resource_kind: E4kResourceKinds,
     connector_display_func: Callable[
-        [CheckManager, str, str, Dict[str, str], str, tuple[int, int, int, int]], None
+        [CheckManager, str, str, Dict[str, str], str, Tuple[int, int, int, int]], None
     ],
     topic_map_display_func: Callable[
-        [CheckManager, str, str, List[Dict[str, str]], str, tuple[int, int, int, int]],
+        [CheckManager, str, str, List[Dict[str, str]], str, Tuple[int, int, int, int]],
         None,
     ],
     detail_level: str = ResourceOutputDetailLevel.summary.value,
