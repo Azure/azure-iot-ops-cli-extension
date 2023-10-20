@@ -6,13 +6,17 @@
 
 from typing import Any, Dict, List, Optional, Union
 from enum import Enum
+
+from azext_edge.edge.providers.check.cloud_connectors import process_cloud_connector
 from .base import (
     CheckManager,
     decorate_resource_status,
     check_post_deployment,
     check_pre_deployment,
     evaluate_pod_health,
-    process_as_list
+    get_resource_name,
+    process_as_list,
+    resources_grouped_by_namespace
 )
 
 from rich.console import Console, NewLine
@@ -40,20 +44,6 @@ from ...providers.edge_api import (
 from ..support.e4k import E4K_LABEL
 
 from ..base import get_namespaced_service
-
-
-def _get_namespace(resource: dict) -> str:
-    return resource.get("metadata", {}).get("namespace")
-
-
-def _resources_grouped_by_namespace(resources: List[dict]):
-    from itertools import groupby
-    resources.sort(key=_get_namespace)
-    return groupby(resources, _get_namespace)
-
-
-def _filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
-    return [resource for resource in resources if _get_namespace(resource) == namespace]
 
 
 def check_e4k_deployment(
@@ -127,7 +117,7 @@ def evaluate_diagnostics_service(
 
     # TODO - len(all_diagnostic_services) == 0
 
-    for (namespace, diagnostic_services) in _resources_grouped_by_namespace(all_diagnostic_services):
+    for (namespace, diagnostic_services) in resources_grouped_by_namespace(all_diagnostic_services):
         check_manager.add_target(
             target_name=target_diagnostic_service,
             namespace=namespace,
@@ -319,7 +309,7 @@ def evaluate_broker_listeners(
         )
         return check_manager.as_dict()
 
-    for (namespace, listeners) in _resources_grouped_by_namespace(all_listeners):
+    for (namespace, listeners) in resources_grouped_by_namespace(all_listeners):
         valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER, namespace=namespace)
 
         check_manager.add_target(
@@ -560,7 +550,7 @@ def evaluate_brokers(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, brokers) in _resources_grouped_by_namespace(all_brokers):
+    for (namespace, brokers) in resources_grouped_by_namespace(all_brokers):
         check_manager.add_target(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
         check_manager.add_display(
             target_name=target_brokers,
@@ -790,7 +780,6 @@ def evaluate_brokers(
 
 
 # Cloud connector checks
-# TODO - further consolidate / pull out duplicate connector logic
 def evaluate_mqtt_bridge_connectors(
     as_list: bool = False,
     detail_level: str = ResourceOutputDetailLevel.summary.value,
@@ -835,7 +824,7 @@ def evaluate_mqtt_bridge_connectors(
 
         # topic maps that reference this bridge
         for topic_map in topic_maps:
-            name = topic_map.get("metadata", {}).get("name")
+            name = get_resource_name(topic_map)
 
             check_manager.add_display(
                 target_name=target,
@@ -861,40 +850,40 @@ def evaluate_mqtt_bridge_connectors(
                         ),
                     )
 
-    def display_bridge_info(check_manager: CheckManager, target: str, namespace: str, bridge: Dict[str, str], detail_level: str, padding: tuple) -> None:
+    def display_connector_info(check_manager: CheckManager, target: str, namespace: str, connector: Dict[str, str], detail_level: str, padding: tuple) -> None:
         # bridge resource
-        bridge_metadata = bridge.get("metadata", {})
-        bridge_name = bridge_metadata.get("name")
+        connector_metadata = connector.get("metadata", {})
+        connector_name = connector_metadata.get("name")
 
         # bridge resource status
-        bridge_status = bridge.get("status", {})
-        bridge_status_level = bridge_status.get("configStatusLevel", "N/A")
+        connector_status = connector.get("status", {})
+        connector_status_level = connector_status.get("configStatusLevel", "N/A")
 
-        bridge_eval_status = _calculate_connector_status(bridge_status_level)
+        connector_eval_status = _calculate_connector_status(connector_status_level)
         check_manager.add_target_eval(
             target_name=target,
             namespace=namespace,
-            status=bridge_eval_status,
-            value=bridge_status,
-            resource_name=bridge_name,
+            status=connector_eval_status,
+            value=connector_status,
+            resource_name=connector_name,
             resource_kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
         )
 
-        bridge_status_desc = bridge_status.get("configStatusDescription")
+        connector_status_desc = connector_status.get("configStatusDescription")
 
-        bridge_status_text = f" {bridge_status_desc}" if bridge_status_desc else ""
+        connector_status_text = f" {connector_status_desc}" if connector_status_desc else ""
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"\n- Bridge {{[bright_blue]{bridge_name}[/bright_blue]}} status {{{decorate_resource_status(bridge_status_level)}}}.{bridge_status_text}",
+                f"\n- Bridge {{[bright_blue]{connector_name}[/bright_blue]}} status {{{decorate_resource_status(connector_status_level)}}}.{connector_status_text}",
                 padding,
             ),
         )
 
         # bridge resource instance details
-        spec = bridge.get("spec", {})
-        bridge_eval_status = (
+        spec = connector.get("spec", {})
+        connector_eval_status = (
             CheckTaskStatus.error.value
             if not all(
                 [
@@ -908,21 +897,22 @@ def evaluate_mqtt_bridge_connectors(
         check_manager.add_target_eval(
             target_name=target,
             namespace=namespace,
-            status=bridge_eval_status,
+            status=connector_eval_status,
             value={"spec": spec},
-            resource_name=bridge_name,
+            resource_name=connector_name,
             resource_kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
         )
 
-        bridge_instances = spec.get("bridgeInstances")
+        connector_instances = spec.get("bridgeInstances")
         client_prefix = spec.get("clientIdPrefix")
+        detail_padding = (0, 0, 0, padding[-1] + 4)
 
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"Bridge instances: [bright_blue]{bridge_instances}[/bright_blue]",
-                bridge_detail_padding,
+                f"Bridge instances: [bright_blue]{connector_instances}[/bright_blue]",
+                detail_padding,
             ),
         )
         check_manager.add_display(
@@ -930,10 +920,9 @@ def evaluate_mqtt_bridge_connectors(
             namespace=namespace,
             display=Padding(
                 f"Client Prefix: [bright_blue]{client_prefix}[/bright_blue]",
-                bridge_detail_padding,
+                detail_padding,
             ),
         )
-        # TODO - reduce complexity
         # local broker endpoint
         for (label, key) in [
             ("Local Broker Connection", "localBrokerConnection"),
@@ -946,7 +935,7 @@ def evaluate_mqtt_bridge_connectors(
                 namespace=namespace,
                 display=Padding(
                     f"{label}: [bright_blue]{endpoint}[/bright_blue]",
-                    bridge_detail_padding,
+                    detail_padding,
                 ),
             )
             if detail_level != ResourceOutputDetailLevel.summary.value:
@@ -957,125 +946,22 @@ def evaluate_mqtt_bridge_connectors(
                     namespace=namespace,
                     display=Padding(
                         f"Auth: [bright_blue]{auth}[/bright_blue] TLS: [bright_blue]{tls}[/bright_blue]",
-                        broker_detail_padding,
+                        detail_padding,
                     ),
                 )
 
-    check_manager = CheckManager(
-        check_name="evalMQTTBridgeConnectors",
-        check_desc="Evaluate MQTT Bridge Connectors",
+    return process_cloud_connector(
+        connector_target="mqttbridgeconnectors.az-edge.com",
+        topic_map_target="mqttbridgetopicmaps.az-edge.com",
+        connector_display_name="MQTT Bridge Connector",
+        topic_map_reference_key="mqttBridgeConnectorRef",
+        connector_resource_kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR,
+        topic_map_resource_kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP,
+        connector_display_func=display_connector_info,
+        topic_map_display_func=display_topic_maps,
+        detail_level=detail_level,
+        as_list=as_list
     )
-    top_level_padding = (0, 0, 0, 8)
-    bridge_detail_padding = (0, 0, 0, 12)
-    broker_detail_padding = (0, 0, 0, 16)
-
-    bridge_target = "mqttbridgeconnectors.az-edge.com"
-    bridge_ref_key = "mqttBridgeConnectorRef"
-
-    bridge_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR)
-    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP)
-
-    bridges: List[dict] = bridge_objects.get("items", [])
-    topic_maps: List[dict] = topic_map_objects.get("items", [])
-
-    bridge_namespaces = {res.get("metadata", {}).get("namespace") for res in bridges}
-    topic_map_namespaces = {res.get("metadata", {}).get("namespace") for res in topic_maps}
-
-    bridges_by_namespace = {}
-    topic_maps_by_namespace = {}
-
-    # TODO - optimize set comprehensions
-    for namespace in bridge_namespaces:
-        bridges_by_namespace[namespace] = [
-            res for res in bridges if res.get("metadata", {}).get("namespace") == namespace
-        ]
-    for namespace in topic_map_namespaces:
-        topic_maps_by_namespace[namespace] = [
-            map for map in topic_maps if map.get("metadata", {}).get("namespace") == namespace
-        ]
-
-    if not bridges:
-        _mark_connector_target_as_skipped(
-            check_manager=check_manager,
-            target=bridge_target,
-            message="No MQTT Bridge Connector resources detected",
-            padding=top_level_padding
-        )
-        for namespace in topic_map_namespaces:
-            _display_invalid_topic_maps(
-                check_manager=check_manager,
-                target=bridge_target,
-                namespace=namespace,
-                topic_maps=topic_maps_by_namespace[namespace],
-                ref_key=bridge_ref_key,
-                padding=top_level_padding
-            )
-
-        return check_manager.as_dict(as_list=as_list)
-
-    for namespace in bridges_by_namespace:
-        bridges = bridges_by_namespace[namespace]
-        topic_maps = topic_maps_by_namespace.get(namespace, [])
-
-        check_manager.add_target(target_name=bridge_target, namespace=namespace)
-        check_manager.set_target_conditions(target_name=bridge_target, namespace=namespace, conditions=["status", "valid(spec)"])
-        check_manager.add_display(target_name=bridge_target, namespace=namespace, display=Padding(
-            f"MQTT Bridge Connectors in namespace {{[purple]{namespace}[/purple]}}",
-            (0, 0, 0, 8)
-        ))
-
-        for bridge in bridges:
-
-            bridge_metadata = bridge.get("metadata", {})
-            bridge_name = bridge_metadata.get("name")
-
-            display_bridge_info(
-                check_manager=check_manager,
-                target=bridge_target,
-                namespace=namespace,
-                bridge=bridge,
-                detail_level=detail_level,
-                padding=top_level_padding,
-            )
-            # topic maps for this specific bridge
-            bridge_topic_maps = [map for map in topic_maps if map.get("spec", {}).get(bridge_ref_key) == bridge_name]
-            display_topic_maps(
-                check_manager=check_manager,
-                target=bridge_target,
-                namespace=namespace,
-                topic_maps=bridge_topic_maps,
-                detail_level=detail_level,
-                padding=bridge_detail_padding,
-            )
-        invalid_ref_topic_maps = [map for map in topic_maps if map not in bridge_topic_maps]
-        _display_invalid_topic_maps(
-            check_manager=check_manager,
-            target=bridge_target,
-            namespace=namespace,
-            topic_maps=invalid_ref_topic_maps,
-            ref_key="mqttBridgeConnectorRef",
-            padding=top_level_padding
-        )
-        _display_connector_runtime_health(
-            check_manager=check_manager,
-            target=bridge_target,
-            namespace=namespace,
-            connectors=bridges
-        )
-
-    invalid_topic_map_namespaces = {namespace for namespace in topic_map_namespaces if namespace not in bridge_namespaces}
-    for namespace in invalid_topic_map_namespaces:
-        topic_maps = topic_maps_by_namespace.get(namespace, [])
-        _display_invalid_topic_maps(
-            check_manager=check_manager,
-            target=bridge_target,
-            namespace=namespace,
-            topic_maps=topic_maps,
-            ref_key=bridge_ref_key,
-            padding=top_level_padding
-        )
-
-    return check_manager.as_dict(as_list)
 
 
 def evaluate_datalake_connectors(
@@ -1115,7 +1001,7 @@ def evaluate_datalake_connectors(
         padding: tuple,
     ) -> None:
         # Show warning if no topic maps
-        if not len(connector_topic_maps):
+        if not len(topic_maps):
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
@@ -1127,7 +1013,7 @@ def evaluate_datalake_connectors(
             return
 
         for topic_map in topic_maps:
-            topic_name = topic_map.get("metadata", {}).get("name")
+            topic_name = get_resource_name(topic_map)
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
@@ -1177,6 +1063,8 @@ def evaluate_datalake_connectors(
         detail_level: str,
         padding: tuple,
     ) -> None:
+        connector_name = get_resource_name(connector)
+
         # connector resource status
         connector_status = connector.get("status", {})
         connector_status_level = connector_status.get("configStatusLevel", "N/A")
@@ -1244,123 +1132,26 @@ def evaluate_datalake_connectors(
             ),
         )
 
-    check_manager = CheckManager(
-        check_name="evalDataLakeConnectors",
-        check_desc="Evaluate Data Lake Connectors",
+    return process_cloud_connector(
+        connector_target="datalakeconnectors.az-edge.com",
+        topic_map_target="datalakeconnectortopicmaps.az-edge.com",
+        connector_display_name="Data Lake Connector",
+        topic_map_reference_key="dataLakeConnectorRef",
+        connector_resource_kind=E4kResourceKinds.DATALAKE_CONNECTOR,
+        topic_map_resource_kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP,
+        connector_display_func=display_connector_info,
+        topic_map_display_func=display_topic_maps,
+        detail_level=detail_level,
+        as_list=as_list
     )
 
-    top_level_padding = (0, 0, 0, 8)
-    connector_detail_padding = (0, 0, 0, 12)
 
-    connector_target = "datalakeconnectors.az-edge.com"
-    connector_ref_key = "dataLakeConnectorRef"
-
-    connector_resources: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR)
-    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP)
-
-    connectors: List[dict] = connector_resources.get("items", [])
-    topic_maps: List[dict] = topic_map_objects.get("items", [])
-
-    connector_namespaces = {res.get("metadata", {}).get("namespace") for res in connectors}
-    topic_map_namespaces = {res.get("metadata", {}).get("namespace") for res in topic_maps}
-
-    connectors_by_namespace = {}
-    topic_maps_by_namespace = {}
-
-    for namespace in connector_namespaces:
-        connectors_by_namespace[namespace] = [
-            res for res in connectors if res.get("metadata", {}).get("namespace") == namespace
-        ]
-    for namespace in topic_map_namespaces:
-        topic_maps_by_namespace[namespace] = [
-            map for map in topic_maps if map.get("metadata", {}).get("namespace") == namespace
-        ]
-
-    if not connectors:
-        _mark_connector_target_as_skipped(
-            check_manager=check_manager,
-            target=connector_target,
-            message="No Data Lake Connector resources detected",
-            padding=top_level_padding
-        )
-        for namespace in topic_map_namespaces:
-            _display_invalid_topic_maps(
-                check_manager=check_manager,
-                target=connector_target,
-                namespace=namespace,
-                topic_maps=topic_maps_by_namespace[namespace],
-                ref_key=connector_ref_key,
-                padding=top_level_padding
-            )
-
-    for namespace in connectors_by_namespace:
-        connectors = connectors_by_namespace[namespace]
-        topic_maps = topic_maps_by_namespace.get(namespace, [])
-
-        check_manager.add_target(target_name=connector_target, namespace=namespace)
-        check_manager.set_target_conditions(
-            target_name=connector_target,
-            namespace=namespace,
-            conditions=["status", "valid(spec)", "len(spec.instances)>=1"],
-        )
-        check_manager.add_display(target_name=connector_target, namespace=namespace, display=Padding(
-            f"Data Lake Connectors in namespace {{[purple]{namespace}[/purple]}}",
-            (0, 0, 0, 8)
-        ))
-
-        for connector in connectors:
-            connector_metadata = connector.get("metadata", {})
-            connector_name = connector_metadata.get("name")
-
-            display_connector_info(
-                check_manager=check_manager,
-                target=connector_target,
-                namespace=namespace,
-                connector=connector,
-                detail_level=detail_level,
-                padding=top_level_padding,
-            )
-
-            connector_topic_maps = [
-                map for map in topic_maps if map.get("spec", {}).get(connector_ref_key) == connector_name
-            ]
-
-            display_topic_maps(
-                check_manager=check_manager,
-                target=connector_target,
-                namespace=namespace,
-                topic_maps=connector_topic_maps,
-                detail_level=detail_level,
-                padding=connector_detail_padding,
-            )
-
-        invalid_ref_topic_maps = [map for map in topic_maps if map not in connector_topic_maps]
-        _display_invalid_topic_maps(
-            check_manager=check_manager,
-            target=connector_target,
-            namespace=namespace,
-            topic_maps=invalid_ref_topic_maps,
-            ref_key=connector_ref_key,
-            padding=top_level_padding
-        )
-        # evaluate resource health
-        _display_connector_runtime_health(
-            check_manager=check_manager,
-            namespace=namespace,
-            target=connector_target,
-            connectors=connectors
-        )
-
-    return check_manager.as_dict(as_list)
-
-
-def evaluate_kafka_connectors(  # noqa: C901
+def evaluate_kafka_connectors(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ):
     def display_connector_info(check_manager: CheckManager, target: str, namespace: str, connector: Dict[str, Any], detail_level: str, padding: tuple):
-        metadata = connector.get("metadata", {})
-        connector_name = metadata.get("name")
+        connector_name = get_resource_name(connector)
         connector_status = connector.get("status", {})
         connector_status_level = connector_status.get("configStatusLevel", "N/A")
         eval_status = _calculate_connector_status(connector_status_level)
@@ -1475,7 +1266,7 @@ def evaluate_kafka_connectors(  # noqa: C901
             )
             return
         for topic_map in topic_maps:
-            topic_name = topic_map.get("metadata", {}).get("name")
+            topic_name = get_resource_name(topic_map)
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
@@ -1627,109 +1418,18 @@ def evaluate_kafka_connectors(  # noqa: C901
                         ),
                     )
 
-    check_manager = CheckManager(
-        check_name="evalKafkaConnectors",
-        check_desc="Evaluate Kafka Connectors",
+    return process_cloud_connector(
+        connector_target="kafkaconnectors.az-edge.com",
+        topic_map_target="kafkaconnectortopicmaps.az-edge.com",
+        connector_display_name="Kafka Connector",
+        topic_map_reference_key="kafkaConnectorRef",
+        connector_resource_kind=E4kResourceKinds.KAFKA_CONNECTOR,
+        topic_map_resource_kind=E4kResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP,
+        connector_display_func=display_connector_info,
+        topic_map_display_func=display_topic_maps,
+        detail_level=detail_level,
+        as_list=as_list
     )
-
-    connector_padding = (0, 0, 0, 8)
-    topic_map_padding = (0, 0, 0, 12)
-
-    # These checks are purely informational, so mark as skipped
-    connector_target = "kafkaconnectors.az-edge.com"
-    connector_ref_key = "kafkaConnectorRef"
-
-    connector_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.KAFKA_CONNECTOR)
-    topic_map_objects: dict = E4K_ACTIVE_API.get_resources(kind=E4kResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP)
-
-    connectors: List[dict] = connector_objects.get("items", [])
-    topic_maps: List[dict] = topic_map_objects.get("items", [])
-
-    connector_namespaces = {res.get("metadata", {}).get("namespace") for res in connectors}
-    topic_map_namespaces = {res.get("metadata", {}).get("namespace") for res in topic_maps}
-
-    connectors_by_namespace = {}
-    topic_maps_by_namespace = {}
-
-    for namespace in connector_namespaces:
-        connectors_by_namespace[namespace] = [
-            res for res in connectors if res.get("metadata", {}).get("namespace") == namespace
-        ]
-    for namespace in topic_map_namespaces:
-        topic_maps_by_namespace[namespace] = [
-            map for map in topic_maps if map.get("metadata", {}).get("namespace") == namespace
-        ]
-
-    if not connectors:
-        _mark_connector_target_as_skipped(
-            check_manager=check_manager,
-            target=connector_target,
-            message="No Kafka Connector resources detected",
-            padding=connector_padding
-        )
-        for namespace in topic_map_namespaces:
-            _display_invalid_topic_maps(
-                check_manager=check_manager,
-                target=connector_target,
-                namespace=namespace,
-                topic_maps=topic_maps_by_namespace[namespace],
-                ref_key=connector_ref_key,
-                padding=connector_padding
-            )
-
-    for namespace in connectors_by_namespace:
-        connectors = connectors_by_namespace[namespace]
-        topic_maps = topic_maps_by_namespace.get(namespace, [])
-
-        check_manager.add_target(target_name=connector_target, namespace=namespace)
-        check_manager.set_target_conditions(target_name=connector_target, namespace=namespace, conditions=["status", "valid(spec)"])
-        check_manager.add_display(target_name=connector_target, namespace=namespace, display=Padding(
-            f"Kafka Connectors in namespace {{[purple]{namespace}[/purple]}}",
-            (0, 0, 0, 8)
-        ))
-        for connector in connectors:
-            connector_metadata = connector.get("metadata", {})
-            connector_name = connector_metadata.get("name")
-
-            display_connector_info(
-                check_manager=check_manager,
-                target=connector_target,
-                namespace=namespace,
-                connector=connector,
-                detail_level=detail_level,
-                padding=connector_padding
-            )
-
-            connector_topic_maps = [
-                map for map in topic_maps if map.get("spec", {}).get(connector_ref_key) == connector_name
-            ]
-
-            display_topic_maps(
-                check_manager=check_manager,
-                target=connector_target,
-                namespace=namespace,
-                topic_maps=connector_topic_maps,
-                detail_level=detail_level,
-                padding=topic_map_padding,
-            )
-
-        invalid_ref_topic_maps = [map for map in topic_maps if map not in connector_topic_maps]
-        _display_invalid_topic_maps(
-            check_manager=check_manager,
-            target=connector_target,
-            namespace=namespace,
-            topic_maps=invalid_ref_topic_maps,
-            ref_key="kafkaConnectorRef",
-            padding=connector_padding
-        )
-        _display_connector_runtime_health(
-            check_manager=check_manager,
-            namespace=namespace,
-            target=connector_target,
-            connectors=connectors
-        )
-
-    return check_manager.as_dict(as_list)
 
 
 def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = None) -> Dict[str, Any]:
@@ -1745,70 +1445,6 @@ def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = Non
                 result[name] = True
 
     return result
-
-
-def _display_connector_runtime_health(
-    check_manager: CheckManager,
-    namespace: str,
-    target: str,
-    connectors: Optional[List[Dict[str, Any]]] = None,
-    prefix: str = 'azedge-',
-    padding: int = 8
-):
-    if connectors:
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(
-                "\nRuntime Health",
-                (0, 0, 0, padding),
-            ),
-        )
-        padding += 4
-        pod_name_prefixes = [f"{prefix}{connector['metadata']['name']}" for connector in connectors]
-        for pod in pod_name_prefixes:
-            evaluate_pod_health(
-                check_manager=check_manager,
-                target=target,
-                namespace=namespace,
-                pod=pod,
-                display_padding=padding,
-                service_label=E4K_LABEL
-            )
-
-
-def _display_invalid_topic_maps(
-    check_manager: CheckManager,
-    target: str,
-    namespace: str,
-    topic_maps: List[Dict[str, Any]],
-    ref_key: str,
-    padding: tuple,
-):
-    for map in topic_maps:
-        name = map.get("metadata", {}).get("name")
-        ref = map.get("spec", {}).get(ref_key)
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(
-                f"\n- Topic map {{[red]{name}[/red]}} references invalid connector {{[red]{ref}[/red]}}",
-                padding
-            )
-        )
-
-
-def _mark_connector_target_as_skipped(check_manager: CheckManager, target: str, message: str, padding: int = 8):
-    check_manager.add_target(
-        target_name=target
-    )
-    check_manager.add_target_eval(
-        target_name=target,
-        status=CheckTaskStatus.skipped.value,
-        value=message,
-    )
-    check_manager.set_target_status(target_name=target, status=CheckTaskStatus.skipped.value)
-    check_manager.add_display(target_name=target, display=Padding(message, padding))
 
 
 def _calculate_connector_status(resource_state: str):

@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from enum import Enum
 
 from knack.log import get_logger
@@ -547,3 +547,22 @@ def evaluate_pod_health(
                     (0, 0, 0, display_padding),
                 ),
             )
+
+
+def get_resource_namespace(resource: dict) -> Union[str, None]:
+    return resource.get("metadata", {}).get("namespace")
+
+
+def get_resource_name(resource: dict) -> Union[str, None]:
+    return resource.get("metadata", {}).get("name")
+
+
+def resources_grouped_by_namespace(resources: List[dict]):
+    from itertools import groupby
+
+    resources.sort(key=get_resource_namespace)
+    return groupby(resources, get_resource_namespace)
+
+
+def filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
+    return [resource for resource in resources if get_resource_namespace(resource) == namespace]

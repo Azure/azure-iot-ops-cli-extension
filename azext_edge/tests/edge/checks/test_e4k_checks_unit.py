@@ -455,7 +455,7 @@ def test_diagnostic_service_checks(
     ],
 )
 def test_mqtt_checks(
-    mocker, mock_evaluate_e4k_pod_health, bridge, topic_map, conditions, evaluations
+    mocker, mock_evaluate_cloud_connector_pod_health, bridge, topic_map, conditions, evaluations
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -467,7 +467,7 @@ def test_mqtt_checks(
         mocker.side_effect = [{"items": [bridge]}, {"items": [topic_map]}]
         result = evaluate_mqtt_bridge_connectors(detail_level=detail_level)
 
-        assert result["name"] == "evalMQTTBridgeConnectors"
+        assert result["name"] == "evalmqttbridgeconnectors"
         assert namespace in result["targets"]["mqttbridgeconnectors.az-edge.com"]
         target = result["targets"]["mqttbridgeconnectors.az-edge.com"][namespace]
 
@@ -494,7 +494,7 @@ def test_mqtt_checks(
             # topic map
             generate_resource_stub(spec={"dataLakeConnectorRef": "test_connector"}),
             # conditions str
-            ["status", "valid(spec)", "len(spec.instances)>=1"],
+            ["status", "valid(spec)"],
             # evaluations
             [
                 [("status", "success"), ("kind", "datalakeconnector")],
@@ -508,7 +508,7 @@ def test_mqtt_checks(
     ],
 )
 def test_datalake_checks(
-    mocker, mock_evaluate_e4k_pod_health, connector, topic_map, conditions, evaluations
+    mocker, mock_evaluate_cloud_connector_pod_health, connector, topic_map, conditions, evaluations
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -520,7 +520,7 @@ def test_datalake_checks(
         mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
         result = evaluate_datalake_connectors(detail_level=detail_level)
 
-        assert result["name"] == "evalDataLakeConnectors"
+        assert result["name"] == "evaldatalakeconnectors"
         assert namespace in result["targets"]["datalakeconnectors.az-edge.com"]
         target = result["targets"]["datalakeconnectors.az-edge.com"][namespace]
 
@@ -642,7 +642,7 @@ def test_datalake_checks(
     ]
 )
 def test_kafka_checks(
-    mocker, mock_evaluate_e4k_pod_health, connector, topic_map, conditions, evaluations
+    mocker, mock_evaluate_cloud_connector_pod_health, connector, topic_map, conditions, evaluations
 ):
     mocker = mocker.patch("azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources")
     namespace = generate_generic_id()
@@ -652,7 +652,7 @@ def test_kafka_checks(
         mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
         result = evaluate_kafka_connectors(detail_level=detail_level)
 
-        assert result["name"] == "evalKafkaConnectors"
+        assert result["name"] == "evalkafkaconnectors"
         assert namespace in result["targets"]["kafkaconnectors.az-edge.com"]
         target = result["targets"]["kafkaconnectors.az-edge.com"][namespace]
 
@@ -663,12 +663,12 @@ def test_kafka_checks(
 @pytest.mark.parametrize(
     "eval_func, name, target",
     (
-        (evaluate_mqtt_bridge_connectors, "evalMQTTBridgeConnectors", "mqttbridgeconnectors.az-edge.com"),
-        (evaluate_datalake_connectors, "evalDataLakeConnectors", "datalakeconnectors.az-edge.com"),
-        (evaluate_kafka_connectors, "evalKafkaConnectors", "kafkaconnectors.az-edge.com"),
+        (evaluate_mqtt_bridge_connectors, "evalmqttbridgeconnectors", "mqttbridgeconnectors.az-edge.com"),
+        (evaluate_datalake_connectors, "evaldatalakeconnectors", "datalakeconnectors.az-edge.com"),
+        (evaluate_kafka_connectors, "evalkafkaconnectors", "kafkaconnectors.az-edge.com"),
     )
 )
-def test_empty_connector_results(mocker, mock_evaluate_e4k_pod_health, eval_func: partial, name, target):
+def test_empty_connector_results(mocker, mock_evaluate_cloud_connector_pod_health, eval_func: partial, name, target):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         return_value={"items": []},
