@@ -42,6 +42,20 @@ from ..support.e4k import E4K_LABEL
 from ..base import get_namespaced_service
 
 
+def _get_namespace(resource: dict) -> str:
+    return resource.get("metadata", {}).get("namespace")
+
+
+def _resources_grouped_by_namespace(resources: List[dict]):
+    from itertools import groupby
+    resources.sort(key=_get_namespace)
+    return groupby(resources, _get_namespace)
+
+
+def _filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
+    return [resource for resource in resources if _get_namespace(resource) == namespace]
+
+
 def check_e4k_deployment(
     console: Console,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
@@ -111,13 +125,9 @@ def evaluate_diagnostics_service(
     ).get("items", [])
     target_diagnostic_service = "diagnosticservices.az-edge.com"
 
-    namespaces = {res.get("metadata", {}).get("namespace") for res in all_diagnostic_services}
+    # TODO - len(all_diagnostic_services) == 0
 
-    for namespace in namespaces:
-        diagnostic_services = [
-            res for res in all_diagnostic_services if res.get("metadata", {}).get("namespace") == namespace
-        ]
-
+    for (namespace, diagnostic_services) in _resources_grouped_by_namespace(all_diagnostic_services):
         check_manager.add_target(
             target_name=target_diagnostic_service,
             namespace=namespace,
@@ -131,9 +141,9 @@ def evaluate_diagnostics_service(
                 (0, 0, 0, 8)
             )
         )
-
-        diagnostics_count_text = "- Expecting [bright_blue]1[/bright_blue] diagnostics service resource per namespace. {}."
+        diagnostic_services = list(diagnostic_services)
         diagnostic_service_count = len(diagnostic_services)
+        diagnostics_count_text = "- Expecting [bright_blue]1[/bright_blue] diagnostics service resource per namespace. {}."
 
         service_count_status = CheckTaskStatus.success.value
         service_status_color = "green"
@@ -294,7 +304,6 @@ def evaluate_broker_listeners(
         "status",
     ]
 
-
     all_listeners = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER_LISTENER).get("items", [])
     if not all_listeners:
         fetch_listeners_error_text = f"Unable to fetch {E4kResourceKinds.BROKER_LISTENER.value}s."
@@ -310,11 +319,7 @@ def evaluate_broker_listeners(
         )
         return check_manager.as_dict()
 
-    namespaces = {res.get("metadata", {}).get("namespace") for res in all_listeners}
-    for namespace in namespaces:
-        listeners = [
-            res for res in all_listeners if res.get("metadata", {}).get("namespace") == namespace
-        ]
+    for (namespace, listeners) in _resources_grouped_by_namespace(all_listeners):
         valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER, namespace=namespace)
 
         check_manager.add_target(
@@ -331,6 +336,7 @@ def evaluate_broker_listeners(
             )
         )
 
+        listeners = list(listeners)
         listeners_count = len(listeners)
         listener_count_desc = "- Expecting [bright_blue]>=1[/bright_blue] broker listeners per namespace. {}"
         listeners_eval_status = CheckTaskStatus.success.value
@@ -554,12 +560,7 @@ def evaluate_brokers(
         )
         return check_manager.as_dict(as_list)
 
-    namespaces = {res.get("metadata", {}).get("namespace") for res in all_brokers}
-    for namespace in namespaces:
-        brokers = [
-            res for res in brokers if res.get("metadata", {}).get("namespace") == namespace
-        ]
-
+    for (namespace, brokers) in _resources_grouped_by_namespace(all_brokers):
         check_manager.add_target(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
         check_manager.add_display(
             target_name=target_brokers,
@@ -569,7 +570,7 @@ def evaluate_brokers(
                 (0, 0, 0, 8)
             )
         )
-
+        brokers = list(brokers)
         brokers_count = len(brokers)
         brokers_count_text = "- Expecting [bright_blue]1[/bright_blue] broker resource per namespace. {}."
         broker_eval_status = CheckTaskStatus.success.value
@@ -822,7 +823,7 @@ def evaluate_mqtt_bridge_connectors(
         padding: tuple,
     ) -> None:
         # Show warning if no topic maps
-        if not len(bridge_topic_maps):
+        if not len(topic_maps):
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
@@ -1463,7 +1464,7 @@ def evaluate_kafka_connectors(  # noqa: C901
 
     def display_topic_maps(check_manager: CheckManager, target: str, namespace: str, topic_maps: List[Dict[str, Any]], detail_level: str, padding: tuple):
         # Show warning if no topic maps
-        if not len(connector_topic_maps):
+        if not len(topic_maps):
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
@@ -1782,17 +1783,8 @@ def _display_invalid_topic_maps(
     namespace: str,
     topic_maps: List[Dict[str, Any]],
     ref_key: str,
-    padding: tuple
+    padding: tuple,
 ):
-    if topic_maps:
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(
-                f"Invalid topic maps in namespace {{[purple]{namespace}[/purple]}}",
-                padding,
-            )
-        )
     for map in topic_maps:
         name = map.get("metadata", {}).get("name")
         ref = map.get("spec", {}).get(ref_key)
@@ -1800,8 +1792,7 @@ def _display_invalid_topic_maps(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"\n- Topic map {{[red]{name}[/red]}}"
-                f" references invalid connector {{[red]{ref}[/red]}} in namespace {{[purple]{namespace}[/purple]}}.",
+                f"\n- Topic map {{[red]{name}[/red]}} references invalid connector {{[red]{ref}[/red]}}",
                 padding
             )
         )
