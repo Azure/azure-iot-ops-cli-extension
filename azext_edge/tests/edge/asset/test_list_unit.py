@@ -7,7 +7,7 @@
 import pytest
 
 from azext_edge.edge.commands_assets import list_assets
-from azext_edge.edge.providers.assets import API_VERSION
+from azext_edge.edge.providers.resource_management import API_VERSION
 
 from ...generators import generate_generic_id
 

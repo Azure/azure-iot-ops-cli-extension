@@ -111,11 +111,13 @@ class ResourceManagementProvider:
             custom_query=query,
             type=ResourceTypeMapping.connected_cluster.value
         )
+        # TODO: should these be errors
         if len(cluster_query_result) == 0:
             logger.warning(
                 f"Cluster associated with the custom location {custom_location_id} not found. Please "
                 "check if cluster exists."
             )
+            return
         cluster = cluster_query_result[0]
         if cluster["properties"]["connectivityStatus"] != "Online":
             logger.warning(
@@ -209,7 +211,7 @@ class ResourceManagementProvider:
                     resource_id=extension_id,
                     api_version="2023-05-01",
                 ).as_dict()
-                if extension["properties"]["extensionType"] in self.required_extension:
+                if extension["properties"]["extensionType"] == self.required_extension:
                     usable = True
                     break
             if usable:

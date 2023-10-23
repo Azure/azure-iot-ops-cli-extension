@@ -13,18 +13,20 @@ from azext_edge.edge.commands_assets import (
     list_asset_data_points,
     remove_asset_data_point
 )
-from azext_edge.edge.providers.assets import API_VERSION
+from azext_edge.edge.providers.resource_management import API_VERSION
 
-from .conftest import (
-    MINIMUM_ASSET,
-    FULL_ASSET
-)
+from .conftest import MINIMUM_ASSET, FULL_ASSET
+from ..conftest import RM_PATH
 from ...generators import generate_generic_id
 
 
 FULL_EVENT = FULL_ASSET["properties"]["dataPoints"][0]
 
 
+@pytest.mark.parametrize("mocked_build_query", [{
+    "path": RM_PATH,
+    "result": [{"properties": {"connectivityStatus": "Online"}}]
+}], ids=["query"], indirect=True)
 @pytest.mark.parametrize("mocked_resource_management_client", [
     {
         "resources.get": MINIMUM_ASSET,
@@ -47,6 +49,7 @@ FULL_EVENT = FULL_ASSET["properties"]["dataPoints"][0]
 def test_add_asset_data_point(
     mocked_cmd,
     mocked_resource_management_client,
+    mocked_build_query,
     capability_id,
     name,
     observability_mode,
@@ -115,6 +118,10 @@ def test_list_asset_data_points(mocked_cmd, mocked_resource_management_client):
     assert result_events == original_asset["properties"]["dataPoints"]
 
 
+@pytest.mark.parametrize("mocked_build_query", [{
+    "path": RM_PATH,
+    "result": [{"properties": {"connectivityStatus": "Online"}}]
+}], ids=["query"], indirect=True)
 @pytest.mark.parametrize("mocked_resource_management_client", [
     {
         "resources.get": FULL_ASSET,
@@ -132,7 +139,7 @@ def test_list_asset_data_points(mocked_cmd, mocked_resource_management_client):
     (None, generate_generic_id()),
 ])
 def test_remove_asset_data_point(
-    mocked_cmd, mocked_resource_management_client, data_source, name
+    mocked_cmd, mocked_resource_management_client, mocked_build_query, data_source, name
 ):
     asset_name = generate_generic_id()
     resource_group_name = generate_generic_id()

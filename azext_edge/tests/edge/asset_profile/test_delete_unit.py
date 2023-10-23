@@ -8,7 +8,7 @@ import pytest
 
 from azext_edge.edge.commands_asset_endpoint_profiles import delete_asset_endpoint_profile
 from azext_edge.edge.common import ResourceTypeMapping
-from azext_edge.edge.providers.assets import API_VERSION
+from azext_edge.edge.providers.resource_management import API_VERSION
 
 from ...generators import generate_generic_id
 

@@ -11,7 +11,7 @@ from azext_edge.edge.commands_asset_endpoint_profiles import (
     list_asset_endpoint_profile_transport_auth,
     remove_asset_endpoint_profile_transport_auth
 )
-from azext_edge.edge.providers.asset_endpoint_profiles import API_VERSION
+from azext_edge.edge.providers.resource_management import API_VERSION
 
 from .conftest import MINIMUM_AEP, FULL_AEP
 from ..conftest import RM_PATH

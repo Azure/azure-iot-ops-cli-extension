@@ -7,15 +7,17 @@
 import pytest
 
 from azext_edge.edge.commands_assets import update_asset
-from azext_edge.edge.providers.assets import API_VERSION
+from azext_edge.edge.providers.resource_management import API_VERSION
 
-from .conftest import (
-    MINIMUM_ASSET,
-    FULL_ASSET
-)
+from .conftest import MINIMUM_ASSET, FULL_ASSET
+from ..conftest import RM_PATH
 from ...generators import generate_generic_id
 
 
+@pytest.mark.parametrize("mocked_build_query", [{
+    "path": RM_PATH,
+    "result": [{"properties": {"connectivityStatus": "Online"}}]
+}], ids=["query"], indirect=True)
 @pytest.mark.parametrize("mocked_resource_management_client", [
     {
         "resources.get": MINIMUM_ASSET,
@@ -62,7 +64,7 @@ from ...generators import generate_generic_id
     },
 ])
 def test_update_asset(
-    mocked_cmd, mocked_resource_management_client, asset_helpers_fixture, req
+    mocked_cmd, mocked_resource_management_client, mocked_build_query, asset_helpers_fixture, req
 ):
     _, patched_up = asset_helpers_fixture
     # Required params

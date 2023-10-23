@@ -12,16 +12,11 @@ from azure.cli.core.azclierror import (
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
 )
-
-from azext_edge.edge.providers.resource_management import ResourceManagementProvider
-
+from .resource_management import ResourceManagementProvider
 from ..util import assemble_nargs_to_dict, build_query
 from ..common import ResourceTypeMapping, AEPAuthModes
 
 logger = get_logger(__name__)
-
-API_VERSION = "2023-08-01-preview"
-# API_VERSION = "2023-10-01-preview"
 
 
 class AssetEndpointProfileProvider(ResourceManagementProvider):
@@ -62,8 +57,7 @@ class AssetEndpointProfileProvider(ResourceManagementProvider):
 
         # Location
         if not location:
-            resource_group = self.resource_client.resource_groups.get(resource_group_name=resource_group_name)
-            location = resource_group.as_dict()["location"]
+            location = self.get_location(resource_group_name)
 
         auth_mode = None
         if not any([username, password, certificate_reference]):
@@ -92,7 +86,7 @@ class AssetEndpointProfileProvider(ResourceManagementProvider):
         }
         poller = self.resource_client.resources.begin_create_or_update_by_id(
             resource_id=resource_path,
-            api_version=API_VERSION,
+            api_version=self.api_version,
             parameters=aep_body
         )
         return poller
@@ -160,7 +154,7 @@ class AssetEndpointProfileProvider(ResourceManagementProvider):
 
         poller = self.resource_client.resources.begin_create_or_update_by_id(
             resource_id=original_aep["id"],
-            api_version=API_VERSION,
+            api_version=self.api_version,
             parameters=original_aep
         )
         return poller
@@ -191,7 +185,7 @@ class AssetEndpointProfileProvider(ResourceManagementProvider):
 
         poller = self.resource_client.resources.begin_create_or_update_by_id(
             resource_id=original_aep["id"],
-            api_version=API_VERSION,
+            api_version=self.api_version,
             parameters=original_aep,
         )
         poller.wait()
@@ -237,7 +231,7 @@ class AssetEndpointProfileProvider(ResourceManagementProvider):
 
         poller = self.resource_client.resources.begin_create_or_update_by_id(
             resource_id=original_aep["id"],
-            api_version=API_VERSION,
+            api_version=self.api_version,
             parameters=original_aep
         )
         poller.wait()

@@ -52,7 +52,7 @@ def create_asset(
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.create(
-        asset_name=asset_name,
+        asset_name,
         resource_group_name=resource_group_name,
         endpoint=endpoint,
         asset_type=asset_type,
@@ -93,7 +93,7 @@ def delete_asset(
     resource_group_name: str,
 ) -> dict:
     asset_provider = AssetProvider(cmd)
-    return asset_provider.delete(asset_name=asset_name, resource_group_name=resource_group_name)
+    return asset_provider.delete(asset_name, resource_group_name=resource_group_name)
 
 
 def list_assets(
@@ -152,7 +152,7 @@ def show_asset(
     resource_group_name: str,
 ) -> dict:
     asset_provider = AssetProvider(cmd)
-    return asset_provider.show(asset_name=asset_name, resource_group_name=resource_group_name)
+    return asset_provider.show(asset_name, resource_group_name=resource_group_name)
 
 
 def update_asset(
@@ -182,7 +182,7 @@ def update_asset(
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.update(
-        asset_name=asset_name,
+        asset_name,
         resource_group_name=resource_group_name,
         asset_type=asset_type,
         description=description,
@@ -221,7 +221,7 @@ def add_asset_data_point(
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.add_sub_point(
-        asset_name=asset_name,
+        asset_name,
         data_source=data_source,
         capability_id=capability_id,
         name=name,
@@ -239,7 +239,7 @@ def list_asset_data_points(
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.list_sub_points(
-        asset_name=asset_name,
+        asset_name,
         sub_point_type="dataPoints",
         resource_group_name=resource_group_name
     )
@@ -259,7 +259,7 @@ def remove_asset_data_point(
         )
     asset_provider = AssetProvider(cmd)
     return asset_provider.remove_sub_point(
-        asset_name=asset_name,
+        asset_name,
         data_source=data_source,
         name=name,
         sub_point_type="dataPoints",
@@ -281,7 +281,7 @@ def add_asset_event(
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.add_sub_point(
-        asset_name=asset_name,
+        asset_name,
         event_notifier=event_notifier,
         capability_id=capability_id,
         name=name,
@@ -299,7 +299,7 @@ def list_asset_events(
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.list_sub_points(
-        asset_name=asset_name,
+        asset_name,
         sub_point_type="events",
         resource_group_name=resource_group_name
     )
@@ -319,7 +319,7 @@ def remove_asset_event(
         )
     asset_provider = AssetProvider(cmd)
     return asset_provider.remove_sub_point(
-        asset_name=asset_name,
+        asset_name,
         event_notifier=event_notifier,
         name=name,
         sub_point_type="events",
