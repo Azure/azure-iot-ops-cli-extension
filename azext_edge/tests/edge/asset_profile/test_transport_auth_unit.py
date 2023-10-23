@@ -13,16 +13,18 @@ from azext_edge.edge.commands_asset_endpoint_profiles import (
 )
 from azext_edge.edge.providers.asset_endpoint_profiles import API_VERSION
 
-from .conftest import (
-    MINIMUM_AEP,
-    FULL_AEP
-)
+from .conftest import MINIMUM_AEP, FULL_AEP
+from ..conftest import RM_PATH
 from ...generators import generate_generic_id
 
 
 FULL_CERT = FULL_AEP["properties"]["transportAuthentication"]["ownCertificates"][0]
 
 
+@pytest.mark.parametrize("mocked_build_query", [{
+    "path": RM_PATH,
+    "result": [{"properties": {"connectivityStatus": "Online"}}]
+}], ids=["query"], indirect=True)
 @pytest.mark.parametrize("mocked_resource_management_client", [
     {
         "resources.get": MINIMUM_AEP,
@@ -39,7 +41,8 @@ FULL_CERT = FULL_AEP["properties"]["transportAuthentication"]["ownCertificates"]
 ], ids=["minimal", "full"], indirect=True)
 def test_add_asset_endpoint_profile_transport_auth(
     mocked_cmd,
-    mocked_resource_management_client
+    mocked_resource_management_client,
+    mocked_build_query
 ):
     asset_endpoint_profile_name = generate_generic_id()
     resource_group_name = generate_generic_id()
@@ -95,6 +98,10 @@ def test_list_asset_endpoint_profile_transport_auths(mocked_cmd, mocked_resource
     assert result == expected
 
 
+@pytest.mark.parametrize("mocked_build_query", [{
+    "path": RM_PATH,
+    "result": [{"properties": {"connectivityStatus": "Online"}}]
+}], ids=["query"], indirect=True)
 @pytest.mark.parametrize("mocked_resource_management_client", [
     {
         "resources.get": FULL_AEP,
@@ -105,7 +112,7 @@ def test_list_asset_endpoint_profile_transport_auths(mocked_cmd, mocked_resource
 ], ids=["full"], indirect=True)
 @pytest.mark.parametrize("thumbprint", [generate_generic_id(), FULL_CERT["certThumbprint"]])
 def test_remove_asset_endpoint_profile_transport_auth(
-    mocked_cmd, mocked_resource_management_client, thumbprint
+    mocked_cmd, mocked_resource_management_client, mocked_build_query, thumbprint
 ):
     asset_endpoint_profile_name = generate_generic_id()
     resource_group_name = generate_generic_id()

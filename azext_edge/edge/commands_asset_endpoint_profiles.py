@@ -34,7 +34,7 @@ def create_asset_endpoint_profile(
 ):
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.create(
-        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        asset_endpoint_profile_name,
         resource_group_name=resource_group_name,
         target_address=target_address,
         additional_configuration=additional_configuration,
@@ -60,7 +60,7 @@ def delete_asset_endpoint_profile(
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.delete(
-        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        asset_endpoint_profile_name,
         resource_group_name=resource_group_name
     )
 
@@ -100,7 +100,7 @@ def show_asset_endpoint_profile(
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.show(
-        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        asset_endpoint_profile_name,
         resource_group_name=resource_group_name
     )
 
@@ -119,7 +119,7 @@ def update_asset_endpoint_profile(
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.update(
-        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        asset_endpoint_profile_name,
         resource_group_name=resource_group_name,
         target_address=target_address,
         additional_configuration=additional_configuration,
@@ -141,7 +141,7 @@ def add_asset_endpoint_profile_transport_auth(
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.add_transport_auth(
-        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        asset_endpoint_profile_name,
         resource_group_name=resource_group_name,
         secret=secret,
         thumbprint=thumbprint,
@@ -156,7 +156,7 @@ def list_asset_endpoint_profile_transport_auth(
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.list_transport_auths(
-        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        asset_endpoint_profile_name,
         resource_group_name=resource_group_name
     )
 
@@ -169,7 +169,7 @@ def remove_asset_endpoint_profile_transport_auth(
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.remove_transport_auth(
-        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        asset_endpoint_profile_name,
         resource_group_name=resource_group_name,
         thumbprint=thumbprint
     )

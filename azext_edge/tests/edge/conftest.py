@@ -6,6 +6,8 @@
 
 import pytest
 
+RM_PATH = "azext_edge.edge.providers.resource_management"
+
 
 @pytest.fixture
 def mocked_client(mocker):

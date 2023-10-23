@@ -9,13 +9,15 @@ import pytest
 from azext_edge.edge.commands_asset_endpoint_profiles import update_asset_endpoint_profile
 from azext_edge.edge.providers.assets import API_VERSION
 
-from .conftest import (
-    MINIMUM_AEP,
-    FULL_AEP
-)
+from .conftest import MINIMUM_AEP, FULL_AEP
+from ..conftest import RM_PATH
 from ...generators import generate_generic_id
 
 
+@pytest.mark.parametrize("mocked_build_query", [{
+    "path": RM_PATH,
+    "result": [{"properties": {"connectivityStatus": "Online"}}]
+}], ids=["query"], indirect=True)
 @pytest.mark.parametrize("mocked_resource_management_client", [
     {
         "resources.get": MINIMUM_AEP,
@@ -46,7 +48,7 @@ from ...generators import generate_generic_id
     },
 ])
 def test_update_asset_endpoint_profile(
-    mocked_cmd, mocked_resource_management_client, aep_helpers_fixture, req
+    mocked_cmd, mocked_build_query, mocked_resource_management_client, aep_helpers_fixture, req
 ):
     # Required params
     asset_endpoint_profile_name = generate_generic_id()

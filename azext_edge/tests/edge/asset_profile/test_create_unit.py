@@ -45,7 +45,7 @@ from ...generators import generate_generic_id
 ])
 def test_create_asset_endpoint_profile(mocker, mocked_cmd, mocked_resource_management_client, aep_helpers_fixture, req):
     patched_cap = mocker.patch(
-        "azext_edge.edge.providers.asset_endpoint_profiles.AssetEndpointProfileProvider."
+        "azext_edge.edge.providers.resource_management.ResourceManagementProvider."
         "_check_cluster_and_custom_location"
     )
     patched_cap.return_value = generate_generic_id()
@@ -87,8 +87,7 @@ def test_create_asset_endpoint_profile(mocker, mocked_cmd, mocked_resource_manag
     request_body = call_kwargs["parameters"]
     assert request_body["location"] == location
     assert request_body["tags"] == req.get("tags")
-    assert request_body["extendedLocation"]["type"] == "CustomLocation"
-    assert request_body["extendedLocation"]["name"] == patched_cap.return_value
+    assert request_body["extendedLocation"] == patched_cap.return_value
 
     # Extended location helper call
     for arg in patched_cap.call_args.kwargs:

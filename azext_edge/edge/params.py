@@ -337,7 +337,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_location_subscription",
             options_list=["--custom-location-subscription", "--cls"],
-            help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
+            help="Subscription Id for custom location.",
             arg_group="Associated Resources"
         )
         context.argument(
@@ -355,7 +355,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "cluster_subscription",
             options_list=["--cluster-subscription", "--cs"],
-            help="Subscription Id for cluster. If not provided, asset subscription Id will be used.",
+            help="Subscription Id for cluster.",
             arg_group="Associated Resources"
         )
         context.argument(
@@ -626,7 +626,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_location_subscription",
             options_list=["--custom-location-subscription", "--cls"],
-            help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
+            help="Subscription Id for custom location.",
             arg_group="Associated Resources"
         )
         context.argument(
@@ -644,7 +644,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "cluster_subscription",
             options_list=["--cluster-subscription", "--cs"],
-            help="Subscription Id for cluster. If not provided, asset subscription Id will be used.",
+            help="Subscription Id for cluster.",
             arg_group="Associated Resources"
         )
         context.argument(
