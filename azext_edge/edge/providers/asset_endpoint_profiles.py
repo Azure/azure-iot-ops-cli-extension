@@ -9,13 +9,14 @@ from typing import Dict, List, Optional
 from knack.log import get_logger
 
 from azure.cli.core.azclierror import (
+    MutuallyExclusiveArgumentError,
     ResourceNotFoundError,
     RequiredArgumentMissingError,
     ValidationError
 )
 
 from ..util import assemble_nargs_to_dict, build_query
-from ..common import ResourceTypeMapping
+from ..common import ResourceTypeMapping, AEPAuthModes
 
 logger = get_logger(__name__)
 
@@ -43,7 +44,6 @@ class AssetEndpointProfileProvider():
         resource_group_name: str,
         target_address: str,
         additional_configuration: Optional[str] = None,
-        auth_mode: Optional[str] = None,
         certificate_reference: Optional[List[str]] = None,
         cluster_name: Optional[str] = None,
         cluster_resource_group: Optional[str] = None,
@@ -76,13 +76,14 @@ class AssetEndpointProfileProvider():
             resource_group = self.resource_client.resource_groups.get(resource_group_name=resource_group_name)
             location = resource_group.as_dict()["location"]
 
-        if not any([username, password, certificate_reference, auth_mode]):
-            auth_mode = "Anonymous"
+        auth_mode = None
+        if not any([username, password, certificate_reference]):
+            auth_mode = AEPAuthModes.anonymous.value
 
         # Properties
         properties = {}
         _update_properties(
-            properties=properties,
+            properties,
             target_address=target_address,
             additional_configuration=additional_configuration,
             auth_mode=auth_mode,
@@ -146,8 +147,8 @@ class AssetEndpointProfileProvider():
         target_address: Optional[str] = None,
     ) -> dict:
         query = ""
-        if additional_configuration:  # ##
-            query += f"| where properties.targetAddress =~ \"{additional_configuration}\""
+        if additional_configuration:
+            query += f"| where properties.additionalConfiguration =~ \"{additional_configuration}\""
         if auth_mode:
             query += f"| where properties.userAuthentication.mode =~ \"{auth_mode}\""
         if custom_location_name:
@@ -178,7 +179,7 @@ class AssetEndpointProfileProvider():
             resource_name=asset_endpoint_profile_name,
             api_version=API_VERSION
         )
-        return result
+        return result.as_dict()
 
     def update(
         self,
@@ -190,7 +191,6 @@ class AssetEndpointProfileProvider():
         username: Optional[str] = None,
         password: Optional[str] = None,
         certificate_reference: Optional[str] = None,
-        transport_authentication: Optional[List[str]] = None,
         tags: Optional[Dict[str, str]] = None,
     ):
         # get the asset
@@ -204,14 +204,13 @@ class AssetEndpointProfileProvider():
         # modify the asset endpoint profile
         properties = original_aep.get("properties", {})
         _update_properties(
-            properties=properties,
+            properties,
             target_address=target_address,
             additional_configuration=additional_configuration,
             auth_mode=auth_mode,
             username=username,
             password=password,
             certificate_reference=certificate_reference,
-            transport_authentication=transport_authentication
         )
 
         poller = self.resource_client.resources.begin_create_or_update_by_id(
@@ -225,21 +224,25 @@ class AssetEndpointProfileProvider():
         self,
         asset_endpoint_profile_name: str,
         resource_group_name: str,
+        password: str,
         secret: str,
         thumbprint: str,
-        password: Optional[str] = None,
     ):
         original_aep = self.show(
             asset_endpoint_profile_name=asset_endpoint_profile_name,
             resource_group_name=resource_group_name
         )
+        if original_aep["properties"].get("transportAuthentication") is None:
+            original_aep["properties"]["transportAuthentication"] = {
+                "ownCertificates": []
+            }
 
         cert = {
-            "certThumbprint": secret,
-            "certSecretReference": thumbprint,
+            "certThumbprint": thumbprint,
+            "certSecretReference": secret,
             "certPasswordReference": password,
         }
-        original_aep["properties"]["transportAuthetication"].append(cert)
+        original_aep["properties"]["transportAuthentication"]["ownCertificates"].append(cert)
 
         poller = self.resource_client.resources.begin_create_or_update_by_id(
             resource_id=original_aep["id"],
@@ -250,7 +253,7 @@ class AssetEndpointProfileProvider():
         original_aep = poller.result()
         if not isinstance(original_aep, dict):
             original_aep = original_aep.as_dict()
-        return original_aep["properties"]["transportAuthetication"]
+        return original_aep["properties"]["transportAuthentication"]
 
     def list_transport_auths(
         self,
@@ -262,23 +265,30 @@ class AssetEndpointProfileProvider():
             resource_group_name=resource_group_name
         )
 
-        return original_aep["properties"]["transportAuthetication"]
+        return original_aep["properties"].get(
+            "transportAuthentication",
+            {"ownCertificates": []}
+        )
 
     def remove_transport_auth(
         self,
         asset_endpoint_profile_name: str,
-        secret: str,
+        thumbprint: str,
         resource_group_name: str,
     ):
         original_aep = self.show(
             asset_endpoint_profile_name=asset_endpoint_profile_name,
             resource_group_name=resource_group_name
         )
+        if original_aep["properties"].get("transportAuthentication") is None:
+            original_aep["properties"]["transportAuthentication"] = {
+                "ownCertificates": []
+            }
 
-        certs = original_aep["properties"]["transportAuthetication"]["ownCertificates"]
-        certs = [cert for cert in certs if cert["dataSource"] != secret]
+        certs = original_aep["properties"]["transportAuthentication"]["ownCertificates"]
+        certs = [cert for cert in certs if cert["certThumbprint"] != thumbprint]
 
-        original_aep["properties"]["transportAuthetication"]["ownCertificates"] = certs
+        original_aep["properties"]["transportAuthentication"]["ownCertificates"] = certs
 
         poller = self.resource_client.resources.begin_create_or_update_by_id(
             resource_id=original_aep["id"],
@@ -289,9 +299,9 @@ class AssetEndpointProfileProvider():
         original_aep = poller.result()
         if not isinstance(original_aep, dict):
             original_aep = original_aep.as_dict()
-        return original_aep["properties"]["transportAuthetication"]
+        return original_aep["properties"]["transportAuthentication"]
 
-    def _check_cluster_status(
+    def _check_cluster_connectivity(
         self,
         custom_location_id: str,
         cluster_subscription: str = None,
@@ -306,10 +316,15 @@ class AssetEndpointProfileProvider():
             type=ResourceTypeMapping.connected_cluster.value
         )
         if len(cluster_query_result) == 0:
-            raise ValidationError(f"Cluster associated with the custom location {custom_location_id} not found. Please check if cluster exists.")
+            raise ValidationError(
+                f"Cluster associated with the custom location {custom_location_id} not found. Please "
+                "check if cluster exists."
+            )
         cluster = cluster_query_result[0]
         if cluster["properties"]["connectivityStatus"] != "Online":
-            raise ValidationError(f"Cluster {cluster['name']} is not online, asset endpoint profile commands may fail.")
+            raise ValidationError(
+                f"Cluster {cluster['name']} is not online, asset endpoint profile commands may fail."
+            )
 
     def _check_cluster_and_custom_location(
         self,
@@ -427,45 +442,63 @@ class AssetEndpointProfileProvider():
 # Helpers
 def _process_authentication(
     auth_mode: Optional[str] = None,
+    auth_props: Optional[Dict[str, str]] = None,
     certificate_reference: Optional[str] = None,
     password: Optional[str] = None,
     username: Optional[str] = None
 ) -> Dict[str, str]:
-    user_auth = {"mode": "Anonymous"}
+    if not auth_props:
+        auth_props = {}
     # add checking for ensuring auth mode is set with proper params
     if certificate_reference and (username or password):
         raise Exception("Please choose to use a certificate reference or a username/password for authentication.")
 
-    if certificate_reference and auth_mode in [None, "Certificate"]:
-        user_auth["mode"] = "Certificate"
-        user_auth["x509Credentials"] = {"certificateReference": certificate_reference}
-    elif username and password and auth_mode in [None, "UsernamePassword"]:
-        user_auth["mode"] = "UsernamePassword"
-        user_auth["usernamePasswordCredentials"] = {
-            "usernameReference": username,
-            "passwordReference": password
-        }
-    elif username or password:
-        raise Exception("Please provide both username and password for authentication.")
-    return user_auth
+    if certificate_reference and auth_mode in [None, AEPAuthModes.certificate.value]:
+        auth_props["mode"] = AEPAuthModes.certificate.value
+        auth_props["x509Credentials"] = {"certificateReference": certificate_reference}
+        if auth_props.pop("usernamePasswordCredentials", None):
+            logger.warning("Previously used username and password references were removed.")
+
+    elif (username or password) and auth_mode in [None, AEPAuthModes.userpass.value]:
+        auth_props["mode"] = AEPAuthModes.userpass.value
+        user_creds = auth_props.get("usernamePasswordCredentials", {})
+        user_creds["usernameReference"] = username
+        user_creds["passwordReference"] = password
+        if not all([user_creds["usernameReference"], user_creds["passwordReference"]]):
+            raise RequiredArgumentMissingError(
+                "Please provide username and password reference for UsernamePassword authentication."
+            )
+        auth_props["usernamePasswordCredentials"] = user_creds
+        if auth_props.pop("x509Credentials", None):
+            logger.warning("Previously used certificate reference was removed.")
+    elif auth_mode == AEPAuthModes.anonymous.value and not any([certificate_reference, username, password]):
+        auth_props["mode"] = AEPAuthModes.anonymous.value
+        if auth_props.pop("x509Credentials", None):
+            logger.warning("Previously used certificate reference was removed.")
+        if auth_props.pop("usernamePasswordCredentials", None):
+            logger.warning("Previously used username and password references were removed.")
+    elif any([auth_mode, certificate_reference, username, password]):
+        raise MutuallyExclusiveArgumentError("Invalid combination of authentication mode and parameters.")
+
+    return auth_props
 
 
-def _process_certificates(cert_list: Optional[List[str]]) -> List[Dict[str, str]]:
+def _process_certificates(cert_list: Optional[List[List[str]]] = None) -> List[Dict[str, str]]:
     """This is for the main create/update endpoint commands"""
     if not cert_list:
         return []
     processed_certs = []
     for cert in cert_list:
         parsed_cert = assemble_nargs_to_dict(cert)
-
-        for required_arg in ["thumbprint", "secret"]:
-            if not parsed_cert.get(required_arg):
-                raise RequiredArgumentMissingError(f"Transport authentication ({cert}) is missing the {required_arg}.")
+        if set(parsed_cert.keys()) != set(["password", "thumbprint", "secret"]):
+            raise RequiredArgumentMissingError(
+                f"Transport authentication ({cert}) needs to have all of [password, thumbprint, and secret]."
+            )
 
         processed_point = {
             "certThumbprint": parsed_cert["thumbprint"],
             "certSecretReference": parsed_cert["secret"],
-            "certPasswordReference": parsed_cert.get("password"),
+            "certPasswordReference": parsed_cert["password"],
         }
         processed_certs.append(processed_point)
 
@@ -487,11 +520,13 @@ def _update_properties(
     if target_address:
         properties["targetAddress"] = target_address
     if transport_authentication:
-        properties["transportAuthetication"] = {
+        properties["transportAuthentication"] = {
             "ownCertificates": _process_certificates(transport_authentication)
         }
     if any([auth_mode, username, password, certificate_reference]):
+        auth_props = properties.get("userAuthentication", {})
         properties["userAuthentication"] = _process_authentication(
+            auth_props=auth_props,
             auth_mode=auth_mode,
             certificate_reference=certificate_reference,
             username=username,

@@ -114,6 +114,15 @@ class ResourceTypeMapping(Enum):
     cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
 
 
+class AEPAuthModes(Enum):
+    """
+    Authentication modes for asset endpoints
+    """
+    anonymous = "Anonymous"
+    certificate = "Certificate"
+    userpass = "UsernamePassword"
+
+
 # E4K runtime attributes
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"

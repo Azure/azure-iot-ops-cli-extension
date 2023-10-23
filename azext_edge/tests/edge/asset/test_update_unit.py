@@ -67,7 +67,6 @@ def test_update_asset(
     _, patched_up = asset_helpers_fixture
     # Required params
     asset_name = generate_generic_id()
-    # force show call to one branch
     resource_group_name = generate_generic_id()
     result = update_asset(
         cmd=mocked_cmd,

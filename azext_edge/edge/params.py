@@ -320,37 +320,43 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "endpoint",
             options_list=["--endpoint"],
-            help="Endpoint Uri.",
+            help="Asset Endpoint name.",
         )
         context.argument(
             "custom_location_name",
             options_list=["--custom-location", "--cl"],
             help="Custom location used to associate asset with cluster.",
+            arg_group="Associated Resources"
         )
         context.argument(
             "custom_location_resource_group",
             options_list=["--custom-location-resource-group", "--clrg"],
             help="Resource group for custom location.",
+            arg_group="Associated Resources"
         )
         context.argument(
             "custom_location_subscription",
             options_list=["--custom-location-subscription", "--cls"],
             help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
+            arg_group="Associated Resources"
         )
         context.argument(
             "cluster_name",
             options_list=["--cluster", "-c"],
             help="Cluster to associate the asset with.",
+            arg_group="Associated Resources"
         )
         context.argument(
             "cluster_resource_group",
             options_list=["--cluster-resource-group", "--crg"],
             help="Resource group for cluster.",
+            arg_group="Associated Resources"
         )
         context.argument(
             "cluster_subscription",
             options_list=["--cluster-subscription", "--cs"],
             help="Subscription Id for cluster. If not provided, asset subscription Id will be used.",
+            arg_group="Associated Resources"
         )
         context.argument(
             "asset_type",
@@ -554,4 +560,113 @@ def load_iotedge_arguments(self, _):
             "event_notifier",
             options_list=["--event-notifier", "--en"],
             help="Event notifier.",
+        )
+
+    with self.argument_context("edge asset-endpoint") as context:
+        context.argument(
+            "asset_endpoint_profile_name",
+            options_list=["--endpoint"],
+            help="Asset Endpoint name.",
+        )
+        context.argument(
+            "target_address",
+            options_list=["--target-address", "--ta"],
+            help="Target Address. Must be a valid local address.",
+        )
+        context.argument(
+            "transport_authentication",
+            options_list=["--cert"],
+            nargs="+",
+            action="append",
+            help="Space-separated key=value pairs corresponding to certificates associated with the endpoint. "
+            "The following key values are supported and required: `secret`, `thumbprint`, `password`."
+            "--event can be used 1 or more times. Review help examples for full parameter usage",
+        )
+        context.argument(
+            "additional_configuration",
+            options_list=["--additional-configuration", "--ac"],
+            help="Additional Configuration for the connectivity type (ex: OPC UA, Modbus, ONVIF).",
+        )
+        context.argument(
+            "auth_mode",
+            options_list=["--authentication-mode", "--am"],
+            help="Authentication Mode.",
+            arg_group="Authentication"
+        )
+        context.argument(
+            "certificate_reference",
+            options_list=["--certificate-ref", "--cr"],
+            help="Reference for the certificate used in authentication.",
+            arg_group="Authentication"
+        )
+        context.argument(
+            "password",
+            options_list=["--password-ref", "--pr"],
+            help="Reference for the password used in authentication.",
+            arg_group="Authentication"
+        )
+        context.argument(
+            "username",
+            options_list=["--username-reference", "--ur"],
+            help="Reference for the username used in authentication.",
+            arg_group="Authentication"
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location", "--cl"],
+            help="Custom location used to associate asset endpoint with cluster.",
+            arg_group="Associated Resources"
+        )
+        context.argument(
+            "custom_location_resource_group",
+            options_list=["--custom-location-resource-group", "--clrg"],
+            help="Resource group for custom location.",
+            arg_group="Associated Resources"
+        )
+        context.argument(
+            "custom_location_subscription",
+            options_list=["--custom-location-subscription", "--cls"],
+            help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
+            arg_group="Associated Resources"
+        )
+        context.argument(
+            "cluster_name",
+            options_list=["--cluster", "-c"],
+            help="Cluster to associate the asset with.",
+            arg_group="Associated Resources"
+        )
+        context.argument(
+            "cluster_resource_group",
+            options_list=["--cluster-resource-group", "--crg"],
+            help="Resource group for cluster.",
+            arg_group="Associated Resources"
+        )
+        context.argument(
+            "cluster_subscription",
+            options_list=["--cluster-subscription", "--cs"],
+            help="Subscription Id for cluster. If not provided, asset subscription Id will be used.",
+            arg_group="Associated Resources"
+        )
+        context.argument(
+            "tags",
+            options_list=["--tags"],
+            help="Asset Endpoint tags. Property bag in key-value pairs with the following format: a=b c=d",
+            arg_type=tags_type,
+        )
+
+    with self.argument_context("edge asset-endpoint certificates") as context:
+        context.argument(
+            "password",
+            options_list=["--key-ref", "--kr"],
+            help="Reference for the key.",
+        )
+        context.argument(
+            "secret",
+            options_list=["--certificate-ref", "--cr"],
+            help="Reference for the certificate.",
+        )
+        context.argument(
+            "thumbprint",
+            options_list=["--thumbprint", "-t"],
+            help="Certificate thumbprint.",
         )
