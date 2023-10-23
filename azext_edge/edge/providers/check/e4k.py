@@ -115,7 +115,21 @@ def evaluate_diagnostics_service(
     ).get("items", [])
     target_diagnostic_service = "diagnosticservices.az-edge.com"
 
-    # TODO - len(all_diagnostic_services) == 0
+    if not all_diagnostic_services:
+        fetch_diagnostics_services_error = f"Unable to fetch {E4kResourceKinds.DIAGNOSTIC_SERVICE.value}s in any namespace."
+        check_manager.add_target(
+            target_name=target_diagnostic_service
+        )
+        check_manager.add_target_eval(
+            target_name=target_diagnostic_service,
+            status=CheckTaskStatus.error.value,
+            value=fetch_diagnostics_services_error,
+        )
+        check_manager.add_display(
+            target_name=target_diagnostic_service,
+            display=Padding(fetch_diagnostics_services_error, (0, 0, 0, 8)),
+        )
+        return check_manager.as_dict(as_list)
 
     for (namespace, diagnostic_services) in resources_grouped_by_namespace(all_diagnostic_services):
         check_manager.add_target(
@@ -296,8 +310,10 @@ def evaluate_broker_listeners(
 
     all_listeners = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER_LISTENER).get("items", [])
     if not all_listeners:
-        fetch_listeners_error_text = f"Unable to fetch {E4kResourceKinds.BROKER_LISTENER.value}s."
-
+        fetch_listeners_error_text = f"Unable to fetch {E4kResourceKinds.BROKER_LISTENER.value}s in any namespace."
+        check_manager.add_target(
+            target_name=target_listeners
+        )
         check_manager.add_target_eval(
             target_name=target_listeners,
             status=CheckTaskStatus.error.value,
@@ -307,7 +323,7 @@ def evaluate_broker_listeners(
             target_name=target_listeners,
             display=Padding(fetch_listeners_error_text, (0, 0, 0, 8)),
         )
-        return check_manager.as_dict()
+        return check_manager.as_dict(as_list)
 
     for (namespace, listeners) in resources_grouped_by_namespace(all_listeners):
         valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER, namespace=namespace)
@@ -538,7 +554,10 @@ def evaluate_brokers(
     all_brokers: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER).get("items", [])
 
     if not all_brokers:
-        fetch_brokers_error_text = f"Unable to fetch {E4kResourceKinds.BROKER.value}s in any namespaces"
+        fetch_brokers_error_text = f"Unable to fetch {E4kResourceKinds.BROKER.value}s in any namespace."
+        check_manager.add_target(
+            target_name=target_brokers
+        )
         check_manager.add_target_eval(
             target_name=target_brokers,
             status=CheckTaskStatus.error.value,
