@@ -268,12 +268,23 @@ def test_create_bundle(
                 since_seconds=since_seconds,
             )
             assert_list_deployments(
-                mocked_client, mocked_zipfile, label_selector=None, resource_api=LNM_API_V1B1, prefix_names=LNM_APP_LABELS
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                resource_api=LNM_API_V1B1,
             )
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=LNM_LABEL, resource_api=LNM_API_V1B1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=LNM_LABEL,
+                resource_api=LNM_API_V1B1
             )
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=LNM_LABEL, resource_api=LNM_API_V1B1)
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=LNM_LABEL,
+                resource_api=LNM_API_V1B1
+            )
 
         # assert shared KPIs regardless of service
         assert_shared_kpis(mocked_client, mocked_zipfile)
@@ -293,14 +304,14 @@ def assert_get_custom_resources(
     )
 
 
-def assert_list_deployments(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi, prefix_names: List[str] = None):
+def assert_list_deployments(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
     mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
     # @jiacju - no label for lnm
     mock_name = "mock_deployment"
     if resource_api in [LNM_API_V1B1]:
         mock_name = "aio-lnm-operator"
-    
+
     assert_zipfile_write(
         mocked_zipfile,
         zinfo=f"mock_namespace/{resource_api.moniker}/deployment.{mock_name}.yaml",

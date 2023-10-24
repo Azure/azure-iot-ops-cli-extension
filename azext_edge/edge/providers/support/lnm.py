@@ -1,15 +1,12 @@
 from typing import Iterable, List
 
 from functools import partial
-from azext_edge.edge.providers.base import get_custom_objects
 from ..edge_api import LNM_API_V1B1, EdgeResourceApi, LnmResourceKinds
-from ..stats import get_stats
 from .base import (
     assemble_crd_work,
     process_deployments,
     process_replicasets,
     process_services,
-    process_statefulset,
     process_v1_pods,
 )
 
@@ -46,6 +43,7 @@ def fetch_lnm_deployments():
     deployment_prefixes.extend(LNM_APP_LABELS)
 
     return process_deployments(resource_api=LNM_API_V1B1, label_selector=None, prefix_names=deployment_prefixes)
+
 
 support_runtime_elements = {
     "replicasets": fetch_replicasets,

@@ -104,7 +104,7 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Solution"))
             v1_resources.append(_get_api_resource("Target"))
-        
+
         if r == LNM_API_V1B1:
             v1_resources.append(_get_api_resource("Lnm"))
             v1_resources.append(_get_api_resource("Scale"))
