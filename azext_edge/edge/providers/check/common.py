@@ -112,6 +112,9 @@ BLUEFIN_DESTINATION_STAGE_PROPERTIES = {
     BluefinDestinationStageType.reference_data.value: [("dataset", "Dataset ID", False)]
 }
 
+# Check constants
+ALL_NAMESPACES_TARGET = '_all_'
+
 
 class E4kCheckType(Enum):
     """
