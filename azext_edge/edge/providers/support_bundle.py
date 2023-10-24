@@ -19,6 +19,7 @@ from ..providers.edge_api import (
     E4K_API_V1A4,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
+    AKRI_API_V0,
     EdgeApiManager,
 )
 
@@ -30,6 +31,7 @@ COMPAT_E4K_APIS = EdgeApiManager(resource_apis=[E4K_API_V1A2, E4K_API_V1A3, E4K_
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_BLUEFIN_APIS = EdgeApiManager(resource_apis=[BLUEFIN_API_V1])
 COMPAT_SYMPHONY_APIS = EdgeApiManager(resource_apis=[SYMPHONY_API_V1])
+COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 
 
 def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[int] = None):
@@ -41,9 +43,10 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from .support.e4k import prepare_bundle as prepare_e4k_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.symphony import prepare_bundle as prepare_symphony_bundle
+    from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
 
-    pending_work = {"e4k": {}, "opcua": {}, "bluefin": {}, "symphony": {}, "common": {}}
+    pending_work = {"e4k": {}, "opcua": {}, "bluefin": {}, "symphony": {}, "akri": {}, "common": {}}
 
     raise_on_404 = not (edge_service == SupportForEdgeServiceType.auto.value)
     if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.e4k.value]:
@@ -62,6 +65,11 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
         symphony_apis = COMPAT_SYMPHONY_APIS.get_deployed(raise_on_404)
         if symphony_apis:
             pending_work["symphony"].update(prepare_symphony_bundle(symphony_apis, log_age_seconds))
+    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.symphony.value]:
+        akri_apis = COMPAT_AKRI_APIS.get_deployed(raise_on_404)
+        print(akri_apis)
+        if akri_apis:
+            pending_work["akri"].update(prepare_akri_bundle(akri_apis, log_age_seconds))
 
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):
