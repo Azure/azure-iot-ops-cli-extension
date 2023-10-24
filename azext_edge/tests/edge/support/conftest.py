@@ -54,6 +54,7 @@ def mocked_cluster_resources(request, mocker):
         OPCUA_API_V1,
         BLUEFIN_API_V1,
         SYMPHONY_API_V1,
+        LNM_API_V1B1,
     )
 
     requested_resource_apis = getattr(request, "param", [])
@@ -103,6 +104,10 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Solution"))
             v1_resources.append(_get_api_resource("Target"))
+        
+        if r == LNM_API_V1B1:
+            v1_resources.append(_get_api_resource("Lnm"))
+            v1_resources.append(_get_api_resource("Scale"))
 
         resource_map[r_key] = V1APIResourceList(resources=v1_resources, group_version=r.version)
 
@@ -171,7 +176,10 @@ def mocked_list_deployments(mocked_client):
     from kubernetes.client.models import V1DeploymentList, V1Deployment, V1ObjectMeta
 
     def _handle_list_deployments(*args, **kwargs):
-        deployment = V1Deployment(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_deployment"))
+        name = "mock_deployment"
+        if "label_selector" in kwargs and kwargs["label_selector"] is None:
+            name = "aio-lnm-operator"
+        deployment = V1Deployment(metadata=V1ObjectMeta(namespace="mock_namespace", name=name))
         deployment_list = V1DeploymentList(items=[deployment])
 
         return deployment_list

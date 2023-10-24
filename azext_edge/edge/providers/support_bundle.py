@@ -17,6 +17,7 @@ from ..providers.edge_api import (
     E4K_API_V1A2,
     E4K_API_V1A3,
     E4K_API_V1A4,
+    LNM_API_V1B1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
     EdgeApiManager,
@@ -30,6 +31,7 @@ COMPAT_E4K_APIS = EdgeApiManager(resource_apis=[E4K_API_V1A2, E4K_API_V1A3, E4K_
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_BLUEFIN_APIS = EdgeApiManager(resource_apis=[BLUEFIN_API_V1])
 COMPAT_SYMPHONY_APIS = EdgeApiManager(resource_apis=[SYMPHONY_API_V1])
+COMPAT_LNM_APIS = EdgeApiManager(resource_apis=[LNM_API_V1B1])
 
 
 def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[int] = None):
@@ -39,11 +41,12 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
 
     from .support.bluefin import prepare_bundle as prepare_bluefin_bundle
     from .support.e4k import prepare_bundle as prepare_e4k_bundle
+    from .support.lnm import prepare_bundle as prepare_lnm_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.symphony import prepare_bundle as prepare_symphony_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
 
-    pending_work = {"e4k": {}, "opcua": {}, "bluefin": {}, "symphony": {}, "common": {}}
+    pending_work = {"e4k": {}, "opcua": {}, "bluefin": {}, "symphony": {}, "common": {}, "lnm": {}}
 
     raise_on_404 = not (edge_service == SupportForEdgeServiceType.auto.value)
     if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.e4k.value]:
@@ -62,6 +65,10 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
         symphony_apis = COMPAT_SYMPHONY_APIS.get_deployed(raise_on_404)
         if symphony_apis:
             pending_work["symphony"].update(prepare_symphony_bundle(symphony_apis, log_age_seconds))
+    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.lnm.value]:
+        lnm_apis = COMPAT_LNM_APIS.get_deployed(raise_on_404)
+        if lnm_apis:
+            pending_work["lnm"].update(prepare_lnm_bundle(lnm_apis, log_age_seconds))
 
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):

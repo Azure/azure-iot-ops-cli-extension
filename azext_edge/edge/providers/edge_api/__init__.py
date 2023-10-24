@@ -9,6 +9,7 @@ from .e4k import E4K_ACTIVE_API, E4K_API_V1A2, E4K_API_V1A3, E4K_API_V1A4, E4kRe
 from .bluefin import BLUEFIN_API_V1, BluefinResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
 from .symphony import SYMPHONY_API_V1, SymphonyResourceKinds
+from .lnm import LNM_API_V1B1, LnmResourceKinds
 
 __all__ = [
     "EdgeResourceApi",
@@ -20,6 +21,8 @@ __all__ = [
     "E4K_API_V1A4",
     "BluefinResourceKinds",
     "BLUEFIN_API_V1",
+    "LnmResourceKinds",
+    "LNM_API_V1B1",
     "OpcuaResourceKinds",
     "OPCUA_API_V1",
     "SymphonyResourceKinds",

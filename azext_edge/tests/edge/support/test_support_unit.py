@@ -20,6 +20,7 @@ from azext_edge.edge.providers.edge_api import (
     BLUEFIN_API_V1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
+    LNM_API_V1B1,
 )
 
 from azext_edge.edge.providers.support.base import get_bundle_path
@@ -41,6 +42,7 @@ from azext_edge.edge.providers.support.symphony import (
     SYMPHONY_INSTANCE_LABEL,
     GENERIC_CONTROLLER_LABEL,
 )
+from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
 
 from ...generators import generate_generic_id
 
@@ -58,6 +60,7 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
         [E4K_API_V1A2, BLUEFIN_API_V1],
         [E4K_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1],
         [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1],
+        [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1, LNM_API_V1B1],
     ],
     indirect=True,
 )
@@ -94,6 +97,10 @@ def test_create_bundle(
     if not mocked_cluster_resources["param"] or SYMPHONY_API_V1 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
             support_bundle(None, bundle_dir=a_bundle_dir, edge_service="symphony")
+
+    if not mocked_cluster_resources["param"] or LNM_API_V1B1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="lnm")
 
     if mocked_cluster_resources["param"] == []:
         auto_result_no_resources = support_bundle(None, bundle_dir=a_bundle_dir)
@@ -250,6 +257,24 @@ def test_create_bundle(
             # TODO: resolve with selector
             # assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=SYMPHONY_API_V1)
 
+        if api in [LNM_API_V1B1]:
+            LNM_LABEL = f"app in ({','.join(LNM_APP_LABELS)})"
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=LNM_LABEL,
+                resource_api=LNM_API_V1B1,
+                since_seconds=since_seconds,
+            )
+            assert_list_deployments(
+                mocked_client, mocked_zipfile, label_selector=None, resource_api=LNM_API_V1B1, prefix_names=LNM_APP_LABELS
+            )
+            assert_list_replica_sets(
+                mocked_client, mocked_zipfile, label_selector=LNM_LABEL, resource_api=LNM_API_V1B1
+            )
+            assert_list_services(mocked_client, mocked_zipfile, label_selector=LNM_LABEL, resource_api=LNM_API_V1B1)
+
         # assert shared KPIs regardless of service
         assert_shared_kpis(mocked_client, mocked_zipfile)
 
@@ -268,12 +293,18 @@ def assert_get_custom_resources(
     )
 
 
-def assert_list_deployments(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
+def assert_list_deployments(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi, prefix_names: List[str] = None):
     mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_any_call(label_selector=label_selector)
+
+    # @jiacju - no label for lnm
+    mock_name = "mock_deployment"
+    if resource_api in [LNM_API_V1B1]:
+        mock_name = "aio-lnm-operator"
+    
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/deployment.mock_deployment.yaml",
-        data="kind: Deployment\nmetadata:\n  name: mock_deployment\n  namespace: mock_namespace\n",
+        zinfo=f"mock_namespace/{resource_api.moniker}/deployment.{mock_name}.yaml",
+        data=f"kind: Deployment\nmetadata:\n  name: {mock_name}\n  namespace: mock_namespace\n",
     )
 
 
