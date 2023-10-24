@@ -373,23 +373,33 @@ class CheckManager:
     {
         "name":"evaluateBrokerListeners",
         "description": "Evaluate E4K broker listeners",
-        "namespace": "default",
-        "status": "warning"
+        "status": "warning",
         "targets": {
+            "az-edge.com/v1alpha4": {
+                "_all_": {
+                    "conditions": null,
+                    "evaluations": [
+                        {
+                            "status": "success"
+                            ...
+                        }
+                    ],
+                }
+            },
             "brokerlisteners.az-edge.com": {
                 "default": {
                     "displays": [],
                     "conditions": [
                         "len(brokerlisteners)>=1",
                         "spec",
-                        "valid(spec.brokerRef)",
+                        "valid(spec.brokerRef)"
                         ...
                     ],
                     "evaluations": [
                         {
-                            "name"?: "listener",
-                            "kind"?: "brokerListener
-                            "value"?: {
+                            "name": "listener",
+                            "kind": "brokerListener",
+                            "value": {
                                 "spec": { ... },
                                 "valid(spec.brokerRef)": true
                             },
@@ -404,9 +414,7 @@ class CheckManager:
                     ...
                 }
             }
-            }
-        },
-        "status": "warning",
+        }
     }
     """
 
