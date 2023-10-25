@@ -65,9 +65,8 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
         symphony_apis = COMPAT_SYMPHONY_APIS.get_deployed(raise_on_404)
         if symphony_apis:
             pending_work["symphony"].update(prepare_symphony_bundle(symphony_apis, log_age_seconds))
-    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.symphony.value]:
+    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.akri.value]:
         akri_apis = COMPAT_AKRI_APIS.get_deployed(raise_on_404)
-        print(akri_apis)
         if akri_apis:
             pending_work["akri"].update(prepare_akri_bundle(akri_apis, log_age_seconds))
 

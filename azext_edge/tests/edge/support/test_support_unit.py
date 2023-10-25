@@ -20,6 +20,7 @@ from azext_edge.edge.providers.edge_api import (
     BLUEFIN_API_V1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
+    AKRI_API_V0
 )
 
 from azext_edge.edge.providers.support.base import get_bundle_path
@@ -41,6 +42,12 @@ from azext_edge.edge.providers.support.symphony import (
     SYMPHONY_INSTANCE_LABEL,
     GENERIC_CONTROLLER_LABEL,
 )
+from azext_edge.edge.providers.support.akri import (
+    AKRI_APP_LABEL,
+    AKRI_INSTANCE_LABEL,
+    AKRI_NAME_LABEL,
+    AKRI_SERVICE_LABEL
+)
 
 from ...generators import generate_generic_id
 
@@ -58,6 +65,7 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
         [E4K_API_V1A2, BLUEFIN_API_V1],
         [E4K_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1],
         [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1],
+        [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1, AKRI_API_V0],
     ],
     indirect=True,
 )
@@ -249,6 +257,38 @@ def test_create_bundle(
             )
             # TODO: resolve with selector
             # assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=SYMPHONY_API_V1)
+        
+        if api in [AKRI_API_V0]:
+            for label in [AKRI_INSTANCE_LABEL, AKRI_APP_LABEL, AKRI_NAME_LABEL]:
+                assert_list_pods(
+                    mocked_client,
+                    mocked_zipfile,
+                    mocked_list_pods,
+                    label_selector=label,
+                    resource_api=AKRI_API_V0,
+                    since_seconds=since_seconds,
+                )
+            # TODO
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                resource_api=AKRI_API_V0,
+            )
+            for label in [AKRI_INSTANCE_LABEL, AKRI_SERVICE_LABEL]:
+                assert_list_replica_sets(
+                    mocked_client,
+                    mocked_zipfile,
+                    label_selector=label,
+                    resource_api=AKRI_API_V0
+                )
+            for label in [AKRI_INSTANCE_LABEL, AKRI_APP_LABEL]:
+                assert_list_services(
+                    mocked_client,
+                    mocked_zipfile,
+                    label_selector=label,
+                    resource_api=AKRI_API_V0
+                )
 
         # assert shared KPIs regardless of service
         assert_shared_kpis(mocked_client, mocked_zipfile)
