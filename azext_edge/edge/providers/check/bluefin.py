@@ -245,14 +245,14 @@ def evaluate_pipelines(
     target_pipelines = "pipelines.bluefin.az-bluefin.com"
     pipeline_all_conditions = ["pipelines"]
     pipeline_namespace_conditions = [
-                           "len(pipelines)>=1",
-                           "mode.enabled",
-                           "provisioningStatus",
-                           "sourceNodeCount == 1",
-                           "len(spec.input.topics)>=1",
-                           "spec.input.partitionCount>=1",
-                           "destinationNodeCount==1"
-                        ]
+        "len(pipelines)>=1",
+        "mode.enabled",
+        "provisioningStatus",
+        "sourceNodeCount == 1",
+        "len(spec.input.topics)>=1",
+        "spec.input.partitionCount>=1",
+        "destinationNodeCount==1"
+    ]
 
     check_manager.add_target(target_name=target_pipelines, conditions=pipeline_all_conditions)
     all_pipelines: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.PIPELINE).get("items", [])
@@ -275,7 +275,7 @@ def evaluate_pipelines(
         status=CheckTaskStatus.success.value,
         value={"pipelines": len(all_pipelines)}
     )
-    
+
     for (namespace, pipelines) in resources_grouped_by_namespace(all_pipelines):
         check_manager.add_target(target_name=target_pipelines, namespace=namespace, conditions=pipeline_namespace_conditions)
         check_manager.add_display(
@@ -445,7 +445,7 @@ def evaluate_datasets(
             eval_value={"datasets": None}
         )
         return check_manager.as_dict(as_list)
-    
+
     check_manager.add_target_eval(
         target_name=target_datasets,
         status=CheckTaskStatus.success.value,
@@ -487,7 +487,7 @@ def evaluate_datasets(
                 display=Padding(no_dataset_text, (0, 0, 0, 8))
             )
             return check_manager.as_dict(as_list)
-        
+
         check_manager.add_display(
             target_name=target_datasets,
             namespace=namespace,

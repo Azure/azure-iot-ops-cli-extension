@@ -64,7 +64,7 @@ def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_typ
             ),
             # instance namespace conditions str
             ["len(instances)==1", "provisioningStatus"],
-             # instance all conditions str
+            # instance all conditions str
             ["instances"],
             # namespace evaluations str
             [
@@ -92,7 +92,7 @@ def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_typ
             },
             # namespace conditions str
             ["len(instances)==1", "provisioningStatus"],
-             # all namespace conditions str
+            # all namespace conditions str
             ["instances"],
             # namespace evaluations str
             [
@@ -112,7 +112,13 @@ def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_typ
     ],
 )
 def test_instance_checks(
-    mocker, mock_evaluate_bluefin_pod_health, instance, namespace_conditions, all_conditions, namespace_evaluations, all_evaluations
+    mocker,
+    mock_evaluate_bluefin_pod_health,
+    instance,
+    namespace_conditions,
+    all_conditions,
+    namespace_evaluations,
+    all_evaluations
 ):
     namespace = generate_generic_id()
     instance['metadata']['namespace'] = namespace
@@ -507,7 +513,7 @@ def test_pipeline_checks(
                         "provisioningStatus": {
                             "status": ProvisioningState.failed.value,
                             "error": {
-                                 "message": "error message"
+                                "message": "error message"
                             }
                         }
                     }
