@@ -29,4 +29,4 @@ E4K_API_V1A2 = EdgeResourceApi(group="az-edge.com", version="v1alpha2", moniker=
 E4K_API_V1A3 = EdgeResourceApi(group="az-edge.com", version="v1alpha3", moniker="e4k")
 E4K_API_V1A4 = EdgeResourceApi(group="az-edge.com", version="v1alpha4", moniker="e4k")
 
-E4K_ACTIVE_API = E4K_API_V1A4
+E4K_ACTIVE_API = E4K_API_V1A3

@@ -12,6 +12,7 @@ from .base import (
     check_pre_deployment,
     evaluate_pod_health,
     process_as_list,
+    resources_grouped_by_namespace,
 )
 
 from rich.console import Console
@@ -23,6 +24,7 @@ from ...common import (
 )
 
 from .common import (
+    ALL_NAMESPACES_TARGET,
     BLUEFIN_DESTINATION_STAGE_PROPERTIES,
     BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES,
     BLUEFIN_NATS_PREFIX,
@@ -96,72 +98,119 @@ def check_bluefin_post_deployment(
 
 
 def evaluate_instances(
-    namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Bluefin instance")
+    check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Data processor instance")
 
     target_instances = "instances.bluefin.az-bluefin.com"
-    instance_conditions = ["len(instances)==1", "provisioningState"]
-    check_manager.add_target(target_name=target_instances, conditions=instance_conditions)
+    instance_namespace_conditions = ["len(instances)==1", "provisioningStatus"]
+    instance_all_conditions = ["instances"]
+    check_manager.add_target(target_name=target_instances, conditions=instance_all_conditions)
 
-    instance_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.INSTANCE, namespace=namespace)
-    if not instance_list:
-        fetch_instances_error_text = f"Unable to fetch namespace {BluefinResourceKinds.INSTANCE.value}s."
+    instance_list: list = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.INSTANCE)
+
+    all_instances: dict = []
+    if instance_list:
+        all_instances = instance_list.get("items", [])
+
+    if not instance_list or not all_instances:
+        fetch_instances_error_text = f"Unable to fetch {BluefinResourceKinds.INSTANCE.value}s in any namespaces."
         check_manager.add_target_eval(
-            target_name=target_instances, status=CheckTaskStatus.error.value, value=fetch_instances_error_text
+            target_name=target_instances,
+            status=CheckTaskStatus.error.value,
+            value={"instances": None}
         )
-        check_manager.add_display(target_name=target_instances, display=Padding(fetch_instances_error_text, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_instances,
+            display=Padding(fetch_instances_error_text, (0, 0, 0, 8))
+        )
         return check_manager.as_dict(as_list)
 
-    instances: List[dict] = instance_list.get("items", [])
-    instances_count = len(instances)
-    instances_count_text = "- Expecting [bright_blue]1[/bright_blue] instance resource per namespace. {}."
+    check_manager.add_target_eval(
+        target_name=target_instances,
+        status=CheckTaskStatus.success.value,
+        value={"instances": len(all_instances)}
+    )
 
-    if instances_count == 1:
-        instances_count_text = instances_count_text.format(f"[green]Detected {instances_count}[/green]")
-    else:
-        instances_count_text = instances_count_text.format(f"[red]Detected {instances_count}[/red]")
-        check_manager.set_target_status(target_name=target_instances, status=CheckTaskStatus.error.value)
-    check_manager.add_display(target_name=target_instances, display=Padding(instances_count_text, (0, 0, 0, 8)))
-
-    for i in instances:
-
-        instance_name = i["metadata"]["name"]
-        instance_provisionint_status = i["status"]["provisioningStatus"]
-        instance_status = instance_provisionint_status["status"]
-
-        target_instance_text = (
-            f"\n- Instance {{[bright_blue]{instance_name}[/bright_blue]}} provisioning status {{{decorate_resource_status(instance_status)}}}."
-        )
-        check_manager.add_display(target_name=target_instances, display=Padding(target_instance_text, (0, 0, 0, 8)))
-
-        instance_eval_value = {"provisioningState": instance_status}
-        instance_eval_status = CheckTaskStatus.success.value
-
-        if instance_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
-            instance_eval_status = CheckTaskStatus.error.value
-            error_message = instance_provisionint_status.get("error", {}).get("message", ERROR_NO_DETAIL)
-            error_display_text = f"[red]Error: {error_message}[/red]"
-            check_manager.add_display(target_name=target_instances, display=Padding(error_display_text, (0, 0, 0, 10)))
-        elif instance_status in [
-            ProvisioningState.updating.value,
-            ProvisioningState.provisioning.value,
-            ProvisioningState.deleting.value,
-            ProvisioningState.accepted.value
-        ]:
-            instance_eval_status = CheckTaskStatus.warning.value
-
-        check_manager.add_target_eval(
-            target_name=target_instances, status=instance_eval_status, value=instance_eval_value, resource_name=instance_name
+    for (namespace, instances) in resources_grouped_by_namespace(all_instances):
+        check_manager.add_target(target_name=target_instances, namespace=namespace, conditions=instance_namespace_conditions)
+        check_manager.add_display(
+            target_name=target_instances,
+            namespace=namespace,
+            display=Padding(
+                f"Data processor instance in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 8)
+            )
         )
 
-    if instances_count > 0:
+        instances = list(instances)
+        instances_count = len(instances)
+        instances_count_text = "- Expecting [bright_blue]1[/bright_blue] instance resource per namespace. {}."
+
+        if instances_count == 1:
+            instances_count_text = instances_count_text.format(f"[green]Detected {instances_count}[/green]")
+        else:
+            instances_count_text = instances_count_text.format(f"[red]Detected {instances_count}[/red]")
+            check_manager.set_target_status(
+                target_name=target_instances,
+                namespace=namespace,
+                status=CheckTaskStatus.error.value
+            )
+        check_manager.add_display(
+            target_name=target_instances,
+            namespace=namespace,
+            display=Padding(instances_count_text, (0, 0, 0, 8))
+        )
+
+        for i in instances:
+
+            instance_name = i["metadata"]["name"]
+            instance_provisionint_status = i["status"]["provisioningStatus"]
+            instance_status = instance_provisionint_status["status"]
+
+            target_instance_text = (
+                f"- Instance {{[bright_blue]{instance_name}[/bright_blue]}} provisioning status {{{decorate_resource_status(instance_status)}}}."
+            )
+            check_manager.add_display(
+                target_name=target_instances,
+                namespace=namespace,
+                display=Padding(target_instance_text, (0, 0, 0, 8))
+            )
+
+            instance_eval_value = {"provisioningStatus": instance_status}
+            instance_eval_status = CheckTaskStatus.success.value
+
+            if instance_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
+                instance_eval_status = CheckTaskStatus.error.value
+                error_message = instance_provisionint_status.get("error", {}).get("message", ERROR_NO_DETAIL)
+                error_display_text = f"[red]Error: {error_message}[/red]"
+                check_manager.add_display(
+                    target_name=target_instances,
+                    namespace=namespace,
+                    display=Padding(error_display_text, (0, 0, 0, 10))
+                )
+            elif instance_status in [
+                ProvisioningState.updating.value,
+                ProvisioningState.provisioning.value,
+                ProvisioningState.deleting.value,
+                ProvisioningState.accepted.value
+            ]:
+                instance_eval_status = CheckTaskStatus.warning.value
+
+            check_manager.add_target_eval(
+                target_name=target_instances,
+                namespace=namespace,
+                status=instance_eval_status,
+                value=instance_eval_value,
+                resource_name=instance_name
+            )
+
+    if len(all_instances) > 0:
         check_manager.add_display(
             target_name=target_instances,
             display=Padding(
-                "\nRuntime Health",
+                "\nRuntime Health in all namespaces",
                 (0, 0, 0, 8),
             ),
         )
@@ -178,233 +227,365 @@ def evaluate_instances(
             evaluate_pod_health(
                 check_manager=check_manager,
                 target=target_instances,
-                namespace=namespace,
                 pod=pod,
                 display_padding=12,
-                service_label=BLUEFIN_LABEL
+                service_label=BLUEFIN_LABEL,
+                namespace=ALL_NAMESPACES_TARGET
             )
 
     return check_manager.as_dict(as_list)
 
 
 def evaluate_pipelines(
-    namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Bluefin pipeline")
+    check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Data processor pipeline")
 
     target_pipelines = "pipelines.bluefin.az-bluefin.com"
-    pipeline_conditions = ["len(pipelines)>=1",
+    pipeline_all_conditions = ["pipelines"]
+    pipeline_namespace_conditions = [
+                           "len(pipelines)>=1",
                            "mode.enabled",
                            "provisioningStatus",
                            "sourceNodeCount == 1",
                            "len(spec.input.topics)>=1",
                            "spec.input.partitionCount>=1",
-                           "destinationNodeCount==1"]
-    check_manager.add_target(target_name=target_pipelines, conditions=pipeline_conditions)
+                           "destinationNodeCount==1"
+                        ]
 
-    pipeline_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.PIPELINE, namespace=namespace)
-    if not pipeline_list:
-        fetch_pipelines_error_text = f"Unable to fetch namespace {BluefinResourceKinds.PIPELINE.value}s."
-        add_display_and_eval(check_manager, target_pipelines, fetch_pipelines_error_text, CheckTaskStatus.error.value, fetch_pipelines_error_text)
+    check_manager.add_target(target_name=target_pipelines, conditions=pipeline_all_conditions)
+    all_pipelines: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.PIPELINE).get("items", [])
+
+    if not all_pipelines:
+        fetch_pipelines_error_text = f"Unable to fetch {BluefinResourceKinds.PIPELINE.value}s in any namespaces."
+        check_manager.add_target_eval(
+            target_name=target_pipelines,
+            status=CheckTaskStatus.error.value,
+            value={"pipelines": None}
+        )
+        check_manager.add_display(
+            target_name=target_pipelines,
+            display=Padding(fetch_pipelines_error_text, (0, 0, 0, 8))
+        )
         return check_manager.as_dict(as_list)
 
-    pipelines: List[dict] = pipeline_list.get("items", [])
-    pipelines_count = len(pipelines)
-    pipelines_count_text = "- Expecting [bright_blue]>=1[/bright_blue] pipeline resource per namespace. {}."
-
-    if pipelines_count >= 1:
-        pipelines_count_text = pipelines_count_text.format(f"[green]Detected {pipelines_count}[/green]")
-    else:
-        pipelines_count_text = pipelines_count_text.format(f"[red]Detected {pipelines_count}[/red]")
-        check_manager.set_target_status(target_name=target_pipelines, status=CheckTaskStatus.error.value)
-    check_manager.add_display(target_name=target_pipelines, display=Padding(pipelines_count_text, (0, 0, 0, 8)))
-
-    for p in pipelines:
-        pipeline_name = p["metadata"]["name"]
-        pipeline_running_status = "running" if p["spec"]["enabled"] else "not running"
-
-        pipeline_enabled_text = f"\n- Pipeline {{[bright_blue]{pipeline_name}[/bright_blue]}} is {{[bright_blue]{pipeline_running_status}[/bright_blue]}}."
-        pipeline_eval_value = {"mode.enabled": pipeline_running_status}
-        pipeline_eval_status = CheckTaskStatus.success.value
-
-        if pipeline_running_status == "not running":
-            pipieline_not_enabled_text = (
-                f"\n- Pipeline {{[bright_blue]{pipeline_name}[/bright_blue]}} is {{[yellow]not running[/yellow]}}."
-                "\n  [bright_white]Skipping pipeline evaluation[/bright_white]."
+    check_manager.add_target_eval(
+        target_name=target_pipelines,
+        status=CheckTaskStatus.success.value,
+        value={"pipelines": len(all_pipelines)}
+    )
+    
+    for (namespace, pipelines) in resources_grouped_by_namespace(all_pipelines):
+        check_manager.add_target(target_name=target_pipelines, namespace=namespace, conditions=pipeline_namespace_conditions)
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(
+                f"Data processor pipeline in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 8)
             )
-            add_display_and_eval(check_manager, target_pipelines, pipieline_not_enabled_text, CheckTaskStatus.skipped.value, pipeline_eval_value, pipeline_name)
-            continue
-
-        add_display_and_eval(check_manager, target_pipelines, pipeline_enabled_text, pipeline_eval_status, pipeline_eval_value, pipeline_name)
-
-        # check provisioning status
-        pipeline_provisioning_status = p["status"]["provisioningStatus"]
-        pipeline_status = pipeline_provisioning_status["status"]
-        status_display_text = f"- Provisioning status {{{decorate_resource_status(pipeline_status)}}}."
-
-        pipeline_provisioningStatus_eval_value = {"provisioningStatus": pipeline_status}
-        pipeline_provisioningStatus_eval_status = CheckTaskStatus.success.value
-
-        error_display_text = ""
-        if pipeline_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
-            pipeline_provisioningStatus_eval_status = CheckTaskStatus.error.value
-            error_message = pipeline_provisioning_status.get("error", {}).get("message", ERROR_NO_DETAIL)
-            error_display_text = f"[red]Error: {error_message}[/red]"
-        elif pipeline_status in [
-            ProvisioningState.updating.value,
-            ProvisioningState.provisioning.value,
-            ProvisioningState.deleting.value,
-            ProvisioningState.accepted.value
-        ]:
-            pipeline_provisioningStatus_eval_status = CheckTaskStatus.warning.value
-
-        add_display_and_eval(check_manager, target_pipelines, status_display_text, pipeline_provisioningStatus_eval_status, pipeline_provisioningStatus_eval_value, pipeline_name, (0, 0, 0, 12))
-
-        if error_display_text:
-            check_manager.add_display(target_name=target_pipelines, display=Padding(error_display_text, (0, 0, 0, 14)))
-
-        # pipeline source node
-        _evaluate_source_node(
-            pipeline_source_node=p["spec"]["input"],
-            target_pipelines=target_pipelines,
-            pipeline_name=pipeline_name,
-            check_manager=check_manager,
-            detail_level=detail_level
         )
 
-        # pipeline intermediate node
-        pipeline_stages_node = p["spec"]["stages"]
-        output_node: Tuple = ()
-        for s in pipeline_stages_node:
-            if "output" in pipeline_stages_node[s]["type"]:
-                output_node = (s, pipeline_stages_node[s])
-                break
+        pipelines = list(pipelines)
+        pipelines_count = len(pipelines)
+        pipelines_count_text = "- Expecting [bright_blue]>=1[/bright_blue] pipeline resource per namespace. {}."
 
-        _evaluate_intermediate_nodes(
-            output_node,
-            pipeline_stages_node=pipeline_stages_node,
-            target_pipelines=target_pipelines,
-            check_manager=check_manager,
-            detail_level=detail_level
+        if pipelines_count >= 1:
+            pipelines_count_text = pipelines_count_text.format(f"[green]Detected {pipelines_count}[/green]")
+        else:
+            pipelines_count_text = pipelines_count_text.format(f"[red]Detected {pipelines_count}[/red]")
+            check_manager.set_target_status(
+                target_name=target_pipelines,
+                namespace=namespace,
+                status=CheckTaskStatus.error.value
+            )
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(pipelines_count_text, (0, 0, 0, 8))
         )
 
-        # pipeline destination node
-        _evaluate_destination_node(
-            output_node=output_node,
-            target_pipelines=target_pipelines,
-            pipeline_name=pipeline_name,
-            check_manager=check_manager,
-            detail_level=detail_level
-        )
+        for p in pipelines:
+            pipeline_name = p["metadata"]["name"]
+            pipeline_running_status = "running" if p["spec"]["enabled"] else "not running"
+
+            pipeline_enabled_text = f"- Pipeline {{[bright_blue]{pipeline_name}[/bright_blue]}} is {{[bright_blue]{pipeline_running_status}[/bright_blue]}}."
+            pipeline_eval_value = {"mode.enabled": pipeline_running_status}
+            pipeline_eval_status = CheckTaskStatus.success.value
+
+            if pipeline_running_status == "not running":
+                pipieline_not_enabled_text = (
+                    f"- Pipeline {{[bright_blue]{pipeline_name}[/bright_blue]}} is {{[yellow]not running[/yellow]}}."
+                    "\n  [bright_white]Skipping pipeline evaluation[/bright_white]."
+                )
+                add_display_and_eval(
+                    check_manager=check_manager,
+                    target_name=target_pipelines,
+                    display_text=pipieline_not_enabled_text,
+                    eval_status=CheckTaskStatus.skipped.value,
+                    eval_value=pipeline_eval_value,
+                    resource_name=pipeline_name,
+                    namespace=namespace
+                )
+                continue
+
+            add_display_and_eval(
+                check_manager=check_manager,
+                target_name=target_pipelines,
+                display_text=pipeline_enabled_text,
+                eval_status=pipeline_eval_status,
+                eval_value=pipeline_eval_value,
+                resource_name=pipeline_name,
+                namespace=namespace
+            )
+
+            # check provisioning status
+            pipeline_provisioning_status = p["status"]["provisioningStatus"]
+            pipeline_status = pipeline_provisioning_status["status"]
+            status_display_text = f"- Provisioning status {{{decorate_resource_status(pipeline_status)}}}."
+
+            pipeline_provisioningStatus_eval_value = {"provisioningStatus": pipeline_status}
+            pipeline_provisioningStatus_eval_status = CheckTaskStatus.success.value
+
+            error_display_text = ""
+            if pipeline_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
+                pipeline_provisioningStatus_eval_status = CheckTaskStatus.error.value
+                error_message = pipeline_provisioning_status.get("error", {}).get("message", ERROR_NO_DETAIL)
+                error_display_text = f"[red]Error: {error_message}[/red]"
+            elif pipeline_status in [
+                ProvisioningState.updating.value,
+                ProvisioningState.provisioning.value,
+                ProvisioningState.deleting.value,
+                ProvisioningState.accepted.value
+            ]:
+                pipeline_provisioningStatus_eval_status = CheckTaskStatus.warning.value
+
+            add_display_and_eval(
+                check_manager=check_manager,
+                target_name=target_pipelines,
+                display_text=status_display_text,
+                eval_status=pipeline_provisioningStatus_eval_status,
+                eval_value=pipeline_provisioningStatus_eval_value,
+                resource_name=pipeline_name,
+                padding=(0, 0, 0, 12),
+                namespace=namespace
+            )
+
+            if error_display_text:
+                check_manager.add_display(
+                    target_name=target_pipelines,
+                    namespace=namespace,
+                    display=Padding(error_display_text, (0, 0, 0, 14))
+                )
+
+            # pipeline source node
+            _evaluate_source_node(
+                pipeline_source_node=p["spec"]["input"],
+                target_pipelines=target_pipelines,
+                pipeline_name=pipeline_name,
+                check_manager=check_manager,
+                detail_level=detail_level,
+                namespace=namespace
+            )
+
+            # pipeline intermediate node
+            pipeline_stages_node = p["spec"]["stages"]
+            output_node: Tuple = ()
+            for s in pipeline_stages_node:
+                if "output" in pipeline_stages_node[s]["type"]:
+                    output_node = (s, pipeline_stages_node[s])
+                    break
+
+            _evaluate_intermediate_nodes(
+                output_node,
+                pipeline_stages_node=pipeline_stages_node,
+                target_pipelines=target_pipelines,
+                check_manager=check_manager,
+                detail_level=detail_level,
+                namespace=namespace
+            )
+
+            # pipeline destination node
+            _evaluate_destination_node(
+                output_node=output_node,
+                target_pipelines=target_pipelines,
+                pipeline_name=pipeline_name,
+                check_manager=check_manager,
+                detail_level=detail_level,
+                namespace=namespace
+            )
 
     return check_manager.as_dict(as_list)
 
 
 def evaluate_datasets(
-    namespace: str,
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Bluefin dataset")
+    check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Data processor dataset")
 
     target_datasets = "datasets.bluefin.az-bluefin.com"
-    dataset_conditions = ["provisioningState"]
-    check_manager.add_target(target_name=target_datasets, conditions=dataset_conditions)
+    dataset_all_conditions = ["datasets"]
+    dataset_namespace_conditions = ["provisioningState"]
+    check_manager.add_target(target_name=target_datasets, conditions=dataset_all_conditions)
 
-    dataset_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.DATASET, namespace=namespace)
-    datasets: List[dict] = dataset_list.get("items", [])
-    datasets_count = len(datasets)
+    all_datasets: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.DATASET).get("items", [])
 
-    datasets_count_text = "- Checking dataset resource in namespace. {}."
-    dataset_eval_status = CheckTaskStatus.success.value
-
-    if datasets_count > 0:
-        datasets_count_text = datasets_count_text.format(f"[green]Detected {datasets_count}[/green]")
-    else:
-        check_manager.add_target_eval(target_name=target_datasets, status=CheckTaskStatus.skipped.value)
-        no_dataset_text = (
-            "Datasets [yellow]not[/yellow] detected."
+    if not all_datasets:
+        fetch_datasets_warn_text = (
+            f"\nUnable to fetch {BluefinResourceKinds.DATASET.value}s in any namespaces."
             "\n[bright_white]Skipping dataset evaluation[/bright_white]."
         )
-        check_manager.add_display(target_name=target_datasets, display=Padding(no_dataset_text, (0, 0, 0, 8)))
-        return check_manager.as_dict(as_list)
-    check_manager.add_display(target_name=target_datasets, display=Padding(datasets_count_text, (0, 0, 0, 8)))
-
-    for d in datasets:
-        dataset_name = d["metadata"]["name"]
-        dataset_status = d["status"]["provisioningStatus"]["status"]
-
-        status_display_text = f"Provisiong Status: {{{decorate_resource_status(dataset_status)}}}"
-
-        target_dataset_text = (
-            f"\n- Dataset resource {{[bright_blue]{dataset_name}[/bright_blue]}}"
+        add_display_and_eval(
+            check_manager=check_manager,
+            target_name=target_datasets,
+            display_text=fetch_datasets_warn_text,
+            eval_status=CheckTaskStatus.skipped.value,
+            eval_value={"datasets": None}
         )
-        check_manager.add_display(target_name=target_datasets, display=Padding(target_dataset_text, (0, 0, 0, 8)))
-        check_manager.add_display(target_name=target_datasets, display=Padding(status_display_text, (0, 0, 0, 12)))
+        return check_manager.as_dict(as_list)
+    
+    check_manager.add_target_eval(
+        target_name=target_datasets,
+        status=CheckTaskStatus.success.value,
+        value={"datasets": len(all_datasets)}
+    )
 
-        dataset_eval_value = {"provisioningState": dataset_status}
+    for (namespace, datasets) in resources_grouped_by_namespace(all_datasets):
+        check_manager.add_target(target_name=target_datasets, namespace=namespace, conditions=dataset_namespace_conditions)
+        check_manager.add_display(
+            target_name=target_datasets,
+            namespace=namespace,
+            display=Padding(
+                f"Data processor dataset in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 8)
+            )
+        )
+
+        datasets = list(datasets)
+        datasets_count = len(datasets)
+
+        datasets_count_text = "- Checking dataset resource in namespace. {}."
         dataset_eval_status = CheckTaskStatus.success.value
 
-        if dataset_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
-            dataset_eval_status = CheckTaskStatus.error.value
-            error_message = d["status"]["provisioningStatus"]["error"]["message"]
-            error_display_text = f"[red]Error: {error_message}[/red]"
-            check_manager.add_display(target_name=target_datasets, display=Padding(error_display_text, (0, 0, 0, 14)))
-        elif dataset_status in [
-            ProvisioningState.updating.value,
-            ProvisioningState.provisioning.value,
-            ProvisioningState.deleting.value,
-            ProvisioningState.accepted.value
-        ]:
-            dataset_eval_status = CheckTaskStatus.warning.value
-
-        check_manager.add_target_eval(
-            target_name=target_datasets, status=dataset_eval_status, value=dataset_eval_value, resource_name=dataset_name
+        if datasets_count > 0:
+            datasets_count_text = datasets_count_text.format(f"[green]Detected {datasets_count}[/green]")
+        else:
+            check_manager.add_target_eval(
+                target_name=target_datasets,
+                namespace=namespace,
+                status=CheckTaskStatus.skipped.value
+            )
+            no_dataset_text = (
+                "Datasets [yellow]not[/yellow] detected."
+                "\n[bright_white]Skipping dataset evaluation[/bright_white]."
+            )
+            check_manager.add_display(
+                target_name=target_datasets,
+                namespace=namespace,
+                display=Padding(no_dataset_text, (0, 0, 0, 8))
+            )
+            return check_manager.as_dict(as_list)
+        
+        check_manager.add_display(
+            target_name=target_datasets,
+            namespace=namespace,
+            display=Padding(datasets_count_text, (0, 0, 0, 8))
         )
 
-        if detail_level != ResourceOutputDetailLevel.summary.value:
-            dataset_spec: dict = d["spec"]
-            dataset_payload = dataset_spec.get("payload", "")
-            if dataset_payload:
-                check_manager.add_display(
-                    target_name=target_datasets,
-                    display=Padding(
-                        f"Payload path: [cyan]{dataset_payload}[/cyan]",
-                        (0, 0, 0, 12),
-                    ),
-                )
+        for d in datasets:
+            dataset_name = d["metadata"]["name"]
+            dataset_status = d["status"]["provisioningStatus"]["status"]
 
-            dataset_timestamp = dataset_spec.get("timestamp", "")
-            if dataset_timestamp:
-                check_manager.add_display(
-                    target_name=target_datasets,
-                    display=Padding(
-                        f"Timestamp: [cyan]{dataset_timestamp}[/cyan]",
-                        (0, 0, 0, 12),
-                    ),
-                )
+            status_display_text = f"Provisiong Status: {{{decorate_resource_status(dataset_status)}}}"
 
-            dataset_ttl = dataset_spec.get("ttl", "")
-            if dataset_ttl:
-                check_manager.add_display(
-                    target_name=target_datasets,
-                    display=Padding(
-                        f"Expiration time: [cyan]{dataset_ttl}[/cyan]",
-                        (0, 0, 0, 12),
-                    ),
-                )
-
-        if detail_level == ResourceOutputDetailLevel.verbose.value and dataset_spec.get("keys"):
-            _process_verbose_only_property(
-                check_manager=check_manager,
-                detail_level=detail_level,
-                target_name=target_datasets,
-                stage_properties=d["spec"]["keys"],
-                display_name="Dataset configuration key",
-                padding=(0, 0, 0, 12)
+            target_dataset_text = (
+                f"- Dataset resource {{[bright_blue]{dataset_name}[/bright_blue]}}"
             )
+            check_manager.add_display(
+                target_name=target_datasets,
+                namespace=namespace,
+                display=Padding(target_dataset_text, (0, 0, 0, 8))
+            )
+            check_manager.add_display(
+                target_name=target_datasets,
+                namespace=namespace,
+                display=Padding(status_display_text, (0, 0, 0, 12))
+            )
+
+            dataset_eval_value = {"provisioningState": dataset_status}
+            dataset_eval_status = CheckTaskStatus.success.value
+
+            if dataset_status in [ProvisioningState.canceled.value, ProvisioningState.failed.value]:
+                dataset_eval_status = CheckTaskStatus.error.value
+                error_message = d["status"]["provisioningStatus"]["error"]["message"]
+                error_display_text = f"[red]Error: {error_message}[/red]"
+                check_manager.add_display(
+                    target_name=target_datasets,
+                    namespace=namespace,
+                    display=Padding(error_display_text, (0, 0, 0, 14)))
+            elif dataset_status in [
+                ProvisioningState.updating.value,
+                ProvisioningState.provisioning.value,
+                ProvisioningState.deleting.value,
+                ProvisioningState.accepted.value
+            ]:
+                dataset_eval_status = CheckTaskStatus.warning.value
+
+            check_manager.add_target_eval(
+                target_name=target_datasets,
+                status=dataset_eval_status,
+                value=dataset_eval_value,
+                resource_name=dataset_name,
+                namespace=namespace
+            )
+
+            if detail_level != ResourceOutputDetailLevel.summary.value:
+                dataset_spec: dict = d["spec"]
+                dataset_payload = dataset_spec.get("payload", "")
+                if dataset_payload:
+                    check_manager.add_display(
+                        target_name=target_datasets,
+                        namespace=namespace,
+                        display=Padding(
+                            f"Payload path: [cyan]{dataset_payload}[/cyan]",
+                            (0, 0, 0, 12),
+                        ),
+                    )
+
+                dataset_timestamp = dataset_spec.get("timestamp", "")
+                if dataset_timestamp:
+                    check_manager.add_display(
+                        target_name=target_datasets,
+                        namespace=namespace,
+                        display=Padding(
+                            f"Timestamp: [cyan]{dataset_timestamp}[/cyan]",
+                            (0, 0, 0, 12),
+                        ),
+                    )
+
+                dataset_ttl = dataset_spec.get("ttl", "")
+                if dataset_ttl:
+                    check_manager.add_display(
+                        target_name=target_datasets,
+                        namespace=namespace,
+                        display=Padding(
+                            f"Expiration time: [cyan]{dataset_ttl}[/cyan]",
+                            (0, 0, 0, 12),
+                        ),
+                    )
+
+            if detail_level == ResourceOutputDetailLevel.verbose.value and dataset_spec.get("keys"):
+                _process_verbose_only_property(
+                    check_manager=check_manager,
+                    detail_level=detail_level,
+                    target_name=target_datasets,
+                    stage_properties=d["spec"]["keys"],
+                    display_name="Dataset configuration key",
+                    padding=(0, 0, 0, 12),
+                    namespace=namespace
+                )
 
     return check_manager.as_dict(as_list)
 
@@ -415,7 +596,8 @@ def _process_stage_properties(
     target_name: str,
     stage: Dict[str, Any],
     stage_properties: Dict[str, Any],
-    padding: tuple
+    padding: tuple,
+    namespace: str
 ) -> None:
     stage_type = stage["type"]
 
@@ -435,7 +617,8 @@ def _process_stage_properties(
                         target_name,
                         stage_properties=prop_value,
                         display_name=display_name,
-                        padding=padding
+                        padding=padding,
+                        namespace=namespace
                     )
                 elif not verbose_only:
                     if prop == "descriptor":
@@ -443,7 +626,11 @@ def _process_stage_properties(
                     elif prop.endswith("clientSecret"):
                         prop_value = "*" * len(prop_value)
                     display_text = f"{display_name}: [bright_blue]{prop_value}[/bright_blue]"
-                    check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+                    check_manager.add_display(
+                        target_name=target_name,
+                        namespace=namespace,
+                        display=Padding(display_text, padding)
+                    )
 
 
 def _process_verbose_only_property(
@@ -452,7 +639,8 @@ def _process_verbose_only_property(
     target_name: str,
     stage_properties: Any,
     display_name: str,
-    padding: tuple
+    padding: tuple,
+    namespace: str
 ) -> None:
     padding_left = padding[3]
     if isinstance(stage_properties, list):
@@ -460,25 +648,57 @@ def _process_verbose_only_property(
             return
 
         display_text = f"{display_name}:"
-        check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(display_text, padding)
+        )
 
         for property in stage_properties:
             display_text = f"- {display_name} [bright_blue]{stage_properties.index(property) + 1}[/bright_blue]"
-            check_manager.add_display(target_name=target_name, display=Padding(display_text, (0, 0, 0, padding_left + 2)))
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(display_text, (0, 0, 0, padding_left + 2))
+            )
             for prop, value in property.items():
                 display_text = f"{prop}: [bright_blue]{value}[/bright_blue]"
-                check_manager.add_display(target_name=target_name, display=Padding(display_text, (0, 0, 0, padding_left + 4)))
-            check_manager.add_display(target_name=target_name, display=Padding("", padding))
+                check_manager.add_display(
+                    target_name=target_name,
+                    namespace=namespace,
+                    display=Padding(display_text, (0, 0, 0, padding_left + 4))
+                )
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding("", padding)
+            )
     elif isinstance(stage_properties, str):
         display_text = f"{display_name}: [bright_blue]{stage_properties}[/bright_blue]"
-        check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(display_text, padding)
+        )
     elif isinstance(stage_properties, dict):
         display_text = f"{display_name}:"
-        check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(display_text, padding)
+        )
         for prop, value in stage_properties.items():
             display_text = f"{prop}: [bright_blue]{value}[/bright_blue]"
-            check_manager.add_display(target_name=target_name, display=Padding(display_text, (0, 0, 0, padding_left + 2)))
-        check_manager.add_display(target_name=target_name, display=Padding("", padding))
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(display_text, (0, 0, 0, padding_left + 2))
+            )
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding("", padding)
+        )
 
 
 def add_display_and_eval(
@@ -488,10 +708,21 @@ def add_display_and_eval(
     eval_status: str,
     eval_value: str,
     resource_name: Optional[str] = None,
+    namespace: str = ALL_NAMESPACES_TARGET,
     padding: Tuple[int, int, int, int] = (0, 0, 0, 8)
 ) -> None:
-    check_manager.add_display(target_name=target_name, display=Padding(display_text, padding))
-    check_manager.add_target_eval(target_name=target_name, status=eval_status, value=eval_value, resource_name=resource_name)
+    check_manager.add_display(
+        target_name=target_name,
+        namespace=namespace,
+        display=Padding(display_text, padding)
+    )
+    check_manager.add_target_eval(
+        target_name=target_name,
+        namespace=namespace,
+        status=eval_status,
+        value=eval_value,
+        resource_name=resource_name
+    )
 
 
 def _evaluate_source_node(
@@ -499,6 +730,7 @@ def _evaluate_source_node(
     target_pipelines: str,
     pipeline_name: str,
     check_manager: CheckManager,
+    namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
 
@@ -512,7 +744,16 @@ def _evaluate_source_node(
     if pipeline_source_node_count != 1:
         pipeline_source_count_eval_status = CheckTaskStatus.error.value
         source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] MQTT data source node. {{[red]Detected {pipeline_source_node_count}[/red]}}."
-    add_display_and_eval(check_manager, target_pipelines, source_count_display_text, pipeline_source_count_eval_status, pipeline_source_count_eval_value, pipeline_name, (0, 0, 0, 12))
+    add_display_and_eval(
+        check_manager=check_manager,
+        target_name=target_pipelines,
+        display_text=source_count_display_text,
+        eval_status=pipeline_source_count_eval_status,
+        eval_value=pipeline_source_count_eval_value,
+        resource_name=pipeline_name,
+        padding=(0, 0, 0, 12),
+        namespace=namespace
+    )
 
     # check data source topics
     pipeline_source_node_topics = pipeline_source_node["topics"]
@@ -524,33 +765,56 @@ def _evaluate_source_node(
 
     if pipeline_source_node_topics_count < 1 or pipeline_source_node_topics_count > 50:
         pipeline_source_topics_eval_status = CheckTaskStatus.error.value
-    check_manager.add_display(target_name=target_pipelines, display=Padding(source_topics_display_text, (0, 0, 0, 16)))
+    check_manager.add_display(
+        target_name=target_pipelines,
+        namespace=namespace,
+        display=Padding(source_topics_display_text, (0, 0, 0, 16))
+    )
 
     check_manager.add_target_eval(
-        target_name=target_pipelines, status=pipeline_source_topics_eval_status, value=pipeline_source_topics_eval_value, resource_name=pipeline_name
+        target_name=target_pipelines,
+        status=pipeline_source_topics_eval_status,
+        value=pipeline_source_topics_eval_value,
+        resource_name=pipeline_name,
+        namespace=namespace
     )
 
     if detail_level != ResourceOutputDetailLevel.summary.value:
         # data source topics detail
         for topic in pipeline_source_node_topics:
             topic_display_text = f"Topic {{[bright_blue]{topic}[/bright_blue]}} detected."
-            check_manager.add_display(target_name=target_pipelines, display=Padding(topic_display_text, (0, 0, 0, 18)))
+            check_manager.add_display(
+                target_name=target_pipelines,
+                namespace=namespace,
+                display=Padding(topic_display_text, (0, 0, 0, 18))
+            )
 
         # data source broker URL
         pipeline_source_node_broker = pipeline_source_node["broker"]
         source_broker_display_text = f"- Broker URL: [bright_blue]{pipeline_source_node_broker}[/bright_blue]"
 
-        check_manager.add_display(target_name=target_pipelines, display=Padding(source_broker_display_text, (0, 0, 0, 16)))
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(source_broker_display_text, (0, 0, 0, 16)))
 
         # data source message format type
         pipeline_source_node_format_type = pipeline_source_node["format"]["type"]
         source_format_type_display_text = f"- Source message type: [bright_blue]{pipeline_source_node_format_type}[/bright_blue]"
-        check_manager.add_display(target_name=target_pipelines, display=Padding(source_format_type_display_text, (0, 0, 0, 16)))
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(source_format_type_display_text, (0, 0, 0, 16))
+        )
 
         # data source qos
         pipeline_source_node_qos = pipeline_source_node["qos"]
         source_qos_display_text = f"- QoS: [bright_blue]{pipeline_source_node_qos}[/bright_blue]"
-        check_manager.add_display(target_name=target_pipelines, display=Padding(source_qos_display_text, (0, 0, 0, 16)))
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(source_qos_display_text, (0, 0, 0, 16))
+        )
 
         # check data source partition
         pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
@@ -563,25 +827,49 @@ def _evaluate_source_node(
 
         if pipeline_source_node_partition_count < 1 or pipeline_source_node_partition_count > 100:
             pipeline_source_partition_eval_status = CheckTaskStatus.error.value
-        check_manager.add_display(target_name=target_pipelines, display=Padding(source_partition_count_display_text, (0, 0, 0, 16)))
-        check_manager.add_display(target_name=target_pipelines, display=Padding(source_partition_strategy_display_text, (0, 0, 0, 18)))
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(source_partition_count_display_text, (0, 0, 0, 16))
+        )
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(source_partition_strategy_display_text, (0, 0, 0, 18))
+        )
 
         check_manager.add_target_eval(
-            target_name=target_pipelines, status=pipeline_source_partition_eval_status, value=pipeline_source_partition_eval_value, resource_name=pipeline_name
+            target_name=target_pipelines,
+            namespace=namespace,
+            status=pipeline_source_partition_eval_status,
+            value=pipeline_source_partition_eval_value,
+            resource_name=pipeline_name
         )
 
     # data source authentication
     pipeline_source_node_authentication = pipeline_source_node["authentication"]["type"]
     if pipeline_source_node_authentication == "usernamePassword":
         source_authentication_display_text = f"- Authentication type: [bright_blue]{pipeline_source_node_authentication}[/bright_blue]"
-        check_manager.add_display(target_name=target_pipelines, display=Padding(source_authentication_display_text, (0, 0, 0, 16)))
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(source_authentication_display_text, (0, 0, 0, 16))
+        )
 
         if detail_level != ResourceOutputDetailLevel.summary.value:
             authentication_username = pipeline_source_node["authentication"]["username"]
             authentication_password = pipeline_source_node["authentication"]["password"]
             masked_password = '*' * len(authentication_password)
-            check_manager.add_display(target_name=target_pipelines, display=Padding(f"Username: [cyan]{authentication_username}[/cyan]", (0, 0, 0, 20)))
-            check_manager.add_display(target_name=target_pipelines, display=Padding(f"Password: [cyan]{masked_password}[/cyan]", (0, 0, 0, 20)))
+            check_manager.add_display(
+                target_name=target_pipelines,
+                namespace=namespace,
+                display=Padding(f"Username: [cyan]{authentication_username}[/cyan]", (0, 0, 0, 20))
+            )
+            check_manager.add_display(
+                target_name=target_pipelines,
+                namespace=namespace,
+                display=Padding(f"Password: [cyan]{masked_password}[/cyan]", (0, 0, 0, 20))
+            )
 
 
 def _evaluate_intermediate_nodes(
@@ -589,6 +877,7 @@ def _evaluate_intermediate_nodes(
     pipeline_stages_node: Dict[str, Any],
     target_pipelines: str,
     check_manager: CheckManager,
+    namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
 
@@ -600,13 +889,21 @@ def _evaluate_intermediate_nodes(
         pipeline_intermediate_stages_node_count -= 1
     stage_count_display_text = f"- Pipeline contains [bright_blue]{pipeline_intermediate_stages_node_count}[/bright_blue] intermediate stages."
 
-    check_manager.add_display(target_name=target_pipelines, display=Padding(stage_count_display_text, (0, 0, 0, 12)))
+    check_manager.add_display(
+        target_name=target_pipelines,
+        namespace=namespace,
+        display=Padding(stage_count_display_text, (0, 0, 0, 12))
+    )
 
     if detail_level != ResourceOutputDetailLevel.summary.value:
         for stage_name in pipeline_intermediate_stages_node:
             stage_type = pipeline_intermediate_stages_node[stage_name]["type"]
             stage_display_text = f"- Stage resource {{[bright_blue]{stage_name}[/bright_blue]}} of type {{[bright_blue]{stage_type}[/bright_blue]}}"
-            check_manager.add_display(target_name=target_pipelines, display=Padding(stage_display_text, (0, 0, 0, 16)))
+            check_manager.add_display(
+                target_name=target_pipelines,
+                namespace=namespace,
+                display=Padding(stage_display_text, (0, 0, 0, 16))
+            )
 
             _process_stage_properties(
                 check_manager,
@@ -614,7 +911,8 @@ def _evaluate_intermediate_nodes(
                 target_name=target_pipelines,
                 stage=pipeline_intermediate_stages_node[stage_name],
                 stage_properties=BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES,
-                padding=(0, 0, 0, 20)
+                padding=(0, 0, 0, 20),
+                namespace=namespace
             )
 
 
@@ -623,6 +921,7 @@ def _evaluate_destination_node(
     target_pipelines: str,
     pipeline_name: str,
     check_manager: CheckManager,
+    namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
     pipeline_destination_node_count = 1 if output_node else 0
@@ -633,7 +932,16 @@ def _evaluate_destination_node(
 
     if pipeline_destination_node_count != 1:
         pipeline_destination_eval_status = CheckTaskStatus.error.value
-    add_display_and_eval(check_manager, target_pipelines, destination_count_display_text, pipeline_destination_eval_status, pipeline_destination_eval_value, pipeline_name, (0, 0, 0, 12))
+    add_display_and_eval(
+        check_manager=check_manager,
+        target_name=target_pipelines,
+        display_text=destination_count_display_text,
+        eval_status=pipeline_destination_eval_status,
+        eval_value=pipeline_destination_eval_value,
+        resource_name=pipeline_name,
+        padding=(0, 0, 0, 12),
+        namespace=namespace
+    )
 
     if output_node:
         if detail_level != ResourceOutputDetailLevel.summary.value:
@@ -643,5 +951,6 @@ def _evaluate_destination_node(
                 target_name=target_pipelines,
                 stage=output_node[1],
                 stage_properties=BLUEFIN_DESTINATION_STAGE_PROPERTIES,
-                padding=(0, 0, 0, 16)
+                padding=(0, 0, 0, 16),
+                namespace=namespace
             )

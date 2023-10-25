@@ -104,7 +104,6 @@ BLUEFIN_DESTINATION_STAGE_PROPERTIES = {
     BluefinDestinationStageType.mqtt.value: [("broker", "MQTT broker URL", False), ("qos", "MQTT QoS", False),
                                              ("topic", "MQTT topic", False),
                                              ("authentication.type", "MQTT authentication type", False),
-                                             ("format.type", "MQTT format", False),
                                              ("format", "MQTT format", True),
                                              ("authentication", "MQTT authentication", True),
                                              ("userProperties", "MQTT user property", True),
