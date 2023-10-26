@@ -23,7 +23,6 @@ from rich.padding import Padding
 from ...common import CheckTaskStatus
 
 from .common import (
-    AIO_LNM_OPERATOR_PREFIX,
     AIO_LNM_PREFIX,
     LNM_ALLOWLIST_PROPERTIES,
     LNM_IMAGE_PROPERTIES,
@@ -273,14 +272,13 @@ def evaluate_lnms(
 
             lnm_label = f"app in ({','.join(lnm_app_lables)})"
 
-            for pod in lnm_app_lables:
-                evaluate_pod_health(
-                    check_manager=check_manager,
-                    target=target_lnms,
-                    namespace=namespace,
-                    pod=pod,
-                    display_padding=12,
-                    service_label=lnm_label
-                )
+            evaluate_pod_health(
+                check_manager=check_manager,
+                target=target_lnms,
+                namespace=namespace,
+                pod=AIO_LNM_PREFIX,
+                display_padding=12,
+                service_label=lnm_label
+            )
 
     return check_manager.as_dict(as_list)

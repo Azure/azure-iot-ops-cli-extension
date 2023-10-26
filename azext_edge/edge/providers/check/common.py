@@ -176,7 +176,6 @@ AZEDGE_KAFKA_CONFIG_PREFIX = "azedge-kafka-config"
 
 # Lnm runtime attributes
 AIO_LNM_PREFIX = "aio-lnm"
-AIO_LNM_OPERATOR_PREFIX = "aio-lnm-operator"
 
 # Pre-deployment KPIs
 
