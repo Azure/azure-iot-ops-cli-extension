@@ -4,460 +4,438 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import List, Optional
+import json
+from pathlib import PurePath
+from time import sleep
+from typing import List, NamedTuple, Optional, Tuple
 
-from .pas_versions import (
-    PasVersionDef,
-    EdgeServiceMoniker,
-    get_pas_version_def,
-    extension_name_to_type_map,
-    EdgeExtensionName,
-    DEPLOYABLE_PAS_VERSION,
+from azure.cli.core.azclierror import AzureResponseError, HTTPError
+from azure.core.exceptions import HttpResponseError
+from azure.identity import DefaultAzureCredential
+from azure.mgmt.resource import ResourceManagementClient
+from knack.log import get_logger
+from rich.live import Console
+from rich.table import Table
+
+from ...util import generate_secret, generate_self_signed_cert, get_timestamp_now_utc
+from ..base import (
+    create_cluster_namespace,
+    create_namespaced_configmap,
+    create_namespaced_custom_objects,
+    create_namespaced_secret,
+    get_cluster_namespace,
 )
-from ...util import get_timestamp_now_utc
+from ..edge_api import KEYVAULT_API_V1, KeyVaultResourceKinds
+from .components import (
+    get_kv_secret_store_yaml,
+)
+from .work import WorkManager
+from .template import TEMPLATE_MANAGER
+
+logger = get_logger(__name__)
 
 
-def get_otel_collector_addr(namespace: str, prefix_protocol: bool = False):
-    addr = f"otel-collector.{namespace}.svc.cluster.local:4317"
-    if prefix_protocol:
-        return f"http://{addr}"
-    return addr
+KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
+DEFAULT_AZURE_CREDENTIAL = DefaultAzureCredential()
+
+DEFAULT_POLL_RETRIES = 30
+DEFAULT_POLL_WAIT_SEC = 10
 
 
-def get_geneva_metrics_addr(namespace: str, prefix_protocol: bool = False):
-    addr = f"geneva-metrics-service.{namespace}.svc.cluster.local:4317"
-    if prefix_protocol:
-        return f"http://{addr}"
-    return addr
-
-
-class ManifestBuilder:
-    def __init__(
-        self,
-        cluster_name: str,
-        custom_location_name: str,
-        custom_location_namespace: str,
-        cluster_namespace: str,
-        version_def: PasVersionDef,
-        **kwargs,
-    ):
-        self.cluster_name = cluster_name
-        self.cluster_namespace = cluster_namespace
-        self.custom_location_name = custom_location_name
-        self.custom_location_namespace = custom_location_namespace
-        self.version_def = version_def
-
-        self.last_sync_priority: int = 0
-        self.symphony_components: List[dict] = []
-        self.resources: List[dict] = []
-        self.extension_ids: List[str] = []
-
-        self.kwargs = kwargs
-        self.create_sync_rules = self.kwargs.get("create_sync_rules")
-        self.target_name = self.kwargs.get("target_name")
-
-        self._manifest: dict = {
-            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-            "contentVersion": "0.1.2.0",
-            "metadata": {"description": "Az Edge CLI PAS deployment."},
-            "variables": {
-                "clusterId": f"[resourceId('Microsoft.Kubernetes/connectedClusters', '{self.cluster_name}')]",
-                "customLocationName": self.custom_location_name,
-                "location": self.kwargs.get("location") or "[resourceGroup().location]",
-            },
-            "resources": [],
-        }
-        self._symphony_target_template: dict = {
-            "type": "Microsoft.Symphony/targets",
-            "name": self.target_name,
-            "location": "[variables('location')]",
-            "apiVersion": "2023-05-22-preview",
-            "extendedLocation": {
-                "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]",
-                "type": "CustomLocation",
-            },
-            "properties": {
-                "scope": cluster_namespace,
-                "version": "1.2.0",
-                "displayName": self.target_name,
-                "components": [],
-                "topologies": [
-                    {
-                        "bindings": [
-                            {
-                                "role": "instance",
-                                "provider": "providers.target.k8s",
-                                "config": {"inCluster": "True"},
-                            },
-                            {
-                                "role": "helm.v3",
-                                "provider": "providers.target.helm",
-                                "config": {"inCluster": "True"},
-                            },
-                            {
-                                "role": "yaml.k8s",
-                                "provider": "providers.target.kubectl",
-                                "config": {"inCluster": "True"},
-                            },
-                        ]
-                    }
-                ],
-            },
-            "dependsOn": [
-                "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]"
-            ],
-        }
-
-    def get_next_priority(self) -> int:
-        self.last_sync_priority = self.last_sync_priority + 100
-        return self.last_sync_priority
-
-    def add_extension(
-        self,
-        extension_type: str,
-        name: str,
-        release_train: str = "private-preview",
-        configuration: Optional[dict] = None,
-        identity: Optional[dict] = None,
-        skip_sync_rule: bool = False,
-        skip_custom_location_dep: bool = False,
-    ):
-        target_version = self.version_def.extension_to_vers_map.get(extension_type)
-        if target_version:
-            extension = {
-                "type": "Microsoft.KubernetesConfiguration/extensions",
-                "apiVersion": "2022-03-01",
-                "name": name,
-                "properties": {
-                    "extensionType": extension_type,
-                    "autoUpgradeMinorVersion": False,
-                    "scope": {"cluster": {"releaseNamespace": self.cluster_namespace}},
-                    "version": target_version,
-                    "releaseTrain": release_train,
-                    "configurationSettings": {},
-                },
-                "scope": f"Microsoft.Kubernetes/connectedClusters/{self.cluster_name}",
-            }
-            if configuration:
-                extension["properties"]["configurationSettings"].update(configuration)
-            if identity:
-                extension["identity"] = identity
-            self.resources.append(extension)
-            if not skip_custom_location_dep:
-                self.extension_ids.append(
-                    "[concat(variables('clusterId'), "
-                    f"'/providers/Microsoft.KubernetesConfiguration/extensions/{name}')]"
-                )
-
-            if self.create_sync_rules and not skip_sync_rule and not skip_custom_location_dep:
-                # TODO: self.version_def.extension_to_rp_map
-                sync_rule = {
-                    "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
-                    "apiVersion": "2021-08-31-preview",
-                    "name": f"{self.custom_location_name}/"
-                    f"{self.custom_location_name}-{extension_type.split()[-1]}-sync",
-                    "location": "[variables('location')]",
-                    "properties": {
-                        "priority": self.get_next_priority(),
-                        "selector": {
-                            "matchLabels": {
-                                "management.azure.com/provider-name": self.version_def.extension_to_rp_map[
-                                    extension_type
-                                ]
-                            }
-                        },
-                        "targetResourceGroup": "[resourceGroup().id]",
-                    },
-                    "dependsOn": [
-                        "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]"
-                    ],
-                }
-                self.resources.append(sync_rule)
-
-    def add_custom_location(self):
-        payload = {
-            "type": "Microsoft.ExtendedLocation/customLocations",
-            "apiVersion": "2021-08-31-preview",
-            "name": self.custom_location_name,
-            "location": "[variables('location')]",
-            "properties": {
-                "hostResourceId": "[variables('clusterId')]",
-                "namespace": self.custom_location_namespace,
-                "displayName": self.custom_location_name,
-                "clusterExtensionIds": self.extension_ids,
-            },
-            "dependsOn": self.extension_ids,
-        }
-        self.resources.append(payload)
-
-    def add_bluefin_instance(self, name: str):
-        payload = {
-            "type": "Microsoft.Bluefin/instances",
-            "apiVersion": "2023-06-26-preview",
-            "name": name,
-            "location": "[variables('location')]",
-            "extendedLocation": {
-                "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]",
-                "type": "CustomLocation",
-            },
-            "properties": {},
-            "dependsOn": [
-                "[resourceId('Microsoft.ExtendedLocation/customLocations', variables('customLocationName'))]"
-            ],
-        }
-        self.resources.append(payload)
-
-    def add_std_symphony_components(self):
-        from .components import (
-            get_akri_opcua_asset,
-            get_akri_opcua_discovery_daemonset,
-            get_e4in,
-            get_observability,
-            get_opcua_broker,
-        )
-
-        # TODO: Primitive pattern
-        obs_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.obs.value)
-        if obs_version:
-            self.symphony_components.append(get_observability(version=obs_version))
-
-        e4in_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.e4in.value)
-        if e4in_version:
-            self.symphony_components.append(get_e4in(version=e4in_version))
-
-        akri_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.akri.value)
-        if akri_version:
-            self.symphony_components.append(get_akri_opcua_discovery_daemonset())
-            self.symphony_components.append(
-                get_akri_opcua_asset(
-                    opcua_discovery_endpoint=self.kwargs.get("opcua_discovery_endpoint"),
-                )
-            )
-
-        opcua_version = self.version_def.moniker_to_version_map.get(EdgeServiceMoniker.opcua.value)
-        if opcua_version:
-            self.symphony_components.append(
-                get_opcua_broker(
-                    version=opcua_version,
-                    namespace=self.cluster_namespace,
-                    otel_collector_addr=get_otel_collector_addr(self.cluster_namespace, True),
-                    geneva_collector_addr=get_geneva_metrics_addr(self.cluster_namespace, True),
-                    simulate_plc=self.kwargs.get("simulate_plc", False),
-                )
-            )
-
-    @property
-    def manifest(self):
-        from copy import deepcopy
-
-        m = deepcopy(self._manifest)
-        if self.resources:
-            m["resources"].extend(self.resources)
-        if self.symphony_components:
-            t = deepcopy(self._symphony_target_template)
-            t["properties"]["components"].extend(self.symphony_components)
-            m["resources"].append(t)
-
-        return m
+class ServicePrincipal(NamedTuple):
+    client_id: str
+    object_id: str
+    tenant_id: str
+    secret: str
+    created_app: bool
 
 
 def deploy(
-    subscription_id: str,
-    cluster_name: str,
-    cluster_namespace: str,
-    resource_group_name: str,
-    custom_location_name: str,
-    custom_location_namespace: str,
     **kwargs,
 ):
-    from uuid import uuid4
-
-    from azure.cli.core.azclierror import AzureResponseError
-    from azure.core.exceptions import HttpResponseError
-    from azure.identity import DefaultAzureCredential
-    from azure.mgmt.resource import ResourceManagementClient
-    from rich.console import Console, NewLine
-    from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
-    from rich.table import Table
-    from rich.live import Live
-
-    version_def = process_deployable_version(**kwargs)
-    show_pas_version = kwargs.get("show_pas_version", False)
-    if show_pas_version:
+    show_aio_version = kwargs.get("show_aio_version", False)
+    if show_aio_version:
+        template = TEMPLATE_MANAGER.version_map["1.0.0.0"]
         console = Console()
-        table = Table(title=f"Project Alice Springs {version_def.version}")
+        table = Table(title=f"Azure IoT Operations v{template.content_ver}")
         table.add_column("Component", justify="left", style="cyan")
         table.add_column("Version", justify="left", style="magenta")
-        for moniker in version_def.moniker_to_version_map:
-            table.add_row(moniker, version_def.moniker_to_version_map[moniker])
+        for moniker in template.component_vers:
+            table.add_row(moniker, template.component_vers[moniker])
         console.print(table)
         return
 
-    resource_client = ResourceManagementClient(credential=DefaultAzureCredential(), subscription_id=subscription_id)
-    manifest_builder = ManifestBuilder(
-        cluster_name=cluster_name,
-        custom_location_name=custom_location_name,
-        custom_location_namespace=custom_location_namespace,
-        cluster_namespace=cluster_namespace,
-        version_def=version_def,
-        **kwargs,
-    )
+    manager = WorkManager(**kwargs)
+    return manager.do_work()
 
-    manifest_builder.add_extension(
-        extension_type=extension_name_to_type_map[EdgeExtensionName.alicesprings.value],
-        name=EdgeExtensionName.alicesprings.value,
-        identity={"type": "SystemAssigned"},
-        configuration={
-            "Microsoft.CustomLocation.ServiceAccount": "default",
-            "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
-            "genevaCollectorAddress": get_geneva_metrics_addr(cluster_namespace),
-        },
-    )
-    manifest_builder.add_extension(
-        extension_type=extension_name_to_type_map[EdgeExtensionName.dataplane.value],
-        name=EdgeExtensionName.dataplane.value,
-        identity={"type": "SystemAssigned"},
-        configuration={
-            "global.quickstart": True,
-            "global.openTelemetryCollectorAddr": get_otel_collector_addr(cluster_namespace, True),
-        },
-        skip_sync_rule=True,
-        skip_custom_location_dep=True,
-    )
-    manifest_builder.add_extension(
-        extension_type=extension_name_to_type_map[EdgeExtensionName.processor.value],
-        name=EdgeExtensionName.processor.value,
-        configuration={
-            "Microsoft.CustomLocation.ServiceAccount": "default",
-            "otelCollectorAddress": get_otel_collector_addr(cluster_namespace),
-            "genevaCollectorAddress": get_geneva_metrics_addr(cluster_namespace),
-            "tracePodFormat": "OFF",
-        },
-    )
-    manifest_builder.add_extension(
-        extension_type=extension_name_to_type_map[EdgeExtensionName.assets.value],
-        name=EdgeExtensionName.assets.value,
-    )
-    manifest_builder.add_extension(
-        extension_type=extension_name_to_type_map[EdgeExtensionName.akri.value],
-        name=EdgeExtensionName.akri.value,
-        configuration={"webhookConfiguration.enabled": False},
-        skip_sync_rule=True,
-        skip_custom_location_dep=True,
-    )
-    manifest_builder.add_custom_location()
-    manifest_builder.add_std_symphony_components()
 
-    if EdgeServiceMoniker.bluefin.value in version_def.moniker_to_version_map:
-        manifest_builder.add_bluefin_instance(name=kwargs["processor_instance_name"])
-
-    if kwargs.get("show_template"):
-        return manifest_builder.manifest
-
-    no_progress: bool = kwargs.get("no_progress", False)
-    no_block: bool = kwargs.get("no_block", False)
-
-    with Live(None, transient=False, refresh_per_second=8) as live:
-        init_progress = Progress(
-            SpinnerColumn(),
-            *Progress.get_default_columns(),
-            "Elapsed:",
-            TimeElapsedColumn(),
-            transient=False,
-            disable=any([no_block, no_progress]),
+def provision_akv_csi_driver(
+    subscription_id: str,
+    cluster_name: str,
+    resource_group_name: str,
+    enable_secret_rotation: str,
+    rotation_poll_interval: str = "1h",
+    extension_name: str = "akvsecretsprovider",
+    **kwargs,
+) -> dict:
+    resource_client = ResourceManagementClient(credential=DEFAULT_AZURE_CREDENTIAL, subscription_id=subscription_id)
+    return wait_for_terminal_state(
+        resource_client.resources.begin_create_or_update_by_id(
+            resource_id=f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
+            f"/providers/Microsoft.Kubernetes/connectedClusters/{cluster_name}/Providers"
+            f"/Microsoft.KubernetesConfiguration/extensions/{extension_name}",
+            api_version="2022-11-01",
+            parameters={
+                "identity": {"type": "SystemAssigned"},
+                "properties": {
+                    "extensionType": "microsoft.azurekeyvaultsecretsprovider",
+                    "configurationSettings": {
+                        "secrets-store-csi-driver.enableSecretRotation": enable_secret_rotation,
+                        "secrets-store-csi-driver.rotationPollInterval": rotation_poll_interval,
+                        "secrets-store-csi-driver.syncSecret.enabled": "false",
+                    },
+                    "configurationProtectedSettings": {},
+                },
+            },
         )
-        deployment_name = f"azedge.init.pas.{str(uuid4()).replace('-', '')}"
-        deployment_params = {
-            "properties": {
-                "mode": "Incremental",
-                "template": manifest_builder.manifest,
-            }
-        }
+    )
 
-        what_if = kwargs.get("what_if")
-        header = "Deployment: {} in progress..."
-        if what_if:
-            header = header.format("[orange3]What-If? analysis[/orange3]")
-        else:
-            header = header.format(f"[medium_purple4]{deployment_name}[/medium_purple4]")
 
-        if not any([no_block, no_progress]):
-            grid = Table.grid(expand=False)
-            grid.add_column()
+def apply_what_if_deployment(sub_id: str, resource_group_name: str, deployment_name: str, parameters: dict):
+    try:
+        resource_client = ResourceManagementClient(credential=DEFAULT_AZURE_CREDENTIAL, subscription_id=sub_id)
+        return resource_client.deployments.begin_what_if(
+            resource_group_name=resource_group_name,
+            deployment_name=deployment_name,
+            parameters=parameters,
+        ).result()
+    except HttpResponseError as e:
+        # TODO: repeated error messages.
+        raise AzureResponseError(e.message)
+    except KeyboardInterrupt:
+        return
 
-            grid.add_row(NewLine(1))
-            grid.add_row(header)
-            grid.add_row(NewLine(1))
-            grid.add_row(init_progress)
 
-            live.update(grid)
-            init_progress.add_task(description=f"PAS version: {version_def.version}", total=None)
+def configure_cluster_secrets(
+    cluster_namespace: str,
+    cluster_secret_ref: str,
+    cluster_akv_secret_class_name: str,
+    keyvault_secret_name: str,
+    sp_record: ServicePrincipal,
+    keyvault_resource_id: str,
+    **kwargs,
+):
+    if not get_cluster_namespace(namespace=cluster_namespace):
+        create_cluster_namespace(namespace=cluster_namespace)
 
+    aio_akv_sp_secret_key = cluster_secret_ref
+    create_namespaced_secret(
+        secret_name=aio_akv_sp_secret_key,
+        namespace=cluster_namespace,
+        data={"clientid": sp_record.client_id, "clientsecret": sp_record.secret},
+        labels={"secrets-store.csi.k8s.io/used": "true"},
+        delete_first=True,
+    )
+
+    yaml_configs = []
+    keyvault_split = keyvault_resource_id.split("/")
+    keyvault_name = keyvault_split[-1]
+
+    for secret_class in [
+        cluster_akv_secret_class_name,
+        "aio-opc-ua-broker-client-certificate",
+        "aio-opc-ua-broker-user-authentication",
+        "aio-opc-ua-broker-trust-list",
+    ]:
+        yaml_configs.append(
+            get_kv_secret_store_yaml(
+                name=secret_class,
+                namespace=cluster_namespace,
+                keyvault_name=keyvault_name,
+                secret_name=keyvault_secret_name,
+                tenantId=sp_record.tenant_id,
+            )
+        )
+
+    KEYVAULT_API_V1.kinds  # TODO: clunky
+    create_namespaced_custom_objects(
+        group=KEYVAULT_API_V1.group,
+        version=KEYVAULT_API_V1.version,
+        plural=KEYVAULT_API_V1._kinds[KeyVaultResourceKinds.SECRET_PROVIDER_CLASS.value],  # TODO: clunky
+        namespace=cluster_namespace,
+        yaml_objects=yaml_configs,
+        delete_first=True,
+    )
+
+
+def prepare_ca(
+    ca_path: Optional[str] = None, key_path: Optional[str] = None, **kwargs
+) -> Tuple[bytes, bytes, str, str]:
+    # TODO: @digimaun custom directory
+    public_cert = private_key = None
+    secret_name = "aio-ca-key-pair"
+    cm_name = "aio-ca-trust-bundle"
+    if not ca_path:
+        public_cert, private_key = generate_self_signed_cert()
+        secret_name = f"{secret_name}-test-only"
+        cm_name = f"{cm_name}-test-only"
+
+    return public_cert, private_key, secret_name, cm_name
+
+
+def configure_cluster_tls(
+    cluster_namespace: str, public_ca: bytes, private_key: bytes, secret_name: str, cm_name: str, **kwargs
+) -> Tuple[str, str, str]:
+    from base64 import b64encode
+
+    if not get_cluster_namespace(namespace=cluster_namespace):
+        create_cluster_namespace(namespace=cluster_namespace)
+
+    data = {}
+    data["tls.crt"] = b64encode(public_ca).decode()
+    data["tls.key"] = b64encode(private_key).decode()
+
+    create_namespaced_secret(
+        secret_name=secret_name,
+        namespace=cluster_namespace,
+        secret_type="kubernetes.io/tls",
+        data=data,
+        delete_first=True,
+    )
+    cm_key = "ca.crt"
+    data = {cm_key: public_ca.decode()}
+    create_namespaced_configmap(namespace=cluster_namespace, cm_name=cm_name, data=data, delete_first=True)
+
+
+def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
+    from datetime import datetime, timedelta, timezone
+
+    from azure.cli.core.util import send_raw_request
+
+    timestamp = datetime.now(timezone.utc) + timedelta(days=30.0)
+    timestamp_str = timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    sp_app_id = kwargs.get("service_principal_app_id")
+    sp_object_id = kwargs.get("service_principal_object_id")
+    sp_secret = kwargs.get("service_principal_secret")
+    app_reg = {}
+    app_created = False
+
+    if sp_object_id:
+        existing_sp = send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="GET",
+            url=f"https://graph.microsoft.com/v1.0/servicePrincipals/{sp_object_id}",
+        ).json()
+        sp_app_id = existing_sp["appId"]
+        app_reg = existing_sp = send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="GET",
+            url=f"https://graph.microsoft.com/v1.0/applications/{sp_app_id}",
+        ).json()
+
+    if not sp_app_id:
+        app_reg = send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="POST",
+            url="https://graph.microsoft.com/v1.0/applications",
+            body=json.dumps({"displayName": deployment_name, "signInAudience": "AzureADMyOrg"}),
+        ).json()
+        app_created = True
+        sp_app_id = app_reg["appId"]
+
+    if not sp_object_id or app_created:
         try:
-            if what_if:
-                from azure.cli.command_modules.resource.custom import format_what_if_operation_result
+            existing_sp = send_raw_request(
+                cli_ctx=cmd.cli_ctx,
+                method="GET",
+                url=f"https://graph.microsoft.com/v1.0/servicePrincipals(appId='{sp_app_id}')",
+            ).json()
+            sp_object_id = existing_sp["id"]
+        except HTTPError as http_error:
+            if http_error.response.status_code != 404:
+                raise http_error
+            sp = send_raw_request(
+                cli_ctx=cmd.cli_ctx,
+                method="POST",
+                url="https://graph.microsoft.com/v1.0/servicePrincipals",
+                body=json.dumps({"appId": sp_app_id}),
+            ).json()
+            sp_object_id = sp["id"]
 
-                what_if_deployment = resource_client.deployments.begin_what_if(
-                    resource_group_name=resource_group_name,
-                    deployment_name=deployment_name,
-                    parameters=deployment_params,
-                ).result()
-                live.stop()
-                init_progress.stop()
-                print(format_what_if_operation_result(what_if_operation_result=what_if_deployment))
-                return
+    if app_reg:
+        existing_resource_access: List[dict] = app_reg["requiredResourceAccess"]
+        add_kv_access = True
+        add_basic_graph_access = True
+        for resource_app in existing_resource_access:
+            if resource_app["resourceAppId"] == "cfa8b339-82a2-471a-a3c9-0fc0be7a4093":
+                add_kv_access = False
+            if resource_app["resourceAppId"] == "00000003-0000-0000-c000-000000000000":
+                add_basic_graph_access = False
 
-            deployment = resource_client.deployments.begin_create_or_update(
-                resource_group_name=resource_group_name,
-                deployment_name=deployment_name,
-                parameters=deployment_params,
+        if add_kv_access:
+            existing_resource_access.append(
+                {
+                    "resourceAppId": "cfa8b339-82a2-471a-a3c9-0fc0be7a4093",
+                    "resourceAccess": [{"id": "f53da476-18e3-4152-8e01-aec403e6edc0", "type": "Scope"}],
+                },
+            )
+        if add_basic_graph_access:
+            existing_resource_access.append(
+                {
+                    "resourceAppId": "00000003-0000-0000-c000-000000000000",
+                    "resourceAccess": [{"id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d", "type": "Scope"}],
+                },
             )
 
-            result = {
-                "deploymentName": deployment_name,
-                "resourceGroup": resource_group_name,
-                "clusterName": cluster_name,
-                "namespace": cluster_namespace,
-                "deploymentState": {"timestampUtc": {"started": get_timestamp_now_utc()}},
+        if add_kv_access or add_basic_graph_access:
+            send_raw_request(
+                cli_ctx=cmd.cli_ctx,
+                method="PATCH",
+                url=f"https://graph.microsoft.com/v1.0/myorganization/applications(appId='{sp_app_id}')",
+                body=json.dumps({"requiredResourceAccess": existing_resource_access}),
+            )
+
+    if not sp_secret:
+        add_secret_op = send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="POST",
+            url=f"https://graph.microsoft.com/v1.0/myorganization/applications(appId='{sp_app_id}')/addPassword",
+            body=json.dumps({"passwordCredential": {"displayName": deployment_name, "endDateTime": timestamp_str}}),
+        )
+        sp_secret = add_secret_op.json()["secretText"]
+
+    sp_record = ServicePrincipal(
+        client_id=sp_app_id,
+        object_id=sp_object_id,
+        secret=sp_secret,
+        tenant_id=get_tenant_id(),
+        created_app=app_created,
+    )
+    return sp_record
+
+
+def prepare_keyvault_access_policy(subscription_id: str, sp_record: ServicePrincipal, **kwargs) -> str:
+    keyvault_resource_id = kwargs.get("keyvault_resource_id")
+    resource_client = ResourceManagementClient(credential=DEFAULT_AZURE_CREDENTIAL, subscription_id=subscription_id)
+    keyvault_resource: dict = resource_client.resources.get_by_id(
+        resource_id=keyvault_resource_id, api_version=KEYVAULT_CLOUD_API_VERSION
+    ).as_dict()
+    vault_uri = keyvault_resource["properties"]["vaultUri"]
+    keyvault_access_policies: List[dict] = keyvault_resource["properties"].get("accessPolicies", [])
+
+    add_access_policy = True
+    for access_policy in keyvault_access_policies:
+        if "objectId" in access_policy and access_policy["objectId"] == sp_record.object_id:
+            add_access_policy = False
+
+    if add_access_policy:
+        keyvault_access_policies.append(
+            {
+                "tenantId": sp_record.tenant_id,
+                "objectId": sp_record.object_id,
+                # "applicationId": sp_record.client_id, # @digimaun - including turns into compound assignment.
+                "permissions": {"secrets": ["get", "list"], "keys": [], "certificates": [], "storage": []},
             }
-            if no_block:
-                result["deploymentState"]["status"] = deployment.status()
-                return result
+        )
+        keyvault_resource["properties"]["accessPolicies"] = keyvault_access_policies
+        resource_client.resources.begin_create_or_update_by_id(
+            resource_id=f"{keyvault_resource_id}/accessPolicies/add",
+            api_version=KEYVAULT_CLOUD_API_VERSION,
+            parameters={"properties": {"accessPolicies": keyvault_access_policies}},
+        ).result()
 
-            deployment = deployment.result()
-            result["deploymentState"]["status"] = deployment.properties.provisioning_state
-            result["deploymentState"]["correlationId"] = deployment.properties.correlation_id
-            result["deploymentState"]["pasVersion"] = manifest_builder.version_def.moniker_to_version_map
-            result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
-            result["deploymentState"]["resourceIds"] = [
-                resource.id for resource in deployment.properties.output_resources
-            ]
-
-            return result
-
-        except HttpResponseError as e:
-            # TODO: repeated error messages.
-            raise AzureResponseError(e.message)
-        except KeyboardInterrupt:
-            return
+    return vault_uri
 
 
-def process_deployable_version(**kwargs) -> PasVersionDef:
-    from ...util import assemble_nargs_to_dict
+def prepare_keyvault_secret(deployment_name: str, vault_uri: str, **kwargs) -> str:
+    from azure.cli.core.util import send_raw_request
 
-    base_version_def = get_pas_version_def(version=DEPLOYABLE_PAS_VERSION)
-    custom_version = kwargs.get("custom_version")
-    only_deploy_custom = kwargs.get("only_deploy_custom")
+    keyvault_secret_name = kwargs.get("keyvault_secret_name")
+    cmd = kwargs["cmd"]
+    if keyvault_secret_name:
+        get_secretver: dict = send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="GET",
+            url=f"{vault_uri}/secrets/{keyvault_secret_name}/versions?api-version=7.4",
+            resource="https://vault.azure.net",
+        ).json()
+        if not get_secretver.get("value"):
+            send_raw_request(
+                cli_ctx=cmd.cli_ctx,
+                method="PUT",
+                url=f"{vault_uri}/secrets/{keyvault_secret_name}?api-version=7.4",
+                resource="https://vault.azure.net",
+                body=json.dumps({"value": generate_secret()}),
+            ).json()
+    else:
+        keyvault_secret_name = deployment_name.replace(".", "-")
+        send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="PUT",
+            url=f"{vault_uri}/secrets/{keyvault_secret_name}?api-version=7.4",
+            resource="https://vault.azure.net",
+            body=json.dumps({"value": generate_secret()}),
+        ).json()
 
-    if not custom_version:
-        return base_version_def
+    return keyvault_secret_name
 
-    custom_version_map = assemble_nargs_to_dict(custom_version)
-    # Basic moniker validation.
-    monikers = set(EdgeServiceMoniker.list())
-    for key in custom_version_map:
-        if key not in monikers:
-            raise ValueError(f"Moniker '{key}' is not supported.")
 
-    base_version_def.set_moniker_to_version_map(custom_version_map, only_deploy_custom)
-    return base_version_def
+def get_resource_by_id(resource_id: str, subscription_id: str, api_version: str):
+    resource_client = ResourceManagementClient(credential=DEFAULT_AZURE_CREDENTIAL, subscription_id=subscription_id)
+    return resource_client.resources.get_by_id(resource_id=resource_id, api_version=api_version)
+
+
+def get_tenant_id():
+    from azure.cli.core._profile import Profile
+
+    profile = Profile()
+    sub = profile.get_subscription()
+    return sub["tenantId"]
+
+
+def deploy_template(
+    template: dict,
+    parameters: dict,
+    subscription_id: str,
+    resource_group_name: str,
+    deployment_name: str,
+    cluster_name: str,
+    cluster_namespace: str,
+    **kwargs,
+) -> Tuple[dict, dict]:
+    resource_client = ResourceManagementClient(credential=DEFAULT_AZURE_CREDENTIAL, subscription_id=subscription_id)
+
+    deployment_params = {"properties": {"mode": "Incremental", "template": template, "parameters": parameters}}
+    deployment = resource_client.deployments.begin_create_or_update(
+        resource_group_name=resource_group_name,
+        deployment_name=deployment_name,
+        parameters=deployment_params,
+    )
+
+    deploy_link = (
+        "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
+        f"%2Fsubscriptions%2F{subscription_id}%2FresourceGroups%2F{resource_group_name}"
+        f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{deployment_name}"
+    )
+
+    result = {
+        "deploymentName": deployment_name,
+        "resourceGroup": resource_group_name,
+        "clusterName": cluster_name,
+        "clusterNamespace": cluster_namespace,
+        "deploymentLink": deploy_link,
+        "deploymentState": {"timestampUtc": {"started": get_timestamp_now_utc()}, "status": deployment.status()},
+    }
+    return result, deployment
+
+
+def wait_for_terminal_state(poller) -> dict:
+    # resource client does not handle sigint well
+    counter = 0
+    while counter < DEFAULT_POLL_RETRIES:
+        sleep(DEFAULT_POLL_WAIT_SEC)
+        counter = counter + 1
+        if poller.done():
+            break
+    return poller.result()

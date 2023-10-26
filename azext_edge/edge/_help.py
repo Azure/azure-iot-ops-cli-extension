@@ -14,26 +14,26 @@ from .providers.support_bundle import COMPAT_BLUEFIN_APIS, COMPAT_E4K_APIS, COMP
 
 def load_iotedge_help():
     helps[
-        "edge"
+        "iot ops"
     ] = """
         type: group
-        short-summary: Manage PAS resources.
+        short-summary: Manage AIO resources.
         long-summary: |
-            Project Alice Springs (PAS) is a set of highly aligned, but loosely coupled, first-party
+            Azure IoT Operations (AIO) is a set of highly aligned, but loosely coupled, first-party
             Kubernetes services that enable you to aggregate data from on-prem assets into an
             industrial-grade MQTT Broker, add edge compute and set up bi-directional data flow with
             a variety of services in the cloud.
     """
 
     helps[
-        "edge support"
+        "iot ops support"
     ] = """
         type: group
-        short-summary: Edge service support operations.
+        short-summary: Edge support operations.
     """
 
     helps[
-        "edge support create-bundle"
+        "iot ops support create-bundle"
     ] = f"""
         type: command
         short-summary: Creates a standard support bundle zip archive for use in troubleshooting and diagnostics.
@@ -46,24 +46,24 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge check"
+        "iot ops check"
     ] = f"""
         type: command
-        short-summary: Evaluate PAS edge service deployments for health, configuration and usability.
+        short-summary: Evaluate AIO edge service deployments for health, configuration and usability.
         long-summary: |
             [Supported edge service APIs]
                 {E4K_ACTIVE_API.as_str()}
     """
 
     helps[
-        "edge e4k"
+        "iot ops mq"
     ] = """
         type: group
-        short-summary: E4K specific tools.
+        short-summary: MQ specific tools.
     """
 
     helps[
-        "edge e4k stats"
+        "iot ops mq stats"
     ] = f"""
         type: command
         short-summary: Show dmqtt running statistics.
@@ -73,33 +73,31 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge e4k get-password-hash"
+        "iot ops mq get-password-hash"
     ] = """
         type: command
         short-summary: Generates a PBKDF2 hash of the passphrase applying PBKDF2-HMAC-SHA512. A 128-bit salt is used from os.urandom.
     """
 
     helps[
-        "edge init"
+        "iot ops init"
     ] = """
         type: command
-        short-summary: Initialize and deploy a PAS service bundle to the target cluster.
+        short-summary: Bootstrap, configure and deploy AIO to the target cluster.
         long-summary: |
-            After this operation completes the desired suite of PAS edge services will
-            be deployed with baseline configuration on the target cluster. Deployment is done incrementally.
-
-            Customize deployable PAS version via --pas-version or --custom-version.
+            After this operation completes the desired suite of AIO edge services will
+            be deployed with baseline configuration on the target cluster.
     """
 
     helps[
-        "edge asset"
+        "iot ops asset"
     ] = """
         type: group
         short-summary: Manage assets.
     """
 
     helps[
-        "edge asset create"
+        "iot ops asset create"
     ] = """
         type: command
         short-summary: Create an asset.
@@ -175,7 +173,7 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset list"
+        "iot ops asset list"
     ] = """
         type: command
         short-summary: List assets.
@@ -191,7 +189,7 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset query"
+        "iot ops asset query"
     ] = """
         type: command
         short-summary: Query the Resource Graph for assets.
@@ -206,7 +204,7 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset show"
+        "iot ops asset show"
     ] = """
         type: command
         short-summary: Show an asset.
@@ -218,7 +216,7 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset update"
+        "iot ops asset update"
     ] = """
         type: command
         short-summary: Update an asset.
@@ -251,7 +249,7 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset delete"
+        "iot ops asset delete"
     ] = """
         type: command
         short-summary: Delete an asset.
@@ -262,14 +260,14 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset data-point"
+        "iot ops asset data-point"
     ] = """
         type: group
         short-summary: Manage data points in an asset.
     """
 
     helps[
-        "edge asset data-point add"
+        "iot ops asset data-point add"
     ] = """
         type: command
         short-summary: Add a data point to an asset.
@@ -293,7 +291,7 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset data-point list"
+        "iot ops asset data-point list"
     ] = """
         type: command
         short-summary: List data points in an asset.
@@ -304,7 +302,7 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset data-point remove"
+        "iot ops asset data-point remove"
     ] = """
         type: command
         short-summary: Remove a data point in an asset.
@@ -320,14 +318,14 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset event"
+        "iot ops asset event"
     ] = """
         type: group
         short-summary: Manage events in an asset.
     """
 
     helps[
-        "edge asset event add"
+        "iot ops asset event add"
     ] = """
         type: command
         short-summary: Add an event to an asset.
@@ -351,7 +349,7 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset event list"
+        "iot ops asset event list"
     ] = """
         type: command
         short-summary: List events in an asset.
@@ -363,7 +361,7 @@ def load_iotedge_help():
     """
 
     helps[
-        "edge asset event remove"
+        "iot ops asset event remove"
     ] = """
         type: command
         short-summary: Remove an event in an asset.

@@ -5,13 +5,14 @@
 # --------------------------------------------------------------------------------------------
 
 from pathlib import PurePath
-from typing import Any, Dict, Optional, Union, List
+from typing import Any, Dict, List, Optional, Union
 
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 
-from .providers.base import load_config_context
-from .providers.support.base import get_bundle_path
+from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
+from .providers.support.base import get_bundle_path
 
 logger = get_logger(__name__)
 
@@ -66,48 +67,66 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
-    cluster_namespace: str = "default",
+    cluster_namespace: str = DEFAULT_NAMESPACE,
+    keyvault_secret_name: str = DEFAULT_NAMESPACE,
     custom_location_namespace: Optional[str] = None,
     custom_location_name: Optional[str] = None,
-    show_pas_version: Optional[bool] = None,
-    custom_version: Optional[List[str]] = None,
-    only_deploy_custom: Optional[bool] = None,
+    show_aio_version: Optional[bool] = None,
     location: Optional[str] = None,
     what_if: Optional[bool] = None,
     show_template: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
-    create_sync_rules: Optional[bool] = None,
     no_block: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     processor_instance_name: Optional[str] = None,
     target_name: Optional[str] = None,
+    disable_secret_rotation: Optional[bool] = None,
+    rotation_poll_interval: str = "1h",
+    service_principal_app_id: Optional[str] = None,
+    service_principal_object_id: Optional[str] = None,
+    service_principal_secret: Optional[str] = None,
+    keyvault_resource_id: Optional[str] = None,
+    tls_ca_path: Optional[str] = None,
+    tls_ca_key_path: Optional[str] = None,
+    no_deploy: Optional[bool] = None,
+    context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     from azure.cli.core.commands.client_factory import get_subscription_id
+
     from .providers.orchestration import deploy
 
+    load_config_context(context_name=context_name)
+
     # cluster namespace must be lowercase
-    cluster_namespace = cluster_namespace.lower()
+    cluster_namespace = str(cluster_namespace).lower()
 
     cluster_name_lowered = cluster_name.lower()
 
     if not custom_location_name:
-        custom_location_name = f"{cluster_name_lowered}-azedge-init"
+        custom_location_name = f"{cluster_name_lowered}-aziotops-init-cl"
 
     if not custom_location_namespace:
         custom_location_namespace = cluster_namespace
 
     if not processor_instance_name:
-        processor_instance_name = f"{cluster_name_lowered}-azedge-init-proc"
+        processor_instance_name = f"{cluster_name_lowered}-aziotops-init-proc"
         processor_instance_name = processor_instance_name.replace("_", "-")
 
     if not target_name:
-        target_name = f"{cluster_name_lowered}-azedge-init-target"
+        target_name = f"{cluster_name_lowered}-aziotops-init-target"
+        target_name = target_name.replace("_", "-")
 
     if simulate_plc and not opcua_discovery_endpoint:
-        opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}.svc.cluster.local:50000"
+        opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
+
+    # TODO: @digimaun
+    # implement "has permission to graph check"
+    # if keyvault_resource_id:
+    #    ensure_access_to_graph()
 
     return deploy(
+        cmd=cmd,
         subscription_id=get_subscription_id(cmd.cli_ctx),
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
@@ -115,16 +134,23 @@ def init(
         custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
         location=location,
-        show_pas_version=show_pas_version,
-        custom_version=custom_version,
-        only_deploy_custom=only_deploy_custom,
+        show_aio_version=show_aio_version,
         what_if=what_if,
         show_template=show_template,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         simulate_plc=simulate_plc,
-        create_sync_rules=create_sync_rules,
         no_block=no_block,
         no_progress=no_progress,
+        no_deploy=no_deploy,
         processor_instance_name=processor_instance_name,
         target_name=target_name,
+        keyvault_resource_id=keyvault_resource_id,
+        keyvault_secret_name=str(keyvault_secret_name),
+        disable_secret_rotation=disable_secret_rotation,
+        rotation_poll_interval=str(rotation_poll_interval),
+        service_principal_app_id=service_principal_app_id,
+        service_principal_object_id=service_principal_object_id,
+        service_principal_secret=service_principal_secret,
+        tls_ca_path=tls_ca_path,
+        tls_ca_key_path=tls_ca_key_path,
     )
