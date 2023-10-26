@@ -196,7 +196,8 @@ def load_iotedge_arguments(self, _):
             "custom_location_name",
             options_list=["--custom-location"],
             help="The custom location name corresponding to AIO solution deployment. "
-            "If no custom location name is provided one will be generated in the form '{cluster_name}-aziotops-init-cl'.",
+            "If no custom location name is provided one will be generated in the form "
+            "'{cluster_name}-aziotops-init-cl'.",
         )
         context.argument(
             "custom_location_namespace",

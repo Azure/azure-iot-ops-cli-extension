@@ -7,7 +7,6 @@
 from pathlib import PurePath
 from typing import Any, Dict, List, Optional, Union
 
-from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 
 from .providers.base import DEFAULT_NAMESPACE, load_config_context

@@ -5,7 +5,6 @@
 # --------------------------------------------------------------------------------------------
 
 import json
-from pathlib import PurePath
 from time import sleep
 from typing import List, NamedTuple, Optional, Tuple
 
