@@ -10,6 +10,7 @@ from .bluefin import BLUEFIN_API_V1, BluefinResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
 from .symphony import SYMPHONY_API_V1, SymphonyResourceKinds
 from .akri import AKRI_API_V0, AkriResourceKinds
+from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
 
 __all__ = [
     "EdgeResourceApi",
@@ -27,4 +28,6 @@ __all__ = [
     "SYMPHONY_API_V1",
     "AkriResourceKinds",
     "AKRI_API_V0",
+    "KeyVaultResourceKinds",
+    "KEYVAULT_API_V1",
 ]

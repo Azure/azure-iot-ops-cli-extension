@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from enum import Enum
 
 from knack.log import get_logger
@@ -17,7 +17,7 @@ from kubernetes.client.models import (
 from rich.console import Console, NewLine
 from rich.padding import Padding
 
-from .common import ResourceOutputDetailLevel
+from .common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 from ...common import CheckTaskStatus, ListableEnum
 
 from ...providers.edge_api import EdgeResourceApi
@@ -53,7 +53,6 @@ def check_post_deployment(
     api_info: EdgeResourceApi,
     check_name: str,
     check_desc: str,
-    namespace: str,
     result: Dict[str, Any],
     resource_kinds_enum: Enum,
     evaluate_funcs: Dict[ListableEnum, Callable],
@@ -72,10 +71,10 @@ def check_post_deployment(
     if lowercase_api_resources:
         for api_resource, evaluate_func in evaluate_funcs.items():
             if api_resource.value in lowercase_api_resources and check_resources[api_resource]:
-                result["postDeployment"].append(evaluate_func(detail_level=detail_level, namespace=namespace, as_list=as_list))
+                result["postDeployment"].append(evaluate_func(detail_level=detail_level, as_list=as_list))
 
 
-def process_as_list(console: Console, result: Dict[str, Any], namespace: str) -> None:
+def process_as_list(console: Console, result: Dict[str, Any]) -> None:
     success_count: int = 0
     warning_count: int = 0
     error_count: int = 0
@@ -109,24 +108,32 @@ def process_as_list(console: Console, result: Dict[str, Any], namespace: str) ->
         console.print(Panel(content, title="Check Summary", expand=False))
 
     def _enumerate_displays(checks: List[Dict[str, dict]]) -> None:
-        for c in checks:
-            status = c.get("status")
+        for check in checks:
+            status = check.get("status")
             prefix_emoji = get_emoji_from_status(status)
-            console.print(Padding(f"{prefix_emoji} {c['description']}", (0, 0, 0, 4)))
+            console.print(Padding(f"{prefix_emoji} {check['description']}", (0, 0, 0, 4)))
 
-            targets = c.get("targets", {})
-            for t in targets:
-                displays = targets[t].get("displays", [])
-                for d in displays:
-                    console.print(d)
-                target_status = targets[t].get("status")
-                evaluations = targets[t].get("evaluations", [])
-                if not evaluations:
-                    _increment_summary(target_status)
-                for e in evaluations:
-                    eval_status = e.get("status")
-                    _increment_summary(eval_status)
-            console.print(NewLine(1))
+            targets = check.get("targets", {})
+            for type in targets:
+                for namespace in targets[type]:
+                    namespace_target = targets[type][namespace]
+                    displays = namespace_target.get("displays", [])
+                    status = namespace_target.get("status")
+                    for (idx, disp) in enumerate(displays):
+                        # display status indicator on each 'namespaced' grouping of displays
+                        if all([idx == 0, namespace != ALL_NAMESPACES_TARGET, status]):
+                            prefix_emoji = get_emoji_from_status(status)
+                            console.print(Padding(f"\n{prefix_emoji} {disp.renderable}", (0, 0, 0, 6)))
+                        else:
+                            console.print(disp)
+                    target_status = targets[type][namespace].get("status")
+                    evaluations = targets[type][namespace].get("evaluations", [])
+                    if not evaluations:
+                        _increment_summary(target_status)
+                    for e in evaluations:
+                        eval_status = e.get("status")
+                        _increment_summary(eval_status)
+                console.print(NewLine(1))
         console.print(NewLine(1))
 
     title: dict = result.get("title")
@@ -366,54 +373,85 @@ class CheckManager:
     {
         "name":"evaluateBrokerListeners",
         "description": "Evaluate E4K broker listeners",
-        "namespace": "default,
-        "targets": {
-            "len(listeners)": {
-                "displays": [],
-                "conditions": ["==1"],
-                "evaluations": [
-                    {
-                        "name"?: "listeners",
-                        "kind"?: "brokerListener
-                        "value"?: 2,
-                        "status": "warning"
-                    }
-                ],
-                "status": "warning"
-            }
-        },
         "status": "warning",
+        "targets": {
+            "az-edge.com/v1alpha4": {
+                "_all_": {
+                    "conditions": null,
+                    "evaluations": [
+                        {
+                            "status": "success"
+                            ...
+                        }
+                    ],
+                }
+            },
+            "brokerlisteners.az-edge.com": {
+                "default": {
+                    "displays": [],
+                    "conditions": [
+                        "len(brokerlisteners)>=1",
+                        "spec",
+                        "valid(spec.brokerRef)"
+                        ...
+                    ],
+                    "evaluations": [
+                        {
+                            "name": "listener",
+                            "kind": "brokerListener",
+                            "value": {
+                                "spec": { ... },
+                                "valid(spec.brokerRef)": true
+                            },
+                            "status": "warning"
+                        }
+                    ],
+                    "status": "warning"
+                },
+                "other-namespace": {
+                    "displays": [],
+                    "conditions": []
+                    ...
+                }
+            }
+        }
     }
     """
 
-    def __init__(self, check_name: str, check_desc: str, namespace: Optional[str] = None):
+    def __init__(self, check_name: str, check_desc: str):
         self.check_name = check_name
         self.check_desc = check_desc
-        self.namespace = namespace
         self.targets = {}
         self.target_displays = {}
         self.worst_status = CheckTaskStatus.success.value
 
-    def add_target(self, target_name: str, conditions: List[str] = None, description: str = None) -> None:
+    def add_target(self, target_name: str, namespace: str = ALL_NAMESPACES_TARGET, conditions: List[str] = None, description: str = None) -> None:
         if target_name not in self.targets:
+            # Create a default `None` namespace target for targets with no namespace
             self.targets[target_name] = {}
-        self.targets[target_name]["conditions"] = conditions
-        self.targets[target_name]["evaluations"]: List[dict] = []
-        self.targets[target_name]["status"] = CheckTaskStatus.success.value
+        if namespace and namespace not in self.targets[target_name]:
+            self.targets[target_name][namespace] = {}
+        self.targets[target_name][namespace]["conditions"] = conditions
+        self.targets[target_name][namespace]["evaluations"]: List[dict] = []
+        self.targets[target_name][namespace]["status"] = CheckTaskStatus.success.value
         if description:
-            self.targets[target_name]["description"] = description
+            self.targets[target_name][namespace]["description"] = description
 
-    def set_target_conditions(self, target_name: str, conditions: List[str]) -> None:
-        self.targets[target_name]["conditions"] = conditions
+    def set_target_conditions(self, target_name: str, conditions: List[str], namespace: str = ALL_NAMESPACES_TARGET) -> None:
+        self.targets[target_name][namespace]["conditions"] = conditions
 
-    def set_target_status(self, target_name: str, status: str) -> None:
-        self._process_status(target_name=target_name, status=status)
+    def add_target_conditions(self, target_name: str, conditions: List[str], namespace: str = ALL_NAMESPACES_TARGET) -> None:
+        self.targets[target_name][namespace]["conditions"].extend(conditions)
+
+    def set_target_status(self, target_name: str, status: str, namespace: str = ALL_NAMESPACES_TARGET) -> None:
+        self._process_status(target_name=target_name, namespace=namespace, status=status)
 
     def add_target_eval(
         self,
         target_name: str,
         status: str,
         value: Optional[Any] = None,
+        namespace: str = ALL_NAMESPACES_TARGET,
         resource_name: Optional[str] = None,
         resource_kind: Optional[str] = None,
     ) -> None:
@@ -424,10 +462,10 @@ class CheckManager:
             eval_dict["value"] = value
         if resource_kind:
             eval_dict["kind"] = resource_kind
-        self.targets[target_name]["evaluations"].append(eval_dict)
-        self._process_status(target_name, status)
+        self.targets[target_name][namespace]["evaluations"].append(eval_dict)
+        self._process_status(target_name, status, namespace)
 
-    def _process_status(self, target_name: str, status: str) -> None:
+    def _process_status(self, target_name: str, status: str, namespace: str = ALL_NAMESPACES_TARGET) -> None:
         existing_status = self.targets[target_name].get("status", CheckTaskStatus.success.value)
         if existing_status != status:
             if existing_status == CheckTaskStatus.success.value and status in [
@@ -435,58 +473,61 @@ class CheckManager:
                 CheckTaskStatus.error.value,
                 CheckTaskStatus.skipped.value,
             ]:
-                self.targets[target_name]["status"] = status
+                self.targets[target_name][namespace]["status"] = status
                 self.worst_status = status
             elif (
                 existing_status == CheckTaskStatus.warning.value or existing_status == CheckTaskStatus.skipped.value
             ) and status in [CheckTaskStatus.error.value]:
-                self.targets[target_name]["status"] = status
+                self.targets[target_name][namespace]["status"] = status
                 self.worst_status = status
 
-    def add_display(self, target_name: str, display: Any) -> None:
+    def add_display(self, target_name: str, display: Any, namespace: str = ALL_NAMESPACES_TARGET) -> None:
         if target_name not in self.target_displays:
-            self.target_displays[target_name] = []
-        self.target_displays[target_name].append(display)
+            self.target_displays[target_name] = {}
+        if namespace not in self.target_displays[target_name]:
+            self.target_displays[target_name][namespace] = []
+        self.target_displays[target_name][namespace].append(display)
 
     def as_dict(self, as_list: bool = False) -> Dict[str, Any]:
         from copy import deepcopy
 
         result = {
             "name": self.check_name,
-            "namespace": self.namespace,
             "description": self.check_desc,
             "targets": {},
             "status": self.worst_status,
         }
         result["targets"] = deepcopy(self.targets)
         if as_list:
-            for t in self.target_displays:
-                result["targets"][t]["displays"] = deepcopy(self.target_displays[t])
-
-            if self.namespace:
-                result["description"] = f"{result['description']} in namespace {{[cyan]{self.namespace}[/cyan]}}"
+            for type in self.target_displays:
+                for namespace in self.target_displays[type]:
+                    result["targets"][type][namespace]["displays"] = deepcopy(self.target_displays[type][namespace])
 
         return result
 
 
 def evaluate_pod_health(
-        check_manager: CheckManager,
-        namespace: str,
-        pod: str,
-        display_padding: int,
-        service_label: str
+    check_manager: CheckManager,
+    namespace: str,
+    target: str,
+    pod: str,
+    display_padding: int,
+    service_label: str
 ) -> None:
     target_service_pod = f"pod/{pod}"
-    check_manager.add_target(target_name=target_service_pod, conditions=["status.phase"])
+    check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=[f"{target_service_pod}.status.phase"])
     diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
     if not diagnostics_pods:
         check_manager.add_target_eval(
-            target_name=target_service_pod,
+            resource_name=target_service_pod,
+            target_name=target,
+            namespace=namespace,
             status=CheckTaskStatus.warning.value,
             value=None,
         )
         check_manager.add_display(
-            target_name=target_service_pod,
+            target_name=target,
+            namespace=namespace,
             display=Padding(
                 f"{target_service_pod}* [yellow]not detected[/yellow].",
                 (0, 0, 0, display_padding),
@@ -500,14 +541,36 @@ def evaluate_pod_health(
             pod_phase_deco, status = _decorate_pod_phase(pod_phase)
 
             check_manager.add_target_eval(
-                target_name=target_service_pod,
+                target_name=target,
+                namespace=namespace,
                 status=status,
+                resource_name=target_service_pod,
                 value={"name": pod_name, "status.phase": pod_phase},
             )
             check_manager.add_display(
-                target_name=target_service_pod,
+                target_name=target,
+                namespace=namespace,
                 display=Padding(
                     f"Pod {{[bright_blue]{pod_name}[/bright_blue]}} in phase {{{pod_phase_deco}}}.",
                     (0, 0, 0, display_padding),
                 ),
             )
+
+
+def get_resource_namespace(resource: dict) -> Union[str, None]:
+    return resource.get("metadata", {}).get("namespace")
+
+
+def get_resource_name(resource: dict) -> Union[str, None]:
+    return resource.get("metadata", {}).get("name")
+
+
+def resources_grouped_by_namespace(resources: List[dict]):
+    from itertools import groupby
+
+    resources.sort(key=get_resource_namespace)
+    return groupby(resources, get_resource_namespace)
+
+
+def filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
+    return [resource for resource in resources if get_resource_namespace(resource) == namespace]

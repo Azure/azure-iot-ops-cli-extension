@@ -7,17 +7,17 @@
 import socket
 
 from contextlib import contextmanager
-from typing import List, Optional, Union, Iterator
+from typing import List, Optional, Union, Iterator, Dict
 from urllib.request import urlopen
 
 from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
-from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList, V1Service
+from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList, V1Service, V1ObjectMeta
 
 
-DEFAULT_NAMESPACE: str = "default"
+DEFAULT_NAMESPACE: str = "azure-iot-operations"
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
@@ -42,7 +42,6 @@ _namespaced_service_cache: dict = {}
 
 
 def get_namespaced_service(name: str, namespace: str, as_dict: bool = False) -> Union[V1Service, dict, None]:
-
     def retrieve_namespaced_service_from_cache(key: tuple):
         result = _namespaced_service_cache[key]
         if as_dict:
@@ -72,7 +71,6 @@ def get_namespaced_pods_by_prefix(
     label_selector: str = None,
     as_dict: bool = False,
 ) -> Union[List[V1Pod], List[dict], None]:
-
     def filter_pods_by_prefix(pods: List[V1Pod], prefix: str) -> List[V1Pod]:
         return [pod for pod in pods if pod.metadata.name.startswith(prefix)]
 
@@ -88,7 +86,10 @@ def get_namespaced_pods_by_prefix(
         return filter_pods_from_cache(target_pods_key)
     try:
         v1 = client.CoreV1Api()
-        pods_list: V1PodList = v1.list_namespaced_pod(namespace, label_selector=label_selector)
+        if namespace:
+            pods_list: V1PodList = v1.list_namespaced_pod(namespace, label_selector=label_selector)
+        else:
+            pods_list: V1PodList = v1.list_pod_for_all_namespaces(label_selector=label_selector)
         _namespaced_pods_cache[target_pods_key] = pods_list.items
     except ApiException as ae:
         logger.debug(str(ae))
@@ -204,3 +205,161 @@ def portforward_socket(namespace: str, pod_name: str, pod_port: str) -> Iterator
     yield target_socket
     target_socket.shutdown(socket.SHUT_RDWR)
     target_socket.close()
+
+
+def create_namespaced_secret(
+    secret_name: str,
+    namespace: str,
+    data: Dict[str, str],
+    labels: Optional[Dict[str, str]] = None,
+    secret_type: str = "Opaque",
+    delete_first: bool = False,
+):
+    if delete_first:
+        delete_namespaced_secret(namespace=namespace, secret_name=secret_name)
+
+    data_kw = {}
+    if secret_type == "Opaque":
+        data_kw = {"string_data": data}
+    if secret_type == "kubernetes.io/tls":
+        data_kw = {"data": data}
+
+    v1_secret = client.V1Secret(metadata=V1ObjectMeta(name=secret_name, labels=labels), type=secret_type, **data_kw)
+
+    try:
+        v1_api = client.CoreV1Api()
+        return v1_api.create_namespaced_secret(namespace=namespace, body=v1_secret)
+    except ApiException as ae:
+        error_msg = str(ae)
+        logger.debug(msg=error_msg)
+        raise RuntimeError(error_msg)
+
+
+def get_namespaced_secret(namespace: str, secret_name: str) -> dict:
+    result = None
+    try:
+        v1_api = client.CoreV1Api()
+        result = v1_api.read_namespaced_secret(namespace=namespace, name=secret_name)
+    except ApiException as ae:
+        error_msg = str(ae)
+        logger.debug(msg=error_msg)
+    else:
+        if result:
+            return generic.sanitize_for_serialization(obj=result)
+
+
+def delete_namespaced_secret(namespace: str, secret_name: str, raise_on_404: bool = False):
+    try:
+        v1_api = client.CoreV1Api()
+        v1_api.delete_namespaced_secret(namespace=namespace, name=secret_name)
+    except ApiException as ae:
+        error_msg = str(ae)
+        logger.debug(msg=error_msg)
+        if int(ae.status) == 404 and not raise_on_404:
+            return
+        raise RuntimeError(error_msg)
+
+
+def create_cluster_namespace(namespace: str) -> dict:
+    result = None
+    try:
+        v1_api = client.CoreV1Api()
+        result = v1_api.create_namespace(body=client.V1Namespace(metadata=V1ObjectMeta(name=namespace)))
+    except ApiException as ae:
+        error_msg = str(ae)
+        logger.debug(msg=error_msg)
+        raise RuntimeError(error_msg)
+    else:
+        if result:
+            return generic.sanitize_for_serialization(obj=result)
+
+
+def get_cluster_namespace(namespace: str) -> dict:
+    result = None
+    try:
+        v1_api = client.CoreV1Api()
+        result = v1_api.read_namespace(name=namespace)
+    except ApiException as ae:
+        error_msg = str(ae)
+        logger.debug(msg=error_msg)
+    else:
+        if result:
+            return generic.sanitize_for_serialization(obj=result)
+
+
+def create_namespaced_custom_objects(
+    group: str, version: str, namespace: str, plural: str, yaml_objects: List[dict], delete_first: bool = False
+) -> List[dict]:
+    if not yaml_objects:
+        yaml_objects = []
+    result = []
+    try:
+        custom_client = client.CustomObjectsApi()
+        for data in yaml_objects:
+            if delete_first:
+                delete_namespaced_custom_object(
+                    group=group, version=version, namespace=namespace, plural=plural, name=data["metadata"]["name"]
+                )
+            result.append(
+                custom_client.create_namespaced_custom_object(
+                    group=group, version=version, namespace=namespace, plural=plural, body=data
+                )
+            )
+    except ApiException as ae:
+        error_msg = str(ae)
+        logger.debug(msg=error_msg)
+        raise RuntimeError(error_msg)
+    else:
+        return result
+
+
+def delete_namespaced_custom_object(
+    group: str, version: str, namespace: str, plural: str, name: str, raise_on_404: bool = False
+):
+    try:
+        custom_client = client.CustomObjectsApi()
+        custom_client.delete_namespaced_custom_object(
+            group=group,
+            version=version,
+            namespace=namespace,
+            plural=plural,
+            name=name,
+        )
+    except ApiException as ae:
+        error_msg = str(ae)
+        logger.debug(msg=error_msg)
+        if raise_on_404:
+            if int(ae.status) == 404 and not raise_on_404:
+                return
+            raise RuntimeError(error_msg)
+
+
+def create_namespaced_configmap(namespace: str, cm_name: str, data: Dict[str, str], delete_first: bool = False) -> dict:
+    result = None
+    try:
+        v1_api = client.CoreV1Api()
+        if delete_first:
+            delete_namespaced_configmap(namespace=namespace, cm_name=cm_name)
+        result = v1_api.create_namespaced_config_map(
+            namespace=namespace, body=client.V1ConfigMap(data=data, metadata=V1ObjectMeta(name=cm_name))
+        )
+    except ApiException as ae:
+        error_msg = str(ae)
+        logger.debug(msg=error_msg)
+        raise RuntimeError(error_msg)
+    else:
+        if result:
+            return generic.sanitize_for_serialization(obj=result)
+
+
+def delete_namespaced_configmap(namespace: str, cm_name: str, raise_on_404: bool = False) -> dict:
+    try:
+        v1_api = client.CoreV1Api()
+        v1_api.delete_namespaced_config_map(namespace=namespace, name=cm_name)
+    except ApiException as ae:
+        error_msg = str(ae)
+        logger.debug(msg=error_msg)
+        if raise_on_404:
+            if int(ae.status) == 404 and not raise_on_404:
+                return
+            raise RuntimeError(error_msg)
