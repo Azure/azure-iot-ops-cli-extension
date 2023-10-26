@@ -69,7 +69,7 @@ def check_bluefin_deployment(
     if not as_list:
         return result
 
-    return process_as_list(console=console, result=result, namespace=namespace)
+    return process_as_list(console=console, result=result)
 
 
 def check_bluefin_post_deployment(
@@ -89,7 +89,6 @@ def check_bluefin_post_deployment(
         api_info=BLUEFIN_API_V1,
         check_name="enumerateBluefinApi",
         check_desc="Enumerate Bluefin API resources",
-        namespace=namespace,
         result=result,
         resource_kinds_enum=BluefinResourceKinds,
         evaluate_funcs=evaluate_funcs,
@@ -104,7 +103,7 @@ def evaluate_instances(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Bluefin instance", namespace=namespace)
+    check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Bluefin instance")
 
     target_instances = "instances.bluefin.az-bluefin.com"
     instance_conditions = ["len(instances)==1", "provisioningState"]
@@ -181,6 +180,7 @@ def evaluate_instances(
         ]:
             evaluate_pod_health(
                 check_manager=check_manager,
+                target=target_instances,
                 namespace=namespace,
                 pod=pod,
                 display_padding=12,
@@ -195,7 +195,7 @@ def evaluate_pipelines(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Bluefin pipeline", namespace=namespace)
+    check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Bluefin pipeline")
 
     target_pipelines = "pipelines.bluefin.az-bluefin.com"
     pipeline_conditions = ["len(pipelines)>=1",
@@ -310,7 +310,7 @@ def evaluate_datasets(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Bluefin dataset", namespace=namespace)
+    check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Bluefin dataset")
 
     target_datasets = "datasets.bluefin.az-bluefin.com"
     dataset_conditions = ["provisioningState"]

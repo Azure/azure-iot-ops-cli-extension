@@ -135,6 +135,9 @@ LNM_REST_PROPERTIES = [
     ("replicas", "Replicas", False),
 ]
 
+# Check constants
+ALL_NAMESPACES_TARGET = '_all_'
+
 
 class E4kCheckType(Enum):
     """
@@ -173,6 +176,7 @@ AZEDGE_KAFKA_CONFIG_PREFIX = "azedge-kafka-config"
 
 # Lnm runtime attributes
 AIO_LNM_PREFIX = "aio-lnm"
+AIO_LNM_OPERATOR_PREFIX = "aio-lnm-operator"
 
 # Pre-deployment KPIs
 

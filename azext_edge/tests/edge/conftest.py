@@ -28,17 +28,58 @@ def mocked_urlopen(mocker):
 
 
 @pytest.fixture
-def mocked_get_subscription_id(mocker):
-    from ..generators import get_zeroed_subscription
+def mocked_resource_management_client(request, mocker):
+    import json
 
-    patched = mocker.patch("azure.cli.core.commands.client_factory.get_subscription_id", autospec=True)
-    patched.return_value = get_zeroed_subscription()
-    yield patched
+    request_results = getattr(request, "param", {})
+    resource_mgmt_client = mocker.Mock()
+    # Resource group
+    rg_get = mocker.Mock()
+    rg_get.as_dict.return_value = request_results.get("resource_groups.get")
+    resource_mgmt_client.resource_groups.get.return_value = rg_get
+
+    # Resources
+    # Delete
+    resource_mgmt_client.resources.begin_delete.return_value = None
+
+    # Get + lazy way of ensuring original is present and result is a copy
+    resource_get = mocker.Mock()
+    get_result = request_results.get("resources.get")
+    resource_get.original = get_result
+    resource_get.as_dict.return_value = json.loads(json.dumps(get_result))
+    resource_mgmt_client.resources.get.return_value = resource_get
+
+    # Get by id + lazy way of ensuring original is present and result is a copy
+    resource_get = mocker.Mock()
+    get_result = request_results.get("resources.get_by_id")
+    resource_get.original = get_result
+    resource_get.as_dict.return_value = json.loads(json.dumps(get_result))
+    resource_mgmt_client.resources.get_by_id.return_value = resource_get
+
+    # Create
+    poller = mocker.Mock()
+    poller.wait.return_value = None
+    poller.result.return_value = request_results.get("resources.begin_create_or_update_by_id")
+
+    resource_mgmt_client.resources.begin_create_or_update_by_id.return_value = poller
+
+    patched = mocker.patch("azure.mgmt.resource.ResourceManagementClient", autospec=True)
+    patched.return_value = resource_mgmt_client
+
+    yield resource_mgmt_client
 
 
 @pytest.fixture
-def mocked_cmd(mocker):
-    az_cli_mock = mocker.patch("azure.cli.core.AzCli", autospec=True)
-    config = {"cli_ctx": az_cli_mock}
-    patched = mocker.patch("azure.cli.core.commands.AzCliCommand", autospec=True, **config)
-    yield patched
+def mocked_build_query(mocker, request):
+    request_params = getattr(request, "param", {
+        "path": "azext_edge.edge.util.common.client",
+        "return_value": []
+    })
+    build_query_mock = mocker.patch(f"{request_params['path']}.build_query", autospec=True)
+    if request_params.get("side_effect"):
+        build_query_mock.side_effect = request_params["side_effect"]
+        # ensure original values are kept
+        build_query_mock.side_effect_values = request_params["side_effect"]
+    if request_params.get("return_value"):
+        build_query_mock.return_value = request_params["return_value"]
+    yield build_query_mock
