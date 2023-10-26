@@ -86,7 +86,10 @@ def get_namespaced_pods_by_prefix(
         return filter_pods_from_cache(target_pods_key)
     try:
         v1 = client.CoreV1Api()
-        pods_list: V1PodList = v1.list_namespaced_pod(namespace, label_selector=label_selector)
+        if namespace:
+            pods_list: V1PodList = v1.list_namespaced_pod(namespace, label_selector=label_selector)
+        else:
+            pods_list: V1PodList = v1.list_pod_for_all_namespaces(label_selector=label_selector)
         _namespaced_pods_cache[target_pods_key] = pods_list.items
     except ApiException as ae:
         logger.debug(str(ae))
