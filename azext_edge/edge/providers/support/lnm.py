@@ -14,6 +14,7 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
+    process_daemonsets,
 )
 
 LNM_APP_LABELS = [
@@ -51,7 +52,14 @@ def fetch_lnm_deployments():
     return process_deployments(resource_api=LNM_API_V1B1, label_selector=None, prefix_names=deployment_prefixes)
 
 
+def fetch_daemonsets():
+    daemonset_prefixes = [f"aio-lnm-{name}" for name in _fetch_lnm_instance_names()]
+    
+    return process_daemonsets(resource_api=LNM_API_V1B1, label_selector=None, prefix_names=daemonset_prefixes)
+
+
 support_runtime_elements = {
+    "daemonsets": fetch_daemonsets,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "deployments": fetch_lnm_deployments,
