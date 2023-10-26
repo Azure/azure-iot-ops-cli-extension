@@ -20,6 +20,8 @@ from .base import (
 LNM_APP_LABELS = [
     'aio-lnm-operator'
 ]
+LNM_DAEMONSET_PREFIX = "svclb-aio-lnm-"
+LNM_DEPLOYMENT_PREFIX = "aio-lnm-"
 
 
 def fetch_replicasets():
@@ -46,14 +48,14 @@ def fetch_services():
 
 
 def fetch_lnm_deployments():
-    deployment_prefixes = [f"aio-lnm-{name}" for name in _fetch_lnm_instance_names()]
+    deployment_prefixes = [f"{LNM_DEPLOYMENT_PREFIX}{name}" for name in _fetch_lnm_instance_names()]
     deployment_prefixes.extend(LNM_APP_LABELS)
 
     return process_deployments(resource_api=LNM_API_V1B1, label_selector=None, prefix_names=deployment_prefixes)
 
 
 def fetch_daemonsets():
-    daemonset_prefixes = [f"aio-lnm-{name}" for name in _fetch_lnm_instance_names()]
+    daemonset_prefixes = [f"{LNM_DAEMONSET_PREFIX}{name}" for name in _fetch_lnm_instance_names()]
     
     return process_daemonsets(resource_api=LNM_API_V1B1, label_selector=None, prefix_names=daemonset_prefixes)
 
