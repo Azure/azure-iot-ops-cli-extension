@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 AKRI_INSTANCE_LABEL = "app.kubernetes.io/instance in (akri-installation)"
 AKRI_APP_LABEL = "app in (akri-controller, otel-collector)"
-AKRI_NAME_LABEL = "name in (akri-agent)"
+AKRI_NAME_LABEL = "name in (akri-agent, akri-opcua-asset-discovery)"
 AKRI_SERVICE_LABEL = "service in (akri-metrics)"
 
 
