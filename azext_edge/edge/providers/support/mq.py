@@ -23,15 +23,15 @@ from .base import (
 logger = get_logger(__name__)
 
 MQ_APP_LABELS = [
-    'azedge-e4k-operator',
+    'aio-mq-operator',
     'broker',
     'diagnostics',
-    'azedge-selftest',
+    # 'azedge-selftest', - aio-mq-selftest?
     'health-manager',
-    'azedge-mqttbridge',
-    'azedge-datalake',
-    'azedge-kafka-connector',
-    'azedge-iothub-connector'
+    'aio-mq-mqttbridge',
+    'aio-mq-datalake',
+    'aio-mq-kafka-connector',
+    'aio-mq-iothub-connector'
 ]
 
 MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"

@@ -12,7 +12,7 @@ from kubernetes.client.models import V1ObjectMeta, V1Pod, V1PodList
 from google.protobuf.json_format import ParseDict
 
 from azext_edge.edge.commands_mq import stats
-from azext_edge.edge.common import AZEDGE_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT
+from azext_edge.edge.common import AIO_MQ_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT
 
 # pylint: disable=no-name-in-module
 from azext_edge.edge.providers.proto.diagnostics_service_pb2 import (
@@ -28,7 +28,7 @@ from .traces_data import TEST_TRACES_DATA
 
 
 def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlopen, stub_raw_stats):
-    pods = [V1Pod(metadata=V1ObjectMeta(name=AZEDGE_DIAGNOSTICS_SERVICE, namespace="namespace"))]
+    pods = [V1Pod(metadata=V1ObjectMeta(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace="namespace"))]
     pod_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
 
@@ -41,7 +41,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
     result = stats(cmd=mocked_cmd, namespace=namespace, context_name=context_name)
     min_stats_assert(result)
     mocked_urlopen.assert_called_with(
-        f"http://{AZEDGE_DIAGNOSTICS_SERVICE}.{namespace}.kubernetes:{METRICS_SERVICE_API_PORT}/metrics"
+        f"http://{AIO_MQ_DIAGNOSTICS_SERVICE}.{namespace}.kubernetes:{METRICS_SERVICE_API_PORT}/metrics"
     )
 
     console_mock = mocker.patch("azext_edge.edge.providers.stats.console", autospec=True)
@@ -116,7 +116,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
 def test_get_traces(
     mocker, mocked_cmd, mocked_client, mocked_config, mocked_zipfile, trace_ids, trace_dir, recv_side_effect
 ):
-    pods = [V1Pod(metadata=V1ObjectMeta(name=AZEDGE_DIAGNOSTICS_SERVICE, namespace="namespace"))]
+    pods = [V1Pod(metadata=V1ObjectMeta(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace="namespace"))]
     pod_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
 

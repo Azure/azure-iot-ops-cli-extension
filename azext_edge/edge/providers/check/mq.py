@@ -23,16 +23,16 @@ from rich.console import Console, NewLine
 from rich.padding import Padding
 
 from ...common import (
-    AZEDGE_DIAGNOSTICS_SERVICE,
+    AIO_MQ_DIAGNOSTICS_SERVICE,
     CheckTaskStatus,
     ResourceState,
 )
 
 from .common import (
-    AZEDGE_DIAGNOSTICS_PROBE_PREFIX,
-    AZEDGE_FRONTEND_PREFIX,
-    AZEDGE_BACKEND_PREFIX,
-    AZEDGE_AUTH_PREFIX,
+    AIO_MQ_DIAGNOSTICS_PROBE_PREFIX,
+    AIO_MQ_FRONTEND_PREFIX,
+    AIO_MQ_BACKEND_PREFIX,
+    AIO_MQ_AUTH_PREFIX,
     KafkaTopicMapRouteType,
     ResourceOutputDetailLevel,
 )
@@ -113,7 +113,7 @@ def evaluate_diagnostics_service(
     all_diagnostic_services = MQ_ACTIVE_API.get_resources(
         kind=MqResourceKinds.DIAGNOSTIC_SERVICE
     ).get("items", [])
-    target_diagnostic_service = "diagnosticservices.az-edge.com"
+    target_diagnostic_service = "diagnosticservices.mq.iotoperations.azure.com"
 
     if not all_diagnostic_services:
         fetch_diagnostics_services_error = f"Unable to fetch {MqResourceKinds.DIAGNOSTIC_SERVICE.value}s in any namespace."
@@ -210,7 +210,7 @@ def evaluate_diagnostics_service(
                 value={"spec": diag_service_resource_spec},
             )
 
-            target_service_deployed = f"service/{AZEDGE_DIAGNOSTICS_SERVICE}"
+            target_service_deployed = f"service/{AIO_MQ_DIAGNOSTICS_SERVICE}"
             check_manager.add_target(target_name=target_service_deployed, namespace=namespace, conditions=["spec.clusterIP", "spec.ports"])
             check_manager.add_display(
                 target_name=target_service_deployed,
@@ -221,7 +221,7 @@ def evaluate_diagnostics_service(
                 ),
             )
 
-            diagnostics_service = get_namespaced_service(name=AZEDGE_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True)
+            diagnostics_service = get_namespaced_service(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True)
             if not diagnostics_service:
                 check_manager.add_target_eval(
                     target_name=target_service_deployed,
@@ -231,7 +231,7 @@ def evaluate_diagnostics_service(
                 )
                 diag_service_desc_suffix = "[red]not detected[/red]."
                 diag_service_desc = (
-                    f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+                    f"Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
                 )
                 check_manager.add_display(
                     target_name=target_service_deployed,
@@ -254,7 +254,7 @@ def evaluate_diagnostics_service(
                 )
                 diag_service_desc_suffix = "[green]detected[/green]."
                 diag_service_desc = (
-                    f"Service {{[bright_blue]{AZEDGE_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+                    f"Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
                 )
                 check_manager.add_display(
                     target_name=target_service_deployed,
@@ -282,7 +282,7 @@ def evaluate_diagnostics_service(
                     check_manager=check_manager,
                     namespace=namespace,
                     target=target_service_deployed,
-                    pod=AZEDGE_DIAGNOSTICS_SERVICE,
+                    pod=AIO_MQ_DIAGNOSTICS_SERVICE,
                     display_padding=12,
                     service_label=MQ_LABEL
                 )
@@ -299,7 +299,7 @@ def evaluate_broker_listeners(
         check_desc="Evaluate MQ broker listeners",
     )
 
-    target_listeners = "brokerlisteners.az-edge.com"
+    target_listeners = "brokerlisteners.mq.iotoperations.azure.com"
     listener_conditions = [
         "len(brokerlisteners)>=1",
         "spec",
@@ -549,7 +549,7 @@ def evaluate_brokers(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate MQ broker")
 
-    target_brokers = "brokers.az-edge.com"
+    target_brokers = "brokers.mq.iotoperations.azure.com"
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
     all_brokers: dict = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER).get("items", [])
 
@@ -781,10 +781,10 @@ def evaluate_brokers(
             )
 
             for pod in [
-                AZEDGE_DIAGNOSTICS_PROBE_PREFIX,
-                AZEDGE_FRONTEND_PREFIX,
-                AZEDGE_BACKEND_PREFIX,
-                AZEDGE_AUTH_PREFIX
+                AIO_MQ_DIAGNOSTICS_PROBE_PREFIX,
+                AIO_MQ_FRONTEND_PREFIX,
+                AIO_MQ_BACKEND_PREFIX,
+                AIO_MQ_AUTH_PREFIX
             ]:
                 evaluate_pod_health(
                     check_manager=check_manager,
@@ -970,8 +970,8 @@ def evaluate_mqtt_bridge_connectors(
                 )
 
     return process_cloud_connector(
-        connector_target="mqttbridgeconnectors.az-edge.com",
-        topic_map_target="mqttbridgetopicmaps.az-edge.com",
+        connector_target="mqttbridgeconnectors.mq.iotoperations.azure.com",
+        topic_map_target="mqttbridgetopicmaps.mq.iotoperations.azure.com",
         connector_display_name="MQTT Bridge Connector",
         topic_map_reference_key="mqttBridgeConnectorRef",
         connector_resource_kind=MqResourceKinds.MQTT_BRIDGE_CONNECTOR,
@@ -1152,8 +1152,8 @@ def evaluate_datalake_connectors(
         )
 
     return process_cloud_connector(
-        connector_target="datalakeconnectors.az-edge.com",
-        topic_map_target="datalakeconnectortopicmaps.az-edge.com",
+        connector_target="datalakeconnectors.mq.iotoperations.azure.com",
+        topic_map_target="datalakeconnectortopicmaps.mq.iotoperations.azure.com",
         connector_display_name="Data Lake Connector",
         topic_map_reference_key="dataLakeConnectorRef",
         connector_resource_kind=MqResourceKinds.DATALAKE_CONNECTOR,
@@ -1438,8 +1438,8 @@ def evaluate_kafka_connectors(
                     )
 
     return process_cloud_connector(
-        connector_target="kafkaconnectors.az-edge.com",
-        topic_map_target="kafkaconnectortopicmaps.az-edge.com",
+        connector_target="kafkaconnectors.mq.iotoperations.azure.com",
+        topic_map_target="kafkaconnectortopicmaps.mq.iotoperations.azure.com",
         connector_display_name="Kafka Connector",
         topic_map_reference_key="kafkaConnectorRef",
         connector_resource_kind=MqResourceKinds.KAFKA_CONNECTOR,

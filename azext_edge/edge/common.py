@@ -115,6 +115,6 @@ class ResourceTypeMapping(Enum):
 
 # MQ runtime attributes
 
-AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
+AIO_MQ_DIAGNOSTICS_SERVICE = "aio-mq-diagnostics-service"
 METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800

@@ -190,7 +190,7 @@ def _display_connector_runtime_health(
     namespace: str,
     target: str,
     connectors: Optional[List[Dict[str, Any]]] = None,
-    prefix: str = "azedge-",
+    prefix: str = "aio-mq-",
     padding: int = 8,
 ):
     if connectors:

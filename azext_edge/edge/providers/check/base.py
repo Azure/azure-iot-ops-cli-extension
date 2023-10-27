@@ -375,7 +375,7 @@ class CheckManager:
         "description": "Evaluate MQ broker listeners",
         "status": "warning",
         "targets": {
-            "az-edge.com/v1alpha4": {
+            "mq.iotoperations.azure.com/v1beta1": {
                 "_all_": {
                     "conditions": null,
                     "evaluations": [
@@ -386,7 +386,7 @@ class CheckManager:
                     ],
                 }
             },
-            "brokerlisteners.az-edge.com": {
+            "brokerlisteners.mq.iotoperations.azure.com": {
                 "default": {
                     "displays": [],
                     "conditions": [
