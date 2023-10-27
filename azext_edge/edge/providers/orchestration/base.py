@@ -8,7 +8,7 @@ import json
 from time import sleep
 from typing import List, NamedTuple, Optional, Tuple
 
-from azure.cli.core.azclierror import AzureResponseError, HTTPError
+from azure.cli.core.azclierror import AzureResponseError, HTTPError, InvalidArgumentValueError
 from azure.core.exceptions import HttpResponseError
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.resource import ResourceManagementClient
@@ -16,7 +16,7 @@ from knack.log import get_logger
 from rich.live import Console
 from rich.table import Table
 
-from ...util import generate_secret, generate_self_signed_cert, get_timestamp_now_utc
+from ...util import generate_secret, generate_self_signed_cert, get_timestamp_now_utc, read_file_content
 from ..base import (
     create_cluster_namespace,
     create_namespaced_configmap,
@@ -37,7 +37,7 @@ logger = get_logger(__name__)
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 DEFAULT_AZURE_CREDENTIAL = DefaultAzureCredential()
 
-DEFAULT_POLL_RETRIES = 30
+DEFAULT_POLL_RETRIES = 60
 DEFAULT_POLL_WAIT_SEC = 10
 
 
@@ -168,13 +168,18 @@ def configure_cluster_secrets(
 
 
 def prepare_ca(
-    ca_path: Optional[str] = None, key_path: Optional[str] = None, **kwargs
+    tls_ca_path: Optional[str] = None, tls_ca_key_path: Optional[str] = None, **kwargs
 ) -> Tuple[bytes, bytes, str, str]:
     # TODO: @digimaun custom directory
     public_cert = private_key = None
     secret_name = "aio-ca-key-pair"
     cm_name = "aio-ca-trust-bundle"
-    if not ca_path:
+
+    if tls_ca_path:
+        public_cert = read_file_content(file_path=tls_ca_path, read_as_binary=True)
+        if tls_ca_key_path:
+            private_key = read_file_content(file_path=tls_ca_key_path, read_as_binary=True)
+    else:
         public_cert, private_key = generate_self_signed_cert()
         secret_name = f"{secret_name}-test-only"
         cm_name = f"{cm_name}-test-only"

@@ -10,6 +10,7 @@ from .common import (
     generate_secret,
     get_timestamp_now_utc,
     set_log_level,
+    read_file_content,
 )
 
 from .x509 import generate_self_signed_cert
@@ -21,4 +22,5 @@ __all__ = [
     "set_log_level",
     "generate_secret",
     "generate_self_signed_cert",
+    "read_file_content",
 ]

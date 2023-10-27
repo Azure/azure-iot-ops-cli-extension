@@ -4,9 +4,11 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
+from os.path import exists
 from pathlib import PurePath
 from typing import Any, Dict, List, Optional, Union
 
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
@@ -76,7 +78,10 @@ def init(
     opcua_discovery_endpoint: Optional[str] = None,
     no_block: Optional[bool] = None,
     no_progress: Optional[bool] = None,
-    processor_instance_name: Optional[str] = None,
+    dp_instance_name: Optional[str] = None,
+    dp_reader_worker: Optional[int] = None,
+    dp_runner_worker: Optional[int] = None,
+    dp_message_store: Optional[int] = None,
     target_name: Optional[str] = None,
     disable_secret_rotation: Optional[bool] = None,
     rotation_poll_interval: str = "1h",
@@ -92,21 +97,21 @@ def init(
     from azure.cli.core.commands.client_factory import get_subscription_id
 
     from .providers.orchestration import deploy
-    from .util.sp import principal_is_app, sp_can_fetch_self
+    from .util.sp import LoggedInPrincipal
 
     load_config_context(context_name=context_name)
 
     if keyvault_resource_id:
-        is_app, app_id = principal_is_app(cmd.cli_ctx)
-        if (
-            is_app
-            and not sp_can_fetch_self(cmd.cli_ctx, app_id)
-            and not all([service_principal_app_id, service_principal_object_id, service_principal_secret])
-        ):
-            logger.warning(
-                "When logged in with a service principal, either ensure it's permissions "
-                "to MS graph or provide values for --sp-app-id, --sp-object-id and --sp-secret."
-            )
+        logged_in_principal = LoggedInPrincipal(cmd=cmd)
+        if logged_in_principal.is_app():
+            app_principal = logged_in_principal.fetch_self_if_app()
+            if not app_principal and not all(
+                [service_principal_app_id, service_principal_object_id, service_principal_secret]
+            ):
+                logger.warning(
+                    "When logged in with a service principal, either ensure it's permissions "
+                    "to MS graph or provide values for --sp-app-id, --sp-object-id and --sp-secret."
+                )
 
     # cluster namespace must be lowercase
     cluster_namespace = str(cluster_namespace).lower()
@@ -119,8 +124,8 @@ def init(
     if not custom_location_namespace:
         custom_location_namespace = cluster_namespace
 
-    if not processor_instance_name:
-        processor_instance_name = f"{cluster_name_lowered}-aziotops-init-proc"
+    if not dp_instance_name:
+        processor_instance_name = f"{cluster_name_lowered}-aziotops-init-dp"
         processor_instance_name = processor_instance_name.replace("_", "-")
 
     if not target_name:
@@ -130,10 +135,15 @@ def init(
     if simulate_plc and not opcua_discovery_endpoint:
         opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
 
-    # TODO: @digimaun
-    # implement "has permission to graph check"
-    # if keyvault_resource_id:
-    #    ensure_access_to_graph()
+    if tls_ca_path:
+        if not tls_ca_key_path:
+            raise InvalidArgumentValueError("When using --ca-file, --ca-key-file is required.")
+
+        if not exists(tls_ca_path):
+            raise InvalidArgumentValueError("Provided CA file does not exist.")
+
+        if not exists(tls_ca_key_path):
+            raise InvalidArgumentValueError("Provided CA private key file does not exist.")
 
     return deploy(
         cmd=cmd,
@@ -152,7 +162,10 @@ def init(
         no_block=no_block,
         no_progress=no_progress,
         no_deploy=no_deploy,
-        processor_instance_name=processor_instance_name,
+        dp_instance_name=dp_instance_name,
+        dp_reader_worker=dp_reader_worker,
+        dp_runner_worker=dp_runner_worker,
+        dp_message_store=dp_message_store,
         target_name=target_name,
         keyvault_resource_id=keyvault_resource_id,
         keyvault_secret_name=str(keyvault_secret_name),

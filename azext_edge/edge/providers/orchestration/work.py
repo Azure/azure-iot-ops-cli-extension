@@ -142,7 +142,7 @@ class WorkManager:
         # TODO @digimaun - insecure mode
         self.display.add_category(WorkCategoryKey.TLS_CA, "TLS", self._tls_insecure)
         if self._tls_ca_path:
-            tls_ca_desc = "User provided CA"
+            tls_ca_desc = f"User provided CA '[green]{self._tls_ca_path}[/green]'"
         else:
             tls_ca_desc = f"Generate test CA using '[green]{DEFAULT_EC_ALGO.name}[/green]'"
 
@@ -272,7 +272,7 @@ class WorkManager:
             ):
                 self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
                 template = self._template_manager.version_map["1.0.0.0"]
-                template, parameters = self.build_template()
+                template, parameters = self.build_template(work_kpis=work_kpis)
 
                 deployment_result, deployment_poller = deploy_template(
                     template=template.content, parameters=parameters, deployment_name=self._work_name, **self._kwargs
@@ -376,7 +376,7 @@ class WorkManager:
                 sleep(0.5)
             self._live.stop()
 
-    def build_template(self) -> Tuple[TemplateVer, dict]:
+    def build_template(self, work_kpis: dict) -> Tuple[TemplateVer, dict]:
         # TODO refactor
         template = self._template_manager.version_map["1.0.0.0"]
         parameters = {}
@@ -394,8 +394,8 @@ class WorkManager:
             parameters["opcuaDiscoveryEndpoint"] = {"value": self._kwargs["opcua_discovery_endpoint"]}
         if self._kwargs["target_name"]:
             parameters["targetName"] = {"value": self._kwargs["target_name"]}
-        if self._kwargs["processor_instance_name"]:
-            parameters["dataProcessorInstanceName"] = {"value": self._kwargs["processor_instance_name"]}
+        if self._kwargs["dp_instance_name"]:
+            parameters["dataProcessorInstanceName"] = {"value": self._kwargs["dp_instance_name"]}
 
         parameters["dataProcessorSecrets"] = {
             "value": {
@@ -416,4 +416,11 @@ class WorkManager:
         }
 
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
+
+        tls_map = work_kpis.get("tls", {})
+        if "aioTrustConfigMap" in tls_map:
+            template.content["variables"]["AIO_TRUST_CONFIG_MAP"] = tls_map["aioTrustConfigMap"]
+        if "aioTrustSecretName" in tls_map:
+            template.content["variables"]["AIO_TRUST_SECRET_NAME"] = tls_map["aioTrustSecretName"]
+
         return template, parameters

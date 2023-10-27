@@ -276,11 +276,32 @@ def load_iotedge_arguments(self, _):
         )
         # Bluefin
         context.argument(
-            "processor_instance_name",
-            options_list=["--processor-instance"],
+            "dp_instance",
+            options_list=["--dp-instance"],
             help="Instance name for data processor. Used if data processor is part of the deployment. "
             "If no processor instance name is provided one will be generated in the form "
             "'{cluster_name}-aziotops-init-proc'.",
+            arg_group="Data Processor",
+        )
+        context.argument(
+            "dp_reader_worker",
+            type=int,
+            options_list=["--dp-reader-workers"],
+            help="Number of reader worker replicas",
+            arg_group="Data Processor",
+        )
+        context.argument(
+            "dp_runner_worker",
+            type=int,
+            options_list=["--dp-runner-workers"],
+            help="Number of runner worker replicas",
+            arg_group="Data Processor",
+        )
+        context.argument(
+            "dp_message_store",
+            type=int,
+            options_list=["--dp-message-store"],
+            help="Number of message store replicas",
             arg_group="Data Processor",
         )
         # Symphony
@@ -356,7 +377,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "tls_ca_key_path",
             options_list=["--ca-key-file"],
-            help="The path to the CA private key file in PEM format.",
+            help="The path to the CA private key file in PEM format. !Required! when --ca-file is provided.",
             arg_group="TLS",
         )
         context.argument(

@@ -6,43 +6,52 @@
 
 import json
 from base64 import b64decode
-from typing import Tuple
+from typing import NamedTuple, Optional
 
 from azure.cli.core._profile import Profile
 from azure.cli.core.azclierror import HTTPError
+from azure.cli.core.util import send_raw_request
 
 
-def get_token_claims(cli_ctx) -> dict:
-    result = {}
-    try:
-        profile = Profile(cli_ctx=cli_ctx)
-        cred, _, _ = profile.get_login_credentials(resource="https://graph.microsoft.com/")
-        claims = json.loads(b64decode(cred.get_token().token.split(".")[1] + "=="))
-        result.update(claims)
-    except Exception:
-        pass
-    return result
+class AppPrincipal(NamedTuple):
+    app_id: str
+    object_id: str
+    app: dict
 
 
-def principal_is_app(cli_ctx) -> Tuple[bool, str]:
-    claims: dict = get_token_claims(cli_ctx)
-    id_type = claims.get("idtyp")
-    if id_type == "app":
-        return True, claims.get("appid")
-    return False, None
+class LoggedInPrincipal:
+    def __init__(self, cmd):
+        self.cli_ctx = cmd.cli_ctx
+        self.claims = self._get_token_claims()
 
+    def _get_token_claims(self):
+        result = {}
+        try:
+            profile = Profile(cli_ctx=self.cli_ctx)
+            cred, _, _ = profile.get_login_credentials(resource="https://graph.microsoft.com/")
+            claims = json.loads(b64decode(cred.get_token().token.split(".")[1] + "=="))
+            result.update(claims)
+        except Exception:
+            pass
+        return result
 
-def sp_can_fetch_self(cli_ctx, app_id: str):
-    from azure.cli.core.util import send_raw_request
+    def is_app(self) -> bool:
+        id_type = self.claims.get("idtyp")
+        return id_type == "app"
 
-    try:
-        send_raw_request(
-            cli_ctx=cli_ctx,
-            method="GET",
-            url=f"https://graph.microsoft.com/v1.0/applications/{app_id}",
-        ).json()
-        return True
-    except HTTPError as http_error:
-        if http_error.response.status_code in [401, 403]:
-            return False
-        raise http_error
+    def fetch_self_if_app(self) -> Optional[AppPrincipal]:
+        if self.is_app():
+            app_id = self.claims.get("appid")
+            obj_id = self.claims.get("oid")
+            if app_id:
+                try:
+                    result = send_raw_request(
+                        cli_ctx=self.cli_ctx,
+                        method="GET",
+                        url=f"https://graph.microsoft.com/v1.0/applications/{app_id}",
+                    ).json()
+                    return AppPrincipal(app_id=app_id, object_id=obj_id, app=result)
+                except HTTPError as http_error:
+                    if http_error.response.status_code in [401, 403]:
+                        return None
+                    raise http_error
