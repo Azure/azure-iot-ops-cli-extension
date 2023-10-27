@@ -125,7 +125,7 @@ TEMPLATE_VER_1000 = TemplateVer(
             },
             "VERSIONS": {
                 "adr": "0.12.0",
-                "opcUaBroker": "0.1.0-preview.4",
+                "opcUaBroker": "0.1.0-preview.5",
                 "observability": "0.62.3",
                 "akri": "0.1.0-preview-rc3",
                 "mq": "0.1.0-preview-rc3",

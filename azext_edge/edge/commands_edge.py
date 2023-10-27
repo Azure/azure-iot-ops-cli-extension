@@ -72,7 +72,6 @@ def init(
     custom_location_name: Optional[str] = None,
     show_aio_version: Optional[bool] = None,
     location: Optional[str] = None,
-    what_if: Optional[bool] = None,
     show_template: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
@@ -91,6 +90,7 @@ def init(
     keyvault_resource_id: Optional[str] = None,
     tls_ca_path: Optional[str] = None,
     tls_ca_key_path: Optional[str] = None,
+    tls_ca_dir: Optional[str] = None,
     no_deploy: Optional[bool] = None,
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
@@ -119,17 +119,17 @@ def init(
     cluster_name_lowered = cluster_name.lower()
 
     if not custom_location_name:
-        custom_location_name = f"{cluster_name_lowered}-aziotops-init-cl"
+        custom_location_name = f"{cluster_name_lowered}-aio-init-cl"
 
     if not custom_location_namespace:
         custom_location_namespace = cluster_namespace
 
     if not dp_instance_name:
-        processor_instance_name = f"{cluster_name_lowered}-aziotops-init-dp"
-        processor_instance_name = processor_instance_name.replace("_", "-")
+        dp_instance_name = f"{cluster_name_lowered}-aio-init-processor"
+        dp_instance_name = dp_instance_name.replace("_", "-")
 
     if not target_name:
-        target_name = f"{cluster_name_lowered}-aziotops-init-target"
+        target_name = f"{cluster_name_lowered}-aio-init-target"
         target_name = target_name.replace("_", "-")
 
     if simulate_plc and not opcua_discovery_endpoint:
@@ -155,7 +155,6 @@ def init(
         resource_group_name=resource_group_name,
         location=location,
         show_aio_version=show_aio_version,
-        what_if=what_if,
         show_template=show_template,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         simulate_plc=simulate_plc,
@@ -176,4 +175,5 @@ def init(
         service_principal_secret=service_principal_secret,
         tls_ca_path=tls_ca_path,
         tls_ca_key_path=tls_ca_key_path,
+        tls_ca_dir=tls_ca_dir,
     )

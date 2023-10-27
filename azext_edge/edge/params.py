@@ -195,9 +195,9 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "custom_location_name",
             options_list=["--custom-location"],
-            help="The custom location name corresponding to AIO solution deployment. "
+            help="The custom location name corresponding to AIO deployment. "
             "If no custom location name is provided one will be generated in the form "
-            "'{cluster_name}-aziotops-init-cl'.",
+            "'{cluster_name}-aio-init-cl'.",
         )
         context.argument(
             "custom_location_namespace",
@@ -276,11 +276,10 @@ def load_iotedge_arguments(self, _):
         )
         # Bluefin
         context.argument(
-            "dp_instance",
+            "dp_instance_name",
             options_list=["--dp-instance"],
-            help="Instance name for data processor. Used if data processor is part of the deployment. "
-            "If no processor instance name is provided one will be generated in the form "
-            "'{cluster_name}-aziotops-init-proc'.",
+            help="Instance name for data processor. If no instance name is provided "
+            "one will be generated in the form '{cluster_name}-aio-init-processor'.",
             arg_group="Data Processor",
         )
         context.argument(
@@ -310,7 +309,7 @@ def load_iotedge_arguments(self, _):
             options_list=["--target"],
             help="Target name for edge orchestrator. "
             "If no target name is provided one will be generated in the form "
-            "'{cluster_name}-aziotops-init-target'.",
+            "'{cluster_name}-aio-init-target'.",
             arg_group="Orchestration",
         )
         # AKV CSI Driver
@@ -381,10 +380,10 @@ def load_iotedge_arguments(self, _):
             arg_group="TLS",
         )
         context.argument(
-            "tls_insecure",
-            options_list=["--no-tls"],
-            arg_type=get_three_state_flag(),
-            help="Flag indicating no tls configuration will be made.",
+            "tls_ca_dir",
+            options_list=["--ca-dir"],
+            help="The local directory the generated test CA and private key will be placed in. "
+            "If no directory is provided the current directory is used.",
             arg_group="TLS",
         )
 
