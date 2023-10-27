@@ -295,6 +295,48 @@ def process_nodes():
     }
 
 
+def process_customobjects(
+    resource_api: EdgeResourceApi,
+    plural_object_name: str,
+    label_selector: str = None,
+    prefix_names: List[str] = None,
+):
+    custom_api = client.CustomObjectsApi()
+
+    processed = []
+    if not prefix_names:
+        prefix_names = []
+
+    customobjects: dict = custom_api.list_cluster_custom_object(
+        resource_api.group, resource_api.version, plural_object_name, label_selector=label_selector
+    )
+    logger.info(f"Detected {len(customobjects.items)} customobjects.")
+
+    for customobject in customobjects.items:
+        o: dict = customobject
+        # TODO: Workaround
+        o["apiVersion"] = customobjects["apiVersion"]
+        # TBH - kind is already correct here
+        # r.kind = object_name
+        customobject_metadata: dict = o["metadata"]
+        customobject_namespace: str = customobject_metadata["namespace"]
+        customobject_name: str = customobject_metadata["name"]
+
+        if prefix_names:
+            matched_prefix = [customobject_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
+
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=o),
+                "zinfo": f"{customobject_namespace}/{resource_api.moniker}/{plural_object_name}.{customobject_name}.yaml",
+            }
+        )
+
+    return processed
+
+
 def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional[Dict[str, str]] = None):
     if not file_prefix_map:
         file_prefix_map = {}
