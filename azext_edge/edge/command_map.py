@@ -20,7 +20,7 @@ def load_iotedge_commands(self, _):
     Load CLI commands
     """
     with self.command_group(
-        "edge",
+        "iot ops",
         command_type=edge_resource_ops,
         is_preview=True,
     ) as cmd_group:
@@ -28,20 +28,20 @@ def load_iotedge_commands(self, _):
         cmd_group.command("init", "init")
 
     with self.command_group(
-        "edge support",
+        "iot ops support",
         command_type=edge_resource_ops,
     ) as cmd_group:
         cmd_group.command("create-bundle", "support_bundle")
 
     with self.command_group(
-        "edge e4k",
+        "iot ops mq",
         command_type=e4k_resource_ops,
     ) as cmd_group:
         cmd_group.command("stats", "stats")
         cmd_group.command("get-password-hash", "get_password_hash")
 
     with self.command_group(
-        "edge asset",
+        "iot ops asset",
         command_type=asset_resource_ops,
     ) as cmd_group:
         cmd_group.command("create", "create_asset")
@@ -52,7 +52,7 @@ def load_iotedge_commands(self, _):
         cmd_group.command("update", "update_asset")
 
     with self.command_group(
-        "edge asset data-point",
+        "iot ops asset data-point",
         command_type=asset_resource_ops,
     ) as cmd_group:
         cmd_group.command("add", "add_asset_data_point")
@@ -60,7 +60,7 @@ def load_iotedge_commands(self, _):
         cmd_group.command("remove", "remove_asset_data_point")
 
     with self.command_group(
-        "edge asset event",
+        "iot ops asset event",
         command_type=asset_resource_ops,
     ) as cmd_group:
         cmd_group.command("add", "add_asset_event")

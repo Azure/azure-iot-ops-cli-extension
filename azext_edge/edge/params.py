@@ -13,7 +13,6 @@ from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_ty
 
 from .common import SupportForEdgeServiceType
 from .providers.edge_api import E4kResourceKinds
-from .providers.orchestration.pas_versions import EdgeServiceMoniker
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.bluefin import BluefinResourceKinds
 from ._validators import validate_namespace
@@ -24,7 +23,7 @@ def load_iotedge_arguments(self, _):
     Load CLI Args for Knack parser
     """
 
-    with self.argument_context("edge") as context:
+    with self.argument_context("iot ops") as context:
         context.argument(
             "context_name",
             options_list=["--context"],
@@ -41,7 +40,7 @@ def load_iotedge_arguments(self, _):
             validator=validate_namespace,
         )
 
-    with self.argument_context("edge support") as context:
+    with self.argument_context("iot ops support") as context:
         context.argument(
             "edge_service",
             options_list=["--edge-service", "-e"],
@@ -62,7 +61,7 @@ def load_iotedge_arguments(self, _):
             "If no directory is provided the current directory is used.",
         )
 
-    with self.argument_context("edge check") as context:
+    with self.argument_context("iot ops check") as context:
         context.argument(
             "pre_deployment_checks",
             options_list=["--pre"],
@@ -120,7 +119,7 @@ def load_iotedge_arguments(self, _):
             "or 2 for a verbose view, (all available information).",
         )
 
-    with self.argument_context("edge e4k get-password-hash") as context:
+    with self.argument_context("iot ops mq get-password-hash") as context:
         context.argument(
             "iterations",
             options_list=["--iterations", "-i"],
@@ -134,7 +133,7 @@ def load_iotedge_arguments(self, _):
             help="Passphrase to apply hashing algorithm to.",
         )
 
-    with self.argument_context("edge e4k stats") as context:
+    with self.argument_context("iot ops mq stats") as context:
         context.argument(
             "refresh_in_seconds",
             options_list=["--refresh"],
@@ -187,28 +186,30 @@ def load_iotedge_arguments(self, _):
             arg_group="Trace",
         )
 
-    with self.argument_context("edge init") as context:
+    with self.argument_context("iot ops init") as context:
         context.argument(
             "cluster_name",
             options_list=["--cluster"],
-            help="Target cluster name for PAS deployment.",
+            help="Target cluster name for AIO deployment.",
         )
         context.argument(
             "custom_location_name",
             options_list=["--custom-location"],
-            help="The custom location name corresponding to PAS solution deployment. "
-            "If no custom location name is provided one will be generated in the form '{cluster_name}-azedge-init'.",
+            help="The custom location name corresponding to AIO solution deployment. "
+            "If no custom location name is provided one will be generated in the form "
+            "'{cluster_name}-aziotops-init-cl'.",
         )
         context.argument(
             "custom_location_namespace",
             options_list=["--custom-location-namespace", "--cln"],
             help="The namespace associated with the custom location mapped to the cluster. Must be lowercase. "
             "If not provided cluster namespace will be used.",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "cluster_namespace",
             options_list=["--cluster-namespace"],
-            help="The cluster namespace PAS infrastructure will be deployed to. Must be lowercase.",
+            help="The cluster namespace AIO infrastructure will be deployed to. Must be lowercase.",
         )
         context.argument(
             "location",
@@ -232,48 +233,29 @@ def load_iotedge_arguments(self, _):
             arg_group="Template",
         )
         context.argument(
-            "show_pas_version",
-            options_list=["--pas-version"],
+            "show_aio_version",
+            options_list=["--aio-version"],
             help="Summarize and show the versions of deployable components.",
             arg_type=get_three_state_flag(),
-            arg_group="PAS Version",
-        )
-        context.argument(
-            "custom_version",
-            nargs="+",
-            options_list=[context.deprecate(hide=True, target="--custom-version")],
-            help="Customize PAS deployment by specifying edge service versions. Usage takes "
-            "precedence over --aio-version. Use space-separated {key}={value} pairs where {key} "
-            "is the edge service moniker and {value} is the desired version. The following monikers "
-            f"may be used: {', '.join(EdgeServiceMoniker.list())}. Example: e4k=0.5.0 bluefin=0.3.0",
-            arg_group="PAS Version",
-            deprecate_info=context.deprecate(hide=True),
-        )
-        context.argument(
-            "only_deploy_custom",
-            options_list=[context.deprecate(hide=True, target="--only-custom")],
-            arg_type=get_three_state_flag(),
-            help="Only deploy the edge services specified in --custom-version.",
-            arg_group="PAS Version",
-            deprecate_info=context.deprecate(hide=True),
-        )
-        context.argument(
-            "create_sync_rules",
-            options_list=["--create-sync-rules"],
-            arg_type=get_three_state_flag(),
-            help="Create sync rules for arc-enabled extensions that support it.",
+            arg_group="AIO Version",
         )
         context.argument(
             "no_progress",
             options_list=["--no-progress"],
             arg_type=get_three_state_flag(),
-            help="Disable deployment progress bar.",
+            help="Disable init progress bar.",
         )
         context.argument(
             "no_block",
             options_list=["--no-block"],
             arg_type=get_three_state_flag(),
-            help="Disable blocking until completion.",
+            help="Disable blocking AIO deployment until completion.",
+        )
+        context.argument(
+            "no_deploy",
+            options_list=["--no-deploy"],
+            arg_type=get_three_state_flag(),
+            help="The deployment of AIO in the init workflow will be skipped.",
         )
         # Akri
         context.argument(
@@ -281,7 +263,7 @@ def load_iotedge_arguments(self, _):
             options_list=["--opcua-discovery-url"],
             help="Configures an OPC-UA server endpoint for Akri discovery handlers. If not provided "
             "and --simulate-plc is set, this value becomes "
-            "'opc.tcp://opcplc-000000.{cluster_namespace}.svc.cluster.local:50000'.",
+            "'opc.tcp://opcplc-000000.{cluster_namespace}:50000'.",
             arg_group="Akri",
         )
         # OPC-UA Broker
@@ -290,7 +272,7 @@ def load_iotedge_arguments(self, _):
             options_list=["--simulate-plc"],
             arg_type=get_three_state_flag(),
             help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
-            arg_group="Opc-Ua Broker",
+            arg_group="OPC-UA Broker",
         )
         # Bluefin
         context.argument(
@@ -298,20 +280,94 @@ def load_iotedge_arguments(self, _):
             options_list=["--processor-instance"],
             help="Instance name for data processor. Used if data processor is part of the deployment. "
             "If no processor instance name is provided one will be generated in the form "
-            "'{cluster_name}-azedge-init-proc'.",
+            "'{cluster_name}-aziotops-init-proc'.",
             arg_group="Data Processor",
         )
         # Symphony
         context.argument(
             "target_name",
             options_list=["--target"],
-            help="Target name for edge orchestrator. Used if symphony is part of the deployment. "
+            help="Target name for edge orchestrator. "
             "If no target name is provided one will be generated in the form "
-            "'{cluster_name}-azedge-init-target'.",
+            "'{cluster_name}-aziotops-init-target'.",
             arg_group="Orchestration",
         )
+        # AKV CSI Driver
+        context.argument(
+            "keyvault_resource_id",
+            options_list=["--kv-id"],
+            help="KeyVault resource Id. Providing this resource Id will enable the client "
+            "to setup all necessary resources and cluster side configuration to enable "
+            "the KeyVault CSI driver for AIO.",
+            arg_group="KeyVault CSI Driver",
+        )
+        context.argument(
+            "keyvault_secret_name",
+            options_list=["--kv-secret-name"],
+            help="KeyVault secret name. The existance of the secret will be validated. "
+            "If the secret does not exist, it will be created with a placeholder value.",
+            arg_group="KeyVault CSI Driver",
+        )
+        context.argument(
+            "disable_secret_rotation",
+            options_list=["--disable-rotation"],
+            arg_type=get_three_state_flag(),
+            help="Flag to disable secret rotation.",
+            arg_group="KeyVault CSI Driver",
+        )
+        context.argument(
+            "rotation_poll_interval",
+            options_list=["--rotation-int"],
+            help="Rotation poll interval.",
+            arg_group="KeyVault CSI Driver",
+        )
+        context.argument(
+            "service_principal_app_id",
+            options_list=["--sp-app-id"],
+            help="Service principal app Id. If provided it will be used for CSI driver setup. "
+            "Otherwise an app registration will be created. "
+            "!Required! if the logged in principal does not have permissions to query graph.",
+            arg_group="KeyVault CSI Driver",
+        )
+        context.argument(
+            "service_principal_object_id",
+            options_list=["--sp-object-id"],
+            help="Service principal object Id. If provided it will be used for CSI driver setup. "
+            "Otherwise a service principal will be queried and in necessary will be created. "
+            "!Required! if the logged in principal does not have permissions to query graph.",
+            arg_group="KeyVault CSI Driver",
+        )
+        context.argument(
+            "service_principal_secret",
+            options_list=["--sp-secret"],
+            help="The secret corresponding to the provided service principal app Id. "
+            "If provided it will be used for CSI driver setup. Otherwise a new secret "
+            "will be requested from MS graph. "
+            "!Required! if the logged in principal does not have permissions to query graph.",
+            arg_group="KeyVault CSI Driver",
+        )
+        # TLS
+        context.argument(
+            "tls_ca_path",
+            options_list=["--ca-file"],
+            help="The path to the desired CA file in PEM format.",
+            arg_group="TLS",
+        )
+        context.argument(
+            "tls_ca_key_path",
+            options_list=["--ca-key-file"],
+            help="The path to the CA private key file in PEM format.",
+            arg_group="TLS",
+        )
+        context.argument(
+            "tls_insecure",
+            options_list=["--no-tls"],
+            arg_type=get_three_state_flag(),
+            help="Flag indicating no tls configuration will be made.",
+            arg_group="TLS",
+        )
 
-    with self.argument_context("edge asset") as context:
+    with self.argument_context("iot ops asset") as context:
         context.argument(
             "asset_name",
             options_list=["--asset"],
@@ -519,7 +575,7 @@ def load_iotedge_arguments(self, _):
             help="Custom sampling interval (in milliseconds).",
         )
 
-    with self.argument_context("edge asset query") as context:
+    with self.argument_context("iot ops asset query") as context:
         context.argument(
             "disabled",
             options_list=["--disabled"],
@@ -528,7 +584,7 @@ def load_iotedge_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
 
-    with self.argument_context("edge asset data-point") as context:
+    with self.argument_context("iot ops asset data-point") as context:
         context.argument(
             "capability_id",
             options_list=["--capability-id", "--ci"],
@@ -545,7 +601,7 @@ def load_iotedge_arguments(self, _):
             help="Data source.",
         )
 
-    with self.argument_context("edge asset event") as context:
+    with self.argument_context("iot ops asset event") as context:
         context.argument(
             "capability_id",
             options_list=["--capability-id", "--ci"],

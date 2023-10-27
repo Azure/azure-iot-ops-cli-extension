@@ -4,6 +4,21 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from .common import assemble_nargs_to_dict, build_query, scantree, get_timestamp_now_utc, set_log_level
+from .common import (
+    assemble_nargs_to_dict,
+    build_query,
+    generate_secret,
+    get_timestamp_now_utc,
+    set_log_level,
+)
 
-__all__ = ["assemble_nargs_to_dict", "build_query", "scantree", "get_timestamp_now_utc", "set_log_level"]
+from .x509 import generate_self_signed_cert
+
+__all__ = [
+    "assemble_nargs_to_dict",
+    "build_query",
+    "get_timestamp_now_utc",
+    "set_log_level",
+    "generate_secret",
+    "generate_self_signed_cert",
+]
