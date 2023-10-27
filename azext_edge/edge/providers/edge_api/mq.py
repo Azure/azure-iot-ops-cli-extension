@@ -30,4 +30,4 @@ MQ_API_V1A3 = EdgeResourceApi(group="az-edge.com", version="v1alpha3", moniker="
 MQ_API_V1A4 = EdgeResourceApi(group="az-edge.com", version="v1alpha4", moniker="e4k")
 MQ_API_V1B1 = EdgeResourceApi(group="mq.iotoperations.azure.com", version="v1beta1", moniker="mq")
 
-MQ_ACTIVE_API = MQ_API_V1A4
+MQ_ACTIVE_API = MQ_API_V1B1
