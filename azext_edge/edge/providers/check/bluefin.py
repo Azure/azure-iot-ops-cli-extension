@@ -290,7 +290,8 @@ def evaluate_pipelines(
             pipeline_stages_node=pipeline_stages_node,
             target_pipelines=target_pipelines,
             check_manager=check_manager,
-            detail_level=detail_level
+            detail_level=detail_level,
+            namespace=namespace
         )
 
         # pipeline destination node
@@ -299,7 +300,8 @@ def evaluate_pipelines(
             target_pipelines=target_pipelines,
             pipeline_name=pipeline_name,
             check_manager=check_manager,
-            detail_level=detail_level
+            detail_level=detail_level,
+            namespace=namespace
         )
 
     return check_manager.as_dict(as_list)
@@ -405,7 +407,8 @@ def evaluate_datasets(
                 target_name=target_datasets,
                 properties=d["spec"]["keys"],
                 display_name="Dataset configuration key",
-                padding=(0, 0, 0, 12)
+                padding=(0, 0, 0, 12),
+                namespace=namespace
             )
 
     return check_manager.as_dict(as_list)
@@ -417,7 +420,8 @@ def _process_stage_properties(
     target_name: str,
     stage: Dict[str, Any],
     stage_properties: Dict[str, Any],
-    padding: tuple
+    padding: tuple,
+    namespace: str
 ) -> None:
     stage_type = stage["type"]
 
@@ -429,7 +433,8 @@ def _process_stage_properties(
                 target_name=target_name,
                 prop_value=stage,
                 properties=properties,
-                padding=padding
+                padding=padding,
+                namespace=namespace
             )
 
 
@@ -528,6 +533,7 @@ def _evaluate_intermediate_nodes(
     pipeline_stages_node: Dict[str, Any],
     target_pipelines: str,
     check_manager: CheckManager,
+    namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
 
@@ -553,7 +559,8 @@ def _evaluate_intermediate_nodes(
                 target_name=target_pipelines,
                 stage=pipeline_intermediate_stages_node[stage_name],
                 stage_properties=BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES,
-                padding=(0, 0, 0, 20)
+                padding=(0, 0, 0, 20),
+                namespace=namespace
             )
 
 
@@ -562,6 +569,7 @@ def _evaluate_destination_node(
     target_pipelines: str,
     pipeline_name: str,
     check_manager: CheckManager,
+    namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
     pipeline_destination_node_count = 1 if output_node else 0
@@ -582,5 +590,6 @@ def _evaluate_destination_node(
                 target_name=target_pipelines,
                 stage=output_node[1],
                 stage_properties=BLUEFIN_DESTINATION_STAGE_PROPERTIES,
-                padding=(0, 0, 0, 16)
+                padding=(0, 0, 0, 16),
+                namespace=namespace
             )
