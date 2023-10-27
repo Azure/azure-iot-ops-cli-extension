@@ -13,6 +13,7 @@ from .base import assemble_crd_work
 
 logger = get_logger(__name__)
 
+
 def prepare_bundle(apis: Iterable[EdgeResourceApi]) -> dict:
     deviceregistry_to_run = {}
     deviceregistry_to_run.update(assemble_crd_work(apis))

@@ -13,4 +13,6 @@ class DeviceRegistryResourceKinds(ListableEnum):
     ASSETENDPOINTPROFILE = "assetendpointprofile"
 
 
-DEVICEREGISTRY_API_V1 = EdgeResourceApi(group="deviceregistry.microsoft.com", version="v1beta1", moniker="deviceregistry")
+DEVICEREGISTRY_API_V1 = EdgeResourceApi(
+    group="deviceregistry.microsoft.com", version="v1beta1", moniker="deviceregistry"
+)
