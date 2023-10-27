@@ -38,15 +38,15 @@ from .common import (
 )
 
 from ...providers.edge_api import (
-    E4K_ACTIVE_API,
-    E4kResourceKinds
+    MQ_ACTIVE_API,
+    MqResourceKinds
 )
-from ..support.e4k import E4K_LABEL
+from ..support.mq import MQ_LABEL
 
 from ..base import get_namespaced_service
 
 
-def check_e4k_deployment(
+def check_mq_deployment(
     console: Console,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     pre_deployment: bool = True,
@@ -61,7 +61,7 @@ def check_e4k_deployment(
     if post_deployment:
         result["postDeployment"] = []
         # check post deployment according to edge_service type
-        check_e4k_post_deployment(
+        check_mq_post_deployment(
             detail_level=detail_level,
             result=result,
             as_list=as_list,
@@ -74,27 +74,27 @@ def check_e4k_deployment(
     return process_as_list(console=console, result=result)
 
 
-def check_e4k_post_deployment(
+def check_mq_post_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
 ) -> None:
     evaluate_funcs = {
-        E4kResourceKinds.BROKER: evaluate_brokers,
-        E4kResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
-        E4kResourceKinds.DIAGNOSTIC_SERVICE: evaluate_diagnostics_service,
-        E4kResourceKinds.MQTT_BRIDGE_CONNECTOR: evaluate_mqtt_bridge_connectors,
-        E4kResourceKinds.DATALAKE_CONNECTOR: evaluate_datalake_connectors,
-        E4kResourceKinds.KAFKA_CONNECTOR: evaluate_kafka_connectors,
+        MqResourceKinds.BROKER: evaluate_brokers,
+        MqResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
+        MqResourceKinds.DIAGNOSTIC_SERVICE: evaluate_diagnostics_service,
+        MqResourceKinds.MQTT_BRIDGE_CONNECTOR: evaluate_mqtt_bridge_connectors,
+        MqResourceKinds.DATALAKE_CONNECTOR: evaluate_datalake_connectors,
+        MqResourceKinds.KAFKA_CONNECTOR: evaluate_kafka_connectors,
     }
 
     return check_post_deployment(
-        api_info=E4K_ACTIVE_API,
-        check_name="enumerateE4kApi",
-        check_desc="Enumerate E4K API resources",
+        api_info=MQ_ACTIVE_API,
+        check_name="enumerateMqApi",
+        check_desc="Enumerate MQ API resources",
         result=result,
-        resource_kinds_enum=E4kResourceKinds,
+        resource_kinds_enum=MqResourceKinds,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
@@ -108,15 +108,15 @@ def evaluate_diagnostics_service(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(
         check_name="evalBrokerDiag",
-        check_desc="Evaluate E4K Diagnostics Service",
+        check_desc="Evaluate MQ Diagnostics Service",
     )
-    all_diagnostic_services = E4K_ACTIVE_API.get_resources(
-        kind=E4kResourceKinds.DIAGNOSTIC_SERVICE
+    all_diagnostic_services = MQ_ACTIVE_API.get_resources(
+        kind=MqResourceKinds.DIAGNOSTIC_SERVICE
     ).get("items", [])
     target_diagnostic_service = "diagnosticservices.az-edge.com"
 
     if not all_diagnostic_services:
-        fetch_diagnostics_services_error = f"Unable to fetch {E4kResourceKinds.DIAGNOSTIC_SERVICE.value}s in any namespace."
+        fetch_diagnostics_services_error = f"Unable to fetch {MqResourceKinds.DIAGNOSTIC_SERVICE.value}s in any namespace."
         check_manager.add_target(
             target_name=target_diagnostic_service
         )
@@ -284,7 +284,7 @@ def evaluate_diagnostics_service(
                     target=target_service_deployed,
                     pod=AZEDGE_DIAGNOSTICS_SERVICE,
                     display_padding=12,
-                    service_label=E4K_LABEL
+                    service_label=MQ_LABEL
                 )
 
     return check_manager.as_dict(as_list)
@@ -296,7 +296,7 @@ def evaluate_broker_listeners(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(
         check_name="evalBrokerListeners",
-        check_desc="Evaluate E4K broker listeners",
+        check_desc="Evaluate MQ broker listeners",
     )
 
     target_listeners = "brokerlisteners.az-edge.com"
@@ -308,9 +308,9 @@ def evaluate_broker_listeners(
         "status",
     ]
 
-    all_listeners = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER_LISTENER).get("items", [])
+    all_listeners = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER_LISTENER).get("items", [])
     if not all_listeners:
-        fetch_listeners_error_text = f"Unable to fetch {E4kResourceKinds.BROKER_LISTENER.value}s in any namespace."
+        fetch_listeners_error_text = f"Unable to fetch {MqResourceKinds.BROKER_LISTENER.value}s in any namespace."
         check_manager.add_target(
             target_name=target_listeners
         )
@@ -326,7 +326,7 @@ def evaluate_broker_listeners(
         return check_manager.as_dict(as_list)
 
     for (namespace, listeners) in resources_grouped_by_namespace(all_listeners):
-        valid_broker_refs = _get_valid_references(kind=E4kResourceKinds.BROKER, namespace=namespace)
+        valid_broker_refs = _get_valid_references(kind=MqResourceKinds.BROKER, namespace=namespace)
 
         check_manager.add_target(
             target_name=target_listeners,
@@ -547,14 +547,14 @@ def evaluate_brokers(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate E4K broker")
+    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate MQ broker")
 
     target_brokers = "brokers.az-edge.com"
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
-    all_brokers: dict = E4K_ACTIVE_API.get_resources(E4kResourceKinds.BROKER).get("items", [])
+    all_brokers: dict = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER).get("items", [])
 
     if not all_brokers:
-        fetch_brokers_error_text = f"Unable to fetch {E4kResourceKinds.BROKER.value}s in any namespace."
+        fetch_brokers_error_text = f"Unable to fetch {MqResourceKinds.BROKER.value}s in any namespace."
         check_manager.add_target(
             target_name=target_brokers
         )
@@ -575,7 +575,7 @@ def evaluate_brokers(
             target_name=target_brokers,
             namespace=namespace,
             display=Padding(
-                f"E4K Brokers in namespace {{[purple]{namespace}[/purple]}}",
+                f"MQ Brokers in namespace {{[purple]{namespace}[/purple]}}",
                 (0, 0, 0, 8)
             )
         )
@@ -792,7 +792,7 @@ def evaluate_brokers(
                     namespace=namespace,
                     pod=pod,
                     display_padding=12,
-                    service_label=E4K_LABEL
+                    service_label=MQ_LABEL
                 )
 
     return check_manager.as_dict(as_list)
@@ -885,7 +885,7 @@ def evaluate_mqtt_bridge_connectors(
             status=connector_eval_status,
             value=connector_status,
             resource_name=connector_name,
-            resource_kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+            resource_kind=MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
         )
 
         connector_status_desc = connector_status.get("configStatusDescription")
@@ -919,7 +919,7 @@ def evaluate_mqtt_bridge_connectors(
             status=connector_eval_status,
             value={"spec": spec},
             resource_name=connector_name,
-            resource_kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+            resource_kind=MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
         )
 
         connector_instances = spec.get("bridgeInstances")
@@ -974,8 +974,8 @@ def evaluate_mqtt_bridge_connectors(
         topic_map_target="mqttbridgetopicmaps.az-edge.com",
         connector_display_name="MQTT Bridge Connector",
         topic_map_reference_key="mqttBridgeConnectorRef",
-        connector_resource_kind=E4kResourceKinds.MQTT_BRIDGE_CONNECTOR,
-        topic_map_resource_kind=E4kResourceKinds.MQTT_BRIDGE_TOPIC_MAP,
+        connector_resource_kind=MqResourceKinds.MQTT_BRIDGE_CONNECTOR,
+        topic_map_resource_kind=MqResourceKinds.MQTT_BRIDGE_TOPIC_MAP,
         connector_display_func=display_connector_info,
         topic_map_display_func=display_topic_maps,
         detail_level=detail_level,
@@ -1096,7 +1096,7 @@ def evaluate_datalake_connectors(
             status=connector_eval_status,
             value=connector_status,
             resource_name=connector_name,
-            resource_kind=E4kResourceKinds.DATALAKE_CONNECTOR.value,
+            resource_kind=MqResourceKinds.DATALAKE_CONNECTOR.value,
         )
 
         connector_status_desc = connector_status.get("configStatusDescription")
@@ -1128,7 +1128,7 @@ def evaluate_datalake_connectors(
             status=connector_eval_status,
             value={"spec": spec},
             resource_name=connector_name,
-            resource_kind=E4kResourceKinds.DATALAKE_CONNECTOR.value,
+            resource_kind=MqResourceKinds.DATALAKE_CONNECTOR.value,
         )
         connector_instances = spec.get("instances")
 
@@ -1156,8 +1156,8 @@ def evaluate_datalake_connectors(
         topic_map_target="datalakeconnectortopicmaps.az-edge.com",
         connector_display_name="Data Lake Connector",
         topic_map_reference_key="dataLakeConnectorRef",
-        connector_resource_kind=E4kResourceKinds.DATALAKE_CONNECTOR,
-        topic_map_resource_kind=E4kResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP,
+        connector_resource_kind=MqResourceKinds.DATALAKE_CONNECTOR,
+        topic_map_resource_kind=MqResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP,
         connector_display_func=display_connector_info,
         topic_map_display_func=display_topic_maps,
         detail_level=detail_level,
@@ -1181,7 +1181,7 @@ def evaluate_kafka_connectors(
             status=eval_status,
             value=connector_status,
             resource_name=connector_name,
-            resource_kind=E4kResourceKinds.KAFKA_CONNECTOR.value,
+            resource_kind=MqResourceKinds.KAFKA_CONNECTOR.value,
         )
 
         connector_status_desc = connector_status.get("statusDescription")
@@ -1225,7 +1225,7 @@ def evaluate_kafka_connectors(
             status=connector_eval_status,
             value={"spec": spec},
             resource_name=connector_name,
-            resource_kind=E4kResourceKinds.KAFKA_CONNECTOR.value,
+            resource_kind=MqResourceKinds.KAFKA_CONNECTOR.value,
         )
 
         check_manager.add_display(
@@ -1442,8 +1442,8 @@ def evaluate_kafka_connectors(
         topic_map_target="kafkaconnectortopicmaps.az-edge.com",
         connector_display_name="Kafka Connector",
         topic_map_reference_key="kafkaConnectorRef",
-        connector_resource_kind=E4kResourceKinds.KAFKA_CONNECTOR,
-        topic_map_resource_kind=E4kResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP,
+        connector_resource_kind=MqResourceKinds.KAFKA_CONNECTOR,
+        topic_map_resource_kind=MqResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP,
         connector_display_func=display_connector_info,
         topic_map_display_func=display_topic_maps,
         detail_level=detail_level,
@@ -1453,7 +1453,7 @@ def evaluate_kafka_connectors(
 
 def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = None) -> Dict[str, Any]:
     result = {}
-    custom_objects = E4K_ACTIVE_API.get_resources(kind=kind, namespace=namespace)
+    custom_objects = MQ_ACTIVE_API.get_resources(kind=kind, namespace=namespace)
     if custom_objects:
         objects: List[dict] = custom_objects.get("items", [])
         for object in objects:

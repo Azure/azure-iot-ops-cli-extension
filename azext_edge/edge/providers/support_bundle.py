@@ -14,9 +14,10 @@ from rich.console import Console, NewLine
 from ..common import SupportForEdgeServiceType
 from ..providers.edge_api import (
     BLUEFIN_API_V1,
-    E4K_API_V1A2,
-    E4K_API_V1A3,
-    E4K_API_V1A4,
+    MQ_API_V1A2,
+    MQ_API_V1A3,
+    MQ_API_V1A4,
+    MQ_API_V1B1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
     EdgeApiManager,
@@ -26,7 +27,7 @@ logger = get_logger(__name__)
 
 console = Console()
 
-COMPAT_E4K_APIS = EdgeApiManager(resource_apis=[E4K_API_V1A2, E4K_API_V1A3, E4K_API_V1A4])
+COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1A2, MQ_API_V1A3, MQ_API_V1A4, MQ_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_BLUEFIN_APIS = EdgeApiManager(resource_apis=[BLUEFIN_API_V1])
 COMPAT_SYMPHONY_APIS = EdgeApiManager(resource_apis=[SYMPHONY_API_V1])
@@ -38,18 +39,18 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from rich.table import Table
 
     from .support.bluefin import prepare_bundle as prepare_bluefin_bundle
-    from .support.e4k import prepare_bundle as prepare_e4k_bundle
+    from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.symphony import prepare_bundle as prepare_symphony_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
 
-    pending_work = {"e4k": {}, "opcua": {}, "bluefin": {}, "symphony": {}, "common": {}}
+    pending_work = {"mq": {}, "opcua": {}, "bluefin": {}, "symphony": {}, "common": {}}
 
     raise_on_404 = not (edge_service == SupportForEdgeServiceType.auto.value)
-    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.e4k.value]:
-        e4k_apis = COMPAT_E4K_APIS.get_deployed(raise_on_404)
-        if e4k_apis:
-            pending_work["e4k"].update(prepare_e4k_bundle(e4k_apis, log_age_seconds))
+    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.mq.value]:
+        mq_apis = COMPAT_MQ_APIS.get_deployed(raise_on_404)
+        if mq_apis:
+            pending_work["mq"].update(prepare_mq_bundle(mq_apis, log_age_seconds))
     if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.opcua.value]:
         opcua_apis = COMPAT_OPCUA_APIS.get_deployed(raise_on_404)
         if opcua_apis:

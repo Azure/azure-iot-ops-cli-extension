@@ -118,7 +118,7 @@ def get_stats(
 
 
 def _clean_stats(raw_stats: str) -> dict:
-    from ..common import E4kDiagnosticPropertyIndex as keys
+    from ..common import MqDiagnosticPropertyIndex as keys
 
     def _get_pass_fail(value: float) -> str:
         if value >= 1.0:

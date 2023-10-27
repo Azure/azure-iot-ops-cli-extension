@@ -8,8 +8,8 @@ Help definitions for Digital Twins commands.
 """
 
 from knack.help_files import helps
-from .providers.edge_api import E4K_ACTIVE_API
-from .providers.support_bundle import COMPAT_BLUEFIN_APIS, COMPAT_E4K_APIS, COMPAT_OPCUA_APIS, COMPAT_SYMPHONY_APIS
+from .providers.edge_api import MQ_ACTIVE_API
+from .providers.support_bundle import COMPAT_BLUEFIN_APIS, COMPAT_MQ_APIS, COMPAT_OPCUA_APIS, COMPAT_SYMPHONY_APIS
 
 
 def load_iotedge_help():
@@ -39,7 +39,7 @@ def load_iotedge_help():
         short-summary: Creates a standard support bundle zip archive for use in troubleshooting and diagnostics.
         long-summary: |
             [Supported edge service APIs]
-                {COMPAT_E4K_APIS.as_str()}
+                {COMPAT_MQ_APIS.as_str()}
                 {COMPAT_OPCUA_APIS.as_str()}
                 {COMPAT_BLUEFIN_APIS.as_str()}
                 {COMPAT_SYMPHONY_APIS.as_str()}
@@ -52,7 +52,7 @@ def load_iotedge_help():
         short-summary: Evaluate AIO edge service deployments for health, configuration and usability.
         long-summary: |
             [Supported edge service APIs]
-                {E4K_ACTIVE_API.as_str()}
+                {MQ_ACTIVE_API.as_str()}
     """
 
     helps[
@@ -69,7 +69,7 @@ def load_iotedge_help():
         short-summary: Show dmqtt running statistics.
         long-summary: |
             [Supported edge service APIs]
-                {E4K_ACTIVE_API.as_str()}
+                {MQ_ACTIVE_API.as_str()}
     """
 
     helps[

@@ -372,7 +372,7 @@ class CheckManager:
     """
     {
         "name":"evaluateBrokerListeners",
-        "description": "Evaluate E4K broker listeners",
+        "description": "Evaluate MQ broker listeners",
         "status": "warning",
         "targets": {
             "az-edge.com/v1alpha4": {

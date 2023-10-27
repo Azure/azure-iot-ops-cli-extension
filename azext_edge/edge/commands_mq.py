@@ -27,10 +27,10 @@ def stats(
     trace_dir: Optional[str] = None,
 ):
     load_config_context(context_name=context_name)
-    from .providers.edge_api import E4K_ACTIVE_API
+    from .providers.edge_api import MQ_ACTIVE_API
     from .providers.stats import get_stats, get_traces
 
-    E4K_ACTIVE_API.is_deployed(raise_on_404=True)
+    MQ_ACTIVE_API.is_deployed(raise_on_404=True)
     if trace_ids or trace_dir:
         return get_traces(
             namespace=namespace,

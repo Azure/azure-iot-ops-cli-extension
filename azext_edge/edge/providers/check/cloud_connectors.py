@@ -19,8 +19,8 @@ from ...common import CheckTaskStatus
 
 from .common import ResourceOutputDetailLevel
 
-from ...providers.edge_api import E4K_ACTIVE_API, E4kResourceKinds
-from ..support.e4k import E4K_LABEL
+from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
+from ..support.mq import MQ_LABEL
 
 
 def process_cloud_connector(
@@ -28,8 +28,8 @@ def process_cloud_connector(
     topic_map_target: str,
     connector_display_name: str,
     topic_map_reference_key: str,
-    connector_resource_kind: E4kResourceKinds,
-    topic_map_resource_kind: E4kResourceKinds,
+    connector_resource_kind: MqResourceKinds,
+    topic_map_resource_kind: MqResourceKinds,
     connector_display_func: Callable[
         [CheckManager, str, str, Dict[str, str], str, Tuple[int, int, int, int]], None
     ],
@@ -49,10 +49,10 @@ def process_cloud_connector(
     connector_padding = (0, 0, 0, 8)
     topic_map_padding = (0, 0, 0, 12)
 
-    all_connectors = E4K_ACTIVE_API.get_resources(kind=connector_resource_kind).get(
+    all_connectors = MQ_ACTIVE_API.get_resources(kind=connector_resource_kind).get(
         "items", []
     )
-    all_topic_maps = E4K_ACTIVE_API.get_resources(kind=topic_map_resource_kind).get(
+    all_topic_maps = MQ_ACTIVE_API.get_resources(kind=topic_map_resource_kind).get(
         "items", []
     )
 
@@ -213,7 +213,7 @@ def _display_connector_runtime_health(
                 namespace=namespace,
                 pod=pod,
                 display_padding=padding,
-                service_label=E4K_LABEL,
+                service_label=MQ_LABEL,
             )
 
 

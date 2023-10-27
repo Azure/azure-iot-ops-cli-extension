@@ -11,7 +11,7 @@ from azext_edge.edge.common import (
     CheckTaskStatus,
     ResourceState,
 )
-from azext_edge.edge.providers.check.e4k import (
+from azext_edge.edge.providers.check.mq import (
     evaluate_broker_listeners,
     evaluate_brokers,
     evaluate_diagnostics_service,
@@ -19,7 +19,7 @@ from azext_edge.edge.providers.check.e4k import (
     evaluate_datalake_connectors,
     evaluate_kafka_connectors,
 )
-from azext_edge.edge.providers.edge_api.e4k import E4kResourceKinds
+from azext_edge.edge.providers.edge_api.mq import MqResourceKinds
 from azext_edge.edge.providers.check.common import (
     ALL_NAMESPACES_TARGET,
     KafkaTopicMapRouteType,
@@ -40,31 +40,31 @@ from ...generators import generate_generic_id
     [
         None,
         [],
-        [E4kResourceKinds.BROKER.value],
-        [E4kResourceKinds.BROKER.value, E4kResourceKinds.BROKER_LISTENER.value],
-        [E4kResourceKinds.DIAGNOSTIC_SERVICE.value],
+        [MqResourceKinds.BROKER.value],
+        [MqResourceKinds.BROKER.value, MqResourceKinds.BROKER_LISTENER.value],
+        [MqResourceKinds.DIAGNOSTIC_SERVICE.value],
         [
-            E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
-            E4kResourceKinds.DATALAKE_CONNECTOR.value,
+            MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+            MqResourceKinds.DATALAKE_CONNECTOR.value,
         ],
         [
-            E4kResourceKinds.BROKER.value,
-            E4kResourceKinds.BROKER_LISTENER.value,
-            E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
-            E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
-            E4kResourceKinds.DATALAKE_CONNECTOR.value,
+            MqResourceKinds.BROKER.value,
+            MqResourceKinds.BROKER_LISTENER.value,
+            MqResourceKinds.DIAGNOSTIC_SERVICE.value,
+            MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+            MqResourceKinds.DATALAKE_CONNECTOR.value,
         ],
     ],
 )
-@pytest.mark.parametrize('edge_service', ['e4k'])
+@pytest.mark.parametrize('edge_service', ['mq'])
 def test_check_e4k_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        E4kResourceKinds.BROKER.value: "azext_edge.edge.providers.check.e4k.evaluate_brokers",
-        E4kResourceKinds.BROKER_LISTENER.value: "azext_edge.edge.providers.check.e4k.evaluate_broker_listeners",
-        E4kResourceKinds.DIAGNOSTIC_SERVICE.value: "azext_edge.edge.providers.check.e4k.evaluate_diagnostics_service",
-        E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value:
-            "azext_edge.edge.providers.check.e4k.evaluate_mqtt_bridge_connectors",
-        E4kResourceKinds.DATALAKE_CONNECTOR.value: "azext_edge.edge.providers.check.e4k.evaluate_datalake_connectors",
+        MqResourceKinds.BROKER.value: "azext_edge.edge.providers.check.mq.evaluate_brokers",
+        MqResourceKinds.BROKER_LISTENER.value: "azext_edge.edge.providers.check.mq.evaluate_broker_listeners",
+        MqResourceKinds.DIAGNOSTIC_SERVICE.value: "azext_edge.edge.providers.check.mq.evaluate_diagnostics_service",
+        MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value:
+            "azext_edge.edge.providers.check.mq.evaluate_mqtt_bridge_connectors",
+        MqResourceKinds.DATALAKE_CONNECTOR.value: "azext_edge.edge.providers.check.mq.evaluate_datalake_connectors",
     }
 
     assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
@@ -267,11 +267,11 @@ def test_broker_listener_checks(
     )
     # broker ref
     mocker.patch(
-        "azext_edge.edge.providers.check.e4k._get_valid_references",
+        "azext_edge.edge.providers.check.mq._get_valid_references",
         return_value={"mock_broker": True},
     )
     mocker.patch(
-        "azext_edge.edge.providers.check.e4k.get_namespaced_service", return_value=service
+        "azext_edge.edge.providers.check.mq.get_namespaced_service", return_value=service
     )
 
     result = evaluate_broker_listeners()
@@ -340,7 +340,7 @@ def test_diagnostic_service_checks(
     )
 
     mocker.patch(
-        "azext_edge.edge.providers.check.e4k.get_namespaced_service", return_value=service
+        "azext_edge.edge.providers.check.mq.get_namespaced_service", return_value=service
     )
 
     result = evaluate_diagnostics_service()

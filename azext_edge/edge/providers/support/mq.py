@@ -9,7 +9,7 @@ from typing import Iterable
 
 from knack.log import get_logger
 
-from ..edge_api import E4K_API_V1A2, EdgeResourceApi
+from ..edge_api import MQ_API_V1A2, EdgeResourceApi
 from ..stats import get_stats
 from .base import (
     assemble_crd_work,
@@ -22,7 +22,7 @@ from .base import (
 
 logger = get_logger(__name__)
 
-E4K_APP_LABELS = [
+MQ_APP_LABELS = [
     'azedge-e4k-operator',
     'broker',
     'diagnostics',
@@ -34,7 +34,7 @@ E4K_APP_LABELS = [
     'azedge-iothub-connector'
 ]
 
-E4K_LABEL = f"app in ({','.join(E4K_APP_LABELS)})"
+MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
 
 
 # TODO: @digimaun
@@ -61,7 +61,7 @@ def fetch_diagnostic_metrics(namespace: str):
 
 def fetch_broker_deployments():
     processed, namespaces = process_deployments(
-        resource_api=E4K_API_V1A2, label_selector=E4K_LABEL, return_namespaces=True
+        resource_api=MQ_API_V1A2, label_selector=MQ_LABEL, return_namespaces=True
     )
     for namespace in namespaces:
         metrics: dict = fetch_diagnostic_metrics(namespace)
@@ -84,28 +84,28 @@ def fetch_broker_deployments():
 
 def fetch_statefulsets():
     return process_statefulset(
-        resource_api=E4K_API_V1A2,
-        label_selector=E4K_LABEL,
+        resource_api=MQ_API_V1A2,
+        label_selector=MQ_LABEL,
     )
 
 
 def fetch_services():
     return process_services(
-        resource_api=E4K_API_V1A2,
-        label_selector=E4K_LABEL,
+        resource_api=MQ_API_V1A2,
+        label_selector=MQ_LABEL,
     )
 
 
 def fetch_replicasets():
     return process_replicasets(
-        resource_api=E4K_API_V1A2,
-        label_selector=E4K_LABEL,
+        resource_api=MQ_API_V1A2,
+        label_selector=MQ_LABEL,
     )
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     return process_v1_pods(
-        resource_api=E4K_API_V1A2, label_selector=E4K_LABEL, since_seconds=since_seconds, capture_previous_logs=True
+        resource_api=MQ_API_V1A2, label_selector=MQ_LABEL, since_seconds=since_seconds, capture_previous_logs=True
     )
 
 
@@ -118,10 +118,10 @@ support_runtime_elements = {
 
 
 def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
-    e4k_to_run = {}
-    e4k_to_run.update(assemble_crd_work(apis))
+    mq_to_run = {}
+    mq_to_run.update(assemble_crd_work(apis))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
-    e4k_to_run.update(support_runtime_elements)
+    mq_to_run.update(support_runtime_elements)
 
-    return e4k_to_run
+    return mq_to_run

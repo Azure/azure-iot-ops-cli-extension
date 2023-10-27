@@ -116,16 +116,16 @@ BLUEFIN_DESTINATION_STAGE_PROPERTIES = {
 ALL_NAMESPACES_TARGET = '_all_'
 
 
-class E4kCheckType(Enum):
+class MqCheckType(Enum):
     """
-    E4K environment check type.
+    MQ environment check type.
     """
 
     pre = "pre"
     post = "post"
 
 
-# E4k connector enums
+# MQ connector enums
 class KafkaTopicMapRouteType(Enum):
     """
     Kafka Connector Topic Map Route type:
@@ -143,7 +143,7 @@ BLUEFIN_REFDATA_STORE_PREFIX = "bluefin-refdata-store"
 BLUEFIN_NATS_PREFIX = "bluefin-nats"
 BLUEFIN_OPERATOR_CONTROLLER_MANAGER = "bluefin-operator-controller-manager"
 
-# E4k runtime attributes
+# MQ runtime attributes
 
 AZEDGE_DIAGNOSTICS_PROBE_PREFIX = "azedge-diagnostics-probe"
 AZEDGE_FRONTEND_PREFIX = "azedge-dmqtt-frontend"

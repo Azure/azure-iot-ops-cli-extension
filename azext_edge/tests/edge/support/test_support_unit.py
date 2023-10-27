@@ -15,8 +15,8 @@ from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.providers.edge_api import (
     EdgeResourceApi,
     OpcuaResourceKinds,
-    E4K_API_V1A2,
-    E4K_API_V1A3,
+    MQ_API_V1A2,
+    MQ_API_V1A3,
     BLUEFIN_API_V1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
@@ -30,7 +30,7 @@ from azext_edge.edge.providers.support.bluefin import (
     BLUEFIN_PART_OF_LABEL,
     BLUEFIN_RELEASE_LABEL,
 )
-from azext_edge.edge.providers.support.e4k import E4K_LABEL
+from azext_edge.edge.providers.support.mq import MQ_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPCUA_GENERAL_LABEL,
     OPCUA_ORCHESTRATOR_LABEL,
@@ -51,13 +51,13 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
     "mocked_cluster_resources",
     [
         [],
-        [E4K_API_V1A2],
-        [E4K_API_V1A2, E4K_API_V1A3],
+        [MQ_API_V1A2],
+        [MQ_API_V1A2, MQ_API_V1A3],
         [OPCUA_API_V1],
-        [E4K_API_V1A2, OPCUA_API_V1],
-        [E4K_API_V1A2, BLUEFIN_API_V1],
-        [E4K_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1],
-        [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1],
+        [MQ_API_V1A2, OPCUA_API_V1],
+        [MQ_API_V1A2, BLUEFIN_API_V1],
+        [MQ_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1],
+        [MQ_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1],
     ],
     indirect=True,
 )
@@ -78,10 +78,10 @@ def test_create_bundle(
     mocked_root_logger,
 ):
     if not mocked_cluster_resources["param"] or all(
-        [E4K_API_V1A2 not in mocked_cluster_resources["param"], E4K_API_V1A3 not in mocked_cluster_resources["param"]]
+        [MQ_API_V1A2 not in mocked_cluster_resources["param"], MQ_API_V1A3 not in mocked_cluster_resources["param"]]
     ):
         with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="e4k")
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="mq")
 
     if not mocked_cluster_resources["param"] or OPCUA_API_V1 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
@@ -122,22 +122,22 @@ def test_create_bundle(
                 mocked_get_custom_objects, mocked_zipfile, api, kind, file_prefix=target_file_prefix
             )
 
-        if api in [E4K_API_V1A2, E4K_API_V1A3]:
+        if api in [MQ_API_V1A2, MQ_API_V1A3]:
             # Assert runtime resources
-            assert_list_deployments(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
+            assert_list_deployments(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1A2)
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=E4K_LABEL,
-                resource_api=E4K_API_V1A2,
+                label_selector=MQ_LABEL,
+                resource_api=MQ_API_V1A2,
                 since_seconds=since_seconds,
             )
-            assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
+            assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1A2)
             assert_list_stateful_sets(
-                mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2
+                mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1A2
             )
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=E4K_LABEL, resource_api=E4K_API_V1A2)
+            assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1A2)
             assert_e4k_stats(mocked_zipfile)
 
         if api in [OPCUA_API_V1]:

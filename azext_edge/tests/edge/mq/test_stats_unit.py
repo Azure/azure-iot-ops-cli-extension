@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 from kubernetes.client.models import V1ObjectMeta, V1Pod, V1PodList
 from google.protobuf.json_format import ParseDict
 
-from azext_edge.edge.commands_e4k import stats
+from azext_edge.edge.commands_mq import stats
 from azext_edge.edge.common import AZEDGE_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT
 
 # pylint: disable=no-name-in-module

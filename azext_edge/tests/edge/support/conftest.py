@@ -37,7 +37,7 @@ def mocked_zipfile(mocker):
 
 @pytest.fixture
 def mocked_get_stats(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.support.e4k.get_stats", autospec=True)
+    patched = mocker.patch("azext_edge.edge.providers.support.mq.get_stats", autospec=True)
     patched.return_value = "metrics"
     yield patched
 
@@ -49,8 +49,8 @@ def mocked_cluster_resources(request, mocker):
 
     from azext_edge.edge.providers.edge_api import (
         EdgeResourceApi,
-        E4K_API_V1A2,
-        E4K_API_V1A3,
+        MQ_API_V1A2,
+        MQ_API_V1A3,
         OPCUA_API_V1,
         BLUEFIN_API_V1,
         SYMPHONY_API_V1,
@@ -67,7 +67,7 @@ def mocked_cluster_resources(request, mocker):
         r_key = r.as_str()
         v1_resources: List[V1APIResource] = []
 
-        if r == E4K_API_V1A2:
+        if r == MQ_API_V1A2:
             v1_resources.append(_get_api_resource("Broker"))
             v1_resources.append(_get_api_resource("BrokerListener"))
             v1_resources.append(_get_api_resource("BrokerDiagnostic"))
@@ -77,7 +77,7 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("MqttBridgeTopicMap"))
             v1_resources.append(_get_api_resource("MqttBridgeConnector"))
 
-        if r == E4K_API_V1A3:
+        if r == MQ_API_V1A3:
             v1_resources.append(_get_api_resource("Broker"))
             v1_resources.append(_get_api_resource("BrokerListener"))
             v1_resources.append(_get_api_resource("BrokerDiagnostic"))

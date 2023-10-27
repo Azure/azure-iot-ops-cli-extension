@@ -69,9 +69,9 @@ class ProvisioningState(Enum):
     accepted = "Accepted"
 
 
-class E4kDiagnosticPropertyIndex(Enum):
+class MqDiagnosticPropertyIndex(Enum):
     """
-    E4K Diagnostic Property Index Strings
+    MQ Diagnostic Property Index Strings
     """
 
     publishes_received_per_second = "e4k_publishes_received_per_second"
@@ -89,7 +89,7 @@ class SupportForEdgeServiceType(ListableEnum):
     """
 
     auto = "auto"
-    e4k = "e4k"
+    mq = "mq"
     opcua = "opcua"
     bluefin = "bluefin"
     symphony = "symphony"
@@ -113,7 +113,7 @@ class ResourceTypeMapping(Enum):
     cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
 
 
-# E4K runtime attributes
+# MQ runtime attributes
 
 AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
 METRICS_SERVICE_API_PORT = 9600
