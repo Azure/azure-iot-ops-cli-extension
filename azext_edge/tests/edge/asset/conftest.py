@@ -43,7 +43,7 @@ MINIMUM_ASSET = {
     "location": "westus3",
     "name": "props-test-min",
     "properties": {
-        "connectivityProfileUri": generate_generic_id(),
+        "assetEndpointProfileUri": generate_generic_id(),
         "dataPoints": [],
         "defaultDataPointsConfiguration": "{\"publishingInterval\": 1000, \"samplingInterval\": 500, "
         "\"queueSize\": 1}",
@@ -69,7 +69,7 @@ FULL_ASSET = {
     "name": "props-test-max",
     "properties": {
         "assetType": generate_generic_id(),
-        "connectivityProfileUri": generate_generic_id(),
+        "assetEndpointProfileUri": generate_generic_id(),
         "dataPoints": [
             {
                 "capabilityId": generate_generic_id(),
