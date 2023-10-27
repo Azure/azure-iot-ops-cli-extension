@@ -20,6 +20,7 @@ from azext_edge.edge.providers.edge_api import (
     BLUEFIN_API_V1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
+    DEVICEREGISTRY_API_V1
 )
 
 from azext_edge.edge.providers.support.base import get_bundle_path
@@ -57,6 +58,7 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
         [E4K_API_V1A2, OPCUA_API_V1],
         [E4K_API_V1A2, BLUEFIN_API_V1],
         [E4K_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1],
+        [E4K_API_V1A2, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
         [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1],
     ],
     indirect=True,

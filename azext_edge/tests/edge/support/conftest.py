@@ -54,6 +54,7 @@ def mocked_cluster_resources(request, mocker):
         OPCUA_API_V1,
         BLUEFIN_API_V1,
         SYMPHONY_API_V1,
+        DEVICEREGISTRY_API_V1
     )
 
     requested_resource_apis = getattr(request, "param", [])
@@ -103,6 +104,10 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Solution"))
             v1_resources.append(_get_api_resource("Target"))
+
+        if r == DEVICEREGISTRY_API_V1:
+            v1_resources.append(_get_api_resource("Asset"))
+            v1_resources.append(_get_api_resource("AssetEndpointProfile"))
 
         resource_map[r_key] = V1APIResourceList(resources=v1_resources, group_version=r.version)
 
