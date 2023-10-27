@@ -29,7 +29,7 @@ def mock_evaluate_bluefin_pod_health(mocker):
 
 @pytest.fixture
 def mock_evaluate_lnm_pod_health(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.lnm.evaluate_pod_health", return_value={})
+    patched = mocker.patch("azext_edge.edge.providers.check.lnm._evaluate_lnm_pod_health", return_value={})
     yield patched
 
 

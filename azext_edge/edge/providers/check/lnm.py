@@ -4,14 +4,16 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
+
+from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
 
 from .base import (
     CheckManager,
     add_display_and_eval,
     check_post_deployment,
     check_pre_deployment,
-    evaluate_pod_health,
+    decorate_pod_phase,
     process_as_list,
     process_properties,
     resources_grouped_by_namespace,
@@ -24,8 +26,10 @@ from ...common import CheckTaskStatus
 
 from .common import (
     AIO_LNM_PREFIX,
+    ALL_NAMESPACES_TARGET,
     LNM_ALLOWLIST_PROPERTIES,
     LNM_IMAGE_PROPERTIES,
+    LNM_POD_CONDITION_TEXT_MAP,
     LNM_REST_PROPERTIES,
     ResourceOutputDetailLevel,
 )
@@ -255,30 +259,127 @@ def evaluate_lnms(
         if lnms_count > 0:
             check_manager.add_display(
                 target_name=target_lnms,
-                namespace=namespace,
                 display=Padding(
-                    "\nRuntime Health",
+                    "\nRuntime Health for all namespaces",
                     (0, 0, 0, 8),
                 ),
             )
 
-            from ..support.lnm import LNM_APP_LABELS
+        from ..support.lnm import LNM_APP_LABELS
 
-            # append all lnm_names in lnm_app_lables
-            lnm_app_lables = []
-            lnm_app_lables = lnm_app_lables + LNM_APP_LABELS
-            for lnm_name in lnm_names:
-                lnm_app_lables.append(f"aio-lnm-{lnm_name}")
+        # append all lnm_names in lnm_app_lables
+        lnm_app_lables = []
+        lnm_app_lables = lnm_app_lables + LNM_APP_LABELS
+        for lnm_name in lnm_names:
+            lnm_app_lables.append(f"aio-lnm-{lnm_name}")
 
-            lnm_label = f"app in ({','.join(lnm_app_lables)})"
-
-            evaluate_pod_health(
-                check_manager=check_manager,
-                target=target_lnms,
-                namespace=namespace,
-                pod=AIO_LNM_PREFIX,
-                display_padding=12,
-                service_label=lnm_label
-            )
+        lnm_label = f"app in ({','.join(lnm_app_lables)})"
+        _evaluate_lnm_pod_health(
+            check_manager=check_manager,
+            target=target_lnms,
+            pod=AIO_LNM_PREFIX,
+            display_padding=12,
+            service_label=lnm_label,
+            detail_level=detail_level,
+        )
 
     return check_manager.as_dict(as_list)
+
+
+def _evaluate_lnm_pod_health(
+    check_manager: CheckManager,
+    target: str,
+    pod: str,
+    display_padding: int,
+    service_label: str,
+    namespace: str = ALL_NAMESPACES_TARGET,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> None:
+
+    def _decorate_pod_condition(condition: bool) -> Tuple[str, str]:
+        if condition:
+            return f"[green]{condition}[/green]", CheckTaskStatus.success.value
+        return f"[red]{condition}[/red]", CheckTaskStatus.error.value
+
+    target_service_pod = f"pod/{pod}"
+
+    pod_conditions = [
+        f"{target_service_pod}.status.phase",
+        f"{target_service_pod}.status.conditions.ready",
+        f"{target_service_pod}.status.conditions.initialized",
+        f"{target_service_pod}.status.conditions.containersready",
+        f"{target_service_pod}.status.conditions.podscheduled",
+    ]
+    check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
+    diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace="", label_selector=service_label)
+    if not diagnostics_pods:
+        add_display_and_eval(
+            check_manager=check_manager,
+            target_name=target,
+            display_text=f"{target_service_pod}* [yellow]not detected[/yellow].",
+            eval_status=CheckTaskStatus.warning.value,
+            eval_value=None,
+            resource_name=target_service_pod,
+            namespace=namespace,
+            padding=(0, 0, 0, display_padding)
+        )
+    else:
+        for pod in diagnostics_pods:
+            pod_dict = pod.to_dict()
+            pod_name = pod_dict["metadata"]["name"]
+            pod_phase = pod_dict.get("status", {}).get("phase")
+            pod_conditions = pod_dict.get("status", {}).get("conditions", {})
+            pod_phase_deco, status = decorate_pod_phase(pod_phase)
+
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=status,
+                resource_name=target_service_pod,
+                value={"name": pod_name, "status.phase": pod_phase},
+            )
+
+            for text in [
+                f"\nPod {{[bright_blue]{pod_name}[/bright_blue]}}",
+                f"- Phase: {pod_phase_deco}",
+                "- Conditions:"
+            ]:
+                padding = 2 if "\nPod" not in text else 0
+                padding += display_padding
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(text, (0, 0, 0, padding)),
+                )
+
+            for condition in pod_conditions:
+                condition_type = LNM_POD_CONDITION_TEXT_MAP[condition.get("type")]
+                condition_status = True if condition.get("status") == "True" else False
+                pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
+
+                add_display_and_eval(
+                    check_manager=check_manager,
+                    target_name=target,
+                    display_text=f"{condition_type}: {pod_condition_deco}",
+                    eval_status=status,
+                    eval_value={"name": pod_name, f"status.conditions.{condition_type.lower()}": condition_status},
+                    resource_name=target_service_pod,
+                    namespace=namespace,
+                    padding=(0, 0, 0, display_padding + 8)
+                )
+
+                if detail_level > ResourceOutputDetailLevel.summary.value:
+                    condition_reason = condition.get("message")
+                    condition_reason_text = f"{condition_reason}" if condition_reason else ""
+
+                    if condition_reason_text:
+                        # remove the [ and ] to prevent console not printing the text
+                        condition_reason_text = condition_reason_text.replace("[", "").replace("]", "")
+                        check_manager.add_display(
+                            target_name=target,
+                            namespace=namespace,
+                            display=Padding(
+                                f"[red]Reason: {condition_reason_text}[/red]",
+                                (0, 0, 0, display_padding + 8),
+                            ),
+                        )
