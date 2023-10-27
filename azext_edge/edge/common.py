@@ -93,6 +93,7 @@ class SupportForEdgeServiceType(ListableEnum):
     opcua = "opcua"
     bluefin = "bluefin"
     symphony = "symphony"
+    deviceregistry = "deviceregistry"
 
 
 class DeployablePasVersions(ListableEnum):
