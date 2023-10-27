@@ -138,7 +138,7 @@ def test_create_bundle(
                 mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1A2
             )
             assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1A2)
-            assert_e4k_stats(mocked_zipfile)
+            assert_mq_stats(mocked_zipfile)
 
         if api in [OPCUA_API_V1]:
             # Assert runtime resources
@@ -350,8 +350,8 @@ def assert_list_services(mocked_client, mocked_zipfile, label_selector: str, res
     )
 
 
-def assert_e4k_stats(mocked_zipfile):
-    assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/e4k/diagnostic_metrics.txt", data="metrics")
+def assert_mq_stats(mocked_zipfile):
+    assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/mq/diagnostic_metrics.txt", data="metrics")
 
 
 def assert_shared_kpis(mocked_client, mocked_zipfile):

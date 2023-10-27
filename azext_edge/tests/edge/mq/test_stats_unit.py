@@ -146,7 +146,7 @@ def test_get_traces(
 
     if trace_dir:
         zipfile_init_kwargs = mocked_zipfile.mock_calls.pop(0).kwargs
-        assert "e4k_traces_" in zipfile_init_kwargs["file"]
+        assert "mq_traces_" in zipfile_init_kwargs["file"]
         assert zipfile_init_kwargs["mode"] == "w"
         # ZIP_DEFLATED == 8
         assert zipfile_init_kwargs["compression"] == 8

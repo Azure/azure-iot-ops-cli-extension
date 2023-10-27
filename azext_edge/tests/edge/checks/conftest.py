@@ -10,7 +10,7 @@ from azext_edge.edge.providers.checks import run_checks
 
 
 @pytest.fixture
-def mock_evaluate_e4k_pod_health(mocker):
+def mock_evaluate_mq_pod_health(mocker):
     patched = mocker.patch("azext_edge.edge.providers.check.mq.evaluate_pod_health", return_value={})
     yield patched
 

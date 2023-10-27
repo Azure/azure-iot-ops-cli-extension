@@ -22,7 +22,7 @@ az extension add --name azure-edge
 
 ❗ **Note:** Currently the edge extension uses a private index URL. To list, install or update other Microsoft extensions reset your extension index URL via `az config set extension.index_url=""`.
 
-After install, the root command group `az edge` should be available and ready for use.
+After install, the root command group `az iot ops` should be available and ready for use.
 
 - List installed extensions with `az extension list`
 - Remove an installed extension with `az extension remove --name <extension-name>`
@@ -36,7 +36,7 @@ Updates for `az edge` will be published on a continuous basis. With the [private
 
 ## Connecting to a K8s cluster
 
-👉 To maintain minimum friction between K8s tools, the `az edge` edge side commands are designed to make use of your existing kube config (typically located at `~/.kube/config`).
+👉 To maintain minimum friction between K8s tools, the `az iot ops` edge side commands are designed to make use of your existing kube config (typically located at `~/.kube/config`).
 
 All k8s interaction commands include an optional `--context` param. If none is provided `current_context` as defined in the kube config will be used.
 
@@ -44,12 +44,12 @@ All k8s interaction commands include an optional `--context` param. If none is p
 
 🚀 Always start with the `--help` flag to understand details about command groups, their containing commands & subgroups.
 
-- `az edge check [--namespace] [--edge-service e4k] [--as-object] [--post] [--pre] [--context]`
-- `az edge support`
-  - `az edge support create-bundle [--edge-service auto|e4k|opcua|bluefin] [--log-age] [--context]`
-- `az edge e4k`
-  - `az edge e4k stats [--namespace] [--watch] [--refresh] [--raw] [--context]`
-  - `az edge e4k get-password-hash [--iterations] [--phrase]`
+- `az iot ops check [--namespace] [--edge-service mq] [--as-object] [--post] [--pre] [--context]`
+- `az iot ops support`
+  - `az iot ops support create-bundle [--edge-service auto|mq|opcua|bluefin] [--log-age] [--context]`
+- `az iot ops mq`
+  - `az iot ops mq stats [--namespace] [--watch] [--refresh] [--raw] [--context]`
+  - `az iot ops mq get-password-hash [--iterations] [--phrase]`
 
 ## Contributing
 

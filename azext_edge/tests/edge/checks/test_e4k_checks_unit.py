@@ -57,7 +57,7 @@ from ...generators import generate_generic_id
     ],
 )
 @pytest.mark.parametrize('edge_service', ['mq'])
-def test_check_e4k_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
+def test_check_mq_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
         MqResourceKinds.BROKER.value: "azext_edge.edge.providers.check.mq.evaluate_brokers",
         MqResourceKinds.BROKER_LISTENER.value: "azext_edge.edge.providers.check.mq.evaluate_broker_listeners",
@@ -151,7 +151,7 @@ def test_check_e4k_by_resource_types(edge_service, mocker, mock_resource_types, 
     ],
 )
 def test_broker_checks(
-    mocker, mock_evaluate_e4k_pod_health, broker, conditions, evaluations
+    mocker, mock_evaluate_mq_pod_health, broker, conditions, evaluations
 ):
     namespace = generate_generic_id()
     broker['metadata']['namespace'] = namespace
@@ -255,7 +255,7 @@ def test_broker_checks(
     ],
 )
 def test_broker_listener_checks(
-    mocker, mock_evaluate_e4k_pod_health, listener, service, conditions, evaluations
+    mocker, mock_evaluate_mq_pod_health, listener, service, conditions, evaluations
 ):
     # mock listener values
     namespace = generate_generic_id()
@@ -328,7 +328,7 @@ def test_broker_listener_checks(
     ],
 )
 def test_diagnostic_service_checks(
-    mocker, mock_evaluate_e4k_pod_health, resource, service, conditions, evaluations
+    mocker, mock_evaluate_mq_pod_health, resource, service, conditions, evaluations
 ):
     # mock service values
     namespace = generate_generic_id()
