@@ -24,6 +24,7 @@ from ...generators import generate_generic_id
         "custom_location_name": generate_generic_id(),
         "description": generate_generic_id(),
         "disabled": True,
+        "display_name": generate_generic_id(),
         "documentation_uri": generate_generic_id(),
         "endpoint": generate_generic_id(),
         "external_asset_id": generate_generic_id(),
@@ -63,12 +64,14 @@ def test_query_assets(mocked_cmd, mocked_get_subscription_id, mocked_build_query
         expected_query += f"| where extendedLocation.name contains \"{req['custom_location_name']}\""
     if req.get("description"):
         expected_query += f"| where properties.description =~ \"{req['description']}\""
+    if req.get("display_name"):
+        expected_query += f"| where properties.displayName =~ \"{req['display_name']}\""
     if req.get("disabled"):
         expected_query += f"| where properties.enabled == {not req['disabled']}"
     if req.get("documentation_uri"):
         expected_query += f"| where properties.documentationUri =~ \"{req['documentation_uri']}\""
     if req.get("endpoint"):
-        expected_query += f"| where properties.connectivityProfileUri =~ \"{req['endpoint']}\""
+        expected_query += f"| where properties.assetEndpointProfileUri =~ \"{req['endpoint']}\""
     if req.get("external_asset_id"):
         expected_query += f"| where properties.externalAssetId =~ \"{req['external_asset_id']}\""
     if req.get("hardware_revision"):

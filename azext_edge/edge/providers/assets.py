@@ -20,8 +20,6 @@ from ..util import assemble_nargs_to_dict, build_query
 from ..common import ResourceTypeMapping
 
 logger = get_logger(__name__)
-
-# API_VERSION = "2023-08-01-preview"
 API_VERSION = "2023-11-01-preview"
 
 
@@ -100,7 +98,6 @@ class AssetProvider():
         # Properties
         properties = {
             "assetEndpointProfileUri": endpoint,
-            # "connectivityProfileUri": endpoint,
             "dataPoints": _process_asset_sub_points("data_source", data_points),
             "events": _process_asset_sub_points("event_notifier", events),
         }
@@ -210,7 +207,7 @@ class AssetProvider():
         if documentation_uri:
             query += f"| where properties.documentationUri =~ \"{documentation_uri}\""
         if endpoint:
-            query += f"| where properties.connectivityProfileUri =~ \"{endpoint}\""
+            query += f"| where properties.assetEndpointProfileUri =~ \"{endpoint}\""
         if external_asset_id:
             query += f"| where properties.externalAssetId =~ \"{external_asset_id}\""
         if hardware_revision:
