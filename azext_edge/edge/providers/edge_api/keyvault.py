@@ -4,8 +4,13 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from .base import deploy
+from .base import EdgeResourceApi
+from ...common import ListableEnum
 
-__all__ = [
-    "deploy",
-]
+
+class KeyVaultResourceKinds(ListableEnum):
+    SECRET_PROVIDER_CLASS = "secretproviderclass"
+    SECRET_PROVIDER_CLASS_POD_STATUS = "secretproviderclasspodstatus"
+
+
+KEYVAULT_API_V1 = EdgeResourceApi(group="secrets-store.csi.x-k8s.io", version="v1", moniker="keyvault")
