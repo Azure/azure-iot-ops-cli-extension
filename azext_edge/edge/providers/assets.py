@@ -21,8 +21,8 @@ from ..common import ResourceTypeMapping
 
 logger = get_logger(__name__)
 
-API_VERSION = "2023-08-01-preview"
-# API_VERSION = "2023-10-01-preview"
+# API_VERSION = "2023-08-01-preview"
+API_VERSION = "2023-11-01-preview"
 
 
 class AssetProvider():
@@ -74,6 +74,10 @@ class AssetProvider():
         ev_queue_size: int = 1,
         tags: Optional[Dict[str, str]] = None,
     ):
+        if not any([data_points, events]):
+            raise RequiredArgumentMissingError(
+                "At least one data point or event is required to create the asset."
+            )
         custom_location_id = self._check_asset_cluster_and_custom_location(
             custom_location_name=custom_location_name,
             custom_location_resource_group=custom_location_resource_group,
@@ -95,8 +99,8 @@ class AssetProvider():
 
         # Properties
         properties = {
-            # "assetEndpointProfileUri": endpoint,
-            "connectivityProfileUri": endpoint,
+            "assetEndpointProfileUri": endpoint,
+            # "connectivityProfileUri": endpoint,
             "dataPoints": _process_asset_sub_points("data_source", data_points),
             "events": _process_asset_sub_points("event_notifier", events),
         }
