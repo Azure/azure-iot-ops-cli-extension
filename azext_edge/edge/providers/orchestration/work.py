@@ -129,7 +129,7 @@ class WorkManager:
         kv_cloud_sec_desc = (
             f"Validate secret name '[green]{self._keyvault_secret_name}[/green]'"
             if self._keyvault_secret_name
-            else "Create secret"
+            else "Created secret"
         )
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_SEC, description=kv_cloud_sec_desc)
 

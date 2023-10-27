@@ -92,8 +92,21 @@ def init(
     from azure.cli.core.commands.client_factory import get_subscription_id
 
     from .providers.orchestration import deploy
+    from .util.sp import principal_is_app, sp_can_fetch_self
 
     load_config_context(context_name=context_name)
+
+    if keyvault_resource_id:
+        is_app, app_id = principal_is_app(cmd.cli_ctx)
+        if (
+            is_app
+            and not sp_can_fetch_self(cmd.cli_ctx, app_id)
+            and not all([service_principal_app_id, service_principal_object_id, service_principal_secret])
+        ):
+            logger.warning(
+                "When logged in with a service principal, either ensure it's permissions "
+                "to MS graph or provide values for --sp-app-id, --sp-object-id and --sp-secret."
+            )
 
     # cluster namespace must be lowercase
     cluster_namespace = str(cluster_namespace).lower()
