@@ -53,31 +53,38 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
         "e4k": {}, "opcua": {}, "bluefin": {}, "symphony": {}, "deviceregistry": {}, "common": {}, "lnm": {}
     }
 
+    api_map = {
+        SupportForEdgeServiceType.e4k.value: {
+            'apis': COMPAT_E4K_APIS, 'prepare_bundle': prepare_e4k_bundle, 'key': 'e4k'},
+        SupportForEdgeServiceType.opcua.value: {
+            'apis': COMPAT_OPCUA_APIS, 'prepare_bundle': prepare_opcua_bundle, 'key': 'opcua'},
+        SupportForEdgeServiceType.bluefin.value: {
+            'apis': COMPAT_BLUEFIN_APIS, 'prepare_bundle': prepare_bluefin_bundle, 'key': 'bluefin'},
+        SupportForEdgeServiceType.symphony.value: {
+            'apis': COMPAT_SYMPHONY_APIS, 'prepare_bundle': prepare_symphony_bundle, 'key': 'symphony'},
+        SupportForEdgeServiceType.lnm.value: {
+            'apis': COMPAT_LNM_APIS, 'prepare_bundle': prepare_lnm_bundle, 'key': 'lnm'},
+        SupportForEdgeServiceType.deviceregistry.value: {
+            'apis': COMPAT_DEVICEREGISTRY_APIS,
+            'prepare_bundle': prepare_deviceregistry_bundle,
+            'key': 'deviceregistry'
+        }
+    }
+
     raise_on_404 = not (edge_service == SupportForEdgeServiceType.auto.value)
-    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.e4k.value]:
-        e4k_apis = COMPAT_E4K_APIS.get_deployed(raise_on_404)
-        if e4k_apis:
-            pending_work["e4k"].update(prepare_e4k_bundle(e4k_apis, log_age_seconds))
-    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.opcua.value]:
-        opcua_apis = COMPAT_OPCUA_APIS.get_deployed(raise_on_404)
-        if opcua_apis:
-            pending_work["opcua"].update(prepare_opcua_bundle(opcua_apis, log_age_seconds))
-    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.bluefin.value]:
-        bluefin_apis = COMPAT_BLUEFIN_APIS.get_deployed(raise_on_404)
-        if bluefin_apis:
-            pending_work["bluefin"].update(prepare_bluefin_bundle(bluefin_apis, log_age_seconds))
-    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.symphony.value]:
-        symphony_apis = COMPAT_SYMPHONY_APIS.get_deployed(raise_on_404)
-        if symphony_apis:
-            pending_work["symphony"].update(prepare_symphony_bundle(symphony_apis, log_age_seconds))
-    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.lnm.value]:
-        lnm_apis = COMPAT_LNM_APIS.get_deployed(raise_on_404)
-        if lnm_apis:
-            pending_work["lnm"].update(prepare_lnm_bundle(lnm_apis, log_age_seconds))
-    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.deviceregistry.value]:
-        deviceregistry_apis = COMPAT_DEVICEREGISTRY_APIS.get_deployed(raise_on_404)
-        if deviceregistry_apis:
-            pending_work["deviceregistry"].update(prepare_deviceregistry_bundle(deviceregistry_apis))
+
+    for service_type, api_info in api_map.items():
+        if edge_service in [SupportForEdgeServiceType.auto.value, service_type]:
+            deployed_apis = api_info['apis'].get_deployed(raise_on_404)
+            if deployed_apis:
+                bundle_method = api_info['prepare_bundle']
+                # Check if the function takes a second argument
+                if service_type == SupportForEdgeServiceType.deviceregistry.value:
+                    bundle = bundle_method(deployed_apis)
+                else:
+                    bundle = bundle_method(deployed_apis, log_age_seconds)
+
+                pending_work[api_info['key']].update(bundle)
 
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):
