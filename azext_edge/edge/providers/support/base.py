@@ -327,7 +327,6 @@ def process_daemonsets(
     return processed
 
 
-
 def process_nodes():
     return {
         "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_node()),

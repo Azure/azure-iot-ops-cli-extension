@@ -28,6 +28,12 @@ def mock_evaluate_bluefin_pod_health(mocker):
 
 
 @pytest.fixture
+def mock_evaluate_lnm_pod_health(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.lnm._evaluate_lnm_pod_health", return_value={})
+    yield patched
+
+
+@pytest.fixture
 def mock_resource_types(mocker, edge_service):
     patched = mocker.patch("azext_edge.edge.providers.check.base.enumerate_edge_service_resources")
 
@@ -49,6 +55,14 @@ def mock_resource_types(mocker, edge_service):
                 "Dataset": [{}],
                 "Instance": [{}],
                 "Pipeline": [{}]
+            }
+        )
+    elif edge_service == "lnm":
+        patched.return_value = (
+            {},
+            {
+                "Lnm": [{}],
+                "Scale": [{}]
             }
         )
 

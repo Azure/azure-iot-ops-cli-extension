@@ -20,7 +20,7 @@ from .base import (
 LNM_APP_LABELS = [
     'aio-lnm-operator'
 ]
-LNM_DAEMONSET_PREFIX = "svclb-aio-lnm-"
+LNM_SVC_NAME = "svccontroller.k3s.cattle.io/svcname"
 LNM_DEPLOYMENT_PREFIX = "aio-lnm-"
 
 
@@ -55,9 +55,10 @@ def fetch_lnm_deployments():
 
 
 def fetch_daemonsets():
-    daemonset_prefixes = [f"{LNM_DAEMONSET_PREFIX}{name}" for name in _fetch_lnm_instance_names()]
-    
-    return process_daemonsets(resource_api=LNM_API_V1B1, label_selector=None, prefix_names=daemonset_prefixes)
+    lnm_names = [f"aio-lnm-{name}" for name in _fetch_lnm_instance_names()]
+    lnm_labels = f"{LNM_SVC_NAME} in ({','.join(lnm_names)})"
+
+    return process_daemonsets(resource_api=LNM_API_V1B1, label_selector=lnm_labels)
 
 
 support_runtime_elements = {
