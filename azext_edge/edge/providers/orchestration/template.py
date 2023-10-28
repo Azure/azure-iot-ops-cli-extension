@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import NamedTuple, Dict
+from typing import NamedTuple
 
 
 class TemplateVer(NamedTuple):
@@ -12,20 +12,20 @@ class TemplateVer(NamedTuple):
     content: dict
 
     @property
-    def component_vers(self):
+    def component_vers(self) -> dict:
         return self.content["variables"]["VERSIONS"]
 
     @property
-    def content_ver(self):
+    def parameters(self) -> dict:
+        return self.content["parameters"]
+
+    @property
+    def content_vers(self):
         return self.content["contentVersion"]
 
 
-class TemplateManager(NamedTuple):
-    version_map: Dict[str, TemplateVer]
-
-
-TEMPLATE_VER_1000 = TemplateVer(
-    commit_id="",
+V1_TEMPLATE = TemplateVer(
+    commit_id="b2f46df41de09b87330e76305ecbaeac6eb021e7",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
@@ -769,6 +769,4 @@ TEMPLATE_VER_1000 = TemplateVer(
     },
 )
 
-
-_version_map = {"1.0.0.0": TEMPLATE_VER_1000}
-TEMPLATE_MANAGER = TemplateManager(version_map=_version_map)
+CURRENT_TEMPLATE = V1_TEMPLATE

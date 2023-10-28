@@ -132,3 +132,9 @@ def read_file_content(file_path, read_as_binary=False):
             pass
 
     raise FileOperationError("Failed to decode file {} - unknown decoding".format(file_path))
+
+
+def url_safe_hash_phrase(phrase: str):
+    from hashlib import sha256
+
+    return sha256(phrase.encode("utf8")).hexdigest()

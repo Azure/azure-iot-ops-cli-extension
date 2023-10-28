@@ -11,17 +11,17 @@ from uuid import uuid4
 
 from azure.cli.core.azclierror import AzureResponseError
 from azure.core.exceptions import HttpResponseError
+from knack.log import get_logger
 from rich.console import NewLine
-from rich.live import Live
+from rich.live import Console, Live
 from rich.padding import Padding
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
-from knack.log import get_logger
 
 from ...util import get_timestamp_now_utc
 from ...util.x509 import DEFAULT_EC_ALGO
-from .template import TEMPLATE_MANAGER, TemplateVer
+from .template import CURRENT_TEMPLATE, TemplateVer
 
 logger = get_logger(__name__)
 
@@ -82,10 +82,12 @@ class WorkManager:
             TimeElapsedColumn(),
             transient=False,
         )
-        self._work_name = f"aziotops.init.{str(uuid4()).replace('-', '')}"
+        self._work_id = uuid4().hex
+        self._work_name = f"aziotops.init.{self._work_id}"
         self._no_progress: bool = kwargs.get("no_progress", False)
         self._no_block: bool = kwargs.get("no_block", False)
         self._no_deploy: bool = kwargs.get("no_deploy", False)
+        self._no_tls: bool = kwargs.get("no_tls", False)
         self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
         if self._keyvault_resource_id:
             self._keyvault_name = self._keyvault_resource_id.split("/")[-1]
@@ -100,7 +102,6 @@ class WorkManager:
         self._live = Live(None, transient=False, refresh_per_second=8, auto_refresh=self._render_progress)
         self._completed_steps: Dict[int, int] = {}
         self._subscription_id = kwargs.get("subscription_id")
-        self._template_manager = TEMPLATE_MANAGER
         self._cluster_secret_ref = CLUSTER_SECRET_REF
         self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
         self._cmd = kwargs.get("cmd")
@@ -139,8 +140,8 @@ class WorkManager:
         kv_csi_configure_desc = "Configure driver"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_CLUSTER, description=kv_csi_configure_desc)
 
-        # TODO @digimaun - insecure mode
-        self.display.add_category(WorkCategoryKey.TLS_CA, "TLS", self._tls_insecure)
+        # TODO @digimaun - MQ insecure mode
+        self.display.add_category(WorkCategoryKey.TLS_CA, "TLS", self._no_tls)
         if self._tls_ca_path:
             tls_ca_desc = f"User provided CA '[green]{self._tls_ca_path}[/green]'"
         else:
@@ -236,13 +237,13 @@ class WorkManager:
                     logger.warning("Skipped AKV CSI driver setup as requested.")
 
             # TLS segment
-            work_kpis["tls"] = {}
             if (
                 WorkCategoryKey.TLS_CA in self.display.categories
                 and not self.display.categories[WorkCategoryKey.TLS_CA][1]
             ):
+                work_kpis["tls"] = {}
                 self.render_display(category=WorkCategoryKey.TLS_CA)
-                # TODO: support ca file path, update workkpis with them
+
                 public_ca, private_key, secret_name, cm_name = prepare_ca(ca_path=None, key_path=None, **self._kwargs)
                 work_kpis["tls"]["aioTrustConfigMap"] = cm_name
                 work_kpis["tls"]["aioTrustSecretName"] = secret_name
@@ -259,6 +260,9 @@ class WorkManager:
                 )
                 self._completed_steps[WorkStepKey.TLS_CLUSTER] = 1
                 self.render_display(category=WorkCategoryKey.TLS_CA)
+            else:
+                if not self._render_progress:
+                    logger.warning("Skipped TLS config as requested.")
 
             # Deployment segment
             if self._no_deploy:
@@ -271,7 +275,6 @@ class WorkManager:
                 and not self.display.categories[WorkCategoryKey.DEPLOY_AIO][1]
             ):
                 self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
-                template = self._template_manager.version_map["1.0.0.0"]
                 template, parameters = self.build_template(work_kpis=work_kpis)
 
                 deployment_result, deployment_poller = deploy_template(
@@ -377,25 +380,34 @@ class WorkManager:
             self._live.stop()
 
     def build_template(self, work_kpis: dict) -> Tuple[TemplateVer, dict]:
-        # TODO refactor
-        template = self._template_manager.version_map["1.0.0.0"]
+        # TODO refactor, move out of work
+        template = CURRENT_TEMPLATE
         parameters = {}
-        parameters["clusterName"] = {"value": self._kwargs["cluster_name"]}
-        if self._kwargs["location"]:
-            parameters["location"] = {"value": self._kwargs["location"]}
-            parameters["clusterLocation"] = {"value": self._kwargs["location"]}  # TODO:
-        if self._kwargs["custom_location_name"]:
-            parameters["customLocationName"] = {"value": self._kwargs["custom_location_name"]}
-        if self._kwargs["custom_location_name"]:
-            parameters["customLocationName"] = {"value": self._kwargs["custom_location_name"]}
-        if self._kwargs["simulate_plc"]:
-            parameters["simulatePlc"] = {"value": self._kwargs["simulate_plc"]}
-        if self._kwargs["opcua_discovery_endpoint"]:
-            parameters["opcuaDiscoveryEndpoint"] = {"value": self._kwargs["opcua_discovery_endpoint"]}
-        if self._kwargs["target_name"]:
-            parameters["targetName"] = {"value": self._kwargs["target_name"]}
-        if self._kwargs["dp_instance_name"]:
-            parameters["dataProcessorInstanceName"] = {"value": self._kwargs["dp_instance_name"]}
+
+        for template_pair in [
+            ("cluster_name", "clusterName"),
+            ("location", "location"),
+            ("location", "clusterLocation"),  # TODO
+            ("custom_location_name", "customLocationName"),
+            ("simulate_plc", "simulatePlc"),
+            ("opcua_discovery_endpoint", "opcuaDiscoveryEndpoint"),
+            ("target_name", "targetName"),
+            ("dp_instance_name", "dataProcessorInstanceName"),
+            ("mq_instance_name", "mqInstanceName"),
+            ("mq_listener_name", "mqListenerName"),
+            ("mq_broker_name", "mqBrokerName"),
+            ("mq_authn_name", "mqAuthnName"),
+            ("mq_frontend_replicas", "mqFrontendReplicas"),
+            ("mq_frontend_workers", "mqFrontendWorkers"),
+            ("mq_backend_redundancy_factor", "mqBackendRedundancyFactor"),
+            ("mq_backend_workers", "mqBackendWorkers"),
+            ("mq_backend_partitions", "mqBackendPartitions"),
+            ("mq_mode", "mqMode"),
+            ("mq_memory_profile", "mqMemoryProfile"),
+            ("mq_service_type", "mqServiceType"),
+        ]:
+            if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
+                parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
 
         parameters["dataProcessorSecrets"] = {
             "value": {
@@ -424,3 +436,25 @@ class WorkManager:
             template.content["variables"]["AIO_TRUST_SECRET_NAME"] = tls_map["aioTrustSecretName"]
 
         return template, parameters
+
+
+def deploy(
+    **kwargs,
+):
+    show_aio_version = kwargs.get("show_aio_version", False)
+    if show_aio_version:
+        console = Console()
+        table = Table(title=f"Azure IoT Operations v{CURRENT_TEMPLATE.content_vers}")
+        table.add_column("Component", justify="left", style="cyan")
+        table.add_column("Version", justify="left", style="magenta")
+        for moniker in CURRENT_TEMPLATE.component_vers:
+            table.add_row(moniker, CURRENT_TEMPLATE.component_vers[moniker])
+        console.print(table)
+        return
+
+    show_template = kwargs.get("show_template", False)
+    if show_template:
+        return CURRENT_TEMPLATE.content
+
+    manager = WorkManager(**kwargs)
+    return manager.do_work()

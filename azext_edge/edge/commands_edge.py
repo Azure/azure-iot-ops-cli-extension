@@ -13,6 +13,7 @@ from knack.log import get_logger
 
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
+from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 from .providers.support.base import get_bundle_path
 
 logger = get_logger(__name__)
@@ -78,9 +79,21 @@ def init(
     no_block: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     dp_instance_name: Optional[str] = None,
-    dp_reader_worker: Optional[int] = None,
-    dp_runner_worker: Optional[int] = None,
-    dp_message_store: Optional[int] = None,
+    dp_reader_workers: int = 1,
+    dp_runner_workers: int = 1,
+    dp_message_stores: int = 1,
+    mq_mode: str = MqMode.distributed.value,
+    mq_memory_profile: str = MqMemoryProfile.medium.value,
+    mq_service_type: str = MqServiceType.cluster_ip.value,
+    mq_backend_partitions: int = 2,
+    mq_backend_workers: int = 2,
+    mq_backend_redundancy_factor: int = 2,
+    mq_frontend_workers: int = 2,
+    mq_frontend_replicas: int = 2,
+    mq_instance_name: Optional[str] = None,
+    mq_listener_name: Optional[str] = None,
+    mq_broker_name: Optional[str] = None,
+    mq_authn_name: Optional[str] = None,
     target_name: Optional[str] = None,
     disable_secret_rotation: Optional[bool] = None,
     rotation_poll_interval: str = "1h",
@@ -92,12 +105,18 @@ def init(
     tls_ca_key_path: Optional[str] = None,
     tls_ca_dir: Optional[str] = None,
     no_deploy: Optional[bool] = None,
+    no_tls: Optional[bool] = None,
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     from azure.cli.core.commands.client_factory import get_subscription_id
 
     from .providers.orchestration import deploy
+    from .util import url_safe_hash_phrase
     from .util.sp import LoggedInPrincipal
+
+    if all([no_tls, not keyvault_resource_id, no_deploy]):
+        logger.warning("Nothing to do :)")
+        return
 
     load_config_context(context_name=context_name)
 
@@ -115,8 +134,17 @@ def init(
 
     # cluster namespace must be lowercase
     cluster_namespace = str(cluster_namespace).lower()
-
     cluster_name_lowered = cluster_name.lower()
+
+    hashed_cluster_slug = url_safe_hash_phrase(cluster_name)[:5]
+    if not mq_instance_name:
+        mq_instance_name = f"init-{hashed_cluster_slug}-mq-instance"
+    if not mq_listener_name:
+        mq_listener_name = f"init-{hashed_cluster_slug}-listener"
+    if not mq_broker_name:
+        mq_broker_name = f"init-{hashed_cluster_slug}-broker"
+    if not mq_authn_name:
+        mq_authn_name = f"init-{hashed_cluster_slug}-authn"
 
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-aio-init-cl"
@@ -160,11 +188,24 @@ def init(
         simulate_plc=simulate_plc,
         no_block=no_block,
         no_progress=no_progress,
+        no_tls=no_tls,
         no_deploy=no_deploy,
         dp_instance_name=dp_instance_name,
-        dp_reader_worker=dp_reader_worker,
-        dp_runner_worker=dp_runner_worker,
-        dp_message_store=dp_message_store,
+        dp_reader_workers=int(dp_reader_workers),
+        dp_runner_workers=int(dp_runner_workers),
+        dp_message_stores=int(dp_message_stores),
+        mq_mode=str(mq_mode),
+        mq_memory_profile=str(mq_memory_profile),
+        mq_service_type=str(mq_service_type),
+        mq_backend_partitions=int(mq_backend_partitions),
+        mq_backend_workers=int(mq_backend_workers),
+        mq_backend_redundancy_factor=int(mq_backend_redundancy_factor),
+        mq_frontend_replicas=int(mq_frontend_replicas),
+        mq_frontend_workers=int(mq_frontend_workers),
+        mq_instance_name=mq_instance_name,
+        mq_listener_name=mq_listener_name,
+        mq_broker_name=mq_broker_name,
+        mq_authn_name=mq_authn_name,
         target_name=target_name,
         keyvault_resource_id=keyvault_resource_id,
         keyvault_secret_name=str(keyvault_secret_name),

@@ -9,13 +9,15 @@ from time import sleep
 from typing import List, NamedTuple, Optional, Tuple
 
 from azure.cli.core.azclierror import HTTPError
-from azure.identity import DefaultAzureCredential
-from azure.mgmt.resource import ResourceManagementClient
 from knack.log import get_logger
-from rich.live import Console
-from rich.table import Table
 
-from ...util import generate_secret, generate_self_signed_cert, get_timestamp_now_utc, read_file_content
+from ...util import (
+    generate_secret,
+    generate_self_signed_cert,
+    get_timestamp_now_utc,
+    read_file_content,
+    get_resource_client,
+)
 from ..base import (
     create_cluster_namespace,
     create_namespaced_configmap,
@@ -23,18 +25,16 @@ from ..base import (
     create_namespaced_secret,
     get_cluster_namespace,
 )
+from ...common import K8sSecretType
 from ..edge_api import KEYVAULT_API_V1, KeyVaultResourceKinds
 from .components import (
     get_kv_secret_store_yaml,
 )
-from .work import WorkManager
-from .template import TEMPLATE_MANAGER
 
 logger = get_logger(__name__)
 
 
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
-DEFAULT_AZURE_CREDENTIAL = DefaultAzureCredential()
 
 DEFAULT_POLL_RETRIES = 60
 DEFAULT_POLL_WAIT_SEC = 10
@@ -48,29 +48,6 @@ class ServicePrincipal(NamedTuple):
     created_app: bool
 
 
-def deploy(
-    **kwargs,
-):
-    show_aio_version = kwargs.get("show_aio_version", False)
-    template = TEMPLATE_MANAGER.version_map["1.0.0.0"]
-    if show_aio_version:
-        console = Console()
-        table = Table(title=f"Azure IoT Operations v{template.content_ver}")
-        table.add_column("Component", justify="left", style="cyan")
-        table.add_column("Version", justify="left", style="magenta")
-        for moniker in template.component_vers:
-            table.add_row(moniker, template.component_vers[moniker])
-        console.print(table)
-        return
-
-    show_template = kwargs.get("show_template", False)
-    if show_template:
-        return template.content
-
-    manager = WorkManager(**kwargs)
-    return manager.do_work()
-
-
 def provision_akv_csi_driver(
     subscription_id: str,
     cluster_name: str,
@@ -80,7 +57,7 @@ def provision_akv_csi_driver(
     extension_name: str = "akvsecretsprovider",
     **kwargs,
 ) -> dict:
-    resource_client = ResourceManagementClient(credential=DEFAULT_AZURE_CREDENTIAL, subscription_id=subscription_id)
+    resource_client = get_resource_client(subscription_id=subscription_id)
     return wait_for_terminal_state(
         resource_client.resources.begin_create_or_update_by_id(
             resource_id=f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
@@ -202,7 +179,7 @@ def configure_cluster_tls(
     create_namespaced_secret(
         secret_name=secret_name,
         namespace=cluster_namespace,
-        secret_type="kubernetes.io/tls",
+        secret_type=K8sSecretType.tls,
         data=data,
         delete_first=True,
     )
@@ -232,11 +209,15 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
             url=f"https://graph.microsoft.com/v1.0/servicePrincipals/{sp_object_id}",
         ).json()
         sp_app_id = existing_sp["appId"]
-        app_reg = existing_sp = send_raw_request(
-            cli_ctx=cmd.cli_ctx,
-            method="GET",
-            url=f"https://graph.microsoft.com/v1.0/applications/{sp_app_id}",
-        ).json()
+        try:
+            app_reg = existing_sp = send_raw_request(
+                cli_ctx=cmd.cli_ctx,
+                method="GET",
+                url=f"https://graph.microsoft.com/v1.0/applications/{sp_app_id}",
+            ).json()
+        except HTTPError as http_error:
+            if http_error.response.status_code not in [401, 403]:
+                raise http_error
 
     if not sp_app_id:
         app_reg = send_raw_request(
@@ -321,7 +302,7 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
 
 def prepare_keyvault_access_policy(subscription_id: str, sp_record: ServicePrincipal, **kwargs) -> str:
     keyvault_resource_id = kwargs.get("keyvault_resource_id")
-    resource_client = ResourceManagementClient(credential=DEFAULT_AZURE_CREDENTIAL, subscription_id=subscription_id)
+    resource_client = get_resource_client(subscription_id=subscription_id)
     keyvault_resource: dict = resource_client.resources.get_by_id(
         resource_id=keyvault_resource_id, api_version=KEYVAULT_CLOUD_API_VERSION
     ).as_dict()
@@ -386,7 +367,7 @@ def prepare_keyvault_secret(deployment_name: str, vault_uri: str, **kwargs) -> s
 
 
 def get_resource_by_id(resource_id: str, subscription_id: str, api_version: str):
-    resource_client = ResourceManagementClient(credential=DEFAULT_AZURE_CREDENTIAL, subscription_id=subscription_id)
+    resource_client = get_resource_client(subscription_id=subscription_id)
     return resource_client.resources.get_by_id(resource_id=resource_id, api_version=api_version)
 
 
@@ -408,7 +389,7 @@ def deploy_template(
     cluster_namespace: str,
     **kwargs,
 ) -> Tuple[dict, dict]:
-    resource_client = ResourceManagementClient(credential=DEFAULT_AZURE_CREDENTIAL, subscription_id=subscription_id)
+    resource_client = get_resource_client(subscription_id=subscription_id)
 
     deployment_params = {"properties": {"mode": "Incremental", "template": template, "parameters": parameters}}
     deployment = resource_client.deployments.begin_create_or_update(
