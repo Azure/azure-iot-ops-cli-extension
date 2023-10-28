@@ -4,7 +4,6 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from .az_client import get_resource_client
 from .common import (
     assemble_nargs_to_dict,
     build_query,
@@ -25,5 +24,4 @@ __all__ = [
     "generate_self_signed_cert",
     "read_file_content",
     "url_safe_hash_phrase",
-    "get_resource_client",
 ]

@@ -16,8 +16,8 @@ from ...util import (
     generate_self_signed_cert,
     get_timestamp_now_utc,
     read_file_content,
-    get_resource_client,
 )
+from ...util.az_client import get_resource_client
 from ..base import (
     create_cluster_namespace,
     create_namespaced_configmap,
