@@ -20,6 +20,7 @@ from ..providers.edge_api import (
     LNM_API_V1B1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
+    DEVICEREGISTRY_API_V1,
     EdgeApiManager,
 )
 
@@ -32,6 +33,7 @@ COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_BLUEFIN_APIS = EdgeApiManager(resource_apis=[BLUEFIN_API_V1])
 COMPAT_SYMPHONY_APIS = EdgeApiManager(resource_apis=[SYMPHONY_API_V1])
 COMPAT_LNM_APIS = EdgeApiManager(resource_apis=[LNM_API_V1B1])
+COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 
 
 def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[int] = None):
@@ -44,9 +46,12 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from .support.lnm import prepare_bundle as prepare_lnm_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.symphony import prepare_bundle as prepare_symphony_bundle
+    from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
 
-    pending_work = {"e4k": {}, "opcua": {}, "bluefin": {}, "symphony": {}, "common": {}, "lnm": {}}
+    pending_work = {
+        "e4k": {}, "opcua": {}, "bluefin": {}, "symphony": {}, "deviceregistry": {}, "common": {}, "lnm": {}
+    }
 
     raise_on_404 = not (edge_service == SupportForEdgeServiceType.auto.value)
     if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.e4k.value]:
@@ -69,6 +74,10 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
         lnm_apis = COMPAT_LNM_APIS.get_deployed(raise_on_404)
         if lnm_apis:
             pending_work["lnm"].update(prepare_lnm_bundle(lnm_apis, log_age_seconds))
+    if edge_service in [SupportForEdgeServiceType.auto.value, SupportForEdgeServiceType.deviceregistry.value]:
+        deviceregistry_apis = COMPAT_DEVICEREGISTRY_APIS.get_deployed(raise_on_404)
+        if deviceregistry_apis:
+            pending_work["deviceregistry"].update(prepare_deviceregistry_bundle(deviceregistry_apis))
 
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):

@@ -21,6 +21,7 @@ from azext_edge.edge.providers.edge_api import (
     OPCUA_API_V1,
     SYMPHONY_API_V1,
     LNM_API_V1B1,
+    DEVICEREGISTRY_API_V1
 )
 
 from azext_edge.edge.providers.support.base import get_bundle_path
@@ -59,6 +60,7 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
         [E4K_API_V1A2, OPCUA_API_V1],
         [E4K_API_V1A2, BLUEFIN_API_V1],
         [E4K_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1],
+        [E4K_API_V1A2, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
         [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1],
         [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1, LNM_API_V1B1],
     ],
@@ -103,6 +105,10 @@ def test_create_bundle(
     if not mocked_cluster_resources["param"] or LNM_API_V1B1 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
             support_bundle(None, bundle_dir=a_bundle_dir, edge_service="lnm")
+
+    if not mocked_cluster_resources["param"] or DEVICEREGISTRY_API_V1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="deviceregistry")
 
     if mocked_cluster_resources["param"] == []:
         auto_result_no_resources = support_bundle(None, bundle_dir=a_bundle_dir)

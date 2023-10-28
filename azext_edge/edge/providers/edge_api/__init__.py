@@ -11,6 +11,7 @@ from .opcua import OPCUA_API_V1, OpcuaResourceKinds
 from .symphony import SYMPHONY_API_V1, SymphonyResourceKinds
 from .lnm import LNM_API_V1B1, LnmResourceKinds
 from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
+from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
 
 __all__ = [
     "EdgeResourceApi",
@@ -30,4 +31,6 @@ __all__ = [
     "SYMPHONY_API_V1",
     "KeyVaultResourceKinds",
     "KEYVAULT_API_V1",
+    "DeviceRegistryResourceKinds",
+    "DEVICEREGISTRY_API_V1",
 ]
