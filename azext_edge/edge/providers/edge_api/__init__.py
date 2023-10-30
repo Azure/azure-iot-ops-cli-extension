@@ -10,7 +10,9 @@ from .bluefin import BLUEFIN_API_V1, BluefinResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
 from .symphony import SYMPHONY_API_V1, SymphonyResourceKinds
 from .akri import AKRI_API_V0, AkriResourceKinds
+from .lnm import LNM_API_V1B1, LnmResourceKinds
 from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
+from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
 
 __all__ = [
     "EdgeResourceApi",
@@ -22,6 +24,8 @@ __all__ = [
     "E4K_API_V1A4",
     "BluefinResourceKinds",
     "BLUEFIN_API_V1",
+    "LnmResourceKinds",
+    "LNM_API_V1B1",
     "OpcuaResourceKinds",
     "OPCUA_API_V1",
     "SymphonyResourceKinds",
@@ -30,4 +34,6 @@ __all__ = [
     "AKRI_API_V0",
     "KeyVaultResourceKinds",
     "KEYVAULT_API_V1",
+    "DeviceRegistryResourceKinds",
+    "DEVICEREGISTRY_API_V1",
 ]

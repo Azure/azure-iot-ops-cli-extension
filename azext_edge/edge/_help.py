@@ -10,10 +10,12 @@ Help definitions for Digital Twins commands.
 from knack.help_files import helps
 from .providers.edge_api import E4K_ACTIVE_API
 from .providers.support_bundle import (
-    COMPAT_BLUEFIN_APIS, 
-    COMPAT_E4K_APIS, 
-    COMPAT_OPCUA_APIS, 
+    COMPAT_BLUEFIN_APIS,
+    COMPAT_E4K_APIS,
+    COMPAT_LNM_APIS,
+    COMPAT_OPCUA_APIS,
     COMPAT_SYMPHONY_APIS,
+    COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_AKRI_APIS
 )
 
@@ -50,6 +52,8 @@ def load_iotedge_help():
                 {COMPAT_BLUEFIN_APIS.as_str()}
                 {COMPAT_SYMPHONY_APIS.as_str()}
                 {COMPAT_AKRI_APIS.as_str()}
+                {COMPAT_LNM_APIS.as_str()}
+                {COMPAT_DEVICEREGISTRY_APIS.as_str()}
     """
 
     helps[

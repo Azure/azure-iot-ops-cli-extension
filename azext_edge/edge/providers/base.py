@@ -5,17 +5,23 @@
 # --------------------------------------------------------------------------------------------
 
 import socket
-
 from contextlib import contextmanager
-from typing import List, Optional, Union, Iterator, Dict
+from typing import Dict, Iterator, List, Optional, Union
 from urllib.request import urlopen
 
 from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
-from kubernetes.client.models import V1APIResourceList, V1Pod, V1PodList, V1Service, V1ObjectMeta
+from kubernetes.client.models import (
+    V1APIResourceList,
+    V1ObjectMeta,
+    V1Pod,
+    V1PodList,
+    V1Service,
+)
 
+from ..common import K8sSecretType
 
 DEFAULT_NAMESPACE: str = "azure-iot-operations"
 
@@ -35,7 +41,7 @@ def load_config_context(context_name: Optional[str] = None):
     config.load_kube_config(context=context_name)
     _, current_config = config.list_kube_config_contexts()
     global DEFAULT_NAMESPACE
-    DEFAULT_NAMESPACE = current_config.get("namespace") or "default"
+    DEFAULT_NAMESPACE = current_config.get("namespace") or "azure-iot-operations"
 
 
 _namespaced_service_cache: dict = {}
@@ -212,19 +218,23 @@ def create_namespaced_secret(
     namespace: str,
     data: Dict[str, str],
     labels: Optional[Dict[str, str]] = None,
-    secret_type: str = "Opaque",
+    secret_type: K8sSecretType = K8sSecretType.opaque,
     delete_first: bool = False,
 ):
     if delete_first:
         delete_namespaced_secret(namespace=namespace, secret_name=secret_name)
 
     data_kw = {}
-    if secret_type == "Opaque":
+    if secret_type == K8sSecretType.opaque:
         data_kw = {"string_data": data}
-    if secret_type == "kubernetes.io/tls":
+    elif secret_type == K8sSecretType.tls:
         data_kw = {"data": data}
+    else:
+        raise RuntimeError(f"{secret_type} not supported.")
 
-    v1_secret = client.V1Secret(metadata=V1ObjectMeta(name=secret_name, labels=labels), type=secret_type, **data_kw)
+    v1_secret = client.V1Secret(
+        metadata=V1ObjectMeta(name=secret_name, labels=labels), type=secret_type.value, **data_kw
+    )
 
     try:
         v1_api = client.CoreV1Api()
