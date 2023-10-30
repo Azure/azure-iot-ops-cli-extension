@@ -105,6 +105,7 @@ class WorkManager:
         self._live = Live(None, transient=False, refresh_per_second=8, auto_refresh=self._render_progress)
         self._completed_steps: Dict[int, int] = {}
         self._subscription_id = get_subscription_id(self._cmd.cli_ctx)
+        kwargs["subscription_id"] = self._subscription_id  # TODO: temporary
         self._cluster_secret_ref = CLUSTER_SECRET_REF
         self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
         self._kwargs = kwargs
