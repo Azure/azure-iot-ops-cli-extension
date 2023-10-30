@@ -38,16 +38,18 @@ jobs:
       - name: Run smoke tests
         run: |
           sleep 10
-          az edge support create-bundle --edge-service auto
-          az edge support create-bundle --edge-service e4k
-          az edge support create-bundle --edge-service opcua
-          az edge check
-          az edge check --pre
-          az edge check --post
-          az edge check --as-object
-          az edge e4k stats
-          az edge e4k stats --raw
-          az edge e4k get-password-hash -p test
+          az iot ops support create-bundle --edge-service auto
+          az iot ops support create-bundle --edge-service e4k
+          az iot ops support create-bundle --edge-service opcua
+          az iot ops check
+          az iot ops check --pre
+          az iot ops check --post
+          az iot ops check --as-object
+          az iot ops mq stats
+          az iot ops mq stats --raw
+          az iot ops mq get-password-hash -p test
+          az iot ops init --cluster placeholder --resource-group rg --show-template
+          az iot ops init --cluster placeholder --resource-group rg --aio-version
       - name: Upload support bundle artifacts
         uses: actions/upload-artifact@v3.1.0
         if: always()
