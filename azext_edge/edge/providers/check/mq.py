@@ -547,7 +547,7 @@ def evaluate_brokers(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate MQ broker")
+    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate MQ brokers")
 
     target_brokers = "brokers.mq.iotoperations.azure.com"
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
@@ -629,7 +629,7 @@ def evaluate_brokers(
                     # TODO - conditional evaluations
                     broker_conditions.append("spec.cardinality")
                     broker_conditions.append("spec.cardinality.backendChain.partitions>=1")
-                    broker_conditions.append("spec.cardinality.backendChain.replicas>=1")
+                    broker_conditions.append("spec.cardinality.backendChain.redundancyFactor>=1")
                     broker_conditions.append("spec.cardinality.backendChain.workers>=1")
                     broker_conditions.append("spec.cardinality.frontend.replicas>=1")
                     added_distributed_conditions = True
@@ -655,12 +655,12 @@ def evaluate_brokers(
                     )
                 else:
                     backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
-                    backend_replicas_desc = "- Expecting backend replicas [bright_blue]>=1[/bright_blue]. {}"
+                    backend_redundancy_desc = "- Expecting backend redundancy factor [bright_blue]>=1[/bright_blue]. {}"
                     backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
 
                     backend_chain = broker_cardinality.get("backendChain", {})
                     backend_partition_count: Optional[int] = backend_chain.get("partitions")
-                    backend_replicas: Optional[int] = backend_chain.get("replicas")
+                    backend_redundancy: Optional[int] = backend_chain.get("redundancyFactor")
                     backend_workers: Optional[int] = backend_chain.get("workers")
 
                     if backend_partition_count and backend_partition_count >= 1:
@@ -669,10 +669,10 @@ def evaluate_brokers(
                         backend_chain_count_colored = f"[red]Actual {backend_partition_count}[/red]."
                         broker_eval_status = CheckTaskStatus.error.value
 
-                    if backend_replicas and backend_replicas >= 1:
-                        backend_replicas_colored = f"[green]Actual {backend_replicas}[/green]."
+                    if backend_redundancy and backend_redundancy >= 1:
+                        backend_replicas_colored = f"[green]Actual {backend_redundancy}[/green]."
                     else:
-                        backend_replicas_colored = f"[red]Actual {backend_replicas}[/red]."
+                        backend_replicas_colored = f"[red]Actual {backend_redundancy}[/red]."
                         broker_eval_status = CheckTaskStatus.error.value
 
                     if backend_workers and backend_workers >= 1:
@@ -693,7 +693,7 @@ def evaluate_brokers(
                         target_name=target_brokers,
                         namespace=namespace,
                         display=Padding(
-                            backend_replicas_desc.format(backend_replicas_colored),
+                            backend_redundancy_desc.format(backend_replicas_colored),
                             (0, 0, 0, 16),
                         ),
                     )
@@ -731,10 +731,10 @@ def evaluate_brokers(
                     display=Padding("\nBroker Diagnostics", (0, 0, 0, 12)),
                 )
                 for (key, label) in [
-                    ("diagnosticServiceEndpoint", "Diagnostic Service Endpoint"),
                     ("enableMetrics", "Enable Metrics"),
                     ("enableSelfCheck", "Enable Self-Check"),
                     ("enableTracing", "Enable Tracing"),
+                    ("metricUpdateFrequencySeconds", "Update Frequency (s)"),
                     ("logLevel", "Log Level"),
                 ]:
                     val = broker_diagnostics.get(key)
@@ -1047,14 +1047,16 @@ def evaluate_datalake_connectors(
                 max_msg_per_batch = topic_mapping.get("maxMessagesPerBatch")
                 msg_payload_type = topic_mapping.get("messagePayloadType")
                 source_topic = topic_mapping.get("mqttSourceTopic")
+                allowed_latency = topic_mapping.get("allowedLatencySecs")
                 qos = topic_mapping.get("qos")
 
-                delta_table = topic_mapping.get("deltaTable", {})
-                table_name = delta_table.get("tableName")
+                table = topic_mapping.get("table", {})
+                table_name = table.get("tableName")
 
                 detail_padding = (0, 0, 0, padding[3] + 4)
                 for row in [
                     ["Table Name", table_name],
+                    ["Allowed Latency (s)", allowed_latency],
                     ["Max Messages Per Batch", max_msg_per_batch],
                     ["Message Payload Type", msg_payload_type],
                     ["MQTT Source Topic", source_topic],
@@ -1069,8 +1071,8 @@ def evaluate_datalake_connectors(
                         ),
                     )
             if detail_level == ResourceOutputDetailLevel.verbose.value:
-                delta_table = topic_mapping.get("deltaTable", {})
-                schema = delta_table.get("schema", [])
+                table = topic_mapping.get("table", {})
+                schema = table.get("schema", [])
                 route_table = create_schema_table(schema)
                 check_manager.add_display(target_name=target, namespace=namespace, display=Padding(route_table, padding))
 
