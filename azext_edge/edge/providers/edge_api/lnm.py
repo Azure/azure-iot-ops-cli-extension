@@ -13,4 +13,4 @@ class LnmResourceKinds(ListableEnum):
     SCALE = "scale"
 
 
-LNM_API_V1B1 = EdgeResourceApi(group="layerednetworkmgmt.iotoperations.azure.com", version="v1beta1", moniker="Lnm")
+LNM_API_V1B1 = EdgeResourceApi(group="layerednetworkmgmt.iotoperations.azure.com", version="v1beta1", moniker="lnm")

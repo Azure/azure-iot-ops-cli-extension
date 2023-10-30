@@ -115,6 +115,8 @@ def evaluate_lnms(
         value={"lnms": len(all_lnms)}
     )
 
+    lnm_names = []
+
     for (namespace, lnms) in resources_grouped_by_namespace(all_lnms):
         check_manager.add_target(target_name=target_lnms, namespace=namespace, conditions=lnm_namespace_conditions)
         check_manager.add_display(
@@ -140,8 +142,6 @@ def evaluate_lnms(
             namespace=namespace,
             display=Padding(lnms_count_text, (0, 0, 0, 8))
         )
-
-        lnm_names = []
 
         for lnm in lnms:
             lnm_name = lnm["metadata"]["name"]
@@ -256,32 +256,32 @@ def evaluate_lnms(
                     padding=(0, 0, 0, 18)
                 )
 
-        if lnms_count > 0:
-            check_manager.add_display(
-                target_name=target_lnms,
-                display=Padding(
-                    "\nRuntime Health for all namespaces",
-                    (0, 0, 0, 8),
-                ),
-            )
-
-        from ..support.lnm import LNM_APP_LABELS
-
-        # append all lnm_names in lnm_app_lables
-        lnm_app_lables = []
-        lnm_app_lables = lnm_app_lables + LNM_APP_LABELS
-        for lnm_name in lnm_names:
-            lnm_app_lables.append(f"aio-lnm-{lnm_name}")
-
-        lnm_label = f"app in ({','.join(lnm_app_lables)})"
-        _evaluate_lnm_pod_health(
-            check_manager=check_manager,
-            target=target_lnms,
-            pod=AIO_LNM_PREFIX,
-            display_padding=12,
-            service_label=lnm_label,
-            detail_level=detail_level,
+    if lnms_count > 0:
+        check_manager.add_display(
+            target_name=target_lnms,
+            display=Padding(
+                "\nRuntime Health for all namespaces",
+                (0, 0, 0, 8),
+            ),
         )
+
+    from ..support.lnm import LNM_APP_LABELS
+
+    # append all lnm_names in lnm_app_lables
+    lnm_app_lables = []
+    lnm_app_lables = lnm_app_lables + LNM_APP_LABELS
+    for lnm_name in lnm_names:
+        lnm_app_lables.append(f"aio-lnm-{lnm_name}")
+
+    lnm_label = f"app in ({','.join(lnm_app_lables)})"
+    _evaluate_lnm_pod_health(
+        check_manager=check_manager,
+        target=target_lnms,
+        pod=AIO_LNM_PREFIX,
+        display_padding=12,
+        service_label=lnm_label,
+        detail_level=detail_level,
+    )
 
     return check_manager.as_dict(as_list)
 
