@@ -20,12 +20,15 @@ from .base import (
 LNM_APP_LABELS = [
     'aio-lnm-operator'
 ]
-LNM_SVC_NAME = "svccontroller.k3s.cattle.io/svcname"
-LNM_DEPLOYMENT_PREFIX = "aio-lnm-"
+LNM_LABEL_TYPES = {
+    'app': 'app',
+    'svcname': "svccontroller.k3s.cattle.io/svcname"
+}
+LNM_LABEL_PREFIX = "aio-lnm"
 
 
 def fetch_replicasets():
-    lnm_labels = _generate_lnm_labels()
+    lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_LABEL_TYPES["app"])
 
     return process_replicasets(
         resource_api=LNM_API_V1B1,
@@ -34,7 +37,7 @@ def fetch_replicasets():
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
-    lnm_labels = _generate_lnm_labels()
+    lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_LABEL_TYPES["app"])
 
     return process_v1_pods(
         resource_api=LNM_API_V1B1, label_selector=lnm_labels, since_seconds=since_seconds, capture_previous_logs=True
@@ -42,21 +45,22 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
 
 
 def fetch_services():
-    lnm_labels = _generate_lnm_labels()
+    lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_LABEL_TYPES["app"])
 
     return process_services(resource_api=LNM_API_V1B1, label_selector=lnm_labels)
 
 
 def fetch_lnm_deployments():
-    deployment_prefixes = [f"{LNM_DEPLOYMENT_PREFIX}{name}" for name in _fetch_lnm_instance_names()]
+    deployment_prefixes = [f"{LNM_LABEL_PREFIX}-{name}" for name in _fetch_lnm_instance_names()]
     deployment_prefixes.extend(LNM_APP_LABELS)
 
     return process_deployments(resource_api=LNM_API_V1B1, label_selector=None, prefix_names=deployment_prefixes)
 
 
 def fetch_daemonsets():
-    lnm_names = [f"aio-lnm-{name}" for name in _fetch_lnm_instance_names()]
-    lnm_labels = f"{LNM_SVC_NAME} in ({','.join(lnm_names)})"
+    # lnm_names = [f"aio-lnm-{name}" for name in _fetch_lnm_instance_names()]
+    # lnm_labels = f"{LNM_SVC_NAME} in ({','.join(lnm_names)})"
+    lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_LABEL_TYPES["svcname"])
 
     return process_daemonsets(resource_api=LNM_API_V1B1, label_selector=lnm_labels)
 
@@ -85,10 +89,10 @@ def _fetch_lnm_instance_names() -> List[str]:
     return [instance["metadata"]["name"] for instance in lnm_instances["items"]]
 
 
-def _generate_lnm_labels() -> str:
+def _generate_lnm_labels(prefix: str, label_type: str) -> str:
     lnm_names = _fetch_lnm_instance_names()
     # add "aio-lnm-" prefix to instance names
-    lnm_names = [f"aio-lnm-{name}" for name in lnm_names]
+    lnm_names = [f"{prefix}-{name}" for name in lnm_names]
     # add lnm_names to LNM_APP_LABELS
     lnm_labels = LNM_APP_LABELS + lnm_names
-    return f"app in ({','.join(lnm_labels)})"
+    return f"{label_type} in ({','.join(lnm_labels)})"

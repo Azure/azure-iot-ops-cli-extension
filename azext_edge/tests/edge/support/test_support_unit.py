@@ -43,7 +43,7 @@ from azext_edge.edge.providers.support.symphony import (
     SYMPHONY_INSTANCE_LABEL,
     GENERIC_CONTROLLER_LABEL,
 )
-from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS, LNM_SVC_NAME
+from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS, LNM_LABEL_TYPES
 
 from ...generators import generate_generic_id
 
@@ -269,8 +269,10 @@ def test_create_bundle(
             instance_names = []
             instance_names.append("mock_instance")
             labels = [f"aio-lnm-{name}" for name in instance_names]
-            lnm_app_label = f"app in ({','.join(LNM_APP_LABELS+labels)})"
-            svc_name_label = f"{LNM_SVC_NAME} in ({','.join(labels)})"
+            labels = LNM_APP_LABELS + labels
+            lnm_app_label = f"app in ({','.join(labels)})"
+            svc_name_type = LNM_LABEL_TYPES["svcname"]
+            svc_name_label = f"{svc_name_type} in ({','.join(labels)})"
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
