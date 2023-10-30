@@ -146,6 +146,7 @@ from ...generators import generate_generic_id
 def test_init_to_template_params(
     mocked_cmd: Mock,
     mocked_deploy: Mock,
+    mocked_config: Mock,
     cluster_name,
     cluster_namespace,
     resource_group_name,
