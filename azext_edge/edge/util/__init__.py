@@ -9,9 +9,10 @@ from .common import (
     build_query,
     generate_secret,
     get_timestamp_now_utc,
+    read_file_content,
     set_log_level,
+    url_safe_hash_phrase,
 )
-
 from .x509 import generate_self_signed_cert
 
 __all__ = [
@@ -21,4 +22,6 @@ __all__ = [
     "set_log_level",
     "generate_secret",
     "generate_self_signed_cert",
+    "read_file_content",
+    "url_safe_hash_phrase",
 ]

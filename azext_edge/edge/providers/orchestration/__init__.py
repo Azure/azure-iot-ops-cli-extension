@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from .base import deploy
+from .work import deploy
 
 __all__ = [
     "deploy",

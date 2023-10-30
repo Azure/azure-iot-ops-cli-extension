@@ -48,6 +48,8 @@ jobs:
           az iot ops mq stats
           az iot ops mq stats --raw
           az iot ops mq get-password-hash -p test
+          az iot ops init --cluster placeholder --resource-group rg --show-template
+          az iot ops init --cluster placeholder --resource-group rg --aio-version
       - name: Upload support bundle artifacts
         uses: actions/upload-artifact@v3.1.0
         if: always()

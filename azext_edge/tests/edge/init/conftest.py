@@ -3,11 +3,11 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
-"""This module defines constants for use across the CLI extension package"""
 
-import os
+import pytest
 
-VERSION = "0.0.5a1.dev1"
-EXTENSION_NAME = "azure-edge"
-EXTENSION_ROOT = os.path.dirname(os.path.abspath(__file__))
-USER_AGENT = "IotOperationsCliExtension/{}".format(VERSION)
+
+@pytest.fixture
+def mocked_deploy(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.deploy", autospec=True)
+    yield patched
