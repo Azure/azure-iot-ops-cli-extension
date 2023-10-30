@@ -43,7 +43,7 @@ from azext_edge.edge.providers.support.symphony import (
     SYMPHONY_INSTANCE_LABEL,
     GENERIC_CONTROLLER_LABEL,
 )
-from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS, LNM_LABEL_TYPES
+from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
 
 from ...generators import generate_generic_id
 
@@ -81,7 +81,6 @@ def test_create_bundle(
     mocked_list_services,
     mocked_list_nodes,
     mocked_get_stats,
-    mock_fetch_lnm_instance_names,
     mocked_root_logger,
 ):
     if not mocked_cluster_resources["param"] or all(
@@ -266,13 +265,7 @@ def test_create_bundle(
             # assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=SYMPHONY_API_V1)
 
         if api in [LNM_API_V1B1]:
-            instance_names = []
-            instance_names.append("mock_instance")
-            labels = [f"aio-lnm-{name}" for name in instance_names]
-            labels = LNM_APP_LABELS + labels
-            lnm_app_label = f"app in ({','.join(labels)})"
-            svc_name_type = LNM_LABEL_TYPES["svcname"]
-            svc_name_label = f"{svc_name_type} in ({','.join(labels)})"
+            lnm_app_label = f"app in ({','.join(LNM_APP_LABELS)})"
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
@@ -302,7 +295,7 @@ def test_create_bundle(
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=svc_name_label,
+                label_selector=None,
                 resource_api=LNM_API_V1B1
             )
 
@@ -415,10 +408,15 @@ def assert_list_services(mocked_client, mocked_zipfile, label_selector: str, res
 def assert_list_daemon_sets(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
     mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
+    # @jiacju - currently no unique label for lnm
+    mock_name = "mock_daemonset"
+    if resource_api in [LNM_API_V1B1]:
+        mock_name = "svclb-lnm-operator"
+
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/daemonset.mock_daemonset.yaml",
-        data="kind: Daemonset\nmetadata:\n  name: mock_daemonset\n  namespace: mock_namespace\n",
+        zinfo=f"mock_namespace/{resource_api.moniker}/daemonset.{mock_name}.yaml",
+        data=f"kind: Daemonset\nmetadata:\n  name: {mock_name}\n  namespace: mock_namespace\n",
     )
 
 

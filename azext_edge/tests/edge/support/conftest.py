@@ -262,7 +262,12 @@ def mocked_list_daemonsets(mocked_client):
     from kubernetes.client.models import V1DaemonSetList, V1DaemonSet, V1ObjectMeta
 
     def _handle_list_daemonsets(*args, **kwargs):
-        daemonset = V1DaemonSet(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_daemonset"))
+        # @jiacju - currently no unique label for lnm
+        name = "mock_daemonset"
+        if "label_selector" in kwargs and kwargs["label_selector"] is None:
+            name = "svclb-lnm-operator"
+
+        daemonset = V1DaemonSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name))
         daemonset_list = V1DaemonSetList(items=[daemonset])
 
         return daemonset_list
@@ -270,12 +275,3 @@ def mocked_list_daemonsets(mocked_client):
     mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.side_effect = _handle_list_daemonsets
 
     yield mocked_client
-
-
-@pytest.fixture
-def mock_fetch_lnm_instance_names(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.support.lnm._fetch_lnm_instance_names",
-        return_value=['mock_instance']
-    )
-    yield patched
