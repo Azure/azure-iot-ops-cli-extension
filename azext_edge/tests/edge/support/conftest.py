@@ -54,6 +54,7 @@ def mocked_cluster_resources(request, mocker):
         OPCUA_API_V1,
         BLUEFIN_API_V1,
         SYMPHONY_API_V1,
+        LNM_API_V1B1,
         DEVICEREGISTRY_API_V1
     )
 
@@ -104,7 +105,9 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Solution"))
             v1_resources.append(_get_api_resource("Target"))
-
+        if r == LNM_API_V1B1:
+            v1_resources.append(_get_api_resource("Lnm"))
+            v1_resources.append(_get_api_resource("Scale"))
         if r == DEVICEREGISTRY_API_V1:
             v1_resources.append(_get_api_resource("Asset"))
             v1_resources.append(_get_api_resource("AssetEndpointProfile"))
@@ -176,7 +179,10 @@ def mocked_list_deployments(mocked_client):
     from kubernetes.client.models import V1DeploymentList, V1Deployment, V1ObjectMeta
 
     def _handle_list_deployments(*args, **kwargs):
-        deployment = V1Deployment(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_deployment"))
+        name = "mock_deployment"
+        if "label_selector" in kwargs and kwargs["label_selector"] is None:
+            name = "aio-lnm-operator"
+        deployment = V1Deployment(metadata=V1ObjectMeta(namespace="mock_namespace", name=name))
         deployment_list = V1DeploymentList(items=[deployment])
 
         return deployment_list
@@ -247,5 +253,25 @@ def mocked_list_nodes(mocked_client):
         return node_list
 
     mocked_client.CoreV1Api().list_node.side_effect = _handle_list_nodes
+
+    yield mocked_client
+
+
+@pytest.fixture
+def mocked_list_daemonsets(mocked_client):
+    from kubernetes.client.models import V1DaemonSetList, V1DaemonSet, V1ObjectMeta
+
+    def _handle_list_daemonsets(*args, **kwargs):
+        # @jiacju - currently no unique label for lnm
+        name = "mock_daemonset"
+        if "label_selector" in kwargs and kwargs["label_selector"] is None:
+            name = "svclb-lnm-operator"
+
+        daemonset = V1DaemonSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name))
+        daemonset_list = V1DaemonSetList(items=[daemonset])
+
+        return daemonset_list
+
+    mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.side_effect = _handle_list_daemonsets
 
     yield mocked_client

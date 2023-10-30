@@ -90,6 +90,7 @@ class SupportForEdgeServiceType(ListableEnum):
 
     auto = "auto"
     e4k = "e4k"
+    lnm = "lnm"
     opcua = "opcua"
     bluefin = "bluefin"
     symphony = "symphony"

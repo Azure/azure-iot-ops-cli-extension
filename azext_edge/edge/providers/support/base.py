@@ -288,6 +288,45 @@ def process_replicasets(
     return processed
 
 
+def process_daemonsets(
+    resource_api: EdgeResourceApi,
+    label_selector: str = None,
+    prefix_names: List[str] = None,
+):
+    from kubernetes.client.models import V1DaemonSet, V1DaemonSetList
+
+    v1_apps = client.AppsV1Api()
+
+    processed = []
+    if not prefix_names:
+        prefix_names = []
+
+    daemonsets: V1DaemonSetList = v1_apps.list_daemon_set_for_all_namespaces(label_selector=label_selector)
+    logger.info(f"Detected {len(daemonsets.items)} daemonsets.")
+
+    for daemonset in daemonsets.items:
+        d: V1DaemonSet = daemonset
+        d.api_version = daemonsets.api_version
+        d.kind = "Daemonset"
+        daemonset_metadata: V1ObjectMeta = d.metadata
+        daemonset_namespace: str = daemonset_metadata.namespace
+        daemonset_name: str = daemonset_metadata.name
+
+        if prefix_names:
+            matched_prefix = [daemonset_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
+
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=d),
+                "zinfo": f"{daemonset_namespace}/{resource_api.moniker}/daemonset.{daemonset_name}.yaml",
+            }
+        )
+
+    return processed
+
+
 def process_nodes():
     return {
         "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_node()),
