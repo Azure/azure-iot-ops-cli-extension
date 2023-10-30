@@ -53,7 +53,7 @@ CLASSIFIERS = [
     "Programming Language :: Python :: 3.10",
 ]
 
-short_description = "The Azure Iot Operations extension for Azure CLI."
+short_description = "The Azure IoT Operations extension for Azure CLI."
 
 setup(
     name=PACKAGE_NAME,
