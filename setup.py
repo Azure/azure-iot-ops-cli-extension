@@ -53,14 +53,14 @@ CLASSIFIERS = [
     "Programming Language :: Python :: 3.10",
 ]
 
-short_description = "The Azure Edge extension for Azure CLI."
+short_description = "The Azure Iot Operations extension for Azure CLI."
 
 setup(
     name=PACKAGE_NAME,
     version=VERSION,
     python_requires=">=3.8",
     description=short_description,
-    long_description="{} Intended for power users and/or automation of Azure Edge solutions at scale.".format(
+    long_description="{} Intended for power users and/or automation of Azure IoT Operations solutions at scale.".format(
         short_description
     ),
     license="MIT",

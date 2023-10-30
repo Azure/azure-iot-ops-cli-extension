@@ -15,6 +15,7 @@ jobs:
   linter:
     needs: [build]
     uses: ./.github/workflows/azdev_linter.yml
-  smoke_test:
-    needs: [build]
-    uses: ./.github/workflows/smoke_test.yml
+  # smoke tests are temporarily disabled until a suitable deployment replacement is built
+  # smoke_test:
+  #   needs: [build]
+  #   uses: ./.github/workflows/smoke_test.yml
