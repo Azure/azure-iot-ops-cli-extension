@@ -108,8 +108,6 @@ def init(
     no_tls: Optional[bool] = None,
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
-    from azure.cli.core.commands.client_factory import get_subscription_id
-
     from .providers.orchestration import deploy
     from .util import url_safe_hash_phrase
     from .util.sp import LoggedInPrincipal
@@ -120,7 +118,7 @@ def init(
 
     load_config_context(context_name=context_name)
 
-    if keyvault_resource_id:
+    if keyvault_resource_id and not any([show_aio_version, show_template]):
         logged_in_principal = LoggedInPrincipal(cmd=cmd)
         if logged_in_principal.is_app():
             app_principal = logged_in_principal.fetch_self_if_app()
@@ -140,11 +138,11 @@ def init(
     if not mq_instance_name:
         mq_instance_name = f"init-{hashed_cluster_slug}-mq-instance"
     if not mq_listener_name:
-        mq_listener_name = f"init-{hashed_cluster_slug}-listener"
+        mq_listener_name = "listener"
     if not mq_broker_name:
-        mq_broker_name = f"init-{hashed_cluster_slug}-broker"
+        mq_broker_name = "broker"
     if not mq_authn_name:
-        mq_authn_name = f"init-{hashed_cluster_slug}-authn"
+        mq_authn_name = "authn"
 
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-aio-init-cl"
@@ -175,7 +173,6 @@ def init(
 
     return deploy(
         cmd=cmd,
-        subscription_id=get_subscription_id(cmd.cli_ctx),
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
         custom_location_name=custom_location_name,

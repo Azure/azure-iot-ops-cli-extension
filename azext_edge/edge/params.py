@@ -311,19 +311,19 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "mq_listener_name",
             options_list=["--mq-listener"],
-            help="The mq listener name. The default is in the form 'init-{hash}-listener'.",
+            help="The mq listener name. The default is 'listener'.",
             arg_group="MQ",
         )
         context.argument(
             "mq_broker_name",
             options_list=["--mq-broker"],
-            help="The mq broker name. The default is in the form 'init-{hash}-broker'.",
+            help="The mq broker name. The default is 'broker'.",
             arg_group="MQ",
         )
         context.argument(
             "mq_authn_name",
             options_list=["--mq-authn"],
-            help="The mq authN name. The default is in the form 'init-{hash}-authn'.",
+            help="The mq authN name. The default is 'authn'.",
             arg_group="MQ",
         )
         # MQ cardinality
@@ -344,7 +344,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "mq_backend_redundancy_factor",
             type=int,
-            options_list=["--mq-backend-red"],
+            options_list=["--mq-backend-rf"],
             help="MQ backend redundancy factor.",
             arg_group="MQ Cardinality",
         )

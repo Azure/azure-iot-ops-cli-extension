@@ -41,7 +41,7 @@ def load_config_context(context_name: Optional[str] = None):
     config.load_kube_config(context=context_name)
     _, current_config = config.list_kube_config_contexts()
     global DEFAULT_NAMESPACE
-    DEFAULT_NAMESPACE = current_config.get("namespace") or "default"
+    DEFAULT_NAMESPACE = current_config.get("namespace") or "azure-iot-operations"
 
 
 _namespaced_service_cache: dict = {}

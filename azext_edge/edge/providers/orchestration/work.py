@@ -74,6 +74,8 @@ class WorkDisplay:
 
 class WorkManager:
     def __init__(self, **kwargs):
+        from azure.cli.core.commands.client_factory import get_subscription_id
+
         self.display = WorkDisplay()
         self._progress_bar = Progress(
             SpinnerColumn(),
@@ -88,6 +90,7 @@ class WorkManager:
         self._no_block: bool = kwargs.get("no_block", False)
         self._no_deploy: bool = kwargs.get("no_deploy", False)
         self._no_tls: bool = kwargs.get("no_tls", False)
+        self._cmd = kwargs.get("cmd")
         self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
         if self._keyvault_resource_id:
             self._keyvault_name = self._keyvault_resource_id.split("/")[-1]
@@ -101,10 +104,9 @@ class WorkManager:
         self._render_progress = not self._no_progress
         self._live = Live(None, transient=False, refresh_per_second=8, auto_refresh=self._render_progress)
         self._completed_steps: Dict[int, int] = {}
-        self._subscription_id = kwargs.get("subscription_id")
+        self._subscription_id = get_subscription_id(self._cmd.cli_ctx)
         self._cluster_secret_ref = CLUSTER_SECRET_REF
         self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
-        self._cmd = kwargs.get("cmd")
         self._kwargs = kwargs
 
         self._build_display()
@@ -389,7 +391,7 @@ class WorkManager:
             ("location", "location"),
             ("location", "clusterLocation"),  # TODO
             ("custom_location_name", "customLocationName"),
-            ("simulate_plc", "simulatePlc"),
+            ("simulate_plc", "simulatePLC"),
             ("opcua_discovery_endpoint", "opcuaDiscoveryEndpoint"),
             ("target_name", "targetName"),
             ("dp_instance_name", "dataProcessorInstanceName"),
@@ -409,6 +411,17 @@ class WorkManager:
             if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
 
+        parameters["dataProcessorCardinality"] = {
+            "value": template.parameters["dataProcessorCardinality"]["defaultValue"]
+        }
+        for template_pair in [
+            ("dp_reader_workers", "readerWorker"),
+            ("dp_runner_workers", "runnerWorker"),
+            ("dp_message_stores", "messageStore"),
+        ]:
+            if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
+                parameters["dataProcessorCardinality"]["value"][template_pair[1]] = self._kwargs[template_pair[0]]
+
         parameters["dataProcessorSecrets"] = {
             "value": {
                 "enabled": True,
@@ -427,6 +440,7 @@ class WorkManager:
             "value": {"kind": "csi", "csiServicePrincipalSecretRef": self._cluster_secret_ref}
         }
 
+        # Covers cluster_namespace
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
 
         tls_map = work_kpis.get("tls", {})
@@ -444,7 +458,10 @@ def deploy(
     show_aio_version = kwargs.get("show_aio_version", False)
     if show_aio_version:
         console = Console()
-        table = Table(title=f"Azure IoT Operations v{CURRENT_TEMPLATE.content_vers}")
+        table = Table(
+            title=f"Azure IoT Operations v{CURRENT_TEMPLATE.content_vers}",
+            caption=f"Commit hash {CURRENT_TEMPLATE.commit_id}",
+        )
         table.add_column("Component", justify="left", style="cyan")
         table.add_column("Version", justify="left", style="magenta")
         for moniker in CURRENT_TEMPLATE.component_vers:

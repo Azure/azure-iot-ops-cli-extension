@@ -25,7 +25,7 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="b2f46df41de09b87330e76305ecbaeac6eb021e7",
+    commit_id="27fc413f17fb2e38f328d7b5d642fec0ec5c7aad",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
@@ -131,7 +131,7 @@ V1_TEMPLATE = TemplateVer(
                 "mq": "0.1.0-preview-rc3",
                 "aio": "0.45.1-buddy-20231018.2",
                 "layeredNetworking": "0.1.0-alpha.4",
-                "processor": "0.1.0-preview.13",
+                "processor": "0.1.0-preview.14",
             },
             "TRAINS": {
                 "mq": "dev",
