@@ -90,9 +90,11 @@ class SupportForEdgeServiceType(ListableEnum):
 
     auto = "auto"
     mq = "mq"
+    lnm = "lnm"
     opcua = "opcua"
     bluefin = "bluefin"
     symphony = "symphony"
+    deviceregistry = "deviceregistry"
 
 
 class DeployablePasVersions(ListableEnum):
@@ -107,10 +109,20 @@ class ResourceTypeMapping(Enum):
     """
     Resource type mappings for graph queries.
     """
+
     asset = "Microsoft.DeviceRegistry/assets"
     custom_location = "Microsoft.ExtendedLocation/customLocations"
     connected_cluster = "Microsoft.Kubernetes/connectedClusters"
     cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
+
+
+class K8sSecretType(Enum):
+    """
+    Supported k8s secret types.
+    """
+
+    opaque = "Opaque"
+    tls = "kubernetes.io/tls"
 
 
 # MQ runtime attributes

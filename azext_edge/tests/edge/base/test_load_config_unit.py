@@ -19,4 +19,4 @@ def test_load_config_context(mocked_config: dict):
     if mocked_config["param"]:
         assert DEFAULT_NAMESPACE == context_name
     else:
-        assert DEFAULT_NAMESPACE == "default"
+        assert DEFAULT_NAMESPACE == "azure-iot-operations"

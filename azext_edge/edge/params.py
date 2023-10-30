@@ -15,6 +15,8 @@ from .common import SupportForEdgeServiceType
 from .providers.edge_api import MqResourceKinds
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.bluefin import BluefinResourceKinds
+from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
+
 from ._validators import validate_namespace
 
 
@@ -36,7 +38,7 @@ def load_iotedge_arguments(self, _):
             options_list=["--namespace", "-n"],
             help="K8s cluster namespace the command should operate against. "
             "If no namespace is provided the kubeconfig current_context namespace will be used. "
-            "If not defined, the fallback value `default` will be used. ",
+            "If not defined, the fallback value `azure-iot-operations` will be used. ",
             validator=validate_namespace,
         )
 
@@ -193,11 +195,15 @@ def load_iotedge_arguments(self, _):
             help="Target cluster name for AIO deployment.",
         )
         context.argument(
+            "cluster_namespace",
+            options_list=["--cluster-namespace"],
+            help="The cluster namespace AIO infrastructure will be deployed to. Must be lowercase.",
+        )
+        context.argument(
             "custom_location_name",
             options_list=["--custom-location"],
-            help="The custom location name corresponding to AIO solution deployment. "
-            "If no custom location name is provided one will be generated in the form "
-            "'{cluster_name}-aziotops-init-cl'.",
+            help="The custom location name corresponding to AIO deployment. The default is in the form "
+            "'{cluster_name}-aio-init-cl'.",
         )
         context.argument(
             "custom_location_namespace",
@@ -207,29 +213,16 @@ def load_iotedge_arguments(self, _):
             deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
-            "cluster_namespace",
-            options_list=["--cluster-namespace"],
-            help="The cluster namespace AIO infrastructure will be deployed to. Must be lowercase.",
-        )
-        context.argument(
             "location",
             options_list=["--location"],
             help="The ARM location that will be used for provisioned ARM collateral. "
             "If not provided the resource group location will be used.",
         )
         context.argument(
-            "what_if",
-            options_list=["--what-if"],
-            arg_type=get_three_state_flag(),
-            help="Flag when set, will show changes that will be made by the deployment "
-            "if executed at the scope of the resource group.",
-            arg_group="Template",
-        )
-        context.argument(
             "show_template",
             options_list=["--show-template"],
             arg_type=get_three_state_flag(),
-            help="Flag when set, will output the generated template intended for deployment.",
+            help="Flag when set, will output the base template intended for AIO deployment.",
             arg_group="Template",
         )
         context.argument(
@@ -257,6 +250,12 @@ def load_iotedge_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="The deployment of AIO in the init workflow will be skipped.",
         )
+        context.argument(
+            "no_tls",
+            options_list=["--no-tls"],
+            arg_type=get_three_state_flag(),
+            help="The configuration of TLS in the init workflow will be skipped.",
+        )
         # Akri
         context.argument(
             "opcua_discovery_endpoint",
@@ -276,20 +275,119 @@ def load_iotedge_arguments(self, _):
         )
         # Bluefin
         context.argument(
-            "processor_instance_name",
-            options_list=["--processor-instance"],
-            help="Instance name for data processor. Used if data processor is part of the deployment. "
-            "If no processor instance name is provided one will be generated in the form "
-            "'{cluster_name}-aziotops-init-proc'.",
+            "dp_instance_name",
+            options_list=["--dp-instance"],
+            help="Instance name for data processor. The default is in the form '{cluster_name}-aio-init-processor'.",
             arg_group="Data Processor",
+        )
+        context.argument(
+            "dp_reader_workers",
+            type=int,
+            options_list=["--dp-reader-workers"],
+            help="Number of reader worker replicas",
+            arg_group="Data Processor",
+        )
+        context.argument(
+            "dp_runner_workers",
+            type=int,
+            options_list=["--dp-runner-workers"],
+            help="Number of runner worker replicas",
+            arg_group="Data Processor",
+        )
+        context.argument(
+            "dp_message_stores",
+            type=int,
+            options_list=["--dp-message-stores"],
+            help="Number of message store replicas",
+            arg_group="Data Processor",
+        )
+        # MQ
+        context.argument(
+            "mq_instance_name",
+            options_list=["--mq-instance"],
+            help="The mq instance name. The default is in the form 'init-{hash}-mq-instance'.",
+            arg_group="MQ",
+        )
+        context.argument(
+            "mq_listener_name",
+            options_list=["--mq-listener"],
+            help="The mq listener name. The default is 'listener'.",
+            arg_group="MQ",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--mq-broker"],
+            help="The mq broker name. The default is 'broker'.",
+            arg_group="MQ",
+        )
+        context.argument(
+            "mq_authn_name",
+            options_list=["--mq-authn"],
+            help="The mq authN name. The default is 'authn'.",
+            arg_group="MQ",
+        )
+        # MQ cardinality
+        context.argument(
+            "mq_frontend_replicas",
+            type=int,
+            options_list=["--mq-frontend-replicas"],
+            help="MQ frontend replicas.",
+            arg_group="MQ Cardinality",
+        )
+        context.argument(
+            "mq_frontend_workers",
+            type=int,
+            options_list=["--mq-frontend-workers"],
+            help="MQ frontend workers.",
+            arg_group="MQ Cardinality",
+        )
+        context.argument(
+            "mq_backend_redundancy_factor",
+            type=int,
+            options_list=["--mq-backend-rf"],
+            help="MQ backend redundancy factor.",
+            arg_group="MQ Cardinality",
+        )
+        context.argument(
+            "mq_backend_workers",
+            type=int,
+            options_list=["--mq-backend-workers"],
+            help="MQ backend workers.",
+            arg_group="MQ Cardinality",
+        )
+        context.argument(
+            "mq_backend_partitions",
+            type=int,
+            options_list=["--mq-backend-part"],
+            help="MQ backend partitions.",
+            arg_group="MQ Cardinality",
+        )
+        context.argument(
+            "mq_mode",
+            arg_type=get_enum_type(MqMode),
+            options_list=["--mq-mode"],
+            help="MQ mode of operation.",
+            arg_group="MQ",
+        )
+        context.argument(
+            "mq_memory_profile",
+            arg_type=get_enum_type(MqMemoryProfile),
+            options_list=["--mq-mem-profile"],
+            help="MQ memory profile.",
+            arg_group="MQ",
+        )
+        context.argument(
+            "mq_service_type",
+            arg_type=get_enum_type(MqServiceType),
+            options_list=["--mq-service-type"],
+            help="MQ service type.",
+            arg_group="MQ",
         )
         # Symphony
         context.argument(
             "target_name",
             options_list=["--target"],
-            help="Target name for edge orchestrator. "
-            "If no target name is provided one will be generated in the form "
-            "'{cluster_name}-aziotops-init-target'.",
+            help="Target name for edge orchestrator. The default is in the form '{cluster_name}-aio-init-target'.",
             arg_group="Orchestration",
         )
         # AKV CSI Driver
@@ -356,14 +454,15 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "tls_ca_key_path",
             options_list=["--ca-key-file"],
-            help="The path to the CA private key file in PEM format.",
+            help="The path to the CA private key file in PEM format. !Required! when --ca-file is provided.",
             arg_group="TLS",
         )
         context.argument(
-            "tls_insecure",
-            options_list=["--no-tls"],
-            arg_type=get_three_state_flag(),
-            help="Flag indicating no tls configuration will be made.",
+            "tls_ca_dir",
+            options_list=["--ca-dir"],
+            help="The local directory the generated test CA and private key will be placed in. "
+            "If no directory is provided the current directory is used. Applicable when no "
+            "--ca-file and --ca-key-file are provided.",
             arg_group="TLS",
         )
 
