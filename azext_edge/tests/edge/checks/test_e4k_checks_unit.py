@@ -74,7 +74,7 @@ def test_check_mq_by_resource_types(edge_service, mocker, mock_resource_types, r
                 spec={
                     "diagnostics": {},  # required
                     "cardinality": {
-                        "backendChain": {"partitions": 1, "replicas": 2, "workers": 1},
+                        "backendChain": {"partitions": 1, "redundancyFactor": 2, "workers": 1},
                         "frontend": {"replicas": 1},
                     },
                     "mode": "distributed",
@@ -88,7 +88,7 @@ def test_check_mq_by_resource_types(edge_service, mocker, mock_resource_types, r
                 "spec.mode",
                 "spec.cardinality",
                 "spec.cardinality.backendChain.partitions>=1",
-                "spec.cardinality.backendChain.replicas>=1",
+                "spec.cardinality.backendChain.redundancyFactor>=1",
                 "spec.cardinality.frontend.replicas>=1",
             ],
             # evaluations
@@ -101,7 +101,7 @@ def test_check_mq_by_resource_types(edge_service, mocker, mock_resource_types, r
                     ("name", "mock_name"),
                     ("value/status/status", "Running"),
                     ("value/spec.cardinality/backendChain/partitions", 1),
-                    ("value/spec.cardinality/backendChain/replicas", 2),
+                    ("value/spec.cardinality/backendChain/redundancyFactor", 2),
                     ("value/spec.cardinality/backendChain/workers", 1),
                     ("value/spec.cardinality/frontend/replicas", 1),
                 ],
