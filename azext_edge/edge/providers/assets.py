@@ -26,15 +26,11 @@ API_VERSION = "2023-11-01-preview"
 class AssetProvider():
     def __init__(self, cmd):
         from azure.cli.core.commands.client_factory import get_subscription_id
-        from azure.identity import DefaultAzureCredential
-        from azure.mgmt.resource import ResourceManagementClient
+        from ..util.az_client import get_resource_client
 
         self.cmd = cmd
         self.subscription = get_subscription_id(cmd.cli_ctx)
-        self.resource_client = ResourceManagementClient(
-            credential=DefaultAzureCredential(),
-            subscription_id=self.subscription
-        )
+        self.resource_client = get_resource_client(subscription_id=self.subscription)
         self.resource_type = ResourceTypeMapping.asset.value
 
     def create(
