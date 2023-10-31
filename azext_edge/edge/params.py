@@ -14,7 +14,7 @@ from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_ty
 from .common import SupportForEdgeServiceType
 from .providers.edge_api import E4kResourceKinds
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.edge_api.bluefin import BluefinResourceKinds
+from .providers.edge_api.dataprocessor import DataProcessorResourceKinds
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 
 from ._validators import validate_namespace
@@ -102,9 +102,9 @@ def load_iotedge_arguments(self, _):
                     E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
                     E4kResourceKinds.DATALAKE_CONNECTOR.value,
                     E4kResourceKinds.KAFKA_CONNECTOR.value,
-                    BluefinResourceKinds.DATASET.value,
-                    BluefinResourceKinds.PIPELINE.value,
-                    BluefinResourceKinds.INSTANCE.value,
+                    DataProcessorResourceKinds.DATASET.value,
+                    DataProcessorResourceKinds.PIPELINE.value,
+                    DataProcessorResourceKinds.INSTANCE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",

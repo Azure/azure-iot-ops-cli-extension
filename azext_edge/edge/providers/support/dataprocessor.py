@@ -34,6 +34,7 @@ DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
 DATA_PROCESSOR_RELEASE_LABEL = "release in (processor)"
 DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
 DATA_PROCESSOR_PART_OF_LABEL = "app.kubernetes.io/part-of in (aio-dp-operator)"
+DATA_PROCESSOR_NAME_LABEL = "app.kubernetes.io/name in (dataprocessor)"
 DATA_PROCESSOR_ONEOFF_LABEL = "control-plane in (controller-manager)"
 
 
@@ -76,7 +77,9 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
 
 def fetch_deployments():
     processed = process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
-    processed.extend(process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_PART_OF_LABEL))
+    processed.extend(
+        process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_PART_OF_LABEL)
+    )
 
     return processed
 
@@ -86,8 +89,12 @@ def fetch_statefulsets():
         resource_api=DATA_PROCESSOR_API_V1,
         label_selector=DATA_PROCESSOR_LABEL,
     )
-    processed.extend(process_statefulset(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_RELEASE_LABEL))
-    processed.extend(process_statefulset(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_INSTANCE_LABEL))
+    processed.extend(
+        process_statefulset(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_RELEASE_LABEL)
+    )
+    processed.extend(
+        process_statefulset(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_INSTANCE_LABEL)
+    )
     return processed
 
 
@@ -103,7 +110,13 @@ def fetch_replicasets():
 
 
 def fetch_services():
-    return process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=None, prefix_names=["aio-dp-"])
+    processed = []
+    processed.extend(process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
+    processed.extend(
+        process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL)
+    )
+
+    return processed
 
 
 support_runtime_elements = {

@@ -41,7 +41,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from rich.progress import Progress
     from rich.table import Table
 
-    from .support.bluefin import prepare_bundle as prepare_dataprocessor_bundle
+    from .support.dataprocessor import prepare_bundle as prepare_dataprocessor_bundle
     from .support.e4k import prepare_bundle as prepare_e4k_bundle
     from .support.lnm import prepare_bundle as prepare_lnm_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle

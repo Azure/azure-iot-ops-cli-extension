@@ -227,12 +227,7 @@ def mocked_list_services(mocked_client):
     from kubernetes.client.models import V1ServiceList, V1Service, V1ObjectMeta
 
     def _handle_list_services(*args, **kwargs):
-        # @digimaun - currently dataprocessor missing labels on services.
-        # Workaround is to iterate through each service and look for a name prefix.
-        name = "mock_service"
-        if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            name = "dataprocessor-service"
-        service = V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name=name))
+        service = V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_service"))
         service_list = V1ServiceList(items=[service])
 
         return service_list

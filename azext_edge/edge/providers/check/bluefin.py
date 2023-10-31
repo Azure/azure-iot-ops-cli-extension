@@ -35,8 +35,8 @@ from .common import (
 )
 
 from ...providers.edge_api import (
-    BLUEFIN_API_V1,
-    BluefinResourceKinds,
+    DATA_PROCESSOR_API_V1,
+    DataProcessorResourceKinds,
 )
 
 
@@ -77,17 +77,17 @@ def check_bluefin_post_deployment(
     resource_kinds: List[str] = None
 ) -> None:
     evaluate_funcs = {
-        BluefinResourceKinds.INSTANCE: evaluate_instances,
-        BluefinResourceKinds.PIPELINE: evaluate_pipelines,
-        BluefinResourceKinds.DATASET: evaluate_datasets,
+        DataProcessorResourceKinds.INSTANCE: evaluate_instances,
+        DataProcessorResourceKinds.PIPELINE: evaluate_pipelines,
+        DataProcessorResourceKinds.DATASET: evaluate_datasets,
     }
 
     return check_post_deployment(
-        api_info=BLUEFIN_API_V1,
+        api_info=DATA_PROCESSOR_API_V1,
         check_name="enumerateBluefinApi",
         check_desc="Enumerate Bluefin API resources",
         result=result,
-        resource_kinds_enum=BluefinResourceKinds,
+        resource_kinds_enum=DataProcessorResourceKinds,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
@@ -106,9 +106,9 @@ def evaluate_instances(
     instance_conditions = ["len(instances)==1", "provisioningState"]
     check_manager.add_target(target_name=target_instances, conditions=instance_conditions)
 
-    instance_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.INSTANCE, namespace=namespace)
+    instance_list: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE, namespace=namespace)
     if not instance_list:
-        fetch_instances_error_text = f"Unable to fetch namespace {BluefinResourceKinds.INSTANCE.value}s."
+        fetch_instances_error_text = f"Unable to fetch namespace {DataProcessorResourceKinds.INSTANCE.value}s."
         check_manager.add_target_eval(
             target_name=target_instances, status=CheckTaskStatus.error.value, value=fetch_instances_error_text
         )
@@ -166,7 +166,7 @@ def evaluate_instances(
             ),
         )
 
-        from ..support.bluefin import BLUEFIN_LABEL
+        from ..support.dataprocessor import DATA_PROCESSOR_LABEL
 
         for pod in [
             BLUEFIN_READER_WORKER_PREFIX,
@@ -181,7 +181,7 @@ def evaluate_instances(
                 namespace=namespace,
                 pod=pod,
                 display_padding=12,
-                service_label=BLUEFIN_LABEL
+                service_label=DATA_PROCESSOR_LABEL
             )
 
     return check_manager.as_dict(as_list)
@@ -204,9 +204,9 @@ def evaluate_pipelines(
                            "destinationNodeCount==1"]
     check_manager.add_target(target_name=target_pipelines, conditions=pipeline_conditions)
 
-    pipeline_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.PIPELINE, namespace=namespace)
+    pipeline_list: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.PIPELINE, namespace=namespace)
     if not pipeline_list:
-        fetch_pipelines_error_text = f"Unable to fetch namespace {BluefinResourceKinds.PIPELINE.value}s."
+        fetch_pipelines_error_text = f"Unable to fetch namespace {DataProcessorResourceKinds.PIPELINE.value}s."
         add_display_and_eval(check_manager, target_pipelines, fetch_pipelines_error_text, CheckTaskStatus.error.value, fetch_pipelines_error_text)
         return check_manager.as_dict(as_list)
 
@@ -313,7 +313,7 @@ def evaluate_datasets(
     dataset_conditions = ["provisioningState"]
     check_manager.add_target(target_name=target_datasets, conditions=dataset_conditions)
 
-    dataset_list: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.DATASET, namespace=namespace)
+    dataset_list: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.DATASET, namespace=namespace)
     datasets: List[dict] = dataset_list.get("items", [])
     datasets_count = len(datasets)
 

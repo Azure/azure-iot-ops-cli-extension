@@ -12,7 +12,7 @@ from azext_edge.edge.providers.check.bluefin import (
     evaluate_instances,
     evaluate_pipelines,
 )
-from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
+from azext_edge.edge.providers.edge_api.dataprocessor import BluefinResourceKinds
 from .conftest import assert_check_by_resource_types, assert_conditions, assert_evaluations
 from ...generators import generate_generic_id
 

@@ -6,7 +6,7 @@
 
 from .base import EdgeResourceApi, EdgeApiManager
 from .e4k import E4K_ACTIVE_API, E4K_API_V1A2, E4K_API_V1A3, E4K_API_V1A4, E4kResourceKinds
-from .bluefin import DATA_PROCESSOR_API_V1, DataProcessorResourceKinds
+from .dataprocessor import DATA_PROCESSOR_API_V1, DataProcessorResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
 from .symphony import SYMPHONY_API_V1, SymphonyResourceKinds
 from .lnm import LNM_API_V1B1, LnmResourceKinds

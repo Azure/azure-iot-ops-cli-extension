@@ -25,9 +25,10 @@ from azext_edge.edge.providers.edge_api import (
 )
 
 from azext_edge.edge.providers.support.base import get_bundle_path
-from azext_edge.edge.providers.support.bluefin import (
+from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_LABEL,
     DATA_PROCESSOR_INSTANCE_LABEL,
+    DATA_PROCESSOR_NAME_LABEL,
     DATA_PROCESSOR_ONEOFF_LABEL,
     DATA_PROCESSOR_PART_OF_LABEL,
     DATA_PROCESSOR_RELEASE_LABEL,
@@ -182,7 +183,10 @@ def test_create_bundle(
                 mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
             assert_list_deployments(
-                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_PART_OF_LABEL, resource_api=DATA_PROCESSOR_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_PART_OF_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
             )
 
             assert_list_pods(
@@ -219,10 +223,16 @@ def test_create_bundle(
             )
 
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
             )
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_ONEOFF_LABEL, resource_api=DATA_PROCESSOR_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
             )
 
             assert_list_stateful_sets(
@@ -232,11 +242,24 @@ def test_create_bundle(
                 resource_api=DATA_PROCESSOR_API_V1,
             )
             assert_list_stateful_sets(
-                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_INSTANCE_LABEL, resource_api=DATA_PROCESSOR_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
             )
 
-            # @digimaun - TODO, use labels when available.
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=DATA_PROCESSOR_API_V1)
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_NAME_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
+            )
 
         if api in [SYMPHONY_API_V1]:
             for symphony_label in [SYMPHONY_APP_LABEL, SYMPHONY_INSTANCE_LABEL, GENERIC_CONTROLLER_LABEL]:
@@ -393,15 +416,10 @@ def assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector: str
 def assert_list_services(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
     mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
-    # @digimaun - more configurable mocks
-    mock_name = "mock_service"
-    if resource_api in [DATA_PROCESSOR_API_V1]:
-        mock_name = "dataprocessor-service"
-
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/service.{mock_name}.yaml",
-        data=f"kind: Service\nmetadata:\n  name: {mock_name}\n  namespace: mock_namespace\n",
+        zinfo=f"mock_namespace/{resource_api.moniker}/service.mock_service.yaml",
+        data="kind: Service\nmetadata:\n  name: mock_service\n  namespace: mock_namespace\n",
     )
 
 

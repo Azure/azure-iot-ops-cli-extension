@@ -14,4 +14,6 @@ class DataProcessorResourceKinds(ListableEnum):
     PIPELINE = "pipeline"
 
 
-DATA_PROCESSOR_API_V1 = EdgeResourceApi(group="dataprocessor.iotoperations.azure.com", version="v1", moniker="dataprocessor")
+DATA_PROCESSOR_API_V1 = EdgeResourceApi(
+    group="dataprocessor.iotoperations.azure.com", version="v1", moniker="dataprocessor"
+)
