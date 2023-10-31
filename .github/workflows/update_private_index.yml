@@ -23,7 +23,7 @@ jobs:
         id: wheel
         uses: actions/download-artifact@v3
         with:
-          name: azure-edge-cli-ext
+          name: azure-iot-ops-cli-ext
           path: ./
       - name: Install azcopy
         run: |

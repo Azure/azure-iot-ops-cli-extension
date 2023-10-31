@@ -14,7 +14,7 @@ jobs:
     - name: Download Wheel
       uses: actions/download-artifact@v3
       with:
-        name: azure-edge-cli-ext
+        name: azure-iot-ops-cli-ext
         path: ./extension
 
     # Install python
@@ -41,5 +41,5 @@ jobs:
         for i in $WHEELS; do
           az extension add --source $i -y --debug
         done
-        cp ./linter_exclusions.yml $AZURE_EXTENSION_DIR/azure-edge/
-        azdev linter --include-whl-extensions azure-edge --min-severity medium
+        cp ./linter_exclusions.yml $AZURE_EXTENSION_DIR/azure-iot-ops/
+        azdev linter --include-whl-extensions azure-iot-ops --min-severity medium
