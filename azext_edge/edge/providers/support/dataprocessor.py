@@ -30,6 +30,7 @@ DATA_PROCESSOR_APP_LABELS = [
     'nfs-server-provisioner'
 ]
 
+DATA_PROCESSOR_PREFIX = "aio-dp-"
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
 DATA_PROCESSOR_RELEASE_LABEL = "release in (processor)"
 DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
@@ -142,6 +143,6 @@ def _process_oneoff_label_entities(temp_oneoffs: List[dict]):
     for oneoff in temp_oneoffs:
         if "data" in oneoff and oneoff["data"] and isinstance(oneoff["data"], dict):
             name: str = oneoff["data"].get("metadata", {}).get("name")
-            if name and name.startswith("aio-dp-"):
+            if name and name.startswith(DATA_PROCESSOR_PREFIX):
                 processed.append(oneoff)
     return processed
