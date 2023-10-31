@@ -20,7 +20,7 @@ from azext_edge.edge.providers.edge_api import (
     BLUEFIN_API_V1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
-    AKRI_API_V0
+    AKRI_API_V0,
     LNM_API_V1B1,
     DEVICEREGISTRY_API_V1
 )
@@ -46,7 +46,6 @@ from azext_edge.edge.providers.support.symphony import (
 )
 from azext_edge.edge.providers.support.akri import (
     AKRI_APP_LABEL,
-    AKRI_INSTANCE_LABEL,
     AKRI_NAME_LABEL,
     AKRI_SERVICE_LABEL
 )
@@ -116,6 +115,10 @@ def test_create_bundle(
     if not mocked_cluster_resources["param"] or DEVICEREGISTRY_API_V1 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
             support_bundle(None, bundle_dir=a_bundle_dir, edge_service="deviceregistry")
+
+    if not mocked_cluster_resources["param"] or AKRI_API_V0 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="akri")
 
     if mocked_cluster_resources["param"] == []:
         auto_result_no_resources = support_bundle(None, bundle_dir=a_bundle_dir)
@@ -273,7 +276,7 @@ def test_create_bundle(
             # assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=SYMPHONY_API_V1)
         
         if api in [AKRI_API_V0]:
-            for label in [AKRI_INSTANCE_LABEL, AKRI_APP_LABEL, AKRI_NAME_LABEL]:
+            for label in [AKRI_APP_LABEL, AKRI_NAME_LABEL]:
                 assert_list_pods(
                     mocked_client,
                     mocked_zipfile,
@@ -282,27 +285,30 @@ def test_create_bundle(
                     resource_api=AKRI_API_V0,
                     since_seconds=since_seconds,
                 )
-            # TODO
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=None,
+                label_selector=AKRI_APP_LABEL,
                 resource_api=AKRI_API_V0,
             )
-            for label in [AKRI_INSTANCE_LABEL, AKRI_SERVICE_LABEL]:
-                assert_list_replica_sets(
-                    mocked_client,
-                    mocked_zipfile,
-                    label_selector=label,
-                    resource_api=AKRI_API_V0
-                )
-            for label in [AKRI_INSTANCE_LABEL, AKRI_APP_LABEL]:
-                assert_list_services(
-                    mocked_client,
-                    mocked_zipfile,
-                    label_selector=label,
-                    resource_api=AKRI_API_V0
-                )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_APP_LABEL,
+                resource_api=AKRI_API_V0
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_SERVICE_LABEL,
+                resource_api=AKRI_API_V0
+            )
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                resource_api=AKRI_API_V0
+            )
 
         if api in [LNM_API_V1B1]:
             lnm_app_label = f"app in ({','.join(LNM_APP_LABELS)})"
@@ -449,15 +455,18 @@ def assert_list_daemon_sets(mocked_client, mocked_zipfile, label_selector: str, 
     mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
     # @jiacju - currently no unique label for lnm
-    mock_name = "mock_daemonset"
+    mock_names = ["mock_daemonset"]
     if resource_api in [LNM_API_V1B1]:
-        mock_name = "svclb-lnm-operator"
-
-    assert_zipfile_write(
-        mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/daemonset.{mock_name}.yaml",
-        data=f"kind: Daemonset\nmetadata:\n  name: {mock_name}\n  namespace: mock_namespace\n",
-    )
+        mock_names = ["svclb-lnm-operator"]
+    # @vilit - akri joins the no unique label club
+    if resource_api in [AKRI_API_V0]:
+        mock_names = ["aio-akri-agent-daemonset", "akri-opcua-asset-discovery-daemonset"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{resource_api.moniker}/daemonset.{name}.yaml",
+            data=f"kind: Daemonset\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+        )
 
 
 def assert_e4k_stats(mocked_zipfile):

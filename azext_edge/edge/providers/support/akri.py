@@ -22,7 +22,6 @@ from .base import (
 logger = get_logger(__name__)
 
 
-AKRI_INSTANCE_LABEL = "app.kubernetes.io/instance in (akri-installation)"
 AKRI_APP_LABEL = "app in (otel-collector)"
 AKRI_NAME_LABEL = "name in (aio-akri-agent, akri-opcua-asset-discovery)"
 AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
@@ -59,9 +58,7 @@ def fetch_daemonsets():
 
 
 def fetch_services():
-    processed = process_services(resource_api=AKRI_API_V0, label_selector=AKRI_INSTANCE_LABEL)
-    processed.extend(process_services(resource_api=AKRI_API_V0, label_selector=AKRI_SERVICE_LABEL))
-    return processed
+    return process_services(resource_api=AKRI_API_V0, label_selector=AKRI_SERVICE_LABEL)
 
 
 def fetch_replicasets():

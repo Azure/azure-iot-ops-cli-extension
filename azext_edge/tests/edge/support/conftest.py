@@ -54,7 +54,7 @@ def mocked_cluster_resources(request, mocker):
         OPCUA_API_V1,
         BLUEFIN_API_V1,
         SYMPHONY_API_V1,
-        AKRI_API_V0
+        AKRI_API_V0,
         LNM_API_V1B1,
         DEVICEREGISTRY_API_V1
     )
@@ -270,12 +270,19 @@ def mocked_list_daemonsets(mocked_client):
 
     def _handle_list_daemonsets(*args, **kwargs):
         # @jiacju - currently no unique label for lnm
-        name = "mock_daemonset"
+        # @vilit - also akri
+        daemonset_names = ["mock_daemonset"]
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            name = "svclb-lnm-operator"
+            daemonset_names.extend([
+                "aio-akri-agent-daemonset", 
+                "akri-opcua-asset-discovery-daemonset",
+                "svclb-lnm-operator"
+            ])
 
-        daemonset = V1DaemonSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name))
-        daemonset_list = V1DaemonSetList(items=[daemonset])
+        daemonset_list = []
+        for name in daemonset_names:
+            daemonset_list.append(V1DaemonSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        daemonset_list = V1DaemonSetList(items=daemonset_list)
 
         return daemonset_list
 
