@@ -40,6 +40,7 @@ from ...generators import generate_generic_id
     dp_runner_workers,
     dp_message_stores,
     mq_instance_name,
+    mq_frontend_server_name,
     mq_mode,
     mq_memory_profile,
     mq_service_type,
@@ -70,6 +71,7 @@ from ...generators import generate_generic_id
             None,  # dp_runner_workers
             None,  # dp_message_stores
             None,  # mq_instance_name
+            None,  # mq_frontend_server_name
             None,  # mq_mode
             None,  # mq_memory_profile
             None,  # mq_service_type
@@ -99,6 +101,7 @@ from ...generators import generate_generic_id
             randint(1, 5),  # dp_runner_workers
             randint(1, 5),  # dp_message_stores
             generate_generic_id(),  # mq_instance_name
+            generate_generic_id(),  # mq_frontend_server_name
             MqMode.auto.value,  # mq_mode
             MqMemoryProfile.high.value,  # mq_memory_profile
             MqServiceType.load_balancer.value,  # mq_service_type
@@ -128,6 +131,7 @@ from ...generators import generate_generic_id
             randint(1, 5),  # dp_runner_workers
             randint(1, 5),  # dp_message_stores
             generate_generic_id(),  # mq_instance_name
+            generate_generic_id(),  # mq_frontend_server_name
             MqMode.auto.value,  # mq_mode
             MqMemoryProfile.high.value,  # mq_memory_profile
             MqServiceType.load_balancer.value,  # mq_service_type
@@ -162,6 +166,7 @@ def test_init_to_template_params(
     dp_runner_workers,
     dp_message_stores,
     mq_instance_name,
+    mq_frontend_server_name,
     mq_mode,
     mq_memory_profile,
     mq_service_type,
@@ -191,6 +196,7 @@ def test_init_to_template_params(
         (dp_runner_workers, "dp_runner_workers"),
         (dp_message_stores, "dp_message_stores"),
         (mq_instance_name, "mq_instance_name"),
+        (mq_frontend_server_name, "mq_frontend_server_name"),
         (mq_mode, "mq_mode"),
         (mq_memory_profile, "mq_memory_profile"),
         (mq_service_type, "mq_service_type"),
@@ -252,7 +258,7 @@ def test_init_to_template_params(
 
     passthrough_value_tuples = [
         (mq_listener_name, "mqListenerName", "listener"),
-        (mq_listener_name, "mqListenerName", "listener"),
+        (mq_frontend_server_name, "mqFrontendServer", "mq-dmqtt-frontend"),
         (mq_broker_name, "mqBrokerName", "broker"),
         (mq_authn_name, "mqAuthnName", "authn"),
         (mq_frontend_replicas, "mqFrontendReplicas", 2),
