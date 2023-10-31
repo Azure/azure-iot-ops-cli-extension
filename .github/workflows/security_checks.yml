@@ -27,6 +27,7 @@ jobs:
       uses: microsoft/security-devops-action@preview
       id: msdo
       env:
+        # file path to analyze
         GDN_BANDIT_TARGET: 'azext_edge'
         GDN_BANDIT_RECURSIVE: true
 
