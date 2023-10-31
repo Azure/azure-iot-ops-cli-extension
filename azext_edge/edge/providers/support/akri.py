@@ -23,34 +23,24 @@ logger = get_logger(__name__)
 
 
 AKRI_INSTANCE_LABEL = "app.kubernetes.io/instance in (akri-installation)"
-AKRI_APP_LABEL = "app in (akri-controller, otel-collector)"
-AKRI_NAME_LABEL = "name in (akri-agent, akri-opcua-asset-discovery)"
-AKRI_SERVICE_LABEL = "service in (akri-metrics)"
+AKRI_APP_LABEL = "app in (otel-collector)"
+AKRI_NAME_LABEL = "name in (aio-akri-agent, akri-opcua-asset-discovery)"
+AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     processed = process_v1_pods(
         resource_api=AKRI_API_V0,
-        label_selector=AKRI_INSTANCE_LABEL,
+        label_selector=AKRI_APP_LABEL,
         since_seconds=since_seconds,
         capture_previous_logs=True,
     )
     processed.extend(
         process_v1_pods(
             resource_api=AKRI_API_V0,
-            label_selector=AKRI_APP_LABEL,
-            since_seconds=since_seconds,
-            capture_previous_logs=True,
-        )
-    )
-    # TODO: Use with label when available.
-    processed.extend(
-        process_v1_pods(
-            resource_api=AKRI_API_V0,
             label_selector=AKRI_NAME_LABEL,
             since_seconds=since_seconds,
             capture_previous_logs=True,
-            # prefix_names=["akri-"],
         )
     )
 
@@ -58,20 +48,14 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
 
 
 def fetch_deployments():
-    processed = []
-    # there was one that had no freakin labels
-    # TODO: Use with more specific label when available.
-    processed.extend(
-        process_deployments(
-            resource_api=AKRI_API_V0,
-            prefix_names=["akri-"],
-        )
+    return process_deployments(
+        resource_api=AKRI_API_V0,
+        label_selector=AKRI_APP_LABEL,
     )
-    return processed
 
 
 def fetch_daemonsets():
-    return process_daemonsets(resource_api=AKRI_API_V0, label_selector=AKRI_NAME_LABEL)
+    return process_daemonsets(resource_api=AKRI_API_V0, prefix_names=["akri-", "aio-akri-"])
 
 
 def fetch_services():
@@ -81,9 +65,7 @@ def fetch_services():
 
 
 def fetch_replicasets():
-    processed = process_replicasets(resource_api=AKRI_API_V0, label_selector=AKRI_INSTANCE_LABEL)
-    processed.extend(process_replicasets(resource_api=AKRI_API_V0, label_selector=AKRI_APP_LABEL))
-    return processed
+    return process_replicasets(resource_api=AKRI_API_V0, label_selector=AKRI_APP_LABEL)
 
 
 support_runtime_elements = {
