@@ -309,6 +309,12 @@ def load_iotedge_arguments(self, _):
             arg_group="MQ",
         )
         context.argument(
+            "mq_frontend_server_name",
+            options_list=["--mq-frontend-server"],
+            help="The mq frontend server name. The default is 'mq-dmqtt-frontend'.",
+            arg_group="MQ",
+        )
+        context.argument(
             "mq_listener_name",
             options_list=["--mq-listener"],
             help="The mq listener name. The default is 'listener'.",
