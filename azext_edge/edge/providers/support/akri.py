@@ -10,7 +10,14 @@ from typing import Iterable
 from knack.log import get_logger
 
 from ..edge_api import AKRI_API_V0, EdgeResourceApi
-from .base import assemble_crd_work, process_deployments, process_v1_pods, process_services, process_replicasets
+from .base import (
+    assemble_crd_work, 
+    process_daemonsets, 
+    process_deployments, 
+    process_v1_pods, 
+    process_services, 
+    process_replicasets
+)
 
 logger = get_logger(__name__)
 
@@ -52,8 +59,6 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
 
 def fetch_deployments():
     processed = []
-    # processed = process_deployments(resource_api=AKRI_API_V0, label_selector=AKRI_INSTANCE_LABEL)
-    # processed.extend(process_deployments(resource_api=AKRI_API_V0, label_selector=AKRI_APP_LABEL))
     # there was one that had no freakin labels
     # TODO: Use with more specific label when available.
     processed.extend(
@@ -63,6 +68,10 @@ def fetch_deployments():
         )
     )
     return processed
+
+
+def fetch_daemonsets():
+    return process_daemonsets(resource_api=AKRI_API_V0, label_selector=AKRI_NAME_LABEL)
 
 
 def fetch_services():
@@ -81,14 +90,15 @@ support_runtime_elements = {
     "deployments": fetch_deployments,
     "services": fetch_services,
     "replicasets": fetch_replicasets,
+    "daemonsets": fetch_daemonsets,
 }
 
 
 def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
-    symphony_to_run = {}
-    symphony_to_run.update(assemble_crd_work(apis))
+    akri_to_run = {}
+    akri_to_run.update(assemble_crd_work(apis))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
-    symphony_to_run.update(support_runtime_elements)
+    akri_to_run.update(support_runtime_elements)
 
-    return symphony_to_run
+    return akri_to_run

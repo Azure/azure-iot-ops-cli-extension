@@ -52,6 +52,17 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
 
+    pending_work = {
+        "e4k": {}, 
+        "opcua": {}, 
+        "bluefin": {}, 
+        "symphony": {}, 
+        "deviceregistry": {}, 
+        "common": {}, 
+        "lnm": {},
+        "akri": {}
+    }
+
     api_map = {
         SupportForEdgeServiceType.e4k.value: {
             'apis': COMPAT_E4K_APIS, 'prepare_bundle': prepare_e4k_bundle, 'key': 'e4k'},
@@ -63,7 +74,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
             'apis': COMPAT_SYMPHONY_APIS, 'prepare_bundle': prepare_symphony_bundle, 'key': 'symphony'},
         SupportForEdgeServiceType.lnm.value: {
             'apis': COMPAT_LNM_APIS, 'prepare_bundle': prepare_lnm_bundle, 'key': 'lnm'},
-        SupportForEdgeServiceType.lnm.value: {
+        SupportForEdgeServiceType.akri.value: {
             'apis': COMPAT_AKRI_APIS, 'prepare_bundle': prepare_akri_bundle, 'key': 'akri'},
         SupportForEdgeServiceType.deviceregistry.value: {
             'apis': COMPAT_DEVICEREGISTRY_APIS,
