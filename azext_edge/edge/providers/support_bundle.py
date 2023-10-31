@@ -53,12 +53,12 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from .support.shared import prepare_bundle as prepare_shared_bundle
 
     pending_work = {
-        "e4k": {}, 
-        "opcua": {}, 
-        "bluefin": {}, 
-        "symphony": {}, 
-        "deviceregistry": {}, 
-        "common": {}, 
+        "e4k": {},
+        "opcua": {},
+        "bluefin": {},
+        "symphony": {},
+        "deviceregistry": {},
+        "common": {},
         "lnm": {},
         "akri": {}
     }

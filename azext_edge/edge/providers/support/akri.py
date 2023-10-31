@@ -11,11 +11,11 @@ from knack.log import get_logger
 
 from ..edge_api import AKRI_API_V0, EdgeResourceApi
 from .base import (
-    assemble_crd_work, 
-    process_daemonsets, 
-    process_deployments, 
-    process_v1_pods, 
-    process_services, 
+    assemble_crd_work,
+    process_daemonsets,
+    process_deployments,
+    process_v1_pods,
+    process_services,
     process_replicasets
 )
 

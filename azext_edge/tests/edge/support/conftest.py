@@ -106,15 +106,15 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Solution"))
             v1_resources.append(_get_api_resource("Target"))
-            
+
         if r == AKRI_API_V0:
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Configuration"))
-            
+
         if r == LNM_API_V1B1:
             v1_resources.append(_get_api_resource("Lnm"))
             v1_resources.append(_get_api_resource("Scale"))
-            
+
         if r == DEVICEREGISTRY_API_V1:
             v1_resources.append(_get_api_resource("Asset"))
             v1_resources.append(_get_api_resource("AssetEndpointProfile"))
@@ -274,7 +274,7 @@ def mocked_list_daemonsets(mocked_client):
         daemonset_names = ["mock_daemonset"]
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
             daemonset_names.extend([
-                "aio-akri-agent-daemonset", 
+                "aio-akri-agent-daemonset",
                 "akri-opcua-asset-discovery-daemonset",
                 "svclb-lnm-operator"
             ])

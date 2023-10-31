@@ -90,35 +90,7 @@ def test_create_bundle(
     mocked_get_stats,
     mocked_root_logger,
 ):
-    if not mocked_cluster_resources["param"] or all(
-        [E4K_API_V1A2 not in mocked_cluster_resources["param"], E4K_API_V1A3 not in mocked_cluster_resources["param"]]
-    ):
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="e4k")
-
-    if not mocked_cluster_resources["param"] or OPCUA_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="opcua")
-
-    if not mocked_cluster_resources["param"] or BLUEFIN_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="bluefin")
-
-    if not mocked_cluster_resources["param"] or SYMPHONY_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="symphony")
-
-    if not mocked_cluster_resources["param"] or LNM_API_V1B1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="lnm")
-
-    if not mocked_cluster_resources["param"] or DEVICEREGISTRY_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="deviceregistry")
-
-    if not mocked_cluster_resources["param"] or AKRI_API_V0 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="akri")
+    asset_raises_not_found_error(mocked_cluster_resources)
 
     if mocked_cluster_resources["param"] == []:
         auto_result_no_resources = support_bundle(None, bundle_dir=a_bundle_dir)
@@ -274,7 +246,7 @@ def test_create_bundle(
             )
             # TODO: resolve with selector
             # assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=SYMPHONY_API_V1)
-        
+
         if api in [AKRI_API_V0]:
             for label in [AKRI_APP_LABEL, AKRI_NAME_LABEL]:
                 assert_list_pods(
@@ -347,6 +319,38 @@ def test_create_bundle(
 
         # assert shared KPIs regardless of service
         assert_shared_kpis(mocked_client, mocked_zipfile)
+
+
+def asset_raises_not_found_error(mocked_cluster_resources):
+    if not mocked_cluster_resources["param"] or all(
+        [E4K_API_V1A2 not in mocked_cluster_resources["param"], E4K_API_V1A3 not in mocked_cluster_resources["param"]]
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="e4k")
+
+    if not mocked_cluster_resources["param"] or OPCUA_API_V1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="opcua")
+
+    if not mocked_cluster_resources["param"] or BLUEFIN_API_V1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="bluefin")
+
+    if not mocked_cluster_resources["param"] or SYMPHONY_API_V1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="symphony")
+
+    if not mocked_cluster_resources["param"] or LNM_API_V1B1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="lnm")
+
+    if not mocked_cluster_resources["param"] or DEVICEREGISTRY_API_V1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="deviceregistry")
+
+    if not mocked_cluster_resources["param"] or AKRI_API_V0 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="akri")
 
 
 def assert_get_custom_resources(
