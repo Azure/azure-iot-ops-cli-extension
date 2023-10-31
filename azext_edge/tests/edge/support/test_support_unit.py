@@ -21,6 +21,7 @@ from azext_edge.edge.providers.edge_api import (
     MQ_API_V1A3,
     MQ_API_V1A4,
     MQ_API_V1B1,
+    MQ_ACTIVE_API,
     BLUEFIN_API_V1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
@@ -329,7 +330,10 @@ def assert_list_deployments(
     resource_api: EdgeResourceApi,
     field_selector: str = None
 ):
+    moniker = resource_api.moniker
     if resource_api in [MQ_API_V1A2, MQ_API_V1A3, MQ_API_V1A4, MQ_API_V1B1]:
+        # regardless of MQ API, MQ_ACTIVE_API.moniker is used for support/mq/fetch_diagnostic_metrics
+        moniker = MQ_ACTIVE_API.moniker
         from unittest.mock import call
         mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_has_calls(
             [
@@ -351,7 +355,7 @@ def assert_list_deployments(
 
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/deployment.{mock_name}.yaml",
+        zinfo=f"mock_namespace/{moniker}/deployment.{mock_name}.yaml",
         data=f"kind: Deployment\nmetadata:\n  name: {mock_name}\n  namespace: mock_namespace\n",
     )
 

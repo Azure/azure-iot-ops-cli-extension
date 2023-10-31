@@ -11,7 +11,7 @@ from knack.log import get_logger
 
 from azext_edge.edge.common import AIO_MQ_OPERATOR
 
-from ..edge_api import MQ_API_V1B1, EdgeResourceApi
+from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
 from ..stats import get_stats
 from .base import (
     assemble_crd_work,
@@ -55,7 +55,7 @@ def fetch_diagnostic_metrics(namespace: str):
         stats_raw = get_stats(namespace=namespace, raw_response=True)
         return {
             "data": stats_raw,
-            "zinfo": f"{namespace}/mq/diagnostic_metrics.txt",
+            "zinfo": f"{namespace}/{MQ_ACTIVE_API.moniker}/diagnostic_metrics.txt",
         }
     except Exception:
         logger.debug(f"Unable to call stats pod metrics against namespace {namespace}.")
@@ -63,11 +63,11 @@ def fetch_diagnostic_metrics(namespace: str):
 
 def fetch_deployments():
     processed, namespaces = process_deployments(
-        resource_api=MQ_API_V1B1, label_selector=MQ_LABEL, return_namespaces=True
+        resource_api=MQ_ACTIVE_API, label_selector=MQ_LABEL, return_namespaces=True
     )
     # aio-mq-operator deployment has no app label
     operators, operator_namespaces = process_deployments(
-        resource_api=MQ_API_V1B1, field_selector=f"metadata.name={AIO_MQ_OPERATOR}", return_namespaces=True
+        resource_api=MQ_ACTIVE_API, field_selector=f"metadata.name={AIO_MQ_OPERATOR}", return_namespaces=True
     )
     processed.extend(operators)
 
@@ -81,7 +81,7 @@ def fetch_deployments():
         #     checks = run_checks(namespace=namespace)
         #     checks_data = {
         #         "data": checks,
-        #         "zinfo": f"e4k/{namespace}/checks.yaml",
+        #         "zinfo": f"{MQ_ACTIVE_API.moniker}/{namespace}/checks.yaml",
         #     }
         #     processed.append(checks_data)
         # except Exception:
@@ -92,28 +92,28 @@ def fetch_deployments():
 
 def fetch_statefulsets():
     return process_statefulset(
-        resource_api=MQ_API_V1B1,
+        resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
     )
 
 
 def fetch_services():
     return process_services(
-        resource_api=MQ_API_V1B1,
+        resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
     )
 
 
 def fetch_replicasets():
     return process_replicasets(
-        resource_api=MQ_API_V1B1,
+        resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
     )
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     return process_v1_pods(
-        resource_api=MQ_API_V1B1, label_selector=MQ_LABEL, since_seconds=since_seconds, capture_previous_logs=True
+        resource_api=MQ_ACTIVE_API, label_selector=MQ_LABEL, since_seconds=since_seconds, capture_previous_logs=True
     )
 
 
