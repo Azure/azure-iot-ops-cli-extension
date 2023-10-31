@@ -10,7 +10,7 @@ from azure.cli.core.azclierror import ArgumentUsageError
 from rich.console import Console
 
 from ..common import SupportForEdgeServiceType
-from .check.bluefin import check_bluefin_deployment
+from .check.dataprocessor import check_dataprocessor_deployment
 from .check.e4k import check_e4k_deployment
 from .check.common import ResourceOutputDetailLevel
 from .edge_api.e4k import E4kResourceKinds
@@ -51,7 +51,7 @@ def run_checks(
                 resource_kinds=resource_kinds
             )
         elif edge_service == SupportForEdgeServiceType.dataprocessor.value:
-            result = check_bluefin_deployment(
+            result = check_dataprocessor_deployment(
                 console=console,
                 detail_level=detail_level,
                 pre_deployment=pre_deployment,

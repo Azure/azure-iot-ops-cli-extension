@@ -25,24 +25,25 @@ from ...common import (
 
 from .common import (
     ALL_NAMESPACES_TARGET,
-    BLUEFIN_DESTINATION_STAGE_PROPERTIES,
-    BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES,
-    BLUEFIN_NATS_PREFIX,
-    BLUEFIN_OPERATOR_CONTROLLER_MANAGER,
-    BLUEFIN_READER_WORKER_PREFIX,
-    BLUEFIN_REFDATA_STORE_PREFIX,
-    BLUEFIN_RUNNER_WORKER_PREFIX,
+    DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES,
+    DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES,
+    DATA_PROCESSOR_NATS_PREFIX,
+    DATA_PROCESSOR_OPERATOR,
+    DATA_PROCESSOR_NFS_SERVER_PROVISIONER,
+    DATA_PROCESSOR_READER_WORKER_PREFIX,
+    DATA_PROCESSOR_REFDATA_STORE_PREFIX,
+    DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
     ERROR_NO_DETAIL,
     ResourceOutputDetailLevel,
 )
 
-from ...providers.edge_api import (
+from ..edge_api import (
     DATA_PROCESSOR_API_V1,
     DataProcessorResourceKinds,
 )
 
 
-def check_bluefin_deployment(
+def check_dataprocessor_deployment(
     console: Console,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     namespace: Optional[str] = None,
@@ -63,7 +64,7 @@ def check_bluefin_deployment(
         result["postDeployment"] = []
 
         # check post deployment according to edge_service type
-        check_bluefin_post_deployment(detail_level=detail_level, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
+        check_dataprocessor_post_deployment(detail_level=detail_level, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
 
     if not as_list:
         return result
@@ -71,7 +72,7 @@ def check_bluefin_deployment(
     return process_as_list(console=console, result=result)
 
 
-def check_bluefin_post_deployment(
+def check_dataprocessor_post_deployment(
     namespace: str,
     result: Dict[str, Any],
     as_list: bool = False,
@@ -86,8 +87,8 @@ def check_bluefin_post_deployment(
 
     return check_post_deployment(
         api_info=DATA_PROCESSOR_API_V1,
-        check_name="enumerateBluefinApi",
-        check_desc="Enumerate Bluefin API resources",
+        check_name="enumerateDataProcessorApi",
+        check_desc="Enumerate Data Processor API resources",
         result=result,
         resource_kinds_enum=DataProcessorResourceKinds,
         evaluate_funcs=evaluate_funcs,
@@ -103,7 +104,7 @@ def evaluate_instances(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Data processor instance")
 
-    target_instances = "instances.bluefin.az-bluefin.com"
+    target_instances = "instances.dataprocessor.iotoperations.azure.com"
     instance_namespace_conditions = ["len(instances)==1", "provisioningStatus"]
     instance_all_conditions = ["instances"]
     check_manager.add_target(target_name=target_instances, conditions=instance_all_conditions)
@@ -146,7 +147,7 @@ def evaluate_instances(
 
         instances = list(instances)
         instances_count = len(instances)
-        instances_count_text = "- Expecting [bright_blue]1[/bright_blue] instance resource per namespace. {}."
+        instances_count_text = "- Expecting [bright_blue]1[/bright_blue] instance resource. {}."
 
         if instances_count == 1:
             instances_count_text = instances_count_text.format(f"[green]Detected {instances_count}[/green]")
@@ -218,11 +219,12 @@ def evaluate_instances(
         from ..support.dataprocessor import DATA_PROCESSOR_LABEL
 
         for pod in [
-            BLUEFIN_READER_WORKER_PREFIX,
-            BLUEFIN_RUNNER_WORKER_PREFIX,
-            BLUEFIN_REFDATA_STORE_PREFIX,
-            BLUEFIN_NATS_PREFIX,
-            BLUEFIN_OPERATOR_CONTROLLER_MANAGER
+            DATA_PROCESSOR_READER_WORKER_PREFIX,
+            DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
+            DATA_PROCESSOR_REFDATA_STORE_PREFIX,
+            DATA_PROCESSOR_NATS_PREFIX,
+            DATA_PROCESSOR_OPERATOR,
+            DATA_PROCESSOR_NFS_SERVER_PROVISIONER,
         ]:
             evaluate_pod_health(
                 check_manager=check_manager,
@@ -242,7 +244,7 @@ def evaluate_pipelines(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Data processor pipeline")
 
-    target_pipelines = "pipelines.bluefin.az-bluefin.com"
+    target_pipelines = "pipelines.dataprocessor.iotoperations.azure.com"
     pipeline_all_conditions = ["pipelines"]
     pipeline_namespace_conditions = [
         "len(pipelines)>=1",
@@ -425,7 +427,7 @@ def evaluate_datasets(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Data processor dataset")
 
-    target_datasets = "datasets.bluefin.az-bluefin.com"
+    target_datasets = "datasets.dataprocessor.iotoperations.azure.com"
     dataset_all_conditions = ["datasets"]
     dataset_namespace_conditions = ["provisioningState"]
     check_manager.add_target(target_name=target_datasets, conditions=dataset_all_conditions)
@@ -910,7 +912,7 @@ def _evaluate_intermediate_nodes(
                 detail_level,
                 target_name=target_pipelines,
                 stage=pipeline_intermediate_stages_node[stage_name],
-                stage_properties=BLUEFIN_INTERMEDIATE_STAGE_PROPERTIES,
+                stage_properties=DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES,
                 padding=(0, 0, 0, 20),
                 namespace=namespace
             )
@@ -950,7 +952,7 @@ def _evaluate_destination_node(
                 detail_level,
                 target_name=target_pipelines,
                 stage=output_node[1],
-                stage_properties=BLUEFIN_DESTINATION_STAGE_PROPERTIES,
+                stage_properties=DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES,
                 padding=(0, 0, 0, 16),
                 namespace=namespace
             )

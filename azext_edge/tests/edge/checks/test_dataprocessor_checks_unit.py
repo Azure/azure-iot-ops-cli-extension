@@ -7,7 +7,7 @@
 
 import pytest
 from azext_edge.edge.common import ProvisioningState
-from azext_edge.edge.providers.check.bluefin import (
+from azext_edge.edge.providers.check.dataprocessor import (
     evaluate_datasets,
     evaluate_instances,
     evaluate_pipelines,
@@ -42,12 +42,12 @@ from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
         ],
     ],
 )
-@pytest.mark.parametrize('edge_service', ['bluefin'])
-def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
+@pytest.mark.parametrize('edge_service', ['dataprocessor'])
+def test_check_dataprocessor_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        DataProcessorResourceKinds.DATASET.value: "azext_edge.edge.providers.check.bluefin.evaluate_datasets",
-        DataProcessorResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.bluefin.evaluate_instances",
-        DataProcessorResourceKinds.PIPELINE.value: "azext_edge.edge.providers.check.bluefin.evaluate_pipelines",
+        DataProcessorResourceKinds.DATASET.value: "azext_edge.edge.providers.check.dataprocessor.evaluate_datasets",
+        DataProcessorResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.dataprocessor.evaluate_instances",
+        DataProcessorResourceKinds.PIPELINE.value: "azext_edge.edge.providers.check.dataprocessor.evaluate_pipelines",
     }
 
     assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
@@ -113,7 +113,7 @@ def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_typ
 )
 def test_instance_checks(
     mocker,
-    mock_evaluate_bluefin_pod_health,
+    mock_evaluate_dataprocessor_pod_health,
     instance,
     namespace_conditions,
     all_conditions,
@@ -130,11 +130,11 @@ def test_instance_checks(
     result = evaluate_instances()
 
     assert result["name"] == "evalInstances"
-    assert result["targets"]["instances.bluefin.az-bluefin.com"]
-    target = result["targets"]["instances.bluefin.az-bluefin.com"]
+    assert result["targets"]["instances.dataprocessor.iotoperations.azure.com"]
+    target = result["targets"]["instances.dataprocessor.iotoperations.azure.com"]
 
     for namespace in target:
-        assert namespace in result["targets"]["instances.bluefin.az-bluefin.com"]
+        assert namespace in result["targets"]["instances.dataprocessor.iotoperations.azure.com"]
         if namespace == ALL_NAMESPACES_TARGET:
             assert_conditions(target[namespace], all_conditions)
             assert_evaluations(target[namespace], all_evaluations)
@@ -443,7 +443,7 @@ def test_instance_checks(
 )
 def test_pipeline_checks(
     mocker,
-    mock_evaluate_bluefin_pod_health,
+    mock_evaluate_dataprocessor_pod_health,
     pipelines,
     namespace_conditions,
     all_conditions,
@@ -461,11 +461,11 @@ def test_pipeline_checks(
     result = evaluate_pipelines()
 
     assert result["name"] == "evalPipelines"
-    assert result["targets"]["pipelines.bluefin.az-bluefin.com"]
-    target = result["targets"]["pipelines.bluefin.az-bluefin.com"]
+    assert result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"]
+    target = result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"]
 
     for namespace in target:
-        assert namespace in result["targets"]["pipelines.bluefin.az-bluefin.com"]
+        assert namespace in result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"]
         if namespace == ALL_NAMESPACES_TARGET:
             assert_conditions(target[namespace], all_conditions)
             assert_evaluations(target[namespace], all_evaluations)
@@ -542,7 +542,7 @@ def test_pipeline_checks(
 )
 def test_dataset_checks(
     mocker,
-    mock_evaluate_bluefin_pod_health,
+    mock_evaluate_dataprocessor_pod_health,
     datasets,
     namespace_conditions,
     all_conditions,
@@ -560,11 +560,11 @@ def test_dataset_checks(
     result = evaluate_datasets()
 
     assert result["name"] == "evalDatasets"
-    assert result["targets"]["datasets.bluefin.az-bluefin.com"]
-    target = result["targets"]["datasets.bluefin.az-bluefin.com"]
+    assert result["targets"]["datasets.dataprocessor.iotoperations.azure.com"]
+    target = result["targets"]["datasets.dataprocessor.iotoperations.azure.com"]
 
     for namespace in target:
-        assert namespace in result["targets"]["datasets.bluefin.az-bluefin.com"]
+        assert namespace in result["targets"]["datasets.dataprocessor.iotoperations.azure.com"]
         if namespace == ALL_NAMESPACES_TARGET:
             assert_conditions(target[namespace], all_conditions)
             assert_evaluations(target[namespace], all_evaluations)
