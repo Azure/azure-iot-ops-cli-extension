@@ -97,14 +97,6 @@ class SupportForEdgeServiceType(ListableEnum):
     deviceregistry = "deviceregistry"
 
 
-class DeployablePasVersions(ListableEnum):
-    """
-    Deployable PAS versions.
-    """
-
-    v012 = "0.1.2"
-
-
 class ResourceTypeMapping(Enum):
     """
     Resource type mappings for graph queries.
@@ -128,5 +120,6 @@ class K8sSecretType(Enum):
 # MQ runtime attributes
 
 AIO_MQ_DIAGNOSTICS_SERVICE = "aio-mq-diagnostics-service"
+AIO_MQ_OPERATOR = "aio-mq-operator"
 METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800

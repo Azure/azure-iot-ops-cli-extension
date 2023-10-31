@@ -11,12 +11,16 @@ from os.path import abspath, expanduser, join
 import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
+from azext_edge.edge.common import AIO_MQ_OPERATOR
+
 from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.providers.edge_api import (
     EdgeResourceApi,
     OpcuaResourceKinds,
     MQ_API_V1A2,
     MQ_API_V1A3,
+    MQ_API_V1A4,
+    MQ_API_V1B1,
     BLUEFIN_API_V1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
@@ -138,7 +142,8 @@ def test_create_bundle(
 
         if api in [MQ_API_V1A2, MQ_API_V1A3]:
             # Assert runtime resources
-            assert_list_deployments(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1A2)
+            assert_list_deployments(mocked_client, mocked_zipfile, label_selector=MQ_LABEL,
+                                    resource_api=MQ_API_V1A2, field_selector=f"metadata.name={AIO_MQ_OPERATOR}")
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
@@ -317,8 +322,27 @@ def assert_get_custom_resources(
     )
 
 
-def assert_list_deployments(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
-    mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_any_call(label_selector=label_selector)
+def assert_list_deployments(
+    mocked_client,
+    mocked_zipfile,
+    label_selector: str,
+    resource_api: EdgeResourceApi,
+    field_selector: str = None
+):
+    if resource_api in [MQ_API_V1A2, MQ_API_V1A3, MQ_API_V1A4, MQ_API_V1B1]:
+        from unittest.mock import call
+        mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_has_calls(
+            [
+                # MQ deployments
+                call(label_selector=MQ_LABEL, field_selector=None),
+                # Specific for `aio-mq-operator` (no app label)
+                call(label_selector=None, field_selector=field_selector)
+            ]
+        )
+    else:
+        mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_any_call(
+            label_selector=label_selector, field_selector=field_selector
+        )
 
     # @jiacju - no label for lnm
     mock_name = "mock_deployment"
@@ -440,16 +464,16 @@ def assert_zipfile_write(mocked_zipfile, zinfo: str, data: str):
 def test_get_bundle_path(mocked_os_makedirs):
     path = get_bundle_path("~/test")
     expected = f"{join(expanduser('~'), 'test', 'support_bundle_')}"
-    assert str(path).startswith(expected) and str(path).endswith("_pas.zip")
+    assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
 
     path = get_bundle_path("./test/")
     expected = f"{join(abspath('.'), 'test', 'support_bundle_')}"
-    assert str(path).startswith(expected) and str(path).endswith("_pas.zip")
+    assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
 
     path = get_bundle_path("test/thing")
     expected = f"{join(abspath('test/thing'), 'support_bundle_')}"
-    assert str(path).startswith(expected) and str(path).endswith("_pas.zip")
+    assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
 
     path = get_bundle_path()
     expected = f"{join(abspath('.'), 'support_bundle_')}"
-    assert str(path).startswith(expected) and str(path).endswith("_pas.zip")
+    assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
