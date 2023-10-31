@@ -8,10 +8,10 @@ from .base import EdgeResourceApi
 from ...common import ListableEnum
 
 
-class BluefinResourceKinds(ListableEnum):
+class DataProcessorResourceKinds(ListableEnum):
     DATASET = "dataset"
     INSTANCE = "instance"
     PIPELINE = "pipeline"
 
 
-BLUEFIN_API_V1 = EdgeResourceApi(group="bluefin.az-bluefin.com", version="v1", moniker="bluefin")
+DATA_PROCESSOR_API_V1 = EdgeResourceApi(group="dataprocessor.iotoperations.azure.com", version="v1", moniker="dataprocessor")
