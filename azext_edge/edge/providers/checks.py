@@ -14,7 +14,7 @@ from .check.bluefin import check_bluefin_deployment
 from .check.mq import check_mq_deployment
 from .check.common import ResourceOutputDetailLevel
 from .edge_api.mq import MqResourceKinds
-from .edge_api.bluefin import BluefinResourceKinds
+from .edge_api.dataprocessor import DataProcessorResourceKinds
 
 console = Console(width=100, highlight=False)
 
@@ -50,7 +50,7 @@ def run_checks(
                 as_list=as_list,
                 resource_kinds=resource_kinds
             )
-        elif edge_service == SupportForEdgeServiceType.bluefin.value:
+        elif edge_service == SupportForEdgeServiceType.dataprocessor.value:
             result = check_bluefin_deployment(
                 console=console,
                 detail_level=detail_level,
@@ -67,8 +67,8 @@ def run_checks(
 def _check_resource_kinds_under_edge_service(edge_service: str, resource_kinds: List[str]) -> None:
     valid_resource_values = []
 
-    if edge_service == SupportForEdgeServiceType.bluefin.value:
-        valid_resource_values = BluefinResourceKinds.list()
+    if edge_service == SupportForEdgeServiceType.dataprocessor.value:
+        valid_resource_values = DataProcessorResourceKinds.list()
     elif edge_service == SupportForEdgeServiceType.mq.value:
         valid_resource_values = MqResourceKinds.list()
 

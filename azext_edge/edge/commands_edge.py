@@ -90,6 +90,7 @@ def init(
     mq_backend_redundancy_factor: int = 2,
     mq_frontend_workers: int = 2,
     mq_frontend_replicas: int = 2,
+    mq_frontend_server_name: Optional[str] = None,
     mq_instance_name: Optional[str] = None,
     mq_listener_name: Optional[str] = None,
     mq_broker_name: Optional[str] = None,
@@ -137,6 +138,8 @@ def init(
     hashed_cluster_slug = url_safe_hash_phrase(cluster_name)[:5]
     if not mq_instance_name:
         mq_instance_name = f"init-{hashed_cluster_slug}-mq-instance"
+    if not mq_frontend_server_name:
+        mq_frontend_server_name = "mq-dmqtt-frontend"
     if not mq_listener_name:
         mq_listener_name = "listener"
     if not mq_broker_name:
@@ -200,6 +203,7 @@ def init(
         mq_frontend_replicas=int(mq_frontend_replicas),
         mq_frontend_workers=int(mq_frontend_workers),
         mq_instance_name=mq_instance_name,
+        mq_frontend_server_name=mq_frontend_server_name,
         mq_listener_name=mq_listener_name,
         mq_broker_name=mq_broker_name,
         mq_authn_name=mq_authn_name,

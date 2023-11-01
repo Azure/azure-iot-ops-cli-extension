@@ -14,7 +14,7 @@ from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_ty
 from .common import SupportForEdgeServiceType
 from .providers.edge_api import MqResourceKinds
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.edge_api.bluefin import BluefinResourceKinds
+from .providers.edge_api.dataprocessor import DataProcessorResourceKinds
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 
 from ._validators import validate_namespace
@@ -102,9 +102,9 @@ def load_iotedge_arguments(self, _):
                     MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
                     MqResourceKinds.DATALAKE_CONNECTOR.value,
                     MqResourceKinds.KAFKA_CONNECTOR.value,
-                    BluefinResourceKinds.DATASET.value,
-                    BluefinResourceKinds.PIPELINE.value,
-                    BluefinResourceKinds.INSTANCE.value,
+                    DataProcessorResourceKinds.DATASET.value,
+                    DataProcessorResourceKinds.PIPELINE.value,
+                    DataProcessorResourceKinds.INSTANCE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
@@ -306,6 +306,12 @@ def load_iotedge_arguments(self, _):
             "mq_instance_name",
             options_list=["--mq-instance"],
             help="The mq instance name. The default is in the form 'init-{hash}-mq-instance'.",
+            arg_group="MQ",
+        )
+        context.argument(
+            "mq_frontend_server_name",
+            options_list=["--mq-frontend-server"],
+            help="The mq frontend server name. The default is 'mq-dmqtt-frontend'.",
             arg_group="MQ",
         )
         context.argument(
