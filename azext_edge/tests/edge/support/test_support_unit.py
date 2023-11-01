@@ -420,7 +420,8 @@ def assert_list_deployments(
     mocked_zipfile,
     label_selector: str,
     resource_api: EdgeResourceApi,
-    field_selector: str = None
+    field_selector: str = None,
+    mock_names: List[str] = None
 ):
     moniker = resource_api.moniker
     if resource_api in COMPAT_MQ_APIS.resource_apis:
