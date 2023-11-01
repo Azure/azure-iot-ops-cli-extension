@@ -5,8 +5,8 @@
 # --------------------------------------------------------------------------------------------
 
 from .base import EdgeResourceApi, EdgeApiManager
-from .e4k import E4K_ACTIVE_API, E4K_API_V1A2, E4K_API_V1A3, E4K_API_V1A4, E4kResourceKinds
-from .bluefin import BLUEFIN_API_V1, BluefinResourceKinds
+from .mq import MQ_ACTIVE_API, MQ_API_V1B1, MqResourceKinds
+from .dataprocessor import DATA_PROCESSOR_API_V1, DataProcessorResourceKinds
 from .lnm import LNM_API_V1B1, LnmResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
 from .symphony import SYMPHONY_API_V1, SymphonyResourceKinds
@@ -14,15 +14,13 @@ from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
 from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
 
 __all__ = [
+    "DataProcessorResourceKinds",
+    "DATA_PROCESSOR_API_V1",
     "EdgeResourceApi",
     "EdgeApiManager",
-    "E4kResourceKinds",
-    "E4K_ACTIVE_API",
-    "E4K_API_V1A2",
-    "E4K_API_V1A3",
-    "E4K_API_V1A4",
-    "BluefinResourceKinds",
-    "BLUEFIN_API_V1",
+    "MqResourceKinds",
+    "MQ_ACTIVE_API",
+    "MQ_API_V1B1",
     "LnmResourceKinds",
     "LNM_API_V1B1",
     "OpcuaResourceKinds",

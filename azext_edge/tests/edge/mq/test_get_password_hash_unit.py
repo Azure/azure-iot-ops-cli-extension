@@ -6,7 +6,7 @@
 
 import re
 
-from azext_edge.edge.commands_e4k import get_password_hash
+from azext_edge.edge.commands_mq import get_password_hash
 
 from ...generators import generate_generic_id
 

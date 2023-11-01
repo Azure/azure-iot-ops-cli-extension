@@ -8,10 +8,10 @@ Help definitions for Digital Twins commands.
 """
 
 from knack.help_files import helps
-from .providers.edge_api import E4K_ACTIVE_API
+from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
-    COMPAT_BLUEFIN_APIS,
-    COMPAT_E4K_APIS,
+    COMPAT_DATA_PROCESSOR_APIS,
+    COMPAT_MQ_APIS,
     COMPAT_LNM_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_SYMPHONY_APIS,
@@ -46,9 +46,9 @@ def load_iotedge_help():
         short-summary: Creates a standard support bundle zip archive for use in troubleshooting and diagnostics.
         long-summary: |
             [Supported edge service APIs]
-                {COMPAT_E4K_APIS.as_str()}
+                {COMPAT_MQ_APIS.as_str()}
                 {COMPAT_OPCUA_APIS.as_str()}
-                {COMPAT_BLUEFIN_APIS.as_str()}
+                {COMPAT_DATA_PROCESSOR_APIS.as_str()}
                 {COMPAT_SYMPHONY_APIS.as_str()}
                 {COMPAT_LNM_APIS.as_str()}
                 {COMPAT_DEVICEREGISTRY_APIS.as_str()}
@@ -61,7 +61,7 @@ def load_iotedge_help():
         short-summary: Evaluate AIO edge service deployments for health, configuration and usability.
         long-summary: |
             [Supported edge service APIs]
-                {E4K_ACTIVE_API.as_str()}
+                {MQ_ACTIVE_API.as_str()}
     """
 
     helps[
@@ -78,7 +78,7 @@ def load_iotedge_help():
         short-summary: Show dmqtt running statistics.
         long-summary: |
             [Supported edge service APIs]
-                {E4K_ACTIVE_API.as_str()}
+                {MQ_ACTIVE_API.as_str()}
     """
 
     helps[
@@ -115,28 +115,30 @@ def load_iotedge_help():
                       for the existance of the associated custom location and cluster and ensure that
                       both are set up correctly with the microsoft.deviceregistry.assets extension.
 
+                      At least one data point or event must be defined during asset creation.
+
         examples:
         - name: Create an asset using the given custom location.
           text: >
             az iot ops asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint}
+            --endpoint {endpoint} --data data_source={data_source}
 
         - name: Create an asset using the given custom location and resource group for the custom location. The resource group
                 must be included if there are multiple custom locations with the same name within a subscription.
           text: >
             az iot ops asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
-            --custom-location-resource-group {custom_location_resource_group} --endpoint {endpoint}
+            --custom-location-resource-group {custom_location_resource_group} --endpoint {endpoint} --data data_source={data_source}
 
         - name: Create an asset using the given cluster name. The resource group must be included if there are multiple clusters
                 with the same name within a subscription.
           text: >
             az iot ops asset create --asset {asset} -g {resource_group} --cluster {cluster} --cluster-resource-group {cluster_resource_group}
-            --endpoint {endpoint}
+            --endpoint {endpoint} --event event_notifier={event_notifier}
 
         - name: Create an asset using the given cluster name and custom location.
           text: >
             az iot ops asset create --asset {asset} -g {resource_group} --cluster {cluster}
-            --custom-location {custom_location} --endpoint {endpoint}
+            --custom-location {custom_location} --endpoint {endpoint} --event event_notifier={event_notifier}
 
         - name: Create an asset with custom data point and event defaults.
           text: >
@@ -144,7 +146,7 @@ def load_iotedge_help():
             --endpoint {endpoint} --data-publish-int {data_point_publishing_interval}
             --data-queue-size {data_point_queue_size} --data-sample-int {data_point_sampling_interval}
             --event-publish-int {event_publishing_interval} --event-queue-size {event_queue_size}
-            --event-sample-int {event_sampling_interval}
+            --event-sample-int {event_sampling_interval} --event event_notifier={event_notifier}
 
         - name: Create an asset with custom asset type, description, documentation uri, external asset id, hardware revision,
                 product code, and software revision.
@@ -152,7 +154,7 @@ def load_iotedge_help():
             az iot ops asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
             --endpoint {endpoint} --asset-type {asset_type} --description {description}
             --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
-            --product-code {product_code} --software-revision {software_revision}
+            --product-code {product_code} --software-revision {software_revision} --data data_source={data_source}
 
         - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number.
           text: >
@@ -289,13 +291,13 @@ def load_iotedge_help():
         - name: Add a data point to an asset with capability id, data point name, observability mode, custom queue size,
                 and custom sampling interval.
           text: >
-            az iot ops asset data-point add --asset {asset} -g {resource_group} --data-source {data_source} --data-point-name
-            {data_point_name} --capability-id {capability_id} --observability-mode {observability_mode} --queue-size
+            az iot ops asset data-point add --asset {asset} -g {resource_group} --data-source {data_source} --name
+            {name} --capability-id {capability_id} --observability-mode {observability_mode} --queue-size
             {queue_size} --sampling-interval {sampling_interval}
 
         - name: Add a data point to an asset with the given pre-filled values.
           text: >
-            az iot ops asset data-point add --asset MyAsset -g MyRG --data-source nodeId1 --data-point-name tagName1
+            az iot ops asset data-point add --asset MyAsset -g MyRG --data-source nodeId1 --name tagName1
             --capability-id tagId1 --observability-mode log --queue-size 5 --sampling-interval 200
     """
 
@@ -323,7 +325,7 @@ def load_iotedge_help():
 
         - name: Remove a data point from an asset via the data point name.
           text: >
-            az iot ops asset data-point remove --asset {asset} -g {resource_group} --data-point-name {data_point_name}
+            az iot ops asset data-point remove --asset {asset} -g {resource_group} --name {name}
     """
 
     helps[
@@ -348,12 +350,12 @@ def load_iotedge_help():
                 and custom sampling interval.
           text: >
             az iot ops asset event add --asset {asset} -g {resource_group} --event-notifier {event_notifier}
-            --event-name {event_name} --capability-id {capability_id} --observability-mode
+            --name {name} --capability-id {capability_id} --observability-mode
             {observability_mode} --queue-size {queue_size} --sampling-interval {sampling_interval}
 
         - name: Add an event to an asset with the given pre-filled values.
           text: >
-            az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId --event-name eventName
+            az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId --name eventName
             --capability-id tagId1 --observability-mode histogram --queue-size 2 --sampling-interval 500
     """
 
@@ -382,5 +384,5 @@ def load_iotedge_help():
 
         - name: Remove an event from an asset via the event name.
           text: >
-            az iot ops asset event remove --asset {asset} -g {resource_group} --event-name {event_name}
+            az iot ops asset event remove --asset {asset} -g {resource_group} --name {name}
     """

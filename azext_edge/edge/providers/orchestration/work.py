@@ -397,6 +397,7 @@ class WorkManager:
             ("target_name", "targetName"),
             ("dp_instance_name", "dataProcessorInstanceName"),
             ("mq_instance_name", "mqInstanceName"),
+            ("mq_frontend_server_name", "mqFrontendServer"),
             ("mq_listener_name", "mqListenerName"),
             ("mq_broker_name", "mqBrokerName"),
             ("mq_authn_name", "mqAuthnName"),

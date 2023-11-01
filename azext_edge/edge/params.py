@@ -12,9 +12,9 @@ from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
 from .common import SupportForEdgeServiceType
-from .providers.edge_api import E4kResourceKinds
+from .providers.edge_api import MqResourceKinds
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.edge_api.bluefin import BluefinResourceKinds
+from .providers.edge_api.dataprocessor import DataProcessorResourceKinds
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 
 from ._validators import validate_namespace
@@ -87,7 +87,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "edge_service",
             options_list=["--edge-service", "-e"],
-            choices=CaseInsensitiveList(["e4k", "lnm"]),
+            choices=CaseInsensitiveList(["mq", "lnm"]),
             help="The edge service deployment that will be evaluated.",
         )
         context.argument(
@@ -96,15 +96,15 @@ def load_iotedge_arguments(self, _):
             options_list=["--resources"],
             choices=CaseInsensitiveList(
                 [
-                    E4kResourceKinds.BROKER.value,
-                    E4kResourceKinds.BROKER_LISTENER.value,
-                    E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
-                    E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
-                    E4kResourceKinds.DATALAKE_CONNECTOR.value,
-                    E4kResourceKinds.KAFKA_CONNECTOR.value,
-                    BluefinResourceKinds.DATASET.value,
-                    BluefinResourceKinds.PIPELINE.value,
-                    BluefinResourceKinds.INSTANCE.value,
+                    MqResourceKinds.BROKER.value,
+                    MqResourceKinds.BROKER_LISTENER.value,
+                    MqResourceKinds.DIAGNOSTIC_SERVICE.value,
+                    MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+                    MqResourceKinds.DATALAKE_CONNECTOR.value,
+                    MqResourceKinds.KAFKA_CONNECTOR.value,
+                    DataProcessorResourceKinds.DATASET.value,
+                    DataProcessorResourceKinds.PIPELINE.value,
+                    DataProcessorResourceKinds.INSTANCE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
@@ -306,6 +306,12 @@ def load_iotedge_arguments(self, _):
             "mq_instance_name",
             options_list=["--mq-instance"],
             help="The mq instance name. The default is in the form 'init-{hash}-mq-instance'.",
+            arg_group="MQ",
+        )
+        context.argument(
+            "mq_frontend_server_name",
+            options_list=["--mq-frontend-server"],
+            help="The mq frontend server name. The default is 'mq-dmqtt-frontend'.",
             arg_group="MQ",
         )
         context.argument(
@@ -685,7 +691,7 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "name",
-            options_list=["--data-point-name", "--dpn"],
+            options_list=["--name", "-n"],
             help="Data point name.",
         )
         context.argument(
@@ -702,7 +708,7 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "name",
-            options_list=["--event-name", "--evn"],
+            options_list=["--name", "-n"],
             help="Event name.",
         )
         context.argument(

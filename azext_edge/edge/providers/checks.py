@@ -13,17 +13,17 @@ from rich.console import Console
 
 from ..common import SupportForEdgeServiceType
 from .check.bluefin import check_bluefin_deployment
-from .check.e4k import check_e4k_deployment
+from .check.mq import check_mq_deployment
 from .check.common import ResourceOutputDetailLevel
-from .edge_api.e4k import E4kResourceKinds
-from .edge_api.bluefin import BluefinResourceKinds
+from .edge_api.mq import MqResourceKinds
+from .edge_api.dataprocessor import DataProcessorResourceKinds
 
 console = Console(width=100, highlight=False)
 
 
 def run_checks(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    edge_service: str = SupportForEdgeServiceType.e4k.value,
+    edge_service: str = SupportForEdgeServiceType.mq.value,
     pre_deployment: bool = True,
     post_deployment: bool = True,
     as_list: bool = False,
@@ -42,8 +42,8 @@ def run_checks(
 
         result["title"] = f"Evaluation for {{[bright_blue]{edge_service}[/bright_blue]}} edge service deployment"
 
-        if edge_service == SupportForEdgeServiceType.e4k.value:
-            result = check_e4k_deployment(
+        if edge_service == SupportForEdgeServiceType.mq.value:
+            result = check_mq_deployment(
                 console=console,
                 detail_level=detail_level,
                 pre_deployment=pre_deployment,
@@ -52,7 +52,7 @@ def run_checks(
                 as_list=as_list,
                 resource_kinds=resource_kinds
             )
-        elif edge_service == SupportForEdgeServiceType.bluefin.value:
+        elif edge_service == SupportForEdgeServiceType.dataprocessor.value:
             result = check_bluefin_deployment(
                 console=console,
                 detail_level=detail_level,
@@ -79,10 +79,10 @@ def run_checks(
 def _check_resource_kinds_under_edge_service(edge_service: str, resource_kinds: List[str]) -> None:
     valid_resource_values = []
 
-    if edge_service == SupportForEdgeServiceType.bluefin.value:
-        valid_resource_values = BluefinResourceKinds.list()
-    elif edge_service == SupportForEdgeServiceType.e4k.value:
-        valid_resource_values = E4kResourceKinds.list()
+    if edge_service == SupportForEdgeServiceType.dataprocessor.value:
+        valid_resource_values = DataProcessorResourceKinds.list()
+    elif edge_service == SupportForEdgeServiceType.mq.value:
+        valid_resource_values = MqResourceKinds.list()
     elif edge_service == SupportForEdgeServiceType.lnm.value:
         valid_resource_values = LnmResourceKinds.list()
 
