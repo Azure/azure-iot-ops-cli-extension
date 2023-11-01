@@ -17,7 +17,7 @@ from azext_edge.edge.providers.edge_api import (
     OpcuaResourceKinds,
     E4K_API_V1A2,
     E4K_API_V1A3,
-    BLUEFIN_API_V1,
+    DATA_PROCESSOR_API_V1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
     AKRI_API_V0,
@@ -26,12 +26,13 @@ from azext_edge.edge.providers.edge_api import (
 )
 
 from azext_edge.edge.providers.support.base import get_bundle_path
-from azext_edge.edge.providers.support.bluefin import (
-    BLUEFIN_LABEL,
-    BLUEFIN_INSTANCE_LABEL,
-    BLUEFIN_ONEOFF_LABEL,
-    BLUEFIN_PART_OF_LABEL,
-    BLUEFIN_RELEASE_LABEL,
+from azext_edge.edge.providers.support.dataprocessor import (
+    DATA_PROCESSOR_LABEL,
+    DATA_PROCESSOR_INSTANCE_LABEL,
+    DATA_PROCESSOR_NAME_LABEL,
+    DATA_PROCESSOR_ONEOFF_LABEL,
+    DATA_PROCESSOR_PART_OF_LABEL,
+    DATA_PROCESSOR_RELEASE_LABEL,
 )
 from azext_edge.edge.providers.support.e4k import E4K_LABEL
 from azext_edge.edge.providers.support.opcua import (
@@ -64,12 +65,12 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
         [E4K_API_V1A2, E4K_API_V1A3],
         [OPCUA_API_V1],
         [E4K_API_V1A2, OPCUA_API_V1],
-        [E4K_API_V1A2, BLUEFIN_API_V1],
-        [E4K_API_V1A2, OPCUA_API_V1, BLUEFIN_API_V1],
+        [E4K_API_V1A2, DATA_PROCESSOR_API_V1],
+        [E4K_API_V1A2, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
         [E4K_API_V1A2, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1],
-        [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1, AKRI_API_V0],
-        [E4K_API_V1A3, OPCUA_API_V1, BLUEFIN_API_V1, SYMPHONY_API_V1, LNM_API_V1B1],
+        [E4K_API_V1A3, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1],
+        [E4K_API_V1A3, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1, AKRI_API_V0],
+        [E4K_API_V1A3, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1, LNM_API_V1B1],
     ],
     indirect=True,
 )
@@ -159,67 +160,89 @@ def test_create_bundle(
                 since_seconds=since_seconds,
             )
 
-        if api in [BLUEFIN_API_V1]:
+        if api in [DATA_PROCESSOR_API_V1]:
             # Assert runtime resources
             assert_list_deployments(
-                mocked_client, mocked_zipfile, label_selector=BLUEFIN_LABEL, resource_api=BLUEFIN_API_V1
+                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
             assert_list_deployments(
-                mocked_client, mocked_zipfile, label_selector=BLUEFIN_PART_OF_LABEL, resource_api=BLUEFIN_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_PART_OF_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
             )
 
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=BLUEFIN_LABEL,
-                resource_api=BLUEFIN_API_V1,
+                label_selector=DATA_PROCESSOR_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
                 since_seconds=since_seconds,
             )
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=BLUEFIN_INSTANCE_LABEL,
-                resource_api=BLUEFIN_API_V1,
+                label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
                 since_seconds=since_seconds,
             )
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=BLUEFIN_RELEASE_LABEL,
-                resource_api=BLUEFIN_API_V1,
+                label_selector=DATA_PROCESSOR_RELEASE_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
                 since_seconds=since_seconds,
             )
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=BLUEFIN_ONEOFF_LABEL,
-                resource_api=BLUEFIN_API_V1,
+                label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
                 since_seconds=since_seconds,
             )
 
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=BLUEFIN_LABEL, resource_api=BLUEFIN_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
             )
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=BLUEFIN_ONEOFF_LABEL, resource_api=BLUEFIN_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
             )
 
             assert_list_stateful_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=BLUEFIN_RELEASE_LABEL,
-                resource_api=BLUEFIN_API_V1,
+                label_selector=DATA_PROCESSOR_RELEASE_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
             )
             assert_list_stateful_sets(
-                mocked_client, mocked_zipfile, label_selector=BLUEFIN_INSTANCE_LABEL, resource_api=BLUEFIN_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
             )
 
-            # @digimaun - TODO, use labels when available.
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=BLUEFIN_API_V1)
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_NAME_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
+            )
 
         if api in [SYMPHONY_API_V1]:
             for symphony_label in [SYMPHONY_APP_LABEL, SYMPHONY_INSTANCE_LABEL, GENERIC_CONTROLLER_LABEL]:
@@ -332,9 +355,9 @@ def asset_raises_not_found_error(mocked_cluster_resources):
         with pytest.raises(ResourceNotFoundError):
             support_bundle(None, bundle_dir=a_bundle_dir, edge_service="opcua")
 
-    if not mocked_cluster_resources["param"] or BLUEFIN_API_V1 not in mocked_cluster_resources["param"]:
+    if not mocked_cluster_resources["param"] or DATA_PROCESSOR_API_V1 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="bluefin")
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="dataprocessor")
 
     if not mocked_cluster_resources["param"] or SYMPHONY_API_V1 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
@@ -443,15 +466,10 @@ def assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector: str
 def assert_list_services(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
     mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
-    # @digimaun - more configurable mocks
-    mock_name = "mock_service"
-    if resource_api in [BLUEFIN_API_V1]:
-        mock_name = "bluefin-service"
-
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/service.{mock_name}.yaml",
-        data=f"kind: Service\nmetadata:\n  name: {mock_name}\n  namespace: mock_namespace\n",
+        zinfo=f"mock_namespace/{resource_api.moniker}/service.mock_service.yaml",
+        data="kind: Service\nmetadata:\n  name: mock_service\n  namespace: mock_namespace\n",
     )
 
 

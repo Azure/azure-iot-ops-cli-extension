@@ -25,12 +25,12 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="27fc413f17fb2e38f328d7b5d642fec0ec5c7aad",
+    commit_id="0888ca1c5d11951f5c84080053697b26284b6485",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.22.6.54827", "templateHash": "4655036172417818765"},
+            "_generator": {"name": "bicep", "version": "0.22.6.54827", "templateHash": "2330898468144527374"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -57,6 +57,7 @@ V1_TEMPLATE = TemplateVer(
                 "defaultValue": "[format('{0}-processor', toLower(parameters('clusterName')))]",
             },
             "mqInstanceName": {"type": "string", "defaultValue": "mq-instance"},
+            "mqFrontendServer": {"type": "string", "defaultValue": "mq-dmqtt-frontend"},
             "mqListenerName": {"type": "string", "defaultValue": "listener"},
             "mqBrokerName": {"type": "string", "defaultValue": "broker"},
             "mqAuthnName": {"type": "string", "defaultValue": "authn"},
@@ -129,8 +130,8 @@ V1_TEMPLATE = TemplateVer(
                 "observability": "0.62.3",
                 "akri": "0.1.0-preview-rc3",
                 "mq": "0.1.0-preview-rc3",
-                "aio": "0.45.1-buddy-20231018.2",
-                "layeredNetworking": "0.1.0-alpha.4",
+                "aio": "0.1.0-preview-rc1",
+                "layeredNetworking": "0.1.0-alpha.5",
                 "processor": "0.1.0-preview.14",
             },
             "TRAINS": {
@@ -150,8 +151,8 @@ V1_TEMPLATE = TemplateVer(
                     "resource": {
                         "apiVersion": "cert-manager.io/v1",
                         "kind": "Issuer",
-                        "metadata": {"name": "e4k-frontend-server"},
-                        "spec": {"ca": {"secretName": "aio-ca-key-pair-test-only"}},
+                        "metadata": {"name": "[parameters('mqFrontendServer')]"},
+                        "spec": {"ca": {"secretName": "[variables('AIO_TRUST_SECRET_NAME')]"}},
                     }
                 },
             },
@@ -536,7 +537,8 @@ V1_TEMPLATE = TemplateVer(
                     "targetResourceGroup": "[resourceGroup().id]",
                 },
                 "dependsOn": [
-                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations/resourceSyncRules', parameters('customLocationName'), format('{0}-mq-sync', parameters('customLocationName')))]",
                 ],
             },
             {
@@ -552,7 +554,8 @@ V1_TEMPLATE = TemplateVer(
                     "targetResourceGroup": "[resourceGroup().id]",
                 },
                 "dependsOn": [
-                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations/resourceSyncRules', parameters('customLocationName'), format('{0}-aio-sync', parameters('customLocationName')))]",
                 ],
             },
             {
@@ -566,7 +569,8 @@ V1_TEMPLATE = TemplateVer(
                     "targetResourceGroup": "[resourceGroup().id]",
                 },
                 "dependsOn": [
-                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations/resourceSyncRules', parameters('customLocationName'), format('{0}-dp-sync', parameters('customLocationName')))]",
                 ],
             },
             {
@@ -580,7 +584,8 @@ V1_TEMPLATE = TemplateVer(
                 },
                 "properties": {},
                 "dependsOn": [
-                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations/resourceSyncRules', parameters('customLocationName'), format('{0}-dp-sync', parameters('customLocationName')))]",
                 ],
             },
             {
@@ -595,6 +600,7 @@ V1_TEMPLATE = TemplateVer(
                 "properties": {},
                 "dependsOn": [
                     "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations/resourceSyncRules', parameters('customLocationName'), format('{0}-mq-sync', parameters('customLocationName')))]",
                     "[resourceId('Microsoft.IoTOperationsOrchestrator/Targets', parameters('targetName'))]",
                 ],
             },
@@ -685,7 +691,11 @@ V1_TEMPLATE = TemplateVer(
                     "port": 8883,
                     "tls": {
                         "automatic": {
-                            "issuerRef": {"name": "e4k-frontend-server", "kind": "Issuer", "group": "cert-manager.io"}
+                            "issuerRef": {
+                                "name": "[parameters('mqFrontendServer')]",
+                                "kind": "Issuer",
+                                "group": "cert-manager.io",
+                            }
                         }
                     },
                 },
@@ -750,7 +760,8 @@ V1_TEMPLATE = TemplateVer(
                     ],
                 },
                 "dependsOn": [
-                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]"
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                    "[resourceId('Microsoft.ExtendedLocation/customLocations/resourceSyncRules', parameters('customLocationName'), format('{0}-aio-sync', parameters('customLocationName')))]",
                 ],
             },
         ],

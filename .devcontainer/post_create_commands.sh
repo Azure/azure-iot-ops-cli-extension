@@ -1,5 +1,13 @@
+# wait for docker
+until docker version > /dev/null 2>&1
+do
+  echo "Checking if docker daemon has started..."
+  sleep 10s
+done
+
 # create local k3s cluster
 echo "Creating k3d cluster"
+export K3D_FIX_MOUNTS=1
 k3d cluster create -i ghcr.io/jlian/k3d-nfs:v1.25.3-k3s1 \
 -p '1883:1883@loadbalancer' \
 -p '8883:8883@loadbalancer' \
@@ -24,7 +32,7 @@ echo "Install AZ CLI EDGE"
 azdev setup -c EDGE
 
 echo "Installing local dev extension"
-pip install -U --target ~/.azure/cliextensions/azure-edge .
+pip install -U --target ~/.azure/cliextensions/azure-iot-ops .
 
 # setup tox environment dependencies in parallel, but don't run tests
 echo "Creating local tox environments"

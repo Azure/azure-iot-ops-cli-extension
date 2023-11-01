@@ -92,7 +92,7 @@ class SupportForEdgeServiceType(ListableEnum):
     e4k = "e4k"
     lnm = "lnm"
     opcua = "opcua"
-    bluefin = "bluefin"
+    dataprocessor = "dataprocessor"
     symphony = "symphony"
     akri = "akri"
     deviceregistry = "deviceregistry"
