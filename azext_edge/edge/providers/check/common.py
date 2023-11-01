@@ -52,61 +52,77 @@ class DataprocessorDestinationStageType(ListableEnum):
 ERROR_NO_DETAIL = "<No detail available>"
 
 DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES = {
-    DataProcessorStageType.aggregate.value: [("window.type", "Aggregate window type", False),
-                                                ("window.size", "Aggregate window duration", False),
-                                                ("properties", "Aggregate property", True)],
-    DataProcessorStageType.enrich.value: [("dataset", "Enrich dataset ID", False),
-                                             ("conditions", "Enrich condition", True)],
+    DataProcessorStageType.aggregate.value: [
+        ("window.type", "Aggregate window type", False),
+        ("window.size", "Aggregate window duration", False),
+        ("properties", "Aggregate property", True)
+    ],
+    DataProcessorStageType.enrich.value: [
+        ("dataset", "Enrich dataset ID", False),
+        ("conditions", "Enrich condition", True)
+    ],
     DataProcessorStageType.filter.value: [("expression", "Filter expression", True)],
-    DataProcessorStageType.grpc.value: [("serverAddress", "gRPC server address", False),
-                                           ("rpcName", "gRPC RPC name", False),
-                                           ("descriptor", "gRPC descriptor", False),
-                                           ("request", "gRPC request", True),
-                                           ("response", "gRPC response", True),
-                                           ("retry", "gRPC retry mechanism", True)],
-    DataProcessorStageType.http.value: [("url", "Request URL", False),
-                                           ("method", "Request method", False),
-                                           ("request", "gRPC request", True),
-                                           ("response", "gRPC response", True),
-                                           ("retry", "gRPC retry mechanism", True)],
+    DataProcessorStageType.grpc.value: [
+        ("serverAddress", "gRPC server address", False),
+        ("rpcName", "gRPC RPC name", False),
+        ("descriptor", "gRPC descriptor", False),
+        ("request", "gRPC request", True),
+        ("response", "gRPC response", True),
+        ("retry", "gRPC retry mechanism", True)
+    ],
+    DataProcessorStageType.http.value: [
+        ("url", "Request URL", False),
+        ("method", "Request method", False),
+        ("request", "gRPC request", True),
+        ("response", "gRPC response", True),
+        ("retry", "gRPC retry mechanism", True)
+    ],
     DataProcessorStageType.lkv.value: [("properties", "LKV property", True)],
     DataProcessorStageType.transform.value: [("expression", "Transform expression", True)]
 }
 
 DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES = {
-    DataprocessorDestinationStageType.fabric.value: [("url", "Fabric Endpoint", False),
-                                               ("workspace", "Fabric workspace ID", False),
-                                               ("lakehouse", "Fabric lakehouse ID", False),
-                                               ("table", "Fabric lakehouse table", False),
-                                               ("authentication.type", "Data Explorer authentication type", False),
-                                               ("authentication.tenantId", "Tenant ID", False),
-                                               ("authentication.clientId", "Client ID", False),
-                                               ("authentication.clientSecret", "Client secret", False),
-                                               ("filePath", "Fabric template file path", True),
-                                               ("batch", "Fabric batch method", True),
-                                               ("columns", "Fabric table column", True),
-                                               ("retry", "Fabric retry mechanism", True)],
-    DataprocessorDestinationStageType.grpc.value: [("serverAddress", "gRPC server address", False),
-                                             ("rpcName", "gRPC RPC name", False),
-                                             ("descriptor", "gRPC descriptor", False),
-                                             ("request", "gRPC request", True),
-                                             ("retry", "gRPC retry mechanism", True)],
-    DataprocessorDestinationStageType.data_explorer.value: [("clusterUrl", "Data Explorer cluster URL", False),
-                                                      ("database", "Data Explorer database", False),
-                                                      ("table", "Data Explorer table", False),
-                                                      ("authentication.type", "Data Explorer authentication type", False),
-                                                      ("authentication.tenantId", "Tenant ID", False),
-                                                      ("authentication.clientId", "Client ID", False),
-                                                      ("authentication.clientSecret", "Client secret", False),
-                                                      ("batch", "Data Explorer batch method", True),
-                                                      ("columns", "Data Explorer table column", True),
-                                                      ("retry", "Data Explorer retry mechanism", True)],
-    DataprocessorDestinationStageType.mqtt.value: [("broker", "MQTT broker URL", False), ("qos", "MQTT QoS", False),
-                                             ("topic", "MQTT topic", False),
-                                             ("format", "MQTT format", True),
-                                             ("authentication", "MQTT authentication", True),
-                                             ("userProperties", "MQTT user property", True),
-                                             ("retry", "MQTT retry mechanism", True)],
+    DataprocessorDestinationStageType.fabric.value: [
+        ("url", "Fabric Endpoint", False),
+        ("workspace", "Fabric workspace ID", False),
+        ("lakehouse", "Fabric lakehouse ID", False),
+        ("table", "Fabric lakehouse table", False),
+        ("authentication.type", "Data Explorer authentication type", False),
+        ("authentication.tenantId", "Tenant ID", False),
+        ("authentication.clientId", "Client ID", False),
+        ("authentication.clientSecret", "Client secret", False),
+        ("filePath", "Fabric template file path", True),
+        ("batch", "Fabric batch method", True),
+        ("columns", "Fabric table column", True),
+        ("retry", "Fabric retry mechanism", True)
+    ],
+    DataprocessorDestinationStageType.grpc.value: [
+        ("serverAddress", "gRPC server address", False),
+        ("rpcName", "gRPC RPC name", False),
+        ("descriptor", "gRPC descriptor", False),
+        ("request", "gRPC request", True),
+        ("retry", "gRPC retry mechanism", True)
+    ],
+    DataprocessorDestinationStageType.data_explorer.value: [
+        ("clusterUrl", "Data Explorer cluster URL", False),
+        ("database", "Data Explorer database", False),
+        ("table", "Data Explorer table", False),
+        ("authentication.type", "Data Explorer authentication type", False),
+        ("authentication.tenantId", "Tenant ID", False),
+        ("authentication.clientId", "Client ID", False),
+        ("authentication.clientSecret", "Client secret", False),
+        ("batch", "Data Explorer batch method", True),
+        ("columns", "Data Explorer table column", True),
+        ("retry", "Data Explorer retry mechanism", True)
+    ],
+    DataprocessorDestinationStageType.mqtt.value: [
+        ("broker", "MQTT broker URL", False), ("qos", "MQTT QoS", False),
+        ("topic", "MQTT topic", False),
+        ("format", "MQTT format", True),
+        ("authentication", "MQTT authentication", True),
+        ("userProperties", "MQTT user property", True),
+        ("retry", "MQTT retry mechanism", True)
+    ],
     DataprocessorDestinationStageType.reference_data.value: [("dataset", "Dataset ID", False)]
 }
 
