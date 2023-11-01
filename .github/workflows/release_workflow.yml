@@ -31,12 +31,13 @@ jobs:
   linter:
     needs: [build]
     uses: ./.github/workflows/azdev_linter.yml
-  smoke_test:
-    needs: [build]
-    uses: ./.github/workflows/smoke_test.yml
+  # smoke tests are temporarily disabled until a suitable deployment replacement is built
+  # smoke_test:
+  #   needs: [build]
+  #   uses: ./.github/workflows/smoke_test.yml
   approval:
     needs: [security, build, test, linter]
-    if: ${{ (success() || github.event.inputs.continue-on-fail) && inputs.release_strategy != 'none' }}
+    if: ${{ (success() || inputs.continue-on-fail == 'true') && inputs.release_strategy != 'none' }}
     environment: production
     runs-on: ubuntu-latest
     steps:

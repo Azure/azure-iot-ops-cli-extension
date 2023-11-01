@@ -23,45 +23,45 @@ def load_iotedge_commands(self, _):
         command_type=edge_resource_ops,
         is_preview=True,
     ) as cmd_group:
-        cmd_group.command("check", "check")
+        # cmd_group.command("check", "check")
         cmd_group.command("init", "init")
 
-    with self.command_group(
-        "iot ops support",
-        command_type=edge_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("create-bundle", "support_bundle")
+    # with self.command_group(
+    #     "iot ops support",
+    #     command_type=edge_resource_ops,
+    # ) as cmd_group:
+    #     cmd_group.command("create-bundle", "support_bundle")
 
-    with self.command_group(
-        "iot ops mq",
-        command_type=e4k_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("stats", "stats")
-        cmd_group.command("get-password-hash", "get_password_hash")
+    # with self.command_group(
+    #     "iot ops mq",
+    #     command_type=e4k_resource_ops,
+    # ) as cmd_group:
+    #     cmd_group.command("stats", "stats")
+    #     cmd_group.command("get-password-hash", "get_password_hash")
 
-    with self.command_group(
-        "iot ops asset",
-        command_type=asset_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("create", "create_asset")
-        cmd_group.command("delete", "delete_asset")
-        cmd_group.command("list", "list_assets")
-        cmd_group.command("query", "query_assets")
-        cmd_group.show_command("show", "show_asset")
-        cmd_group.command("update", "update_asset")
+    # with self.command_group(
+    #     "iot ops asset",
+    #     command_type=asset_resource_ops,
+    # ) as cmd_group:
+    #     cmd_group.command("create", "create_asset")
+    #     cmd_group.command("delete", "delete_asset")
+    #     cmd_group.command("list", "list_assets")
+    #     cmd_group.command("query", "query_assets")
+    #     cmd_group.show_command("show", "show_asset")
+    #     cmd_group.command("update", "update_asset")
 
-    with self.command_group(
-        "iot ops asset data-point",
-        command_type=asset_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("add", "add_asset_data_point")
-        cmd_group.command("list", "list_asset_data_points")
-        cmd_group.command("remove", "remove_asset_data_point")
+    # with self.command_group(
+    #     "iot ops asset data-point",
+    #     command_type=asset_resource_ops,
+    # ) as cmd_group:
+    #     cmd_group.command("add", "add_asset_data_point")
+    #     cmd_group.command("list", "list_asset_data_points")
+    #     cmd_group.command("remove", "remove_asset_data_point")
 
-    with self.command_group(
-        "iot ops asset event",
-        command_type=asset_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("add", "add_asset_event")
-        cmd_group.command("list", "list_asset_events")
-        cmd_group.command("remove", "remove_asset_event")
+    # with self.command_group(
+    #     "iot ops asset event",
+    #     command_type=asset_resource_ops,
+    # ) as cmd_group:
+    #     cmd_group.command("add", "add_asset_event")
+    #     cmd_group.command("list", "list_asset_events")
+    #     cmd_group.command("remove", "remove_asset_event")

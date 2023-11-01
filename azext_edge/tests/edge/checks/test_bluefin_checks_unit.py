@@ -12,7 +12,7 @@ from azext_edge.edge.providers.check.bluefin import (
     evaluate_instances,
     evaluate_pipelines,
 )
-from azext_edge.edge.providers.edge_api.bluefin import BluefinResourceKinds
+from azext_edge.edge.providers.edge_api.dataprocessor import DataProcessorResourceKinds
 from .conftest import (
     assert_check_by_resource_types,
     assert_conditions,
@@ -28,26 +28,26 @@ from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
     [
         None,
         [],
-        [BluefinResourceKinds.DATASET.value],
-        [BluefinResourceKinds.INSTANCE.value],
-        [BluefinResourceKinds.PIPELINE.value],
+        [DataProcessorResourceKinds.DATASET.value],
+        [DataProcessorResourceKinds.INSTANCE.value],
+        [DataProcessorResourceKinds.PIPELINE.value],
         [
-            BluefinResourceKinds.DATASET.value,
-            BluefinResourceKinds.INSTANCE.value,
+            DataProcessorResourceKinds.DATASET.value,
+            DataProcessorResourceKinds.INSTANCE.value,
         ],
         [
-            BluefinResourceKinds.DATASET.value,
-            BluefinResourceKinds.INSTANCE.value,
-            BluefinResourceKinds.PIPELINE.value,
+            DataProcessorResourceKinds.DATASET.value,
+            DataProcessorResourceKinds.INSTANCE.value,
+            DataProcessorResourceKinds.PIPELINE.value,
         ],
     ],
 )
 @pytest.mark.parametrize('edge_service', ['bluefin'])
 def test_check_bluefin_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        BluefinResourceKinds.DATASET.value: "azext_edge.edge.providers.check.bluefin.evaluate_datasets",
-        BluefinResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.bluefin.evaluate_instances",
-        BluefinResourceKinds.PIPELINE.value: "azext_edge.edge.providers.check.bluefin.evaluate_pipelines",
+        DataProcessorResourceKinds.DATASET.value: "azext_edge.edge.providers.check.bluefin.evaluate_datasets",
+        DataProcessorResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.bluefin.evaluate_instances",
+        DataProcessorResourceKinds.PIPELINE.value: "azext_edge.edge.providers.check.bluefin.evaluate_pipelines",
     }
 
     assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)

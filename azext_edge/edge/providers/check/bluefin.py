@@ -37,8 +37,8 @@ from .common import (
 )
 
 from ...providers.edge_api import (
-    BLUEFIN_API_V1,
-    BluefinResourceKinds,
+    DATA_PROCESSOR_API_V1,
+    DataProcessorResourceKinds,
 )
 
 
@@ -79,17 +79,17 @@ def check_bluefin_post_deployment(
     resource_kinds: List[str] = None
 ) -> None:
     evaluate_funcs = {
-        BluefinResourceKinds.INSTANCE: evaluate_instances,
-        BluefinResourceKinds.PIPELINE: evaluate_pipelines,
-        BluefinResourceKinds.DATASET: evaluate_datasets,
+        DataProcessorResourceKinds.INSTANCE: evaluate_instances,
+        DataProcessorResourceKinds.PIPELINE: evaluate_pipelines,
+        DataProcessorResourceKinds.DATASET: evaluate_datasets,
     }
 
     return check_post_deployment(
-        api_info=BLUEFIN_API_V1,
+        api_info=DATA_PROCESSOR_API_V1,
         check_name="enumerateBluefinApi",
         check_desc="Enumerate Bluefin API resources",
         result=result,
-        resource_kinds_enum=BluefinResourceKinds,
+        resource_kinds_enum=DataProcessorResourceKinds,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
@@ -108,14 +108,14 @@ def evaluate_instances(
     instance_all_conditions = ["instances"]
     check_manager.add_target(target_name=target_instances, conditions=instance_all_conditions)
 
-    instance_list: list = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.INSTANCE)
+    instance_list: list = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
 
     all_instances: dict = []
     if instance_list:
         all_instances = instance_list.get("items", [])
 
     if not instance_list or not all_instances:
-        fetch_instances_error_text = f"Unable to fetch {BluefinResourceKinds.INSTANCE.value}s in any namespaces."
+        fetch_instances_error_text = f"Unable to fetch {DataProcessorResourceKinds.INSTANCE.value}s in any namespaces."
         check_manager.add_target_eval(
             target_name=target_instances,
             status=CheckTaskStatus.error.value,
@@ -215,7 +215,7 @@ def evaluate_instances(
             ),
         )
 
-        from ..support.bluefin import BLUEFIN_LABEL
+        from ..support.dataprocessor import DATA_PROCESSOR_LABEL
 
         for pod in [
             BLUEFIN_READER_WORKER_PREFIX,
@@ -229,7 +229,7 @@ def evaluate_instances(
                 target=target_instances,
                 pod=pod,
                 display_padding=12,
-                service_label=BLUEFIN_LABEL,
+                service_label=DATA_PROCESSOR_LABEL,
                 namespace=ALL_NAMESPACES_TARGET
             )
 
@@ -255,10 +255,10 @@ def evaluate_pipelines(
     ]
 
     check_manager.add_target(target_name=target_pipelines, conditions=pipeline_all_conditions)
-    all_pipelines: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.PIPELINE).get("items", [])
+    all_pipelines: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.PIPELINE).get("items", [])
 
     if not all_pipelines:
-        fetch_pipelines_error_text = f"Unable to fetch {BluefinResourceKinds.PIPELINE.value}s in any namespaces."
+        fetch_pipelines_error_text = f"Unable to fetch {DataProcessorResourceKinds.PIPELINE.value}s in any namespaces."
         check_manager.add_target_eval(
             target_name=target_pipelines,
             status=CheckTaskStatus.error.value,
@@ -430,11 +430,11 @@ def evaluate_datasets(
     dataset_namespace_conditions = ["provisioningState"]
     check_manager.add_target(target_name=target_datasets, conditions=dataset_all_conditions)
 
-    all_datasets: dict = BLUEFIN_API_V1.get_resources(BluefinResourceKinds.DATASET).get("items", [])
+    all_datasets: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.DATASET).get("items", [])
 
     if not all_datasets:
         fetch_datasets_warn_text = (
-            f"\nUnable to fetch {BluefinResourceKinds.DATASET.value}s in any namespaces."
+            f"\nUnable to fetch {DataProcessorResourceKinds.DATASET.value}s in any namespaces."
             "\n[bright_white]Skipping dataset evaluation[/bright_white]."
         )
         add_display_and_eval(
