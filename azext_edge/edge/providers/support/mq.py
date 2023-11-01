@@ -25,10 +25,9 @@ from .base import (
 logger = get_logger(__name__)
 
 MQ_APP_LABELS = [
-    'broker',
-    'diagnostics',
-    'health-manager',
-    'aio-mq-diagnostics-service',
+    'broker',  # aio-mq-dmqtt-frontend, aio-mq-dmqtt-backend, aio-mq-dmqtt-authentication
+    'diagnostics',  # aio-mq-diagnostics-service
+    'health-manager',  # aio-mq-dmqtt-health-manager
     'aio-mq-operator',
     'aio-mq-mqttbridge',
     'aio-mq-datalake',
