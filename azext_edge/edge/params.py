@@ -12,7 +12,7 @@ from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
 from .common import SupportForEdgeServiceType
-from .providers.edge_api import E4kResourceKinds
+from .providers.edge_api import MqResourceKinds
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.dataprocessor import DataProcessorResourceKinds
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
@@ -87,7 +87,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "edge_service",
             options_list=["--edge-service", "-e"],
-            choices=CaseInsensitiveList(["e4k"]),
+            choices=CaseInsensitiveList(["mq"]),
             help="The edge service deployment that will be evaluated.",
         )
         context.argument(
@@ -96,12 +96,12 @@ def load_iotedge_arguments(self, _):
             options_list=["--resources"],
             choices=CaseInsensitiveList(
                 [
-                    E4kResourceKinds.BROKER.value,
-                    E4kResourceKinds.BROKER_LISTENER.value,
-                    E4kResourceKinds.DIAGNOSTIC_SERVICE.value,
-                    E4kResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
-                    E4kResourceKinds.DATALAKE_CONNECTOR.value,
-                    E4kResourceKinds.KAFKA_CONNECTOR.value,
+                    MqResourceKinds.BROKER.value,
+                    MqResourceKinds.BROKER_LISTENER.value,
+                    MqResourceKinds.DIAGNOSTIC_SERVICE.value,
+                    MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+                    MqResourceKinds.DATALAKE_CONNECTOR.value,
+                    MqResourceKinds.KAFKA_CONNECTOR.value,
                     DataProcessorResourceKinds.DATASET.value,
                     DataProcessorResourceKinds.PIPELINE.value,
                     DataProcessorResourceKinds.INSTANCE.value,

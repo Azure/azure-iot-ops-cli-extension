@@ -10,8 +10,8 @@ from azext_edge.edge.providers.checks import run_checks
 
 
 @pytest.fixture
-def mock_evaluate_e4k_pod_health(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.e4k.evaluate_pod_health", return_value={})
+def mock_evaluate_mq_pod_health(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.mq.evaluate_pod_health", return_value={})
     yield patched
 
 
@@ -31,7 +31,7 @@ def mock_evaluate_bluefin_pod_health(mocker):
 def mock_resource_types(mocker, edge_service):
     patched = mocker.patch("azext_edge.edge.providers.check.base.enumerate_edge_service_resources")
 
-    if edge_service == "e4k":
+    if edge_service == "mq":
         patched.return_value = (
             {},
             {
