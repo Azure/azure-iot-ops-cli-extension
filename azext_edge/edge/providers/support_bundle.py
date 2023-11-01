@@ -14,9 +14,6 @@ from rich.console import Console, NewLine
 from ..common import SupportForEdgeServiceType
 from ..providers.edge_api import (
     DATA_PROCESSOR_API_V1,
-    MQ_API_V1A2,
-    MQ_API_V1A3,
-    MQ_API_V1A4,
     MQ_API_V1B1,
     LNM_API_V1B1,
     OPCUA_API_V1,
@@ -29,7 +26,7 @@ logger = get_logger(__name__)
 
 console = Console()
 
-COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1A2, MQ_API_V1A3, MQ_API_V1A4, MQ_API_V1B1])
+COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DATA_PROCESSOR_APIS = EdgeApiManager(resource_apis=[DATA_PROCESSOR_API_V1])
 COMPAT_SYMPHONY_APIS = EdgeApiManager(resource_apis=[SYMPHONY_API_V1])

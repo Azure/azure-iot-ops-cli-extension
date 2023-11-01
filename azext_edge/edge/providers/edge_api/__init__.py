@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 from .base import EdgeResourceApi, EdgeApiManager
-from .mq import MQ_ACTIVE_API, MQ_API_V1A2, MQ_API_V1A3, MQ_API_V1A4, MQ_API_V1B1, MqResourceKinds
+from .mq import MQ_ACTIVE_API, MQ_API_V1B1, MqResourceKinds
 from .dataprocessor import DATA_PROCESSOR_API_V1, DataProcessorResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
 from .symphony import SYMPHONY_API_V1, SymphonyResourceKinds
@@ -20,9 +20,6 @@ __all__ = [
     "EdgeApiManager",
     "MqResourceKinds",
     "MQ_ACTIVE_API",
-    "MQ_API_V1A2",
-    "MQ_API_V1A3",
-    "MQ_API_V1A4",
     "MQ_API_V1B1",
     "LnmResourceKinds",
     "LNM_API_V1B1",

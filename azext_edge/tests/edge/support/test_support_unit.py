@@ -17,9 +17,6 @@ from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.providers.edge_api import (
     EdgeResourceApi,
     OpcuaResourceKinds,
-    MQ_API_V1A2,
-    MQ_API_V1A3,
-    MQ_API_V1A4,
     MQ_API_V1B1,
     MQ_ACTIVE_API,
     DATA_PROCESSOR_API_V1,
@@ -50,6 +47,7 @@ from azext_edge.edge.providers.support.symphony import (
     GENERIC_CONTROLLER_LABEL,
 )
 from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
+from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
 from ...generators import generate_generic_id
 
@@ -60,15 +58,15 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
     "mocked_cluster_resources",
     [
         [],
-        [MQ_API_V1A2],
-        [MQ_API_V1A2, MQ_API_V1A3],
+        [MQ_API_V1B1],
+        [MQ_API_V1B1, MQ_ACTIVE_API],
         [OPCUA_API_V1],
-        [MQ_API_V1A2, OPCUA_API_V1],
-        [MQ_API_V1A2, DATA_PROCESSOR_API_V1],
-        [MQ_API_V1A2, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
-        [MQ_API_V1A2, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        [MQ_API_V1A3, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1],
-        [MQ_API_V1A3, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1, LNM_API_V1B1],
+        [MQ_API_V1B1, OPCUA_API_V1],
+        [MQ_API_V1B1, DATA_PROCESSOR_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
+        [MQ_ACTIVE_API, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1],
+        [MQ_ACTIVE_API, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1, LNM_API_V1B1],
     ],
     indirect=True,
 )
@@ -90,7 +88,7 @@ def test_create_bundle(
     mocked_root_logger,
 ):
     if not mocked_cluster_resources["param"] or all(
-        [MQ_API_V1A2 not in mocked_cluster_resources["param"], MQ_API_V1A3 not in mocked_cluster_resources["param"]]
+        api not in mocked_cluster_resources["param"] for api in COMPAT_MQ_APIS.resource_apis
     ):
         with pytest.raises(ResourceNotFoundError):
             support_bundle(None, bundle_dir=a_bundle_dir, edge_service="mq")
@@ -142,23 +140,23 @@ def test_create_bundle(
                 mocked_get_custom_objects, mocked_zipfile, api, kind, file_prefix=target_file_prefix
             )
 
-        if api in [MQ_API_V1A2, MQ_API_V1A3]:
+        if api in COMPAT_MQ_APIS.resource_apis:
             # Assert runtime resources
             assert_list_deployments(mocked_client, mocked_zipfile, label_selector=MQ_LABEL,
-                                    resource_api=MQ_API_V1A2, field_selector=f"metadata.name={AIO_MQ_OPERATOR}")
+                                    resource_api=MQ_API_V1B1, field_selector=f"metadata.name={AIO_MQ_OPERATOR}")
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=MQ_LABEL,
-                resource_api=MQ_API_V1A2,
+                resource_api=MQ_API_V1B1,
                 since_seconds=since_seconds,
             )
-            assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1A2)
+            assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
             assert_list_stateful_sets(
-                mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1A2
+                mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1
             )
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1A2)
+            assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
             assert_mq_stats(mocked_zipfile)
 
         if api in [OPCUA_API_V1]:
@@ -354,7 +352,7 @@ def assert_list_deployments(
     field_selector: str = None
 ):
     moniker = resource_api.moniker
-    if resource_api in [MQ_API_V1A2, MQ_API_V1A3, MQ_API_V1A4, MQ_API_V1B1]:
+    if resource_api in COMPAT_MQ_APIS.resource_apis:
         # regardless of MQ API, MQ_ACTIVE_API.moniker is used for support/mq/fetch_diagnostic_metrics
         moniker = MQ_ACTIVE_API.moniker
         from unittest.mock import call
