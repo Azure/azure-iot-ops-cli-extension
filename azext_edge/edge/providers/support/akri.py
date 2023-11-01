@@ -22,15 +22,15 @@ from .base import (
 logger = get_logger(__name__)
 
 
-AKRI_APP_LABEL = "app in (otel-collector)"
 AKRI_NAME_LABEL = "name in (aio-akri-agent, akri-opcua-asset-discovery)"
 AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
+AKRI_PREFIXES = ["akri-", "aio-akri-"]
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     processed = process_v1_pods(
         resource_api=AKRI_API_V0,
-        label_selector=AKRI_APP_LABEL,
+        prefix_names=AKRI_PREFIXES,
         since_seconds=since_seconds,
         capture_previous_logs=True,
     )
@@ -49,12 +49,12 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
 def fetch_deployments():
     return process_deployments(
         resource_api=AKRI_API_V0,
-        label_selector=AKRI_APP_LABEL,
+        prefix_names=AKRI_PREFIXES,
     )
 
 
 def fetch_daemonsets():
-    return process_daemonsets(resource_api=AKRI_API_V0, prefix_names=["akri-", "aio-akri-"])
+    return process_daemonsets(resource_api=AKRI_API_V0, prefix_names=AKRI_PREFIXES)
 
 
 def fetch_services():
@@ -62,7 +62,7 @@ def fetch_services():
 
 
 def fetch_replicasets():
-    return process_replicasets(resource_api=AKRI_API_V0, label_selector=AKRI_APP_LABEL)
+    return process_replicasets(resource_api=AKRI_API_V0, prefix_names=AKRI_PREFIXES)
 
 
 support_runtime_elements = {

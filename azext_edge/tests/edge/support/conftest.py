@@ -11,6 +11,30 @@ from ...generators import generate_generic_id
 import pytest
 
 
+def add_pod_to_mocked_pods(mocked_client, expected_pod_map, mock_names: List[str] = None):
+    from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
+
+    current_pods = mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value
+    pod_list = current_pods.items()
+    namespace = pod_list[0].metadata.namespace
+    # all the mocks are the same
+    # need to go through pod_name and container_name (that we don't care about here)
+    mock_log = list(list(expected_pod_map[namespace].values())[0].values())[0]
+
+    for pod_name in mock_names:
+        container_name = generate_generic_id()
+        spec = V1PodSpec(containers=[V1Container(name=container_name)])
+        pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
+        pod_list.append(pod)
+        expected_pod_map[namespace][pod_name] = {container_name: mock_log}
+
+    pods_list = V1PodList(items=pod_list)
+    mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
+    mocked_client.CoreV1Api().read_namespaced_pod_log.return_value = mock_log
+
+    yield expected_pod_map
+
+
 @pytest.fixture
 def mocked_client(mocker, mocked_client):
     patched = mocker.patch("azext_edge.edge.providers.support.base.client", autospec=True)
@@ -148,7 +172,7 @@ def mocked_list_pods(mocked_client):
     namespaces = [generate_generic_id()]
     mock_log = f"===mocked pod log {generate_generic_id()} ==="
     for namespace in namespaces:
-        pod_names = [generate_generic_id(), generate_generic_id()]
+        pod_names = [generate_generic_id(), generate_generic_id(), "aio-akri-otel-collector"]
         pods = []
         expected_pod_map[namespace] = {}
         for pod_name in pod_names:
@@ -186,11 +210,19 @@ def mocked_list_deployments(mocked_client):
     from kubernetes.client.models import V1DeploymentList, V1Deployment, V1ObjectMeta
 
     def _handle_list_deployments(*args, **kwargs):
-        name = "mock_deployment"
+        names = ["mock_deployment"]
+        # @jiacju - currently no unique label for lnm
+        # @vilit - also akri
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            name = "aio-lnm-operator"
-        deployment = V1Deployment(metadata=V1ObjectMeta(namespace="mock_namespace", name=name))
-        deployment_list = V1DeploymentList(items=[deployment])
+            names.extend([
+                "aio-lnm-operator",
+                "aio-akri-otel-collector",
+            ])
+
+        deployment_list = []
+        for name in names:
+            deployment_list.append(V1Deployment(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        deployment_list = V1DeploymentList(items=deployment_list)
 
         return deployment_list
 
@@ -204,8 +236,17 @@ def mocked_list_replicasets(mocked_client):
     from kubernetes.client.models import V1ReplicaSetList, V1ReplicaSet, V1ObjectMeta
 
     def _handle_list_replicasets(*args, **kwargs):
-        replicaset = V1ReplicaSet(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_replicaset"))
-        replicaset_list = V1ReplicaSetList(items=[replicaset])
+        names = ["mock_replicaset"]
+        # @vilit - also akri
+        if "label_selector" in kwargs and kwargs["label_selector"] is None:
+            names.extend([
+                "aio-akri-otel-collector-*"
+            ])
+
+        replicaset_list = []
+        for name in names:
+            replicaset_list.append(V1ReplicaSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        replicaset_list = V1ReplicaSetList(items=replicaset_list)
 
         return replicaset_list
 
