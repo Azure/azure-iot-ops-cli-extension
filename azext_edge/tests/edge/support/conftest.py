@@ -61,7 +61,7 @@ def mocked_zipfile(mocker):
 
 @pytest.fixture
 def mocked_get_stats(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.support.e4k.get_stats", autospec=True)
+    patched = mocker.patch("azext_edge.edge.providers.support.mq.get_stats", autospec=True)
     patched.return_value = "metrics"
     yield patched
 
@@ -73,8 +73,8 @@ def mocked_cluster_resources(request, mocker):
 
     from azext_edge.edge.providers.edge_api import (
         EdgeResourceApi,
-        E4K_API_V1A2,
-        E4K_API_V1A3,
+        MQ_API_V1B1,
+        MQ_ACTIVE_API,
         OPCUA_API_V1,
         DATA_PROCESSOR_API_V1,
         SYMPHONY_API_V1,
@@ -94,7 +94,7 @@ def mocked_cluster_resources(request, mocker):
         r_key = r.as_str()
         v1_resources: List[V1APIResource] = []
 
-        if r == E4K_API_V1A2:
+        if r == MQ_API_V1B1:
             v1_resources.append(_get_api_resource("Broker"))
             v1_resources.append(_get_api_resource("BrokerListener"))
             v1_resources.append(_get_api_resource("BrokerDiagnostic"))
@@ -103,8 +103,12 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("BrokerAuthorization"))
             v1_resources.append(_get_api_resource("MqttBridgeTopicMap"))
             v1_resources.append(_get_api_resource("MqttBridgeConnector"))
+            v1_resources.append(_get_api_resource("DataLakeConnector"))
+            v1_resources.append(_get_api_resource("DataLakeConnectorTopicMap"))
+            v1_resources.append(_get_api_resource("KafkaConnector"))
+            v1_resources.append(_get_api_resource("KafkaConnectorTopicMap"))
 
-        if r == E4K_API_V1A3:
+        if r == MQ_ACTIVE_API:
             v1_resources.append(_get_api_resource("Broker"))
             v1_resources.append(_get_api_resource("BrokerListener"))
             v1_resources.append(_get_api_resource("BrokerDiagnostic"))
@@ -113,6 +117,10 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("BrokerAuthorization"))
             v1_resources.append(_get_api_resource("MqttBridgeTopicMap"))
             v1_resources.append(_get_api_resource("MqttBridgeConnector"))
+            v1_resources.append(_get_api_resource("DataLakeConnector"))
+            v1_resources.append(_get_api_resource("DataLakeConnectorTopicMap"))
+            v1_resources.append(_get_api_resource("KafkaConnector"))
+            v1_resources.append(_get_api_resource("KafkaConnectorTopicMap"))
 
         if r == OPCUA_API_V1:
             v1_resources.append(_get_api_resource("Application"))

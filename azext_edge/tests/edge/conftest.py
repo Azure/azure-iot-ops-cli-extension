@@ -63,7 +63,7 @@ def mocked_resource_management_client(request, mocker):
 
     resource_mgmt_client.resources.begin_create_or_update_by_id.return_value = poller
 
-    patched = mocker.patch("azure.mgmt.resource.ResourceManagementClient", autospec=True)
+    patched = mocker.patch("azext_edge.edge.util.az_client.get_resource_client", autospec=True)
     patched.return_value = resource_mgmt_client
 
     yield resource_mgmt_client

@@ -137,6 +137,7 @@ def process_v1_pods(
 def process_deployments(
     resource_api: EdgeResourceApi,
     label_selector: str = None,
+    field_selector: str = None,
     return_namespaces: bool = False,
     prefix_names: List[str] = None,
 ):
@@ -148,7 +149,10 @@ def process_deployments(
     if not prefix_names:
         prefix_names = []
 
-    deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(label_selector=label_selector)
+    deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(
+        label_selector=label_selector,
+        field_selector=field_selector
+    )
     logger.info(f"Detected {len(deployments.items)} deployments.")
     namespace_pods_work = {}
 
@@ -354,7 +358,7 @@ def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional
     return result
 
 
-def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "pas") -> PurePath:
+def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "aio") -> PurePath:
     bundle_dir_pure_path = normalize_dir(bundle_dir)
     bundle_pure_path = bundle_dir_pure_path.joinpath(default_bundle_name(system_name))
     return bundle_pure_path
