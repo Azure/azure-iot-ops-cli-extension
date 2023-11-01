@@ -446,7 +446,7 @@ def assert_list_deployments(
     for name in mock_names:
         assert_zipfile_write(
             mocked_zipfile,
-            zinfo=f"mock_namespace/{resource_api.moniker}/deployment.{name}.yaml",
+            zinfo=f"mock_namespace/{moniker}/deployment.{name}.yaml",
             data=f"kind: Deployment\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
         )
 
