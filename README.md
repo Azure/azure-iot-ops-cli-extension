@@ -46,7 +46,7 @@ All k8s interaction commands include an optional `--context` param. If none is p
 
 - `az iot ops check [--namespace] [--edge-service mq] [--as-object] [--post] [--pre] [--context]`
 - `az iot ops support`
-  - `az iot ops support create-bundle [--edge-service auto|mq|opcua|bluefin] [--log-age] [--context]`
+  - `az iot ops support create-bundle [--edge-service auto|mq|opcua|dataprocessor] [--log-age] [--context]`
 - `az iot ops mq`
   - `az iot ops mq stats [--namespace] [--watch] [--refresh] [--raw] [--context]`
   - `az iot ops mq get-password-hash [--iterations] [--phrase]`
