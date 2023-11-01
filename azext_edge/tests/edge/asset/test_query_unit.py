@@ -24,6 +24,7 @@ from ...generators import generate_generic_id
         "custom_location_name": generate_generic_id(),
         "description": generate_generic_id(),
         "disabled": True,
+        "display_name": generate_generic_id(),
         "documentation_uri": generate_generic_id(),
         "endpoint": generate_generic_id(),
         "external_asset_id": generate_generic_id(),
@@ -56,33 +57,40 @@ def test_query_assets(mocked_cmd, mocked_get_subscription_id, mocked_build_query
     assert query_args["type"] == ResourceTypeMapping.asset.value
     assert query_args["additional_project"] == "extendedLocation"
 
-    expected_query = ""
+    expected_query = []
     if req.get("asset_type"):
-        expected_query += f"| where properties.assetType =~ \"{req['asset_type']}\""
-    if req.get("custom_location_name"):  # ##
-        expected_query += f"| where extendedLocation.name contains \"{req['custom_location_name']}\""
+        expected_query.append(f" where properties.assetType =~ \"{req['asset_type']}\"")
+    if req.get("custom_location_name"):
+        expected_query.append(f" where extendedLocation.name contains \"{req['custom_location_name']}\"")
     if req.get("description"):
-        expected_query += f"| where properties.description =~ \"{req['description']}\""
+        expected_query.append(f" where properties.description =~ \"{req['description']}\"")
+    if req.get("display_name"):
+        expected_query.append(f" where properties.displayName =~ \"{req['display_name']}\"")
     if req.get("disabled"):
-        expected_query += f"| where properties.enabled == {not req['disabled']}"
+        expected_query.append(f" where properties.enabled == {not req['disabled']}")
     if req.get("documentation_uri"):
-        expected_query += f"| where properties.documentationUri =~ \"{req['documentation_uri']}\""
+        expected_query.append(f" where properties.documentationUri =~ \"{req['documentation_uri']}\"")
     if req.get("endpoint"):
-        expected_query += f"| where properties.connectivityProfileUri =~ \"{req['endpoint']}\""
+        expected_query.append(f" where properties.assetEndpointProfileUri =~ \"{req['endpoint']}\"")
     if req.get("external_asset_id"):
-        expected_query += f"| where properties.externalAssetId =~ \"{req['external_asset_id']}\""
+        expected_query.append(f" where properties.externalAssetId =~ \"{req['external_asset_id']}\"")
     if req.get("hardware_revision"):
-        expected_query += f"| where properties.hardwareRevision =~ \"{req['hardware_revision']}\""
+        expected_query.append(f" where properties.hardwareRevision =~ \"{req['hardware_revision']}\"")
     if req.get("manufacturer"):
-        expected_query += f"| where properties.manufacturer =~ \"{req['manufacturer']}\""
+        expected_query.append(f" where properties.manufacturer =~ \"{req['manufacturer']}\"")
     if req.get("manufacturer_uri"):
-        expected_query += f"| where properties.manufacturerUri =~ \"{req['manufacturer_uri']}\""
+        expected_query.append(f" where properties.manufacturerUri =~ \"{req['manufacturer_uri']}\"")
     if req.get("model"):
-        expected_query += f"| where properties.model =~ \"{req['model']}\""
+        expected_query.append(f" where properties.model =~ \"{req['model']}\"")
     if req.get("product_code"):
-        expected_query += f"| where properties.productCode =~ \"{req['product_code']}\""
+        expected_query.append(f" where properties.productCode =~ \"{req['product_code']}\"")
     if req.get("serial_number"):
-        expected_query += f"| where properties.serialNumber =~ \"{req['serial_number']}\""
+        expected_query.append(f" where properties.serialNumber =~ \"{req['serial_number']}\"")
     if req.get("software_revision"):
-        expected_query += f"| where properties.softwareRevision =~ \"{req['software_revision']}\""
-    assert query_args["custom_query"] == expected_query
+        expected_query.append(f" where properties.softwareRevision =~ \"{req['software_revision']}\"")
+
+    custom_query = query_args["custom_query"].split("|")[1:]
+
+    assert len(custom_query) == len(expected_query)
+    for i in expected_query:
+        assert i in custom_query

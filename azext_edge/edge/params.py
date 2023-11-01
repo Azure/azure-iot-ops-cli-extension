@@ -691,7 +691,7 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "name",
-            options_list=["--data-point-name", "--dpn"],
+            options_list=["--name", "-n"],
             help="Data point name.",
         )
         context.argument(
@@ -708,7 +708,7 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "name",
-            options_list=["--event-name", "--evn"],
+            options_list=["--name", "-n"],
             help="Event name.",
         )
         context.argument(
