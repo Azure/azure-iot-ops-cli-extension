@@ -40,7 +40,7 @@ def check(
     post_deployment_checks: Optional[bool] = None,
     as_object=None,
     context_name=None,
-    edge_service: str = "e4k",
+    edge_service: str = "mq",
     resource_kinds: List[str] = None,
 ) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)

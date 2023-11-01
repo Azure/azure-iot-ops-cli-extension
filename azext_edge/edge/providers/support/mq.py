@@ -9,7 +9,9 @@ from typing import Iterable
 
 from knack.log import get_logger
 
-from ..edge_api import E4K_API_V1A2, EdgeResourceApi
+from azext_edge.edge.common import AIO_MQ_OPERATOR
+
+from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
 from ..stats import get_stats
 from .base import (
     assemble_crd_work,
@@ -22,19 +24,19 @@ from .base import (
 
 logger = get_logger(__name__)
 
-E4K_APP_LABELS = [
-    'azedge-e4k-operator',
+MQ_APP_LABELS = [
     'broker',
     'diagnostics',
-    'azedge-selftest',
     'health-manager',
-    'azedge-mqttbridge',
-    'azedge-datalake',
-    'azedge-kafka-connector',
-    'azedge-iothub-connector'
+    'aio-mq-diagnostics-service',
+    'aio-mq-operator',
+    'aio-mq-mqttbridge',
+    'aio-mq-datalake',
+    'aio-mq-kafka-connector',
+    'aio-mq-iothub-connector'
 ]
 
-E4K_LABEL = f"app in ({','.join(E4K_APP_LABELS)})"
+MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
 
 
 # TODO: @digimaun
@@ -53,17 +55,23 @@ def fetch_diagnostic_metrics(namespace: str):
         stats_raw = get_stats(namespace=namespace, raw_response=True)
         return {
             "data": stats_raw,
-            "zinfo": f"{namespace}/e4k/diagnostic_metrics.txt",
+            "zinfo": f"{namespace}/{MQ_ACTIVE_API.moniker}/diagnostic_metrics.txt",
         }
     except Exception:
         logger.debug(f"Unable to call stats pod metrics against namespace {namespace}.")
 
 
-def fetch_broker_deployments():
+def fetch_deployments():
     processed, namespaces = process_deployments(
-        resource_api=E4K_API_V1A2, label_selector=E4K_LABEL, return_namespaces=True
+        resource_api=MQ_ACTIVE_API, label_selector=MQ_LABEL, return_namespaces=True
     )
-    for namespace in namespaces:
+    # aio-mq-operator deployment has no app label
+    operators, operator_namespaces = process_deployments(
+        resource_api=MQ_ACTIVE_API, field_selector=f"metadata.name={AIO_MQ_OPERATOR}", return_namespaces=True
+    )
+    processed.extend(operators)
+
+    for namespace in {**namespaces, **operator_namespaces}:
         metrics: dict = fetch_diagnostic_metrics(namespace)
         if metrics:
             processed.append(metrics)
@@ -73,7 +81,7 @@ def fetch_broker_deployments():
         #     checks = run_checks(namespace=namespace)
         #     checks_data = {
         #         "data": checks,
-        #         "zinfo": f"e4k/{namespace}/checks.yaml",
+        #         "zinfo": f"{MQ_ACTIVE_API.moniker}/{namespace}/checks.yaml",
         #     }
         #     processed.append(checks_data)
         # except Exception:
@@ -84,28 +92,28 @@ def fetch_broker_deployments():
 
 def fetch_statefulsets():
     return process_statefulset(
-        resource_api=E4K_API_V1A2,
-        label_selector=E4K_LABEL,
+        resource_api=MQ_ACTIVE_API,
+        label_selector=MQ_LABEL,
     )
 
 
 def fetch_services():
     return process_services(
-        resource_api=E4K_API_V1A2,
-        label_selector=E4K_LABEL,
+        resource_api=MQ_ACTIVE_API,
+        label_selector=MQ_LABEL,
     )
 
 
 def fetch_replicasets():
     return process_replicasets(
-        resource_api=E4K_API_V1A2,
-        label_selector=E4K_LABEL,
+        resource_api=MQ_ACTIVE_API,
+        label_selector=MQ_LABEL,
     )
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     return process_v1_pods(
-        resource_api=E4K_API_V1A2, label_selector=E4K_LABEL, since_seconds=since_seconds, capture_previous_logs=True
+        resource_api=MQ_ACTIVE_API, label_selector=MQ_LABEL, since_seconds=since_seconds, capture_previous_logs=True
     )
 
 
@@ -113,15 +121,15 @@ support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
-    "deployments": fetch_broker_deployments,
+    "deployments": fetch_deployments,
 }
 
 
 def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
-    e4k_to_run = {}
-    e4k_to_run.update(assemble_crd_work(apis))
+    mq_to_run = {}
+    mq_to_run.update(assemble_crd_work(apis))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
-    e4k_to_run.update(support_runtime_elements)
+    mq_to_run.update(support_runtime_elements)
 
-    return e4k_to_run
+    return mq_to_run

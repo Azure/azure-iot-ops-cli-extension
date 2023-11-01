@@ -27,7 +27,9 @@ from .conftest import ASSETS_PATH
     "update_properties": generate_generic_id(),
 }], ids=["create helpers"], indirect=True)
 @pytest.mark.parametrize("req", [
-    {},
+    {
+        "data_points": generate_generic_id(),
+    },
     {
         "asset_type": generate_generic_id(),
         "custom_location_name": generate_generic_id(),
@@ -38,6 +40,7 @@ from .conftest import ASSETS_PATH
         "cluster_subscription": generate_generic_id(),
         "data_points": generate_generic_id(),
         "description": generate_generic_id(),
+        "display_name": generate_generic_id(),
         "disabled": True,
         "documentation_uri": generate_generic_id(),
         "events": generate_generic_id(),
@@ -62,6 +65,7 @@ from .conftest import ASSETS_PATH
         "asset_type": generate_generic_id(),
         "custom_location_resource_group": generate_generic_id(),
         "disabled": False,
+        "events": generate_generic_id(),
         "dp_publishing_interval": 3333,
         "dp_sampling_interval": 44,
         "ev_queue_size": 888,
@@ -121,7 +125,7 @@ def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, ass
 
     # Properties
     request_props = request_body["properties"]
-    assert request_props["connectivityProfileUri"] == endpoint_profile
+    assert request_props["assetEndpointProfileUri"] == endpoint_profile
 
     # Check that update props mock got called correctly
     assert request_props["result"]
@@ -147,6 +151,16 @@ def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, ass
     assert patched_sp.call_args_list[1].args[0] == "event_notifier"
     assert patched_sp.call_args_list[1].args[1] == req.get("events")
     assert request_props["events"] == patched_sp.return_value
+
+
+def test_create_asset_error(mocked_cmd):
+    with pytest.raises(RequiredArgumentMissingError):
+        create_asset(
+            cmd=mocked_cmd,
+            asset_name=generate_generic_id(),
+            resource_group_name=generate_generic_id(),
+            endpoint=generate_generic_id()
+        )
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [{
