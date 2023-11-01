@@ -37,7 +37,8 @@ jobs:
   #   uses: ./.github/workflows/smoke_test.yml
   approval:
     needs: [security, build, test, linter]
-    if: ${{ (success() || inputs.continue-on-fail == 'true') && inputs.release_strategy != 'none' }}
+    # as long as build worked, our break-glass can skip other checks
+    if: github.event.inputs.release_strategy != 'none' && (success() || (needs.build.result == 'success' && github.event.inputs.continue-on-fail == 'true'))
     environment: production
     runs-on: ubuntu-latest
     steps:
@@ -45,20 +46,20 @@ jobs:
         run: |
           echo "Approved"
           echo "Release Strategy: ${{ inputs.release_strategy }}"
-          if [ "${{ inputs.release_strategy }}" == "upload-wheel"]; then
+          if [ "${{ inputs.release_strategy }}" == "upload-wheel" ]; then
             echo "Wheel will be uploaded to storage account."
-          elif [ "${{ inputs.release_strategy }}" == "prod-release"]; then
+          elif [ "${{ inputs.release_strategy }}" == "prod-release" ]; then
             echo "Wheel will be uploaded to storage account after drafting a github release"
           fi
   # occurs when release_strategy is prod-release
   draft_github_release:
     needs: [approval]
-    if: needs.approval.result == 'success' && inputs.release_strategy == 'prod-release'
+    if: success() || (needs.approval.result == 'success' && github.event.inputs.release_strategy == 'prod-release')
     uses: ./.github/workflows/stage_release.yml
     secrets: inherit
   # occurs when release_strategy is not 'none'
   upload_wheel:
     needs: [approval]
-    if: needs.approval.result == 'success' && inputs.release_strategy != 'none'
+    if: success() || (needs.approval.result == 'success' && github.event.inputs.release_strategy != 'none')
     uses: ./.github/workflows/upload_wheel.yml
     secrets: inherit
