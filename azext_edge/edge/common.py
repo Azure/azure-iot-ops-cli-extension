@@ -69,9 +69,9 @@ class ProvisioningState(Enum):
     accepted = "Accepted"
 
 
-class E4kDiagnosticPropertyIndex(Enum):
+class MqDiagnosticPropertyIndex(Enum):
     """
-    E4K Diagnostic Property Index Strings
+    MQ Diagnostic Property Index Strings
     """
 
     publishes_received_per_second = "e4k_publishes_received_per_second"
@@ -89,20 +89,12 @@ class SupportForEdgeServiceType(ListableEnum):
     """
 
     auto = "auto"
-    e4k = "e4k"
+    mq = "mq"
     lnm = "lnm"
     opcua = "opcua"
     dataprocessor = "dataprocessor"
     symphony = "symphony"
     deviceregistry = "deviceregistry"
-
-
-class DeployablePasVersions(ListableEnum):
-    """
-    Deployable PAS versions.
-    """
-
-    v012 = "0.1.2"
 
 
 class ResourceTypeMapping(Enum):
@@ -125,8 +117,9 @@ class K8sSecretType(Enum):
     tls = "kubernetes.io/tls"
 
 
-# E4K runtime attributes
+# MQ runtime attributes
 
-AZEDGE_DIAGNOSTICS_SERVICE = "azedge-diagnostics-service"
+AIO_MQ_DIAGNOSTICS_SERVICE = "aio-mq-diagnostics-service"
+AIO_MQ_OPERATOR = "aio-mq-operator"
 METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800
