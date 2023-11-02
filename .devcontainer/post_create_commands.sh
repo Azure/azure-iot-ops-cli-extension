@@ -51,4 +51,4 @@ echo "This should automatically occur the next time you connect to the codespace
 #
 # az connectedk8s connect -n $CODESPACE_NAME -g $RESOURCE_GROUP
 # az connectedk8s enable-features -n $CODESPACE_NAME -g $RESOURCE_GROUP --features cluster-connect custom-locations
-# az edge init --cluster $CODESPACE_NAME -g $RESOURCE_GROUP [--create-sync-rules]
+# az iot ops init --cluster $CODESPACE_NAME -g $RESOURCE_GROUP [--create-sync-rules]

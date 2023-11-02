@@ -14,9 +14,7 @@ from rich.console import Console, NewLine
 from ..common import SupportForEdgeServiceType
 from ..providers.edge_api import (
     DATA_PROCESSOR_API_V1,
-    E4K_API_V1A2,
-    E4K_API_V1A3,
-    E4K_API_V1A4,
+    MQ_API_V1B1,
     LNM_API_V1B1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
@@ -28,7 +26,7 @@ logger = get_logger(__name__)
 
 console = Console()
 
-COMPAT_E4K_APIS = EdgeApiManager(resource_apis=[E4K_API_V1A2, E4K_API_V1A3, E4K_API_V1A4])
+COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DATA_PROCESSOR_APIS = EdgeApiManager(resource_apis=[DATA_PROCESSOR_API_V1])
 COMPAT_SYMPHONY_APIS = EdgeApiManager(resource_apis=[SYMPHONY_API_V1])
@@ -42,7 +40,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from rich.table import Table
 
     from .support.dataprocessor import prepare_bundle as prepare_dataprocessor_bundle
-    from .support.e4k import prepare_bundle as prepare_e4k_bundle
+    from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.lnm import prepare_bundle as prepare_lnm_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.symphony import prepare_bundle as prepare_symphony_bundle
@@ -50,12 +48,12 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from .support.shared import prepare_bundle as prepare_shared_bundle
 
     pending_work = {
-        "e4k": {}, "opcua": {}, "dataprocessor": {}, "symphony": {}, "deviceregistry": {}, "common": {}, "lnm": {}
+        "mq": {}, "opcua": {}, "dataprocessor": {}, "symphony": {}, "deviceregistry": {}, "common": {}, "lnm": {}
     }
 
     api_map = {
-        SupportForEdgeServiceType.e4k.value: {
-            'apis': COMPAT_E4K_APIS, 'prepare_bundle': prepare_e4k_bundle, 'key': 'e4k'},
+        SupportForEdgeServiceType.mq.value: {
+            'apis': COMPAT_MQ_APIS, 'prepare_bundle': prepare_mq_bundle, 'key': 'mq'},
         SupportForEdgeServiceType.opcua.value: {
             'apis': COMPAT_OPCUA_APIS, 'prepare_bundle': prepare_opcua_bundle, 'key': 'opcua'},
         SupportForEdgeServiceType.dataprocessor.value: {

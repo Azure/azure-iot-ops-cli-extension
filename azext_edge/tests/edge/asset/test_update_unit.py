@@ -36,6 +36,7 @@ from ...generators import generate_generic_id
         "asset_type": generate_generic_id(),
         "description": generate_generic_id(),
         "disabled": True,
+        "display_name": generate_generic_id(),
         "documentation_uri": generate_generic_id(),
         "external_asset_id": generate_generic_id(),
         "hardware_revision": generate_generic_id(),
@@ -96,7 +97,7 @@ def test_update_asset(
     # Properties
     request_props = request_body["properties"]
     original_props = original_asset["properties"]
-    assert request_props["connectivityProfileUri"] == original_props["connectivityProfileUri"]
+    assert request_props["assetEndpointProfileUri"] == original_props["assetEndpointProfileUri"]
 
     # Check that update props mock got called correctly
     assert request_props["result"]
