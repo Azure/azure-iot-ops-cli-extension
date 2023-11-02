@@ -103,9 +103,19 @@ class ResourceTypeMapping(Enum):
     """
 
     asset = "Microsoft.DeviceRegistry/assets"
+    asset_endpoint_profile = "Microsoft.DeviceRegistry/assetEndpointProfiles"
     custom_location = "Microsoft.ExtendedLocation/customLocations"
     connected_cluster = "Microsoft.Kubernetes/connectedClusters"
     cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
+
+
+class AEPAuthModes(Enum):
+    """
+    Authentication modes for asset endpoints
+    """
+    anonymous = "Anonymous"
+    certificate = "Certificate"
+    userpass = "UsernamePassword"
 
 
 class K8sSecretType(Enum):

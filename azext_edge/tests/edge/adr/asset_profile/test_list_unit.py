@@ -6,10 +6,11 @@
 
 import pytest
 
-from azext_edge.edge.commands_assets import list_assets
-from azext_edge.edge.providers.assets import API_VERSION
+from azext_edge.edge.commands_asset_endpoint_profiles import list_asset_endpoint_profiles
+from azext_edge.edge.common import ResourceTypeMapping
+from azext_edge.edge.providers.adr.base import API_VERSION
 
-from ...generators import generate_generic_id
+from ....generators import generate_generic_id
 
 
 @pytest.mark.parametrize("mocked_send_raw_request", [
@@ -28,7 +29,7 @@ def test_list_assets(
     mocked_send_raw_request,
     resource_group
 ):
-    result = list_assets(
+    result = list_asset_endpoint_profiles(
         cmd=mocked_cmd,
         resource_group_name=resource_group
     )
@@ -37,5 +38,6 @@ def test_list_assets(
     call_kwargs = mocked_send_raw_request.call_args.kwargs
     assert call_kwargs["cli_ctx"] == mocked_cmd.cli_ctx
     assert call_kwargs["method"] == "GET"
-    assert f"/providers/Microsoft.DeviceRegistry/assets?api-version={API_VERSION}" in call_kwargs["url"]
+    typing = ResourceTypeMapping.asset_endpoint_profile.value
+    assert f"/providers/{typing}?api-version={API_VERSION}" in call_kwargs["url"]
     assert (f"/resourceGroups/{resource_group}" in call_kwargs["url"]) is (resource_group is not None)

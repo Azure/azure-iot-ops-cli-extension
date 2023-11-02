@@ -7,13 +7,13 @@
 import pytest
 
 from azext_edge.edge.commands_assets import update_asset
-from azext_edge.edge.providers.assets import API_VERSION
+from azext_edge.edge.providers.adr.base import API_VERSION
 
 from .conftest import (
     MINIMUM_ASSET,
     FULL_ASSET
 )
-from ...generators import generate_generic_id
+from ....generators import generate_generic_id
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [
