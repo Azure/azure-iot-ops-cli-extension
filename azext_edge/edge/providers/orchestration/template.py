@@ -130,7 +130,7 @@ V1_TEMPLATE = TemplateVer(
                 "observability": "0.62.3",
                 "akri": "0.1.0-preview-rc3",
                 "mq": "0.1.0-preview-rc3",
-                "aio": "0.1.0-preview-rc2",
+                "aio": "0.1.0-preview-rc3",
                 "layeredNetworking": "0.1.0-alpha.5",
                 "processor": "0.1.0-preview.16",
             },
