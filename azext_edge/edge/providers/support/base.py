@@ -304,6 +304,9 @@ def process_daemonsets(
     processed = []
     if not prefix_names:
         prefix_names = []
+        # @Vilit/jiaciu add to other stuff too
+        if not label_selector:
+            return processed
 
     daemonsets: V1DaemonSetList = v1_apps.list_daemon_set_for_all_namespaces(label_selector=label_selector)
     logger.info(f"Detected {len(daemonsets.items)} daemonsets.")
