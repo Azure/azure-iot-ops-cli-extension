@@ -359,11 +359,11 @@ def test_create_bundle(
             )
             # TODO: test both without or with lnm instance
             assert_list_daemon_sets(
-                 mocked_client,
-                 mocked_zipfile,
-                 label_selector=None,
-                 resource_api=LNM_API_V1B1,
-                 mock_names=["svclb-aio-lnm-operator"]
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                resource_api=LNM_API_V1B1,
+                mock_names=["svclb-aio-lnm-operator"]
             )
 
         # assert shared KPIs regardless of service
