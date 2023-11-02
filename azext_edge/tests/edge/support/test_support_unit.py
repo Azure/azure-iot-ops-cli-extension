@@ -357,14 +357,14 @@ def test_create_bundle(
                 label_selector=lnm_app_label,
                 resource_api=LNM_API_V1B1
             )
-            # @ jiacju please fix the lmn tests
-            # assert_list_daemon_sets(
-            #     mocked_client,
-            #     mocked_zipfile,
-            #     label_selector=None,
-            #     resource_api=LNM_API_V1B1,
-            #     mock_names=["svclb-aio-lnm-operator"]
-            # )
+            # TODO: test both without or with lnm instance
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                resource_api=LNM_API_V1B1,
+                mock_names=["svclb-aio-lnm-operator"]
+            )
 
         # assert shared KPIs regardless of service
         assert_shared_kpis(mocked_client, mocked_zipfile)
