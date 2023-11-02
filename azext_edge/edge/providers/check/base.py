@@ -572,8 +572,6 @@ def process_properties(
             continue
         if prop == "descriptor":
             value = value if detail_level == ResourceOutputDetailLevel.verbose.value else value[:10] + "..."
-        elif prop.lower().endswith("secret") or prop.lower().endswith("secrets"):
-            value = "*" * len(value)
         if verbose_only and detail_level != ResourceOutputDetailLevel.verbose.value:
             continue
         process_property_by_type(

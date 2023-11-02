@@ -115,9 +115,8 @@ def evaluate_lnms(
         value={"lnms": len(all_lnms)}
     )
 
-    lnm_names = []
-
     for (namespace, lnms) in resources_grouped_by_namespace(all_lnms):
+        lnm_names = []
         check_manager.add_target(target_name=target_lnms, namespace=namespace, conditions=lnm_namespace_conditions)
         check_manager.add_display(
             target_name=target_lnms,
@@ -256,32 +255,34 @@ def evaluate_lnms(
                     padding=(0, 0, 0, 18)
                 )
 
-    if lnms_count > 0:
-        check_manager.add_display(
-            target_name=target_lnms,
-            display=Padding(
-                "\nRuntime Health for all namespaces",
-                (0, 0, 0, 8),
-            ),
+        if lnms_count > 0:
+            check_manager.add_display(
+                target_name=target_lnms,
+                namespace=namespace,
+                display=Padding(
+                    "\nRuntime Health",
+                    (0, 0, 0, 8),
+                ),
+            )
+
+        from ..support.lnm import LNM_APP_LABELS
+
+        # append all lnm_names in lnm_app_lables
+        lnm_app_lables = []
+        lnm_app_lables = lnm_app_lables + LNM_APP_LABELS
+        for lnm_name in lnm_names:
+            lnm_app_lables.append(f"aio-lnm-{lnm_name}")
+
+        lnm_label = f"app in ({','.join(lnm_app_lables)})"
+        _evaluate_lnm_pod_health(
+            check_manager=check_manager,
+            target=target_lnms,
+            pod=AIO_LNM_PREFIX,
+            display_padding=12,
+            service_label=lnm_label,
+            namespace=namespace,
+            detail_level=detail_level,
         )
-
-    from ..support.lnm import LNM_APP_LABELS
-
-    # append all lnm_names in lnm_app_lables
-    lnm_app_lables = []
-    lnm_app_lables = lnm_app_lables + LNM_APP_LABELS
-    for lnm_name in lnm_names:
-        lnm_app_lables.append(f"aio-lnm-{lnm_name}")
-
-    lnm_label = f"app in ({','.join(lnm_app_lables)})"
-    _evaluate_lnm_pod_health(
-        check_manager=check_manager,
-        target=target_lnms,
-        pod=AIO_LNM_PREFIX,
-        display_padding=12,
-        service_label=lnm_label,
-        detail_level=detail_level,
-    )
 
     return check_manager.as_dict(as_list)
 
@@ -311,7 +312,7 @@ def _evaluate_lnm_pod_health(
         f"{target_service_pod}.status.conditions.podscheduled",
     ]
     check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
-    diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace="", label_selector=service_label)
+    diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
     if not diagnostics_pods:
         add_display_and_eval(
             check_manager=check_manager,
