@@ -180,7 +180,7 @@ def mocked_list_pods(mocked_client):
     namespaces = [generate_generic_id()]
     mock_log = f"===mocked pod log {generate_generic_id()} ==="
     for namespace in namespaces:
-        pod_names = [generate_generic_id(), generate_generic_id(), "aio-akri-otel-collector"]
+        pod_names = [generate_generic_id(), generate_generic_id()]
         pods = []
         expected_pod_map[namespace] = {}
         for pod_name in pod_names:
