@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 
 AKRI_NAME_LABEL = "name in (aio-akri-agent, akri-opcua-asset-discovery)"
 AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
-AKRI_PREFIXES = ["akri-", "aio-akri-"]
+AKRI_PREFIXES = ["aio-akri-"]
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):

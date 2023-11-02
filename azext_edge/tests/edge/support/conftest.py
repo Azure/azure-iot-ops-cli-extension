@@ -319,7 +319,6 @@ def mocked_list_daemonsets(mocked_client):
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
             daemonset_names.extend([
                 "aio-akri-agent-daemonset",
-                "akri-opcua-asset-discovery-daemonset",
                 "svclb-lnm-operator"
             ])
 
