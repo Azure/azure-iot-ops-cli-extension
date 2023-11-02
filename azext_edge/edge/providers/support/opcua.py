@@ -10,19 +10,28 @@ from typing import Iterable
 from knack.log import get_logger
 
 from ..edge_api import OPCUA_API_V1, EdgeResourceApi, OpcuaResourceKinds
-from .base import assemble_crd_work, process_deployments, process_v1_pods
+from .base import assemble_crd_work, process_deployments, process_services, process_v1_pods, process_replicasets
 
 logger = get_logger(__name__)
 
 
 OPCUA_GENERAL_LABEL = "app in (opc-ua-connector,opcplc)"
-OPCUA_SUPERVISOR_LABEL = "app in (edge-application-supervisor)"
-OPCUA_ORCHESTRATOR_LABEL = "orchestrator=apollo"
+#pods
+OPCUA_SELECTOR_LABEL = "app=aio-opc-supervisor"
+# deployments
+OPCUA_SUPERVISOR_LABEL = "app in (aio-opc-admission-controller)"
+OPCUA_ORCHESTRATOR_LABEL = "orchestrator=opcuabroker"
+# selector app=aio-opc-supervisor -> for aio-opc-supervisor deployment
+
+
+#replicasets +pods
+OPC_APP_LABEL = "app in (aio-opc-supervisor, aio-opc-admission-controller)"
+OPC_NAME_LABEL = "app.kubernetes.io/name in (aio-opc-opcua-connector)"
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     opcua_pods = process_v1_pods(
-        resource_api=OPCUA_API_V1,
+        resource_api=OPC_APP_LABEL,
         label_selector=OPCUA_GENERAL_LABEL,
         since_seconds=since_seconds,
         capture_previous_logs=True,
@@ -30,7 +39,7 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
     opcua_pods.extend(
         process_v1_pods(
             resource_api=OPCUA_API_V1,
-            label_selector=OPCUA_SUPERVISOR_LABEL,
+            label_selector=OPC_NAME_LABEL,
             since_seconds=since_seconds,
             include_metrics=True,
             capture_previous_logs=True,
@@ -39,18 +48,28 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
     return opcua_pods
 
 
-def fetch_apollo_deployments(since_seconds: int = 60 * 60 * 24):
+def fetch_deployments(since_seconds: int = 60 * 60 * 24):
     processed = process_deployments(resource_api=OPCUA_API_V1, label_selector=OPCUA_ORCHESTRATOR_LABEL)
-    deployment_names = [d["data"]["metadata"]["name"] for d in processed]
-    if deployment_names:
-        associated_pods_label = f"app in ({','.join(deployment_names)})"
-        processed.extend(process_v1_pods(
-            resource_api=OPCUA_API_V1,
-            label_selector=associated_pods_label,
-            since_seconds=since_seconds,
-            capture_previous_logs=True,
-        ))
+    processed.extend(
+        process_deployments(resource_api=OPCUA_API_V1, label_selector=OPCUA_SUPERVISOR_LABEL)
+    )
+    # @ vilit - I am assuming this is by mistake so will change
+    processed.extend(
+        process_deployments(resource_api=OPCUA_API_V1, field_selector=OPCUA_SELECTOR_LABEL)
+    )
     return processed
+
+
+def fetch_replica_sets():
+    processed = process_replicasets(resource_api=OPCUA_API_V1, label_selector=OPC_APP_LABEL)
+    processed.extend(
+        process_replicasets(resource_api=OPCUA_API_V1, label_selector=OPC_NAME_LABEL)
+    )
+    return processed
+
+
+def fetch_services():
+    return process_services(resource_api=OPCUA_API_V1, label_selector=OPC_APP_LABEL)
 
 
 def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:

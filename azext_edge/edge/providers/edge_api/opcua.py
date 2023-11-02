@@ -13,7 +13,6 @@ class OpcuaResourceKinds(ListableEnum):
     MODULE_TYPE = "moduletype"
     MODULE = "module"
     ASSET_TYPE = "assettype"
-    ASSET = "asset"
 
 
 OPCUA_API_V1 = EdgeResourceApi(group="e4i.microsoft.com", version="v1", moniker="opcua")
