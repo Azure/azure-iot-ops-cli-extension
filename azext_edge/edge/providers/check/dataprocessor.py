@@ -109,13 +109,10 @@ def evaluate_instances(
     instance_all_conditions = ["instances"]
     check_manager.add_target(target_name=target_instances, conditions=instance_all_conditions)
 
-    instance_list: list = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
+    instance_resources: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
+    all_instances: list = instance_resources.get("items", []) if instance_resources else []
 
-    all_instances: dict = []
-    if instance_list:
-        all_instances = instance_list.get("items", [])
-
-    if not instance_list or not all_instances:
+    if not all_instances:
         fetch_instances_error_text = f"Unable to fetch {DataProcessorResourceKinds.INSTANCE.value}s in any namespaces."
         check_manager.add_target_eval(
             target_name=target_instances,
@@ -207,33 +204,34 @@ def evaluate_instances(
                 resource_name=instance_name
             )
 
-    if len(all_instances) > 0:
-        check_manager.add_display(
-            target_name=target_instances,
-            display=Padding(
-                "\nRuntime Health in all namespaces",
-                (0, 0, 0, 8),
-            ),
-        )
-
-        from ..support.dataprocessor import DATA_PROCESSOR_LABEL
-
-        for pod in [
-            DATA_PROCESSOR_READER_WORKER_PREFIX,
-            DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
-            DATA_PROCESSOR_REFDATA_STORE_PREFIX,
-            DATA_PROCESSOR_NATS_PREFIX,
-            DATA_PROCESSOR_OPERATOR,
-            DATA_PROCESSOR_NFS_SERVER_PROVISIONER,
-        ]:
-            evaluate_pod_health(
-                check_manager=check_manager,
-                target=target_instances,
-                pod=pod,
-                display_padding=12,
-                service_label=DATA_PROCESSOR_LABEL,
-                namespace=ALL_NAMESPACES_TARGET
+        if len(all_instances) > 0:
+            check_manager.add_display(
+                target_name=target_instances,
+                namespace=namespace,
+                display=Padding(
+                    "\nRuntime Health",
+                    (0, 0, 0, 8),
+                ),
             )
+
+            from ..support.dataprocessor import DATA_PROCESSOR_LABEL
+
+            for pod in [
+                DATA_PROCESSOR_READER_WORKER_PREFIX,
+                DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
+                DATA_PROCESSOR_REFDATA_STORE_PREFIX,
+                DATA_PROCESSOR_NATS_PREFIX,
+                DATA_PROCESSOR_OPERATOR,
+                DATA_PROCESSOR_NFS_SERVER_PROVISIONER,
+            ]:
+                evaluate_pod_health(
+                    check_manager=check_manager,
+                    target=target_instances,
+                    pod=pod,
+                    display_padding=12,
+                    service_label=DATA_PROCESSOR_LABEL,
+                    namespace=namespace
+                )
 
     return check_manager.as_dict(as_list)
 
