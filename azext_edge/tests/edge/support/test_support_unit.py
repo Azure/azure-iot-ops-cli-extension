@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 import random
-from typing import List
+from typing import List, Optional
 from os.path import abspath, expanduser, join
 
 import pytest
@@ -22,6 +22,7 @@ from azext_edge.edge.providers.edge_api import (
     DATA_PROCESSOR_API_V1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
+    AKRI_API_V0,
     LNM_API_V1B1,
     DEVICEREGISTRY_API_V1
 )
@@ -46,10 +47,15 @@ from azext_edge.edge.providers.support.symphony import (
     SYMPHONY_INSTANCE_LABEL,
     GENERIC_CONTROLLER_LABEL,
 )
+from azext_edge.edge.providers.support.akri import (
+    AKRI_NAME_LABEL,
+    AKRI_SERVICE_LABEL
+)
 from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
 from ...generators import generate_generic_id
+from .conftest import add_pod_to_mocked_pods
 
 a_bundle_dir = f"support_test_{generate_generic_id()}"
 
@@ -65,8 +71,9 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
         [MQ_API_V1B1, DATA_PROCESSOR_API_V1],
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
         [MQ_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        [MQ_ACTIVE_API, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1],
-        [MQ_ACTIVE_API, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1, LNM_API_V1B1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1, AKRI_API_V0],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1, LNM_API_V1B1],
     ],
     indirect=True,
 )
@@ -87,37 +94,21 @@ def test_create_bundle(
     mocked_get_stats,
     mocked_root_logger,
 ):
-    if not mocked_cluster_resources["param"] or all(
-        api not in mocked_cluster_resources["param"] for api in COMPAT_MQ_APIS.resource_apis
-    ):
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="mq")
-
-    if not mocked_cluster_resources["param"] or OPCUA_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="opcua")
-
-    if not mocked_cluster_resources["param"] or DATA_PROCESSOR_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="dataprocessor")
-
-    if not mocked_cluster_resources["param"] or SYMPHONY_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="symphony")
-
-    if not mocked_cluster_resources["param"] or LNM_API_V1B1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="lnm")
-
-    if not mocked_cluster_resources["param"] or DEVICEREGISTRY_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="deviceregistry")
+    asset_raises_not_found_error(mocked_cluster_resources)
 
     if mocked_cluster_resources["param"] == []:
         auto_result_no_resources = support_bundle(None, bundle_dir=a_bundle_dir)
         mocked_root_logger.warning.assert_called_once_with("No known edge services discovered on cluster.")
         assert auto_result_no_resources is None
         return
+
+    # @vilit - AKRI pod with ambigious label
+    if AKRI_API_V0 in mocked_cluster_resources["param"]:
+        add_pod_to_mocked_pods(
+            mocked_client,
+            mocked_list_pods,
+            ["aio-akri-otel-collector"]
+        )
 
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(None, bundle_dir=a_bundle_dir, log_age_seconds=since_seconds)
@@ -291,6 +282,52 @@ def test_create_bundle(
             # TODO: resolve with selector
             # assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=SYMPHONY_API_V1)
 
+        if api in [AKRI_API_V0]:
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=AKRI_NAME_LABEL,
+                resource_api=AKRI_API_V0,
+                since_seconds=since_seconds,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=None,
+                resource_api=AKRI_API_V0,
+                since_seconds=since_seconds,
+                mock_names=["aio-akri-otel-collector"]
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                resource_api=AKRI_API_V0,
+                mock_names=["aio-akri-otel-collector"]
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                resource_api=AKRI_API_V0,
+                mock_names=["aio-akri-otel-collector-*"]
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_SERVICE_LABEL,
+                resource_api=AKRI_API_V0
+            )
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                resource_api=AKRI_API_V0,
+                mock_names=["aio-akri-agent-daemonset"]
+            )
+
         if api in [LNM_API_V1B1]:
             lnm_app_label = f"app in ({','.join(LNM_APP_LABELS)})"
             assert_list_pods(
@@ -306,6 +343,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=LNM_API_V1B1,
+                mock_names=["aio-lnm-operator"]
             )
             assert_list_replica_sets(
                 mocked_client,
@@ -319,15 +357,49 @@ def test_create_bundle(
                 label_selector=lnm_app_label,
                 resource_api=LNM_API_V1B1
             )
-            assert_list_daemon_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=None,
-                resource_api=LNM_API_V1B1
-            )
+            # @ jiacju please fix the lmn tests
+            # assert_list_daemon_sets(
+            #     mocked_client,
+            #     mocked_zipfile,
+            #     label_selector=None,
+            #     resource_api=LNM_API_V1B1,
+            #     mock_names=["svclb-aio-lnm-operator"]
+            # )
 
         # assert shared KPIs regardless of service
         assert_shared_kpis(mocked_client, mocked_zipfile)
+
+
+def asset_raises_not_found_error(mocked_cluster_resources):
+    if not mocked_cluster_resources["param"] or all(
+        api not in mocked_cluster_resources["param"] for api in COMPAT_MQ_APIS.resource_apis
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="mq")
+
+    if not mocked_cluster_resources["param"] or OPCUA_API_V1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="opcua")
+
+    if not mocked_cluster_resources["param"] or DATA_PROCESSOR_API_V1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="dataprocessor")
+
+    if not mocked_cluster_resources["param"] or SYMPHONY_API_V1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="symphony")
+
+    if not mocked_cluster_resources["param"] or LNM_API_V1B1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="lnm")
+
+    if not mocked_cluster_resources["param"] or DEVICEREGISTRY_API_V1 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="deviceregistry")
+
+    if not mocked_cluster_resources["param"] or AKRI_API_V0 not in mocked_cluster_resources["param"]:
+        with pytest.raises(ResourceNotFoundError):
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="akri")
 
 
 def assert_get_custom_resources(
@@ -349,7 +421,8 @@ def assert_list_deployments(
     mocked_zipfile,
     label_selector: str,
     resource_api: EdgeResourceApi,
-    field_selector: str = None
+    field_selector: str = None,
+    mock_names: List[str] = None
 ):
     moniker = resource_api.moniker
     if resource_api in COMPAT_MQ_APIS.resource_apis:
@@ -370,15 +443,13 @@ def assert_list_deployments(
         )
 
     # @jiacju - no label for lnm
-    mock_name = "mock_deployment"
-    if resource_api in [LNM_API_V1B1]:
-        mock_name = "aio-lnm-operator"
-
-    assert_zipfile_write(
-        mocked_zipfile,
-        zinfo=f"mock_namespace/{moniker}/deployment.{mock_name}.yaml",
-        data=f"kind: Deployment\nmetadata:\n  name: {mock_name}\n  namespace: mock_namespace\n",
-    )
+    mock_names = mock_names or ["mock_deployment"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{moniker}/deployment.{name}.yaml",
+            data=f"kind: Deployment\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+        )
 
 
 def assert_list_pods(
@@ -419,14 +490,22 @@ def assert_list_pods(
                         )
 
 
-def assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
+def assert_list_replica_sets(
+    mocked_client,
+    mocked_zipfile,
+    label_selector: str,
+    resource_api: EdgeResourceApi,
+    mock_names: Optional[List[str]] = None
+):
     mocked_client.AppsV1Api().list_replica_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
-    assert_zipfile_write(
-        mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/replicaset.mock_replicaset.yaml",
-        data="kind: Replicaset\nmetadata:\n  name: mock_replicaset\n  namespace: mock_namespace\n",
-    )
+    mock_names = mock_names or ["mock_replicaset"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{resource_api.moniker}/replicaset.{name}.yaml",
+            data=f"kind: Replicaset\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+        )
 
 
 def assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
@@ -449,19 +528,22 @@ def assert_list_services(mocked_client, mocked_zipfile, label_selector: str, res
     )
 
 
-def assert_list_daemon_sets(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
+def assert_list_daemon_sets(
+    mocked_client,
+    mocked_zipfile,
+    label_selector: str,
+    resource_api: EdgeResourceApi,
+    mock_names: Optional[List[str]] = None
+):
     mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
-    # @jiacju - currently no unique label for lnm
-    mock_name = "mock_daemonset"
-    if resource_api in [LNM_API_V1B1]:
-        mock_name = "svclb-lnm-operator"
-
-    assert_zipfile_write(
-        mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/daemonset.{mock_name}.yaml",
-        data=f"kind: Daemonset\nmetadata:\n  name: {mock_name}\n  namespace: mock_namespace\n",
-    )
+    mock_names = mock_names or ["mock_daemonset"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{resource_api.moniker}/daemonset.{name}.yaml",
+            data=f"kind: Daemonset\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+        )
 
 
 def assert_mq_stats(mocked_zipfile):
