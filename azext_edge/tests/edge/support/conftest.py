@@ -268,7 +268,7 @@ def mocked_list_daemonsets(mocked_client):
         # @jiacju - currently no unique label for lnm
         name = "mock_daemonset"
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            name = "svclb-lnm-operator"
+            name = "svclb-aio-lnm-operator"
 
         daemonset = V1DaemonSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name))
         daemonset_list = V1DaemonSetList(items=[daemonset])

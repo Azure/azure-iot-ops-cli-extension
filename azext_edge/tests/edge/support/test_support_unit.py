@@ -319,6 +319,7 @@ def test_create_bundle(
                 label_selector=lnm_app_label,
                 resource_api=LNM_API_V1B1
             )
+            # TODO: test both with or without lnm instances
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
@@ -455,7 +456,7 @@ def assert_list_daemon_sets(mocked_client, mocked_zipfile, label_selector: str, 
     # @jiacju - currently no unique label for lnm
     mock_name = "mock_daemonset"
     if resource_api in [LNM_API_V1B1]:
-        mock_name = "svclb-lnm-operator"
+        mock_name = "svclb-aio-lnm-operator"
 
     assert_zipfile_write(
         mocked_zipfile,
