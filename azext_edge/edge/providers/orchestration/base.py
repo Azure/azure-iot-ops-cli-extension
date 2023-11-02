@@ -202,7 +202,16 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
     app_reg = {}
     app_created = False
 
-    if sp_object_id:
+    if all([sp_app_id, sp_object_id, sp_secret]):
+        return ServicePrincipal(
+            client_id=sp_app_id,
+            object_id=sp_object_id,
+            secret=sp_secret,
+            tenant_id=get_tenant_id(),
+            created_app=app_created,
+        )
+
+    if sp_object_id and not sp_app_id:
         existing_sp = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="GET",
@@ -210,7 +219,7 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
         ).json()
         sp_app_id = existing_sp["appId"]
         try:
-            app_reg = existing_sp = send_raw_request(
+            app_reg = send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="GET",
                 url=f"https://graph.microsoft.com/v1.0/applications/{sp_app_id}",
@@ -290,14 +299,13 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
         )
         sp_secret = add_secret_op.json()["secretText"]
 
-    sp_record = ServicePrincipal(
+    return ServicePrincipal(
         client_id=sp_app_id,
         object_id=sp_object_id,
         secret=sp_secret,
         tenant_id=get_tenant_id(),
         created_app=app_created,
     )
-    return sp_record
 
 
 def prepare_keyvault_access_policy(subscription_id: str, sp_record: ServicePrincipal, **kwargs) -> str:
