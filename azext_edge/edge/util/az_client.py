@@ -4,17 +4,17 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from azure.identity import DefaultAzureCredential
+from azure.identity import AzureCliCredential
 from azure.mgmt.resource import ResourceManagementClient
 from azure.core.pipeline.policies import UserAgentPolicy
 from ...constants import USER_AGENT
 
-DEFAULT_AZURE_CREDENTIAL = DefaultAzureCredential()
+AZURE_CLI_CREDENTIAL = AzureCliCredential()
 
 
 def get_resource_client(subscription_id: str):
     return ResourceManagementClient(
-        credential=DEFAULT_AZURE_CREDENTIAL,
+        credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
     )
