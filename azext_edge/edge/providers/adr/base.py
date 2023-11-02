@@ -16,7 +16,7 @@ from ...util import build_query
 from ...common import ResourceTypeMapping
 
 logger = get_logger(__name__)
-API_VERSION = "2023-11-01-preview"
+API_VERSION = "2023-10-01-preview"
 
 
 # @vilit - prob generalize this even more
