@@ -55,10 +55,9 @@ def fetch_lnm_deployments():
 
 
 def fetch_daemonsets():
-    daemonset_prefixes = [f"svclb-{LNM_LABEL_PREFIX}-{name}" for name in _fetch_lnm_instance_names()]
-    if not daemonset_prefixes:
-        daemonset_prefixes.append(f"svclb-{LNM_LABEL_PREFIX}")
-    return process_daemonsets(resource_api=LNM_API_V1B1, label_selector=None, prefix_names=daemonset_prefixes)
+    return process_daemonsets(
+        resource_api=LNM_API_V1B1, label_selector=None, prefix_names=[f"svclb-{LNM_LABEL_PREFIX}"]
+    )
 
 
 support_runtime_elements = {
