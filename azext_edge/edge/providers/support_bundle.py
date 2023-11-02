@@ -18,6 +18,7 @@ from ..providers.edge_api import (
     LNM_API_V1B1,
     OPCUA_API_V1,
     SYMPHONY_API_V1,
+    AKRI_API_V0,
     DEVICEREGISTRY_API_V1,
     EdgeApiManager,
 )
@@ -30,6 +31,7 @@ COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DATA_PROCESSOR_APIS = EdgeApiManager(resource_apis=[DATA_PROCESSOR_API_V1])
 COMPAT_SYMPHONY_APIS = EdgeApiManager(resource_apis=[SYMPHONY_API_V1])
+COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 COMPAT_LNM_APIS = EdgeApiManager(resource_apis=[LNM_API_V1B1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 
@@ -44,11 +46,19 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from .support.lnm import prepare_bundle as prepare_lnm_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.symphony import prepare_bundle as prepare_symphony_bundle
+    from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
 
     pending_work = {
-        "mq": {}, "opcua": {}, "dataprocessor": {}, "symphony": {}, "deviceregistry": {}, "common": {}, "lnm": {}
+        "mq": {},
+        "opcua": {},
+        "dataprocessor": {},
+        "symphony": {},
+        "deviceregistry": {},
+        "common": {},
+        "lnm": {},
+        "akri": {}
     }
 
     api_map = {
@@ -62,6 +72,8 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
             'apis': COMPAT_SYMPHONY_APIS, 'prepare_bundle': prepare_symphony_bundle, 'key': 'symphony'},
         SupportForEdgeServiceType.lnm.value: {
             'apis': COMPAT_LNM_APIS, 'prepare_bundle': prepare_lnm_bundle, 'key': 'lnm'},
+        SupportForEdgeServiceType.akri.value: {
+            'apis': COMPAT_AKRI_APIS, 'prepare_bundle': prepare_akri_bundle, 'key': 'akri'},
         SupportForEdgeServiceType.deviceregistry.value: {
             'apis': COMPAT_DEVICEREGISTRY_APIS,
             'prepare_bundle': prepare_deviceregistry_bundle,
