@@ -87,7 +87,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "edge_service",
             options_list=["--edge-service", "-e"],
-            choices=CaseInsensitiveList(["mq"]),
+            choices=CaseInsensitiveList(["mq", "dataprocessor"]),
             help="The edge service deployment that will be evaluated.",
         )
         context.argument(
@@ -273,7 +273,7 @@ def load_iotedge_arguments(self, _):
             help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
             arg_group="OPC-UA Broker",
         )
-        # Bluefin
+        # Data Processor
         context.argument(
             "dp_instance_name",
             options_list=["--dp-instance"],
