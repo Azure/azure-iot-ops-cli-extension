@@ -18,6 +18,7 @@ from ..providers.edge_api import (
     LNM_API_V1B1,
     OPCUA_API_V1,
     ORC_API_V1,
+    AKRI_API_V0,
     DEVICEREGISTRY_API_V1,
     EdgeApiManager,
 )
@@ -30,6 +31,7 @@ COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DATA_PROCESSOR_APIS = EdgeApiManager(resource_apis=[DATA_PROCESSOR_API_V1])
 COMPAT_ORC_APIS = EdgeApiManager(resource_apis=[ORC_API_V1])
+COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 COMPAT_LNM_APIS = EdgeApiManager(resource_apis=[LNM_API_V1B1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 
@@ -46,6 +48,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from .support.orc import prepare_bundle as prepare_symphony_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
+    from .support.akri import prepare_bundle as prepare_akri_bundle
 
     pending_work = {k: {} for k in SupportForEdgeServiceType.list() + ["common"]}
     pending_work.pop(SupportForEdgeServiceType.auto.value)
@@ -68,6 +71,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
             "apis": COMPAT_LNM_APIS,
             "prepare_bundle": prepare_lnm_bundle,
         },
+        SupportForEdgeServiceType.akri.value: {"apis": COMPAT_AKRI_APIS, "prepare_bundle": prepare_akri_bundle},
         SupportForEdgeServiceType.deviceregistry.value: {
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,

@@ -94,6 +94,7 @@ class SupportForEdgeServiceType(ListableEnum):
     opcua = "opcua"
     dataprocessor = "dataprocessor"
     orc = "orc"
+    akri = "akri"
     deviceregistry = "deviceregistry"
 
 
