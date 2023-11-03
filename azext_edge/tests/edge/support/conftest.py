@@ -123,11 +123,10 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("KafkaConnectorTopicMap"))
 
         if r == OPCUA_API_V1:
-            v1_resources.append(_get_api_resource("Application"))
-            v1_resources.append(_get_api_resource("ModuleType"))
-            v1_resources.append(_get_api_resource("Module"))
+            # v1_resources.append(_get_api_resource("Application"))
+            # v1_resources.append(_get_api_resource("ModuleType"))
+            # v1_resources.append(_get_api_resource("Module"))
             v1_resources.append(_get_api_resource("AssetType"))
-            v1_resources.append(_get_api_resource("Asset"))
 
         if r == DATA_PROCESSOR_API_V1:
             v1_resources.append(_get_api_resource("Dataset"))
@@ -225,6 +224,9 @@ def mocked_list_deployments(mocked_client):
             names.extend([
                 "aio-lnm-operator",
                 "aio-akri-otel-collector",
+                "aio-opc-admission-controller",
+                "aio-opc-supervisor",
+                "aio-opc-opc.*"
             ])
 
         deployment_list = []

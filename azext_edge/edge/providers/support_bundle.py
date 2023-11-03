@@ -80,8 +80,6 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
             'key': 'deviceregistry'
         }
     }
-    import pdb; pdb.set_trace()
-    return
 
     raise_on_404 = not (edge_service == SupportForEdgeServiceType.auto.value)
 

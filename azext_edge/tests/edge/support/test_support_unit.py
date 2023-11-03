@@ -38,9 +38,8 @@ from azext_edge.edge.providers.support.dataprocessor import (
 )
 from azext_edge.edge.providers.support.mq import MQ_LABEL
 from azext_edge.edge.providers.support.opcua import (
-    OPCUA_GENERAL_LABEL,
-    OPCUA_ORCHESTRATOR_LABEL,
-    OPCUA_SUPERVISOR_LABEL,
+    OPC_APP_LABEL,
+    OPC_NAME_LABEL,
 )
 from azext_edge.edge.providers.support.symphony import (
     SYMPHONY_APP_LABEL,
@@ -121,11 +120,6 @@ def test_create_bundle(
     for api in expected_resources:
         for kind in api.kinds:
             target_file_prefix = None
-            if api in [OPCUA_API_V1]:
-                if kind == OpcuaResourceKinds.MODULE_TYPE.value:
-                    target_file_prefix = "module_type"
-                if kind == OpcuaResourceKinds.ASSET_TYPE.value:
-                    target_file_prefix = "asset_type"
 
             assert_get_custom_resources(
                 mocked_get_custom_objects, mocked_zipfile, api, kind, file_prefix=target_file_prefix
@@ -152,24 +146,50 @@ def test_create_bundle(
 
         if api in [OPCUA_API_V1]:
             # Assert runtime resources
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=OPC_APP_LABEL,
+                resource_api=OPCUA_API_V1,
+                since_seconds=since_seconds,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=OPC_NAME_LABEL,
+                resource_api=OPCUA_API_V1,
+                since_seconds=since_seconds,
+            )
             assert_list_deployments(
-                mocked_client, mocked_zipfile, label_selector=OPCUA_ORCHESTRATOR_LABEL, resource_api=OPCUA_API_V1
-            )
-            assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
-                mocked_list_pods,
-                label_selector=OPCUA_SUPERVISOR_LABEL,
+                label_selector=None,
                 resource_api=OPCUA_API_V1,
-                since_seconds=since_seconds,
+                mock_names=[
+                    "aio-opc-admission-controller",
+                    "aio-opc-supervisor",
+                    "aio-opc-opc.*"
+                ]
             )
-            assert_list_pods(
+            assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
-                mocked_list_pods,
-                label_selector=OPCUA_GENERAL_LABEL,
+                label_selector=OPC_NAME_LABEL,
                 resource_api=OPCUA_API_V1,
-                since_seconds=since_seconds,
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=OPC_APP_LABEL,
+                resource_api=OPCUA_API_V1,
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=OPC_APP_LABEL,
+                resource_api=OPCUA_API_V1
             )
 
         if api in [DATA_PROCESSOR_API_V1]:
