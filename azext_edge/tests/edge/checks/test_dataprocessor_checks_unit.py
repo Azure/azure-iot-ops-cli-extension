@@ -434,7 +434,7 @@ def test_instance_checks(
             # all namespace evaluation str
             [
                 [
-                    ("status", "warning"),
+                    ("status", "skipped"),
                     ("value/pipelines", None),
                 ]
             ]

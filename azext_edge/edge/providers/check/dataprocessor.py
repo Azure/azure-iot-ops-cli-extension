@@ -261,7 +261,7 @@ def evaluate_pipelines(
         fetch_pipelines_error_text = f"Unable to fetch {DataProcessorResourceKinds.PIPELINE.value}s in any namespaces."
         check_manager.add_target_eval(
             target_name=target_pipelines,
-            status=CheckTaskStatus.warning.value,
+            status=CheckTaskStatus.skipped.value,
             value={"pipelines": None}
         )
         check_manager.add_display(
@@ -433,10 +433,7 @@ def evaluate_datasets(
     all_datasets: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.DATASET).get("items", [])
 
     if not all_datasets:
-        fetch_datasets_warn_text = (
-            f"\nUnable to fetch {DataProcessorResourceKinds.DATASET.value}s in any namespaces."
-            "\n[bright_white]Skipping dataset evaluation[/bright_white]."
-        )
+        fetch_datasets_warn_text = f"Unable to fetch {DataProcessorResourceKinds.DATASET.value}s in any namespaces."
         add_display_and_eval(
             check_manager=check_manager,
             target_name=target_datasets,
