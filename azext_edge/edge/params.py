@@ -12,9 +12,11 @@ from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
 from .common import SupportForEdgeServiceType
-from .providers.edge_api import MqResourceKinds
+from .providers.edge_api import (
+    DataProcessorResourceKinds,
+    MqResourceKinds
+)
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.edge_api.dataprocessor import DataProcessorResourceKinds
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 
 from ._validators import validate_namespace
@@ -87,7 +89,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "edge_service",
             options_list=["--edge-service", "-e"],
-            choices=CaseInsensitiveList(["mq", "lnm"]),
+            choices=CaseInsensitiveList(["mq", "dataprocessor", "lnm"]),
             help="The edge service deployment that will be evaluated.",
         )
         context.argument(
@@ -273,7 +275,7 @@ def load_iotedge_arguments(self, _):
             help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
             arg_group="OPC-UA Broker",
         )
-        # Bluefin
+        # Data Processor
         context.argument(
             "dp_instance_name",
             options_list=["--dp-instance"],
