@@ -26,7 +26,6 @@ from ...common import CheckTaskStatus
 
 from .common import (
     AIO_LNM_PREFIX,
-    ALL_NAMESPACES_TARGET,
     LNM_ALLOWLIST_PROPERTIES,
     LNM_IMAGE_PROPERTIES,
     LNM_POD_CONDITION_TEXT_MAP,
@@ -38,6 +37,8 @@ from ..edge_api import (
     LNM_API_V1B1,
     LnmResourceKinds,
 )
+
+from ..support.lnm import LNM_APP_LABELS
 
 
 def check_lnm_deployment(
@@ -93,27 +94,19 @@ def evaluate_lnms(
     check_manager = CheckManager(check_name="evalLnms", check_desc="Evaluate Layered network management instance")
 
     target_lnms = "lnmz.aio.com"
-    lnm_all_conditions = ["lnms"]
     lnm_namespace_conditions = ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"]
 
-    check_manager.add_target(target_name=target_lnms, conditions=lnm_all_conditions)
     all_lnms: dict = LNM_API_V1B1.get_resources(LnmResourceKinds.LNM).get("items", [])
 
     if not all_lnms:
         fetch_lnms_error_text = f"Unable to fetch namespace {LnmResourceKinds.LNM.value}s."
+        check_manager.add_target(target_name=target_lnms)
         check_manager.add_target_eval(
             target_name=target_lnms,
             status=CheckTaskStatus.error.value,
             value={"lnms": None}
         )
         check_manager.add_display(target_name=target_lnms, display=Padding(fetch_lnms_error_text, (0, 0, 0, 8)))
-        return check_manager.as_dict(as_list)
-
-    check_manager.add_target_eval(
-        target_name=target_lnms,
-        status=CheckTaskStatus.success.value,
-        value={"lnms": len(all_lnms)}
-    )
 
     for (namespace, lnms) in resources_grouped_by_namespace(all_lnms):
         lnm_names = []
@@ -265,26 +258,64 @@ def evaluate_lnms(
                 ),
             )
 
-        from ..support.lnm import LNM_APP_LABELS
+            # append all lnm_names in lnm_app_lables
+            lnm_app_lables = []
+            lnm_app_lables = lnm_app_lables + LNM_APP_LABELS
+            for lnm_name in lnm_names:
+                lnm_app_lables.append(f"aio-lnm-{lnm_name}")
 
-        # append all lnm_names in lnm_app_lables
-        lnm_app_lables = []
-        lnm_app_lables = lnm_app_lables + LNM_APP_LABELS
-        for lnm_name in lnm_names:
-            lnm_app_lables.append(f"aio-lnm-{lnm_name}")
+            lnm_label = f"app in ({','.join(lnm_app_lables)})"
+            _evaluate_lnm_pod_health(
+                check_manager=check_manager,
+                target=target_lnms,
+                pod=AIO_LNM_PREFIX,
+                display_padding=12,
+                service_label=lnm_label,
+                namespace=namespace,
+                detail_level=detail_level,
+            )
 
-        lnm_label = f"app in ({','.join(lnm_app_lables)})"
-        _evaluate_lnm_pod_health(
-            check_manager=check_manager,
-            target=target_lnms,
-            pod=AIO_LNM_PREFIX,
-            display_padding=12,
-            service_label=lnm_label,
-            namespace=namespace,
-            detail_level=detail_level,
-        )
+    # evaluate lnm operator pod no matter if there is lnm instance
+    _evaluate_operator_pod(
+        check_manager=check_manager,
+        conditions=lnm_namespace_conditions,
+        target=target_lnms,
+        detail_level=detail_level,
+    )
 
     return check_manager.as_dict(as_list)
+
+
+def _evaluate_operator_pod(
+    check_manager: CheckManager,
+    conditions: List[str],
+    target: str,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> None:
+    lnm_operator_label = f"app in ({','.join(LNM_APP_LABELS)})"
+    operator_pod = get_namespaced_pods_by_prefix(prefix=AIO_LNM_PREFIX, namespace="", label_selector=lnm_operator_label)[0]
+    operator_namespace = operator_pod.metadata.namespace
+
+    # only evaluate operator pod if there is no target for the namespace operator pod is in
+    if not check_manager.targets[target].get(operator_namespace, ""):
+        check_manager.add_target(target_name=target, namespace=operator_namespace, conditions=conditions)
+        check_manager.add_display(
+            target_name=target,
+            namespace=operator_namespace,
+            display=Padding(
+                f"Layered network management resource in namespace {{[purple]{operator_namespace}[/purple]}}",
+                (0, 0, 0, 6)
+            )
+        )
+        _evaluate_lnm_pod_health(
+            check_manager=check_manager,
+            target=target,
+            pod=AIO_LNM_PREFIX,
+            display_padding=8,
+            service_label=lnm_operator_label,
+            namespace=operator_namespace,
+            detail_level=detail_level,
+        )
 
 
 def _evaluate_lnm_pod_health(
@@ -293,7 +324,7 @@ def _evaluate_lnm_pod_health(
     pod: str,
     display_padding: int,
     service_label: str,
-    namespace: str = ALL_NAMESPACES_TARGET,
+    namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
 
@@ -311,8 +342,11 @@ def _evaluate_lnm_pod_health(
         f"{target_service_pod}.status.conditions.containersready",
         f"{target_service_pod}.status.conditions.podscheduled",
     ]
-    check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
+
     diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
+
+    check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
+
     if not diagnostics_pods:
         add_display_and_eval(
             check_manager=check_manager,
@@ -375,7 +409,7 @@ def _evaluate_lnm_pod_health(
 
                     if condition_reason_text:
                         # remove the [ and ] to prevent console not printing the text
-                        condition_reason_text = condition_reason_text.replace("[", "").replace("]", "")
+                        condition_reason_text = condition_reason_text.replace("[", "\\[")
                         check_manager.add_display(
                             target_name=target,
                             namespace=namespace,

@@ -34,6 +34,12 @@ def mock_evaluate_lnm_pod_health(mocker):
 
 
 @pytest.fixture
+def mock_evaluate_operator_pod(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.lnm._evaluate_operator_pod", return_value={})
+    yield patched
+
+
+@pytest.fixture
 def mock_resource_types(mocker, edge_service):
     patched = mocker.patch("azext_edge.edge.providers.check.base.enumerate_edge_service_resources")
 

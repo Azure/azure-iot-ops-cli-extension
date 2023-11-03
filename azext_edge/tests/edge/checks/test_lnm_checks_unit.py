@@ -8,7 +8,6 @@
 import pytest
 from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
 from azext_edge.edge.providers.check.lnm import evaluate_lnms
-from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
 
 from .conftest import (
     assert_check_by_resource_types,
@@ -37,7 +36,7 @@ def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, 
 
 
 @pytest.mark.parametrize(
-    "lnms, namespace_conditions, all_conditions, namespace_evaluations, all_evaluations",
+    "lnms, namespace_conditions, namespace_evaluations",
     [
         (
             # lnms
@@ -128,21 +127,12 @@ def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, 
             ],
             # namespace conditions str
             ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"],
-            # all conditions str
-            ["lnms"],
             # namespace evaluations str
             [
                 [
                     ("status", "success"),
                     ("value/status.configStatusLevel", "ok"),
                 ],
-            ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/lnms", 2),
-                ]
             ]
         ),
         (
@@ -170,21 +160,12 @@ def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, 
             ],
             # namespace conditions str
             ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"],
-            # all conditions str
-            ["lnms"],
             # namespace evaluations str
             [
                 [
                     ("status", "warning"),
                     ("value/status.configStatusLevel", "warn"),
                 ],
-            ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/lnms", 1),
-                ]
             ]
         ),
     ]
@@ -192,11 +173,10 @@ def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, 
 def test_lnm_checks(
     mocker,
     mock_evaluate_lnm_pod_health,
+    mock_evaluate_operator_pod,
     lnms,
     namespace_conditions,
-    all_conditions,
     namespace_evaluations,
-    all_evaluations
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -214,9 +194,6 @@ def test_lnm_checks(
 
     for namespace in target:
         assert namespace in result["targets"]["lnmz.aio.com"]
-        if namespace == ALL_NAMESPACES_TARGET:
-            assert_conditions(target[namespace], all_conditions)
-            assert_evaluations(target[namespace], all_evaluations)
-        else:
-            assert_conditions(target[namespace], namespace_conditions)
-            assert_evaluations(target[namespace], namespace_evaluations)
+
+        assert_conditions(target[namespace], namespace_conditions)
+        assert_evaluations(target[namespace], namespace_evaluations)
