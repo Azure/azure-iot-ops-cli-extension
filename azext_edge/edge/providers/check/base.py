@@ -516,12 +516,7 @@ def evaluate_pod_health(
 ) -> None:
     target_service_pod = f"pod/{pod}"
     check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=[f"{target_service_pod}.status.phase"])
-    diagnostics_pods = get_namespaced_pods_by_prefix(
-        prefix=pod,
-        namespace=namespace if namespace != ALL_NAMESPACES_TARGET else None,
-        label_selector=service_label
-    )
-
+    diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
     if not diagnostics_pods:
         check_manager.add_target_eval(
             resource_name=target_service_pod,
