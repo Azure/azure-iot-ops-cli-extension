@@ -261,7 +261,7 @@ def evaluate_pipelines(
         fetch_pipelines_error_text = f"Unable to fetch {DataProcessorResourceKinds.PIPELINE.value}s in any namespaces."
         check_manager.add_target_eval(
             target_name=target_pipelines,
-            status=CheckTaskStatus.error.value,
+            status=CheckTaskStatus.warning.value,
             value={"pipelines": None}
         )
         check_manager.add_display(
