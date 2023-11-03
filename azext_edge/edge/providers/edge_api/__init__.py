@@ -8,7 +8,7 @@ from .base import EdgeResourceApi, EdgeApiManager
 from .mq import MQ_ACTIVE_API, MQ_API_V1B1, MqResourceKinds
 from .dataprocessor import DATA_PROCESSOR_API_V1, DataProcessorResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
-from .symphony import SYMPHONY_API_V1, SymphonyResourceKinds
+from .orc import ORC_API_V1, OrcResourceKinds
 from .lnm import LNM_API_V1B1, LnmResourceKinds
 from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
 from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
@@ -25,8 +25,8 @@ __all__ = [
     "LNM_API_V1B1",
     "OpcuaResourceKinds",
     "OPCUA_API_V1",
-    "SymphonyResourceKinds",
-    "SYMPHONY_API_V1",
+    "OrcResourceKinds",
+    "ORC_API_V1",
     "KeyVaultResourceKinds",
     "KEYVAULT_API_V1",
     "DeviceRegistryResourceKinds",

@@ -93,7 +93,7 @@ class SupportForEdgeServiceType(ListableEnum):
     lnm = "lnm"
     opcua = "opcua"
     dataprocessor = "dataprocessor"
-    symphony = "symphony"
+    orc = "orc"
     deviceregistry = "deviceregistry"
 
 

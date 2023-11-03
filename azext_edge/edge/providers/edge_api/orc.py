@@ -8,10 +8,10 @@ from .base import EdgeResourceApi
 from ...common import ListableEnum
 
 
-class SymphonyResourceKinds(ListableEnum):
+class OrcResourceKinds(ListableEnum):
     INSTANCE = "instance"
     SOLUTION = "solution"
     TARGET = "target"
 
 
-SYMPHONY_API_V1 = EdgeResourceApi(group="symphony.microsoft.com", version="v1", moniker="symphony")
+ORC_API_V1 = EdgeResourceApi(group="orchestrator.iotoperations.azure.com", version="v1", moniker="orc")
