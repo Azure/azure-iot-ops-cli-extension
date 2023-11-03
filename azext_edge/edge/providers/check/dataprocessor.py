@@ -27,7 +27,6 @@ from ...common import (
 )
 
 from .common import (
-    ALL_NAMESPACES_TARGET,
     DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES,
     DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES,
     DATA_PROCESSOR_NATS_PREFIX,
@@ -581,13 +580,13 @@ def evaluate_datasets(
 
             if detail_level == ResourceOutputDetailLevel.verbose.value and dataset_spec.get("keys"):
                 process_property_by_type(
-                check_manager=check_manager,
-                target_name=target_datasets,
-                properties=d["spec"]["keys"],
-                display_name="Dataset configuration key",
-                padding=(0, 0, 0, 12),
-                namespace=namespace
-            )
+                    check_manager=check_manager,
+                    target_name=target_datasets,
+                    properties=d["spec"]["keys"],
+                    display_name="Dataset configuration key",
+                    padding=(0, 0, 0, 12),
+                    namespace=namespace
+                )
 
     return check_manager.as_dict(as_list)
 
