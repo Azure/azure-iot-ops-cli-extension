@@ -123,9 +123,6 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("KafkaConnectorTopicMap"))
 
         if r == OPCUA_API_V1:
-            # v1_resources.append(_get_api_resource("Application"))
-            # v1_resources.append(_get_api_resource("ModuleType"))
-            # v1_resources.append(_get_api_resource("Module"))
             v1_resources.append(_get_api_resource("AssetType"))
 
         if r == DATA_PROCESSOR_API_V1:
@@ -226,7 +223,8 @@ def mocked_list_deployments(mocked_client):
                 "aio-akri-otel-collector",
                 "aio-opc-admission-controller",
                 "aio-opc-supervisor",
-                "aio-opc-opc.*"
+                "aio-opc-opc",
+                "opcplc-0000000"
             ])
 
         deployment_list = []
@@ -250,7 +248,7 @@ def mocked_list_replicasets(mocked_client):
         # @vilit - also akri
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
             names.extend([
-                "aio-akri-otel-collector-*"
+                "aio-akri-otel-collector"
             ])
 
         replicaset_list = []
@@ -285,8 +283,16 @@ def mocked_list_services(mocked_client):
     from kubernetes.client.models import V1ServiceList, V1Service, V1ObjectMeta
 
     def _handle_list_services(*args, **kwargs):
-        service = V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_service"))
-        service_list = V1ServiceList(items=[service])
+        service_names = ["mock_service"]
+        if "label_selector" in kwargs and kwargs["label_selector"] is None:
+            service_names.extend([
+                "opcplc-0000000",
+            ])
+
+        service_list = []
+        for name in service_names:
+            service_list.append(V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        service_list = V1ServiceList(items=service_list)
 
         return service_list
 

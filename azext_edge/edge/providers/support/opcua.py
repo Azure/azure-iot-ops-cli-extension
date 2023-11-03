@@ -15,13 +15,13 @@ from .base import assemble_crd_work, process_deployments, process_services, proc
 logger = get_logger(__name__)
 
 
+SIMULATOR_PREFIX = "opcplc-"
 OPC_PREFIX = "aio-opc-"
 # OPC_SELECTOR_LABEL = "app=aio-opc-supervisor"
 # OPC_ORCHESTRATOR_LABEL = "orchestrator=opcuabroker"
 OPC_APP_LABEL = "app in (aio-opc-supervisor, aio-opc-admission-controller)"
-OPC_NAME_LABEL = "app.kubernetes.io/name in (aio-opc-opcua-connector)"
+OPC_NAME_LABEL = "app.kubernetes.io/name in (aio-opc-opcua-connector, opcplc)"
 # TODO: add daemonset once service confirms
-# what is opcplc-000000
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
@@ -48,7 +48,7 @@ def fetch_deployments():
     # there is one deployment that has a selector instead of label. I assume this is a service mistake
     # and will use prefix in the mean time. Commented out code is what should be used once service mistake
     # is fixed
-    processed = process_deployments(resource_api=OPCUA_API_V1, prefix_names=[OPC_PREFIX])
+    processed = process_deployments(resource_api=OPCUA_API_V1, prefix_names=[OPC_PREFIX, SIMULATOR_PREFIX])
     # processed = process_deployments(resource_api=OPCUA_API_V1, label_selector=OPC_ORCHESTRATOR_LABEL)
     # processed.extend(
     #     process_deployments(resource_api=OPCUA_API_V1, label_selector=OPC_APP_LABEL)
@@ -65,7 +65,11 @@ def fetch_replicasets():
 
 
 def fetch_services():
-    return process_services(resource_api=OPCUA_API_V1, label_selector=OPC_APP_LABEL)
+    processed = process_services(resource_api=OPCUA_API_V1, label_selector=OPC_APP_LABEL)
+    processed.extend(
+        process_services(resource_api=OPCUA_API_V1, prefix_names=[SIMULATOR_PREFIX])
+    )
+    return processed
 
 
 support_runtime_elements = {

@@ -9,9 +9,6 @@ from ...common import ListableEnum
 
 
 class OpcuaResourceKinds(ListableEnum):
-    APPLICATION = "application"
-    MODULE_TYPE = "moduletype"
-    MODULE = "module"
     ASSET_TYPE = "assettype"
 
 
