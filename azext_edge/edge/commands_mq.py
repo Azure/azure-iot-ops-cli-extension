@@ -8,7 +8,7 @@ from typing import Optional, List
 
 from knack.log import get_logger
 from .providers.base import load_config_context
-from .common import AIO_MQ_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT
+from .common import METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT
 
 logger = get_logger(__name__)
 
@@ -17,7 +17,6 @@ def stats(
     cmd,
     namespace: Optional[str] = None,
     context_name: Optional[str] = None,
-    diag_service_pod_prefix: str = AIO_MQ_DIAGNOSTICS_SERVICE,
     pod_metrics_port: int = METRICS_SERVICE_API_PORT,
     pod_protobuf_port: int = PROTOBUF_SERVICE_API_PORT,
     raw_response_print: Optional[bool] = None,
@@ -34,7 +33,6 @@ def stats(
     if trace_ids or trace_dir:
         return get_traces(
             namespace=namespace,
-            diag_service_pod_prefix=diag_service_pod_prefix,
             pod_protobuf_port=pod_protobuf_port,
             trace_ids=trace_ids,
             trace_dir=trace_dir,
@@ -42,7 +40,6 @@ def stats(
 
     return get_stats(
         namespace=namespace,
-        diag_service_pod_prefix=diag_service_pod_prefix,
         raw_response_print=raw_response_print,
         pod_metrics_port=pod_metrics_port,
         refresh_in_seconds=refresh_in_seconds,

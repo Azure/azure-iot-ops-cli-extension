@@ -22,8 +22,8 @@ def mock_evaluate_cloud_connector_pod_health(mocker):
 
 
 @pytest.fixture
-def mock_evaluate_bluefin_pod_health(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.bluefin.evaluate_pod_health", return_value={})
+def mock_evaluate_dataprocessor_pod_health(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.dataprocessor.evaluate_pod_health", return_value={})
     yield patched
 
 
@@ -42,7 +42,7 @@ def mock_resource_types(mocker, edge_service):
                 "DataLakeConnector": [{}]
             }
         )
-    elif edge_service == "bluefin":
+    elif edge_service == "dataprocessor":
         patched.return_value = (
             {},
             {
