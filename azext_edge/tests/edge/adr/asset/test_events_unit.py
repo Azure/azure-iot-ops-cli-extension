@@ -46,6 +46,7 @@ FULL_EVENT = FULL_ASSET["properties"]["events"][0]
 @pytest.mark.parametrize("sampling_interval", [None, 33])
 def test_add_asset_event(
     mocked_cmd,
+    mock_check_cluster_connectivity,
     mocked_resource_management_client,
     capability_id,
     name,
@@ -132,7 +133,11 @@ def test_list_asset_events(mocked_cmd, mocked_resource_management_client):
     (None, generate_generic_id()),
 ])
 def test_remove_asset_event(
-    mocked_cmd, mocked_resource_management_client, event_notifier, name
+    mocked_cmd,
+    mock_check_cluster_connectivity,
+    mocked_resource_management_client,
+    event_notifier,
+    name
 ):
     asset_name = generate_generic_id()
     resource_group_name = generate_generic_id()

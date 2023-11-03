@@ -63,7 +63,11 @@ from ....generators import generate_generic_id
     },
 ])
 def test_update_asset(
-    mocked_cmd, mocked_resource_management_client, asset_helpers_fixture, req
+    mocked_cmd,
+    mock_check_cluster_connectivity,
+    mocked_resource_management_client,
+    asset_helpers_fixture,
+    req
 ):
     _, patched_up = asset_helpers_fixture
     # Required params

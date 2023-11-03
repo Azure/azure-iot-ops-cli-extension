@@ -20,7 +20,6 @@ from ....generators import generate_generic_id
 def test_show_asset(
     mocked_cmd,
     mocked_resource_management_client,
-    mocked_send_raw_request,
     resource_group
 ):
     asset_endpoint_profile_name = generate_generic_id()
@@ -31,7 +30,6 @@ def test_show_asset(
         asset_endpoint_profile_name=asset_endpoint_profile_name,
         resource_group_name=resource_group
     )
-    mocked_send_raw_request.assert_not_called()
     mocked_resource_management_client.resources.get.assert_called_once()
     call_kwargs = mocked_resource_management_client.resources.get.call_args.kwargs
     assert call_kwargs["resource_group_name"] == resource_group

@@ -217,7 +217,7 @@ class AssetProvider(ResourceManagementProvider):
         tags: Optional[Dict[str, str]] = None,
     ):
         # get the asset
-        original_asset = self.show(
+        original_asset = self.show_and_check(
             resource_name=asset_name,
             resource_group_name=resource_group_name
         )
@@ -271,7 +271,7 @@ class AssetProvider(ResourceManagementProvider):
         queue_size: Optional[int] = None,
         sampling_interval: Optional[int] = None,
     ):
-        asset = self.show(
+        asset = self.show_and_check(
             resource_name=asset_name,
             resource_group_name=resource_group_name
         )
@@ -321,7 +321,7 @@ class AssetProvider(ResourceManagementProvider):
         event_notifier: Optional[str] = None,
         name: Optional[str] = None,
     ):
-        asset = self.show(
+        asset = self.show_and_check(
             resource_name=asset_name,
             resource_group_name=resource_group_name
         )

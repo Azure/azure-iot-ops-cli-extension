@@ -14,13 +14,13 @@ from ....generators import generate_generic_id
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [
-    {"resources.get": {"result": generate_generic_id()}}
+    {"resources.get": {"extendedLocation": {"name": generate_generic_id()}}}
 ], ids=["resources.get"], indirect=True)
 @pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
 def test_delete_asset(
     mocked_cmd,
     mocked_resource_management_client,
-    mocked_send_raw_request,
+    mock_check_cluster_connectivity,
     resource_group
 ):
     asset_endpoint_profile_name = generate_generic_id()

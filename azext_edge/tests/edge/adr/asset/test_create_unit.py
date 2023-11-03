@@ -76,6 +76,9 @@ def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, ass
         "azext_edge.edge.providers.adr.base.ResourceManagementProvider._check_cluster_and_custom_location"
     )
     patched_cap.return_value = generate_generic_id()
+    patched_cep = mocker.patch(
+        "azext_edge.edge.providers.adr.assets.AssetProvider._check_endpoint"
+    )
 
     # Required params
     asset_name = generate_generic_id()
@@ -89,6 +92,9 @@ def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, ass
         endpoint=endpoint_profile,
         **req
     ).result()
+
+    # endpoint check call
+    patched_cep.assert_called_once_with(endpoint_profile)
 
     # resource group call
     location = req.get(

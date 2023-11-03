@@ -5,50 +5,13 @@
 # --------------------------------------------------------------------------------------------
 
 import pytest
-
 from azure.cli.core.azclierror import (
     ResourceNotFoundError, RequiredArgumentMissingError, ValidationError
 )
 
-from .conftest import RM_PATH
 from azext_edge.edge.common import ResourceTypeMapping
+from .conftest import RM_PATH
 from ...generators import generate_generic_id
-
-
-@pytest.mark.parametrize("mocked_build_query", [
-    {
-        "path": RM_PATH,
-        "side_effect": [[]]
-    },
-    {
-        "path": RM_PATH,
-        "side_effect": [[{
-            "name": generate_generic_id(),
-            "properties": {
-                "connectivityStatus": "Online"
-            }
-        }]]
-    },
-    {
-        "path": RM_PATH,
-        "side_effect": [[{
-            "name": generate_generic_id(),
-            "properties": {
-                "connectivityStatus": "Offline"
-            }
-        }]]
-    }
-], ids=["no clusters", "online cluster", "offline cluster"], indirect=True)
-def test_check_cluster_connectivity(mocked_cmd, mocked_build_query):
-    from azext_edge.edge.providers.adr.base import ResourceManagementProvider
-    provider = ResourceManagementProvider(mocked_cmd)
-    custom_location_id = generate_generic_id()
-    provider._check_cluster_connectivity(custom_location_id)
-    assert mocked_build_query.call_count == 1
-
-    cluster_query_kwargs = mocked_build_query.call_args.kwargs
-    assert cluster_query_kwargs["type"] == ResourceTypeMapping.connected_cluster.value
-    assert cluster_query_kwargs["custom_query"] == f'| where id =~ "{custom_location_id}"'
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [{
@@ -60,7 +23,7 @@ def test_check_cluster_connectivity(mocked_cmd, mocked_build_query):
         "id": generate_generic_id(),
         "properties": {
             "clusterExtensionIds": [generate_generic_id()],
-            "hostResourceId": generate_generic_id()
+            "hostResourceId": generate_generic_id(),
         }
     }]]
 }], ids=["query for location"], indirect=True)
@@ -104,7 +67,8 @@ def test_check_cluster_and_custom_location(
     query_results = list(mocked_build_query.side_effect)
     cluster_query_result = {
         "id": generate_generic_id(),
-        "name": generate_generic_id()
+        "name": generate_generic_id(),
+        "properties": {"connectivityStatus": "Connected"}
     }
     location_query_result = query_results[0][0]
     if cluster_name:
@@ -240,7 +204,8 @@ def test_check_cluster_and_custom_location_build_query_error(
             "id": generate_generic_id(),
             "properties": {
                 "clusterExtensionIds": [generate_generic_id()],
-                "hostResourceId": generate_generic_id()
+                "hostResourceId": generate_generic_id(),
+                "connectivityStatus": "Connected"
             }
         }]
     },

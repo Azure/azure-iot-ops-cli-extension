@@ -39,6 +39,10 @@ class ResourceManagementProvider:
         resource_name: str,
         resource_group_name: str
     ):
+        self.show_and_check(
+            resource_name=resource_name,
+            resource_group_name=resource_group_name
+        )
         self.resource_client.resources.begin_delete(
             resource_group_name=resource_group_name,
             resource_provider_namespace=self.resource_type,
@@ -83,7 +87,14 @@ class ResourceManagementProvider:
             resource_name=resource_name,
             api_version=self.api_version
         )
-        return result.as_dict()
+        # serialize takes out id
+        # as_dict turns extendedLocation into extended_location
+        # fix as_dict here
+        result = result.as_dict()
+        extended_location = result.pop("extended_location", None)
+        if extended_location:
+            result["extendedLocation"] = extended_location
+        return result
 
     def show_and_check(
         self,
@@ -92,7 +103,7 @@ class ResourceManagementProvider:
     ) -> Dict[str, Any]:
         result = self.show(resource_name, resource_group_name)
         self._check_cluster_connectivity(
-            custom_location_id=result["extendedLocation"]["name"]
+            result["extendedLocation"]["name"]
         )
         return result
 
@@ -101,6 +112,17 @@ class ResourceManagementProvider:
         custom_location_id: str,
     ):
         query = f'| where id =~ "{custom_location_id}"'
+        custom_location_query_result = build_query(
+            self.cmd,
+            custom_query=query,
+            type=ResourceTypeMapping.custom_location.value
+        )
+        if len(custom_location_query_result) == 0:
+            logger.warning(
+                f"Custom location {custom_location_id} not found. The command may fail."
+            )
+            return
+        query = f'| where id =~ "{custom_location_query_result[0]["properties"]["hostResourceId"]}"'
         cluster_query_result = build_query(
             self.cmd,
             custom_query=query,
@@ -116,7 +138,7 @@ class ResourceManagementProvider:
         cluster = cluster_query_result[0]
         if cluster["properties"]["connectivityStatus"].lower() != "connected":
             logger.warning(
-                f"Cluster {cluster['name']} is not connected. The command may fail."
+                f"Cluster {cluster['name']} is not connected. The cluster may not update correctly."
             )
 
     def _check_cluster_and_custom_location(
@@ -196,6 +218,11 @@ class ResourceManagementProvider:
                 )
             cluster = cluster_query_result[0]
         # by this point, cluster is populated
+
+        if cluster["properties"]["connectivityStatus"].lower() != "connected":
+            logger.warning(
+                f"Cluster {cluster['name']} is not connected. The command may fail."
+            )
 
         possible_locations = []
         for location in location_query_result:

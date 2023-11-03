@@ -23,7 +23,7 @@ FULL_CERT = FULL_AEP["properties"]["transportAuthentication"]["ownCertificates"]
 
 @pytest.mark.parametrize("mocked_build_query", [{
     "path": RM_PATH,
-    "result": [{"properties": {"connectivityStatus": "Online"}}]
+    "result": [{"properties": {"connectivityStatus": "Connected"}}]
 }], ids=["query"], indirect=True)
 @pytest.mark.parametrize("mocked_resource_management_client", [
     {
@@ -100,7 +100,7 @@ def test_list_asset_endpoint_profile_transport_auths(mocked_cmd, mocked_resource
 
 @pytest.mark.parametrize("mocked_build_query", [{
     "path": RM_PATH,
-    "result": [{"properties": {"connectivityStatus": "Online"}}]
+    "result": [{"properties": {"connectivityStatus": "Connected"}}]
 }], ids=["query"], indirect=True)
 @pytest.mark.parametrize("mocked_resource_management_client", [
     {
