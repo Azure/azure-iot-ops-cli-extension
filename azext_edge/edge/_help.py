@@ -549,12 +549,7 @@ def load_iotedge_help():
         short-summary: Add an owned certificate to an asset endpoint.
 
         examples:
-        - name: Add a certificate to an asset endpoint that does not use a password.
-          text: >
-            az iot ops asset endpoint certificate add --endpoint {asset_endpoint} -g {resource_group}
-            --secret-ref {secret_reference} --thumbprint {thumbprint}
-
-        - name: Add a certificate to an asset endpoint that uses a password.
+        - name: Add a certificate to an asset endpoint.
           text: >
             az iot ops asset endpoint certificate add --endpoint {asset_endpoint} -g {resource_group}
             --secret-ref {secret_reference} --thumbprint {thumbprint} --password-ref {password_reference}
