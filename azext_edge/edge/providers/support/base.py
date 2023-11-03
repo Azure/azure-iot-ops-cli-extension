@@ -22,11 +22,11 @@ logger = get_logger(__name__)
 generic = client.ApiClient()
 
 
-def process_crd(group: str, version: str, kind: str, api_moniker: str, file_prefix: Optional[str] = None):
+def process_crd(group: str, version: str, kind: str, api_moniker: str, plural: str, file_prefix: Optional[str] = None):
     result: dict = get_custom_objects(
         group=group,
         version=version,
-        plural=f"{kind}s",
+        plural=plural,
         use_cache=False,
     )
     if not file_prefix:
@@ -353,6 +353,7 @@ def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional
                 kind=kind,
                 api_moniker=api.moniker,
                 file_prefix=file_prefix,
+                plural=api._kinds[kind]
             )
 
     return result

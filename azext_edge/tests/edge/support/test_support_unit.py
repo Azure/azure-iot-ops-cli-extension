@@ -338,6 +338,15 @@ def test_create_bundle(
                 resource_api=LNM_API_V1B1,
                 since_seconds=since_seconds,
             )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=None,
+                resource_api=LNM_API_V1B1,
+                since_seconds=since_seconds,
+                mock_names=["svclb-aio-lnm-operator"]
+            )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
