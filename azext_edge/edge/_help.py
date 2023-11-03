@@ -14,9 +14,9 @@ from .providers.support_bundle import (
     COMPAT_MQ_APIS,
     COMPAT_LNM_APIS,
     COMPAT_OPCUA_APIS,
-    COMPAT_SYMPHONY_APIS,
+    COMPAT_ORC_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
-    COMPAT_AKRI_APIS
+    COMPAT_AKRI_APIS,
 )
 
 
@@ -25,9 +25,9 @@ def load_iotedge_help():
         "iot ops"
     ] = """
         type: group
-        short-summary: Manage AIO resources.
+        short-summary: Manage Azure IoT Operations.
         long-summary: |
-            Azure IoT Operations (AIO) is a set of highly aligned, but loosely coupled, first-party
+            Azure IoT Operations is a set of highly aligned, but loosely coupled, first-party
             Kubernetes services that enable you to aggregate data from on-prem assets into an
             industrial-grade MQTT Broker, add edge compute and set up bi-directional data flow with
             a variety of services in the cloud.
@@ -50,7 +50,7 @@ def load_iotedge_help():
                 {COMPAT_MQ_APIS.as_str()}
                 {COMPAT_OPCUA_APIS.as_str()}
                 {COMPAT_DATA_PROCESSOR_APIS.as_str()}
-                {COMPAT_SYMPHONY_APIS.as_str()}
+                {COMPAT_ORC_APIS.as_str()}
                 {COMPAT_AKRI_APIS.as_str()}
                 {COMPAT_LNM_APIS.as_str()}
                 {COMPAT_DEVICEREGISTRY_APIS.as_str()}
@@ -60,7 +60,7 @@ def load_iotedge_help():
         "iot ops check"
     ] = f"""
         type: command
-        short-summary: Evaluate AIO edge service deployments for health, configuration and usability.
+        short-summary: Evaluate IoT Operations service deployment for health, configuration and usability.
         long-summary: |
             [Supported edge service APIs]
                 {MQ_ACTIVE_API.as_str()}
@@ -94,10 +94,7 @@ def load_iotedge_help():
         "iot ops init"
     ] = """
         type: command
-        short-summary: Bootstrap, configure and deploy AIO to the target cluster.
-        long-summary: |
-            After this operation completes the desired suite of AIO edge services will
-            be deployed with baseline configuration on the target cluster.
+        short-summary: Bootstrap, configure and deploy IoT Operations to the target cluster.
     """
 
     helps[

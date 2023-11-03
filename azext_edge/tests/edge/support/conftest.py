@@ -77,10 +77,10 @@ def mocked_cluster_resources(request, mocker):
         MQ_ACTIVE_API,
         OPCUA_API_V1,
         DATA_PROCESSOR_API_V1,
-        SYMPHONY_API_V1,
+        ORC_API_V1,
         AKRI_API_V0,
         LNM_API_V1B1,
-        DEVICEREGISTRY_API_V1
+        DEVICEREGISTRY_API_V1,
     )
 
     requested_resource_apis = getattr(request, "param", [])
@@ -130,7 +130,7 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Pipeline"))
 
-        if r == SYMPHONY_API_V1:
+        if r == ORC_API_V1:
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Solution"))
             v1_resources.append(_get_api_resource("Target"))
@@ -318,7 +318,7 @@ def mocked_list_daemonsets(mocked_client):
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
             daemonset_names.extend([
                 "aio-akri-agent-daemonset",
-                "svclb-lnm-operator"
+                "svclb-aio-lnm-operator"
             ])
 
         daemonset_list = []

@@ -154,7 +154,7 @@ class WorkManager:
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CLUSTER, "Configure cluster for tls")
 
         # TODO: add skip deployment
-        self.display.add_category(WorkCategoryKey.DEPLOY_AIO, "Deploy AIO", skipped=self._no_deploy)
+        self.display.add_category(WorkCategoryKey.DEPLOY_AIO, "Deploy IoT Operations", skipped=self._no_deploy)
 
     def do_work(self):
         from .base import (

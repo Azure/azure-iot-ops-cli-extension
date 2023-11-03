@@ -17,7 +17,7 @@ from ..providers.edge_api import (
     MQ_API_V1B1,
     LNM_API_V1B1,
     OPCUA_API_V1,
-    SYMPHONY_API_V1,
+    ORC_API_V1,
     AKRI_API_V0,
     DEVICEREGISTRY_API_V1,
     EdgeApiManager,
@@ -30,7 +30,7 @@ console = Console()
 COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DATA_PROCESSOR_APIS = EdgeApiManager(resource_apis=[DATA_PROCESSOR_API_V1])
-COMPAT_SYMPHONY_APIS = EdgeApiManager(resource_apis=[SYMPHONY_API_V1])
+COMPAT_ORC_APIS = EdgeApiManager(resource_apis=[ORC_API_V1])
 COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 COMPAT_LNM_APIS = EdgeApiManager(resource_apis=[LNM_API_V1B1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
@@ -45,56 +45,53 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.lnm import prepare_bundle as prepare_lnm_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
-    from .support.symphony import prepare_bundle as prepare_symphony_bundle
-    from .support.akri import prepare_bundle as prepare_akri_bundle
+    from .support.orc import prepare_bundle as prepare_symphony_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
+    from .support.akri import prepare_bundle as prepare_akri_bundle
 
-    pending_work = {
-        "mq": {},
-        "opcua": {},
-        "dataprocessor": {},
-        "symphony": {},
-        "deviceregistry": {},
-        "common": {},
-        "lnm": {},
-        "akri": {}
-    }
+    pending_work = {k: {} for k in SupportForEdgeServiceType.list() + ["common"]}
+    pending_work.pop(SupportForEdgeServiceType.auto.value)
 
     api_map = {
-        SupportForEdgeServiceType.mq.value: {
-            'apis': COMPAT_MQ_APIS, 'prepare_bundle': prepare_mq_bundle, 'key': 'mq'},
+        SupportForEdgeServiceType.mq.value: {"apis": COMPAT_MQ_APIS, "prepare_bundle": prepare_mq_bundle},
         SupportForEdgeServiceType.opcua.value: {
-            'apis': COMPAT_OPCUA_APIS, 'prepare_bundle': prepare_opcua_bundle, 'key': 'opcua'},
+            "apis": COMPAT_OPCUA_APIS,
+            "prepare_bundle": prepare_opcua_bundle,
+        },
         SupportForEdgeServiceType.dataprocessor.value: {
-            'apis': COMPAT_DATA_PROCESSOR_APIS, 'prepare_bundle': prepare_dataprocessor_bundle, 'key': 'dataprocessor'},
-        SupportForEdgeServiceType.symphony.value: {
-            'apis': COMPAT_SYMPHONY_APIS, 'prepare_bundle': prepare_symphony_bundle, 'key': 'symphony'},
+            "apis": COMPAT_DATA_PROCESSOR_APIS,
+            "prepare_bundle": prepare_dataprocessor_bundle,
+        },
+        SupportForEdgeServiceType.orc.value: {
+            "apis": COMPAT_ORC_APIS,
+            "prepare_bundle": prepare_symphony_bundle,
+        },
         SupportForEdgeServiceType.lnm.value: {
-            'apis': COMPAT_LNM_APIS, 'prepare_bundle': prepare_lnm_bundle, 'key': 'lnm'},
-        SupportForEdgeServiceType.akri.value: {
-            'apis': COMPAT_AKRI_APIS, 'prepare_bundle': prepare_akri_bundle, 'key': 'akri'},
+            "apis": COMPAT_LNM_APIS,
+            "prepare_bundle": prepare_lnm_bundle,
+        },
+        SupportForEdgeServiceType.akri.value: {"apis": COMPAT_AKRI_APIS, "prepare_bundle": prepare_akri_bundle},
         SupportForEdgeServiceType.deviceregistry.value: {
-            'apis': COMPAT_DEVICEREGISTRY_APIS,
-            'prepare_bundle': prepare_deviceregistry_bundle,
-            'key': 'deviceregistry'
-        }
+            "apis": COMPAT_DEVICEREGISTRY_APIS,
+            "prepare_bundle": prepare_deviceregistry_bundle,
+        },
     }
 
     raise_on_404 = not (edge_service == SupportForEdgeServiceType.auto.value)
 
-    for service_type, api_info in api_map.items():
-        if edge_service in [SupportForEdgeServiceType.auto.value, service_type]:
-            deployed_apis = api_info['apis'].get_deployed(raise_on_404)
+    for service_moniker, api_info in api_map.items():
+        if edge_service in [SupportForEdgeServiceType.auto.value, service_moniker]:
+            deployed_apis = api_info["apis"].get_deployed(raise_on_404)
             if deployed_apis:
-                bundle_method = api_info['prepare_bundle']
+                bundle_method = api_info["prepare_bundle"]
                 # Check if the function takes a second argument
-                if service_type == SupportForEdgeServiceType.deviceregistry.value:
+                if service_moniker == SupportForEdgeServiceType.deviceregistry.value:
                     bundle = bundle_method(deployed_apis)
                 else:
                     bundle = bundle_method(deployed_apis, log_age_seconds)
 
-                pending_work[api_info['key']].update(bundle)
+                pending_work[service_moniker].update(bundle)
 
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):
@@ -144,7 +141,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
         for service in pending_work:
             if pending_work[service]:
                 visually_process(
-                    description=f"Processing {service} resources",
+                    description=f"Processing {service}",
                     support_segment=pending_work[service],
                     edge_service=service,
                 )
