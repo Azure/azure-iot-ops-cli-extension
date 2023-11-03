@@ -450,10 +450,10 @@ def load_iotedge_help():
             az iot ops asset endpoint create --endpoint myAssetEndpoint -g myRG --cluster myCluster
             --target-address "opc.tcp://opcplc-000000:50000"
             --certificate-ref "aio-opc-ua-broker-user-authentication/opc-plc-certificate"
-            --additional-config '{\n  \"applicationName\": \"opcua-connector\",\n  \"defaults\": {\n
-            \"publishingIntervalMilliseconds\": 100,\n    \"samplingIntervalMilliseconds\": 500,\n    \"queueSize\": 15,\n  },\n
-            \"session\": {\n    \"timeout\": 60000\n  },\n  \"subscription\": {\n    \"maxItems\": 1000,\n  },\n  \"security\": {\n
-            \"autoAcceptUntrustedServerCertificates\": true\n  }\n}'
+            --additional-config '{\\\"applicationName\\\": \\\"opcua-connector\\\",\\\"defaults\\\": {
+            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
+            \\\"session\\\": {  \\\"timeout\\\": 60000},\\\"subscription\\\": {  \\\"maxItems\\\": 1000,},\\\"security\\\": {
+            \\\"autoAcceptUntrustedServerCertificates\\\": true}}'
     """
 
     helps[

@@ -16,7 +16,7 @@ from ...util import build_query
 from ...common import ResourceTypeMapping
 
 logger = get_logger(__name__)
-API_VERSION = "2023-10-01-preview"
+API_VERSION = "2023-11-01-preview"
 
 
 # @vilit - prob generalize this even more
@@ -106,17 +106,17 @@ class ResourceManagementProvider:
             custom_query=query,
             type=ResourceTypeMapping.connected_cluster.value
         )
-        # TODO: should these be errors
+        # TODO: add option to fail on these
         if len(cluster_query_result) == 0:
             logger.warning(
-                f"Cluster associated with the custom location {custom_location_id} not found. Please "
-                "check if cluster exists."
+                f"Cluster associated with the custom location {custom_location_id} not found. "
+                "The command may fail."
             )
             return
         cluster = cluster_query_result[0]
-        if cluster["properties"]["connectivityStatus"] != "Online":
+        if cluster["properties"]["connectivityStatus"].lower() != "connected":
             logger.warning(
-                f"Cluster {cluster['name']} is not online, the command may fail."
+                f"Cluster {cluster['name']} is not connected. The command may fail."
             )
 
     def _check_cluster_and_custom_location(

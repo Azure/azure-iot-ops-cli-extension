@@ -74,6 +74,7 @@ class AssetProvider(ResourceManagementProvider):
             cluster_resource_group=cluster_resource_group,
             cluster_subscription=cluster_subscription
         )
+        self._check_endpoint(endpoint)
 
         # Location
         if not location:
@@ -345,6 +346,18 @@ class AssetProvider(ResourceManagementProvider):
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"][sub_point_type]
+
+    def _check_endpoint(self, endpoint: str):
+        possible_endpoints = build_query(
+            self.cmd,
+            subscription_id=self.subscription,
+            name=endpoint
+        )
+        # TODO: add option to fail on these
+        if not possible_endpoints:
+            logger.warning(
+                f"Endpoint {endpoint} not found. The asset may fail provisioning."
+            )
 
 
 # Helpers
