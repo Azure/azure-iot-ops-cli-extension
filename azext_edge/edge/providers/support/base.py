@@ -216,12 +216,7 @@ def process_statefulset(
     return processed
 
 
-def process_services(
-    resource_api: EdgeResourceApi,
-    label_selector: str = None,
-    field_selector: str = None,
-    prefix_names: List[str] = None
-):
+def process_services(resource_api: EdgeResourceApi, label_selector: str = None, prefix_names: List[str] = None):
     from kubernetes.client.models import V1Service, V1ServiceList
 
     v1_api = client.CoreV1Api()
@@ -230,10 +225,7 @@ def process_services(
     if not prefix_names:
         prefix_names = []
 
-    services: V1ServiceList = v1_api.list_service_for_all_namespaces(
-        label_selector=label_selector,
-        field_selector=field_selector
-    )
+    services: V1ServiceList = v1_api.list_service_for_all_namespaces(label_selector=label_selector)
     logger.info(f"Detected {len(services.items)} services.")
 
     for service in services.items:

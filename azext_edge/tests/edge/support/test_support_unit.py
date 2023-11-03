@@ -39,8 +39,6 @@ from azext_edge.edge.providers.support.mq import MQ_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
     OPC_NAME_LABEL,
-    OPC_SUPERVISOR_SELECTOR,
-    SIMULATOR_SELECTOR,
 )
 from azext_edge.edge.providers.support.orc import (
     ORC_APP_LABEL,
@@ -164,14 +162,12 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=OPCUA_API_V1,
-                field_selector=OPC_SUPERVISOR_SELECTOR
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=None,
-                resource_api=OPCUA_API_V1,
-                field_selector=SIMULATOR_SELECTOR
+                mock_names=[
+                    "aio-opc-admission-controller",
+                    "aio-opc-supervisor",
+                    "aio-opc-opc",
+                    "opcplc-0000000"
+                ]
             )
             assert_list_replica_sets(
                 mocked_client,
@@ -190,7 +186,9 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=OPCUA_API_V1,
-                field_selector=SIMULATOR_SELECTOR
+                mock_names=[
+                    "opcplc-0000000"
+                ]
             )
             assert_list_services(
                 mocked_client,
@@ -527,13 +525,9 @@ def assert_list_services(
     mocked_zipfile,
     label_selector: str,
     resource_api: EdgeResourceApi,
-    field_selector: str = None,
     mock_names: Optional[List[str]] = None
 ):
-
-    mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(
-        label_selector=label_selector, field_selector=field_selector
-    )
+    mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
     mock_names = mock_names or ["mock_service"]
     for name in mock_names:
