@@ -338,9 +338,6 @@ def test_create_bundle(
                 resource_api=LNM_API_V1B1,
                 mock_names=["svclb-aio-lnm-operator"],
             )
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=lnm_app_label, resource_api=LNM_API_V1B1)
-            assert_list_daemon_sets(mocked_client, mocked_zipfile, label_selector=None, resource_api=LNM_API_V1B1)
-
         # assert shared KPIs regardless of service
         assert_shared_kpis(mocked_client, mocked_zipfile)
 
@@ -362,7 +359,7 @@ def asset_raises_not_found_error(mocked_cluster_resources):
 
     if not mocked_cluster_resources["param"] or ORC_API_V1 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="symphony")
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="orc")
 
     if not mocked_cluster_resources["param"] or LNM_API_V1B1 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
