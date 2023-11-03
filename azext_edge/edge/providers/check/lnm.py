@@ -78,7 +78,7 @@ def check_lnm_post_deployment(
     return check_post_deployment(
         api_info=LNM_API_V1B1,
         check_name="enumerateLnmApi",
-        check_desc="Enumerate Lnm API resources",
+        check_desc="Enumerate LNM API resources",
         result=result,
         resource_kinds_enum=LnmResourceKinds,
         evaluate_funcs=evaluate_funcs,
@@ -92,7 +92,7 @@ def evaluate_lnms(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalLnms", check_desc="Evaluate Layered network management instance")
+    check_manager = CheckManager(check_name="evalLnms", check_desc="Evaluate LNM instances")
 
     target_lnms = "lnmz.aio.com"
     lnm_namespace_conditions = ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"]
@@ -100,13 +100,8 @@ def evaluate_lnms(
     all_lnms: dict = LNM_API_V1B1.get_resources(LnmResourceKinds.LNM).get("items", [])
 
     if not all_lnms:
-        fetch_lnms_error_text = f"Unable to fetch namespace {LnmResourceKinds.LNM.value}s."
+        fetch_lnms_error_text = "Unable to fetch LNM instances in any namespaces."
         check_manager.add_target(target_name=target_lnms)
-        check_manager.add_target_eval(
-            target_name=target_lnms,
-            status=CheckTaskStatus.skipped.value,
-            value={"lnms": None}
-        )
         check_manager.add_display(target_name=target_lnms, display=Padding(fetch_lnms_error_text, (0, 0, 0, 8)))
 
     for (namespace, lnms) in resources_grouped_by_namespace(all_lnms):
@@ -116,7 +111,7 @@ def evaluate_lnms(
             target_name=target_lnms,
             namespace=namespace,
             display=Padding(
-                f"Layered network management instance in namespace {{[purple]{namespace}[/purple]}}",
+                f"LNM instance in namespace {{[purple]{namespace}[/purple]}}",
                 (0, 0, 0, 8)
             )
         )
@@ -276,12 +271,15 @@ def evaluate_lnms(
             )
 
     # evaluate lnm operator pod no matter if there is lnm instance
-    _evaluate_pod_for_other_namespace(
+    pods = _evaluate_pod_for_other_namespace(
         check_manager=check_manager,
         conditions=lnm_namespace_conditions,
         target=target_lnms,
         detail_level=detail_level,
     )
+
+    if not all_lnms and not pods:
+        check_manager.set_target_status(target_name=target_lnms, status=CheckTaskStatus.skipped.value)
 
     return check_manager.as_dict(as_list)
 
@@ -291,7 +289,7 @@ def _evaluate_pod_for_other_namespace(
     conditions: List[str],
     target: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> None:
+) -> List[dict]:
     from itertools import groupby
 
     lnm_operator_label = f"app in ({','.join(LNM_APP_LABELS)})"
@@ -313,7 +311,7 @@ def _evaluate_pod_for_other_namespace(
                 target_name=target,
                 namespace=namespace,
                 display=Padding(
-                    f"Layered network management resource in namespace {{[purple]{namespace}[/purple]}}",
+                    f"LNM resource health for namespace {{[purple]{namespace}[/purple]}}",
                     (0, 0, 0, 6)
                 )
             )
@@ -331,6 +329,8 @@ def _evaluate_pod_for_other_namespace(
                     namespace=namespace,
                     detail_level=detail_level,
                 )
+    
+    return pods
 
 
 def _evaluate_lnm_pod_health(
