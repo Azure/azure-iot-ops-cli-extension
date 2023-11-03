@@ -220,11 +220,7 @@ def mocked_list_deployments(mocked_client):
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
             names.extend([
                 "aio-lnm-operator",
-                "aio-akri-otel-collector",
-                "aio-opc-admission-controller",
-                "aio-opc-supervisor",
-                "aio-opc-opc",
-                "opcplc-0000000"
+                "aio-akri-otel-collector"
             ])
 
         deployment_list = []
@@ -284,11 +280,6 @@ def mocked_list_services(mocked_client):
 
     def _handle_list_services(*args, **kwargs):
         service_names = ["mock_service"]
-        if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            service_names.extend([
-                "opcplc-0000000",
-            ])
-
         service_list = []
         for name in service_names:
             service_list.append(V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
