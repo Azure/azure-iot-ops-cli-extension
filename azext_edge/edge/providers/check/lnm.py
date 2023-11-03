@@ -329,7 +329,7 @@ def _evaluate_pod_for_other_namespace(
                     namespace=namespace,
                     detail_level=detail_level,
                 )
-    
+
     return pods
 
 
