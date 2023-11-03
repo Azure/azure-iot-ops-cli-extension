@@ -23,13 +23,12 @@ def load_iotedge_commands(self, _):
         command_type=edge_resource_ops,
         is_preview=True,
     ) as cmd_group:
-        cmd_group.command("check", "check", deprecate_info=cmd_group.deprecate(hide=True))
+        cmd_group.command("check", "check")
         cmd_group.command("init", "init")
 
     with self.command_group(
         "iot ops support",
         command_type=edge_resource_ops,
-        deprecate_info=cmd_group.deprecate(hide=True),
     ) as cmd_group:
         cmd_group.command("create-bundle", "support_bundle")
 
@@ -37,13 +36,12 @@ def load_iotedge_commands(self, _):
         "iot ops mq",
         command_type=mq_resource_ops,
     ) as cmd_group:
-        cmd_group.command("stats", "stats", deprecate_info=cmd_group.deprecate(hide=True))
+        cmd_group.command("stats", "stats")
         cmd_group.command("get-password-hash", "get_password_hash")
 
     with self.command_group(
         "iot ops asset",
         command_type=asset_resource_ops,
-        deprecate_info=cmd_group.deprecate(hide=True),
     ) as cmd_group:
         cmd_group.command("create", "create_asset")
         cmd_group.command("delete", "delete_asset")
@@ -55,7 +53,6 @@ def load_iotedge_commands(self, _):
     with self.command_group(
         "iot ops asset data-point",
         command_type=asset_resource_ops,
-        deprecate_info=cmd_group.deprecate(hide=True),
     ) as cmd_group:
         cmd_group.command("add", "add_asset_data_point")
         cmd_group.command("list", "list_asset_data_points")
@@ -64,7 +61,6 @@ def load_iotedge_commands(self, _):
     with self.command_group(
         "iot ops asset event",
         command_type=asset_resource_ops,
-        deprecate_info=cmd_group.deprecate(hide=True),
     ) as cmd_group:
         cmd_group.command("add", "add_asset_event")
         cmd_group.command("list", "list_asset_events")
