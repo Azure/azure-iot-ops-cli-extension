@@ -104,7 +104,7 @@ def evaluate_lnms(
         check_manager.add_target(target_name=target_lnms)
         check_manager.add_target_eval(
             target_name=target_lnms,
-            status=CheckTaskStatus.error.value,
+            status=CheckTaskStatus.skipped.value,
             value={"lnms": None}
         )
         check_manager.add_display(target_name=target_lnms, display=Padding(fetch_lnms_error_text, (0, 0, 0, 8)))
