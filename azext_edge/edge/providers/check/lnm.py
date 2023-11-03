@@ -21,6 +21,7 @@ from .base import (
 
 from rich.console import Console
 from rich.padding import Padding
+from kubernetes.client.models import V1Pod
 
 from ...common import CheckTaskStatus
 
@@ -299,7 +300,7 @@ def _evaluate_pod_for_other_namespace(
         get_namespaced_pods_by_prefix(prefix=f"svclb-{AIO_LNM_PREFIX}", namespace="", label_selector=None)
     )
 
-    def get_namespace(pod: str):
+    def get_namespace(pod: V1Pod) -> str:
         return pod.metadata.namespace
 
     pods.sort(key=get_namespace)
