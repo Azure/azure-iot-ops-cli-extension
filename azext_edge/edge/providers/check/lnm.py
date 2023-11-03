@@ -299,9 +299,11 @@ def _evaluate_pod_for_other_namespace(
         get_namespaced_pods_by_prefix(prefix=f"svclb-{AIO_LNM_PREFIX}", namespace="", label_selector=None)
     )
 
-    def get_namespace(pod: str): return pod.metadata.namespace
+    def get_namespace(pod: str):
+        return pod.metadata.namespace
+
     pods.sort(key=get_namespace)
-    
+
     for (namespace, pods) in groupby(pods, get_namespace):
         # only evaluate operator pod if there is no target for the namespace operator pod is in
         if not check_manager.targets[target].get(namespace, ""):
