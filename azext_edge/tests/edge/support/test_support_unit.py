@@ -21,10 +21,10 @@ from azext_edge.edge.providers.edge_api import (
     MQ_ACTIVE_API,
     DATA_PROCESSOR_API_V1,
     OPCUA_API_V1,
-    SYMPHONY_API_V1,
+    ORC_API_V1,
     AKRI_API_V0,
     LNM_API_V1B1,
-    DEVICEREGISTRY_API_V1
+    DEVICEREGISTRY_API_V1,
 )
 
 from azext_edge.edge.providers.support.base import get_bundle_path
@@ -42,15 +42,12 @@ from azext_edge.edge.providers.support.opcua import (
     OPCUA_ORCHESTRATOR_LABEL,
     OPCUA_SUPERVISOR_LABEL,
 )
-from azext_edge.edge.providers.support.symphony import (
-    SYMPHONY_APP_LABEL,
-    SYMPHONY_INSTANCE_LABEL,
-    GENERIC_CONTROLLER_LABEL,
+from azext_edge.edge.providers.support.orc import (
+    ORC_APP_LABEL,
+    ORC_INSTANCE_LABEL,
+    ORC_CONTROLLER_LABEL,
 )
-from azext_edge.edge.providers.support.akri import (
-    AKRI_NAME_LABEL,
-    AKRI_SERVICE_LABEL
-)
+from azext_edge.edge.providers.support.akri import AKRI_NAME_LABEL, AKRI_SERVICE_LABEL
 from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
@@ -71,9 +68,9 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
         [MQ_API_V1B1, DATA_PROCESSOR_API_V1],
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
         [MQ_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1],
-        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1, AKRI_API_V0],
-        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, SYMPHONY_API_V1, LNM_API_V1B1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1],
     ],
     indirect=True,
 )
@@ -104,11 +101,7 @@ def test_create_bundle(
 
     # @vilit - AKRI pod with ambigious label
     if AKRI_API_V0 in mocked_cluster_resources["param"]:
-        add_pod_to_mocked_pods(
-            mocked_client,
-            mocked_list_pods,
-            ["aio-akri-otel-collector"]
-        )
+        add_pod_to_mocked_pods(mocked_client, mocked_list_pods, ["aio-akri-otel-collector"])
 
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(None, bundle_dir=a_bundle_dir, log_age_seconds=since_seconds)
@@ -133,8 +126,13 @@ def test_create_bundle(
 
         if api in COMPAT_MQ_APIS.resource_apis:
             # Assert runtime resources
-            assert_list_deployments(mocked_client, mocked_zipfile, label_selector=MQ_LABEL,
-                                    resource_api=MQ_API_V1B1, field_selector=f"metadata.name={AIO_MQ_OPERATOR}")
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=MQ_LABEL,
+                resource_api=MQ_API_V1B1,
+                field_selector=f"metadata.name={AIO_MQ_OPERATOR}",
+            )
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
@@ -144,9 +142,7 @@ def test_create_bundle(
                 since_seconds=since_seconds,
             )
             assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
-            assert_list_stateful_sets(
-                mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1
-            )
+            assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
             assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
             assert_mq_stats(mocked_zipfile)
 
@@ -181,7 +177,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_PART_OF_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1
+                resource_api=DATA_PROCESSOR_API_V1,
             )
 
             assert_list_pods(
@@ -218,16 +214,13 @@ def test_create_bundle(
             )
 
             assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1
+                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1
+                resource_api=DATA_PROCESSOR_API_V1,
             )
 
             assert_list_stateful_sets(
@@ -240,47 +233,38 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1
+                resource_api=DATA_PROCESSOR_API_V1,
             )
 
             assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1
+                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1
+                resource_api=DATA_PROCESSOR_API_V1,
             )
 
-        if api in [SYMPHONY_API_V1]:
-            for symphony_label in [SYMPHONY_APP_LABEL, SYMPHONY_INSTANCE_LABEL, GENERIC_CONTROLLER_LABEL]:
+        if api in [ORC_API_V1]:
+            for orc_label in [ORC_APP_LABEL, ORC_INSTANCE_LABEL, ORC_CONTROLLER_LABEL]:
                 assert_list_pods(
                     mocked_client,
                     mocked_zipfile,
                     mocked_list_pods,
-                    label_selector=symphony_label,
-                    resource_api=SYMPHONY_API_V1,
+                    label_selector=orc_label,
+                    resource_api=ORC_API_V1,
                     since_seconds=since_seconds,
                 )
                 assert_list_deployments(
-                    mocked_client, mocked_zipfile, label_selector=symphony_label, resource_api=SYMPHONY_API_V1
+                    mocked_client, mocked_zipfile, label_selector=orc_label, resource_api=ORC_API_V1
                 )
                 assert_list_replica_sets(
-                    mocked_client, mocked_zipfile, label_selector=symphony_label, resource_api=SYMPHONY_API_V1
+                    mocked_client, mocked_zipfile, label_selector=orc_label, resource_api=ORC_API_V1
                 )
-
-            assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=SYMPHONY_APP_LABEL, resource_api=SYMPHONY_API_V1
-            )
-            assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=SYMPHONY_APP_LABEL, resource_api=SYMPHONY_API_V1
-            )
-            # TODO: resolve with selector
-            # assert_list_services(mocked_client, mocked_zipfile, label_selector=None, resource_api=SYMPHONY_API_V1)
+                assert_list_services(
+                    mocked_client, mocked_zipfile, label_selector=ORC_APP_LABEL, resource_api=ORC_API_V1
+                )
 
         if api in [AKRI_API_V0]:
             assert_list_pods(
@@ -298,34 +282,31 @@ def test_create_bundle(
                 label_selector=None,
                 resource_api=AKRI_API_V0,
                 since_seconds=since_seconds,
-                mock_names=["aio-akri-otel-collector"]
+                mock_names=["aio-akri-otel-collector"],
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=AKRI_API_V0,
-                mock_names=["aio-akri-otel-collector"]
+                mock_names=["aio-akri-otel-collector"],
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=AKRI_API_V0,
-                mock_names=["aio-akri-otel-collector-*"]
+                mock_names=["aio-akri-otel-collector-*"],
             )
             assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_SERVICE_LABEL,
-                resource_api=AKRI_API_V0
+                mocked_client, mocked_zipfile, label_selector=AKRI_SERVICE_LABEL, resource_api=AKRI_API_V0
             )
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=AKRI_API_V0,
-                mock_names=["aio-akri-agent-daemonset"]
+                mock_names=["aio-akri-agent-daemonset"],
             )
 
         if api in [LNM_API_V1B1]:
@@ -343,29 +324,20 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=LNM_API_V1B1,
-                mock_names=["aio-lnm-operator"]
+                mock_names=["aio-lnm-operator"],
             )
             assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=lnm_app_label,
-                resource_api=LNM_API_V1B1
+                mocked_client, mocked_zipfile, label_selector=lnm_app_label, resource_api=LNM_API_V1B1
             )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=lnm_app_label,
-                resource_api=LNM_API_V1B1
-            )
+            assert_list_services(mocked_client, mocked_zipfile, label_selector=lnm_app_label, resource_api=LNM_API_V1B1)
             # TODO: test both without or with lnm instance
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=LNM_API_V1B1,
-                mock_names=["svclb-aio-lnm-operator"]
+                mock_names=["svclb-aio-lnm-operator"],
             )
-
         # assert shared KPIs regardless of service
         assert_shared_kpis(mocked_client, mocked_zipfile)
 
@@ -385,9 +357,9 @@ def asset_raises_not_found_error(mocked_cluster_resources):
         with pytest.raises(ResourceNotFoundError):
             support_bundle(None, bundle_dir=a_bundle_dir, edge_service="dataprocessor")
 
-    if not mocked_cluster_resources["param"] or SYMPHONY_API_V1 not in mocked_cluster_resources["param"]:
+    if not mocked_cluster_resources["param"] or ORC_API_V1 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="symphony")
+            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="orc")
 
     if not mocked_cluster_resources["param"] or LNM_API_V1B1 not in mocked_cluster_resources["param"]:
         with pytest.raises(ResourceNotFoundError):
@@ -422,19 +394,20 @@ def assert_list_deployments(
     label_selector: str,
     resource_api: EdgeResourceApi,
     field_selector: str = None,
-    mock_names: List[str] = None
+    mock_names: List[str] = None,
 ):
     moniker = resource_api.moniker
     if resource_api in COMPAT_MQ_APIS.resource_apis:
         # regardless of MQ API, MQ_ACTIVE_API.moniker is used for support/mq/fetch_diagnostic_metrics
         moniker = MQ_ACTIVE_API.moniker
         from unittest.mock import call
+
         mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_has_calls(
             [
                 # MQ deployments
                 call(label_selector=MQ_LABEL, field_selector=None),
                 # Specific for `aio-mq-operator` (no app label)
-                call(label_selector=None, field_selector=field_selector)
+                call(label_selector=None, field_selector=field_selector),
             ]
         )
     else:
@@ -495,7 +468,7 @@ def assert_list_replica_sets(
     mocked_zipfile,
     label_selector: str,
     resource_api: EdgeResourceApi,
-    mock_names: Optional[List[str]] = None
+    mock_names: Optional[List[str]] = None,
 ):
     mocked_client.AppsV1Api().list_replica_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
@@ -533,7 +506,7 @@ def assert_list_daemon_sets(
     mocked_zipfile,
     label_selector: str,
     resource_api: EdgeResourceApi,
-    mock_names: Optional[List[str]] = None
+    mock_names: Optional[List[str]] = None,
 ):
     mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 

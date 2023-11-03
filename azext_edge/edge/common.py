@@ -74,13 +74,13 @@ class MqDiagnosticPropertyIndex(Enum):
     MQ Diagnostic Property Index Strings
     """
 
-    publishes_received_per_second = "e4k_publishes_received_per_second"
-    publishes_sent_per_second = "e4k_publishes_sent_per_second"
-    publish_route_replication_correctness = "e4k_publish_route_replication_correctness"
-    publish_latency_mu_ms = "e4k_publish_latency_mu_ms"
-    publish_latency_sigma_ms = "e4k_publish_latency_sigma_ms"
-    connected_sessions = "e4k_connected_sessions"
-    total_subscriptions = "e4k_total_subscriptions"
+    publishes_received_per_second = "aio_mq_publishes_received_per_second"
+    publishes_sent_per_second = "aio_mq_publishes_sent_per_second"
+    publish_route_replication_correctness = "aio_mq_publish_route_replication_correctness"
+    publish_latency_mu_ms = "aio_mq_publish_latency_mu_ms"
+    publish_latency_sigma_ms = "aio_mq_publish_latency_sigma_ms"
+    connected_sessions = "aio_mq_connected_sessions"
+    total_subscriptions = "aio_mq_total_subscriptions"
 
 
 class SupportForEdgeServiceType(ListableEnum):
@@ -93,7 +93,7 @@ class SupportForEdgeServiceType(ListableEnum):
     lnm = "lnm"
     opcua = "opcua"
     dataprocessor = "dataprocessor"
-    symphony = "symphony"
+    orc = "orc"
     akri = "akri"
     deviceregistry = "deviceregistry"
 
