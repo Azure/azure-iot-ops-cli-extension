@@ -38,7 +38,7 @@ from ..edge_api import (
     LnmResourceKinds,
 )
 
-from ..support.lnm import LNM_APP_LABELS
+from ..support.lnm import LNM_APP_LABELS, LNM_LABEL_PREFIX
 
 
 def check_lnm_deployment(
@@ -132,7 +132,7 @@ def evaluate_lnms(
         check_manager.add_display(
             target_name=target_lnms,
             namespace=namespace,
-            display=Padding(lnms_count_text, (0, 0, 0, 8))
+            display=Padding(lnms_count_text, (0, 0, 0, 10))
         )
 
         for lnm in lnms:
@@ -254,17 +254,16 @@ def evaluate_lnms(
                 namespace=namespace,
                 display=Padding(
                     "\nRuntime Health",
-                    (0, 0, 0, 8),
+                    (0, 0, 0, 10),
                 ),
             )
 
-            # append all lnm_names in lnm_app_lables
-            lnm_app_lables = []
-            lnm_app_lables = lnm_app_lables + LNM_APP_LABELS
+            # append all lnm_names in lnm_app_labels
+            lnm_app_labels = []
             for lnm_name in lnm_names:
-                lnm_app_lables.append(f"aio-lnm-{lnm_name}")
+                lnm_app_labels.append(f"{LNM_LABEL_PREFIX}-{lnm_name}")
 
-            lnm_label = f"app in ({','.join(lnm_app_lables)})"
+            lnm_label = f"app in ({','.join(lnm_app_labels + LNM_APP_LABELS)})"
             _evaluate_lnm_pod_health(
                 check_manager=check_manager,
                 target=target_lnms,
@@ -276,7 +275,7 @@ def evaluate_lnms(
             )
 
     # evaluate lnm operator pod no matter if there is lnm instance
-    _evaluate_operator_pod(
+    _evaluate_pod_for_other_namespace(
         check_manager=check_manager,
         conditions=lnm_namespace_conditions,
         target=target_lnms,
@@ -286,36 +285,49 @@ def evaluate_lnms(
     return check_manager.as_dict(as_list)
 
 
-def _evaluate_operator_pod(
+def _evaluate_pod_for_other_namespace(
     check_manager: CheckManager,
     conditions: List[str],
     target: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
-    lnm_operator_label = f"app in ({','.join(LNM_APP_LABELS)})"
-    operator_pod = get_namespaced_pods_by_prefix(prefix=AIO_LNM_PREFIX, namespace="", label_selector=lnm_operator_label)[0]
-    operator_namespace = operator_pod.metadata.namespace
+    from itertools import groupby
 
-    # only evaluate operator pod if there is no target for the namespace operator pod is in
-    if not check_manager.targets[target].get(operator_namespace, ""):
-        check_manager.add_target(target_name=target, namespace=operator_namespace, conditions=conditions)
-        check_manager.add_display(
-            target_name=target,
-            namespace=operator_namespace,
-            display=Padding(
-                f"Layered network management resource in namespace {{[purple]{operator_namespace}[/purple]}}",
-                (0, 0, 0, 6)
+    lnm_operator_label = f"app in ({','.join(LNM_APP_LABELS)})"
+    pods = get_namespaced_pods_by_prefix(prefix=AIO_LNM_PREFIX, namespace="", label_selector=lnm_operator_label)
+    pods.extend(
+        get_namespaced_pods_by_prefix(prefix=f"svclb-{AIO_LNM_PREFIX}", namespace="", label_selector=None)
+    )
+
+    def get_namespace(pod: str): return pod.metadata.namespace
+    pods.sort(key=get_namespace)
+    
+    for (namespace, pods) in groupby(pods, get_namespace):
+        # only evaluate operator pod if there is no target for the namespace operator pod is in
+        if not check_manager.targets[target].get(namespace, ""):
+            check_manager.add_target(target_name=target, namespace=namespace, conditions=conditions)
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(
+                    f"Layered network management resource in namespace {{[purple]{namespace}[/purple]}}",
+                    (0, 0, 0, 6)
+                )
             )
-        )
-        _evaluate_lnm_pod_health(
-            check_manager=check_manager,
-            target=target,
-            pod=AIO_LNM_PREFIX,
-            display_padding=8,
-            service_label=lnm_operator_label,
-            namespace=operator_namespace,
-            detail_level=detail_level,
-        )
+
+            for pod in pods:
+                pod_name = pod.metadata.name
+                service_label = None if pod_name.startswith("svclb-") else lnm_operator_label
+
+                _evaluate_lnm_pod_health(
+                    check_manager=check_manager,
+                    target=target,
+                    pod=pod.metadata.name,
+                    display_padding=12,
+                    service_label=service_label,
+                    namespace=namespace,
+                    detail_level=detail_level,
+                )
 
 
 def _evaluate_lnm_pod_health(

@@ -34,8 +34,8 @@ def mock_evaluate_lnm_pod_health(mocker):
 
 
 @pytest.fixture
-def mock_evaluate_operator_pod(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.lnm._evaluate_operator_pod", return_value={})
+def mock_evaluate_pod_for_other_namespace(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.lnm._evaluate_pod_for_other_namespace", return_value={})
     yield patched
 
 

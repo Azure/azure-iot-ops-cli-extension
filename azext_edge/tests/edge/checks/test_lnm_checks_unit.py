@@ -173,7 +173,7 @@ def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, 
 def test_lnm_checks(
     mocker,
     mock_evaluate_lnm_pod_health,
-    mock_evaluate_operator_pod,
+    mock_evaluate_pod_for_other_namespace,
     lnms,
     namespace_conditions,
     namespace_evaluations,
