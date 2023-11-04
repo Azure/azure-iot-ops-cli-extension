@@ -337,6 +337,28 @@ def process_nodes():
     }
 
 
+def process_events():
+    from ..edge_api import MQ_ACTIVE_API, MqResourceKinds
+
+    namespaces = []
+    event_content = []
+    cluster_brokers = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER)
+    if cluster_brokers and cluster_brokers["items"]:
+        namespaces.extend([b["metadata"]["namespace"] for b in cluster_brokers["items"]])
+
+    for namespace in namespaces:
+        event_content.append(
+            {
+                "data": generic.sanitize_for_serialization(
+                    obj=client.CoreV1Api().list_namespaced_event(namespace=namespace)
+                ),
+                "zinfo": f"{namespace}/events.yaml",
+            }
+        )
+
+    return event_content
+
+
 def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional[Dict[str, str]] = None):
     if not file_prefix_map:
         file_prefix_map = {}
