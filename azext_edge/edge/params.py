@@ -203,7 +203,7 @@ def load_iotedge_arguments(self, _):
             "custom_location_name",
             options_list=["--custom-location"],
             help="The custom location name corresponding to AIO deployment. The default is in the form "
-            "'{cluster_name}-aio-init-cl'.",
+            "'{cluster_name}-ops-init-cl'.",
         )
         context.argument(
             "custom_location_namespace",
@@ -227,10 +227,10 @@ def load_iotedge_arguments(self, _):
         )
         context.argument(
             "show_aio_version",
-            options_list=["--aio-version"],
+            options_list=["--ops-version"],
             help="Summarize and show the versions of deployable components.",
             arg_type=get_three_state_flag(),
-            arg_group="AIO Version",
+            arg_group="Ops Version",
         )
         context.argument(
             "no_progress",
@@ -277,7 +277,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "dp_instance_name",
             options_list=["--dp-instance"],
-            help="Instance name for data processor. The default is in the form '{cluster_name}-aio-init-processor'.",
+            help="Instance name for data processor. The default is in the form '{cluster_name}-ops-init-processor'.",
             arg_group="Data Processor",
         )
         context.argument(
@@ -393,7 +393,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "target_name",
             options_list=["--target"],
-            help="Target name for edge orchestrator. The default is in the form '{cluster_name}-aio-init-target'.",
+            help="Target name for ops orchestrator. The default is in the form '{cluster_name}-ops-init-target'.",
             arg_group="Orchestration",
         )
         # AKV CSI Driver
@@ -402,7 +402,7 @@ def load_iotedge_arguments(self, _):
             options_list=["--kv-id"],
             help="KeyVault resource Id. Providing this resource Id will enable the client "
             "to setup all necessary resources and cluster side configuration to enable "
-            "the KeyVault CSI driver for AIO.",
+            "the KeyVault CSI driver for IoT Operations.",
             arg_group="KeyVault CSI Driver",
         )
         context.argument(

@@ -148,17 +148,17 @@ def init(
         mq_authn_name = "authn"
 
     if not custom_location_name:
-        custom_location_name = f"{cluster_name_lowered}-aio-init-cl"
+        custom_location_name = f"{cluster_name_lowered}-ops-init-cl"
 
     if not custom_location_namespace:
         custom_location_namespace = cluster_namespace
 
     if not dp_instance_name:
-        dp_instance_name = f"{cluster_name_lowered}-aio-init-processor"
+        dp_instance_name = f"{cluster_name_lowered}-ops-init-processor"
         dp_instance_name = dp_instance_name.replace("_", "-")
 
     if not target_name:
-        target_name = f"{cluster_name_lowered}-aio-init-target"
+        target_name = f"{cluster_name_lowered}-ops-init-target"
         target_name = target_name.replace("_", "-")
 
     if simulate_plc and not opcua_discovery_endpoint:
