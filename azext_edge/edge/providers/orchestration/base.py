@@ -85,9 +85,9 @@ def configure_cluster_secrets(
     cluster_secret_ref: str,
     cluster_akv_secret_class_name: str,
     keyvault_sat_secret_name: str,
-    sp_record: ServicePrincipal,
     keyvault_resource_id: str,
     # keyvault_secret_to_spc: Optional[List[str]] = None,
+    sp_record: ServicePrincipal,
     **kwargs,
 ):
     if not get_cluster_namespace(namespace=cluster_namespace):

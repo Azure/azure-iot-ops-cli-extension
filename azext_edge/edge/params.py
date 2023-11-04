@@ -408,7 +408,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "keyvault_sat_secret_name",
             options_list=["--kv-sat-secret"],
-            help="The Key Vault secret *name* to use for the IoT Operations service account token (SAT). "
+            help="The Key Vault secret *name* to use for the IoT Operations service account (SAT). "
             "If the secret does not exist, it will be created with a cryptographically secure placeholder value.",
             arg_group="Key Vault CSI Driver",
         )
