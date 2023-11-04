@@ -94,7 +94,7 @@ class WorkManager:
         self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
         if self._keyvault_resource_id:
             self._keyvault_name = self._keyvault_resource_id.split("/")[-1]
-        self._keyvault_secret_name = kwargs.get("keyvault_secret_name")
+        self._keyvault_sat_secret_name = kwargs["keyvault_sat_secret_name"]
         self._sp_app_id = kwargs.get("service_principal_app_id")
         self._sp_obj_id = kwargs.get("service_principal_object_id")
         self._tls_ca_path = kwargs.get("tls_ca_path")
@@ -130,11 +130,7 @@ class WorkManager:
         )
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_AP, description=kv_cloud_ap_desc)
 
-        kv_cloud_sec_desc = (
-            f"Validate secret name '[green]{self._keyvault_secret_name}[/green]'"
-            if self._keyvault_secret_name
-            else "Created secret"
-        )
+        kv_cloud_sec_desc = f"Ensure secret name '[green]{self._keyvault_sat_secret_name}[/green]' for service account"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_SEC, description=kv_cloud_sec_desc)
 
         kv_csi_deploy_desc = "Deploy driver to cluster"
@@ -204,12 +200,12 @@ class WorkManager:
                             self.render_display(category=WorkCategoryKey.CSI_DRIVER)
 
                             if WorkStepKey.KV_CLOUD_SEC in self.display.steps[WorkCategoryKey.CSI_DRIVER]:
-                                keyvault_secret_name = prepare_keyvault_secret(
+                                keyvault_sat_secret_name = prepare_keyvault_secret(
                                     deployment_name=self._work_name,
                                     vault_uri=vault_uri,
                                     **self._kwargs,
                                 )
-                                work_kpis["csiDriver"]["kvSecretName"] = keyvault_secret_name
+                                work_kpis["csiDriver"]["kvSatSecretName"] = keyvault_sat_secret_name
 
                                 self._completed_steps[WorkStepKey.KV_CLOUD_SEC] = 1
                                 self.render_display(category=WorkCategoryKey.CSI_DRIVER)

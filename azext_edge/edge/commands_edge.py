@@ -68,7 +68,8 @@ def init(
     cluster_name: str,
     resource_group_name: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
-    keyvault_secret_name: str = DEFAULT_NAMESPACE,
+    keyvault_sat_secret_name: str = DEFAULT_NAMESPACE,
+    keyvault_secret_to_spc: Optional[List[str]] = None,
     custom_location_namespace: Optional[str] = None,
     custom_location_name: Optional[str] = None,
     show_aio_version: Optional[bool] = None,
@@ -110,7 +111,7 @@ def init(
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration import deploy
-    from .util import url_safe_hash_phrase
+    from .util import url_safe_hash_phrase, assemble_nargs_to_dict
     from .util.sp import LoggedInPrincipal
 
     if all([no_tls, not keyvault_resource_id, no_deploy]):
@@ -174,6 +175,9 @@ def init(
         if not exists(tls_ca_key_path):
             raise InvalidArgumentValueError("Provided CA private key file does not exist.")
 
+    if keyvault_secret_to_spc:
+        keyvault_secret_to_spc = assemble_nargs_to_dict(keyvault_secret_to_spc, append_value=True)
+
     return deploy(
         cmd=cmd,
         cluster_name=cluster_name,
@@ -209,7 +213,8 @@ def init(
         mq_authn_name=mq_authn_name,
         target_name=target_name,
         keyvault_resource_id=keyvault_resource_id,
-        keyvault_secret_name=str(keyvault_secret_name),
+        keyvault_sat_secret_name=str(keyvault_sat_secret_name),
+        keyvault_secret_to_spc=keyvault_secret_to_spc,
         disable_secret_rotation=disable_secret_rotation,
         rotation_poll_interval=str(rotation_poll_interval),
         service_principal_app_id=service_principal_app_id,

@@ -406,10 +406,18 @@ def load_iotedge_arguments(self, _):
             arg_group="Key Vault CSI Driver",
         )
         context.argument(
-            "keyvault_secret_name",
-            options_list=["--kv-secret-name"],
-            help="Key Vault secret name. The existance of the secret will be validated. "
-            "If the secret does not exist, it will be created with a placeholder value.",
+            "keyvault_sat_secret_name",
+            options_list=["--kv-sat-secret"],
+            help="The Key Vault secret *name* to use for the IoT Operations service account token (SAT). "
+            "If the secret does not exist, it will be created with a cryptographically secure placeholder value.",
+            arg_group="Key Vault CSI Driver",
+        )
+        context.argument(
+            "keyvault_secret_to_spc",
+            nargs="+",
+            options_list=["--kv-secret-to-spc"],
+            help="Secret *names* from Key Vault to associate with one or more secret provider classes. "
+            "The input format is key=value pairs where the key is the secret name and the value is the SPC.",
             arg_group="Key Vault CSI Driver",
         )
         context.argument(

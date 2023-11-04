@@ -28,7 +28,7 @@ from ...generators import generate_generic_id
     cluster_name,
     cluster_namespace,
     resource_group_name,
-    keyvault_secret_name,
+    keyvault_sat_secret_name,
     keyvault_resource_id,
     custom_location_name,
     custom_location_namespace,
@@ -59,7 +59,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # cluster_name
             None,  # cluster_namespace
             generate_generic_id(),  # resource_group_name
-            None,  # keyvault_secret_name
+            None,  # keyvault_sat_secret_name
             None,  # keyvault_resource_id
             None,  # custom_location_name
             None,  # custom_location_namespace
@@ -89,7 +89,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # cluster_name
             generate_generic_id(),  # cluster_namespace
             generate_generic_id(),  # resource_group_name
-            generate_generic_id(),  # keyvault_secret_name
+            generate_generic_id(),  # keyvault_sat_secret_name
             generate_generic_id(),  # keyvault_resource_id
             generate_generic_id(),  # custom_location_name
             None,  # custom_location_namespace
@@ -119,7 +119,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # cluster_name
             generate_generic_id(),  # cluster_namespace
             generate_generic_id(),  # resource_group_name
-            generate_generic_id(),  # keyvault_secret_name
+            generate_generic_id(),  # keyvault_sat_secret_name
             generate_generic_id(),  # keyvault_resource_id
             generate_generic_id(),  # custom_location_name
             None,  # custom_location_namespace
@@ -154,7 +154,7 @@ def test_init_to_template_params(
     cluster_name,
     cluster_namespace,
     resource_group_name,
-    keyvault_secret_name,
+    keyvault_sat_secret_name,
     keyvault_resource_id,
     custom_location_name,
     custom_location_namespace,
@@ -184,7 +184,7 @@ def test_init_to_template_params(
 
     param_tuples = [
         (cluster_namespace, "cluster_namespace"),
-        (keyvault_secret_name, "keyvault_secret_name"),
+        (keyvault_sat_secret_name, "keyvault_sat_secret_name"),
         (keyvault_resource_id, "keyvault_resource_id"),
         (custom_location_name, "custom_location_name"),
         (custom_location_namespace, "custom_location_namespace"),
