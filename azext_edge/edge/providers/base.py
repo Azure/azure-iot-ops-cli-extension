@@ -108,7 +108,7 @@ _custom_object_cache: dict = {}
 
 def get_custom_objects(
     group: str, version: str, plural: str, namespace: Optional[str] = None, use_cache: bool = True
-) -> Union[List[dict], None]:
+) -> Union[List[dict], dict, None]:
     target_resource_key = (group, version, plural, namespace)
     if use_cache:
         if target_resource_key in _custom_object_cache:
@@ -197,6 +197,7 @@ def portforward_http(namespace: str, pod_name: str, pod_port: str, **kwargs) -> 
 @contextmanager
 def portforward_socket(namespace: str, pod_name: str, pod_port: str) -> Iterator[socket.socket]:
     from kubernetes.stream import portforward
+    from .edge_api import MqResourceKinds, MQ_ACTIVE_API
 
     api = client.CoreV1Api()
     pf = portforward(
@@ -205,8 +206,25 @@ def portforward_socket(namespace: str, pod_name: str, pod_port: str) -> Iterator
         namespace,
         ports=str(pod_port),
     )
-
     target_socket: socket.socket = pf.socket(int(pod_port))._socket
+
+    internal_tls = False
+    namespaced_brokers: dict = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER, namespace=namespace)
+    broker = None
+    if namespaced_brokers["items"]:
+        broker: dict = namespaced_brokers["items"][0]
+
+    if broker and broker["spec"].get("encryptInternalTraffic"):
+        internal_tls = True
+
+    if internal_tls:
+        import ssl
+
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        target_socket = context.wrap_socket(sock=target_socket)
+
     target_socket.settimeout(10.0)
     yield target_socket
     target_socket.shutdown(socket.SHUT_RDWR)
