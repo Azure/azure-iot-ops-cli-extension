@@ -7,11 +7,14 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 from .base import (
     CheckManager,
+    add_display_and_eval,
     decorate_resource_status,
     check_post_deployment,
     check_pre_deployment,
     evaluate_pod_health,
     process_as_list,
+    process_properties,
+    process_property_by_type,
     resources_grouped_by_namespace,
 )
 
@@ -24,7 +27,6 @@ from ...common import (
 )
 
 from .common import (
-    ALL_NAMESPACES_TARGET,
     DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES,
     DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES,
     DATA_PROCESSOR_NATS_PREFIX,
@@ -574,11 +576,10 @@ def evaluate_datasets(
                     )
 
             if detail_level == ResourceOutputDetailLevel.verbose.value and dataset_spec.get("keys"):
-                _process_verbose_only_property(
+                process_property_by_type(
                     check_manager=check_manager,
-                    detail_level=detail_level,
                     target_name=target_datasets,
-                    stage_properties=d["spec"]["keys"],
+                    properties=d["spec"]["keys"],
                     display_name="Dataset configuration key",
                     padding=(0, 0, 0, 12),
                     namespace=namespace
@@ -600,126 +601,15 @@ def _process_stage_properties(
 
     for stage_value, properties in stage_properties.items():
         if stage_value in stage_type:
-            for prop, display_name, verbose_only in properties:
-                keys = prop.split('.')
-                prop_value = stage
-                for key in keys:
-                    prop_value = prop_value.get(key)
-                if prop_value is None:
-                    continue
-                if verbose_only and detail_level == ResourceOutputDetailLevel.verbose.value:
-                    _process_verbose_only_property(
-                        check_manager,
-                        detail_level,
-                        target_name,
-                        stage_properties=prop_value,
-                        display_name=display_name,
-                        padding=padding,
-                        namespace=namespace
-                    )
-                elif not verbose_only:
-                    if prop == "descriptor":
-                        prop_value = prop_value if detail_level == ResourceOutputDetailLevel.verbose.value else prop_value[:10] + "..."
-                    elif prop.endswith("clientSecret"):
-                        prop_value = "*" * len(prop_value)
-                    display_text = f"{display_name}: [bright_blue]{prop_value}[/bright_blue]"
-                    check_manager.add_display(
-                        target_name=target_name,
-                        namespace=namespace,
-                        display=Padding(display_text, padding)
-                    )
-
-
-def _process_verbose_only_property(
-    check_manager: CheckManager,
-    detail_level: int,
-    target_name: str,
-    stage_properties: Any,
-    display_name: str,
-    padding: tuple,
-    namespace: str
-) -> None:
-    padding_left = padding[3]
-    if isinstance(stage_properties, list):
-        if len(stage_properties) == 0:
-            return
-
-        display_text = f"{display_name}:"
-        check_manager.add_display(
-            target_name=target_name,
-            namespace=namespace,
-            display=Padding(display_text, padding)
-        )
-
-        for property in stage_properties:
-            display_text = f"- {display_name} [bright_blue]{stage_properties.index(property) + 1}[/bright_blue]"
-            check_manager.add_display(
+            process_properties(
+                check_manager=check_manager,
+                detail_level=detail_level,
                 target_name=target_name,
-                namespace=namespace,
-                display=Padding(display_text, (0, 0, 0, padding_left + 2))
+                prop_value=stage,
+                properties=properties,
+                padding=padding,
+                namespace=namespace
             )
-            for prop, value in property.items():
-                display_text = f"{prop}: [bright_blue]{value}[/bright_blue]"
-                check_manager.add_display(
-                    target_name=target_name,
-                    namespace=namespace,
-                    display=Padding(display_text, (0, 0, 0, padding_left + 4))
-                )
-            check_manager.add_display(
-                target_name=target_name,
-                namespace=namespace,
-                display=Padding("", padding)
-            )
-    elif isinstance(stage_properties, str):
-        display_text = f"{display_name}: [bright_blue]{stage_properties}[/bright_blue]"
-        check_manager.add_display(
-            target_name=target_name,
-            namespace=namespace,
-            display=Padding(display_text, padding)
-        )
-    elif isinstance(stage_properties, dict):
-        display_text = f"{display_name}:"
-        check_manager.add_display(
-            target_name=target_name,
-            namespace=namespace,
-            display=Padding(display_text, padding)
-        )
-        for prop, value in stage_properties.items():
-            display_text = f"{prop}: [bright_blue]{value}[/bright_blue]"
-            check_manager.add_display(
-                target_name=target_name,
-                namespace=namespace,
-                display=Padding(display_text, (0, 0, 0, padding_left + 2))
-            )
-        check_manager.add_display(
-            target_name=target_name,
-            namespace=namespace,
-            display=Padding("", padding)
-        )
-
-
-def add_display_and_eval(
-    check_manager: CheckManager,
-    target_name: str,
-    display_text: str,
-    eval_status: str,
-    eval_value: str,
-    resource_name: Optional[str] = None,
-    namespace: str = ALL_NAMESPACES_TARGET,
-    padding: Tuple[int, int, int, int] = (0, 0, 0, 8)
-) -> None:
-    check_manager.add_display(
-        target_name=target_name,
-        namespace=namespace,
-        display=Padding(display_text, padding)
-    )
-    check_manager.add_target_eval(
-        target_name=target_name,
-        namespace=namespace,
-        status=eval_status,
-        value=eval_value,
-        resource_name=resource_name
-    )
 
 
 def _evaluate_source_node(
