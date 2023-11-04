@@ -400,30 +400,30 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "keyvault_resource_id",
             options_list=["--kv-id"],
-            help="KeyVault resource Id. Providing this resource Id will enable the client "
+            help="Key Vault ARM resource Id. Providing this resource Id will enable the client "
             "to setup all necessary resources and cluster side configuration to enable "
-            "the KeyVault CSI driver for IoT Operations.",
-            arg_group="KeyVault CSI Driver",
+            "the Key Vault CSI driver for IoT Operations.",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "keyvault_secret_name",
             options_list=["--kv-secret-name"],
-            help="KeyVault secret name. The existance of the secret will be validated. "
+            help="Key Vault secret name. The existance of the secret will be validated. "
             "If the secret does not exist, it will be created with a placeholder value.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "disable_secret_rotation",
             options_list=["--disable-rotation"],
             arg_type=get_three_state_flag(),
             help="Flag to disable secret rotation.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "rotation_poll_interval",
             options_list=["--rotation-int"],
             help="Rotation poll interval.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "service_principal_app_id",
@@ -431,7 +431,7 @@ def load_iotedge_arguments(self, _):
             help="Service principal app Id. If provided it will be used for CSI driver setup. "
             "Otherwise an app registration will be created. "
             "!Required! if the logged in principal does not have permissions to query graph.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "service_principal_object_id",
@@ -439,7 +439,7 @@ def load_iotedge_arguments(self, _):
             help="Service principal object Id. If provided it will be used for CSI driver setup. "
             "Otherwise a service principal will be queried and in necessary will be created. "
             "!Required! if the logged in principal does not have permissions to query graph.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "service_principal_secret",
@@ -448,7 +448,7 @@ def load_iotedge_arguments(self, _):
             "If provided it will be used for CSI driver setup. Otherwise a new secret "
             "will be requested from MS graph. "
             "!Required! if the logged in principal does not have permissions to query graph.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         # TLS
         context.argument(

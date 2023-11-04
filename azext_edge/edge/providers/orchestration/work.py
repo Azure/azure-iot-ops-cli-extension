@@ -462,7 +462,7 @@ def deploy(
         console = Console()
         table = Table(
             title=f"Azure IoT Operations v{CURRENT_TEMPLATE.content_vers}",
-            caption=f"Commit hash {CURRENT_TEMPLATE.commit_id}",
+            caption=f"Template commit hash {CURRENT_TEMPLATE.commit_id}",
         )
         table.add_column("Component", justify="left", style="cyan")
         table.add_column("Version", justify="left", style="magenta")
