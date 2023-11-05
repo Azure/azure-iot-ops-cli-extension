@@ -413,14 +413,6 @@ def load_iotedge_arguments(self, _):
             arg_group="Key Vault CSI Driver",
         )
         context.argument(
-            "keyvault_secret_to_spc",
-            nargs="+",
-            options_list=["--kv-secret-to-spc"],
-            help="Secret *names* from Key Vault to associate with one or more secret provider classes. "
-            "The input format is key=value pairs where the key is the secret name and the value is the SPC.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
             "disable_secret_rotation",
             options_list=["--disable-rotation"],
             arg_type=get_three_state_flag(),
