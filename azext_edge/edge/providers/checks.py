@@ -5,6 +5,8 @@
 # --------------------------------------------------------------------------------------------
 
 from typing import Any, Dict, List
+from azext_edge.edge.providers.check.lnm import check_lnm_deployment
+from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
 from azure.cli.core.azclierror import ArgumentUsageError
 
 from rich.console import Console
@@ -60,6 +62,16 @@ def run_checks(
                 as_list=as_list,
                 resource_kinds=resource_kinds
             )
+        elif edge_service == SupportForEdgeServiceType.lnm.value:
+            result = check_lnm_deployment(
+                console=console,
+                detail_level=detail_level,
+                pre_deployment=pre_deployment,
+                post_deployment=post_deployment,
+                result=result,
+                as_list=as_list,
+                resource_kinds=resource_kinds
+            )
 
         return result
 
@@ -71,6 +83,8 @@ def _check_resource_kinds_under_edge_service(edge_service: str, resource_kinds: 
         valid_resource_values = DataProcessorResourceKinds.list()
     elif edge_service == SupportForEdgeServiceType.mq.value:
         valid_resource_values = MqResourceKinds.list()
+    elif edge_service == SupportForEdgeServiceType.lnm.value:
+        valid_resource_values = LnmResourceKinds.list()
 
     for resource_kind in resource_kinds:
         if resource_kind not in valid_resource_values:
