@@ -108,7 +108,7 @@ _custom_object_cache: dict = {}
 
 def get_custom_objects(
     group: str, version: str, plural: str, namespace: Optional[str] = None, use_cache: bool = True
-) -> Union[List[dict], dict, None]:
+) -> Union[dict, None]:
     target_resource_key = (group, version, plural, namespace)
     if use_cache:
         if target_resource_key in _custom_object_cache:
