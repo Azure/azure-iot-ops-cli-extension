@@ -86,7 +86,6 @@ def configure_cluster_secrets(
     cluster_akv_secret_class_name: str,
     keyvault_sat_secret_name: str,
     keyvault_resource_id: str,
-    # keyvault_secret_to_spc: Optional[List[str]] = None,
     sp_record: ServicePrincipal,
     **kwargs,
 ):
