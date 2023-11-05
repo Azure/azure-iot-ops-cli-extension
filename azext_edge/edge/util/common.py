@@ -20,7 +20,7 @@ from knack.log import get_logger
 logger = get_logger(__name__)
 
 
-def assemble_nargs_to_dict(hash_list: List[str], append_value: bool = False) -> Dict[str, str]:
+def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
     result = {}
     if not hash_list:
         return result
@@ -32,12 +32,7 @@ def assemble_nargs_to_dict(hash_list: List[str], append_value: bool = False) -> 
             )
             continue
         split_hash = hash.split("=", 1)
-        if append_value:
-            if split_hash[0] not in result:
-                result[split_hash[0]] = []
-            result[split_hash[0]].append(split_hash[1])
-        else:
-            result[split_hash[0]] = split_hash[1]
+        result[split_hash[0]] = split_hash[1]
     for key in result:
         if not result.get(key):
             logger.warning(
