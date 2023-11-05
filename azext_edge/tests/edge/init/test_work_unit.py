@@ -227,19 +227,19 @@ def test_init_to_template_params(
     if custom_location_name:
         assert parameters["customLocationName"]["value"] == custom_location_name
     else:
-        assert parameters["customLocationName"]["value"] == f"{cluster_name}-aio-init-cl"
+        assert parameters["customLocationName"]["value"] == f"{cluster_name}-ops-init-cl"
 
     assert "targetName" in parameters
     if target_name:
         assert parameters["targetName"]["value"] == target_name
     else:
-        assert parameters["targetName"]["value"] == f"{cluster_name}-aio-init-target"
+        assert parameters["targetName"]["value"] == f"{cluster_name}-ops-init-target"
 
     assert "dataProcessorInstanceName" in parameters
     if dp_instance_name:
         assert parameters["dataProcessorInstanceName"]["value"] == dp_instance_name
     else:
-        assert parameters["dataProcessorInstanceName"]["value"] == f"{cluster_name}-aio-init-processor"
+        assert parameters["dataProcessorInstanceName"]["value"] == f"{cluster_name}-ops-init-processor"
 
     assert "mqInstanceName" in parameters
     if mq_instance_name:
