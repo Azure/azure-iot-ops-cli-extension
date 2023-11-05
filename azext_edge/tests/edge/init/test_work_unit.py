@@ -17,7 +17,7 @@ from azext_edge.edge.providers.orchestration.common import (
     MqMode,
     MqServiceType,
 )
-from azext_edge.edge.providers.orchestration.work import WorkManager
+from azext_edge.edge.providers.orchestration.work import WorkManager, CLUSTER_SECRET_CLASS_NAME, CLUSTER_SECRET_REF
 from azext_edge.edge.util import url_safe_hash_phrase
 
 from ...generators import generate_generic_id
@@ -306,3 +306,292 @@ def test_init_to_template_params(
     # TODO
     assert template_ver.content["variables"]["AIO_TRUST_CONFIG_MAP"]
     assert template_ver.content["variables"]["AIO_TRUST_SECRET_NAME"]
+
+
+@pytest.mark.parametrize(
+    """
+    cluster_name,
+    cluster_namespace,
+    resource_group_name,
+    keyvault_resource_id,
+    keyvault_sat_secret_name,
+    disable_secret_rotation,
+    rotation_poll_interval,
+    tls_ca_path,
+    tls_ca_key_path,
+    tls_ca_dir,
+    no_deploy,
+    no_tls,
+    """,
+    [
+        pytest.param(
+            generate_generic_id(),  # cluster_name
+            None,  # cluster_namespace
+            generate_generic_id(),  # resource_group_name
+            None,  # keyvault_resource_id
+            None,  # keyvault_sat_secret_name
+            None,  # disable_secret_rotation
+            None,  # rotation_poll_interval
+            None,  # tls_ca_path
+            None,  # tls_ca_key_path
+            None,  # tls_ca_dir
+            None,  # no_deploy
+            None,  # no_tls
+        ),
+        pytest.param(
+            generate_generic_id(),  # cluster_name
+            None,  # cluster_namespace
+            generate_generic_id(),  # resource_group_name
+            generate_generic_id(),  # keyvault_resource_id
+            None,  # keyvault_sat_secret_name
+            None,  # disable_secret_rotation
+            None,  # rotation_poll_interval
+            None,  # tls_ca_path
+            None,  # tls_ca_key_path
+            None,  # tls_ca_dir
+            None,  # no_deploy
+            None,  # no_tls
+        ),
+        pytest.param(
+            generate_generic_id(),  # cluster_name
+            generate_generic_id(),  # cluster_namespace
+            generate_generic_id(),  # resource_group_name
+            generate_generic_id(),  # keyvault_resource_id
+            generate_generic_id(),  # keyvault_sat_secret_name
+            None,  # disable_secret_rotation
+            None,  # rotation_poll_interval
+            None,  # tls_ca_path
+            None,  # tls_ca_key_path
+            None,  # tls_ca_dir
+            None,  # no_deploy
+            None,  # no_tls
+        ),
+        pytest.param(
+            generate_generic_id(),  # cluster_name
+            None,  # cluster_namespace
+            generate_generic_id(),  # resource_group_name
+            generate_generic_id(),  # keyvault_resource_id
+            generate_generic_id(),  # keyvault_sat_secret_name
+            True,  # disable_secret_rotation
+            "3h",  # rotation_poll_interval
+            None,  # tls_ca_path
+            None,  # tls_ca_key_path
+            "/certs/",  # tls_ca_dir
+            None,  # no_deploy
+            None,  # no_tls
+        ),
+        pytest.param(
+            generate_generic_id(),  # cluster_name
+            None,  # cluster_namespace
+            generate_generic_id(),  # resource_group_name
+            generate_generic_id(),  # keyvault_resource_id
+            generate_generic_id(),  # keyvault_sat_secret_name
+            True,  # disable_secret_rotation
+            "3h",  # rotation_poll_interval
+            "/my/ca.crt",  # tls_ca_path
+            "/my/key.pem",  # tls_ca_key_path
+            None,  # tls_ca_dir
+            True,  # no_deploy
+            None,  # no_tls
+        ),
+        pytest.param(
+            generate_generic_id(),  # cluster_name
+            None,  # cluster_namespace
+            generate_generic_id(),  # resource_group_name
+            None,  # keyvault_resource_id
+            None,  # keyvault_sat_secret_name
+            None,  # disable_secret_rotation
+            None,  # rotation_poll_interval
+            None,  # tls_ca_path
+            None,  # tls_ca_key_path
+            None,  # tls_ca_dir
+            True,  # no_deploy
+            True,  # no_tls
+        ),
+    ],
+)
+def test_work_order(
+    mocked_cmd: Mock,
+    mocked_config: Mock,
+    mocked_provision_akv_csi_driver: Mock,
+    mocked_configure_cluster_secrets: Mock,
+    mocked_cluster_tls: Mock,
+    mocked_deploy_template: Mock,
+    mocked_prepare_ca: Mock,
+    mocked_prepare_keyvault_access_policy: Mock,
+    mocked_prepare_keyvault_secret: Mock,
+    mocked_prepare_sp: Mock,
+    mocked_wait_for_terminal_state: Mock,
+    mocked_file_exists,
+    cluster_name,
+    cluster_namespace,
+    resource_group_name,
+    keyvault_resource_id,
+    keyvault_sat_secret_name,
+    disable_secret_rotation,
+    rotation_poll_interval,
+    tls_ca_path,
+    tls_ca_key_path,
+    tls_ca_dir,
+    no_deploy,
+    no_tls,
+):
+    call_kwargs = {
+        "cmd": mocked_cmd,
+        "cluster_name": cluster_name,
+        "resource_group_name": resource_group_name,
+        "keyvault_resource_id": keyvault_resource_id,
+        "disable_secret_rotation": disable_secret_rotation,
+        "no_deploy": no_deploy,
+        "no_tls": no_tls,
+        "no_progress": True,
+    }
+    if rotation_poll_interval:
+        call_kwargs["rotation_poll_interval"] = rotation_poll_interval
+    if cluster_namespace:
+        call_kwargs["cluster_namespace"] = cluster_namespace
+    if keyvault_sat_secret_name:
+        call_kwargs["keyvault_sat_secret_name"] = keyvault_sat_secret_name
+    if tls_ca_path:
+        call_kwargs["tls_ca_path"] = tls_ca_path
+    if tls_ca_key_path:
+        call_kwargs["tls_ca_key_path"] = tls_ca_key_path
+    if tls_ca_dir:
+        call_kwargs["tls_ca_dir"] = tls_ca_dir
+
+    result = init(**call_kwargs)
+    nothing_to_do = all([not keyvault_resource_id, no_tls, no_deploy])
+    if nothing_to_do:
+        assert not result
+
+    if keyvault_resource_id:
+        assert result["csiDriver"]
+        assert result["csiDriver"]["spAppId"]
+        assert result["csiDriver"]["spObjectId"]
+        assert result["csiDriver"]["keyVaultId"] == keyvault_resource_id
+        assert (
+            result["csiDriver"]["kvSatSecretName"] == keyvault_sat_secret_name
+            if keyvault_sat_secret_name
+            else DEFAULT_NAMESPACE
+        )
+        assert result["csiDriver"]["rotationPollInterval"] == rotation_poll_interval if rotation_poll_interval else "1h"
+        assert result["csiDriver"]["enableSecretRotation"] == "false" if disable_secret_rotation else "true"
+
+        mocked_prepare_sp.assert_called_once()
+        assert mocked_prepare_sp.call_args.kwargs["deployment_name"]
+        assert mocked_prepare_sp.call_args.kwargs["cmd"]
+
+        mocked_prepare_keyvault_access_policy.assert_called_once()
+        assert mocked_prepare_keyvault_access_policy.call_args.kwargs["subscription_id"]
+        assert mocked_prepare_keyvault_access_policy.call_args.kwargs["keyvault_resource_id"] == keyvault_resource_id
+        assert mocked_prepare_keyvault_access_policy.call_args.kwargs["sp_record"]
+
+        mocked_prepare_keyvault_secret.assert_called_once()
+        assert mocked_prepare_keyvault_secret.call_args.kwargs["cmd"]
+        assert mocked_prepare_keyvault_secret.call_args.kwargs["deployment_name"]
+        assert (
+            mocked_prepare_keyvault_secret.call_args.kwargs["vault_uri"]
+            == f"https://localhost/{keyvault_resource_id}/vault"
+        )
+        assert (
+            mocked_prepare_keyvault_secret.call_args.kwargs["keyvault_sat_secret_name"] == keyvault_sat_secret_name
+            if keyvault_sat_secret_name
+            else DEFAULT_NAMESPACE
+        )
+        mocked_provision_akv_csi_driver.assert_called_once()
+        assert mocked_provision_akv_csi_driver.call_args.kwargs["subscription_id"]
+        assert mocked_provision_akv_csi_driver.call_args.kwargs["cluster_name"] == cluster_name
+        assert mocked_provision_akv_csi_driver.call_args.kwargs["resource_group_name"] == resource_group_name
+        assert (
+            mocked_provision_akv_csi_driver.call_args.kwargs["enable_secret_rotation"] == "false"
+            if disable_secret_rotation
+            else "true"
+        )
+        assert (
+            mocked_provision_akv_csi_driver.call_args.kwargs["rotation_poll_interval"] == rotation_poll_interval
+            if rotation_poll_interval
+            else "1h"
+        )
+
+        assert "extension_name" not in mocked_provision_akv_csi_driver.call_args.kwargs
+
+        mocked_configure_cluster_secrets.assert_called_once()
+        assert (
+            mocked_configure_cluster_secrets.call_args.kwargs["cluster_namespace"] == cluster_namespace
+            if cluster_namespace
+            else DEFAULT_NAMESPACE
+        )
+        assert mocked_configure_cluster_secrets.call_args.kwargs["cluster_secret_ref"] == CLUSTER_SECRET_REF
+        assert (
+            mocked_configure_cluster_secrets.call_args.kwargs["cluster_akv_secret_class_name"]
+            == CLUSTER_SECRET_CLASS_NAME
+        )
+        assert (
+            mocked_configure_cluster_secrets.call_args.kwargs["keyvault_sat_secret_name"] == keyvault_sat_secret_name
+            if keyvault_sat_secret_name
+            else DEFAULT_NAMESPACE
+        )
+        assert mocked_configure_cluster_secrets.call_args.kwargs["keyvault_resource_id"] == keyvault_resource_id
+        assert mocked_configure_cluster_secrets.call_args.kwargs["sp_record"]
+    else:
+        if not nothing_to_do:
+            assert "csiDriver" not in result
+        mocked_prepare_sp.assert_not_called()
+        mocked_prepare_keyvault_access_policy.assert_not_called()
+        mocked_prepare_keyvault_secret.assert_not_called()
+        mocked_provision_akv_csi_driver.assert_not_called()
+        mocked_configure_cluster_secrets.assert_not_called()
+
+    if not no_tls:
+        assert result["tls"]["aioTrustConfigMap"]
+        assert result["tls"]["aioTrustSecretName"]
+        mocked_prepare_ca.assert_called_once()
+        assert mocked_prepare_ca.call_args.kwargs["tls_ca_path"] == tls_ca_path
+        assert mocked_prepare_ca.call_args.kwargs["tls_ca_key_path"] == tls_ca_key_path
+        assert mocked_prepare_ca.call_args.kwargs["tls_ca_dir"] == tls_ca_dir
+
+        mocked_cluster_tls.assert_called_once()
+        assert (
+            mocked_cluster_tls.call_args.kwargs["cluster_namespace"] == cluster_namespace
+            if cluster_namespace
+            else DEFAULT_NAMESPACE
+        )
+        assert mocked_cluster_tls.call_args.kwargs["public_ca"]
+        assert mocked_cluster_tls.call_args.kwargs["private_key"]
+        assert mocked_cluster_tls.call_args.kwargs["secret_name"]
+        assert mocked_cluster_tls.call_args.kwargs["cm_name"]
+    else:
+        if not nothing_to_do:
+            assert "tls" not in result
+        mocked_prepare_ca.assert_not_called()
+        mocked_cluster_tls.assert_not_called()
+
+    if not no_deploy:
+        assert result["deploymentName"]
+        assert result["resourceGroup"] == resource_group_name
+        assert result["clusterName"] == cluster_name
+        assert result["clusterNamespace"]
+        assert result["deploymentLink"]
+        assert result["deploymentState"]
+
+        mocked_deploy_template.assert_called_once()
+        assert mocked_deploy_template.call_args.kwargs["template"]
+        assert mocked_deploy_template.call_args.kwargs["parameters"]
+        assert mocked_deploy_template.call_args.kwargs["subscription_id"]
+        assert mocked_deploy_template.call_args.kwargs["resource_group_name"] == resource_group_name
+        assert mocked_deploy_template.call_args.kwargs["deployment_name"]
+        assert mocked_deploy_template.call_args.kwargs["cluster_name"] == cluster_name
+        assert (
+            mocked_deploy_template.call_args.kwargs["cluster_namespace"] == cluster_namespace
+            if cluster_namespace
+            else DEFAULT_NAMESPACE
+        )
+    else:
+        if not nothing_to_do:
+            assert "deploymentName" not in result
+            assert "resourceGroup" not in result
+            assert "clusterName" not in result
+            assert "clusterNamespace" not in result
+            assert "deploymentLink" not in result
+            assert "deploymentState" not in result
+        mocked_deploy_template.assert_not_called()

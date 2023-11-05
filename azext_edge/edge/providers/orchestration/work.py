@@ -185,7 +185,7 @@ class WorkManager:
                             self.render_display(category=WorkCategoryKey.CSI_DRIVER)
                         work_kpis["csiDriver"]["spAppId"] = sp_record.client_id
                         work_kpis["csiDriver"]["spObjectId"] = sp_record.object_id
-                        work_kpis["csiDriver"]["kvId"] = self._keyvault_resource_id
+                        work_kpis["csiDriver"]["keyVaultId"] = self._keyvault_resource_id
 
                         self._completed_steps[WorkStepKey.SP] = 1
                         self.render_display(category=WorkCategoryKey.CSI_DRIVER)
@@ -243,7 +243,7 @@ class WorkManager:
                 work_kpis["tls"] = {}
                 self.render_display(category=WorkCategoryKey.TLS_CA)
 
-                public_ca, private_key, secret_name, cm_name = prepare_ca(ca_path=None, key_path=None, **self._kwargs)
+                public_ca, private_key, secret_name, cm_name = prepare_ca(**self._kwargs)
                 work_kpis["tls"]["aioTrustConfigMap"] = cm_name
                 work_kpis["tls"]["aioTrustSecretName"] = secret_name
 

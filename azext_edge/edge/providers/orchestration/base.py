@@ -37,7 +37,7 @@ logger = get_logger(__name__)
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 
 DEFAULT_POLL_RETRIES = 60
-DEFAULT_POLL_WAIT_SEC = 10
+DEFAULT_POLL_WAIT_SEC = 15
 
 
 class ServicePrincipal(NamedTuple):
@@ -308,8 +308,9 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
     )
 
 
-def prepare_keyvault_access_policy(subscription_id: str, sp_record: ServicePrincipal, **kwargs) -> str:
-    keyvault_resource_id = kwargs.get("keyvault_resource_id")
+def prepare_keyvault_access_policy(
+    subscription_id: str, keyvault_resource_id: str, sp_record: ServicePrincipal, **kwargs
+) -> str:
     resource_client = get_resource_client(subscription_id=subscription_id)
     keyvault_resource: dict = resource_client.resources.get_by_id(
         resource_id=keyvault_resource_id, api_version=KEYVAULT_CLOUD_API_VERSION
