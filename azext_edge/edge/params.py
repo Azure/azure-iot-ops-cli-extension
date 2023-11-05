@@ -226,7 +226,7 @@ def load_iotedge_arguments(self, _):
             arg_group="Template",
         )
         context.argument(
-            "show_aio_version",
+            "show_ops_version",
             options_list=["--ops-version"],
             help="Summarize and show the versions of deployable components.",
             arg_type=get_three_state_flag(),

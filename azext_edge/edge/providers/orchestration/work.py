@@ -453,12 +453,11 @@ class WorkManager:
 def deploy(
     **kwargs,
 ):
-    show_aio_version = kwargs.get("show_aio_version", False)
-    if show_aio_version:
+    show_ops_version = kwargs.get("show_ops_version", False)
+    if show_ops_version:
         console = Console()
         table = Table(
             title=f"Azure IoT Operations v{CURRENT_TEMPLATE.content_vers}",
-            caption=f"Template commit hash {CURRENT_TEMPLATE.commit_id}",
         )
         table.add_column("Component", justify="left", style="cyan")
         table.add_column("Version", justify="left", style="magenta")
