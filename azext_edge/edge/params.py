@@ -12,10 +12,7 @@ from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
 from .common import SupportForEdgeServiceType
-from .providers.edge_api import (
-    DataProcessorResourceKinds,
-    MqResourceKinds
-)
+from .providers.edge_api import DataProcessorResourceKinds, MqResourceKinds
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 
@@ -194,18 +191,18 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "cluster_name",
             options_list=["--cluster"],
-            help="Target cluster name for AIO deployment.",
+            help="Target cluster name for IoT Operations deployment.",
         )
         context.argument(
             "cluster_namespace",
             options_list=["--cluster-namespace"],
-            help="The cluster namespace AIO infrastructure will be deployed to. Must be lowercase.",
+            help="The cluster namespace IoT Operations infra will be deployed to. Must be lowercase.",
         )
         context.argument(
             "custom_location_name",
             options_list=["--custom-location"],
-            help="The custom location name corresponding to AIO deployment. The default is in the form "
-            "'{cluster_name}-ops-init-cl'.",
+            help="The custom location name corresponding to the IoT Operations deployment. "
+            "The default is in the form '{cluster_name}-ops-init-cl'.",
         )
         context.argument(
             "custom_location_namespace",
@@ -224,7 +221,7 @@ def load_iotedge_arguments(self, _):
             "show_template",
             options_list=["--show-template"],
             arg_type=get_three_state_flag(),
-            help="Flag when set, will output the base template intended for AIO deployment.",
+            help="Flag when set, will output the template intended for deployment.",
             arg_group="Template",
         )
         context.argument(
@@ -244,13 +241,13 @@ def load_iotedge_arguments(self, _):
             "no_block",
             options_list=["--no-block"],
             arg_type=get_three_state_flag(),
-            help="Disable blocking AIO deployment until completion.",
+            help="Return immediately after the IoT Operations deployment has started.",
         )
         context.argument(
             "no_deploy",
             options_list=["--no-deploy"],
             arg_type=get_three_state_flag(),
-            help="The deployment of AIO in the init workflow will be skipped.",
+            help="The deployment of IoT Operations will be skipped.",
         )
         context.argument(
             "no_tls",
