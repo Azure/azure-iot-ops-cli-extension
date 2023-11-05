@@ -4,21 +4,18 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple
 from .base import (
     CheckManager,
     add_display_and_eval,
     decorate_resource_status,
     check_post_deployment,
-    check_pre_deployment,
     evaluate_pod_health,
-    process_as_list,
     process_properties,
     process_property_by_type,
     resources_grouped_by_namespace,
 )
 
-from rich.console import Console
 from rich.padding import Padding
 
 from ...common import (
@@ -46,36 +43,6 @@ from ..edge_api import (
 
 
 def check_dataprocessor_deployment(
-    console: Console,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
-    namespace: Optional[str] = None,
-    pre_deployment: bool = True,
-    post_deployment: bool = True,
-    as_list: bool = False,
-    resource_kinds: List[str] = None,
-    result: Dict[str, Any] = None,
-) -> Union[Dict[str, Any], None]:
-    if pre_deployment:
-        check_pre_deployment(result, as_list)
-
-    if post_deployment:
-        if not namespace:
-            from ..base import DEFAULT_NAMESPACE
-
-            namespace = DEFAULT_NAMESPACE
-        result["postDeployment"] = []
-
-        # check post deployment according to edge_service type
-        check_dataprocessor_post_deployment(detail_level=detail_level, namespace=namespace, result=result, as_list=as_list, resource_kinds=resource_kinds)
-
-    if not as_list:
-        return result
-
-    return process_as_list(console=console, result=result)
-
-
-def check_dataprocessor_post_deployment(
-    namespace: str,
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
@@ -87,7 +54,7 @@ def check_dataprocessor_post_deployment(
         DataProcessorResourceKinds.DATASET: evaluate_datasets,
     }
 
-    return check_post_deployment(
+    check_post_deployment(
         api_info=DATA_PROCESSOR_API_V1,
         check_name="enumerateDataProcessorApi",
         check_desc="Enumerate Data Processor API resources",

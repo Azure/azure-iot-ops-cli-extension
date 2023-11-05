@@ -12,14 +12,12 @@ from .base import (
     CheckManager,
     decorate_resource_status,
     check_post_deployment,
-    check_pre_deployment,
     evaluate_pod_health,
     get_resource_name,
-    process_as_list,
     resources_grouped_by_namespace
 )
 
-from rich.console import Console, NewLine
+from rich.console import NewLine
 from rich.padding import Padding
 
 from ...common import (
@@ -47,34 +45,6 @@ from ..base import get_namespaced_service
 
 
 def check_mq_deployment(
-    console: Console,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
-    pre_deployment: bool = True,
-    post_deployment: bool = True,
-    as_list: bool = False,
-    resource_kinds: List[str] = None,
-    result: Dict[str, Any] = None,
-) -> Union[Dict[str, Any], None]:
-    if pre_deployment:
-        check_pre_deployment(result, as_list)
-
-    if post_deployment:
-        result["postDeployment"] = []
-        # check post deployment according to edge_service type
-        check_mq_post_deployment(
-            detail_level=detail_level,
-            result=result,
-            as_list=as_list,
-            resource_kinds=resource_kinds,
-        )
-
-    if not as_list:
-        return result
-
-    return process_as_list(console=console, result=result)
-
-
-def check_mq_post_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
@@ -89,7 +59,7 @@ def check_mq_post_deployment(
         MqResourceKinds.KAFKA_CONNECTOR: evaluate_kafka_connectors,
     }
 
-    return check_post_deployment(
+    check_post_deployment(
         api_info=MQ_ACTIVE_API,
         check_name="enumerateMqApi",
         check_desc="Enumerate MQ API resources",

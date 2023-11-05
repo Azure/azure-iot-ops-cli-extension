@@ -5,18 +5,20 @@
 # --------------------------------------------------------------------------------------------
 
 from typing import Any, Dict, List
-from azext_edge.edge.providers.check.lnm import check_lnm_deployment
-from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
-from azure.cli.core.azclierror import ArgumentUsageError
 
+from azure.cli.core.azclierror import ArgumentUsageError
 from rich.console import Console
 
+from azext_edge.edge.providers.check.lnm import check_lnm_deployment
+from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
+
 from ..common import ListableEnum, OpsServiceType
+from .check.base import check_pre_deployment, process_as_list
+from .check.common import ResourceOutputDetailLevel
 from .check.dataprocessor import check_dataprocessor_deployment
 from .check.mq import check_mq_deployment
-from .check.common import ResourceOutputDetailLevel
-from .edge_api.mq import MqResourceKinds
 from .edge_api.dataprocessor import DataProcessorResourceKinds
+from .edge_api.mq import MqResourceKinds
 
 console = Console(width=100, highlight=False)
 
@@ -42,21 +44,24 @@ def run_checks(
 
         result["title"] = f"Evaluation for {{[bright_blue]{ops_service}[/bright_blue]}} service deployment"
 
-        service_check_dict = {
-            OpsServiceType.mq.value: check_mq_deployment,
-            OpsServiceType.dataprocessor.value: check_dataprocessor_deployment,
-            OpsServiceType.lnm.value: check_lnm_deployment
-        }
-        result = service_check_dict[ops_service](
-            console=console,
-            detail_level=detail_level,
-            pre_deployment=pre_deployment,
-            post_deployment=post_deployment,
-            result=result,
-            as_list=as_list,
-            resource_kinds=resource_kinds
-        )
+        if pre_deployment:
+            check_pre_deployment(result, as_list)
+        if post_deployment:
+            result["postDeployment"] = []
+            service_check_dict = {
+                OpsServiceType.mq.value: check_mq_deployment,
+                OpsServiceType.dataprocessor.value: check_dataprocessor_deployment,
+                OpsServiceType.lnm.value: check_lnm_deployment
+            }
+            service_check_dict[ops_service](
+                detail_level=detail_level,
+                result=result,
+                as_list=as_list,
+                resource_kinds=resource_kinds
+            )
 
+        if as_list:
+            return process_as_list(console=console, result=result) if as_list else result
         return result
 
 
