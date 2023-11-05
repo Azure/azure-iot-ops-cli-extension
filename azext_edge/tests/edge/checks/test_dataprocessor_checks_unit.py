@@ -42,15 +42,15 @@ from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
         ],
     ],
 )
-@pytest.mark.parametrize('edge_service', ['dataprocessor'])
-def test_check_dataprocessor_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
+@pytest.mark.parametrize('ops_service', ['dataprocessor'])
+def test_check_dataprocessor_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
         DataProcessorResourceKinds.DATASET.value: "azext_edge.edge.providers.check.dataprocessor.evaluate_datasets",
         DataProcessorResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.dataprocessor.evaluate_instances",
         DataProcessorResourceKinds.PIPELINE.value: "azext_edge.edge.providers.check.dataprocessor.evaluate_pipelines",
     }
 
-    assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
+    assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
 
 
 @pytest.mark.parametrize(

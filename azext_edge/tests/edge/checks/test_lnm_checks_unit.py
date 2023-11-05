@@ -26,13 +26,13 @@ from ...generators import generate_generic_id
         [LnmResourceKinds.LNM.value],
     ],
 )
-@pytest.mark.parametrize('edge_service', ['lnm'])
-def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
+@pytest.mark.parametrize('ops_service', ['lnm'])
+def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
         LnmResourceKinds.LNM.value: "azext_edge.edge.providers.check.lnm.evaluate_lnms",
     }
 
-    assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
+    assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
 
 
 @pytest.mark.parametrize(

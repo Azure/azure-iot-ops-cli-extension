@@ -14,7 +14,7 @@ edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edg
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 
 
-def load_iotedge_commands(self, _):
+def load_iotops_commands(self, _):
     """
     Load CLI commands
     """

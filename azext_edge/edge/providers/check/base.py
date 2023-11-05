@@ -64,7 +64,7 @@ def check_post_deployment(
     for resource in resource_kinds_enum:
         check_resources[resource] = not resource_kinds or resource.value in resource_kinds
 
-    resource_enumeration, api_resources = enumerate_edge_service_resources(api_info, check_name, check_desc, as_list)
+    resource_enumeration, api_resources = enumerate_ops_service_resources(api_info, check_name, check_desc, as_list)
     result["postDeployment"].append(resource_enumeration)
     lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
@@ -170,7 +170,7 @@ def get_emoji_from_status(status: str) -> str:
         return "[red]:stop_sign:[/red]"
 
 
-def enumerate_edge_service_resources(
+def enumerate_ops_service_resources(
     api_info: EdgeResourceApi,
     check_name: str,
     check_desc: str,

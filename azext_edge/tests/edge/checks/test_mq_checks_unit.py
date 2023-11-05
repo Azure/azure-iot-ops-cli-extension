@@ -51,8 +51,8 @@ from ...generators import generate_generic_id
         ],
     ],
 )
-@pytest.mark.parametrize("edge_service", ["mq"])
-def test_check_mq_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds):
+@pytest.mark.parametrize("ops_service", ["mq"])
+def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
         MqResourceKinds.BROKER.value: "azext_edge.edge.providers.check.mq.evaluate_brokers",
         MqResourceKinds.BROKER_LISTENER.value: "azext_edge.edge.providers.check.mq.evaluate_broker_listeners",
@@ -62,7 +62,7 @@ def test_check_mq_by_resource_types(edge_service, mocker, mock_resource_types, r
         MqResourceKinds.DATALAKE_CONNECTOR.value: "azext_edge.edge.providers.check.mq.evaluate_datalake_connectors",
     }
 
-    assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
+    assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
 
 
 @pytest.mark.parametrize(

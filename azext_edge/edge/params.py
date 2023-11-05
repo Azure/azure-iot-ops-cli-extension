@@ -11,7 +11,7 @@ CLI parameter definitions.
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
-from .common import SupportForEdgeServiceType
+from .common import OpsServiceType
 from .providers.edge_api import (
     DataProcessorResourceKinds,
     MqResourceKinds
@@ -22,7 +22,7 @@ from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceTy
 from ._validators import validate_namespace
 
 
-def load_iotedge_arguments(self, _):
+def load_iotops_arguments(self, _):
     """
     Load CLI Args for Knack parser
     """
@@ -46,11 +46,11 @@ def load_iotedge_arguments(self, _):
 
     with self.argument_context("iot ops support") as context:
         context.argument(
-            "edge_service",
-            options_list=["--edge-service", "-e"],
-            choices=CaseInsensitiveList(SupportForEdgeServiceType.list()),
-            help="The edge service the support bundle creation should apply to. "
-            "If auto is selected, the operation will detect which edge services are available.",
+            "ops_service",
+            options_list=["--ops-service", "--svc"],
+            choices=CaseInsensitiveList(OpsServiceType.list()),
+            help="The IoT Operations service the support bundle creation should apply to. "
+            "If auto is selected, the operation will detect which services are available.",
         )
         context.argument(
             "log_age_seconds",
@@ -70,7 +70,7 @@ def load_iotedge_arguments(self, _):
             "pre_deployment_checks",
             options_list=["--pre"],
             help="Run pre-requisite checks to determine if the minimum "
-            "requirements of an edge service deployment are fulfilled.",
+            "requirements of a service deployment are fulfilled.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -87,10 +87,10 @@ def load_iotedge_arguments(self, _):
             arg_group="Format",
         )
         context.argument(
-            "edge_service",
-            options_list=["--edge-service", "-e"],
+            "ops_service",
+            options_list=["--ops-service", "--svc"],
             choices=CaseInsensitiveList(["mq", "dataprocessor", "lnm"]),
-            help="The edge service deployment that will be evaluated.",
+            help="The IoT Operations service deployment that will be evaluated.",
         )
         context.argument(
             "resource_kinds",

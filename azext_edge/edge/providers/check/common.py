@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 """
-shared: Define shared data types(enums) and constant strings for edge service checks.
+shared: Define shared data types(enums) and constant strings for IoT Operations service checks.
 
 """
 

@@ -20,7 +20,7 @@ from .providers.support_bundle import (
 )
 
 
-def load_iotedge_help():
+def load_iotops_help():
     helps[
         "iot ops"
     ] = """
@@ -37,7 +37,7 @@ def load_iotedge_help():
         "iot ops support"
     ] = """
         type: group
-        short-summary: Edge support operations.
+        short-summary: IoT Operations service support commands.
     """
 
     helps[
@@ -46,7 +46,7 @@ def load_iotedge_help():
         type: command
         short-summary: Creates a standard support bundle zip archive for use in troubleshooting and diagnostics.
         long-summary: |
-            [Supported edge service APIs]
+            [Supported service APIs]
                 {COMPAT_MQ_APIS.as_str()}
                 {COMPAT_OPCUA_APIS.as_str()}
                 {COMPAT_DATA_PROCESSOR_APIS.as_str()}
@@ -62,8 +62,10 @@ def load_iotedge_help():
         type: command
         short-summary: Evaluate IoT Operations service deployment for health, configuration and usability.
         long-summary: |
-            [Supported edge service APIs]
+            [Supported service APIs]
                 {MQ_ACTIVE_API.as_str()}
+                {COMPAT_DATA_PROCESSOR_APIS.as_str()}
+                {COMPAT_LNM_APIS.as_str()}
     """
 
     helps[
@@ -79,7 +81,7 @@ def load_iotedge_help():
         type: command
         short-summary: Show dmqtt running statistics.
         long-summary: |
-            [Supported edge service APIs]
+            [Supported service APIs]
                 {MQ_ACTIVE_API.as_str()}
     """
 

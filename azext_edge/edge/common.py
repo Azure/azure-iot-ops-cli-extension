@@ -83,7 +83,7 @@ class MqDiagnosticPropertyIndex(Enum):
     total_subscriptions = "aio_mq_total_subscriptions"
 
 
-class SupportForEdgeServiceType(ListableEnum):
+class OpsServiceType(ListableEnum):
     """
     Edge resource type.
     """

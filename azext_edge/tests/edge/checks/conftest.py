@@ -40,10 +40,10 @@ def mock_evaluate_pod_for_other_namespace(mocker):
 
 
 @pytest.fixture
-def mock_resource_types(mocker, edge_service):
-    patched = mocker.patch("azext_edge.edge.providers.check.base.enumerate_edge_service_resources")
+def mock_resource_types(mocker, ops_service):
+    patched = mocker.patch("azext_edge.edge.providers.check.base.enumerate_ops_service_resources")
 
-    if edge_service == "mq":
+    if ops_service == "mq":
         patched.return_value = (
             {},
             {
@@ -54,7 +54,7 @@ def mock_resource_types(mocker, edge_service):
                 "DataLakeConnector": [{}]
             }
         )
-    elif edge_service == "dataprocessor":
+    elif ops_service == "dataprocessor":
         patched.return_value = (
             {},
             {
@@ -63,7 +63,7 @@ def mock_resource_types(mocker, edge_service):
                 "Pipeline": [{}]
             }
         )
-    elif edge_service == "lnm":
+    elif ops_service == "lnm":
         patched.return_value = (
             {},
             {
@@ -119,14 +119,14 @@ def generate_resource_stub(
     return resource
 
 
-def assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup):
+def assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup):
     # Mock the functions
     for key, value in eval_lookup.items():
         eval_lookup[key] = mocker.patch(value, return_value={})
 
     # run the checks
     run_checks(
-        edge_service=edge_service,
+        ops_service=ops_service,
         pre_deployment=False,
         post_deployment=True,
         as_list=False,
