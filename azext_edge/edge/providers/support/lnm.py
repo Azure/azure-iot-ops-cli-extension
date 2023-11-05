@@ -36,9 +36,20 @@ def fetch_replicasets():
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_APP_LABEL_TYPE)
 
-    return process_v1_pods(
+    processed = process_v1_pods(
         resource_api=LNM_API_V1B1, label_selector=lnm_labels, since_seconds=since_seconds, capture_previous_logs=True
     )
+    processed.extend(
+        process_v1_pods(
+            resource_api=LNM_API_V1B1,
+            label_selector=None,
+            prefix_names=[f"svclb-{LNM_LABEL_PREFIX}"],
+            since_seconds=since_seconds,
+            capture_previous_logs=True
+        )
+    )
+
+    return processed
 
 
 def fetch_services():

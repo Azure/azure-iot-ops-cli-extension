@@ -358,7 +358,7 @@ def decorate_resource_status(status: str) -> str:
     return f"[green]{status}[/green]"
 
 
-def _decorate_pod_phase(phase: str) -> Tuple[str, str]:
+def decorate_pod_phase(phase: str) -> Tuple[str, str]:
     from ...common import PodState
 
     if phase == PodState.failed.value:
@@ -518,27 +518,23 @@ def evaluate_pod_health(
     check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=[f"{target_service_pod}.status.phase"])
     diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
     if not diagnostics_pods:
-        check_manager.add_target_eval(
+        add_display_and_eval(
+            check_manager=check_manager,
+            target_name=target,
+            display_text=f"{target_service_pod}* [yellow]not detected[/yellow].",
+            eval_status=CheckTaskStatus.warning.value,
+            eval_value=None,
             resource_name=target_service_pod,
-            target_name=target,
             namespace=namespace,
-            status=CheckTaskStatus.warning.value,
-            value=None,
+            padding=(0, 0, 0, display_padding)
         )
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(
-                f"{target_service_pod}* [yellow]not detected[/yellow].",
-                (0, 0, 0, display_padding),
-            ),
-        )
+
     else:
         for pod in diagnostics_pods:
             pod_dict = pod.to_dict()
             pod_name = pod_dict["metadata"]["name"]
             pod_phase = pod_dict.get("status", {}).get("phase")
-            pod_phase_deco, status = _decorate_pod_phase(pod_phase)
+            pod_phase_deco, status = decorate_pod_phase(pod_phase)
 
             check_manager.add_target_eval(
                 target_name=target,
@@ -555,6 +551,119 @@ def evaluate_pod_health(
                     (0, 0, 0, display_padding),
                 ),
             )
+
+
+def process_properties(
+    check_manager: CheckManager,
+    detail_level: int,
+    target_name: str,
+    prop_value: Dict[str, Any],
+    properties: Dict[str, Any],
+    namespace: str,
+    padding: tuple
+) -> None:
+
+    for prop, display_name, verbose_only in properties:
+        keys = prop.split('.')
+        value = prop_value
+        for key in keys:
+            value = value.get(key)
+        if value is None:
+            continue
+        if prop == "descriptor":
+            value = value if detail_level == ResourceOutputDetailLevel.verbose.value else value[:10] + "..."
+        if verbose_only and detail_level != ResourceOutputDetailLevel.verbose.value:
+            continue
+        process_property_by_type(
+            check_manager,
+            target_name,
+            properties=value,
+            display_name=display_name,
+            namespace=namespace,
+            padding=padding
+        )
+
+
+def process_property_by_type(
+    check_manager: CheckManager,
+    target_name: str,
+    properties: Any,
+    display_name: str,
+    namespace: str,
+    padding: tuple
+) -> None:
+    padding_left = padding[3]
+    if isinstance(properties, list):
+        if len(properties) == 0:
+            return
+
+        display_text = f"{display_name}:"
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(display_text, padding)
+        )
+
+        for property in properties:
+            display_text = f"- {display_name} {properties.index(property) + 1}"
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(display_text, (0, 0, 0, padding_left + 2))
+            )
+            for prop, value in property.items():
+                display_text = f"{prop}: [cyan]{value}[/cyan]"
+                check_manager.add_display(
+                    target_name=target_name,
+                    namespace=namespace,
+                    display=Padding(display_text, (0, 0, 0, padding_left + 4))
+                )
+    elif isinstance(properties, str) or isinstance(properties, bool) or isinstance(properties, int):
+        properties = str(properties) if properties else "undefined"
+        display_text = f"{display_name}: [cyan]{properties}[/cyan]"
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(display_text, padding)
+        )
+    elif isinstance(properties, dict):
+        display_text = f"{display_name}:"
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(display_text, padding)
+        )
+        for prop, value in properties.items():
+            display_text = f"{prop}: [cyan]{value}[/cyan]"
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(display_text, (0, 0, 0, padding_left + 2))
+            )
+
+
+def add_display_and_eval(
+    check_manager: CheckManager,
+    target_name: str,
+    display_text: str,
+    eval_status: str,
+    eval_value: str,
+    resource_name: Optional[str] = None,
+    namespace: str = ALL_NAMESPACES_TARGET,
+    padding: Tuple[int, int, int, int] = (0, 0, 0, 8)
+) -> None:
+    check_manager.add_display(
+        target_name=target_name,
+        namespace=namespace,
+        display=Padding(display_text, padding)
+    )
+    check_manager.add_target_eval(
+        target_name=target_name,
+        namespace=namespace,
+        status=eval_status,
+        value=eval_value,
+        resource_name=resource_name
+    )
 
 
 def get_resource_namespace(resource: dict) -> Union[str, None]:
