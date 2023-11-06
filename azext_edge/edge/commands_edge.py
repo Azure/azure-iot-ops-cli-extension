@@ -68,10 +68,10 @@ def init(
     cluster_name: str,
     resource_group_name: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
-    keyvault_secret_name: str = DEFAULT_NAMESPACE,
+    keyvault_sat_secret_name: str = DEFAULT_NAMESPACE,
     custom_location_namespace: Optional[str] = None,
     custom_location_name: Optional[str] = None,
-    show_aio_version: Optional[bool] = None,
+    show_ops_version: Optional[bool] = None,
     location: Optional[str] = None,
     show_template: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
@@ -119,7 +119,7 @@ def init(
 
     load_config_context(context_name=context_name)
 
-    if keyvault_resource_id and not any([show_aio_version, show_template]):
+    if keyvault_resource_id and not any([show_ops_version, show_template]):
         logged_in_principal = LoggedInPrincipal(cmd=cmd)
         if logged_in_principal.is_app():
             app_principal = logged_in_principal.fetch_self_if_app()
@@ -148,17 +148,17 @@ def init(
         mq_authn_name = "authn"
 
     if not custom_location_name:
-        custom_location_name = f"{cluster_name_lowered}-aio-init-cl"
+        custom_location_name = f"{cluster_name_lowered}-ops-init-cl"
 
     if not custom_location_namespace:
         custom_location_namespace = cluster_namespace
 
     if not dp_instance_name:
-        dp_instance_name = f"{cluster_name_lowered}-aio-init-processor"
+        dp_instance_name = f"{cluster_name_lowered}-ops-init-processor"
         dp_instance_name = dp_instance_name.replace("_", "-")
 
     if not target_name:
-        target_name = f"{cluster_name_lowered}-aio-init-target"
+        target_name = f"{cluster_name_lowered}-ops-init-target"
         target_name = target_name.replace("_", "-")
 
     if simulate_plc and not opcua_discovery_endpoint:
@@ -182,7 +182,7 @@ def init(
         custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
         location=location,
-        show_aio_version=show_aio_version,
+        show_ops_version=show_ops_version,
         show_template=show_template,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         simulate_plc=simulate_plc,
@@ -209,7 +209,7 @@ def init(
         mq_authn_name=mq_authn_name,
         target_name=target_name,
         keyvault_resource_id=keyvault_resource_id,
-        keyvault_secret_name=str(keyvault_secret_name),
+        keyvault_sat_secret_name=str(keyvault_sat_secret_name),
         disable_secret_rotation=disable_secret_rotation,
         rotation_poll_interval=str(rotation_poll_interval),
         service_principal_app_id=service_principal_app_id,

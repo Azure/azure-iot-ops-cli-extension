@@ -12,10 +12,7 @@ from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
 from .common import SupportForEdgeServiceType
-from .providers.edge_api import (
-    DataProcessorResourceKinds,
-    MqResourceKinds
-)
+from .providers.edge_api import DataProcessorResourceKinds, MqResourceKinds
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 
@@ -194,18 +191,18 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "cluster_name",
             options_list=["--cluster"],
-            help="Target cluster name for AIO deployment.",
+            help="Target cluster name for IoT Operations deployment.",
         )
         context.argument(
             "cluster_namespace",
             options_list=["--cluster-namespace"],
-            help="The cluster namespace AIO infrastructure will be deployed to. Must be lowercase.",
+            help="The cluster namespace IoT Operations infra will be deployed to. Must be lowercase.",
         )
         context.argument(
             "custom_location_name",
             options_list=["--custom-location"],
-            help="The custom location name corresponding to AIO deployment. The default is in the form "
-            "'{cluster_name}-aio-init-cl'.",
+            help="The custom location name corresponding to the IoT Operations deployment. "
+            "The default is in the form '{cluster_name}-ops-init-cl'.",
         )
         context.argument(
             "custom_location_namespace",
@@ -224,15 +221,15 @@ def load_iotedge_arguments(self, _):
             "show_template",
             options_list=["--show-template"],
             arg_type=get_three_state_flag(),
-            help="Flag when set, will output the base template intended for AIO deployment.",
+            help="Flag when set, will output the template intended for deployment.",
             arg_group="Template",
         )
         context.argument(
-            "show_aio_version",
-            options_list=["--aio-version"],
+            "show_ops_version",
+            options_list=["--ops-version"],
             help="Summarize and show the versions of deployable components.",
             arg_type=get_three_state_flag(),
-            arg_group="AIO Version",
+            arg_group="Ops Version",
         )
         context.argument(
             "no_progress",
@@ -244,13 +241,13 @@ def load_iotedge_arguments(self, _):
             "no_block",
             options_list=["--no-block"],
             arg_type=get_three_state_flag(),
-            help="Disable blocking AIO deployment until completion.",
+            help="Return immediately after the IoT Operations deployment has started.",
         )
         context.argument(
             "no_deploy",
             options_list=["--no-deploy"],
             arg_type=get_three_state_flag(),
-            help="The deployment of AIO in the init workflow will be skipped.",
+            help="The deployment of IoT Operations will be skipped.",
         )
         context.argument(
             "no_tls",
@@ -279,7 +276,7 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "dp_instance_name",
             options_list=["--dp-instance"],
-            help="Instance name for data processor. The default is in the form '{cluster_name}-aio-init-processor'.",
+            help="Instance name for data processor. The default is in the form '{cluster_name}-ops-init-processor'.",
             arg_group="Data Processor",
         )
         context.argument(
@@ -395,37 +392,37 @@ def load_iotedge_arguments(self, _):
         context.argument(
             "target_name",
             options_list=["--target"],
-            help="Target name for edge orchestrator. The default is in the form '{cluster_name}-aio-init-target'.",
+            help="Target name for ops orchestrator. The default is in the form '{cluster_name}-ops-init-target'.",
             arg_group="Orchestration",
         )
         # AKV CSI Driver
         context.argument(
             "keyvault_resource_id",
             options_list=["--kv-id"],
-            help="KeyVault resource Id. Providing this resource Id will enable the client "
+            help="Key Vault ARM resource Id. Providing this resource Id will enable the client "
             "to setup all necessary resources and cluster side configuration to enable "
-            "the KeyVault CSI driver for AIO.",
-            arg_group="KeyVault CSI Driver",
+            "the Key Vault CSI driver for IoT Operations.",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
-            "keyvault_secret_name",
-            options_list=["--kv-secret-name"],
-            help="KeyVault secret name. The existance of the secret will be validated. "
-            "If the secret does not exist, it will be created with a placeholder value.",
-            arg_group="KeyVault CSI Driver",
+            "keyvault_sat_secret_name",
+            options_list=["--kv-sat-secret"],
+            help="The Key Vault secret *name* to use for the IoT Operations service account (SAT). "
+            "If the secret does not exist, it will be created with a cryptographically secure placeholder value.",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "disable_secret_rotation",
             options_list=["--disable-rotation"],
             arg_type=get_three_state_flag(),
             help="Flag to disable secret rotation.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "rotation_poll_interval",
             options_list=["--rotation-int"],
             help="Rotation poll interval.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "service_principal_app_id",
@@ -433,7 +430,7 @@ def load_iotedge_arguments(self, _):
             help="Service principal app Id. If provided it will be used for CSI driver setup. "
             "Otherwise an app registration will be created. "
             "!Required! if the logged in principal does not have permissions to query graph.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "service_principal_object_id",
@@ -441,7 +438,7 @@ def load_iotedge_arguments(self, _):
             help="Service principal object Id. If provided it will be used for CSI driver setup. "
             "Otherwise a service principal will be queried and in necessary will be created. "
             "!Required! if the logged in principal does not have permissions to query graph.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "service_principal_secret",
@@ -450,7 +447,7 @@ def load_iotedge_arguments(self, _):
             "If provided it will be used for CSI driver setup. Otherwise a new secret "
             "will be requested from MS graph. "
             "!Required! if the logged in principal does not have permissions to query graph.",
-            arg_group="KeyVault CSI Driver",
+            arg_group="Key Vault CSI Driver",
         )
         # TLS
         context.argument(
