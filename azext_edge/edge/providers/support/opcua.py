@@ -72,7 +72,7 @@ def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 
     opcua_to_run = {}
     opcua_to_run.update(assemble_crd_work(apis))
 
-    opcua_to_run.update({"pods": partial(fetch_pods, since_seconds=log_age_seconds)})
+    opcua_to_run["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     opcua_to_run.update(support_runtime_elements)
 
     return opcua_to_run
