@@ -57,7 +57,7 @@ class PodState(Enum):
 
 class ProvisioningState(Enum):
     """
-    edge resource provisioning state.
+    Resource provisioning state.
     """
 
     succeeded = "Succeeded"
@@ -85,7 +85,7 @@ class MqDiagnosticPropertyIndex(Enum):
 
 class OpsServiceType(ListableEnum):
     """
-    Edge resource type.
+    IoT Operations service type.
     """
 
     auto = "auto"
