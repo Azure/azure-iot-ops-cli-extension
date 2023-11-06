@@ -342,7 +342,11 @@ def mocked_list_daemonsets(mocked_client):
         # @vilit - also akri
         daemonset_names = ["mock_daemonset"]
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            daemonset_names.extend(["aio-akri-agent-daemonset", "svclb-aio-lnm-operator"])
+            daemonset_names.extend([
+                "aio-akri-agent-daemonset",
+                "akri-opcua-asset-discovery-daemonset",
+                "svclb-aio-lnm-operator"
+            ])
 
         daemonset_list = []
         for name in daemonset_names:
