@@ -9,11 +9,7 @@ from ...common import ListableEnum
 
 
 class OpcuaResourceKinds(ListableEnum):
-    APPLICATION = "application"
-    MODULE_TYPE = "moduletype"
-    MODULE = "module"
     ASSET_TYPE = "assettype"
-    ASSET = "asset"
 
 
-OPCUA_API_V1 = EdgeResourceApi(group="e4i.microsoft.com", version="v1", moniker="opcua")
+OPCUA_API_V1 = EdgeResourceApi(group="opcuabroker.iotoperations.azure.com", version="v1beta1", moniker="opcua")
