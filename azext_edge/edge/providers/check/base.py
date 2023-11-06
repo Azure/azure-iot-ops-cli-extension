@@ -133,7 +133,7 @@ def process_as_list(console: Console, result: Dict[str, Any]) -> None:
                     for e in evaluations:
                         eval_status = e.get("status")
                         _increment_summary(eval_status)
-                console.print(NewLine(1))
+            console.print(NewLine(1))
         console.print(NewLine(1))
 
     title: dict = result.get("title")
