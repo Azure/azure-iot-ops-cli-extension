@@ -159,6 +159,7 @@ LNM_POD_CONDITION_TEXT_MAP = {
 # Check constants
 ALL_NAMESPACES_TARGET = '_all_'
 
+
 # MQ connector enums
 class KafkaTopicMapRouteType(Enum):
     """
