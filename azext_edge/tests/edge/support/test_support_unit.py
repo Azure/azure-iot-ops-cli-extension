@@ -336,7 +336,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=AKRI_API_V0,
-                mock_names=["aio-akri-agent-daemonset"],
+                mock_names=["aio-akri-agent-daemonset", "akri-opcua-asset-discovery-daemonset"],
             )
 
         if api in [LNM_API_V1B1]:
