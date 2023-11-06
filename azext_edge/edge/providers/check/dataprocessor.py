@@ -724,14 +724,6 @@ def _evaluate_source_node(
             namespace=namespace,
             display=Padding(source_partition_strategy_display_text, (0, 0, 0, 18))
         )
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines,
-            namespace=namespace,
-            status=pipeline_source_partition_eval_status,
-            value=pipeline_source_partition_eval_value,
-            resource_name=pipeline_name
-        )
     else:
         # check data source partition
         pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
@@ -748,13 +740,13 @@ def _evaluate_source_node(
             display=Padding(source_partition_count_display_text, (0, 0, 0, 16))
         )
 
-        check_manager.add_target_eval(
-            target_name=target_pipelines,
-            namespace=namespace,
-            status=pipeline_source_partition_eval_status,
-            value=pipeline_source_partition_eval_value,
-            resource_name=pipeline_name
-        )
+    check_manager.add_target_eval(
+        target_name=target_pipelines,
+        namespace=namespace,
+        status=pipeline_source_partition_eval_status,
+        value=pipeline_source_partition_eval_value,
+        resource_name=pipeline_name
+    )
 
     # data source authentication
     pipeline_source_node_authentication = pipeline_source_node["authentication"]["type"]

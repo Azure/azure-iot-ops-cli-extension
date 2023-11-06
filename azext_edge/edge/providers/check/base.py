@@ -565,11 +565,13 @@ def process_properties(
 
     for prop, display_name, verbose_only in properties:
         keys = prop.split('.')
-        value = prop_value
-        if value is None:
+        if prop_value is None:
             continue
+        value = prop_value
         for key in keys:
             value = value.get(key)
+        if value is None:
+            continue
         if prop == "descriptor":
             value = value if detail_level == ResourceOutputDetailLevel.verbose.value else value[:10] + "..."
         if verbose_only and detail_level != ResourceOutputDetailLevel.verbose.value:
