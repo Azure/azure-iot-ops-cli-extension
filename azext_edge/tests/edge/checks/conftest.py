@@ -34,8 +34,8 @@ def mock_evaluate_lnm_pod_health(mocker):
 
 
 @pytest.fixture
-def mock_evaluate_pod_for_other_namespace(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.lnm._evaluate_pod_for_other_namespace", return_value={})
+def mock_get_namespaced_pods_by_prefix(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.lnm.get_namespaced_pods_by_prefix", return_value=[])
     yield patched
 
 
@@ -143,3 +143,22 @@ def assert_check_by_resource_types(edge_service, mocker, mock_resource_types, re
             del eval_lookup[resource_kind]
         # ensure no other checks were run
         [eval_lookup[evaluator].assert_not_called() for evaluator in eval_lookup]
+
+
+@pytest.fixture
+def mocked_list_deployments(mocked_client):
+    from kubernetes.client.models import V1DeploymentList, V1Deployment, V1ObjectMeta
+
+    def _handle_list_deployments(*args, **kwargs):
+        names = ["mock_deployment"]
+
+        deployment_list = []
+        for name in names:
+            deployment_list.append(V1Deployment(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        deployment_list = V1DeploymentList(items=deployment_list)
+
+        return deployment_list
+
+    mocked_client.AppsV1Api().list_deployment_for_all_namespaces.side_effect = _handle_list_deployments
+
+    yield mocked_client

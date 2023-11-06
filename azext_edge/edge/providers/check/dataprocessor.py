@@ -732,6 +732,29 @@ def _evaluate_source_node(
             value=pipeline_source_partition_eval_value,
             resource_name=pipeline_name
         )
+    else:
+        # check data source partition
+        pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
+        source_partition_count_display_text = f"- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. [green]Detected {pipeline_source_node_partition_count}[/green]."
+
+        pipeline_source_partition_eval_value = {"spec.input.partitionCount": pipeline_source_node_partition_count}
+        pipeline_source_partition_eval_status = CheckTaskStatus.success.value
+
+        if pipeline_source_node_partition_count < 1 or pipeline_source_node_partition_count > 100:
+            pipeline_source_partition_eval_status = CheckTaskStatus.error.value
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(source_partition_count_display_text, (0, 0, 0, 16))
+        )
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines,
+            namespace=namespace,
+            status=pipeline_source_partition_eval_status,
+            value=pipeline_source_partition_eval_value,
+            resource_name=pipeline_name
+        )
 
     # data source authentication
     pipeline_source_node_authentication = pipeline_source_node["authentication"]["type"]

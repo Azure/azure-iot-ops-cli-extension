@@ -94,7 +94,7 @@ def evaluate_lnms(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalLnms", check_desc="Evaluate LNM instances")
 
-    target_lnms = "lnmz.aio.com"
+    target_lnms = "lnmz.layerednetworkmgmt.iotoperations.azure.com"
     lnm_namespace_conditions = ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"]
 
     all_lnms: dict = LNM_API_V1B1.get_resources(LnmResourceKinds.LNM).get("items", [])
@@ -279,7 +279,11 @@ def evaluate_lnms(
     )
 
     if not all_lnms and not pods:
-        check_manager.set_target_status(target_name=target_lnms, status=CheckTaskStatus.skipped.value)
+        check_manager.add_target_eval(
+            target_name=target_lnms,
+            status=CheckTaskStatus.skipped.value,
+            value={"lnms": None}
+        )
 
     return check_manager.as_dict(as_list)
 

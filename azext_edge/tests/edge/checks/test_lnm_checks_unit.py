@@ -5,6 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 
+from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
 import pytest
 from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
 from azext_edge.edge.providers.check.lnm import evaluate_lnms
@@ -35,6 +36,7 @@ def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, 
     assert_check_by_resource_types(edge_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
 
 
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize(
     "lnms, namespace_conditions, namespace_evaluations",
     [
@@ -48,8 +50,14 @@ def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, 
                     spec={
                         "allowList": {
                             "domains": [
-                                "microsoft.com",
-                                "microsoftonline.com"
+                                {
+                                    "destinationType": "internal",
+                                    "destinationUrl": "microsoft.com"
+                                },
+                                {
+                                    "destinationType": "external",
+                                    "destinationUrl": "microsoftonline.com"
+                                }
                             ],
                             "enableArcDomains": True,
                             "sourceIpRange": ""
@@ -90,7 +98,10 @@ def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, 
                     spec={
                         "allowList": {
                             "domains": [
-                                "microsoftonline.com"
+                                {
+                                    "destinationType": "internal",
+                                    "destinationUrl": "microsoft.com"
+                                },
                             ],
                             "enableArcDomains": True,
                             "sourceIpRange": ""
@@ -149,8 +160,14 @@ def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, 
                     "spec": {
                         "allowList": {
                             "domains": [
-                                "microsoft.com",
-                                "microsoftonline.com"
+                                {
+                                    "destinationType": "internal",
+                                    "destinationUrl": "microsoft.com"
+                                },
+                                {
+                                    "destinationType": "external",
+                                    "destinationUrl": "microsoftonline.com"
+                                }
                             ],
                             "enableArcDomains": True,
                             "sourceIpRange": ""
@@ -168,15 +185,27 @@ def test_check_lnm_by_resource_types(edge_service, mocker, mock_resource_types, 
                 ],
             ]
         ),
+        (
+            # lnms
+            [],
+            # namespace conditions str
+            [],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "skipped")
+                ],
+            ]
+        ),
     ]
 )
 def test_lnm_checks(
     mocker,
-    mock_evaluate_lnm_pod_health,
-    mock_evaluate_pod_for_other_namespace,
+    mock_get_namespaced_pods_by_prefix,
     lnms,
     namespace_conditions,
     namespace_evaluations,
+    detail_level,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -186,14 +215,15 @@ def test_lnm_checks(
     namespace = generate_generic_id()
     for lnm in lnms:
         lnm['metadata']['namespace'] = namespace
-    result = evaluate_lnms()
+    result = evaluate_lnms(detail_level=detail_level)
 
     assert result["name"] == "evalLnms"
-    assert result["targets"]["lnmz.aio.com"]
-    target = result["targets"]["lnmz.aio.com"]
+    assert result["targets"]["lnmz.layerednetworkmgmt.iotoperations.azure.com"]
+    target = result["targets"]["lnmz.layerednetworkmgmt.iotoperations.azure.com"]
 
     for namespace in target:
-        assert namespace in result["targets"]["lnmz.aio.com"]
+        assert namespace in result["targets"]["lnmz.layerednetworkmgmt.iotoperations.azure.com"]
 
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)
         assert_evaluations(target[namespace], namespace_evaluations)
