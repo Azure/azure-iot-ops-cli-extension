@@ -38,16 +38,6 @@ MQ_APP_LABELS = [
 MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
 
 
-# TODO: @digimaun
-# def fetch_events():
-#     return {
-#         "data": generic.sanitize_for_serialization(
-#             obj=client.CoreV1Api().list_event_for_all_namespaces(label_selector=E4K_LABEL)
-#         ),
-#         "zinfo": f"e4k/events.json",
-#     }
-
-
 def fetch_diagnostic_metrics(namespace: str):
     # @digimaun - TODO dynamically determine pod:port
     try:
