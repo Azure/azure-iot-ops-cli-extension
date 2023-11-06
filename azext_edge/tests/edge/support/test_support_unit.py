@@ -61,7 +61,6 @@ a_bundle_dir = f"support_test_{generate_generic_id()}"
         [],
         [MQ_API_V1B1],
         [MQ_API_V1B1, MQ_ACTIVE_API],
-        [OPCUA_API_V1],
         [MQ_API_V1B1, OPCUA_API_V1],
         [MQ_API_V1B1, DATA_PROCESSOR_API_V1],
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
@@ -86,8 +85,10 @@ def test_create_bundle(
     mocked_list_daemonsets,
     mocked_list_services,
     mocked_list_nodes,
+    mocked_list_namespaced_events,
     mocked_get_stats,
     mocked_root_logger,
+    mocked_mq_active_api,
 ):
     asset_raises_not_found_error(mocked_cluster_resources)
 
@@ -348,6 +349,15 @@ def test_create_bundle(
                 resource_api=LNM_API_V1B1,
                 since_seconds=since_seconds,
             )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=None,
+                resource_api=LNM_API_V1B1,
+                since_seconds=since_seconds,
+                mock_names=["svclb-aio-lnm-operator"]
+            )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
@@ -563,6 +573,12 @@ def assert_mq_stats(mocked_zipfile):
 def assert_shared_kpis(mocked_client, mocked_zipfile):
     mocked_client.CoreV1Api().list_node.assert_called_once()
     assert_zipfile_write(mocked_zipfile, zinfo="nodes.yaml", data="items:\n- metadata:\n    name: mock_node\n")
+    mocked_client.CoreV1Api().list_namespaced_event.assert_called_once()
+    assert_zipfile_write(
+        mocked_zipfile,
+        zinfo="mock_namespace/events.yaml",
+        data="items:\n- action: mock_action\n  involvedObject: mock_object\n  metadata:\n    name: mock_event\n",
+    )
 
 
 # TODO: base test class?

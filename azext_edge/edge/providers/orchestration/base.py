@@ -37,7 +37,7 @@ logger = get_logger(__name__)
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 
 DEFAULT_POLL_RETRIES = 60
-DEFAULT_POLL_WAIT_SEC = 10
+DEFAULT_POLL_WAIT_SEC = 15
 
 
 class ServicePrincipal(NamedTuple):
@@ -84,9 +84,9 @@ def configure_cluster_secrets(
     cluster_namespace: str,
     cluster_secret_ref: str,
     cluster_akv_secret_class_name: str,
-    keyvault_secret_name: str,
-    sp_record: ServicePrincipal,
+    keyvault_sat_secret_name: str,
     keyvault_resource_id: str,
+    sp_record: ServicePrincipal,
     **kwargs,
 ):
     if not get_cluster_namespace(namespace=cluster_namespace):
@@ -116,7 +116,7 @@ def configure_cluster_secrets(
                 name=secret_class,
                 namespace=cluster_namespace,
                 keyvault_name=keyvault_name,
-                secret_name=keyvault_secret_name,
+                secret_name=keyvault_sat_secret_name,
                 tenantId=sp_record.tenant_id,
             )
         )
@@ -308,8 +308,9 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
     )
 
 
-def prepare_keyvault_access_policy(subscription_id: str, sp_record: ServicePrincipal, **kwargs) -> str:
-    keyvault_resource_id = kwargs.get("keyvault_resource_id")
+def prepare_keyvault_access_policy(
+    subscription_id: str, keyvault_resource_id: str, sp_record: ServicePrincipal, **kwargs
+) -> str:
     resource_client = get_resource_client(subscription_id=subscription_id)
     keyvault_resource: dict = resource_client.resources.get_by_id(
         resource_id=keyvault_resource_id, api_version=KEYVAULT_CLOUD_API_VERSION
@@ -341,37 +342,37 @@ def prepare_keyvault_access_policy(subscription_id: str, sp_record: ServicePrinc
     return vault_uri
 
 
-def prepare_keyvault_secret(deployment_name: str, vault_uri: str, **kwargs) -> str:
+def prepare_keyvault_secret(
+    cmd, deployment_name: str, vault_uri: str, keyvault_sat_secret_name: Optional[str] = None, **kwargs
+) -> str:
     from azure.cli.core.util import send_raw_request
 
-    keyvault_secret_name = kwargs.get("keyvault_secret_name")
-    cmd = kwargs["cmd"]
-    if keyvault_secret_name:
+    if keyvault_sat_secret_name:
         get_secretver: dict = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="GET",
-            url=f"{vault_uri}/secrets/{keyvault_secret_name}/versions?api-version=7.4",
+            url=f"{vault_uri}/secrets/{keyvault_sat_secret_name}/versions?api-version=7.4",
             resource="https://vault.azure.net",
         ).json()
         if not get_secretver.get("value"):
             send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="PUT",
-                url=f"{vault_uri}/secrets/{keyvault_secret_name}?api-version=7.4",
+                url=f"{vault_uri}/secrets/{keyvault_sat_secret_name}?api-version=7.4",
                 resource="https://vault.azure.net",
                 body=json.dumps({"value": generate_secret()}),
             ).json()
     else:
-        keyvault_secret_name = deployment_name.replace(".", "-")
+        keyvault_sat_secret_name = deployment_name.replace(".", "-")
         send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="PUT",
-            url=f"{vault_uri}/secrets/{keyvault_secret_name}?api-version=7.4",
+            url=f"{vault_uri}/secrets/{keyvault_sat_secret_name}?api-version=7.4",
             resource="https://vault.azure.net",
             body=json.dumps({"value": generate_secret()}),
         ).json()
 
-    return keyvault_secret_name
+    return keyvault_sat_secret_name
 
 
 def get_resource_by_id(resource_id: str, subscription_id: str, api_version: str):

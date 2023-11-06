@@ -317,6 +317,23 @@ def mocked_list_nodes(mocked_client):
 
 
 @pytest.fixture
+def mocked_list_namespaced_events(mocked_client):
+    from kubernetes.client.models import CoreV1EventList, CoreV1Event, V1ObjectMeta
+
+    def _handle_list_namespaced_events(*args, **kwargs):
+        event = CoreV1Event(
+            action="mock_action", involved_object="mock_object", metadata=V1ObjectMeta(name="mock_event")
+        )
+        event_list = CoreV1EventList(items=[event])
+
+        return event_list
+
+    mocked_client.CoreV1Api().list_namespaced_event.side_effect = _handle_list_namespaced_events
+
+    yield mocked_client
+
+
+@pytest.fixture
 def mocked_list_daemonsets(mocked_client):
     from kubernetes.client.models import V1DaemonSetList, V1DaemonSet, V1ObjectMeta
 
@@ -325,10 +342,7 @@ def mocked_list_daemonsets(mocked_client):
         # @vilit - also akri
         daemonset_names = ["mock_daemonset"]
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            daemonset_names.extend([
-                "aio-akri-agent-daemonset",
-                "svclb-aio-lnm-operator"
-            ])
+            daemonset_names.extend(["aio-akri-agent-daemonset", "svclb-aio-lnm-operator"])
 
         daemonset_list = []
         for name in daemonset_names:
@@ -340,3 +354,11 @@ def mocked_list_daemonsets(mocked_client):
     mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.side_effect = _handle_list_daemonsets
 
     yield mocked_client
+
+
+@pytest.fixture
+def mocked_mq_active_api(mocker):
+    # Supports fetching events in support bundle as its based on MQ deployment
+    patched_active_mq_api = mocker.patch("azext_edge.edge.providers.edge_api.MQ_ACTIVE_API")
+    patched_active_mq_api.get_resources.return_value = {"items": [{"metadata": {"namespace": "mock_namespace"}}]}
+    yield patched_active_mq_api

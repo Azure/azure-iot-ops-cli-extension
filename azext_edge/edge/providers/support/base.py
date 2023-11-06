@@ -22,11 +22,11 @@ logger = get_logger(__name__)
 generic = client.ApiClient()
 
 
-def process_crd(group: str, version: str, kind: str, api_moniker: str, file_prefix: Optional[str] = None):
+def process_crd(group: str, version: str, kind: str, plural: str, api_moniker: str, file_prefix: Optional[str] = None):
     result: dict = get_custom_objects(
         group=group,
         version=version,
-        plural=f"{kind}s",
+        plural=plural,
         use_cache=False,
     )
     if not file_prefix:
@@ -150,8 +150,7 @@ def process_deployments(
         prefix_names = []
 
     deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(
-        label_selector=label_selector,
-        field_selector=field_selector
+        label_selector=label_selector, field_selector=field_selector
     )
     logger.info(f"Detected {len(deployments.items)} deployments.")
     namespace_pods_work = {}
@@ -338,6 +337,28 @@ def process_nodes():
     }
 
 
+def process_events():
+    from ..edge_api import MQ_ACTIVE_API, MqResourceKinds
+
+    namespaces = []
+    event_content = []
+    cluster_brokers = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER)
+    if cluster_brokers and cluster_brokers["items"]:
+        namespaces.extend([b["metadata"]["namespace"] for b in cluster_brokers["items"]])
+
+    for namespace in namespaces:
+        event_content.append(
+            {
+                "data": generic.sanitize_for_serialization(
+                    obj=client.CoreV1Api().list_namespaced_event(namespace=namespace)
+                ),
+                "zinfo": f"{namespace}/events.yaml",
+            }
+        )
+
+    return event_content
+
+
 def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional[Dict[str, str]] = None):
     if not file_prefix_map:
         file_prefix_map = {}
@@ -351,6 +372,7 @@ def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional
                 group=api.group,
                 version=api.version,
                 kind=kind,
+                plural=api._kinds[kind],  # TODO: optimize
                 api_moniker=api.moniker,
                 file_prefix=file_prefix,
             )
