@@ -38,9 +38,9 @@ jobs:
       - name: Run smoke tests
         run: |
           sleep 10
-          az iot ops support create-bundle --edge-service auto
-          az iot ops support create-bundle --edge-service e4k
-          az iot ops support create-bundle --edge-service opcua
+          az iot ops support create-bundle --svc auto
+          az iot ops support create-bundle --svc e4k
+          az iot ops support create-bundle --svc opcua
           az iot ops check
           az iot ops check --pre
           az iot ops check --post

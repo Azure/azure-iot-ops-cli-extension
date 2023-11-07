@@ -4,7 +4,7 @@
 # Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
 # --------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
 
@@ -12,14 +12,11 @@ from .base import (
     CheckManager,
     add_display_and_eval,
     check_post_deployment,
-    check_pre_deployment,
     decorate_pod_phase,
-    process_as_list,
     process_properties,
     resources_grouped_by_namespace,
 )
 
-from rich.console import Console
 from rich.padding import Padding
 from kubernetes.client.models import V1Pod
 
@@ -43,29 +40,6 @@ from ..support.lnm import LNM_APP_LABELS, LNM_LABEL_PREFIX
 
 
 def check_lnm_deployment(
-    console: Console,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
-    pre_deployment: bool = True,
-    post_deployment: bool = True,
-    as_list: bool = False,
-    resource_kinds: List[str] = None,
-    result: Dict[str, Any] = None,
-) -> Union[Dict[str, Any], None]:
-    if pre_deployment:
-        check_pre_deployment(result, as_list)
-
-    if post_deployment:
-        result["postDeployment"] = []
-        # check post deployment according to edge_service type
-        check_lnm_post_deployment(detail_level=detail_level, result=result, as_list=as_list, resource_kinds=resource_kinds)
-
-    if not as_list:
-        return result
-
-    return process_as_list(console=console, result=result)
-
-
-def check_lnm_post_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
@@ -75,7 +49,7 @@ def check_lnm_post_deployment(
         LnmResourceKinds.LNM: evaluate_lnms,
     }
 
-    return check_post_deployment(
+    check_post_deployment(
         api_info=LNM_API_V1B1,
         check_name="enumerateLnmApi",
         check_desc="Enumerate LNM API resources",

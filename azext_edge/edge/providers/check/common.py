@@ -5,7 +5,7 @@
 # --------------------------------------------------------------------------------------------
 
 """
-shared: Define shared data types(enums) and constant strings for edge service checks.
+shared: Define shared data types(enums) and constant strings for IoT Operations service checks.
 
 """
 
@@ -158,15 +158,6 @@ LNM_POD_CONDITION_TEXT_MAP = {
 
 # Check constants
 ALL_NAMESPACES_TARGET = '_all_'
-
-
-class MqCheckType(Enum):
-    """
-    MQ environment check type.
-    """
-
-    pre = "pre"
-    post = "post"
 
 
 # MQ connector enums

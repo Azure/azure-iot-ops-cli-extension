@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 def support_bundle(
     cmd,
     log_age_seconds: int = 60 * 60 * 24,
-    edge_service: str = "auto",
+    ops_service: str = "auto",
     bundle_dir: Optional[str] = None,
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
@@ -30,7 +30,7 @@ def support_bundle(
     from .providers.support_bundle import build_bundle
 
     bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir)
-    return build_bundle(edge_service=edge_service, bundle_path=str(bundle_path), log_age_seconds=log_age_seconds)
+    return build_bundle(ops_service=ops_service, bundle_path=str(bundle_path), log_age_seconds=log_age_seconds)
 
 
 def check(
@@ -40,7 +40,7 @@ def check(
     post_deployment_checks: Optional[bool] = None,
     as_object=None,
     context_name=None,
-    edge_service: str = "mq",
+    ops_service: str = "mq",
     resource_kinds: List[str] = None,
 ) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
@@ -54,7 +54,7 @@ def check(
         run_pre = False
 
     return run_checks(
-        edge_service=edge_service,
+        ops_service=ops_service,
         detail_level=detail_level,
         as_list=not as_object,
         pre_deployment=run_pre,

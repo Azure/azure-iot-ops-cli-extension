@@ -11,7 +11,7 @@ import yaml
 from knack.log import get_logger
 from rich.console import Console, NewLine
 
-from ..common import SupportForEdgeServiceType
+from ..common import OpsServiceType
 from ..providers.edge_api import (
     DATA_PROCESSOR_API_V1,
     MQ_API_V1B1,
@@ -36,7 +36,7 @@ COMPAT_LNM_APIS = EdgeApiManager(resource_apis=[LNM_API_V1B1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 
 
-def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[int] = None):
+def build_bundle(ops_service: str, bundle_path: str, log_age_seconds: Optional[int] = None):
     from rich.live import Live
     from rich.progress import Progress
     from rich.table import Table
@@ -50,43 +50,43 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
 
-    pending_work = {k: {} for k in SupportForEdgeServiceType.list() + ["common"]}
-    pending_work.pop(SupportForEdgeServiceType.auto.value)
+    pending_work = {k: {} for k in OpsServiceType.list() + ["common"]}
+    pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
-        SupportForEdgeServiceType.mq.value: {"apis": COMPAT_MQ_APIS, "prepare_bundle": prepare_mq_bundle},
-        SupportForEdgeServiceType.opcua.value: {
+        OpsServiceType.mq.value: {"apis": COMPAT_MQ_APIS, "prepare_bundle": prepare_mq_bundle},
+        OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
         },
-        SupportForEdgeServiceType.dataprocessor.value: {
+        OpsServiceType.dataprocessor.value: {
             "apis": COMPAT_DATA_PROCESSOR_APIS,
             "prepare_bundle": prepare_dataprocessor_bundle,
         },
-        SupportForEdgeServiceType.orc.value: {
+        OpsServiceType.orc.value: {
             "apis": COMPAT_ORC_APIS,
             "prepare_bundle": prepare_symphony_bundle,
         },
-        SupportForEdgeServiceType.lnm.value: {
+        OpsServiceType.lnm.value: {
             "apis": COMPAT_LNM_APIS,
             "prepare_bundle": prepare_lnm_bundle,
         },
-        SupportForEdgeServiceType.akri.value: {"apis": COMPAT_AKRI_APIS, "prepare_bundle": prepare_akri_bundle},
-        SupportForEdgeServiceType.deviceregistry.value: {
+        OpsServiceType.akri.value: {"apis": COMPAT_AKRI_APIS, "prepare_bundle": prepare_akri_bundle},
+        OpsServiceType.deviceregistry.value: {
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,
         },
     }
 
-    raise_on_404 = not (edge_service == SupportForEdgeServiceType.auto.value)
+    raise_on_404 = not (ops_service == OpsServiceType.auto.value)
 
     for service_moniker, api_info in api_map.items():
-        if edge_service in [SupportForEdgeServiceType.auto.value, service_moniker]:
+        if ops_service in [OpsServiceType.auto.value, service_moniker]:
             deployed_apis = api_info["apis"].get_deployed(raise_on_404)
             if deployed_apis:
                 bundle_method = api_info["prepare_bundle"]
                 # Check if the function takes a second argument
-                if service_moniker == SupportForEdgeServiceType.deviceregistry.value:
+                if service_moniker == OpsServiceType.deviceregistry.value:
                     bundle = bundle_method(deployed_apis)
                 else:
                     bundle = bundle_method(deployed_apis, log_age_seconds)
@@ -95,7 +95,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
 
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):
-        logger.warning("No known edge services discovered on cluster.")
+        logger.warning("No known IoT Operations services discovered on cluster.")
         return
 
     pending_work["common"].update(prepare_shared_bundle())
@@ -114,7 +114,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
             total=total_work_count,
         )
 
-        def visually_process(description: str, support_segment: dict, edge_service: str):
+        def visually_process(description: str, support_segment: dict, ops_service: str):
             namespace_task = uber_progress.add_task(f"[cyan]{description}", total=len(support_segment))
             for element in support_segment:
                 header = f"Fetching [medium_purple4]{element}[/medium_purple4] data..."
@@ -129,10 +129,10 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
 
                 try:
                     # Produce as much support collateral as possible.
-                    bundle[edge_service][element] = support_segment[element]()
+                    bundle[ops_service][element] = support_segment[element]()
                 except Exception as e:
                     # @digimaun - bdb.BdbQuit?
-                    logger.debug(f"Unable to process {edge_service} {element}:\n{e}")
+                    logger.debug(f"Unable to process {ops_service} {element}:\n{e}")
 
                 if not uber_progress.finished:
                     uber_progress.update(namespace_task, advance=1)
@@ -143,7 +143,7 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
                 visually_process(
                     description=f"Processing {service}",
                     support_segment=pending_work[service],
-                    edge_service=service,
+                    ops_service=service,
                 )
 
     write_zip(file_path=bundle_path, bundle=bundle)
@@ -153,12 +153,12 @@ def build_bundle(edge_service: str, bundle_path: str, log_age_seconds: Optional[
 def write_zip(bundle: dict, file_path: str):
     with ZipFile(file=file_path, mode="w", compression=ZIP_DEFLATED) as myzip:
         todo: List[dict] = []
-        for edge_service in bundle:
-            for element in bundle[edge_service]:
-                if isinstance(bundle[edge_service][element], list):
-                    todo.extend(bundle[edge_service][element])
+        for ops_service in bundle:
+            for element in bundle[ops_service]:
+                if isinstance(bundle[ops_service][element], list):
+                    todo.extend(bundle[ops_service][element])
                 else:
-                    todo.append(bundle[edge_service][element])
+                    todo.append(bundle[ops_service][element])
 
         added_path = {}
         for t in todo:

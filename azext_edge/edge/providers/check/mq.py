@@ -12,14 +12,12 @@ from .base import (
     CheckManager,
     decorate_resource_status,
     check_post_deployment,
-    check_pre_deployment,
     evaluate_pod_health,
     get_resource_name,
-    process_as_list,
     resources_grouped_by_namespace
 )
 
-from rich.console import Console, NewLine
+from rich.console import NewLine
 from rich.padding import Padding
 
 from ...common import (
@@ -47,34 +45,6 @@ from ..base import get_namespaced_service
 
 
 def check_mq_deployment(
-    console: Console,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
-    pre_deployment: bool = True,
-    post_deployment: bool = True,
-    as_list: bool = False,
-    resource_kinds: List[str] = None,
-    result: Dict[str, Any] = None,
-) -> Union[Dict[str, Any], None]:
-    if pre_deployment:
-        check_pre_deployment(result, as_list)
-
-    if post_deployment:
-        result["postDeployment"] = []
-        # check post deployment according to edge_service type
-        check_mq_post_deployment(
-            detail_level=detail_level,
-            result=result,
-            as_list=as_list,
-            resource_kinds=resource_kinds,
-        )
-
-    if not as_list:
-        return result
-
-    return process_as_list(console=console, result=result)
-
-
-def check_mq_post_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
@@ -89,7 +59,7 @@ def check_mq_post_deployment(
         MqResourceKinds.KAFKA_CONNECTOR: evaluate_kafka_connectors,
     }
 
-    return check_post_deployment(
+    check_post_deployment(
         api_info=MQ_ACTIVE_API,
         check_name="enumerateMqApi",
         check_desc="Enumerate MQ API resources",
@@ -195,14 +165,15 @@ def evaluate_diagnostics_service(
                 ("staleDataTimeoutSeconds", "Stale Data Timeout", " seconds"),
             ]:
                 val = diag_service_resource_spec.get(key)
-                check_manager.add_display(
-                    target_name=target_diagnostic_service,
-                    namespace=namespace,
-                    display=Padding(
-                        f"{label}: [bright_blue]{val}[/bright_blue]{suffix or ''}",
-                        (0, 0, 0, 12),
-                    ),
-                )
+                if detail_level != ResourceOutputDetailLevel.summary.value:
+                    check_manager.add_display(
+                        target_name=target_diagnostic_service,
+                        namespace=namespace,
+                        display=Padding(
+                            f"{label}: [bright_blue]{val}[/bright_blue]{suffix or ''}",
+                            (0, 0, 0, 12),
+                        ),
+                    )
             check_manager.add_target_eval(
                 target_name=target_diagnostic_service,
                 namespace=namespace,
@@ -264,7 +235,7 @@ def evaluate_diagnostics_service(
                         (0, 0, 0, 12),
                     ),
                 )
-                if ports:
+                if ports and detail_level != ResourceOutputDetailLevel.summary.value:
                     for port in ports:
                         check_manager.add_display(
                             target_name=target_service_deployed,
@@ -359,12 +330,13 @@ def evaluate_broker_listeners(
         for listener in listeners:
             namespace: str = namespace or listener["metadata"]["namespace"]
             listener_name: str = listener["metadata"]["name"]
-            listener_spec_service_name: str = listener["spec"]["serviceName"]
-            listener_spec_service_type: str = listener["spec"]["serviceType"]
-            listener_broker_ref: str = listener["spec"]["brokerRef"]
+            listener_spec = listener['spec']
+            listener_spec_service_name: str = listener_spec["serviceName"]
+            listener_spec_service_type: str = listener_spec["serviceType"]
+            listener_broker_ref: str = listener_spec["brokerRef"]
 
             listener_eval_value = {}
-            listener_eval_value["spec"] = listener["spec"]
+            listener_eval_value["spec"] = listener_spec
 
             if listener_broker_ref not in valid_broker_refs:
                 ref_display = f"[red]Invalid[/red] broker reference {{[red]{listener_broker_ref}[/red]}}."
@@ -376,40 +348,30 @@ def evaluate_broker_listeners(
 
             listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}. {ref_display}"
             check_manager.add_display(target_name=target_listeners, namespace=namespace, display=Padding(listener_desc, (0, 0, 0, 8)))
-            check_manager.add_display(
-                target_name=target_listeners,
-                namespace=namespace,
-                display=Padding(
-                    f"Port: [bright_blue]{listener['spec']['port']}[/bright_blue]",
-                    (0, 0, 0, 12),
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_listeners,
-                namespace=namespace,
-                display=Padding(
-                    f"AuthN enabled: [bright_blue]{listener['spec']['authenticationEnabled']}[/bright_blue]",
-                    (0, 0, 0, 12),
-                ),
-            )
-            check_manager.add_display(
-                target_name=target_listeners,
-                namespace=namespace,
-                display=Padding(
-                    f"AuthZ enabled: [bright_blue]{listener['spec']['authenticationEnabled']}[/bright_blue]",
-                    (0, 0, 0, 12),
-                ),
-            )
-            node_port = listener["spec"].get("nodePort")
-            if node_port:
-                check_manager.add_display(
-                    target_name=target_listeners,
-                    namespace=namespace,
-                    display=Padding(
-                        f"Node Port: [bright_blue]{node_port}[/bright_blue]",
-                        (0, 0, 0, 12),
-                    ),
-                )
+            if detail_level != ResourceOutputDetailLevel.summary.value:
+                for (label, val) in [
+                    ("Port", 'port'),
+                    ("AuthN enabled", 'authenticationEnabled'),
+                    ("AuthZ enabled", 'authorizationEnabled')
+                ]:
+                    check_manager.add_display(
+                        target_name=target_listeners,
+                        namespace=namespace,
+                        display=Padding(
+                            f"{label}: [bright_blue]{listener_spec.get(val)}[/bright_blue]",
+                            (0, 0, 0, 12),
+                        ),
+                    )
+                node_port = listener_spec.get("nodePort")
+                if node_port:
+                    check_manager.add_display(
+                        target_name=target_listeners,
+                        namespace=namespace,
+                        display=Padding(
+                            f"Node Port: [bright_blue]{node_port}[/bright_blue]",
+                            (0, 0, 0, 12),
+                        ),
+                    )
 
             if listener_spec_service_name not in processed_services:
                 target_listener_service = f"service/{listener_spec_service_name}"
@@ -445,92 +407,92 @@ def evaluate_broker_listeners(
                             (0, 0, 0, 8),
                         ),
                     )
+                    if detail_level != ResourceOutputDetailLevel.summary.value:
+                        if listener_spec_service_type.lower() == "loadbalancer":
+                            check_manager.set_target_conditions(
+                                target_name=target_listener_service,
+                                namespace=namespace,
+                                conditions=[
+                                    "status",
+                                    "len(status.loadBalancer.ingress[*].ip)>=1",
+                                ],
+                            )
+                            ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
 
-                    if listener_spec_service_type.lower() == "loadbalancer":
-                        check_manager.set_target_conditions(
-                            target_name=target_listener_service,
-                            namespace=namespace,
-                            conditions=[
-                                "status",
-                                "len(status.loadBalancer.ingress[*].ip)>=1",
-                            ],
-                        )
-                        ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
+                            service_status = associated_service.get("status", {})
+                            load_balancer = service_status.get("loadBalancer", {})
+                            ingress_rules: List[dict] = load_balancer.get("ingress", [])
 
-                        service_status = associated_service.get("status", {})
-                        load_balancer = service_status.get("loadBalancer", {})
-                        ingress_rules: List[dict] = load_balancer.get("ingress", [])
+                            if not ingress_rules:
+                                listener_service_eval_status = CheckTaskStatus.warning.value
+                                ingress_count_colored = "[red]Detected 0[/red]."
+                            else:
+                                ingress_count_colored = f"[green]Detected {len(ingress_rules)}[/green]."
 
-                        if not ingress_rules:
-                            listener_service_eval_status = CheckTaskStatus.warning.value
-                            ingress_count_colored = "[red]Detected 0[/red]."
-                        else:
-                            ingress_count_colored = f"[green]Detected {len(ingress_rules)}[/green]."
-
-                        check_manager.add_display(
-                            target_name=target_listener_service,
-                            namespace=namespace,
-                            display=Padding(
-                                ingress_rules_desc.format(ingress_count_colored),
-                                (0, 0, 0, 12),
-                            ),
-                        )
-
-                        if ingress_rules:
                             check_manager.add_display(
                                 target_name=target_listener_service,
                                 namespace=namespace,
-                                display=Padding("\nIngress", (0, 0, 0, 12)),
+                                display=Padding(
+                                    ingress_rules_desc.format(ingress_count_colored),
+                                    (0, 0, 0, 12),
+                                ),
                             )
 
-                        for ingress in ingress_rules:
-                            ip = ingress.get("ip")
-                            if ip:
-                                rule_desc = f"- ip: [green]{ip}[/green]"
+                            if ingress_rules:
                                 check_manager.add_display(
                                     target_name=target_listener_service,
                                     namespace=namespace,
-                                    display=Padding(rule_desc, (0, 0, 0, 16)),
+                                    display=Padding("\nIngress", (0, 0, 0, 12)),
                                 )
-                            else:
+
+                            for ingress in ingress_rules:
+                                ip = ingress.get("ip")
+                                if ip:
+                                    rule_desc = f"- ip: [green]{ip}[/green]"
+                                    check_manager.add_display(
+                                        target_name=target_listener_service,
+                                        namespace=namespace,
+                                        display=Padding(rule_desc, (0, 0, 0, 16)),
+                                    )
+                                else:
+                                    listener_service_eval_status = CheckTaskStatus.warning.value
+
+                            check_manager.add_target_eval(
+                                target_name=target_listener_service,
+                                namespace=namespace,
+                                status=listener_service_eval_status,
+                                value=service_status,
+                            )
+
+                        if listener_spec_service_type.lower() == "clusterip":
+                            check_manager.set_target_conditions(
+                                target_name=target_listener_service,
+                                namespace=namespace,
+                                conditions=["spec.clusterIP"],
+                            )
+                            cluster_ip = associated_service.get("spec", {}).get("clusterIP")
+
+                            cluster_ip_desc = "Cluster IP: {}"
+                            if not cluster_ip:
                                 listener_service_eval_status = CheckTaskStatus.warning.value
+                                cluster_ip_desc = cluster_ip_desc.format("[yellow]Undetermined[/yellow]")
+                            else:
+                                cluster_ip_desc = cluster_ip_desc.format(f"[cyan]{cluster_ip}[/cyan]")
 
-                        check_manager.add_target_eval(
-                            target_name=target_listener_service,
-                            namespace=namespace,
-                            status=listener_service_eval_status,
-                            value=service_status,
-                        )
+                            check_manager.add_display(
+                                target_name=target_listener_service,
+                                namespace=namespace,
+                                display=Padding(cluster_ip_desc, (0, 0, 0, 12)),
+                            )
+                            check_manager.add_target_eval(
+                                target_name=target_listener_service,
+                                namespace=namespace,
+                                status=listener_service_eval_status,
+                                value={"spec.clusterIP": cluster_ip},
+                            )
 
-                    if listener_spec_service_type.lower() == "clusterip":
-                        check_manager.set_target_conditions(
-                            target_name=target_listener_service,
-                            namespace=namespace,
-                            conditions=["spec.clusterIP"],
-                        )
-                        cluster_ip = associated_service.get("spec", {}).get("clusterIP")
-
-                        cluster_ip_desc = "Cluster IP: {}"
-                        if not cluster_ip:
-                            listener_service_eval_status = CheckTaskStatus.warning.value
-                            cluster_ip_desc = cluster_ip_desc.format("[yellow]Undetermined[/yellow]")
-                        else:
-                            cluster_ip_desc = cluster_ip_desc.format(f"[cyan]{cluster_ip}[/cyan]")
-
-                        check_manager.add_display(
-                            target_name=target_listener_service,
-                            namespace=namespace,
-                            display=Padding(cluster_ip_desc, (0, 0, 0, 12)),
-                        )
-                        check_manager.add_target_eval(
-                            target_name=target_listener_service,
-                            namespace=namespace,
-                            status=listener_service_eval_status,
-                            value={"spec.clusterIP": cluster_ip},
-                        )
-
-                    if listener_spec_service_type.lower() == "nodeport":
-                        pass
+                        if listener_spec_service_type.lower() == "nodeport":
+                            pass
 
             check_manager.add_target_eval(
                 target_name=target_listeners,
@@ -635,16 +597,17 @@ def evaluate_brokers(
                     added_distributed_conditions = True
 
                 check_manager.set_target_conditions(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
-                check_manager.add_display(
-                    target_name=target_brokers,
-                    namespace=namespace,
-                    display=Padding("\nCardinality", (0, 0, 0, 12)),
-                )
                 broker_cardinality: dict = broker_spec.get("cardinality")
                 broker_eval_value["spec.cardinality"] = broker_cardinality
                 broker_eval_value["spec.mode"] = broker_mode
                 if not broker_cardinality:
                     broker_eval_status = CheckTaskStatus.error.value
+                    # show cardinality display (regardless of detail level) if it's missing
+                    check_manager.add_display(
+                        target_name=target_brokers,
+                        namespace=namespace,
+                        display=Padding("\nCardinality", (0, 0, 0, 12)),
+                    )
                     check_manager.add_display(
                         target_name=target_brokers,
                         namespace=namespace,
@@ -657,11 +620,13 @@ def evaluate_brokers(
                     backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
                     backend_redundancy_desc = "- Expecting backend redundancy factor [bright_blue]>=1[/bright_blue]. {}"
                     backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
+                    frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
 
                     backend_chain = broker_cardinality.get("backendChain", {})
                     backend_partition_count: Optional[int] = backend_chain.get("partitions")
                     backend_redundancy: Optional[int] = backend_chain.get("redundancyFactor")
                     backend_workers: Optional[int] = backend_chain.get("workers")
+                    frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
 
                     if backend_partition_count and backend_partition_count >= 1:
                         backend_chain_count_colored = f"[green]Actual {backend_partition_count}[/green]."
@@ -681,50 +646,34 @@ def evaluate_brokers(
                         backend_workers_colored = f"[red]Actual {backend_workers}[/red]."
                         broker_eval_status = CheckTaskStatus.error.value
 
-                    check_manager.add_display(
-                        target_name=target_brokers,
-                        namespace=namespace,
-                        display=Padding(
-                            backend_cardinality_desc.format(backend_chain_count_colored),
-                            (0, 0, 0, 16),
-                        ),
-                    )
-                    check_manager.add_display(
-                        target_name=target_brokers,
-                        namespace=namespace,
-                        display=Padding(
-                            backend_redundancy_desc.format(backend_replicas_colored),
-                            (0, 0, 0, 16),
-                        ),
-                    )
-                    check_manager.add_display(
-                        target_name=target_brokers,
-                        namespace=namespace,
-                        display=Padding(
-                            backend_workers_desc.format(backend_workers_colored),
-                            (0, 0, 0, 16),
-                        ),
-                    )
-
-                    frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
-                    frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
-
                     if frontend_replicas and frontend_replicas >= 1:
                         frontend_replicas_colored = f"[green]Actual {frontend_replicas}[/green]."
                     else:
                         frontend_replicas_colored = f"[red]Actual {frontend_replicas}[/red]."
 
-                    check_manager.add_display(
-                        target_name=target_brokers,
-                        namespace=namespace,
-                        display=Padding(
-                            frontend_cardinality_desc.format(frontend_replicas_colored),
-                            (0, 0, 0, 16),
-                        ),
-                    )
+                    # show cardinality display on non-summary detail_levels
+                    if detail_level != ResourceOutputDetailLevel.summary.value:
+                        check_manager.add_display(
+                            target_name=target_brokers,
+                            namespace=namespace,
+                            display=Padding("\nCardinality", (0, 0, 0, 12)),
+                        )
+
+                        for display in [
+                            backend_cardinality_desc.format(backend_chain_count_colored),
+                            backend_redundancy_desc.format(backend_replicas_colored),
+                            backend_workers_desc.format(backend_workers_colored),
+                            frontend_cardinality_desc.format(frontend_replicas_colored)
+                        ]:
+                            check_manager.add_display(
+                                target_name=target_brokers,
+                                namespace=namespace,
+                                display=Padding(display, (0, 0, 0, 16)),
+                            )
 
             diagnostic_detail_padding = (0, 0, 0, 16)
-            if broker_diagnostics:
+            # show diagnostics display only on verbose detail_level
+            if broker_diagnostics and detail_level == ResourceOutputDetailLevel.verbose.value:
                 check_manager.add_display(
                     target_name=target_brokers,
                     namespace=namespace,
@@ -746,12 +695,18 @@ def evaluate_brokers(
                             diagnostic_detail_padding,
                         ),
                     )
-            else:
+            # show broker diagnostics error regardless of detail_level
+            elif not broker_diagnostics:
                 check_manager.add_target_eval(
                     target_name=target_brokers,
                     namespace=namespace,
                     status=CheckTaskStatus.warning.value,
                     value=None,
+                )
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    display=Padding("\nBroker Diagnostics", (0, 0, 0, 12)),
                 )
                 check_manager.add_display(
                     target_name=target_brokers,
@@ -865,7 +820,7 @@ def evaluate_mqtt_bridge_connectors(
                         namespace=namespace,
                         display=Padding(
                             f"- Route {{[blue]{route_name}[/blue]}}",
-                            padding,
+                            route_padding,
                         ),
                     )
 
@@ -925,49 +880,49 @@ def evaluate_mqtt_bridge_connectors(
         connector_instances = spec.get("bridgeInstances")
         client_prefix = spec.get("clientIdPrefix")
         detail_padding = (0, 0, 0, padding[-1] + 4)
-
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(
-                f"Bridge instances: [bright_blue]{connector_instances}[/bright_blue]",
-                detail_padding,
-            ),
-        )
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(
-                f"Client Prefix: [bright_blue]{client_prefix}[/bright_blue]",
-                detail_padding,
-            ),
-        )
-        # local broker endpoint
-        for (label, key) in [
-            ("Local Broker Connection", "localBrokerConnection"),
-            ("Remote Broker Connection", "remoteBrokerConnection")
-        ]:
-            broker = spec.get(key, {})
-            endpoint = broker.get("endpoint")
+        if detail_level != ResourceOutputDetailLevel.summary.value:
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
                 display=Padding(
-                    f"{label}: [bright_blue]{endpoint}[/bright_blue]",
+                    f"Bridge instances: [bright_blue]{connector_instances}[/bright_blue]",
                     detail_padding,
                 ),
             )
-            if detail_level != ResourceOutputDetailLevel.summary.value:
-                auth = next(iter(broker.get("authentication")))
-                tls = broker.get("tls", {}).get("tlsEnabled", False)
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(
+                    f"Client Prefix: [bright_blue]{client_prefix}[/bright_blue]",
+                    detail_padding,
+                ),
+            )
+            # local broker endpoint
+            for (label, key) in [
+                ("Local Broker Connection", "localBrokerConnection"),
+                ("Remote Broker Connection", "remoteBrokerConnection")
+            ]:
+                broker = spec.get(key, {})
+                endpoint = broker.get("endpoint")
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
                     display=Padding(
-                        f"Auth: [bright_blue]{auth}[/bright_blue] TLS: [bright_blue]{tls}[/bright_blue]",
+                        f"{label}: [bright_blue]{endpoint}[/bright_blue]",
                         detail_padding,
                     ),
                 )
+                if detail_level == ResourceOutputDetailLevel.verbose.value:
+                    auth = next(iter(broker.get("authentication")))
+                    tls = broker.get("tls", {}).get("tlsEnabled", False)
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(
+                            f"Auth: [bright_blue]{auth}[/bright_blue] TLS: [bright_blue]{tls}[/bright_blue]",
+                            detail_padding,
+                        ),
+                    )
 
     return process_cloud_connector(
         connector_target="mqttbridgeconnectors.mq.iotoperations.azure.com",
@@ -1170,7 +1125,7 @@ def evaluate_datalake_connectors(
 def evaluate_kafka_connectors(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-):
+) -> Dict[str, Any]:
     def display_connector_info(check_manager: CheckManager, target: str, namespace: str, connector: Dict[str, Any], detail_level: str, padding: tuple):
         connector_name = get_resource_name(connector)
         connector_status = connector.get("status", {})
@@ -1230,49 +1185,45 @@ def evaluate_kafka_connectors(
             resource_kind=MqResourceKinds.KAFKA_CONNECTOR.value,
         )
 
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(f"Client ID Prefix: [bright_blue]{clientIdPrefix}[/bright_blue]", detail_padding),
-        )
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(f"Instances: [bright_blue]{instances}[/bright_blue]", detail_padding)
-        )
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(f"logLevel: [bright_blue]{logLevel}[/bright_blue]", detail_padding)
-        )
+        if detail_level != ResourceOutputDetailLevel.summary.value:
+            for (label, val) in [
+                ("Client ID Prefix", clientIdPrefix),
+                ("Instances", instances),
+                ("Log Level", logLevel),
+            ]:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: [bright_blue]{val}[/bright_blue]", detail_padding),
+                )
 
-        broker_detail_padding = (0, 0, 0, detail_padding[3] + 4)
+            broker_detail_padding = (0, 0, 0, detail_padding[3] + 4)
 
-        for (label, broker) in [
-            ("Local Broker Connection", broker),
-            ("Kafka Broker Connection", kafka_broker)
-        ]:
-            endpoint = broker.get("endpoint")
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(
-                    f"{label}: [bright_blue]{endpoint}[/bright_blue]",
-                    detail_padding,
-                ),
-            )
-            if detail_level != ResourceOutputDetailLevel.summary.value:
-                auth = next(iter(broker.get("authentication", {})))
-                tls = broker.get("tls", {}).get("tlsEnabled", False)
-
+            for (label, broker) in [
+                ("Local Broker Connection", broker),
+                ("Kafka Broker Connection", kafka_broker)
+            ]:
+                endpoint = broker.get("endpoint")
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
                     display=Padding(
-                        f"Auth: [bright_blue]{auth}[/bright_blue] TLS: [bright_blue]{tls}[/bright_blue]",
-                        broker_detail_padding,
+                        f"{label}: [bright_blue]{endpoint}[/bright_blue]",
+                        detail_padding,
                     ),
                 )
+                if detail_level == ResourceOutputDetailLevel.verbose.value:
+                    auth = next(iter(broker.get("authentication", {})))
+                    tls = broker.get("tls", {}).get("tlsEnabled", False)
+
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(
+                            f"Auth: [bright_blue]{auth}[/bright_blue] TLS: [bright_blue]{tls}[/bright_blue]",
+                            broker_detail_padding,
+                        ),
+                    )
 
     def display_topic_maps(check_manager: CheckManager, target: str, namespace: str, topic_maps: List[Dict[str, Any]], detail_level: str, padding: tuple):
         # Show warning if no topic maps
@@ -1296,10 +1247,9 @@ def evaluate_kafka_connectors(
                     padding,
                 ),
             )
-
-            if detail_level != ResourceOutputDetailLevel.summary.value:
-                detail_padding = (0, 0, 0, padding[3] + 4)
-                spec = topic_map.get("spec", {})
+            spec = topic_map.get("spec", {})
+            detail_padding = (0, 0, 0, padding[3] + 4)
+            if detail_level == ResourceOutputDetailLevel.verbose.value:
 
                 for label, key in [
                     ("Compression", "compression"),
@@ -1317,36 +1267,35 @@ def evaluate_kafka_connectors(
                         ),
                     )
 
-                if detail_level == ResourceOutputDetailLevel.verbose.value:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(
+                        "Batching:",
+                        detail_padding
+                    )
+                )
+                batch_detail_padding = (0, 0, 0, detail_padding[3] + 4)
+                batching = spec.get("batching", {})
+                for label, key in [
+                    ("Enabled", "enabled"),
+                    ("Latency (ms)", "latencyMs"),
+                    ("Max bytes", "maxBytes"),
+                    ("Max messages", "maxMessages"),
+                ]:
+                    val = batching.get(key)
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
                         display=Padding(
-                            "Batching:",
-                            detail_padding
-                        )
+                            f"{label}: [bright_blue]{val}[/bright_blue]",
+                            batch_detail_padding,
+                        ),
                     )
-                    batch_detail_padding = (0, 0, 0, detail_padding[3] + 4)
-                    batching = spec.get("batching", {})
-                    for label, key in [
-                        ("Enabled", "enabled"),
-                        ("Latency (ms)", "latencyMs"),
-                        ("Max bytes", "maxBytes"),
-                        ("Max messages", "maxMessages"),
-                    ]:
-                        val = batching.get(key)
-                        check_manager.add_display(
-                            target_name=target,
-                            namespace=namespace,
-                            display=Padding(
-                                f"{label}: [bright_blue]{val}[/bright_blue]",
-                                batch_detail_padding,
-                            ),
-                        )
 
-                display_routes(
-                    check_manager=check_manager, target=target, namespace=namespace, routes=spec.get("routes", []), detail_level=detail_level, padding=detail_padding
-                )
+            display_routes(
+                check_manager=check_manager, target=target, namespace=namespace, routes=spec.get("routes", []), detail_level=detail_level, padding=detail_padding
+            )
 
     def display_routes(check_manager: CheckManager, target: str, namespace: str, routes: List[Dict[str, str]], detail_level: str, padding: tuple):
         for route in routes:
@@ -1468,7 +1417,7 @@ def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = Non
     return result
 
 
-def _calculate_connector_status(resource_state: str):
+def _calculate_connector_status(resource_state: str) -> str:
     eval_status = CheckTaskStatus.success.value
 
     if resource_state in [ResourceState.error.value, ResourceState.failed.value]:

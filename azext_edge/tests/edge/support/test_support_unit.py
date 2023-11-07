@@ -94,7 +94,7 @@ def test_create_bundle(
 
     if mocked_cluster_resources["param"] == []:
         auto_result_no_resources = support_bundle(None, bundle_dir=a_bundle_dir)
-        mocked_root_logger.warning.assert_called_once_with("No known edge services discovered on cluster.")
+        mocked_root_logger.warning.assert_called_once_with("No known IoT Operations services discovered on cluster.")
         assert auto_result_no_resources is None
         return
 
@@ -382,35 +382,19 @@ def test_create_bundle(
 
 
 def asset_raises_not_found_error(mocked_cluster_resources):
-    if not mocked_cluster_resources["param"] or all(
-        api not in mocked_cluster_resources["param"] for api in COMPAT_MQ_APIS.resource_apis
-    ):
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="mq")
 
-    if not mocked_cluster_resources["param"] or OPCUA_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="opcua")
-
-    if not mocked_cluster_resources["param"] or DATA_PROCESSOR_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="dataprocessor")
-
-    if not mocked_cluster_resources["param"] or ORC_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="orc")
-
-    if not mocked_cluster_resources["param"] or LNM_API_V1B1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="lnm")
-
-    if not mocked_cluster_resources["param"] or DEVICEREGISTRY_API_V1 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="deviceregistry")
-
-    if not mocked_cluster_resources["param"] or AKRI_API_V0 not in mocked_cluster_resources["param"]:
-        with pytest.raises(ResourceNotFoundError):
-            support_bundle(None, bundle_dir=a_bundle_dir, edge_service="akri")
+    for (api, moniker) in [
+        (MQ_API_V1B1, "mq"),
+        (OPCUA_API_V1, "opcua"),
+        (DATA_PROCESSOR_API_V1, "dataprocessor"),
+        (ORC_API_V1, "orc"),
+        (LNM_API_V1B1, "lnm"),
+        (DEVICEREGISTRY_API_V1, "deviceregistry"),
+        (AKRI_API_V0, "akri"),
+    ]:
+        if not mocked_cluster_resources["param"] or api not in mocked_cluster_resources["param"]:
+            with pytest.raises(ResourceNotFoundError):
+                support_bundle(None, bundle_dir=a_bundle_dir, ops_service=moniker)
 
 
 def assert_get_custom_resources(
