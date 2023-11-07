@@ -20,7 +20,7 @@ from .conftest import (
     generate_resource_stub,
 )
 from ...generators import generate_generic_id
-from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
+from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 
 
 @pytest.mark.parametrize(
@@ -53,6 +53,7 @@ def test_check_dataprocessor_by_resource_types(ops_service, mocker, mock_resourc
     assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
 
 
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize(
     "instance, namespace_conditions, all_conditions, namespace_evaluations, all_evaluations",
     [
@@ -118,7 +119,8 @@ def test_instance_checks(
     namespace_conditions,
     all_conditions,
     namespace_evaluations,
-    all_evaluations
+    all_evaluations,
+    detail_level
 ):
     namespace = generate_generic_id()
     instance['metadata']['namespace'] = namespace
@@ -127,7 +129,7 @@ def test_instance_checks(
         side_effect=[{"items": [instance]}],
     )
 
-    result = evaluate_instances()
+    result = evaluate_instances(detail_level=detail_level)
 
     assert result["name"] == "evalInstances"
     assert result["targets"]["instances.dataprocessor.iotoperations.azure.com"]
@@ -143,6 +145,7 @@ def test_instance_checks(
             assert_evaluations(target[namespace], namespace_evaluations)
 
 
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize(
     "pipelines, namespace_conditions, all_conditions, namespace_evaluations, all_evaluations",
     [
@@ -229,6 +232,10 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
+                    ("value/spec.input.partitionCount", 1),
+                ],
+                [
+                    ("status", "success"),
                     ("value/destinationNodeCount", 1),
                 ]
             ],
@@ -238,7 +245,7 @@ def test_instance_checks(
                     ("status", "success"),
                     ("value/pipelines", 1),
                 ]
-            ]
+            ],
         ),
         (
             # pipelines
@@ -412,7 +419,7 @@ def test_instance_checks(
                     ("status", "success"),
                     ("value/pipelines", 1),
                 ]
-            ]
+            ],
         ),
         (
             # pipelines
@@ -437,7 +444,7 @@ def test_instance_checks(
                     ("status", "skipped"),
                     ("value/pipelines", None),
                 ]
-            ]
+            ],
         ),
     ]
 )
@@ -448,7 +455,8 @@ def test_pipeline_checks(
     namespace_conditions,
     all_conditions,
     namespace_evaluations,
-    all_evaluations
+    all_evaluations,
+    detail_level
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -458,7 +466,7 @@ def test_pipeline_checks(
     namespace = generate_generic_id()
     for pipeline in pipelines:
         pipeline['metadata']['namespace'] = namespace
-    result = evaluate_pipelines()
+    result = evaluate_pipelines(detail_level=detail_level)
 
     assert result["name"] == "evalPipelines"
     assert result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"]
@@ -474,6 +482,7 @@ def test_pipeline_checks(
             assert_evaluations(target[namespace], namespace_evaluations)
 
 
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize(
     "datasets, namespace_conditions, all_conditions, namespace_evaluations, all_evaluations",
     [
@@ -547,7 +556,8 @@ def test_dataset_checks(
     namespace_conditions,
     all_conditions,
     namespace_evaluations,
-    all_evaluations
+    all_evaluations,
+    detail_level
 ):
     namespace = generate_generic_id()
     for dataset in datasets:
@@ -557,7 +567,7 @@ def test_dataset_checks(
         side_effect=[{"items": datasets}],
     )
 
-    result = evaluate_datasets()
+    result = evaluate_datasets(detail_level=detail_level)
 
     assert result["name"] == "evalDatasets"
     assert result["targets"]["datasets.dataprocessor.iotoperations.azure.com"]

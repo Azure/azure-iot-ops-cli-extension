@@ -562,14 +562,16 @@ def process_properties(
     namespace: str,
     padding: tuple
 ) -> None:
+    if not prop_value:
+        return
 
     for prop, display_name, verbose_only in properties:
         keys = prop.split('.')
         value = prop_value
         for key in keys:
             value = value.get(key)
-        if value is None:
-            continue
+            if value is None:
+                break
         if prop == "descriptor":
             value = value if detail_level == ResourceOutputDetailLevel.verbose.value else value[:10] + "..."
         if verbose_only and detail_level != ResourceOutputDetailLevel.verbose.value:
