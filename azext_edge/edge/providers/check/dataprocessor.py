@@ -703,7 +703,6 @@ def _evaluate_source_node(
             display=Padding(source_qos_display_text, (0, 0, 0, 16))
         )
 
-
     # check data source partition
     pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
     source_partition_count_display_text = "- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. {}."
