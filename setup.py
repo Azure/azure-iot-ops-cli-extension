@@ -27,18 +27,12 @@ if not PACKAGE_NAME:
     raise RuntimeError("Cannot find package information")
 
 
-# The following dependencies are needed by the IoT extension but used from Az CLI Core.
-# 'jmespath',
-# 'pyyaml'
-# 'knack'
-
 DEPENDENCIES = [
-    "rich",
-    "kubernetes",
-    "tomli",
-    "protobuf",
-    "opentelemetry-proto",
-    "azure-identity",
+    "rich>=13.6,<14.0",
+    "kubernetes>=27.2,<29.0",
+    "azure-identity>=1.14.1,<2.0",
+    "protobuf~=4.25.0",
+    "opentelemetry-proto~=1.20.0",
 ]
 
 CLASSIFIERS = [
