@@ -30,7 +30,7 @@ V1_TEMPLATE = TemplateVer(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.22.6.54827", "templateHash": "2330898468144527374"},
+            "_generator": {"name": "bicep", "version": "0.23.1.45101", "templateHash": "11298729832004572724"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
