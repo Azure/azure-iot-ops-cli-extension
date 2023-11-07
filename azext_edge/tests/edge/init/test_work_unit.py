@@ -27,6 +27,7 @@ from ...generators import generate_generic_id
     """
     cluster_name,
     cluster_namespace,
+    cluster_location,
     resource_group_name,
     keyvault_sat_secret_name,
     keyvault_resource_id,
@@ -58,6 +59,7 @@ from ...generators import generate_generic_id
         pytest.param(
             generate_generic_id(),  # cluster_name
             None,  # cluster_namespace
+            None,  # cluster_location
             generate_generic_id(),  # resource_group_name
             None,  # keyvault_sat_secret_name
             None,  # keyvault_resource_id
@@ -88,6 +90,7 @@ from ...generators import generate_generic_id
         pytest.param(
             generate_generic_id(),  # cluster_name
             generate_generic_id(),  # cluster_namespace
+            generate_generic_id(),  # cluster_location
             generate_generic_id(),  # resource_group_name
             generate_generic_id(),  # keyvault_sat_secret_name
             generate_generic_id(),  # keyvault_resource_id
@@ -118,6 +121,7 @@ from ...generators import generate_generic_id
         pytest.param(
             generate_generic_id(),  # cluster_name
             generate_generic_id(),  # cluster_namespace
+            generate_generic_id(),  # cluster_location
             generate_generic_id(),  # resource_group_name
             generate_generic_id(),  # keyvault_sat_secret_name
             generate_generic_id(),  # keyvault_resource_id
@@ -153,6 +157,7 @@ def test_init_to_template_params(
     mocked_config: Mock,
     cluster_name,
     cluster_namespace,
+    cluster_location,
     resource_group_name,
     keyvault_sat_secret_name,
     keyvault_resource_id,
@@ -184,6 +189,7 @@ def test_init_to_template_params(
 
     param_tuples = [
         (cluster_namespace, "cluster_namespace"),
+        (cluster_location, "cluster_location"),
         (keyvault_sat_secret_name, "keyvault_sat_secret_name"),
         (keyvault_resource_id, "keyvault_resource_id"),
         (custom_location_name, "custom_location_name"),
@@ -222,6 +228,11 @@ def test_init_to_template_params(
 
     assert "clusterName" in parameters
     assert parameters["clusterName"]["value"] == cluster_name
+
+    if cluster_location:
+        assert parameters["clusterLocation"]["value"] == cluster_location
+    else:
+        assert "clusterLocation" not in parameters
 
     assert "customLocationName" in parameters
     if custom_location_name:

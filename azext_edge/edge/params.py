@@ -218,6 +218,11 @@ def load_iotops_arguments(self, _):
             "If not provided the resource group location will be used.",
         )
         context.argument(
+            "cluster_location",
+            options_list=["--cluster-location"],
+            help="The cluster ARM location.",
+        )
+        context.argument(
             "show_template",
             options_list=["--show-template"],
             arg_type=get_three_state_flag(),
