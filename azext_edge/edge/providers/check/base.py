@@ -564,26 +564,25 @@ def process_properties(
 ) -> None:
 
     for prop, display_name, verbose_only in properties:
-        keys = prop.split('.')
-        if prop_value is None:
-            continue
-        value = prop_value
-        for key in keys:
-            value = value.get(key)
-        if value is None:
-            continue
-        if prop == "descriptor":
-            value = value if detail_level == ResourceOutputDetailLevel.verbose.value else value[:10] + "..."
-        if verbose_only and detail_level != ResourceOutputDetailLevel.verbose.value:
-            continue
-        process_property_by_type(
-            check_manager,
-            target_name,
-            properties=value,
-            display_name=display_name,
-            namespace=namespace,
-            padding=padding
-        )
+        if prop_value:
+            keys = prop.split('.')
+            value = prop_value
+            for key in keys:
+                value = value.get(key)
+                if value is None:
+                    break
+            if prop == "descriptor":
+                value = value if detail_level == ResourceOutputDetailLevel.verbose.value else value[:10] + "..."
+            if verbose_only and detail_level != ResourceOutputDetailLevel.verbose.value:
+                continue
+            process_property_by_type(
+                check_manager,
+                target_name,
+                properties=value,
+                display_name=display_name,
+                namespace=namespace,
+                padding=padding
+            )
 
 
 def process_property_by_type(
