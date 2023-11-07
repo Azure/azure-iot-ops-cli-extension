@@ -386,7 +386,7 @@ class WorkManager:
         for template_pair in [
             ("cluster_name", "clusterName"),
             ("location", "location"),
-            ("location", "clusterLocation"),  # TODO
+            ("cluster_location", "clusterLocation"),  # TODO
             ("custom_location_name", "customLocationName"),
             ("simulate_plc", "simulatePLC"),
             ("opcua_discovery_endpoint", "opcuaDiscoveryEndpoint"),
