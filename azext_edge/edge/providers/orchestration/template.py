@@ -38,12 +38,10 @@ V1_TEMPLATE = TemplateVer(
             "clusterLocation": {
                 "type": "string",
                 "defaultValue": "[parameters('location')]",
-                "allowedValues": ["eastus", "eastus2", "westus", "westus2", "westus3", "westeurope", "northeurope"],
             },
             "location": {
                 "type": "string",
                 "defaultValue": "[resourceGroup().location]",
-                "allowedValues": ["eastus", "eastus2", "westus", "westus2", "westus3", "westeurope", "northeurope"],
             },
             "customLocationName": {"type": "string", "defaultValue": "[format('{0}-cl', parameters('clusterName'))]"},
             "simulatePLC": {"type": "bool", "defaultValue": False},
