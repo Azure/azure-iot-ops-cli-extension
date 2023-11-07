@@ -703,41 +703,32 @@ def _evaluate_source_node(
             display=Padding(source_qos_display_text, (0, 0, 0, 16))
         )
 
-        # check data source partition
-        pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
+
+    # check data source partition
+    pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
+    source_partition_count_display_text = "- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. {}."
+
+    pipeline_source_partition_eval_value = {"spec.input.partitionCount": pipeline_source_node_partition_count}
+    pipeline_source_partition_eval_status = CheckTaskStatus.success.value
+
+    if pipeline_source_node_partition_count < 1 or pipeline_source_node_partition_count > 100:
+        pipeline_source_partition_eval_status = CheckTaskStatus.error.value
+        source_partition_count_display_text = source_partition_count_display_text.format(f"[red]Detected {pipeline_source_node_partition_count}[/red]")
+    else:
+        source_partition_count_display_text = source_partition_count_display_text.format(f"[green]Detected {pipeline_source_node_partition_count}[/green]")
+    check_manager.add_display(
+        target_name=target_pipelines,
+        namespace=namespace,
+        display=Padding(source_partition_count_display_text, (0, 0, 0, 16))
+    )
+
+    if detail_level != ResourceOutputDetailLevel.summary.value:
         pipeline_source_node_partition_strategy = pipeline_source_node["partitionStrategy"]["type"]
-        source_partition_count_display_text = f"- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. [green]Detected {pipeline_source_node_partition_count}[/green]."
         source_partition_strategy_display_text = f"The type of partitioning strategy is {{[bright_blue]{pipeline_source_node_partition_strategy}[/bright_blue]}}."
-
-        pipeline_source_partition_eval_value = {"spec.input.partitionCount": pipeline_source_node_partition_count}
-        pipeline_source_partition_eval_status = CheckTaskStatus.success.value
-
-        if pipeline_source_node_partition_count < 1 or pipeline_source_node_partition_count > 100:
-            pipeline_source_partition_eval_status = CheckTaskStatus.error.value
-        check_manager.add_display(
-            target_name=target_pipelines,
-            namespace=namespace,
-            display=Padding(source_partition_count_display_text, (0, 0, 0, 16))
-        )
         check_manager.add_display(
             target_name=target_pipelines,
             namespace=namespace,
             display=Padding(source_partition_strategy_display_text, (0, 0, 0, 18))
-        )
-    else:
-        # check data source partition
-        pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
-        source_partition_count_display_text = f"- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. [green]Detected {pipeline_source_node_partition_count}[/green]."
-
-        pipeline_source_partition_eval_value = {"spec.input.partitionCount": pipeline_source_node_partition_count}
-        pipeline_source_partition_eval_status = CheckTaskStatus.success.value
-
-        if pipeline_source_node_partition_count < 1 or pipeline_source_node_partition_count > 100:
-            pipeline_source_partition_eval_status = CheckTaskStatus.error.value
-        check_manager.add_display(
-            target_name=target_pipelines,
-            namespace=namespace,
-            display=Padding(source_partition_count_display_text, (0, 0, 0, 16))
         )
 
     check_manager.add_target_eval(
