@@ -221,6 +221,7 @@ def portforward_socket(namespace: str, pod_name: str, pod_port: str) -> Iterator
         import ssl
 
         context = ssl.create_default_context()
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
         target_socket = context.wrap_socket(sock=target_socket)
