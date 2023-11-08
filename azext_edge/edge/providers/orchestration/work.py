@@ -13,7 +13,7 @@ from azure.cli.core.azclierror import AzureResponseError
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
 from rich.console import NewLine
-from rich.live import Console, Live
+from rich.live import Live
 from rich.padding import Padding
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
