@@ -230,13 +230,6 @@ def load_iotops_arguments(self, _):
             arg_group="Template",
         )
         context.argument(
-            "show_ops_version",
-            options_list=["--ops-version"],
-            help="Summarize and show the versions of deployable components.",
-            arg_type=get_three_state_flag(),
-            arg_group="Ops Version",
-        )
-        context.argument(
             "no_progress",
             options_list=["--no-progress"],
             arg_type=get_three_state_flag(),

@@ -72,7 +72,6 @@ def init(
     keyvault_sat_secret_name: str = DEFAULT_NAMESPACE,
     custom_location_namespace: Optional[str] = None,
     custom_location_name: Optional[str] = None,
-    show_ops_version: Optional[bool] = None,
     location: Optional[str] = None,
     show_template: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
@@ -120,7 +119,7 @@ def init(
 
     load_config_context(context_name=context_name)
 
-    if keyvault_resource_id and not any([show_ops_version, show_template]):
+    if keyvault_resource_id and not show_template:
         logged_in_principal = LoggedInPrincipal(cmd=cmd)
         if logged_in_principal.is_app():
             app_principal = logged_in_principal.fetch_self_if_app()
@@ -184,7 +183,6 @@ def init(
         custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
         location=location,
-        show_ops_version=show_ops_version,
         show_template=show_template,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
         simulate_plc=simulate_plc,
