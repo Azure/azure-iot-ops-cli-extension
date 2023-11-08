@@ -63,7 +63,7 @@ def load_iotops_help():
         short-summary: Evaluate IoT Operations service deployment for health, configuration and usability.
         long-summary: |
             [Supported service APIs]
-                {MQ_ACTIVE_API.as_str()}
+                {COMPAT_MQ_APIS.as_str()}
                 {COMPAT_DATA_PROCESSOR_APIS.as_str()}
                 {COMPAT_LNM_APIS.as_str()}
     """
