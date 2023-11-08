@@ -453,19 +453,6 @@ class WorkManager:
 def deploy(
     **kwargs,
 ):
-    show_ops_version = kwargs.get("show_ops_version", False)
-    if show_ops_version:
-        console = Console()
-        table = Table(
-            title=f"Azure IoT Operations v{CURRENT_TEMPLATE.content_vers}",
-        )
-        table.add_column("Component", justify="left", style="cyan")
-        table.add_column("Version", justify="left", style="magenta")
-        for moniker in CURRENT_TEMPLATE.component_vers:
-            table.add_row(moniker, CURRENT_TEMPLATE.component_vers[moniker])
-        console.print(table)
-        return
-
     show_template = kwargs.get("show_template", False)
     if show_template:
         return CURRENT_TEMPLATE.content

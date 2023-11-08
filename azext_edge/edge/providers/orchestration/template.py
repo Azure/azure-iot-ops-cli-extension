@@ -25,12 +25,12 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="d5230cb9e7053f6a8dd7f89c7ad7ce0ab86e6009",
+    commit_id="70f891a08193a7e43bfbf9ce26f4b40466425be2",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.23.1.45101", "templateHash": "3952659546621685450"},
+            "_generator": {"name": "bicep", "version": "0.23.1.45101", "templateHash": "7874469671048964219"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -161,7 +161,7 @@ V1_TEMPLATE = TemplateVer(
                 "type": "helm.v3",
                 "properties": {
                     "chart": {
-                        "repo": "alicesprings.azurecr.io/helm/opentelemetry-collector",
+                        "repo": "azureiotoperations.azurecr.io/helm/opentelemetry-collector",
                         "version": "[variables('VERSIONS').observability]",
                     },
                     "values": {
@@ -225,7 +225,7 @@ V1_TEMPLATE = TemplateVer(
                                     "containers": [
                                         {
                                             "name": "akri-opcua-asset-discovery",
-                                            "image": "[format('mcr.microsoft.com/opcuabroker/discovery-handler:{0}', variables('VERSIONS').opcUaBroker)]",
+                                            "image": "[format('mcr.microsoft.com/azureiotoperations/opcuabroker/discovery-handler:{0}', variables('VERSIONS').opcUaBroker)]",
                                             "imagePullPolicy": "Always",
                                             "resources": {
                                                 "requests": {"memory": "64Mi", "cpu": "10m"},
@@ -275,7 +275,7 @@ V1_TEMPLATE = TemplateVer(
                 "name": "opc-ua-broker",
                 "properties": {
                     "chart": {
-                        "repo": "oci://mcr.microsoft.com/opcuabroker/helmchart/microsoft.iotoperations.opcuabroker",
+                        "repo": "oci://mcr.microsoft.com/azureiotoperations/opcuabroker/helmchart/microsoft.iotoperations.opcuabroker",
                         "version": "[variables('VERSIONS').opcUaBroker]",
                     },
                     "values": {
