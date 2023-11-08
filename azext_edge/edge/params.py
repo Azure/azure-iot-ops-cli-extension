@@ -336,6 +336,14 @@ def load_iotops_arguments(self, _):
             help="The mq authN name. The default is 'authn'.",
             arg_group="MQ",
         )
+        context.argument(
+            "mq_insecure",
+            options_list=["--mq-insecure"],
+            arg_type=get_three_state_flag(),
+            help="When enabled the mq deployment will include a listener with no authN or encrypted traffic. "
+            "For non-production workloads only.",
+            arg_group="MQ",
+        )
         # MQ cardinality
         context.argument(
             "mq_frontend_replicas",

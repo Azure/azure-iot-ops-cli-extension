@@ -53,6 +53,7 @@ from ...generators import generate_generic_id
     mq_listener_name,
     mq_broker_name,
     mq_authn_name,
+    mq_insecure,
     target_name,
     """,
     [
@@ -85,6 +86,7 @@ from ...generators import generate_generic_id
             None,  # mq_listener_name
             None,  # mq_broker_name
             None,  # mq_authn_name
+            None,  # mq_insecure
             None,  # target_name
         ),
         pytest.param(
@@ -116,6 +118,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # mq_listener_name
             generate_generic_id(),  # mq_broker_name
             generate_generic_id(),  # mq_authn_name
+            None,  # mq_insecure
             generate_generic_id(),  # target_name
         ),
         pytest.param(
@@ -147,6 +150,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # mq_listener_name
             generate_generic_id(),  # mq_broker_name
             generate_generic_id(),  # mq_authn_name
+            True,  # mq_insecure
             generate_generic_id(),  # target_name
         ),
     ],
@@ -183,6 +187,7 @@ def test_init_to_template_params(
     mq_listener_name,
     mq_broker_name,
     mq_authn_name,
+    mq_insecure,
     target_name,
 ):
     kwargs = {}
@@ -214,6 +219,7 @@ def test_init_to_template_params(
         (mq_listener_name, "mq_listener_name"),
         (mq_broker_name, "mq_broker_name"),
         (mq_authn_name, "mq_authn_name"),
+        (mq_insecure, "mq_insecure"),
         (target_name, "target_name"),
     ]
 
@@ -317,6 +323,31 @@ def test_init_to_template_params(
     # TODO
     assert template_ver.content["variables"]["AIO_TRUST_CONFIG_MAP"]
     assert template_ver.content["variables"]["AIO_TRUST_SECRET_NAME"]
+
+    # Clunky test for clunky solution
+    if mq_insecure:
+        mq_namespace = cluster_namespace if cluster_namespace else DEFAULT_NAMESPACE
+        insecure_mqtt = f"mqtt://aio-mq-dmqtt-frontend.{mq_namespace}:1883"
+        assert template_ver.content["variables"]["MQ_PROPERTIES"]["localUrl"] == insecure_mqtt
+
+        has_authn = False
+        listener_adj = False
+        broker_adj = False
+        for resource in template_ver.content["resources"]:
+            if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker/authentication":
+                has_authn = True
+            if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker/listener":
+                assert resource["properties"]["authenticationEnabled"] is False
+                assert resource["properties"]["port"] == 1883
+                assert "tls" not in resource["properties"]
+                listener_adj = True
+            if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker":
+                assert resource["properties"]["encryptInternalTraffic"] is False
+                broker_adj = True
+
+        assert not has_authn
+        assert broker_adj
+        assert listener_adj
 
 
 @pytest.mark.parametrize(
