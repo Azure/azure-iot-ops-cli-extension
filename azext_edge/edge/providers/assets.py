@@ -16,7 +16,7 @@ from azure.cli.core.azclierror import (
     ValidationError
 )
 
-from ..util import assemble_nargs_to_dict, build_query
+from ..util import assemble_nargs_to_dict, build_query, wait_for_terminal_state
 from ..common import ResourceTypeMapping
 
 logger = get_logger(__name__)
@@ -342,6 +342,8 @@ class AssetProvider():
             sampling_interval=sampling_interval
         )
         sub_point_type = "dataPoints" if data_source else "events"
+        if sub_point_type not in asset["properties"]:
+            asset["properties"][sub_point_type] = []
         asset["properties"][sub_point_type].append(sub_point)
 
         poller = self.resource_client.resources.begin_create_or_update_by_id(
@@ -349,8 +351,7 @@ class AssetProvider():
             api_version=API_VERSION,
             parameters=asset,
         )
-        poller.wait()
-        asset = poller.result()
+        asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"][sub_point_type]
@@ -397,8 +398,7 @@ class AssetProvider():
             api_version=API_VERSION,
             parameters=asset
         )
-        poller.wait()
-        asset = poller.result()
+        asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"][sub_point_type]

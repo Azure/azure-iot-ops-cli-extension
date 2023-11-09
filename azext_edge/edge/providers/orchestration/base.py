@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-from time import sleep
 from typing import List, NamedTuple, Optional, Tuple
 
 from azure.cli.core.azclierror import HTTPError
@@ -16,6 +15,7 @@ from ...util import (
     generate_self_signed_cert,
     get_timestamp_now_utc,
     read_file_content,
+    wait_for_terminal_state,
 )
 from ...util.az_client import get_resource_client
 from ..base import (
@@ -422,14 +422,3 @@ def deploy_template(
         "deploymentState": {"timestampUtc": {"started": get_timestamp_now_utc()}, "status": deployment.status()},
     }
     return result, deployment
-
-
-def wait_for_terminal_state(poller) -> dict:
-    # resource client does not handle sigint well
-    counter = 0
-    while counter < DEFAULT_POLL_RETRIES:
-        sleep(DEFAULT_POLL_WAIT_SEC)
-        counter = counter + 1
-        if poller.done():
-            break
-    return poller.result()

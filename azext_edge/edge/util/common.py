@@ -12,12 +12,14 @@ common: Defines common utility functions and components.
 import base64
 import json
 import logging
+from time import sleep
 from typing import Dict, List, Optional
 
 from azure.cli.core.azclierror import FileOperationError
 from knack.log import get_logger
 
 logger = get_logger(__name__)
+DEFAULT_POLL_WAIT_SEC = 20
 
 
 def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
@@ -138,3 +140,10 @@ def url_safe_hash_phrase(phrase: str):
     from hashlib import sha256
 
     return sha256(phrase.encode("utf8")).hexdigest()
+
+
+def wait_for_terminal_state(poller) -> dict:
+    # resource client does not handle sigint well
+    while poller._thread.is_alive():
+        sleep(DEFAULT_POLL_WAIT_SEC)
+    return poller.result()
