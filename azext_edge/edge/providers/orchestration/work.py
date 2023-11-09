@@ -294,7 +294,7 @@ class WorkManager:
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
                 deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
                 deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
-                deployment_result["deploymentState"]["aioVersion"] = template.component_vers
+                deployment_result["deploymentState"]["opsVersion"] = template.component_vers
                 deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
                 deployment_result["deploymentState"]["resources"] = [
                     resource.id.split(

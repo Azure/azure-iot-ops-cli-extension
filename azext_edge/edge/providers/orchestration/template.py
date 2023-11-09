@@ -13,7 +13,7 @@ class TemplateVer(NamedTuple):
 
     @property
     def component_vers(self) -> dict:
-        return self.content["variables"]["VERSIONS"]
+        return self.content["variables"]["__VERSION__"]
 
     @property
     def parameters(self) -> dict:

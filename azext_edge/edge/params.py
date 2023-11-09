@@ -179,12 +179,14 @@ def load_iotops_arguments(self, _):
             options_list=["--trace-ids"],
             help="Space-separated trace ids in hex format.",
             arg_group="Trace",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "trace_dir",
             options_list=["--trace-dir"],
             help="Local directory where traces will be bundled and stored at.",
             arg_group="Trace",
+            deprecate_info=context.deprecate(hide=True),
         )
 
     with self.argument_context("iot ops init") as context:
