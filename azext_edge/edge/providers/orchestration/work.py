@@ -449,29 +449,21 @@ class WorkManager:
 
         mq_insecure = self._kwargs.get("mq_insecure", False)
         if mq_insecure:
-            template.content["variables"]["MQ_PROPERTIES"][
-                "localUrl"
-            ] = f"mqtt://aio-mq-dmqtt-frontend.{self._kwargs['cluster_namespace']}:1883"
-            listener_adj = False
             broker_adj = False
-            authn_adj = False
             # This solution entirely relies on the form of the "standard" template.
             # Needs re-work after event
+
             for i in range(len(template.content["resources"])):
-                if template.content["resources"][i].get("type") == "Microsoft.IoTOperationsMQ/mq/broker/authentication":
-                    template.content["resources"].pop(i)
-                    authn_adj = True
-                if template.content["resources"][i].get("type") == "Microsoft.IoTOperationsMQ/mq/broker/listener":
-                    template.content["resources"][i]["properties"]["authenticationEnabled"] = False
-                    template.content["resources"][i]["properties"]["port"] = 1883
-                    del template.content["resources"][i]["properties"]["tls"]
-                    listener_adj = True
                 if template.content["resources"][i].get("type") == "Microsoft.IoTOperationsMQ/mq/broker":
                     template.content["resources"][i]["properties"]["encryptInternalTraffic"] = False
                     broker_adj = True
 
-                if authn_adj and listener_adj and broker_adj:
+                if broker_adj:
                     break
+
+            from .components import get_insecure_mq_listener
+
+            template.content["resources"].append(get_insecure_mq_listener())
 
         return template, parameters
 

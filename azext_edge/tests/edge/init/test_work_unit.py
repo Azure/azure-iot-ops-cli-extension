@@ -326,17 +326,11 @@ def test_init_to_template_params(
 
     # Clunky test for clunky solution
     if mq_insecure:
-        mq_namespace = cluster_namespace if cluster_namespace else DEFAULT_NAMESPACE
-        insecure_mqtt = f"mqtt://aio-mq-dmqtt-frontend.{mq_namespace}:1883"
-        assert template_ver.content["variables"]["MQ_PROPERTIES"]["localUrl"] == insecure_mqtt
-
-        has_authn = False
-        listener_adj = False
         broker_adj = False
+        listener_adj = False
         for resource in template_ver.content["resources"]:
-            if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker/authentication":
-                has_authn = True
-            if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker/listener":
+            if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker/listener" and "'non-tls-listener'" in resource.get("name"):
+                assert resource["properties"]["authorizationEnabled"] is False
                 assert resource["properties"]["authenticationEnabled"] is False
                 assert resource["properties"]["port"] == 1883
                 assert "tls" not in resource["properties"]
@@ -345,7 +339,6 @@ def test_init_to_template_params(
                 assert resource["properties"]["encryptInternalTraffic"] is False
                 broker_adj = True
 
-        assert not has_authn
         assert broker_adj
         assert listener_adj
 
