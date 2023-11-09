@@ -36,8 +36,8 @@ logger = get_logger(__name__)
 
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 
-DEFAULT_POLL_RETRIES = 60
-DEFAULT_POLL_WAIT_SEC = 15
+DEFAULT_POLL_RETRIES = 100
+DEFAULT_POLL_WAIT_SEC = 20
 
 
 class ServicePrincipal(NamedTuple):
