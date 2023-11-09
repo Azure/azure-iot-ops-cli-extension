@@ -179,12 +179,14 @@ def load_iotops_arguments(self, _):
             options_list=["--trace-ids"],
             help="Space-separated trace ids in hex format.",
             arg_group="Trace",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "trace_dir",
             options_list=["--trace-dir"],
             help="Local directory where traces will be bundled and stored at.",
             arg_group="Trace",
+            deprecate_info=context.deprecate(hide=True),
         )
 
     with self.argument_context("iot ops init") as context:
@@ -228,13 +230,6 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Flag when set, will output the template intended for deployment.",
             arg_group="Template",
-        )
-        context.argument(
-            "show_ops_version",
-            options_list=["--ops-version"],
-            help="Summarize and show the versions of deployable components.",
-            arg_type=get_three_state_flag(),
-            arg_group="Ops Version",
         )
         context.argument(
             "no_progress",

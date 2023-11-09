@@ -615,6 +615,13 @@ def test_work_order(
         assert result["clusterNamespace"]
         assert result["deploymentLink"]
         assert result["deploymentState"]
+        assert result["deploymentState"]["status"]
+        assert result["deploymentState"]["correlationId"]
+        assert result["deploymentState"]["opsVersion"]
+        assert result["deploymentState"]["timestampUtc"]
+        assert result["deploymentState"]["timestampUtc"]["started"]
+        assert result["deploymentState"]["timestampUtc"]["ended"]
+        assert "resources" in result["deploymentState"]
 
         mocked_deploy_template.assert_called_once()
         assert mocked_deploy_template.call_args.kwargs["template"]

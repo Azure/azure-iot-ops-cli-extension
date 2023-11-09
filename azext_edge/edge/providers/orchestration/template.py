@@ -13,7 +13,7 @@ class TemplateVer(NamedTuple):
 
     @property
     def component_vers(self) -> dict:
-        return self.content["variables"]["VERSIONS"]
+        return self.content["variables"]["__VERSION__"]
 
     @property
     def parameters(self) -> dict:
@@ -25,12 +25,12 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="d5230cb9e7053f6a8dd7f89c7ad7ce0ab86e6009",
+    commit_id="70f891a08193a7e43bfbf9ce26f4b40466425be2",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.23.1.45101", "templateHash": "11298729832004572724"},
+            "_generator": {"name": "bicep", "version": "0.23.1.45101", "templateHash": "7874469671048964219"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -122,23 +122,25 @@ V1_TEMPLATE = TemplateVer(
                 "name": "aio-mq-dmqtt-frontend",
                 "satAudience": "aio-mq",
             },
+            "__VERSION__": "0.1.0-preview",
+            "__TRAIN__": "preview",
             "VERSIONS": {
-                "adr": "0.12.0",
-                "opcUaBroker": "0.1.0-preview.6",
-                "observability": "0.62.3",
-                "akri": "0.1.0-preview-rc3",
-                "mq": "0.1.0-preview-rc3",
-                "aio": "0.1.0-preview-rc3",
-                "layeredNetworking": "0.1.0-alpha.5",
-                "processor": "0.1.0-preview.16",
+                "adr": "[variables('__VERSION__')]",
+                "opcUaBroker": "[variables('__VERSION__')]",
+                "observability": "[variables('__VERSION__')]",
+                "akri": "[variables('__VERSION__')]",
+                "mq": "[variables('__VERSION__')]",
+                "aio": "[variables('__VERSION__')]",
+                "layeredNetworking": "[variables('__VERSION__')]",
+                "processor": "[variables('__VERSION__')]",
             },
             "TRAINS": {
-                "mq": "dev",
-                "aio": "dev",
-                "processor": "dev",
-                "adr": "private-preview",
-                "akri": "private-preview",
-                "layeredNetworking": "private-preview",
+                "mq": "[variables('__TRAIN__')]",
+                "aio": "[variables('__TRAIN__')]",
+                "processor": "[variables('__TRAIN__')]",
+                "adr": "[variables('__TRAIN__')]",
+                "akri": "[variables('__TRAIN__')]",
+                "layeredNetworking": "[variables('__TRAIN__')]",
                 "opcUaBroker": "helm",
                 "observability": "helm",
             },
@@ -159,7 +161,7 @@ V1_TEMPLATE = TemplateVer(
                 "type": "helm.v3",
                 "properties": {
                     "chart": {
-                        "repo": "alicesprings.azurecr.io/helm/opentelemetry-collector",
+                        "repo": "azureiotoperations.azurecr.io/helm/opentelemetry-collector",
                         "version": "[variables('VERSIONS').observability]",
                     },
                     "values": {
@@ -223,7 +225,7 @@ V1_TEMPLATE = TemplateVer(
                                     "containers": [
                                         {
                                             "name": "akri-opcua-asset-discovery",
-                                            "image": "[format('mcr.microsoft.com/opcuabroker/discovery-handler:{0}', variables('VERSIONS').opcUaBroker)]",
+                                            "image": "[format('mcr.microsoft.com/azureiotoperations/opcuabroker/discovery-handler:{0}', variables('VERSIONS').opcUaBroker)]",
                                             "imagePullPolicy": "Always",
                                             "resources": {
                                                 "requests": {"memory": "64Mi", "cpu": "10m"},
@@ -273,7 +275,7 @@ V1_TEMPLATE = TemplateVer(
                 "name": "opc-ua-broker",
                 "properties": {
                     "chart": {
-                        "repo": "oci://mcr.microsoft.com/opcuabroker/helmchart/microsoft.iotoperations.opcuabroker",
+                        "repo": "oci://mcr.microsoft.com/azureiotoperations/opcuabroker/helmchart/microsoft.iotoperations.opcuabroker",
                         "version": "[variables('VERSIONS').opcUaBroker]",
                     },
                     "values": {

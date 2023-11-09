@@ -13,7 +13,7 @@ from azure.cli.core.azclierror import AzureResponseError
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
 from rich.console import NewLine
-from rich.live import Console, Live
+from rich.live import Live
 from rich.padding import Padding
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
@@ -294,7 +294,7 @@ class WorkManager:
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
                 deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
                 deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
-                deployment_result["deploymentState"]["aioVersion"] = template.component_vers
+                deployment_result["deploymentState"]["opsVersion"] = template.component_vers
                 deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
                 deployment_result["deploymentState"]["resources"] = [
                     resource.id.split(
@@ -479,19 +479,6 @@ class WorkManager:
 def deploy(
     **kwargs,
 ):
-    show_ops_version = kwargs.get("show_ops_version", False)
-    if show_ops_version:
-        console = Console()
-        table = Table(
-            title=f"Azure IoT Operations v{CURRENT_TEMPLATE.content_vers}",
-        )
-        table.add_column("Component", justify="left", style="cyan")
-        table.add_column("Version", justify="left", style="magenta")
-        for moniker in CURRENT_TEMPLATE.component_vers:
-            table.add_row(moniker, CURRENT_TEMPLATE.component_vers[moniker])
-        console.print(table)
-        return
-
     show_template = kwargs.get("show_template", False)
     if show_template:
         return CURRENT_TEMPLATE.content
