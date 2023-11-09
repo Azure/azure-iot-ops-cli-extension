@@ -344,7 +344,16 @@ def test_init_to_template_params(
         assert broker_adj
         assert listener_adj
     else:
-        assert resource["properties"]["encryptInternalTraffic"]
+        for resource in template_ver.content["resources"]:
+            has_insecure_listener = False
+            if resource.get(
+                "type"
+            ) == "Microsoft.IoTOperationsMQ/mq/broker/listener" and "'non-tls-listener'" in resource.get("name"):
+                has_insecure_listener = True
+            if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker":
+                assert "encryptInternalTraffic" not in resource["properties"]
+
+        assert has_insecure_listener is False
 
 
 @pytest.mark.parametrize(
