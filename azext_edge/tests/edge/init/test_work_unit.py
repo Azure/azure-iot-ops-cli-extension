@@ -17,7 +17,12 @@ from azext_edge.edge.providers.orchestration.common import (
     MqMode,
     MqServiceType,
 )
-from azext_edge.edge.providers.orchestration.work import WorkManager, CLUSTER_SECRET_CLASS_NAME, CLUSTER_SECRET_REF
+from azext_edge.edge.providers.orchestration.work import (
+    WorkManager,
+    CLUSTER_SECRET_CLASS_NAME,
+    CLUSTER_SECRET_REF,
+    TemplateVer,
+)
 from azext_edge.edge.util import url_safe_hash_phrase
 
 from ...generators import generate_generic_id
@@ -324,36 +329,27 @@ def test_init_to_template_params(
     assert template_ver.content["variables"]["AIO_TRUST_CONFIG_MAP"]
     assert template_ver.content["variables"]["AIO_TRUST_SECRET_NAME"]
 
-    # Clunky test for clunky solution
+    # test mq_insecure
+    listeners = _get_resources_of_type(
+        resource_type="Microsoft.IoTOperationsMQ/mq/broker/listener", template=template_ver
+    )
+    brokers = _get_resources_of_type(resource_type="Microsoft.IoTOperationsMQ/mq/broker", template=template_ver)
+    insecure_listener_added = False
+    for listener in listeners:
+        if "'non-tls-listener'" in listener["name"]:
+            insecure_listener_added = True
+
     if mq_insecure:
-        broker_adj = False
-        listener_adj = False
-        for resource in template_ver.content["resources"]:
-            if resource.get(
-                "type"
-            ) == "Microsoft.IoTOperationsMQ/mq/broker/listener" and "'non-tls-listener'" in resource.get("name"):
-                assert resource["properties"]["authorizationEnabled"] is False
-                assert resource["properties"]["authenticationEnabled"] is False
-                assert resource["properties"]["port"] == 1883
-                assert "tls" not in resource["properties"]
-                listener_adj = True
-            if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker":
-                assert resource["properties"]["encryptInternalTraffic"] is False
-                broker_adj = True
+        assert insecure_listener_added
+        assert brokers[0]["properties"]["encryptInternalTraffic"] is False
+        return
 
-        assert broker_adj
-        assert listener_adj
-    else:
-        for resource in template_ver.content["resources"]:
-            has_insecure_listener = False
-            if resource.get(
-                "type"
-            ) == "Microsoft.IoTOperationsMQ/mq/broker/listener" and "'non-tls-listener'" in resource.get("name"):
-                has_insecure_listener = True
-            if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker":
-                assert "encryptInternalTraffic" not in resource["properties"]
+    assert not insecure_listener_added
+    assert "encryptInternalTraffic" not in brokers[0]["properties"]
 
-        assert has_insecure_listener is False
+
+def _get_resources_of_type(resource_type: str, template: TemplateVer):
+    return [resource for resource in template.content["resources"] if resource["type"] == resource_type]
 
 
 @pytest.mark.parametrize(

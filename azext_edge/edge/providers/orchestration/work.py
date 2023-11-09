@@ -460,7 +460,7 @@ class WorkManager:
                 if broker_adj:
                     break
 
-            from .components import get_insecure_mq_listener
+            from .template import get_insecure_mq_listener
 
             template.content["resources"].append(get_insecure_mq_listener())
 

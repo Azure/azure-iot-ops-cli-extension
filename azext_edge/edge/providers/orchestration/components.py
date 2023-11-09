@@ -29,27 +29,3 @@ def get_kv_secret_store_yaml(name: str, namespace: str, keyvault_name: str, secr
         tenantId: {tenantId}
     """
     )
-
-
-def get_insecure_mq_listener():
-    return {
-        "type": "Microsoft.IoTOperationsMQ/mq/broker/listener",
-        "apiVersion": "2023-10-04-preview",
-        "name": "[format('{0}/{1}/{2}', parameters('mqInstanceName'), parameters('mqBrokerName'), 'non-tls-listener')]",
-        "location": "[parameters('location')]",
-        "extendedLocation": {
-            "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-            "type": "CustomLocation",
-        },
-        "properties": {
-            "serviceType": "[parameters('mqServiceType')]",
-            "authenticationEnabled": False,
-            "authorizationEnabled": False,
-            "brokerRef": "[parameters('mqBrokerName')]",
-            "port": 1883,
-        },
-        "dependsOn": [
-            "[resourceId('Microsoft.IoTOperationsMQ/mq/broker', parameters('mqInstanceName'), parameters('mqBrokerName'))]",
-            "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-        ],
-    }
