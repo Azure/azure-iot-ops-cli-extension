@@ -174,7 +174,7 @@ def load_iotops_help():
 
         - name: Create an asset with the given pre-filled values.
           text: >
-            az iot ops asset create --asset MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
+            az iot ops asset create --name MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
             --data capability_id=myTagId data_source=nodeId1 name=myTagName1
             observability_mode=counter sampling_interval=10 queue_size=2 --data
             data_source=nodeId2 --data-publish-int 1000 --data-queue-size 1 --data-sample-int 30
