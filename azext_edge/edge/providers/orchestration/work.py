@@ -447,6 +447,23 @@ class WorkManager:
         if "aioTrustSecretName" in tls_map:
             template.content["variables"]["AIO_TRUST_SECRET_NAME"] = tls_map["aioTrustSecretName"]
 
+        mq_insecure = self._kwargs.get("mq_insecure", False)
+        if mq_insecure:
+            broker_adj = False
+            # This solution entirely relies on the form of the "standard" template.
+            # Needs re-work after event
+            for resource in template.content["resources"]:
+                if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker":
+                    resource["properties"]["encryptInternalTraffic"] = False
+                    broker_adj = True
+
+                if broker_adj:
+                    break
+
+            from .template import get_insecure_mq_listener
+
+            template.content["resources"].append(get_insecure_mq_listener())
+
         return template, parameters
 
 

@@ -7,7 +7,7 @@
 
 import os
 
-VERSION = "0.0.5a9"
+VERSION = "0.1.0a1"
 EXTENSION_NAME = "azure-iot-ops"
 EXTENSION_ROOT = os.path.dirname(os.path.abspath(__file__))
 USER_AGENT = "IotOperationsCliExtension/{}".format(VERSION)

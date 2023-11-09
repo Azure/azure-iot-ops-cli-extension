@@ -17,7 +17,12 @@ from azext_edge.edge.providers.orchestration.common import (
     MqMode,
     MqServiceType,
 )
-from azext_edge.edge.providers.orchestration.work import WorkManager, CLUSTER_SECRET_CLASS_NAME, CLUSTER_SECRET_REF
+from azext_edge.edge.providers.orchestration.work import (
+    WorkManager,
+    CLUSTER_SECRET_CLASS_NAME,
+    CLUSTER_SECRET_REF,
+    TemplateVer,
+)
 from azext_edge.edge.util import url_safe_hash_phrase
 
 from ...generators import generate_generic_id
@@ -53,6 +58,7 @@ from ...generators import generate_generic_id
     mq_listener_name,
     mq_broker_name,
     mq_authn_name,
+    mq_insecure,
     target_name,
     """,
     [
@@ -85,6 +91,7 @@ from ...generators import generate_generic_id
             None,  # mq_listener_name
             None,  # mq_broker_name
             None,  # mq_authn_name
+            None,  # mq_insecure
             None,  # target_name
         ),
         pytest.param(
@@ -116,6 +123,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # mq_listener_name
             generate_generic_id(),  # mq_broker_name
             generate_generic_id(),  # mq_authn_name
+            None,  # mq_insecure
             generate_generic_id(),  # target_name
         ),
         pytest.param(
@@ -147,6 +155,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # mq_listener_name
             generate_generic_id(),  # mq_broker_name
             generate_generic_id(),  # mq_authn_name
+            True,  # mq_insecure
             generate_generic_id(),  # target_name
         ),
     ],
@@ -183,6 +192,7 @@ def test_init_to_template_params(
     mq_listener_name,
     mq_broker_name,
     mq_authn_name,
+    mq_insecure,
     target_name,
 ):
     kwargs = {}
@@ -214,6 +224,7 @@ def test_init_to_template_params(
         (mq_listener_name, "mq_listener_name"),
         (mq_broker_name, "mq_broker_name"),
         (mq_authn_name, "mq_authn_name"),
+        (mq_insecure, "mq_insecure"),
         (target_name, "target_name"),
     ]
 
@@ -317,6 +328,28 @@ def test_init_to_template_params(
     # TODO
     assert template_ver.content["variables"]["AIO_TRUST_CONFIG_MAP"]
     assert template_ver.content["variables"]["AIO_TRUST_SECRET_NAME"]
+
+    # test mq_insecure
+    listeners = _get_resources_of_type(
+        resource_type="Microsoft.IoTOperationsMQ/mq/broker/listener", template=template_ver
+    )
+    brokers = _get_resources_of_type(resource_type="Microsoft.IoTOperationsMQ/mq/broker", template=template_ver)
+    insecure_listener_added = False
+    for listener in listeners:
+        if "'non-tls-listener'" in listener["name"]:
+            insecure_listener_added = True
+
+    if mq_insecure:
+        assert insecure_listener_added
+        assert brokers[0]["properties"]["encryptInternalTraffic"] is False
+        return
+
+    assert not insecure_listener_added
+    assert "encryptInternalTraffic" not in brokers[0]["properties"]
+
+
+def _get_resources_of_type(resource_type: str, template: TemplateVer):
+    return [resource for resource in template.content["resources"] if resource["type"] == resource_type]
 
 
 @pytest.mark.parametrize(
