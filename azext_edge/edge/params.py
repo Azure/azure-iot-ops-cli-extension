@@ -335,7 +335,8 @@ def load_iotops_arguments(self, _):
             "mq_insecure",
             options_list=["--mq-insecure"],
             arg_type=get_three_state_flag(),
-            help="When enabled the mq deployment will include a listener with no authN or encrypted traffic. "
+            help="When enabled the mq deployment will include a listener bound to port 1883 with no authN "
+            "or authZ. The broker encryptInternalTraffic setting will be set to false. "
             "For non-production workloads only.",
             arg_group="MQ",
         )

@@ -452,10 +452,9 @@ class WorkManager:
             broker_adj = False
             # This solution entirely relies on the form of the "standard" template.
             # Needs re-work after event
-
-            for i in range(len(template.content["resources"])):
-                if template.content["resources"][i].get("type") == "Microsoft.IoTOperationsMQ/mq/broker":
-                    template.content["resources"][i]["properties"]["encryptInternalTraffic"] = False
+            for resource in template.content["resources"]:
+                if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker":
+                    resource["properties"]["encryptInternalTraffic"] = False
                     broker_adj = True
 
                 if broker_adj:

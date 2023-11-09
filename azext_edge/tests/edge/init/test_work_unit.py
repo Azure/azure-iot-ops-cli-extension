@@ -329,7 +329,9 @@ def test_init_to_template_params(
         broker_adj = False
         listener_adj = False
         for resource in template_ver.content["resources"]:
-            if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker/listener" and "'non-tls-listener'" in resource.get("name"):
+            if resource.get(
+                "type"
+            ) == "Microsoft.IoTOperationsMQ/mq/broker/listener" and "'non-tls-listener'" in resource.get("name"):
                 assert resource["properties"]["authorizationEnabled"] is False
                 assert resource["properties"]["authenticationEnabled"] is False
                 assert resource["properties"]["port"] == 1883
@@ -341,6 +343,8 @@ def test_init_to_template_params(
 
         assert broker_adj
         assert listener_adj
+    else:
+        assert resource["properties"]["encryptInternalTraffic"]
 
 
 @pytest.mark.parametrize(
