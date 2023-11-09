@@ -1,8 +1,8 @@
 # coding=utf-8
-# --------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
-# Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
-# --------------------------------------------------------------------------------------------
+# Licensed under the MIT License. See License file in the project root for license information.
+# ----------------------------------------------------------------------------------------------
 
 """
 CLI parameter definitions.
@@ -483,7 +483,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops asset") as context:
         context.argument(
             "asset_name",
-            options_list=["--asset"],
+            options_list=["--name", "-n"],
             help="Asset name.",
         )
         context.argument(
@@ -693,6 +693,11 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops asset data-point") as context:
         context.argument(
+            "asset_name",
+            options_list=["--asset", "-a"],
+            help="Asset name.",
+        )
+        context.argument(
             "capability_id",
             options_list=["--capability-id", "--ci"],
             help="Capability Id. If not provided, data point name will be used.",
@@ -709,6 +714,11 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops asset event") as context:
+        context.argument(
+            "asset_name",
+            options_list=["--asset", "-a"],
+            help="Asset name.",
+        )
         context.argument(
             "capability_id",
             options_list=["--capability-id", "--ci"],
