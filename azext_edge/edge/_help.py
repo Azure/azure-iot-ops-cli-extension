@@ -121,29 +121,29 @@ def load_iotops_help():
         examples:
         - name: Create an asset using the given custom location.
           text: >
-            az iot ops asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
             --endpoint {endpoint} --data data_source={data_source}
 
         - name: Create an asset using the given custom location and resource group for the custom location. The resource group
                 must be included if there are multiple custom locations with the same name within a subscription.
           text: >
-            az iot ops asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
             --custom-location-resource-group {custom_location_resource_group} --endpoint {endpoint} --data data_source={data_source}
 
         - name: Create an asset using the given cluster name. The resource group must be included if there are multiple clusters
                 with the same name within a subscription.
           text: >
-            az iot ops asset create --asset {asset} -g {resource_group} --cluster {cluster} --cluster-resource-group {cluster_resource_group}
+            az iot ops asset create --name {asset_name} -g {resource_group} --cluster {cluster} --cluster-resource-group {cluster_resource_group}
             --endpoint {endpoint} --event event_notifier={event_notifier}
 
         - name: Create an asset using the given cluster name and custom location.
           text: >
-            az iot ops asset create --asset {asset} -g {resource_group} --cluster {cluster}
+            az iot ops asset create --name {asset_name} -g {resource_group} --cluster {cluster}
             --custom-location {custom_location} --endpoint {endpoint} --event event_notifier={event_notifier}
 
         - name: Create an asset with custom data point and event defaults.
           text: >
-            az iot ops asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
             --endpoint {endpoint} --data-publish-int {data_point_publishing_interval}
             --data-queue-size {data_point_queue_size} --data-sample-int {data_point_sampling_interval}
             --event-publish-int {event_publishing_interval} --event-queue-size {event_queue_size}
@@ -152,14 +152,14 @@ def load_iotops_help():
         - name: Create an asset with custom asset type, description, documentation uri, external asset id, hardware revision,
                 product code, and software revision.
           text: >
-            az iot ops asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
             --endpoint {endpoint} --asset-type {asset_type} --description {description}
             --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
             --product-code {product_code} --software-revision {software_revision} --data data_source={data_source}
 
         - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number.
           text: >
-            az iot ops asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
             --endpoint {endpoint} --event capability_id={capability_id} event_notifier={event_notifier}
             name={name} observability_mode={observability_mode} sampling_interval={sampling_interval} queue_size={queue_size}
             --event event_notifier={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
@@ -167,14 +167,14 @@ def load_iotops_help():
 
         - name: Create a disabled asset with two data points.
           text: >
-            az iot ops asset create --asset {asset} -g {resource_group} --custom-location {custom_location}
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
             --endpoint {endpoint} --disable --data capability_id={capability_id}
             data_source={data_source} name={name} observability_mode={observability_mode} sampling_interval={sampling_interval}
             queue_size={queue_size} --data data_source={data_source}
 
         - name: Create an asset with the given pre-filled values.
           text: >
-            az iot ops asset create --asset MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
+            az iot ops asset create --name MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
             --data capability_id=myTagId data_source=nodeId1 name=myTagName1
             observability_mode=counter sampling_interval=10 queue_size=2 --data
             data_source=nodeId2 --data-publish-int 1000 --data-queue-size 1 --data-sample-int 30
@@ -224,7 +224,7 @@ def load_iotops_help():
         examples:
         - name: Show the details of an asset.
           text: >
-            az iot ops asset show --asset {asset} -g {resource_group}
+            az iot ops asset show --name {asset_name} -g {resource_group}
     """
 
     helps[
@@ -238,7 +238,7 @@ def load_iotops_help():
         examples:
         - name: Update an asset's data point and event defaults.
           text: >
-            az iot ops asset update --asset {asset} -g {resource_group} --data-publish-int {data_point_publishing_interval}
+            az iot ops asset update --name {asset_name} -g {resource_group} --data-publish-int {data_point_publishing_interval}
             --data-queue-size {data_point_queue_size} --data-sample-int {data_point_sampling_interval}
             --event-publish-int {event_publishing_interval} --event-queue-size {event_queue_size}
             --event-sample-int {event_sampling_interval}
@@ -246,18 +246,18 @@ def load_iotops_help():
         - name: Update an asset's asset type, description, documentation uri, external asset id, hardware revision, product code,
                 and software revision.
           text: >
-            az iot ops asset update --asset {asset} -g {resource_group} --asset-type {asset_type} --description {description}
+            az iot ops asset update --name {asset_name} -g {resource_group} --asset-type {asset_type} --description {description}
             --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
             --product-code {product_code} --software-revision {software_revision}
 
         - name: Update an asset's manufacturer, manufacturer uri, model, serial number.
           text: >
-            az iot ops asset update --asset {asset} -g {resource_group} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
+            az iot ops asset update --name {asset_name} -g {resource_group} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
             --serial-number {serial_number}
 
         - name: Disable an asset.
           text: >
-            az iot ops asset update --asset {asset} -g {resource_group} --disable
+            az iot ops asset update --name {asset_name} -g {resource_group} --disable
     """
 
     helps[
@@ -268,7 +268,7 @@ def load_iotops_help():
         examples:
         - name: Delete an asset.
           text: >
-            az iot ops asset delete --asset {asset} -g {resource_group}
+            az iot ops asset delete --name {asset_name} -g {resource_group}
     """
 
     helps[
