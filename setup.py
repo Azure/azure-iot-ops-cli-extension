@@ -60,7 +60,7 @@ setup(
     license="MIT",
     author="Microsoft",
     author_email="iotupx@microsoft.com",  # +@digimaun
-    url="https://github.com/azure/azure-edge-cli-extension",
+    url="https://github.com/azure/azure-iot-ops-cli-extension",
     classifiers=CLASSIFIERS,
     packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "scripts"]),
     package_data={
