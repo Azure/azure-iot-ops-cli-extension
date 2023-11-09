@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # coding=utf-8
-# --------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
-# Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
-# --------------------------------------------------------------------------------------------
+# Licensed under the MIT License. See License file in the project root for license information.
+# ----------------------------------------------------------------------------------------------
 
 import re
 import os.path
@@ -60,7 +60,7 @@ setup(
     license="MIT",
     author="Microsoft",
     author_email="iotupx@microsoft.com",  # +@digimaun
-    url="https://github.com/azure/azure-edge-cli-extension",
+    url="https://github.com/azure/azure-iot-ops-cli-extension",
     classifiers=CLASSIFIERS,
     packages=find_packages(exclude=["tests", "*.tests", "*.tests.*", "scripts"]),
     package_data={

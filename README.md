@@ -1,7 +1,7 @@
 # Microsoft Azure IoT Operations extension for Azure CLI
 
 ![Python](https://img.shields.io/pypi/pyversions/azure-cli.svg?maxAge=2592000)
-![Build](https://github.com/azure/azure-edge-cli-extension/actions/workflows/release_workflow.yml/badge.svg)
+![Build](https://github.com/azure/azure-iot-ops-cli-extension/actions/workflows/release_workflow.yml/badge.svg)
 
 The **Azure IoT Operations extension for Azure CLI** aims to accelerate the development, management and automation of Azure IoT Operations solutions. It does this via addition of rich features and functionality to the official [Azure CLI](https://docs.microsoft.com/en-us/cli/azure).
 on.
@@ -13,26 +13,28 @@ on.
 
 ## Install az iot ops extension
 
-🌟 Windows, macOS and common Linux environments should be supported.
+🌟 Windows, macOS and common Linux environments are supported.
 
+❗ Please uninstall the private preview `az edge` extension with `az extension remove --name azure-edge` if you have it installed.
+
+The current IoT Ops CLI is available via https://aka.ms/aziotopscli-latest.
+
+You can download the `.whl` and install against your local copy, or use one of these fast install examples:
+
+bash
 ```bash
-az config set extension.index_url="https://azedgecli.blob.core.windows.net/drop/index.json"
-az extension add --name azure-iot-ops
+az extension add --source $(curl -w "%{url_effective}\n" -I -L -s -S https://aka.ms/aziotopscli-latest -o /dev/null) -y
 ```
 
-❗ **Note:** Currently the edge extension uses a private index URL. To list, install or update other Microsoft extensions reset your extension index URL via `az config set extension.index_url=""`.
+pwsh
+```pwsh
+az extension add --source ([System.Net.HttpWebRequest]::Create('https://aka.ms/aziotopscli-latest').GetResponse().ResponseUri.AbsoluteUri) -y
+```
 
 After install, the root command group `az iot ops` should be available and ready for use.
 
 - List installed extensions with `az extension list`
 - Remove an installed extension with `az extension remove --name <extension-name>`
-
-## Update az iot ops extension
-
-Updates for `az iot ops` will be published on a continuous basis. With the [private index url](#install-az-iot-ops-extension) set, you can:
-
-- List the latest available client versions with `az extension list-available`
-- Update in-place with `az extension update --name azure-iot-ops`
 
 ## Connecting to a K8s cluster
 
@@ -44,12 +46,7 @@ All k8s interaction commands include an optional `--context` param. If none is p
 
 🚀 Always start with the `--help` flag to understand details about command groups, their containing commands & subgroups.
 
-- `az iot ops check [--namespace] [--svc mq] [--as-object] [--post] [--pre] [--context]`
-- `az iot ops support`
-  - `az iot ops support create-bundle [--svc auto|mq|opcua|dataprocessor] [--log-age] [--context]`
-- `az iot ops mq`
-  - `az iot ops mq stats [--namespace] [--watch] [--refresh] [--raw] [--context]`
-  - `az iot ops mq get-password-hash [--iterations] [--phrase]`
+Comprehensive documentation is available in the [Wiki](https://github.com/Azure/azure-iot-ops-cli-extension/wiki/Azure-IoT-Ops-Reference).
 
 ## Contributing
 
@@ -57,7 +54,7 @@ Please refer to the [Contributing](CONTRIBUTING.md) page for developer setup ins
 
 ## Feedback
 
-We are constantly improving and are always open to new functionality or enhancement ideas. Submit your feedback in the project [issues](https://github.com/Azure/azure-edge-cli-extension/issues).
+We are constantly improving and are always open to new functionality or enhancement ideas. Submit your feedback in the project [issues](https://github.com/Azure/azure-iot-ops-cli-extension/issues).
 
 ## Code of Conduct
 
