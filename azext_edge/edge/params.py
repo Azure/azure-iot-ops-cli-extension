@@ -474,7 +474,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops asset") as context:
         context.argument(
             "asset_name",
-            options_list=["--name", "-n"],
+            options_list=["--asset"],
             help="Asset name.",
         )
         context.argument(
@@ -684,11 +684,6 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops asset data-point") as context:
         context.argument(
-            "asset_name",
-            options_list=["--asset", "-a"],
-            help="Asset name.",
-        )
-        context.argument(
             "capability_id",
             options_list=["--capability-id", "--ci"],
             help="Capability Id. If not provided, data point name will be used.",
@@ -705,11 +700,6 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops asset event") as context:
-        context.argument(
-            "asset_name",
-            options_list=["--asset", "-a"],
-            help="Asset name.",
-        )
         context.argument(
             "capability_id",
             options_list=["--capability-id", "--ci"],
