@@ -82,7 +82,7 @@ def test_add_asset_event(
     # Check update request
     request_events = call_kwargs["parameters"]["properties"]["events"]
 
-    assert request_events[:-1] == original_asset["properties"]["events"]
+    assert request_events[:-1] == original_asset["properties"].get("events", [])
     added_event = request_events[-1]
     assert added_event["capabilityId"] == (capability_id or name)
     assert added_event["name"] == name
@@ -112,7 +112,7 @@ def test_list_asset_events(mocked_cmd, mocked_resource_management_client):
     )
     mocked_resource_management_client.resources.get.assert_called_once()
     original_asset = mocked_resource_management_client.resources.get.return_value.as_dict.return_value
-    assert result_events == original_asset["properties"]["events"]
+    assert result_events == original_asset["properties"].get("events", [])
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [

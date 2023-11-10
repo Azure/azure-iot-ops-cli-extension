@@ -368,7 +368,7 @@ class AssetProvider():
             resource_group_name=resource_group_name
         )
 
-        return asset["properties"][sub_point_type]
+        return asset["properties"].get(sub_point_type, [])
 
     def remove_sub_point(
         self,
