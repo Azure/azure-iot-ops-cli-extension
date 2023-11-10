@@ -738,7 +738,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops asset endpoint") as context:
         context.argument(
             "asset_endpoint_profile_name",
-            options_list=["--endpoint"],
+            options_list=["--name", "-n"],
             help="Asset Endpoint name.",
         )
         context.argument(
