@@ -829,6 +829,11 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops asset endpoint certificate") as context:
         context.argument(
+            "asset_endpoint_profile_name",
+            options_list=["--endpoint"],
+            help="Asset Endpoint name.",
+        )
+        context.argument(
             "password",
             options_list=["--password-ref", "--pr"],
             help="Reference for the certificate password.",

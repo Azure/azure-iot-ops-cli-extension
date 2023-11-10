@@ -407,41 +407,41 @@ def load_iotops_help():
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given custom location.
           text: >
-            az iot ops asset endpoint create --endpoint {asset_endpoint} -g {resource_group} --custom-location {custom_location}
+            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
             --target-address {target_address}
         - name: Create an asset endpoint with anonymous user authentication using the given custom location and resource group
                 for the custom location. The resource group must be included if there are multiple custom locations with the
                 same name within a subscription.
           text: >
-            az iot ops asset endpoint create --endpoint {asset_endpoint} -g {resource_group} --custom-location {custom_location}
+            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
             --custom-location-resource-group {custom_location_resource_group} --target-address {target_address}
         - name: Create an asset endpoint with username-password user authentication using the given cluster name. The resource
                 group must be included if there are multiple clusters with the same name within a subscription.
           text: >
-            az iot ops asset endpoint create --endpoint {asset_endpoint} -g {resource_group} --cluster {cluster}
+            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
             --cluster-resource-group {cluster_resource_group} --target-address {target_address}
             --username-ref {username_reference} --password-ref {password_reference}
         - name: Create an asset endpoint with certificate user authentication and additional configuration using the given custom
                 location and cluster name.
           text: >
-            az iot ops asset endpoint create --endpoint {asset_endpoint} -g {resource_group} --cluster {cluster}
+            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
             --custom-location {custom_location} --target-address {target_address} --certificate-ref {certificate_reference}
             --additional-config {additional_configuration}
         - name: Create an asset endpoint with anonymous user authentication with preconfigured owned certificates.
           text: >
-            az iot ops asset endpoint create --endpoint {asset_endpoint} -g {resource_group} --custom-location {custom_location}
+            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
             --target-address {target_address} --cert secret={secret_reference} password={password_reference} thumbprint {thumbprint}
             --cert secret={secret_reference} password={password_reference} thumbprint {thumbprint}
         - name: Create an asset endpoint with username-password user authentication and preconfigurated owned certificates with
                 prefilled values.
           text: >
-            az iot ops asset endpoint create --endpoint myAssetEndpoint -g myRG --cluster myCluster
+            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
             --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
             --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password" --cert secret=aio-opc-ua-broker-client-certificate
             thumbprint=000000000000000000 password=aio-opc-ua-broker-client-certificate-password
         - name: Create an asset endpoint with certificate user authentication and additional configuration with prefilled values.
           text: >
-            az iot ops asset endpoint create --endpoint myAssetEndpoint -g myRG --cluster myCluster
+            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
             --target-address "opc.tcp://opcplc-000000:50000"
             --certificate-ref "aio-opc-ua-broker-user-authentication/opc-plc-certificate"
             --additional-config '{\\\"applicationName\\\": \\\"opcua-connector\\\",\\\"defaults\\\": {
@@ -486,7 +486,7 @@ def load_iotops_help():
         examples:
         - name: Show the details of an asset endpoint.
           text: >
-            az iot ops asset endpoint show --endpoint {asset_endpoint} -g {resource_group}
+            az iot ops asset endpoint show --name {asset_endpoint} -g {resource_group}
     """
 
     helps[
@@ -499,15 +499,15 @@ def load_iotops_help():
         - name: Update an asset endpoint's username and password reference. This will transform the authentication mode to
                 username-password if it is not so already.
           text: >
-            az iot ops asset endpoint update --endpoint {asset_endpoint} -g {resource_group}
+            az iot ops asset endpoint update --name {asset_endpoint} -g {resource_group}
             --username-ref {username_reference} --password-ref {password_reference}
         - name: Update an asset endpoint's target address and additional configuration.
           text: >
-            az iot ops asset endpoint update --endpoint {asset_endpoint} -g {resource_group}
+            az iot ops asset endpoint update --name {asset_endpoint} -g {resource_group}
             --target-address {target_address} --additional-config {additional_configuration}
         - name: Update an asset endpoint's authentication mode to use anonymous user authentication.
           text: >
-            az iot ops asset endpoint update --endpoint {asset_endpoint} -g {resource_group}
+            az iot ops asset endpoint update --name {asset_endpoint} -g {resource_group}
             --authentication-mode Anonymous
     """
 
@@ -519,7 +519,7 @@ def load_iotops_help():
         examples:
         - name: Delete an asset endpoint.
           text: >
-            az iot ops asset endpoint delete --endpoint {asset_endpoint} -g {resource_group}
+            az iot ops asset endpoint delete --name {asset_endpoint} -g {resource_group}
     """
 
     helps[
