@@ -45,7 +45,7 @@ from ....generators import generate_generic_id
 ])
 def test_create_asset_endpoint_profile(mocker, mocked_cmd, mocked_resource_management_client, aep_helpers_fixture, req):
     patched_cap = mocker.patch(
-        "azext_edge.edge.providers.adr.base.ResourceManagementProvider._check_cluster_and_custom_location"
+        "azext_edge.edge.providers.adr.base.ADRBaseProvider._check_cluster_and_custom_location"
     )
     patched_cap.return_value = generate_generic_id()
 

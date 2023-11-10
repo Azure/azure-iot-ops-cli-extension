@@ -14,14 +14,14 @@ from azure.cli.core.azclierror import (
     RequiredArgumentMissingError,
 )
 
-from .base import ResourceManagementProvider
+from .base import ADRBaseProvider
 from ...util import assemble_nargs_to_dict, build_query
 from ...common import ResourceTypeMapping
 
 logger = get_logger(__name__)
 
 
-class AssetProvider(ResourceManagementProvider):
+class AssetProvider(ADRBaseProvider):
     def __init__(self, cmd):
         super(AssetProvider, self).__init__(
             cmd=cmd,

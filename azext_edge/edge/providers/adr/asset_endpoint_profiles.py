@@ -12,14 +12,14 @@ from azure.cli.core.azclierror import (
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
 )
-from .base import ResourceManagementProvider
+from .base import ADRBaseProvider
 from ...util import assemble_nargs_to_dict, build_query
 from ...common import ResourceTypeMapping, AEPAuthModes
 
 logger = get_logger(__name__)
 
 
-class AssetEndpointProfileProvider(ResourceManagementProvider):
+class AssetEndpointProfileProvider(ADRBaseProvider):
     def __init__(self, cmd):
         super(AssetEndpointProfileProvider, self).__init__(
             cmd=cmd,

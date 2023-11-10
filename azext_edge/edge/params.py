@@ -753,7 +753,7 @@ def load_iotops_arguments(self, _):
             action="append",
             help="Space-separated key=value pairs corresponding to certificates associated with the endpoint. "
             "The following key values are supported and required: `secret`, `thumbprint`, `password`."
-            "--event can be used 1 or more times. Review help examples for full parameter usage",
+            "--cert can be used 1 or more times. Review help examples for full parameter usage",
         )
         context.argument(
             "additional_configuration",

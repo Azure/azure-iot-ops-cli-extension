@@ -57,8 +57,8 @@ def test_check_cluster_and_custom_location(
     cluster_resource_group,
     cluster_subscription
 ):
-    from azext_edge.edge.providers.adr.base import ResourceManagementProvider
-    provider = ResourceManagementProvider(mocked_cmd)
+    from azext_edge.edge.providers.adr.base import ADRBaseProvider
+    provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
 
     custom_location_name = req.get("custom_location_name")
     cluster_name = req.get("cluster_name")
@@ -126,8 +126,8 @@ def test_check_cluster_and_custom_location(
 def test_check_cluster_and_custom_location_argument_error(
     mocked_cmd,
 ):
-    from azext_edge.edge.providers.adr.base import ResourceManagementProvider
-    provider = ResourceManagementProvider(mocked_cmd)
+    from azext_edge.edge.providers.adr.base import ADRBaseProvider
+    provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
 
     with pytest.raises(RequiredArgumentMissingError):
         provider._check_cluster_and_custom_location(
@@ -167,8 +167,8 @@ def test_check_cluster_and_custom_location_build_query_error(
     mocked_build_query,
     req
 ):
-    from azext_edge.edge.providers.adr.base import ResourceManagementProvider
-    provider = ResourceManagementProvider(mocked_cmd)
+    from azext_edge.edge.providers.adr.base import ADRBaseProvider
+    provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
     custom_location_name = req.get("custom_location_name")
     cluster_name = req.get("cluster_name")
 
@@ -215,8 +215,8 @@ def test_check_cluster_and_custom_location_no_extension_error(
     mocked_build_query,
     mocked_resource_management_client,
 ):
-    from azext_edge.edge.providers.adr.base import ResourceManagementProvider
-    provider = ResourceManagementProvider(mocked_cmd)
+    from azext_edge.edge.providers.adr.base import ADRBaseProvider
+    provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
 
     with pytest.raises(Exception) as e:
         provider._check_cluster_and_custom_location(

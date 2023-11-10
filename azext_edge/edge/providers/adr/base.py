@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from knack.log import get_logger
 from azure.cli.core.azclierror import (
     ResourceNotFoundError,
@@ -12,6 +12,7 @@ from azure.cli.core.azclierror import (
     ValidationError
 )
 
+from ..base_provider import BaseProvider
 from ...util import build_query
 from ...common import ResourceTypeMapping
 
@@ -20,19 +21,16 @@ API_VERSION = "2023-11-01-preview"
 
 
 # @vilit - prob generalize this even more
-class ResourceManagementProvider:
+class ADRBaseProvider(BaseProvider):
     def __init__(
-        self, cmd, resource_type: Optional[str] = None
+        self, cmd, resource_type: str
     ):
-        from azure.cli.core.commands.client_factory import get_subscription_id
-        from ...util.az_client import get_resource_client
-
-        self.cmd = cmd
-        self.subscription = get_subscription_id(cmd.cli_ctx)
-        self.resource_client = get_resource_client(subscription_id=self.subscription)
-        self.api_version = API_VERSION
-        self.resource_type = resource_type
-        self.required_extension = "microsoft.deviceregistry.assets"
+        super(ADRBaseProvider, self).__init__(
+            cmd=cmd,
+            api_version=API_VERSION,
+            resource_type=resource_type,
+            required_extension="microsoft.deviceregistry.assets"
+        )
 
     def delete(
         self,
@@ -51,50 +49,6 @@ class ResourceManagementProvider:
             resource_name=resource_name,
             api_version=self.api_version
         )
-
-    def get_location(
-        self,
-        resource_group_name: str
-    ) -> str:
-        resource_group = self.resource_client.resource_groups.get(resource_group_name=resource_group_name)
-        return resource_group.as_dict()["location"]
-
-    def list(
-        self,
-        resource_group_name: Optional[str] = None,
-    ) -> List[Any]:
-        # Note the usage of az rest/send_raw_request over resource
-        # az resource list/resource_client.resources.list will omit properties
-        from ...util.common import _process_raw_request
-        uri = f"/subscriptions/{self.subscription}"
-        if resource_group_name:
-            uri += f"/resourceGroups/{resource_group_name}"
-        uri += f"/providers/{self.resource_type}?api-version={self.api_version}"
-        return _process_raw_request(
-            cmd=self.cmd, method="GET", url=uri, keyword="value"
-        )
-
-    def show(
-        self,
-        resource_name: str,
-        resource_group_name: str
-    ) -> Dict[str, Any]:
-        result = self.resource_client.resources.get(
-            resource_group_name=resource_group_name,
-            resource_provider_namespace=self.resource_type,
-            parent_resource_path="",
-            resource_type="",
-            resource_name=resource_name,
-            api_version=self.api_version
-        )
-        # serialize takes out id
-        # as_dict turns extendedLocation into extended_location
-        # fix as_dict here
-        result = result.as_dict()
-        extended_location = result.pop("extended_location", None)
-        if extended_location:
-            result["extendedLocation"] = extended_location
-        return result
 
     def show_and_check(
         self,

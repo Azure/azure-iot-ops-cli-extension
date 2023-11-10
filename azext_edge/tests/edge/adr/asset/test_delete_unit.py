@@ -21,7 +21,6 @@ def test_delete_asset(
     mocked_cmd,
     mock_check_cluster_connectivity,
     mocked_resource_management_client,
-    mocked_send_raw_request,
     resource_group
 ):
     asset_name = generate_generic_id()

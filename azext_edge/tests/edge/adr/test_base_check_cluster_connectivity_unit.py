@@ -16,8 +16,8 @@ from ...generators import generate_generic_id
     "return_value": []
 }], indirect=True)
 def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
-    from azext_edge.edge.providers.adr.base import ResourceManagementProvider
-    provider = ResourceManagementProvider(mocked_cmd)
+    from azext_edge.edge.providers.adr.base import ADRBaseProvider
+    provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
     custom_location_id = generate_generic_id()
     provider._check_cluster_connectivity(custom_location_id)
     assert mocked_build_query.call_count == 1
@@ -80,8 +80,8 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
     "offline cluster"
 ], indirect=True)
 def test_check_cluster_connectivity(mocked_cmd, mocked_build_query):
-    from azext_edge.edge.providers.adr.base import ResourceManagementProvider
-    provider = ResourceManagementProvider(mocked_cmd)
+    from azext_edge.edge.providers.adr.base import ADRBaseProvider
+    provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
     custom_location_id = generate_generic_id()
     provider._check_cluster_connectivity(custom_location_id)
     assert mocked_build_query.call_count == 2
