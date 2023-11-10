@@ -11,6 +11,7 @@ from azext_edge.edge.util import build_query
 from ..generators import generate_generic_id
 
 
+@pytest.mark.parametrize("subscription_id", [None, generate_generic_id()])
 @pytest.mark.parametrize("custom_query", [None, generate_generic_id()])
 @pytest.mark.parametrize("name", [None, generate_generic_id()])
 @pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
@@ -19,6 +20,7 @@ from ..generators import generate_generic_id
 @pytest.mark.parametrize("additional_project", [None, generate_generic_id()])
 def test_build_query(
     mocker,
+    subscription_id,
     custom_query,
     name,
     resource_group,
@@ -26,7 +28,6 @@ def test_build_query(
     type,
     additional_project
 ):
-    subscription_id = generate_generic_id()
     expected_result = generate_generic_id()
     mocked_process_query = mocker.patch("azext_edge.edge.util.common._process_raw_request")
     mocked_process_query.return_value = expected_result
@@ -46,7 +47,7 @@ def test_build_query(
     _, url, method, payload = mocked_process_query.call_args.args
     assert method == "POST"
     assert url == "/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01"
-    assert payload["subscriptions"] == [subscription_id]
+    assert payload["subscriptions"] == ([subscription_id] if subscription_id else [])
 
     query = payload["query"]
     if custom_query:

@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from ...generators import generate_generic_id
+from ....generators import generate_generic_id
 
 
 @pytest.fixture()
@@ -31,7 +31,7 @@ def asset_helpers_fixture(mocker, request):
 
 
 # Paths for mocking
-ASSETS_PATH = "azext_edge.edge.providers.assets"
+ASSETS_PATH = "azext_edge.edge.providers.adr.assets"
 
 # Generic objects
 MINIMUM_ASSET = {

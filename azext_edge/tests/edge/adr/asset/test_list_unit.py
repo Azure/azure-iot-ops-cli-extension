@@ -7,9 +7,9 @@
 import pytest
 
 from azext_edge.edge.commands_assets import list_assets
-from azext_edge.edge.providers.assets import API_VERSION
+from azext_edge.edge.providers.adr.base import API_VERSION
 
-from ...generators import generate_generic_id
+from ....generators import generate_generic_id
 
 
 @pytest.mark.parametrize("mocked_send_raw_request", [

@@ -10,7 +10,7 @@ from azext_edge.edge.common import ResourceTypeMapping
 from azext_edge.edge.commands_assets import query_assets
 
 from .conftest import ASSETS_PATH
-from ...generators import generate_generic_id
+from ....generators import generate_generic_id
 
 
 @pytest.mark.parametrize("mocked_build_query", [{
