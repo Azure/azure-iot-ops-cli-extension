@@ -82,7 +82,7 @@ def test_add_asset_data_point(
     # Check update request
     request_data_points = call_kwargs["parameters"]["properties"]["dataPoints"]
 
-    assert request_data_points[:-1] == original_asset["properties"]["dataPoints"]
+    assert request_data_points[:-1] == original_asset["properties"].get("dataPoints", [])
     added_event = request_data_points[-1]
     assert added_event["capabilityId"] == (capability_id or name)
     assert added_event["name"] == name
@@ -112,7 +112,7 @@ def test_list_asset_data_points(mocked_cmd, mocked_resource_management_client):
     )
     mocked_resource_management_client.resources.get.assert_called_once()
     original_asset = mocked_resource_management_client.resources.get.return_value.as_dict.return_value
-    assert result_events == original_asset["properties"]["dataPoints"]
+    assert result_events == original_asset["properties"].get("dataPoints", [])
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [

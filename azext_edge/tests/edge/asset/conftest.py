@@ -44,13 +44,11 @@ MINIMUM_ASSET = {
     "name": "props-test-min",
     "properties": {
         "assetEndpointProfileUri": generate_generic_id(),
-        "dataPoints": [],
         "defaultDataPointsConfiguration": "{\"publishingInterval\": 1000, \"samplingInterval\": 500, "
         "\"queueSize\": 1}",
         "defaultEventsConfiguration": "{\"publishingInterval\": 1000, \"samplingInterval\": 500, \"queueSize\": 1}",
         "displayName": "props-test-min",
         "enabled": True,
-        "events": [],
         "externalAssetId": generate_generic_id(),
         "provisioningState": "Accepted",
         "uuid": generate_generic_id(),

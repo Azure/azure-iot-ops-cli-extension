@@ -342,6 +342,8 @@ class AssetProvider():
             sampling_interval=sampling_interval
         )
         sub_point_type = "dataPoints" if data_source else "events"
+        if sub_point_type not in asset["properties"]:
+            asset["properties"][sub_point_type] = []
         asset["properties"][sub_point_type].append(sub_point)
 
         poller = self.resource_client.resources.begin_create_or_update_by_id(
@@ -366,7 +368,7 @@ class AssetProvider():
             resource_group_name=resource_group_name
         )
 
-        return asset["properties"][sub_point_type]
+        return asset["properties"].get(sub_point_type, [])
 
     def remove_sub_point(
         self,
@@ -382,6 +384,8 @@ class AssetProvider():
             resource_group_name=resource_group_name
         )
 
+        if sub_point_type not in asset["properties"]:
+            asset["properties"][sub_point_type] = []
         sub_points = asset["properties"][sub_point_type]
         if data_source:
             sub_points = [dp for dp in sub_points if dp["dataSource"] != data_source]
