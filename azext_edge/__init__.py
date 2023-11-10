@@ -6,6 +6,7 @@
 
 from azure.cli.core import AzCommandsLoader
 from azext_edge.constants import VERSION
+import azext_edge.edge._help  # noqa: F401
 
 
 class OpsExtensionCommandsLoader(AzCommandsLoader):
@@ -14,12 +15,14 @@ class OpsExtensionCommandsLoader(AzCommandsLoader):
 
     def load_command_table(self, args):
         from azext_edge.edge.command_map import load_iotops_commands
+
         load_iotops_commands(self, args)
 
         return self.command_table
 
     def load_arguments(self, command):
         from azext_edge.edge.params import load_iotops_arguments
+
         load_iotops_arguments(self, command)
 
 
