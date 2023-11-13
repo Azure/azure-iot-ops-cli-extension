@@ -1,10 +1,11 @@
 # coding=utf-8
-# ----------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License. See License file in the project root for license information.
-# ----------------------------------------------------------------------------------------------
+# Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
+# --------------------------------------------------------------------------------------------
 
 from functools import partial
+from itertools import groupby
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from enum import Enum
 
@@ -341,6 +342,38 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
             check_manager.add_display(target_name=target_minimum_nodes, display=node_memory_display)
 
     return check_manager.as_dict(as_list)
+
+
+def get_deployment_scale_grouped_by_namespace(
+    label_selector: str = None,
+    prefix_names: List[str] = None,
+) -> List[dict]:
+    from kubernetes.client.models import V1Deployment, V1DeploymentList
+
+    v1_apps = client.AppsV1Api()
+    deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(
+        label_selector=label_selector,
+    )
+
+    # filter out deployments that are not in the prefix_names
+    if prefix_names:
+        deployments: List = [d for d in deployments.items if d.metadata.name.startswith(tuple(prefix_names))]
+
+    def get_namespace(deployment: V1Deployment) -> str:
+        return deployment.metadata.namespace
+
+    deployments.sort(key=get_namespace)
+
+    scales: List = []
+    for (namespace, deployments) in groupby(list(deployments), get_namespace):
+        namespace_scales = (namespace, [])
+        for deployment in deployments:
+            deployment_name = deployment.metadata.name
+            scale = v1_apps.read_namespaced_deployment_scale(name=deployment_name, namespace=namespace)
+            namespace_scales[1].append(scale)
+        scales.append(namespace_scales)
+
+    return scales
 
 
 def decorate_resource_status(status: str) -> str:

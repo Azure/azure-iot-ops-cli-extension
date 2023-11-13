@@ -1,20 +1,21 @@
 # coding=utf-8
-# ----------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License. See License file in the project root for license information.
-# ----------------------------------------------------------------------------------------------
+# Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
+# --------------------------------------------------------------------------------------------
 
 
 from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
 import pytest
+from kubernetes.client.models import V1Scale, V1ObjectMeta, V1ScaleSpec, V1ScaleStatus
 from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
-from azext_edge.edge.providers.check.lnm import evaluate_lnms
+from azext_edge.edge.providers.check.lnm import evaluate_lnms, evaluate_scales
 
 from .conftest import (
     assert_check_by_resource_types,
     assert_conditions,
     assert_evaluations,
-    generate_resource_stub
+    generate_resource_stub,
 )
 from ...generators import generate_generic_id
 
@@ -25,12 +26,15 @@ from ...generators import generate_generic_id
         None,
         [],
         [LnmResourceKinds.LNM.value],
+        [LnmResourceKinds.SCALE.value],
+        [LnmResourceKinds.LNM.value, LnmResourceKinds.SCALE.value],
     ],
 )
 @pytest.mark.parametrize('ops_service', ['lnm'])
 def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
         LnmResourceKinds.LNM.value: "azext_edge.edge.providers.check.lnm.evaluate_lnms",
+        LnmResourceKinds.SCALE.value: "azext_edge.edge.providers.check.lnm.evaluate_scales",
     }
 
     assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
@@ -137,7 +141,7 @@ def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, r
                 )
             ],
             # namespace conditions str
-            ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"],
+            ["len(lnms)>=0", "status.configStatusLevel", "spec.allowList", "spec.image"],
             # namespace evaluations str
             [
                 [
@@ -176,7 +180,7 @@ def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, r
                 }
             ],
             # namespace conditions str
-            ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"],
+            ["len(lnms)>=0", "status.configStatusLevel", "spec.allowList", "spec.image"],
             # namespace evaluations str
             [
                 [
@@ -223,6 +227,105 @@ def test_lnm_checks(
 
     for namespace in target:
         assert namespace in result["targets"]["lnmz.layerednetworkmgmt.iotoperations.azure.com"]
+
+        assert_conditions(target[namespace], namespace_conditions)
+        assert_evaluations(target[namespace], namespace_evaluations)
+
+
+def generate_scale_resource_stub(
+    name: str,
+    replicas: int,
+) -> V1Scale:
+    meta = V1ObjectMeta(name=name)
+    spec = V1ScaleSpec(replicas=replicas)
+    status = V1ScaleStatus(replicas=replicas, selector=None)
+
+    v1scale_obj = V1Scale(
+        api_version="autoscaling/v1",
+        kind="Scale",
+        metadata=meta,
+        spec=spec,
+        status=status
+    )
+
+    return v1scale_obj
+
+
+@pytest.mark.parametrize(
+    "scales, namespace_conditions, namespace_evaluations",
+    [
+        (
+            # scales
+            [
+                generate_scale_resource_stub(
+                    name="test-scale",
+                    replicas=1,
+                ),
+                generate_scale_resource_stub(
+                    name="test-scale2",
+                    replicas=3,
+                ),
+            ],
+            # namespace conditions str
+            ["len(scales)>=0", "spec.replicas", "status.replicas"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/spec.replicas", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/status.replicas", 1),
+                ],
+            ]
+        ),
+        (
+            # scales
+            [
+                generate_scale_resource_stub(
+                    name="test-scale2",
+                    replicas=-1,
+                ),
+            ],
+            # namespace conditions str
+            ["len(scales)>=0", "spec.replicas", "status.replicas"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "error"),
+                    ("value/spec.replicas", -1),
+                ],
+                [
+                    ("status", "error"),
+                    ("value/status.replicas", -1),
+                ],
+            ]
+        ),
+    ]
+)
+def test_scale_checks(
+    mocker,
+    scales,
+    namespace_conditions,
+    namespace_evaluations,
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.check.lnm.get_deployment_scale_grouped_by_namespace",
+        side_effect=[[("items", scales)]],
+    )
+
+    namespace = generate_generic_id()
+    for scale in scales:
+        scale.metadata.namespace = namespace
+    result = evaluate_scales()
+
+    assert result["name"] == "evalScales"
+    assert result["targets"]["scales.autoscaling"]
+    target = result["targets"]["scales.autoscaling"]
+
+    for namespace in target:
+        assert namespace in result["targets"]["scales.autoscaling"]
 
         target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)

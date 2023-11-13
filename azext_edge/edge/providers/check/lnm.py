@@ -1,8 +1,8 @@
 # coding=utf-8
-# ----------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------
 # Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License. See License file in the project root for license information.
-# ----------------------------------------------------------------------------------------------
+# Private distribution for NDA customers only. Governed by license terms at https://preview.e4k.dev/docs/use-terms/
+# --------------------------------------------------------------------------------------------
 
 from typing import Any, Dict, List, Tuple
 
@@ -13,6 +13,7 @@ from .base import (
     add_display_and_eval,
     check_post_deployment,
     decorate_pod_phase,
+    get_deployment_scale_grouped_by_namespace,
     process_properties,
     resources_grouped_by_namespace,
 )
@@ -47,6 +48,7 @@ def check_lnm_deployment(
 ) -> None:
     evaluate_funcs = {
         LnmResourceKinds.LNM: evaluate_lnms,
+        # LnmResourceKinds.SCALE: evaluate_scales,
     }
 
     check_post_deployment(
@@ -69,7 +71,7 @@ def evaluate_lnms(
     check_manager = CheckManager(check_name="evalLnms", check_desc="Evaluate LNM instances")
 
     target_lnms = "lnmz.layerednetworkmgmt.iotoperations.azure.com"
-    lnm_namespace_conditions = ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"]
+    lnm_namespace_conditions = ["len(lnms)>=0", "status.configStatusLevel", "spec.allowList", "spec.image"]
 
     all_lnms: dict = LNM_API_V1B1.get_resources(LnmResourceKinds.LNM).get("items", [])
 
@@ -92,9 +94,9 @@ def evaluate_lnms(
 
         lnms: List[dict] = list(lnms)
         lnms_count = len(lnms)
-        lnms_count_text = "- Expecting [bright_blue]>=1[/bright_blue] instance resource per namespace. {}."
+        lnms_count_text = "- Expecting [bright_blue]>=0[/bright_blue] instance resource per namespace. {}."
 
-        if lnms_count >= 1:
+        if lnms_count >= 0:
             lnms_count_text = lnms_count_text.format(f"[green]Detected {lnms_count}[/green]")
         else:
             lnms_count_text = lnms_count_text.format(f"[red]Detected {lnms_count}[/red]")
@@ -311,6 +313,94 @@ def _evaluate_pod_for_other_namespace(
     return pods
 
 
+def evaluate_scales(
+    as_list: bool = False,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> Dict[str, Any]:
+    check_manager = CheckManager(check_name="evalScales", check_desc="Evaluate LNM scales")
+
+    target_scales = "scales.autoscaling"
+    scale_namespace_conditions = ["len(scales)>=0", "spec.replicas", "status.replicas"]
+
+    scales = get_deployment_scale_grouped_by_namespace(prefix_names=[AIO_LNM_PREFIX])
+
+    if not scales:
+        fetch_scales_error_text = "\nUnable to fetch LNM scales in any namespaces."
+        check_manager.add_target(target_name=target_scales)
+        check_manager.add_display(target_name=target_scales, display=Padding(fetch_scales_error_text, (0, 0, 0, 8)))
+        check_manager.set_target_status(target_name=target_scales, status=CheckTaskStatus.skipped.value)
+
+    for (namespace, scales) in scales:
+        check_manager.add_target(target_name=target_scales, namespace=namespace, conditions=scale_namespace_conditions)
+        check_manager.add_display(
+            target_name=target_scales,
+            namespace=namespace,
+            display=Padding(
+                f"LNM scale for namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 6)
+            )
+        )
+
+        for scale in scales:
+            scale_name = scale.metadata.name
+            scale_spec = scale.spec
+            scale_status = scale.status
+            scale_spec_replicas = scale_spec.replicas if hasattr(scale_spec, "replicas") else -1
+            scale_status_replicas = scale_status.replicas if hasattr(scale_status, "replicas") else -1
+
+            check_manager.add_display(
+                target_name=target_scales,
+                namespace=namespace,
+                display=Padding(
+                    f"\n- Scale {{[bright_blue]{scale_name}[/bright_blue]}}",
+                    (0, 0, 0, 10)
+                )
+            )
+            scale_spec_eval_value = {"spec.replicas": scale_spec_replicas}
+            scale_spec_eval_status = CheckTaskStatus.success.value
+            scale_spec_text = "Expecting [bright_blue]>=0[/bright_blue] spec replicas. {}."
+
+            if scale_spec_replicas < 0:
+                scale_spec_eval_status = CheckTaskStatus.error.value
+                scale_spec_text = scale_spec_text.format(f"[red]Detected {scale_spec_replicas}[/red]")
+            else:
+                scale_spec_text = scale_spec_text.format(f"[green]Detected {scale_spec_replicas}[/green]")
+
+            add_display_and_eval(
+                check_manager=check_manager,
+                target_name=target_scales,
+                display_text=scale_spec_text,
+                eval_status=scale_spec_eval_status,
+                eval_value=scale_spec_eval_value,
+                resource_name=scale_name,
+                namespace=namespace,
+                padding=(0, 0, 0, 14)
+            )
+
+            scale_status_eval_value = {"status.replicas": scale_status_replicas}
+            scale_status_eval_status = CheckTaskStatus.success.value
+            scale_status_text = "Expecting [bright_blue]>=0[/bright_blue] status replicas. {}."
+
+            if scale_status_replicas < 0:
+                scale_status_eval_status = CheckTaskStatus.error.value
+                scale_status_text = scale_status_text.format(f"[red]Detected {scale_status_replicas}[/red]")
+            else:
+                scale_status_text = scale_status_text.format(f"[green]Detected {scale_status_replicas}[/green]")
+
+            add_display_and_eval(
+                check_manager=check_manager,
+                target_name=target_scales,
+                display_text=scale_status_text,
+                eval_status=scale_status_eval_status,
+                eval_value=scale_status_eval_value,
+                resource_name=scale_name,
+                namespace=namespace,
+                padding=(0, 0, 0, 14)
+            )
+
+    return check_manager.as_dict(as_list)
+
+
 def _evaluate_lnm_pod_health(
     check_manager: CheckManager,
     target: str,
@@ -393,7 +483,7 @@ def _evaluate_lnm_pod_health(
                     eval_value={"name": pod_name, f"status.conditions.{condition_type.lower()}": condition_status},
                     resource_name=target_service_pod,
                     namespace=namespace,
-                    padding=(0, 0, 0, display_padding + 8)
+                    padding=(0, 0, 0, display_padding + 6)
                 )
 
                 if detail_level > ResourceOutputDetailLevel.summary.value:
@@ -401,13 +491,13 @@ def _evaluate_lnm_pod_health(
                     condition_reason_text = f"{condition_reason}" if condition_reason else ""
 
                     if condition_reason_text:
-                        # remove the [ and ] to prevent console not printing the text
+                        # escape [ and to prevent console not printing the text
                         condition_reason_text = condition_reason_text.replace("[", "\\[")
                         check_manager.add_display(
                             target_name=target,
                             namespace=namespace,
                             display=Padding(
                                 f"[red]Reason: {condition_reason_text}[/red]",
-                                (0, 0, 0, display_padding + 8),
+                                (0, 0, 0, display_padding + 6),
                             ),
                         )
