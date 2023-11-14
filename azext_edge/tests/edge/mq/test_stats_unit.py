@@ -187,3 +187,23 @@ def _assert_stats_kpi(stats_map: dict, kpi: str, value_pass_fail: bool = False):
     assert "value" in stats_map[kpi]
     if value_pass_fail:
         stats_map[kpi]["value"] in ["Pass", "Fail"]
+
+
+@pytest.mark.parametrize(
+    "total_bytes,fetch_bytes",
+    [pytest.param(10, 10), pytest.param(10, 5), pytest.param(10, 1)],
+)
+def test__fetch_bytes(mocker, total_bytes: int, fetch_bytes: int):
+    import secrets
+    from azext_edge.edge.providers.stats import _fetch_bytes
+
+    total_fetches = total_bytes / fetch_bytes
+    socket_mock = mocker.MagicMock()
+
+    def handle_fetch(*args, **kwargs):
+        return secrets.token_bytes(fetch_bytes)
+
+    socket_mock.recv.side_effect = handle_fetch
+    result = _fetch_bytes(socket_mock, size=total_bytes)
+    assert socket_mock.recv.call_count == total_fetches
+    assert isinstance(result, bytes)
