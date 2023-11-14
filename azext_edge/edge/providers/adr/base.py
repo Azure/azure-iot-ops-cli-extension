@@ -41,7 +41,7 @@ class ADRBaseProvider(BaseProvider):
             resource_name=resource_name,
             resource_group_name=resource_group_name
         )
-        self.resource_client.resources.begin_delete(
+        return self.resource_client.resources.begin_delete(
             resource_group_name=resource_group_name,
             resource_provider_namespace=self.resource_type,
             parent_resource_path="",
