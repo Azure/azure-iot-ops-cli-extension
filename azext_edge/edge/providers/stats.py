@@ -26,6 +26,7 @@ console = Console(highlight=True)
 if TYPE_CHECKING:
     # pylint: disable=no-name-in-module
     from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
+    from socket import socket
 
 
 def _preprocess_stats(
@@ -264,10 +265,10 @@ def get_traces(
                 while True:
                     if current_trace_count and current_trace_count >= total_trace_count:
                         break
-
-                    rbytes = socket.recv(4)
+                    rbytes = _fetch_bytes(socket, 4)
                     response_size = int.from_bytes(rbytes, byteorder="big")
-                    response_bytes = socket.recv(response_size)
+                    response_bytes = _fetch_bytes(socket, response_size)
+
                     if response_bytes == b"":
                         logger.warning("TCP socket closed. Processing aborted.")
                         return
@@ -366,3 +367,14 @@ def _convert_otlp_to_tempo(message_dict: dict) -> dict:
             inst_lib_span["instrumentationLibrary"] = inst_lib_span.pop("scope", {})
 
     return new_dict
+
+
+def _fetch_bytes(socket: "socket", size: int) -> bytes:
+    result_bytes = socket.recv(size)
+    result_bytes_len = len(result_bytes)
+    while result_bytes_len < size:
+        remaining_bytes = size - result_bytes_len
+        result_bytes += socket.recv(remaining_bytes)
+        result_bytes_len = len(result_bytes)
+
+    return result_bytes

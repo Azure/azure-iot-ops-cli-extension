@@ -52,7 +52,20 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
 @pytest.mark.parametrize(
     "trace_ids,trace_dir,recv_side_effect",
     [
-        pytest.param(["2f799d7a9d1e8e182a52dc190baebce2"], None, [int(1).to_bytes(length=4, byteorder="big"), b""]),
+        pytest.param(
+            ["2f799d7a9d1e8e182a52dc190baebce2"],
+            None,
+            [
+                int(1).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=1,
+                        total_trace_count=1,
+                    )
+                ).SerializeToString(),
+            ],
+        ),
         pytest.param(
             ["2f799d7a9d1e8e182a52dc190baebce2", "4a32aaad8f3c5483b5b4960a06b82dfd"],
             None,

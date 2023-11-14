@@ -211,7 +211,7 @@ def portforward_socket(namespace: str, pod_name: str, pod_port: str) -> Iterator
     internal_tls = False
     namespaced_brokers: dict = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER, namespace=namespace)
     broker = None
-    if namespaced_brokers["items"]:
+    if namespaced_brokers and namespaced_brokers["items"]:
         broker: dict = namespaced_brokers["items"][0]
 
     if broker and broker["spec"].get("encryptInternalTraffic"):
