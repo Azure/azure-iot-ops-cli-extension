@@ -5,11 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 import binascii
-import pytest
-
 from unittest.mock import MagicMock
-from kubernetes.client.models import V1ObjectMeta, V1Pod, V1PodList
+
+import pytest
 from google.protobuf.json_format import ParseDict
+from kubernetes.client.models import V1ObjectMeta, V1Pod, V1PodList
+from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
 from azext_edge.edge.commands_mq import stats
 from azext_edge.edge.common import AIO_MQ_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT
@@ -21,7 +22,6 @@ from azext_edge.edge.providers.proto.diagnostics_service_pb2 import (
     RetrievedTraceWrapper,
     TraceRetrievalInfo,
 )
-from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
 from ...generators import generate_generic_id
 from .traces_data import TEST_TRACES_DATA
@@ -52,7 +52,20 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
 @pytest.mark.parametrize(
     "trace_ids,trace_dir,recv_side_effect",
     [
-        pytest.param(["2f799d7a9d1e8e182a52dc190baebce2"], None, [int(1).to_bytes(length=4, byteorder="big"), b""]),
+        pytest.param(
+            ["2f799d7a9d1e8e182a52dc190baebce2"],
+            None,
+            [
+                int(1).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=1,
+                        total_trace_count=1,
+                    )
+                ).SerializeToString(),
+            ],
+        ),
         pytest.param(
             ["2f799d7a9d1e8e182a52dc190baebce2", "4a32aaad8f3c5483b5b4960a06b82dfd"],
             None,
@@ -174,3 +187,26 @@ def _assert_stats_kpi(stats_map: dict, kpi: str, value_pass_fail: bool = False):
     assert "value" in stats_map[kpi]
     if value_pass_fail:
         stats_map[kpi]["value"] in ["Pass", "Fail"]
+
+
+@pytest.mark.parametrize(
+    "total_bytes,fetch_bytes",
+    [pytest.param(10, 10), pytest.param(10, 5), pytest.param(10, 1), pytest.param(10, 3)],
+)
+def test__fetch_bytes(mocker, total_bytes: int, fetch_bytes: int):
+    import math
+    import secrets
+
+    from azext_edge.edge.providers.stats import _fetch_bytes
+
+    total_fetches = math.ceil(total_bytes / fetch_bytes)
+    socket_mock = mocker.MagicMock()
+
+    def handle_fetch(*args, **kwargs):
+        return_bytes = fetch_bytes if args[0] >= fetch_bytes else args[0]
+        return secrets.token_bytes(return_bytes)
+
+    socket_mock.recv.side_effect = handle_fetch
+    result = _fetch_bytes(socket_mock, size=total_bytes)
+    assert socket_mock.recv.call_count == total_fetches
+    assert len(result) == total_bytes
