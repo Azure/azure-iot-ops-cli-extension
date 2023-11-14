@@ -59,12 +59,13 @@ def check_post_deployment(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
+    exclude_subresources: bool = False,
 ) -> None:
     check_resources = {}
     for resource in resource_kinds_enum:
         check_resources[resource] = not resource_kinds or resource.value in resource_kinds
 
-    resource_enumeration, api_resources = enumerate_ops_service_resources(api_info, check_name, check_desc, as_list)
+    resource_enumeration, api_resources = enumerate_ops_service_resources(api_info, check_name, check_desc, as_list, exclude_subresources)
     result["postDeployment"].append(resource_enumeration)
     lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
@@ -174,7 +175,8 @@ def enumerate_ops_service_resources(
     api_info: EdgeResourceApi,
     check_name: str,
     check_desc: str,
-    as_list: bool = False
+    as_list: bool = False,
+    exclude_subresources: bool = False,
 ) -> Tuple[dict, dict]:
 
     resource_kind_map = {}
@@ -197,8 +199,12 @@ def enumerate_ops_service_resources(
 
     api_header_display = Padding(f"[bright_blue]{target_api}[/bright_blue] API resources", (0, 0, 0, 8))
     check_manager.add_display(target_name=target_api, display=api_header_display)
+
     for resource in api_resources.resources:
         r: V1APIResource = resource
+        is_subresource = "/" in r.name
+        if is_subresource and exclude_subresources:
+            continue
         if r.kind not in resource_kind_map:
             resource_kind_map[r.kind] = True
             check_manager.add_display(
