@@ -156,6 +156,11 @@ LNM_POD_CONDITION_TEXT_MAP = {
     "PodScheduled": "Pod Scheduled",
 }
 
+LNM_EXCLUDED_SUBRESOURCE = [
+    "lnmz/scale",
+    "lnmz/status",
+]
+
 # Check constants
 ALL_NAMESPACES_TARGET = '_all_'
 

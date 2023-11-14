@@ -59,13 +59,13 @@ def check_post_deployment(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
-    exclude_subresources: bool = False,
+    excluded_subresources: List[str] = None,
 ) -> None:
     check_resources = {}
     for resource in resource_kinds_enum:
         check_resources[resource] = not resource_kinds or resource.value in resource_kinds
 
-    resource_enumeration, api_resources = enumerate_ops_service_resources(api_info, check_name, check_desc, as_list, exclude_subresources)
+    resource_enumeration, api_resources = enumerate_ops_service_resources(api_info, check_name, check_desc, as_list, excluded_subresources)
     result["postDeployment"].append(resource_enumeration)
     lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
@@ -176,7 +176,7 @@ def enumerate_ops_service_resources(
     check_name: str,
     check_desc: str,
     as_list: bool = False,
-    exclude_subresources: bool = False,
+    excluded_subresources: List[str] = None,
 ) -> Tuple[dict, dict]:
 
     resource_kind_map = {}
@@ -202,8 +202,7 @@ def enumerate_ops_service_resources(
 
     for resource in api_resources.resources:
         r: V1APIResource = resource
-        is_subresource = "/" in r.name
-        if is_subresource and exclude_subresources:
+        if excluded_subresources and r.name in excluded_subresources:
             continue
         if r.kind not in resource_kind_map:
             resource_kind_map[r.kind] = True
