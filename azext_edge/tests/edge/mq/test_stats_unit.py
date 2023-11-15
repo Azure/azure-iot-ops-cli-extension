@@ -191,7 +191,14 @@ def _assert_stats_kpi(stats_map: dict, kpi: str, value_pass_fail: bool = False):
 
 @pytest.mark.parametrize(
     "total_bytes,fetch_bytes",
-    [pytest.param(10, 10), pytest.param(10, 5), pytest.param(10, 1), pytest.param(10, 3)],
+    [
+        pytest.param(10, 10),
+        pytest.param(10, 5),
+        pytest.param(10, 1),
+        pytest.param(10, 3),
+        pytest.param(10, 0),
+        pytest.param(10, -1),  # -1 is a special value to exercise partial fetching of bytes
+    ],
 )
 def test__fetch_bytes(mocker, total_bytes: int, fetch_bytes: int):
     import math
@@ -199,14 +206,45 @@ def test__fetch_bytes(mocker, total_bytes: int, fetch_bytes: int):
 
     from azext_edge.edge.providers.stats import _fetch_bytes
 
-    total_fetches = math.ceil(total_bytes / fetch_bytes)
+    if fetch_bytes > 0:
+        total_fetches = math.ceil(total_bytes / fetch_bytes)
+    elif fetch_bytes == 0:
+        total_fetches = 1
+    elif fetch_bytes == -1:
+        total_fetches = 2
+    else:
+        raise RuntimeError("Unsupported scenario.")
+
     socket_mock = mocker.MagicMock()
 
+    handle_fetch_count = 0
+
     def handle_fetch(*args, **kwargs):
-        return_bytes = fetch_bytes if args[0] >= fetch_bytes else args[0]
+        nonlocal handle_fetch_count
+        if args[0] >= fetch_bytes:
+            if fetch_bytes == -1:
+                if handle_fetch_count > 0:
+                    return_bytes = 0
+                else:
+                    return_bytes = 1
+            else:
+                return_bytes = fetch_bytes
+        else:
+            return_bytes = args[0]
+
+        handle_fetch_count = handle_fetch_count + 1
         return secrets.token_bytes(return_bytes)
 
     socket_mock.recv.side_effect = handle_fetch
     result = _fetch_bytes(socket_mock, size=total_bytes)
     assert socket_mock.recv.call_count == total_fetches
+
+    if fetch_bytes == 0:
+        assert result == b""
+        return
+
+    if fetch_bytes == -1:
+        assert len(result) == 1
+        return
+
     assert len(result) == total_bytes

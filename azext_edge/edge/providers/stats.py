@@ -371,10 +371,16 @@ def _convert_otlp_to_tempo(message_dict: dict) -> dict:
 
 def _fetch_bytes(socket: "socket", size: int) -> bytes:
     result_bytes = socket.recv(size)
+    if result_bytes == b"":
+        return result_bytes
+
     result_bytes_len = len(result_bytes)
     while result_bytes_len < size:
-        remaining_bytes = size - result_bytes_len
-        result_bytes += socket.recv(remaining_bytes)
-        result_bytes_len = len(result_bytes)
+        remaining_bytes_size = size - result_bytes_len
+        interm_bytes = socket.recv(remaining_bytes_size)
+        if interm_bytes == b"":
+            break
+        result_bytes += interm_bytes
+        result_bytes_len += len(interm_bytes)
 
     return result_bytes
