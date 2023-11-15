@@ -59,7 +59,7 @@ def check_post_deployment(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: Optional[List[str]] = None,
-    excluded_subresources: Optional[List[str]] = None,
+    excluded_resources: Optional[List[str]] = None,
 ) -> None:
     check_resources = {}
     for resource in resource_kinds_enum:
@@ -176,7 +176,7 @@ def enumerate_ops_service_resources(
     check_name: str,
     check_desc: str,
     as_list: bool = False,
-    excluded_subresources: Optional[List[str]] = None,
+    excluded_resources: Optional[List[str]] = None,
 ) -> Tuple[dict, dict]:
 
     resource_kind_map = {}
@@ -202,7 +202,7 @@ def enumerate_ops_service_resources(
 
     for resource in api_resources.resources:
         r: V1APIResource = resource
-        if excluded_subresources and r.name in excluded_subresources:
+        if excluded_resources and r.name in excluded_resources:
             continue
         if r.kind not in resource_kind_map:
             resource_kind_map[r.kind] = True

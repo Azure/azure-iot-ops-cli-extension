@@ -60,7 +60,7 @@ def check_lnm_deployment(
         as_list=as_list,
         detail_level=detail_level,
         resource_kinds=resource_kinds,
-        excluded_subresources=LNM_EXCLUDED_SUBRESOURCE,
+        excluded_resources=LNM_EXCLUDED_SUBRESOURCE,
     )
 
 
