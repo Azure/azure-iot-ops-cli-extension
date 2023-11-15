@@ -65,7 +65,7 @@ def check_post_deployment(
     for resource in resource_kinds_enum:
         check_resources[resource] = not resource_kinds or resource.value in resource_kinds
 
-    resource_enumeration, api_resources = enumerate_ops_service_resources(api_info, check_name, check_desc, as_list, excluded_subresources)
+    resource_enumeration, api_resources = enumerate_ops_service_resources(api_info, check_name, check_desc, as_list, excluded_resources)
     result["postDeployment"].append(resource_enumeration)
     lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
