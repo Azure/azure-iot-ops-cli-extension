@@ -25,6 +25,7 @@ from ...common import CheckTaskStatus
 from .common import (
     AIO_LNM_PREFIX,
     LNM_ALLOWLIST_PROPERTIES,
+    LNM_EXCLUDED_SUBRESOURCE,
     LNM_IMAGE_PROPERTIES,
     LNM_POD_CONDITION_TEXT_MAP,
     LNM_REST_PROPERTIES,
@@ -58,7 +59,8 @@ def check_lnm_deployment(
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
-        resource_kinds=resource_kinds
+        resource_kinds=resource_kinds,
+        excluded_resources=LNM_EXCLUDED_SUBRESOURCE,
     )
 
 

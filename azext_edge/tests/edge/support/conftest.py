@@ -141,7 +141,6 @@ def mocked_cluster_resources(request, mocker):
 
         if r == LNM_API_V1B1:
             v1_resources.append(_get_api_resource("Lnm"))
-            v1_resources.append(_get_api_resource("Scale"))
 
         if r == DEVICEREGISTRY_API_V1:
             v1_resources.append(_get_api_resource("Asset"))

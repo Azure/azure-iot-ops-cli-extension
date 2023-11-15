@@ -67,8 +67,7 @@ def mock_resource_types(mocker, ops_service):
         patched.return_value = (
             {},
             {
-                "Lnm": [{}],
-                "Scale": [{}]
+                "Lnm": [{}]
             }
         )
 
