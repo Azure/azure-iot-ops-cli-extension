@@ -58,8 +58,8 @@ def check_post_deployment(
     evaluate_funcs: Dict[ListableEnum, Callable],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    resource_kinds: List[str] = None,
-    excluded_subresources: List[str] = None,
+    resource_kinds: Optional[List[str]] = None,
+    excluded_subresources: Optional[List[str]] = None,
 ) -> None:
     check_resources = {}
     for resource in resource_kinds_enum:
@@ -176,7 +176,7 @@ def enumerate_ops_service_resources(
     check_name: str,
     check_desc: str,
     as_list: bool = False,
-    excluded_subresources: List[str] = None,
+    excluded_subresources: Optional[List[str]] = None,
 ) -> Tuple[dict, dict]:
 
     resource_kind_map = {}
