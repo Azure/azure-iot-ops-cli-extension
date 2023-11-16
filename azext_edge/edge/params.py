@@ -66,6 +66,7 @@ def load_iotops_arguments(self, _):
             options_list=["--mq-traces"],
             arg_type=get_three_state_flag(),
             help="Include mq traces in the support bundle.",
+            deprecate_info=context.deprecate(hide=True),
         )
 
     with self.argument_context("iot ops check") as context:
