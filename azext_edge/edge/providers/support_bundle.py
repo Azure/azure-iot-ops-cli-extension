@@ -91,7 +91,7 @@ def build_bundle(
                 # TODO: Change to kwargs based pattern
                 if service_moniker == OpsServiceType.deviceregistry.value:
                     bundle = bundle_method(deployed_apis)
-                if service_moniker == OpsServiceType.mq.value:
+                elif service_moniker == OpsServiceType.mq.value:
                     bundle = bundle_method(deployed_apis, log_age_seconds, include_mq_traces)
                 else:
                     bundle = bundle_method(deployed_apis, log_age_seconds)
