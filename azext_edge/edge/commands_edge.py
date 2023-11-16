@@ -15,6 +15,7 @@ from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 from .providers.support.base import get_bundle_path
+from .common import OpsServiceType
 
 logger = get_logger(__name__)
 
@@ -22,15 +23,21 @@ logger = get_logger(__name__)
 def support_bundle(
     cmd,
     log_age_seconds: int = 60 * 60 * 24,
-    ops_service: str = "auto",
+    ops_service: str = OpsServiceType.auto.value,
     bundle_dir: Optional[str] = None,
+    include_mq_traces: Optional[bool] = None,
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.support_bundle import build_bundle
 
     bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir)
-    return build_bundle(ops_service=ops_service, bundle_path=str(bundle_path), log_age_seconds=log_age_seconds)
+    return build_bundle(
+        ops_service=ops_service,
+        bundle_path=str(bundle_path),
+        log_age_seconds=log_age_seconds,
+        include_mq_traces=include_mq_traces,
+    )
 
 
 def check(

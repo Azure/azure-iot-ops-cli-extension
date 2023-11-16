@@ -230,13 +230,17 @@ def get_traces(
 
     namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
 
+    for_support_bundle = False
     if not trace_ids:
         trace_ids = []
     else:
+        if trace_ids[0] == "!support_bundle!":
+            trace_ids.pop()
+            for_support_bundle = True
         trace_ids = [binascii.unhexlify(t) for t in trace_ids]
 
     with Progress(
-        *Progress.get_default_columns(), MofNCompleteColumn(), transient=False, disable=bool(trace_ids)
+        *Progress.get_default_columns(), MofNCompleteColumn(), transient=False, disable=bool(trace_ids) or for_support_bundle
     ) as progress:
         with portforward_socket(
             namespace=namespace, pod_name=diagnostic_pod.metadata.name, pod_port=pod_protobuf_port
@@ -270,7 +274,7 @@ def get_traces(
                     response_bytes = _fetch_bytes(socket, response_size)
 
                     if response_bytes == b"":
-                        logger.warning("TCP socket closed. Processing aborted.")
+                        logger.warning("TCP socket closed. Trace processing aborted.")
                         return
 
                     response = Response.FromString(response_bytes)
@@ -302,20 +306,31 @@ def get_traces(
 
                     if trace_ids:
                         traces.append(msg_dict)
-                    if trace_dir:
+                    if trace_dir or for_support_bundle:
                         archive = f"{resource_name}.{span_name}.{span_trace_id}"
                         pb_suffix = ".otlp.pb"
                         tempo_suffix = ".tempo.json"
 
+                        oltp_format_pair = (f"{archive}{pb_suffix}", response.retrieved_trace.trace.SerializeToString())
+                        tempo_format_pair = (
+                            f"{archive}{tempo_suffix}",
+                            json.dumps(_convert_otlp_to_tempo(msg_dict), sort_keys=True),
+                        )
+
+                        if for_support_bundle:
+                            traces.append(oltp_format_pair)
+                            traces.append(tempo_format_pair)
+                            continue
+
                         # Original OLTP
                         myzip.writestr(
-                            zinfo_or_arcname=f"{archive}{pb_suffix}",
-                            data=response.retrieved_trace.trace.SerializeToString(),
+                            zinfo_or_arcname=oltp_format_pair[0],
+                            data=oltp_format_pair[1],
                         )
                         # Tempo
                         myzip.writestr(
-                            zinfo_or_arcname=f"{archive}{tempo_suffix}",
-                            data=json.dumps(_convert_otlp_to_tempo(msg_dict), sort_keys=True),
+                            zinfo_or_arcname=tempo_format_pair[0],
+                            data=tempo_format_pair[1],
                         )
 
                 if traces:
