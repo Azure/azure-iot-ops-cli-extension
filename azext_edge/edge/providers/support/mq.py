@@ -66,10 +66,7 @@ def fetch_diagnostic_traces():
                         }
                     )
 
-        except Exception as e:
-            import pdb
-
-            pdb.set_trace()
+        except Exception:
             logger.debug(f"Unable to process diagnostics pod traces against namespace {namespace}.")
 
     return result
