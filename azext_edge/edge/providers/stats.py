@@ -231,16 +231,19 @@ def get_traces(
     namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
 
     for_support_bundle = False
-    if not trace_ids:
-        trace_ids = []
-    else:
+    trace_ids = trace_ids or []
+
+    if trace_ids:
         if trace_ids[0] == "!support_bundle!":
             trace_ids.pop()
             for_support_bundle = True
         trace_ids = [binascii.unhexlify(t) for t in trace_ids]
 
     with Progress(
-        *Progress.get_default_columns(), MofNCompleteColumn(), transient=False, disable=bool(trace_ids) or for_support_bundle
+        *Progress.get_default_columns(),
+        MofNCompleteColumn(),
+        transient=False,
+        disable=bool(trace_ids) or for_support_bundle,
     ) as progress:
         with portforward_socket(
             namespace=namespace, pod_name=diagnostic_pod.metadata.name, pod_port=pod_protobuf_port
