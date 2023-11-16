@@ -314,21 +314,21 @@ def get_traces(
                         pb_suffix = ".otlp.pb"
                         tempo_suffix = ".tempo.json"
 
-                        oltp_format_pair = (f"{archive}{pb_suffix}", response.retrieved_trace.trace.SerializeToString())
+                        otlp_format_pair = (f"{archive}{pb_suffix}", response.retrieved_trace.trace.SerializeToString())
                         tempo_format_pair = (
                             f"{archive}{tempo_suffix}",
                             json.dumps(_convert_otlp_to_tempo(msg_dict), sort_keys=True),
                         )
 
                         if for_support_bundle:
-                            traces.append(oltp_format_pair)
+                            traces.append(otlp_format_pair)
                             traces.append(tempo_format_pair)
                             continue
 
-                        # Original OLTP
+                        # Original OTLP
                         myzip.writestr(
-                            zinfo_or_arcname=oltp_format_pair[0],
-                            data=oltp_format_pair[1],
+                            zinfo_or_arcname=otlp_format_pair[0],
+                            data=otlp_format_pair[1],
                         )
                         # Tempo
                         myzip.writestr(
