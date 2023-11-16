@@ -163,12 +163,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=OPCUA_API_V1,
-                mock_names=[
-                    "aio-opc-admission-controller",
-                    "aio-opc-supervisor",
-                    "aio-opc-opc",
-                    "opcplc-0000000"
-                ]
+                mock_names=["aio-opc-admission-controller", "aio-opc-supervisor", "aio-opc-opc", "opcplc-0000000"],
             )
             assert_list_replica_sets(
                 mocked_client,
@@ -187,16 +182,9 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=OPCUA_API_V1,
-                mock_names=[
-                    "opcplc-0000000"
-                ]
+                mock_names=["opcplc-0000000"],
             )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=OPC_APP_LABEL,
-                resource_api=OPCUA_API_V1
-            )
+            assert_list_services(mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, resource_api=OPCUA_API_V1)
 
         if api in [DATA_PROCESSOR_API_V1]:
             # Assert runtime resources
@@ -326,7 +314,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=AKRI_API_V0,
-                mock_names=["aio-akri-otel-collector"]
+                mock_names=["aio-akri-otel-collector"],
             )
             assert_list_services(
                 mocked_client, mocked_zipfile, label_selector=AKRI_SERVICE_LABEL, resource_api=AKRI_API_V0
@@ -356,7 +344,7 @@ def test_create_bundle(
                 label_selector=None,
                 resource_api=LNM_API_V1B1,
                 since_seconds=since_seconds,
-                mock_names=["svclb-aio-lnm-operator"]
+                mock_names=["svclb-aio-lnm-operator"],
             )
             assert_list_deployments(
                 mocked_client,
@@ -382,8 +370,7 @@ def test_create_bundle(
 
 
 def asset_raises_not_found_error(mocked_cluster_resources):
-
-    for (api, moniker) in [
+    for api, moniker in [
         (MQ_API_V1B1, "mq"),
         (OPCUA_API_V1, "opcua"),
         (DATA_PROCESSOR_API_V1, "dataprocessor"),
@@ -519,7 +506,7 @@ def assert_list_services(
     mocked_zipfile,
     label_selector: str,
     resource_api: EdgeResourceApi,
-    mock_names: Optional[List[str]] = None
+    mock_names: Optional[List[str]] = None,
 ):
     mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
@@ -589,3 +576,38 @@ def test_get_bundle_path(mocked_os_makedirs):
     path = get_bundle_path()
     expected = f"{join(abspath('.'), 'support_bundle_')}"
     assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
+
+
+@pytest.mark.parametrize(
+    "mocked_cluster_resources",
+    [
+        [MQ_API_V1B1],
+    ],
+    indirect=True,
+)
+def test_create_bundle_mq_traces(
+    mocked_client,
+    mocked_cluster_resources,
+    mocked_config,
+    mocked_os_makedirs,
+    mocked_zipfile,
+    mocked_get_custom_objects,
+    mocked_list_deployments,
+    mocked_list_pods,
+    mocked_list_replicasets,
+    mocked_list_statefulsets,
+    mocked_list_daemonsets,
+    mocked_list_services,
+    mocked_list_nodes,
+    mocked_list_namespaced_events,
+    mocked_get_stats,
+    mocked_root_logger,
+    mocked_mq_active_api,
+    mocked_mq_get_traces,
+):
+    result = support_bundle(None, bundle_dir=a_bundle_dir, include_mq_traces=True)
+    assert result["bundlePath"]
+    mocked_mq_get_traces.assert_called_once()
+    get_trace_kwargs = mocked_mq_get_traces.call_args.kwargs
+    assert get_trace_kwargs["namespace"] == "mock_namespace"  # TODO: Not my favorite
+    assert get_trace_kwargs["trace_ids"] == ["!support_bundle!"]  # TODO: Magic string
