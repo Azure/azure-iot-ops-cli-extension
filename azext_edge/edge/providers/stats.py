@@ -212,7 +212,7 @@ def get_traces(
     pod_protobuf_port: int = PROTOBUF_SERVICE_API_PORT,
     trace_ids: Optional[List[str]] = None,
     trace_dir: Optional[str] = None,
-) -> Union[List["TracesData"], None]:
+) -> Union[List["TracesData"], List[Tuple[str, str]], None]:
     """
     trace_ids: List[str] hex representation of trace Ids.
     """
