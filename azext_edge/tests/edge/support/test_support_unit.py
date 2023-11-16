@@ -606,8 +606,11 @@ def test_create_bundle_mq_traces(
     mocked_mq_get_traces,
 ):
     result = support_bundle(None, bundle_dir=a_bundle_dir, include_mq_traces=True)
+
     assert result["bundlePath"]
     mocked_mq_get_traces.assert_called_once()
     get_trace_kwargs = mocked_mq_get_traces.call_args.kwargs
+
     assert get_trace_kwargs["namespace"] == "mock_namespace"  # TODO: Not my favorite
     assert get_trace_kwargs["trace_ids"] == ["!support_bundle!"]  # TODO: Magic string
+    assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/mq/traces/trace_key", data="trace_data")
