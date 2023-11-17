@@ -7,7 +7,6 @@
 import sys
 import io
 
-from azure.cli.testsdk import LiveScenarioTest
 from contextlib import contextmanager
 
 
@@ -40,21 +39,3 @@ def capture_output():
     finally:
         sys.stdout = _stdout
         buffer_tee.close()
-
-
-class CaptureOutputLiveScenarioTest(LiveScenarioTest):
-    def __init__(self, test_scenario):
-        super(CaptureOutputLiveScenarioTest, self).__init__(test_scenario)
-
-    # TODO: @digimaun - Maybe put a helper like this in the shared lib, when you create it?
-    def command_execute_assert(self, command, asserts=[]):
-        from . import capture_output
-
-        with capture_output() as buffer:
-            self.cmd(command, checks=None)
-            output = buffer.get_output()
-
-        for a in asserts:
-            assert a in output
-
-        return output
