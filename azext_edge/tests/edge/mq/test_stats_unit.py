@@ -89,6 +89,28 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
             ],
         ),
         pytest.param(
+            ["!support_bundle!"],
+            None,
+            [
+                int(2).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=1,
+                        total_trace_count=2,
+                    )
+                ).SerializeToString(),
+                int(2).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=2,
+                        total_trace_count=2,
+                    )
+                ).SerializeToString(),
+            ],
+        ),
+        pytest.param(
             [],
             ".",
             [
@@ -135,7 +157,12 @@ def test_get_traces(
 
     namespace = generate_generic_id()
     context_name = generate_generic_id()
-    trace_ids_hex = [binascii.unhexlify(t) for t in trace_ids]
+
+    for_support_bundle = False
+    if trace_ids:
+        if trace_ids[0] == "!support_bundle!":
+            for_support_bundle = True
+    trace_ids_hex = [binascii.unhexlify(t) for t in trace_ids] if not for_support_bundle else []
 
     serialized_request = Request(get_traces=TraceRetrievalInfo(trace_ids=trace_ids_hex)).SerializeToString()
     request_len_b = len(serialized_request).to_bytes(4, byteorder="big")
@@ -152,10 +179,14 @@ def test_get_traces(
     assert request_bytes_trace_ids == serialized_request
 
     if trace_ids:
-        if not recv_side_effect[1]:
-            assert not result
-            return
         assert len(result) == len(recv_side_effect) / 2
+        assert isinstance(result, list)
+        assert isinstance(result[0], dict)
+
+    if for_support_bundle:
+        assert len(result) == len(recv_side_effect)  # for_support_bundle effectively doubles the return items
+        assert isinstance(result, list)
+        assert isinstance(result[0], tuple)
 
     if trace_dir:
         zipfile_init_kwargs = mocked_zipfile.mock_calls.pop(0).kwargs
