@@ -217,14 +217,16 @@ def mocked_list_deployments(mocked_client):
         # @jiacju - currently no unique label for lnm
         # @vilit - also akri
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            names.extend([
-                "aio-lnm-operator",
-                "aio-akri-otel-collector",
-                "aio-opc-admission-controller",
-                "aio-opc-supervisor",
-                "aio-opc-opc",
-                "opcplc-0000000"
-            ])
+            names.extend(
+                [
+                    "aio-lnm-operator",
+                    "aio-akri-otel-collector",
+                    "aio-opc-admission-controller",
+                    "aio-opc-supervisor",
+                    "aio-opc-opc",
+                    "opcplc-0000000",
+                ]
+            )
 
         deployment_list = []
         for name in names:
@@ -246,9 +248,7 @@ def mocked_list_replicasets(mocked_client):
         names = ["mock_replicaset"]
         # @vilit - also akri
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            names.extend([
-                "aio-akri-otel-collector"
-            ])
+            names.extend(["aio-akri-otel-collector"])
 
         replicaset_list = []
         for name in names:
@@ -284,9 +284,11 @@ def mocked_list_services(mocked_client):
     def _handle_list_services(*args, **kwargs):
         service_names = ["mock_service"]
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            service_names.extend([
-                "opcplc-0000000",
-            ])
+            service_names.extend(
+                [
+                    "opcplc-0000000",
+                ]
+            )
 
         service_list = []
         for name in service_names:
@@ -341,11 +343,9 @@ def mocked_list_daemonsets(mocked_client):
         # @vilit - also akri
         daemonset_names = ["mock_daemonset"]
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            daemonset_names.extend([
-                "aio-akri-agent-daemonset",
-                "akri-opcua-asset-discovery-daemonset",
-                "svclb-aio-lnm-operator"
-            ])
+            daemonset_names.extend(
+                ["aio-akri-agent-daemonset", "akri-opcua-asset-discovery-daemonset", "svclb-aio-lnm-operator"]
+            )
 
         daemonset_list = []
         for name in daemonset_names:
@@ -365,3 +365,11 @@ def mocked_mq_active_api(mocker):
     patched_active_mq_api = mocker.patch("azext_edge.edge.providers.edge_api.MQ_ACTIVE_API")
     patched_active_mq_api.get_resources.return_value = {"items": [{"metadata": {"namespace": "mock_namespace"}}]}
     yield patched_active_mq_api
+
+
+@pytest.fixture
+def mocked_mq_get_traces(mocker):
+    # Supports --mq-traces
+    patched_get_traces = mocker.patch("azext_edge.edge.providers.support.mq.get_traces")
+    patched_get_traces.return_value = [("trace_key", "trace_data")]
+    yield patched_get_traces

@@ -36,7 +36,9 @@ COMPAT_LNM_APIS = EdgeApiManager(resource_apis=[LNM_API_V1B1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 
 
-def build_bundle(ops_service: str, bundle_path: str, log_age_seconds: Optional[int] = None):
+def build_bundle(
+    ops_service: str, bundle_path: str, log_age_seconds: Optional[int] = None, include_mq_traces: Optional[bool] = None
+):
     from rich.live import Live
     from rich.progress import Progress
     from rich.table import Table
@@ -86,8 +88,11 @@ def build_bundle(ops_service: str, bundle_path: str, log_age_seconds: Optional[i
             if deployed_apis:
                 bundle_method = api_info["prepare_bundle"]
                 # Check if the function takes a second argument
+                # TODO: Change to kwargs based pattern
                 if service_moniker == OpsServiceType.deviceregistry.value:
                     bundle = bundle_method(deployed_apis)
+                elif service_moniker == OpsServiceType.mq.value:
+                    bundle = bundle_method(deployed_apis, log_age_seconds, include_mq_traces)
                 else:
                     bundle = bundle_method(deployed_apis, log_age_seconds)
 

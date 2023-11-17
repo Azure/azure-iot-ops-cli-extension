@@ -61,6 +61,13 @@ def load_iotops_arguments(self, _):
             help="The local directory the produced bundle will be saved to. "
             "If no directory is provided the current directory is used.",
         )
+        context.argument(
+            "include_mq_traces",
+            options_list=["--mq-traces"],
+            arg_type=get_three_state_flag(),
+            help="Include mq traces in the support bundle.",
+            deprecate_info=context.deprecate(hide=True),
+        )
 
     with self.argument_context("iot ops check") as context:
         context.argument(

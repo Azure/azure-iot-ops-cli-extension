@@ -337,14 +337,20 @@ def process_nodes():
     }
 
 
-def process_events():
+def get_mq_namespaces() -> List[str]:
     from ..edge_api import MQ_ACTIVE_API, MqResourceKinds
 
     namespaces = []
-    event_content = []
     cluster_brokers = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER)
     if cluster_brokers and cluster_brokers["items"]:
         namespaces.extend([b["metadata"]["namespace"] for b in cluster_brokers["items"]])
+
+    return namespaces
+
+
+def process_events():
+    event_content = []
+    namespaces = get_mq_namespaces()
 
     for namespace in namespaces:
         event_content.append(

@@ -89,6 +89,28 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
             ],
         ),
         pytest.param(
+            ["!support_bundle!"],
+            None,
+            [
+                int(2).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=1,
+                        total_trace_count=2,
+                    )
+                ).SerializeToString(),
+                int(2).to_bytes(length=4, byteorder="big"),
+                Response(
+                    retrieved_trace=RetrievedTraceWrapper(
+                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        current_trace_count=2,
+                        total_trace_count=2,
+                    )
+                ).SerializeToString(),
+            ],
+        ),
+        pytest.param(
             [],
             ".",
             [
@@ -135,7 +157,12 @@ def test_get_traces(
 
     namespace = generate_generic_id()
     context_name = generate_generic_id()
-    trace_ids_hex = [binascii.unhexlify(t) for t in trace_ids]
+
+    for_support_bundle = False
+    if trace_ids:
+        if trace_ids[0] == "!support_bundle!":
+            for_support_bundle = True
+    trace_ids_hex = [binascii.unhexlify(t) for t in trace_ids] if not for_support_bundle else []
 
     serialized_request = Request(get_traces=TraceRetrievalInfo(trace_ids=trace_ids_hex)).SerializeToString()
     request_len_b = len(serialized_request).to_bytes(4, byteorder="big")
@@ -152,10 +179,14 @@ def test_get_traces(
     assert request_bytes_trace_ids == serialized_request
 
     if trace_ids:
-        if not recv_side_effect[1]:
-            assert not result
-            return
         assert len(result) == len(recv_side_effect) / 2
+        assert isinstance(result, list)
+        assert isinstance(result[0], dict)
+
+    if for_support_bundle:
+        assert len(result) == len(recv_side_effect)  # for_support_bundle effectively doubles the return items
+        assert isinstance(result, list)
+        assert isinstance(result[0], tuple)
 
     if trace_dir:
         zipfile_init_kwargs = mocked_zipfile.mock_calls.pop(0).kwargs
@@ -191,7 +222,14 @@ def _assert_stats_kpi(stats_map: dict, kpi: str, value_pass_fail: bool = False):
 
 @pytest.mark.parametrize(
     "total_bytes,fetch_bytes",
-    [pytest.param(10, 10), pytest.param(10, 5), pytest.param(10, 1), pytest.param(10, 3)],
+    [
+        pytest.param(10, 10),
+        pytest.param(10, 5),
+        pytest.param(10, 1),
+        pytest.param(10, 3),
+        pytest.param(10, 0),
+        pytest.param(10, -1),  # -1 is a special value to exercise partial fetching of bytes
+    ],
 )
 def test__fetch_bytes(mocker, total_bytes: int, fetch_bytes: int):
     import math
@@ -199,14 +237,45 @@ def test__fetch_bytes(mocker, total_bytes: int, fetch_bytes: int):
 
     from azext_edge.edge.providers.stats import _fetch_bytes
 
-    total_fetches = math.ceil(total_bytes / fetch_bytes)
+    if fetch_bytes > 0:
+        total_fetches = math.ceil(total_bytes / fetch_bytes)
+    elif fetch_bytes == 0:
+        total_fetches = 1
+    elif fetch_bytes == -1:
+        total_fetches = 2
+    else:
+        raise RuntimeError("Unsupported scenario.")
+
     socket_mock = mocker.MagicMock()
 
+    handle_fetch_count = 0
+
     def handle_fetch(*args, **kwargs):
-        return_bytes = fetch_bytes if args[0] >= fetch_bytes else args[0]
+        nonlocal handle_fetch_count
+        if args[0] >= fetch_bytes:
+            if fetch_bytes == -1:
+                if handle_fetch_count > 0:
+                    return_bytes = 0
+                else:
+                    return_bytes = 1
+            else:
+                return_bytes = fetch_bytes
+        else:
+            return_bytes = args[0]
+
+        handle_fetch_count = handle_fetch_count + 1
         return secrets.token_bytes(return_bytes)
 
     socket_mock.recv.side_effect = handle_fetch
     result = _fetch_bytes(socket_mock, size=total_bytes)
     assert socket_mock.recv.call_count == total_fetches
+
+    if fetch_bytes == 0:
+        assert result == b""
+        return
+
+    if fetch_bytes == -1:
+        assert len(result) == 1
+        return
+
     assert len(result) == total_bytes
