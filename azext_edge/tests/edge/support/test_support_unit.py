@@ -280,9 +280,12 @@ def test_create_bundle(
                 assert_list_replica_sets(
                     mocked_client, mocked_zipfile, label_selector=orc_label, resource_api=ORC_API_V1
                 )
-                assert_list_services(
-                    mocked_client, mocked_zipfile, label_selector=ORC_APP_LABEL, resource_api=ORC_API_V1
-                )
+                assert_list_services(mocked_client, mocked_zipfile, label_selector=orc_label, resource_api=ORC_API_V1)
+
+            # TODO: one-off field selector remove after label
+            assert_list_services(
+                mocked_client, mocked_zipfile, field_selector="metadata.name==aio-orc-service", resource_api=ORC_API_V1
+            )
 
         if api in [AKRI_API_V0]:
             assert_list_pods(
@@ -504,11 +507,14 @@ def assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector: str
 def assert_list_services(
     mocked_client,
     mocked_zipfile,
-    label_selector: str,
     resource_api: EdgeResourceApi,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
     mock_names: Optional[List[str]] = None,
 ):
-    mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(label_selector=label_selector)
+    mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
 
     mock_names = mock_names or ["mock_service"]
     for name in mock_names:

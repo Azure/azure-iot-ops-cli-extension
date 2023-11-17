@@ -58,6 +58,7 @@ def fetch_services():
     processed = process_services(resource_api=ORC_API_V1, label_selector=ORC_INSTANCE_LABEL)
     processed.extend(process_services(resource_api=ORC_API_V1, label_selector=ORC_APP_LABEL))
     processed.extend(process_services(resource_api=ORC_API_V1, label_selector=ORC_CONTROLLER_LABEL))
+    processed.extend(process_services(resource_api=ORC_API_V1, field_selector="metadata.name==aio-orc-service"))  # TODO: remove after label
     return processed
 
 
