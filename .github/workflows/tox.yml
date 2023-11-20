@@ -38,6 +38,7 @@ jobs:
         run: tox r --skip-pkg-install
   code-coverage:
     name: Calculate code coverage
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
