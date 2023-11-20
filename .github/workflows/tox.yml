@@ -1,11 +1,17 @@
 name: Tox tests
 on:
   workflow_call:
+    inputs:
+      continue-on-error:
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
 
 jobs:
   tox:
     name: Unit test ${{ matrix.py }} - ${{ matrix.os }}
+    continue-on-error: ${{ inputs.continue-on-error }}
     runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
