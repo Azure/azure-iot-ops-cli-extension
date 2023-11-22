@@ -9,9 +9,6 @@ from typing import Any, Dict, List
 from azure.cli.core.azclierror import ArgumentUsageError
 from rich.console import Console
 
-from azext_edge.edge.providers.check.lnm import check_lnm_deployment
-from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
-
 from ..common import ListableEnum, OpsServiceType
 from .check.base import check_pre_deployment, process_as_list
 from .check.common import ResourceOutputDetailLevel
@@ -19,6 +16,10 @@ from .check.dataprocessor import check_dataprocessor_deployment
 from .check.mq import check_mq_deployment
 from .edge_api.dataprocessor import DataProcessorResourceKinds
 from .edge_api.mq import MqResourceKinds
+from .check.lnm import check_lnm_deployment
+from .edge_api.lnm import LnmResourceKinds
+from .check.opcua import check_opcua_deployment
+from .edge_api.opcua import OpcuaResourceKinds
 
 console = Console(width=100, highlight=False)
 
@@ -51,7 +52,8 @@ def run_checks(
             service_check_dict = {
                 OpsServiceType.mq.value: check_mq_deployment,
                 OpsServiceType.dataprocessor.value: check_dataprocessor_deployment,
-                OpsServiceType.lnm.value: check_lnm_deployment
+                OpsServiceType.lnm.value: check_lnm_deployment,
+                OpsServiceType.opcua.value: check_opcua_deployment,
             }
             service_check_dict[ops_service](
                 detail_level=detail_level,
@@ -69,7 +71,8 @@ def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: Lis
     service_kinds_dict: Dict[str, ListableEnum] = {
         OpsServiceType.dataprocessor.value: DataProcessorResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
-        OpsServiceType.lnm.value: LnmResourceKinds
+        OpsServiceType.lnm.value: LnmResourceKinds,
+        OpsServiceType.opcua.value: OpcuaResourceKinds
     }
 
     valid_resource_kinds = service_kinds_dict[ops_service].list() if ops_service in service_kinds_dict else []
