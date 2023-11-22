@@ -4,32 +4,20 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Tuple
-
-from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
+from typing import Any, Dict, List
 
 from .base import (
     CheckManager,
-    add_display_and_eval,
     check_post_deployment,
-    decorate_pod_phase,
     evaluate_pod_health,
-    process_properties,
     resources_grouped_by_namespace,
 )
 
 from rich.padding import Padding
-from kubernetes.client.models import V1Pod
 
 from ...common import CheckTaskStatus
 
 from .common import (
-    AIO_LNM_PREFIX,
-    LNM_ALLOWLIST_PROPERTIES,
-    LNM_EXCLUDED_SUBRESOURCE,
-    LNM_IMAGE_PROPERTIES,
-    LNM_POD_CONDITION_TEXT_MAP,
-    LNM_REST_PROPERTIES,
     ResourceOutputDetailLevel,
 )
 
@@ -38,7 +26,7 @@ from ..edge_api import (
     OpcuaResourceKinds,
 )
 
-from ..support.opcua import OPC_APP_LABEL, OPC_PREFIX
+from ..support.opcua import OPC_APP_LABEL, OPC_NAME_LABEL, OPC_PREFIX
 
 
 def check_opcua_deployment(
@@ -71,7 +59,8 @@ def evaluate_asset_types(
     check_manager = CheckManager(check_name="evalAssetTypes", check_desc="Evaluate OPCUA asset types")
 
     target_asset_types = "assettypes.opcuabroker.iotoperations.azure.com"
-    asset_type_namespace_conditions = ["len(asset_types)>=0", "status.configStatusLevel", "spec.allowList", "spec.image"]
+    asset_type_conditions = ["len(asset_types)>=0"]
+    check_manager.add_target(target_name=target_asset_types, conditions=asset_type_conditions)
 
     all_asset_types: dict = OPCUA_API_V1.get_resources(OpcuaResourceKinds.ASSET_TYPE).get("items", [])
 
@@ -85,7 +74,7 @@ def evaluate_asset_types(
         check_manager.add_display(target_name=target_asset_types, display=Padding(fetch_asset_types_error_text, (0, 0, 0, 8)))
 
     for (namespace, asset_types) in resources_grouped_by_namespace(all_asset_types):
-        check_manager.add_target(target_name=target_asset_types, namespace=namespace, conditions=asset_type_namespace_conditions)
+        check_manager.add_target(target_name=target_asset_types, namespace=namespace, conditions=asset_type_conditions)
         check_manager.add_display(
             target_name=target_asset_types,
             namespace=namespace,
@@ -113,14 +102,14 @@ def evaluate_asset_types(
         for asset_type in asset_types:
             asset_type_name = asset_type["metadata"]["name"]
 
-            lnm_text = (
+            asset_type_text = (
                 f"- Opcua asset type {{[bright_blue]{asset_type_name}[/bright_blue]}} detected."
             )
 
             check_manager.add_display(
                 target_name=target_asset_types,
                 namespace=namespace,
-                display=Padding(lnm_text, (0, 0, 0, 12))
+                display=Padding(asset_type_text, (0, 0, 0, 12))
             )
 
             spec = asset_type["spec"]
@@ -166,6 +155,7 @@ def evaluate_asset_types(
                     target_asset_types=target_asset_types,
                     namespace=namespace,
                     schema=schema,
+                    padding=16,
                     detail_level=detail_level
                 )
 
@@ -179,68 +169,72 @@ def evaluate_asset_types(
                 ),
             )
 
-            evaluate_pod_health(
-                check_manager=check_manager,
-                target=target_asset_types,
-                pod=OPC_PREFIX,
-                display_padding=12,
-                service_label=OPC_APP_LABEL,
-                namespace=namespace,
-            )
+            for pod in ["", OPC_PREFIX]:
+                evaluate_pod_health(
+                    check_manager=check_manager,
+                    target=target_asset_types,
+                    pod=pod,
+                    display_padding=12,
+                    service_label=OPC_NAME_LABEL if pod == "" else OPC_APP_LABEL,
+                    namespace=namespace,
+                )
 
     return check_manager.as_dict(as_list)
 
 
-def _process_schema(check_manager: CheckManager, target_asset_types: str, namespace: str, schema: str, detail_level: int = ResourceOutputDetailLevel.summary.value) -> None:
-    # convert JSON string to dict
-    import json
-    schema_dict = json.loads(schema)
+def _process_schema(
+        check_manager: CheckManager,
+        target_asset_types: str,
+        namespace: str,
+        schema: str,
+        padding: int,
+        detail_level: int = ResourceOutputDetailLevel.summary.value
+) -> None:
 
     if detail_level == ResourceOutputDetailLevel.detail.value:
-        # get the schema id
+        # convert JSON string to dict
+        import json
+
+        schema_dict = json.loads(schema)
+
+        schema_items = {
+            "DTDL version": ("@context", lambda x: x.split(";")[1] if ';' in x else None),
+            "Type": ("@type", lambda x: x)
+        }
+
         schema_id = schema_dict["@id"]
-
         check_manager.add_display(
             target_name=target_asset_types,
             namespace=namespace,
-            display=Padding(
-                f"Schema {{[cyan]{schema_id}[/cyan]}} detected",
-                (0, 0, 0, 16),
-            ),
+            display=Padding(f"Schema {{[cyan]{schema_id} detected:}}", (0, 0, 0, padding)),
         )
 
-        # get the schema version in @context and the string looks like "dtmi:dtdl:context;3"
-        schema_version = schema_dict["@context"].split(";")[1]
+        padding += 4
+        # Loop over the map and add each item to the display
+        for item_label, (schema_key, value_extractor) in schema_items.items():
+            # Extract value using the defined lambda function
+            item_value = value_extractor(schema_dict[schema_key])
 
-        check_manager.add_display(
-            target_name=target_asset_types,
-            namespace=namespace,
-            display=Padding(
-                f"DTDL version: [cyan]{schema_version}[/cyan]",
-                (0, 0, 0, 20),
-            ),
-        )
+            # Skip adding the display if the extracted value is None
+            if item_value is None:
+                continue
 
-        # get the schema type
-        schema_type = schema_dict["@type"]
-
-        check_manager.add_display(
-            target_name=target_asset_types,
-            namespace=namespace,
-            display=Padding(
-                f"Type: [cyan]{schema_type}[/cyan]",
-                (0, 0, 0, 20),
-            ),
-        )
+            message = f"{item_label}: [cyan]{item_value}[/cyan]"
+            check_manager.add_display(
+                target_name=target_asset_types,
+                namespace=namespace,
+                display=Padding(message, (0, 0, 0, padding)),
+            )
     elif detail_level == ResourceOutputDetailLevel.verbose.value:
         from rich.json import JSON
+
         schema_json = JSON(schema, indent=2)
         check_manager.add_display(
             target_name=target_asset_types,
             namespace=namespace,
             display=Padding(
                 "Schema: ",
-                (0, 0, 0, 16),
+                (0, 0, 0, padding),
             ),
         )
         check_manager.add_display(
@@ -248,6 +242,6 @@ def _process_schema(check_manager: CheckManager, target_asset_types: str, namesp
             namespace=namespace,
             display=Padding(
                 schema_json,
-                (0, 0, 0, 20),
+                (0, 0, 0, padding + 4),
             ),
         )

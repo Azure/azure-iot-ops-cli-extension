@@ -34,6 +34,12 @@ def mock_evaluate_lnm_pod_health(mocker):
 
 
 @pytest.fixture
+def mock_evaluate_opcua_pod_health(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.opcua.evaluate_pod_health", return_value={})
+    yield patched
+
+
+@pytest.fixture
 def mock_get_namespaced_pods_by_prefix(mocker):
     patched = mocker.patch("azext_edge.edge.providers.check.lnm.get_namespaced_pods_by_prefix", return_value=[])
     yield patched
@@ -68,6 +74,13 @@ def mock_resource_types(mocker, ops_service):
             {},
             {
                 "Lnm": [{}]
+            }
+        )
+    elif ops_service == "opcua":
+        patched.return_value = (
+            {},
+            {
+                "AssetType": [{}]
             }
         )
 
