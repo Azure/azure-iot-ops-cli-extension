@@ -206,7 +206,7 @@ def _process_schema(
         check_manager.add_display(
             target_name=target_asset_types,
             namespace=namespace,
-            display=Padding(f"Schema {{[cyan]{schema_id} detected:}}", (0, 0, 0, padding)),
+            display=Padding(f"Schema {{[cyan]{schema_id}[/cyan]}} detected.", (0, 0, 0, padding)),
         )
 
         padding += 4
