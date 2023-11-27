@@ -210,7 +210,7 @@ def _process_schema(
         )
 
         padding += 4
-        # Loop over the map and add each item to the display
+
         for item_label, (schema_key, value_extractor) in schema_items.items():
             # Extract value using the defined lambda function
             item_value = value_extractor(schema_dict[schema_key])
