@@ -346,7 +346,7 @@ def get_traces(
 
 def _determine_root_span(message_dict: dict) -> Tuple[str, str]:
     """
-    Attempts to determine root span, and normalizes traceId and spaceId to hex.
+    Attempts to determine root span, and normalizes traceId, spanId and parentSpanId to hex.
     """
     import base64
 
@@ -356,9 +356,13 @@ def _determine_root_span(message_dict: dict) -> Tuple[str, str]:
     for resource_span in message_dict.get("resourceSpans", []):
         for scope_span in resource_span.get("scopeSpans", []):
             for span in scope_span.get("spans", []):
-                span["traceId"] = base64.b64decode(span["traceId"]).hex()
-                span["spanId"] = base64.b64decode(span["spanId"]).hex()
-                if not span.get("parentSpanId"):
+                if "traceId" in span:
+                    span["traceId"] = base64.b64decode(span["traceId"]).hex()
+                if "spanId" in span:
+                    span["spanId"] = base64.b64decode(span["spanId"]).hex()
+                if "parentSpanId" in span:
+                    span["parentSpanId"] = base64.b64decode(span["parentSpanId"]).hex()
+                else:
                     root_span = span
                     # determine resource name
                     resource = resource_span["resource"]

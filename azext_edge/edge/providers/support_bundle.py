@@ -138,10 +138,10 @@ def build_bundle(
                 except Exception as e:
                     # @digimaun - bdb.BdbQuit?
                     logger.debug(f"Unable to process {ops_service} {element}:\n{e}")
-
-                if not uber_progress.finished:
-                    uber_progress.update(namespace_task, advance=1)
-                    uber_progress.update(uber_task, advance=1)
+                finally:
+                    if not uber_progress.finished:
+                        uber_progress.update(namespace_task, advance=1)
+                        uber_progress.update(uber_task, advance=1)
 
         for service in pending_work:
             if pending_work[service]:
