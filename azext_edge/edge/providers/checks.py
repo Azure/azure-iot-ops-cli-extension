@@ -19,6 +19,8 @@ from .check.dataprocessor import check_dataprocessor_deployment
 from .check.mq import check_mq_deployment
 from .edge_api.dataprocessor import DataProcessorResourceKinds
 from .edge_api.mq import MqResourceKinds
+from .check.akri import check_akri_deployment
+from .edge_api.akri import AkriResourceKinds
 
 console = Console(width=100, highlight=False)
 
@@ -49,6 +51,7 @@ def run_checks(
         if post_deployment:
             result["postDeployment"] = []
             service_check_dict = {
+                OpsServiceType.akri.value: check_akri_deployment,
                 OpsServiceType.mq.value: check_mq_deployment,
                 OpsServiceType.dataprocessor.value: check_dataprocessor_deployment,
                 OpsServiceType.lnm.value: check_lnm_deployment
@@ -67,6 +70,7 @@ def run_checks(
 
 def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: List[str]) -> None:
     service_kinds_dict: Dict[str, ListableEnum] = {
+        OpsServiceType.akri.value: AkriResourceKinds,
         OpsServiceType.dataprocessor.value: DataProcessorResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
         OpsServiceType.lnm.value: LnmResourceKinds
