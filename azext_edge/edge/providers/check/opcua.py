@@ -116,29 +116,20 @@ def evaluate_asset_types(
             if detail_level >= ResourceOutputDetailLevel.detail.value:
                 # label summarize
                 labels = spec["labels"]
+
+                # remove repeated labels
+                non_repeated_labels = list(set(labels))
                 check_manager.add_display(
                     target_name=target_asset_types,
                     namespace=namespace,
                     display=Padding(
-                        f"Detected [cyan]{len(labels)}[/cyan] labels",
+                        f"Detected [cyan]{len(non_repeated_labels)}[/cyan] unique labels",
                         (0, 0, 0, 16),
                     ),
                 )
 
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
-                    # remove repeated labels
-                    non_repeated_labels = list(set(labels))
-
                     if len(non_repeated_labels) > 0:
-                        check_manager.add_display(
-                            target_name=target_asset_types,
-                            namespace=namespace,
-                            display=Padding(
-                                "[yellow](Only non repeatative labels will be displayed)[/yellow]",
-                                (0, 0, 0, 20),
-                            ),
-                        )
-
                         check_manager.add_display(
                             target_name=target_asset_types,
                             namespace=namespace,
