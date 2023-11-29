@@ -60,12 +60,12 @@ def evaluate_asset_types(
 
     target_asset_types = "assettypes.opcuabroker.iotoperations.azure.com"
     asset_type_conditions = ["len(asset_types)>=0"]
-    check_manager.add_target(target_name=target_asset_types, conditions=asset_type_conditions)
 
     all_asset_types: dict = OPCUA_API_V1.get_resources(OpcuaResourceKinds.ASSET_TYPE).get("items", [])
 
     if not all_asset_types:
         fetch_asset_types_error_text = "Unable to fetch OPCUA asset types in any namespaces."
+        check_manager.add_target(target_name=target_asset_types)
         check_manager.add_target_eval(
             target_name=target_asset_types,
             status=CheckTaskStatus.skipped.value,
@@ -74,7 +74,11 @@ def evaluate_asset_types(
         check_manager.add_display(target_name=target_asset_types, display=Padding(fetch_asset_types_error_text, (0, 0, 0, 8)))
 
     for (namespace, asset_types) in resources_grouped_by_namespace(all_asset_types):
-        check_manager.add_target(target_name=target_asset_types, namespace=namespace, conditions=asset_type_conditions)
+        check_manager.add_target(
+            target_name=target_asset_types,
+            namespace=namespace,
+            conditions=asset_type_conditions
+        )
         check_manager.add_display(
             target_name=target_asset_types,
             namespace=namespace,

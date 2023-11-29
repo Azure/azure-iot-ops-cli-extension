@@ -78,7 +78,7 @@ def test_check_opcua_by_resource_types(ops_service, mocker, mock_resource_types,
             # asset_types
             [],
             # namespace conditions str
-            ["len(asset_types)>=0"],
+            [],
             # namespace evaluations str
             [
                 [
