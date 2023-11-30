@@ -194,7 +194,7 @@ def test_get_traces(
         assert zipfile_init_kwargs["mode"] == "w"
         # ZIP_DEFLATED == 8
         assert zipfile_init_kwargs["compression"] == 8
-        mocked_zipfile.mock_calls.pop(-1)
+        mocked_zipfile.mock_calls.pop(-1)  # Remove close()
         # When writing to zip, the operation effectively writes 2 files per trace.
         # One in vanilla OTLP one in Tempo format.
         # TODO assert formats.

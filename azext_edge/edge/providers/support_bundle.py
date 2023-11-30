@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List, Optional
-from zipfile import ZipFile, ZIP_DEFLATED
+from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 import yaml
 from knack.log import get_logger
@@ -170,7 +170,7 @@ def write_zip(bundle: dict, file_path: str):
             if t:
                 data = t.get("data")
                 zinfo = t.get("zinfo")
-                if data and zinfo not in added_path:
+                if data and (zinfo not in added_path or isinstance(zinfo, ZipInfo)):
                     if isinstance(data, dict):
                         data = yaml.safe_dump(t["data"], indent=2)
                     myzip.writestr(zinfo_or_arcname=zinfo, data=data)
