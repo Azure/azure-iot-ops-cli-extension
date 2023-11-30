@@ -382,8 +382,8 @@ def _determine_root_span(message_dict: dict) -> Tuple[str, str, Union[datetime, 
                         timestamp = datetime.utcfromtimestamp(float(timestamp_unix_nano) / 1e9)
 
                     # determine resource name
-                    resource = resource_span["resource"]
-                    attributes = resource["attributes"]
+                    resource = resource_span.get("resource", {})
+                    attributes = resource.get("attributes", [])
                     for a in attributes:
                         if a["key"] == "service.name":
                             resource_name = a["value"].get("stringValue", "unknown")
