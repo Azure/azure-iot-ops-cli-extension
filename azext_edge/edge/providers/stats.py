@@ -301,8 +301,8 @@ def get_traces(
 
                     if progress_set:
                         progress.update(progress_task, advance=1)
-                    if not any([root_span, resource_name, timestamp]):
-                        logger.warning("Could not process root span. Skipping trace.")
+                    if not all([root_span, resource_name, timestamp]):
+                        logger.debug("Could not process root span. Skipping trace.")
                         continue
 
                     span_trace_id = root_span["traceId"]
