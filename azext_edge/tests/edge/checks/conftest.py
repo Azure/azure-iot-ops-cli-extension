@@ -10,6 +10,12 @@ from azext_edge.edge.providers.checks import run_checks
 
 
 @pytest.fixture
+def mock_evaluate_akri_pod_health(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.akri.evaluate_pod_health", return_value={})
+    yield patched
+
+
+@pytest.fixture
 def mock_evaluate_mq_pod_health(mocker):
     patched = mocker.patch("azext_edge.edge.providers.check.mq.evaluate_pod_health", return_value={})
     yield patched
@@ -68,6 +74,14 @@ def mock_resource_types(mocker, ops_service):
             {},
             {
                 "Lnm": [{}]
+            }
+        )
+    elif ops_service == "akri":
+        patched.return_value = (
+            {},
+            {
+                "Configuration": [{}],
+                "Instance": [{}]
             }
         )
 

@@ -690,3 +690,55 @@ def resources_grouped_by_namespace(resources: List[dict]):
 
 def filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
     return [resource for resource in resources if get_resource_namespace(resource) == namespace]
+
+
+def process_dict_resource(
+    check_manager: CheckManager,
+    target_name: str,
+    resource: dict,
+    namespace: str,
+    padding: int
+) -> None:
+    for key, value in resource.items():
+        if isinstance(value, dict):
+            process_dict_resource(
+                check_manager=check_manager,
+                target_name=target_name,
+                resource=value,
+                namespace=namespace,
+                padding=padding + 4
+            )
+        elif isinstance(value, list):
+            if len(value) == 0:
+                continue
+
+            display_text = f"{key}:"
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(display_text, (0, 0, 0, padding))
+            )
+
+            for item in value:
+                if isinstance(item, dict):
+                    process_dict_resource(
+                        check_manager=check_manager,
+                        target_name=target_name,
+                        resource=item,
+                        namespace=namespace,
+                        padding=padding + 4
+                    )
+                else:
+                    display_text = f"- {key} {value.index(item) + 1}: [cyan]{item}[/cyan]"
+                    check_manager.add_display(
+                        target_name=target_name,
+                        namespace=namespace,
+                        display=Padding(display_text, (0, 0, 0, padding + 2))
+                    )
+        else:
+            display_text = f"{key}: [cyan]{value}[/cyan]"
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(display_text, (0, 0, 0, padding))
+            )
