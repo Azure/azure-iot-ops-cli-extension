@@ -19,7 +19,7 @@ class RPSaaSBaseProvider:
         **kwargs
     ):
         from azure.cli.core.commands.client_factory import get_subscription_id
-        from ..util.az_client import get_resource_client
+        from ...util.az_client import get_resource_client
 
         self.cmd = cmd
         self.subscription = get_subscription_id(cmd.cli_ctx)
@@ -55,7 +55,7 @@ class RPSaaSBaseProvider:
     ) -> List[Any]:
         # Note the usage of az rest/send_raw_request over resource
         # az resource list/resource_client.resources.list will omit properties
-        from ..util.common import _process_raw_request
+        from ...util.common import _process_raw_request
         uri = f"/subscriptions/{self.subscription}"
         if resource_group_name:
             uri += f"/resourceGroups/{resource_group_name}"
