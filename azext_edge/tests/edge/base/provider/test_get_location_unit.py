@@ -14,9 +14,9 @@ context_name = generate_generic_id()
     {"resource_groups.get": {"location": generate_generic_id()}},
 ], ids=["extended_location"], indirect=True)
 def test_get_location(mocked_cmd, mocked_resource_management_client):
-    from azext_edge.edge.providers.base_provider import BaseProvider
+    from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
     resource_group_name = generate_generic_id()
-    provider = BaseProvider(
+    provider = RPSaaSBaseProvider(
         mocked_cmd,
         generate_generic_id(),
         generate_generic_id()

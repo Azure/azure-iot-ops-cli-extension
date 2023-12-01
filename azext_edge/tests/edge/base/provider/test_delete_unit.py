@@ -14,12 +14,12 @@ context_name = generate_generic_id()
     {"resources.begin_delete": {"result": generate_generic_id()}},
 ], ids=["result"], indirect=True)
 def test_delete(mocked_cmd, mocked_resource_management_client):
-    from azext_edge.edge.providers.base_provider import BaseProvider
+    from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
     api_version = generate_generic_id()
     resource_type = generate_generic_id()
     resource_name = generate_generic_id()
     resource_group_name = generate_generic_id()
-    provider = BaseProvider(
+    provider = RPSaaSBaseProvider(
         mocked_cmd,
         api_version,
         resource_type

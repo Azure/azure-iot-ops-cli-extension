@@ -10,7 +10,7 @@ from knack.log import get_logger
 logger = get_logger(__name__)
 
 
-class BaseProvider:
+class RPSaaSBaseProvider:
     def __init__(
         self,
         cmd,

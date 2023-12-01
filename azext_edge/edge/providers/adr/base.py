@@ -12,7 +12,7 @@ from azure.cli.core.azclierror import (
     ValidationError
 )
 
-from ..base_provider import BaseProvider
+from ..rpsaas.base_provider import RPSaaSBaseProvider
 from ...util import build_query
 from ...common import ResourceTypeMapping
 
@@ -21,7 +21,7 @@ API_VERSION = "2023-11-01-preview"
 
 
 # @vilit - prob generalize this even more
-class ADRBaseProvider(BaseProvider):
+class ADRBaseProvider(RPSaaSBaseProvider):
     def __init__(
         self, cmd, resource_type: str
     ):
