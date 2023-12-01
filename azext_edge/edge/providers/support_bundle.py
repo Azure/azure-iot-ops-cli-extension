@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List, Optional
-from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
+from zipfile import ZipFile, ZIP_DEFLATED
 
 import yaml
 from knack.log import get_logger
