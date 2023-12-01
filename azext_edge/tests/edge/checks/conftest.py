@@ -3,12 +3,11 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
-from typing import List, Dict, Any
-from azext_edge.edge.providers.check.common import CORE_SERVICE_RUNTIME_RESOURCE
 import pytest
 from kubernetes.client import V1Pod, V1ObjectMeta, V1PodStatus
-
+from typing import List, Dict, Any
 from azext_edge.edge.providers.checks import run_checks
+from azext_edge.edge.providers.check.common import CORE_SERVICE_RUNTIME_RESOURCE
 
 
 @pytest.fixture

@@ -13,12 +13,12 @@ from ..common import ListableEnum, OpsServiceType
 from .check.base import check_pre_deployment, process_as_list
 from .check.common import ResourceOutputDetailLevel
 from .check.dataprocessor import check_dataprocessor_deployment
-from .check.mq import check_mq_deployment
-from .edge_api.dataprocessor import DataProcessorResourceKinds
-from .edge_api.mq import MqResourceKinds
 from .check.lnm import check_lnm_deployment
-from .edge_api.lnm import LnmResourceKinds
+from .check.mq import check_mq_deployment
 from .check.opcua import check_opcua_deployment
+from .edge_api.dataprocessor import DataProcessorResourceKinds
+from .edge_api.lnm import LnmResourceKinds
+from .edge_api.mq import MqResourceKinds
 from .edge_api.opcua import OpcuaResourceKinds
 
 console = Console(width=100, highlight=False)

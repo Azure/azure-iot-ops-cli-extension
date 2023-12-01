@@ -4,11 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-
-from azext_edge.edge.providers.check.common import CORE_SERVICE_RUNTIME_RESOURCE, ResourceOutputDetailLevel
 import pytest
-from azext_edge.edge.providers.edge_api.opcua import OpcuaResourceKinds
+from azext_edge.edge.providers.check.common import CORE_SERVICE_RUNTIME_RESOURCE, ResourceOutputDetailLevel
 from azext_edge.edge.providers.check.opcua import evaluate_asset_types, evaluate_core_service_runtime
+from azext_edge.edge.providers.edge_api.opcua import OpcuaResourceKinds
 
 from .conftest import (
     assert_check_by_resource_types,

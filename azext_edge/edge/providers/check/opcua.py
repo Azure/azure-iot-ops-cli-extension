@@ -5,9 +5,11 @@
 # ----------------------------------------------------------------------------------------------
 
 from itertools import groupby
+from kubernetes.client.models import V1Pod
+from rich.padding import Padding
 from typing import Any, Dict, List
 
-from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
+from ..base import get_namespaced_pods_by_prefix
 
 from .base import (
     CheckManager,
@@ -16,9 +18,6 @@ from .base import (
     process_pods_status,
     resources_grouped_by_namespace,
 )
-
-from kubernetes.client.models import V1Pod
-from rich.padding import Padding
 
 from ...common import CheckTaskStatus
 
