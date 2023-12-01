@@ -5,36 +5,37 @@
 # ----------------------------------------------------------------------------------------------
 
 import random
-from typing import List, Optional
 from os.path import abspath, expanduser, join
+from typing import List, Optional, Union
+from zipfile import ZipInfo
 
 import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
-from azext_edge.edge.common import AIO_MQ_OPERATOR
-
 from azext_edge.edge.commands_edge import support_bundle
+from azext_edge.edge.common import AIO_MQ_OPERATOR
 from azext_edge.edge.providers.edge_api import (
-    EdgeResourceApi,
-    MQ_API_V1B1,
-    MQ_ACTIVE_API,
+    AKRI_API_V0,
     DATA_PROCESSOR_API_V1,
+    DEVICEREGISTRY_API_V1,
+    LNM_API_V1B1,
+    MQ_ACTIVE_API,
+    MQ_API_V1B1,
     OPCUA_API_V1,
     ORC_API_V1,
-    AKRI_API_V0,
-    LNM_API_V1B1,
-    DEVICEREGISTRY_API_V1,
+    EdgeResourceApi,
 )
-
+from azext_edge.edge.providers.support.akri import AKRI_NAME_LABEL, AKRI_SERVICE_LABEL
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.dataprocessor import (
-    DATA_PROCESSOR_LABEL,
     DATA_PROCESSOR_INSTANCE_LABEL,
+    DATA_PROCESSOR_LABEL,
     DATA_PROCESSOR_NAME_LABEL,
     DATA_PROCESSOR_ONEOFF_LABEL,
     DATA_PROCESSOR_PART_OF_LABEL,
     DATA_PROCESSOR_RELEASE_LABEL,
 )
+from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
 from azext_edge.edge.providers.support.mq import MQ_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
@@ -42,11 +43,9 @@ from azext_edge.edge.providers.support.opcua import (
 )
 from azext_edge.edge.providers.support.orc import (
     ORC_APP_LABEL,
-    ORC_INSTANCE_LABEL,
     ORC_CONTROLLER_LABEL,
+    ORC_INSTANCE_LABEL,
 )
-from azext_edge.edge.providers.support.akri import AKRI_NAME_LABEL, AKRI_SERVICE_LABEL
-from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
 from ...generators import generate_generic_id
@@ -559,11 +558,23 @@ def assert_shared_kpis(mocked_client, mocked_zipfile):
 
 
 # TODO: base test class?
-def assert_zipfile_write(mocked_zipfile, zinfo: str, data: str):
-    mocked_zipfile(file="").__enter__().writestr.assert_any_call(
-        zinfo_or_arcname=zinfo,
-        data=data,
-    )
+def assert_zipfile_write(mocked_zipfile, zinfo: Union[str, ZipInfo], data: str):
+    if isinstance(zinfo, str):
+        mocked_zipfile(file="").__enter__().writestr.assert_any_call(
+            zinfo_or_arcname=zinfo,
+            data=data,
+        )
+        return
+
+    called_with_expected_zipinfo = False
+    for call in mocked_zipfile(file="").__enter__().writestr.mock_calls:
+        call_kwargs = call.kwargs
+        if isinstance(call_kwargs["zinfo_or_arcname"], ZipInfo):
+            called_with: ZipInfo = call_kwargs["zinfo_or_arcname"]
+            if zinfo.filename == called_with.filename and zinfo.date_time == called_with.date_time:
+                called_with_expected_zipinfo = True
+
+    assert called_with_expected_zipinfo
 
 
 def test_get_bundle_path(mocked_os_makedirs):
@@ -619,4 +630,7 @@ def test_create_bundle_mq_traces(
 
     assert get_trace_kwargs["namespace"] == "mock_namespace"  # TODO: Not my favorite
     assert get_trace_kwargs["trace_ids"] == ["!support_bundle!"]  # TODO: Magic string
-    assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/mq/traces/trace_key", data="trace_data")
+    test_zipinfo = ZipInfo("mock_namespace/mq/traces/trace_key")
+    test_zipinfo.file_size = 0
+    test_zipinfo.compress_size = 0
+    assert_zipfile_write(mocked_zipfile, zinfo=test_zipinfo, data="trace_data")

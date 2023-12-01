@@ -6,6 +6,7 @@
 
 from functools import partial
 from typing import Iterable, Optional
+from zipfile import ZipInfo
 
 from knack.log import get_logger
 
@@ -59,10 +60,17 @@ def fetch_diagnostic_traces():
             traces = get_traces(namespace=namespace, trace_ids=["!support_bundle!"])
             if traces:
                 for trace in traces:
+                    zinfo = ZipInfo(
+                        filename=f"{namespace}/{MQ_ACTIVE_API.moniker}/traces/{trace[0].filename}",
+                        date_time=trace[0].date_time,
+                    )
+                    # Fixed in Py 3.9 https://github.com/python/cpython/issues/70373
+                    zinfo.file_size = 0
+                    zinfo.compress_size = 0
                     result.append(
                         {
                             "data": trace[1],
-                            "zinfo": f"{namespace}/{MQ_ACTIVE_API.moniker}/traces/{trace[0]}",
+                            "zinfo": zinfo,
                         }
                     )
 
