@@ -4,20 +4,26 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from itertools import groupby
 from typing import Any, Dict, List
+
+from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
 
 from .base import (
     CheckManager,
     check_post_deployment,
     evaluate_pod_health,
+    process_pods_status,
     resources_grouped_by_namespace,
 )
 
+from kubernetes.client.models import V1Pod
 from rich.padding import Padding
 
 from ...common import CheckTaskStatus
 
 from .common import (
+    CORE_SERVICE_RUNTIME_RESOURCE,
     ResourceOutputDetailLevel,
 )
 
@@ -26,7 +32,7 @@ from ..edge_api import (
     OpcuaResourceKinds,
 )
 
-from ..support.opcua import OPC_APP_LABEL, OPC_NAME_LABEL, OPC_PREFIX
+from ..support.opcua import OPC_APP_LABEL, OPC_NAME_LABEL, OPC_PREFIX, SIMULATOR_PREFIX
 
 
 def check_opcua_deployment(
@@ -36,13 +42,14 @@ def check_opcua_deployment(
     resource_kinds: List[str] = None
 ) -> None:
     evaluate_funcs = {
+        CORE_SERVICE_RUNTIME_RESOURCE: evaluate_core_service_runtime,
         OpcuaResourceKinds.ASSET_TYPE: evaluate_asset_types,
     }
 
     check_post_deployment(
         api_info=OPCUA_API_V1,
-        check_name="enumerateOpcuaApi",
-        check_desc="Enumerate OPCUA API resources",
+        check_name="enumerateOpcUaBrokerApi",
+        check_desc="Enumerate OPC UA Broker API resources",
         result=result,
         resource_kinds_enum=OpcuaResourceKinds,
         evaluate_funcs=evaluate_funcs,
@@ -52,19 +59,66 @@ def check_opcua_deployment(
     )
 
 
+def evaluate_core_service_runtime(
+    as_list: bool = False,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> Dict[str, Any]:
+    check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate OPC UA broker core service runtime resources")
+
+    opcua_runtime_resources = get_namespaced_pods_by_prefix(
+            prefix="",
+            namespace="",
+            label_selector=OPC_APP_LABEL,
+        )
+    opcua_runtime_resources.extend(
+        get_namespaced_pods_by_prefix(
+            prefix="",
+            namespace="",
+            label_selector=OPC_NAME_LABEL,
+        )
+    )
+
+    def get_namespace(pod: V1Pod) -> str:
+        return pod.metadata.namespace
+
+    opcua_runtime_resources.sort(key=get_namespace)
+
+    for (namespace, pods) in groupby(opcua_runtime_resources, get_namespace):
+        check_manager.add_target(target_name=CORE_SERVICE_RUNTIME_RESOURCE, namespace=namespace)
+        check_manager.add_display(
+            target_name=CORE_SERVICE_RUNTIME_RESOURCE,
+            namespace=namespace,
+            display=Padding(
+                f"OPC UA runtime resources for namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 6)
+            )
+        )
+
+        process_pods_status(
+            check_manager=check_manager,
+            target_service_pod="",
+            target=CORE_SERVICE_RUNTIME_RESOURCE,
+            pods=list(pods),
+            namespace=namespace,
+            display_padding=10,
+        )
+
+    return check_manager.as_dict(as_list)
+
+
 def evaluate_asset_types(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalAssetTypes", check_desc="Evaluate OPCUA asset types")
+    check_manager = CheckManager(check_name="evalAssetTypes", check_desc="Evaluate OPC UA broker asset types")
 
-    target_asset_types = "assettypes.opcuabroker.iotoperations.azure.com"
+    target_asset_types = f"{OPCUA_API_V1._kinds}.{OPCUA_API_V1.group}"
     asset_type_conditions = ["len(asset_types)>=0"]
 
     all_asset_types: dict = OPCUA_API_V1.get_resources(OpcuaResourceKinds.ASSET_TYPE).get("items", [])
 
     if not all_asset_types:
-        fetch_asset_types_error_text = "Unable to fetch OPCUA asset types in any namespaces."
+        fetch_asset_types_error_text = "Unable to fetch OPC UA broker asset types in any namespaces."
         check_manager.add_target(target_name=target_asset_types)
         check_manager.add_target_eval(
             target_name=target_asset_types,
@@ -83,7 +137,7 @@ def evaluate_asset_types(
             target_name=target_asset_types,
             namespace=namespace,
             display=Padding(
-                f"OPCUA asset types in namespace {{[purple]{namespace}[/purple]}}",
+                f"OPC UA broker asset types in namespace {{[purple]{namespace}[/purple]}}",
                 (0, 0, 0, 8)
             )
         )
@@ -107,7 +161,7 @@ def evaluate_asset_types(
             asset_type_name = asset_type["metadata"]["name"]
 
             asset_type_text = (
-                f"- Opcua asset type {{[bright_blue]{asset_type_name}[/bright_blue]}} detected."
+                f"- Asset type {{[bright_blue]{asset_type_name}[/bright_blue]}} detected."
             )
 
             check_manager.add_display(
@@ -152,26 +206,6 @@ def evaluate_asset_types(
                     schema=schema,
                     padding=16,
                     detail_level=detail_level
-                )
-
-        if asset_types_count > 0:
-            check_manager.add_display(
-                target_name=target_asset_types,
-                namespace=namespace,
-                display=Padding(
-                    "\nRuntime Health",
-                    (0, 0, 0, 10),
-                ),
-            )
-
-            for pod in ["", OPC_PREFIX]:
-                evaluate_pod_health(
-                    check_manager=check_manager,
-                    target=target_asset_types,
-                    pod=pod,
-                    display_padding=12,
-                    service_label=OPC_NAME_LABEL if pod == "" else OPC_APP_LABEL,
-                    namespace=namespace,
                 )
 
     return check_manager.as_dict(as_list)
