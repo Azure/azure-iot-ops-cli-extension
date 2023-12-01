@@ -202,6 +202,7 @@ def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, r
 def test_lnm_checks(
     mocker,
     mock_get_namespaced_pods_by_prefix,
+    mock_generate_lnm_target_resources,
     lnms,
     namespace_conditions,
     namespace_evaluations,

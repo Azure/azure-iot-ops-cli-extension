@@ -167,6 +167,7 @@ ALL_NAMESPACES_TARGET = '_all_'
 # related to any service resource, use this constant as the resource name
 CORE_SERVICE_RUNTIME_RESOURCE = "coreServiceRuntimeResources"
 
+
 # MQ connector enums
 class KafkaTopicMapRouteType(Enum):
     """

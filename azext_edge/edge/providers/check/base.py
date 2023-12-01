@@ -72,7 +72,7 @@ def check_post_deployment(
     if lowercase_api_resources:
         for resource, evaluate_func in evaluate_funcs.items():
             if (resource == CORE_SERVICE_RUNTIME_RESOURCE) or\
-                (resource.value in lowercase_api_resources and check_resources[resource]):
+                    (resource.value in lowercase_api_resources and check_resources[resource]):
                 result["postDeployment"].append(evaluate_func(detail_level=detail_level, as_list=as_list))
 
 
@@ -710,3 +710,8 @@ def resources_grouped_by_namespace(resources: List[dict]):
 
 def filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
     return [resource for resource in resources if get_resource_namespace(resource) == namespace]
+
+
+def generate_target_resource_name(api_info: EdgeResourceApi, resource_kind: str) -> str:
+    resource_plural = api_info._kinds[resource_kind] if api_info._kinds else f"{resource_kind}s"
+    return f"{resource_plural}.{api_info.group}"

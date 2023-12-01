@@ -12,7 +12,7 @@ from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
 from .base import (
     CheckManager,
     check_post_deployment,
-    evaluate_pod_health,
+    generate_target_resource_name,
     process_pods_status,
     resources_grouped_by_namespace,
 )
@@ -32,7 +32,7 @@ from ..edge_api import (
     OpcuaResourceKinds,
 )
 
-from ..support.opcua import OPC_APP_LABEL, OPC_NAME_LABEL, OPC_PREFIX, SIMULATOR_PREFIX
+from ..support.opcua import OPC_APP_LABEL, OPC_NAME_LABEL
 
 
 def check_opcua_deployment(
@@ -49,7 +49,7 @@ def check_opcua_deployment(
     check_post_deployment(
         api_info=OPCUA_API_V1,
         check_name="enumerateOpcUaBrokerApi",
-        check_desc="Enumerate OPC UA Broker API resources",
+        check_desc="Enumerate OPC UA broker API resources",
         result=result,
         resource_kinds_enum=OpcuaResourceKinds,
         evaluate_funcs=evaluate_funcs,
@@ -63,20 +63,17 @@ def evaluate_core_service_runtime(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate OPC UA broker core service runtime resources")
+    check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate OPC UA broker core service")
 
-    opcua_runtime_resources = get_namespaced_pods_by_prefix(
-            prefix="",
-            namespace="",
-            label_selector=OPC_APP_LABEL,
+    opcua_runtime_resources: List[dict] = []
+    for label_selector in [OPC_APP_LABEL, OPC_NAME_LABEL]:
+        opcua_runtime_resources.extend(
+            get_namespaced_pods_by_prefix(
+                prefix="",
+                namespace="",
+                label_selector=label_selector,
+            )
         )
-    opcua_runtime_resources.extend(
-        get_namespaced_pods_by_prefix(
-            prefix="",
-            namespace="",
-            label_selector=OPC_NAME_LABEL,
-        )
-    )
 
     def get_namespace(pod: V1Pod) -> str:
         return pod.metadata.namespace
@@ -89,7 +86,7 @@ def evaluate_core_service_runtime(
             target_name=CORE_SERVICE_RUNTIME_RESOURCE,
             namespace=namespace,
             display=Padding(
-                f"OPC UA runtime resources for namespace {{[purple]{namespace}[/purple]}}",
+                f"OPC UA broker runtime resources in namespace {{[purple]{namespace}[/purple]}}",
                 (0, 0, 0, 6)
             )
         )
@@ -111,11 +108,10 @@ def evaluate_asset_types(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalAssetTypes", check_desc="Evaluate OPC UA broker asset types")
-
-    target_asset_types = f"{OPCUA_API_V1._kinds}.{OPCUA_API_V1.group}"
     asset_type_conditions = ["len(asset_types)>=0"]
 
     all_asset_types: dict = OPCUA_API_V1.get_resources(OpcuaResourceKinds.ASSET_TYPE).get("items", [])
+    target_asset_types = generate_target_resource_name(api_info=OPCUA_API_V1, resource_kind=OpcuaResourceKinds.ASSET_TYPE.value)
 
     if not all_asset_types:
         fetch_asset_types_error_text = "Unable to fetch OPC UA broker asset types in any namespaces."
@@ -144,7 +140,7 @@ def evaluate_asset_types(
 
         asset_types: List[dict] = list(asset_types)
         asset_types_count = len(asset_types)
-        asset_types_count_text = "- Expecting [bright_blue]>=1[/bright_blue] instance resource per namespace. {}."
+        asset_types_count_text = "- Expecting [bright_blue]>=1[/bright_blue] asset type resource per namespace. {}."
 
         if asset_types_count >= 1:
             asset_types_count_text = asset_types_count_text.format(f"[green]Detected {asset_types_count}[/green]")
