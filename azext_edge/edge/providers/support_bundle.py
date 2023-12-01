@@ -170,7 +170,7 @@ def write_zip(bundle: dict, file_path: str):
             if t:
                 data = t.get("data")
                 zinfo = t.get("zinfo")
-                if data and (zinfo not in added_path or isinstance(zinfo, ZipInfo)):
+                if data and zinfo not in added_path:
                     if isinstance(data, dict):
                         data = yaml.safe_dump(t["data"], indent=2)
                     myzip.writestr(zinfo_or_arcname=zinfo, data=data)

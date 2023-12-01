@@ -5,7 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 import binascii
+from copy import deepcopy
 from unittest.mock import MagicMock
+from zipfile import ZIP_DEFLATED, ZipInfo
 
 import pytest
 from google.protobuf.json_format import ParseDict
@@ -24,7 +26,7 @@ from azext_edge.edge.providers.proto.diagnostics_service_pb2 import (
 )
 
 from ...generators import generate_generic_id
-from .traces_data import TEST_TRACES_DATA
+from .traces_data import TEST_TRACE, TEST_TRACE_PARTIAL
 
 
 def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlopen, stub_raw_stats):
@@ -59,7 +61,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
                 int(1).to_bytes(length=4, byteorder="big"),
                 Response(
                     retrieved_trace=RetrievedTraceWrapper(
-                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        trace=ParseDict(TEST_TRACE.data, TracesData()),
                         current_trace_count=1,
                         total_trace_count=1,
                     )
@@ -73,7 +75,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
                 int(2).to_bytes(length=4, byteorder="big"),
                 Response(
                     retrieved_trace=RetrievedTraceWrapper(
-                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        trace=ParseDict(TEST_TRACE.data, TracesData()),
                         current_trace_count=1,
                         total_trace_count=2,
                     )
@@ -81,7 +83,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
                 int(2).to_bytes(length=4, byteorder="big"),
                 Response(
                     retrieved_trace=RetrievedTraceWrapper(
-                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        trace=ParseDict(TEST_TRACE.data, TracesData()),
                         current_trace_count=2,
                         total_trace_count=2,
                     )
@@ -95,7 +97,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
                 int(2).to_bytes(length=4, byteorder="big"),
                 Response(
                     retrieved_trace=RetrievedTraceWrapper(
-                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        trace=ParseDict(TEST_TRACE.data, TracesData()),
                         current_trace_count=1,
                         total_trace_count=2,
                     )
@@ -103,7 +105,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
                 int(2).to_bytes(length=4, byteorder="big"),
                 Response(
                     retrieved_trace=RetrievedTraceWrapper(
-                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        trace=ParseDict(TEST_TRACE.data, TracesData()),
                         current_trace_count=2,
                         total_trace_count=2,
                     )
@@ -117,7 +119,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
                 int(2).to_bytes(length=4, byteorder="big"),
                 Response(
                     retrieved_trace=RetrievedTraceWrapper(
-                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        trace=ParseDict(TEST_TRACE.data, TracesData()),
                         current_trace_count=1,
                         total_trace_count=2,
                     )
@@ -125,7 +127,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
                 int(2).to_bytes(length=4, byteorder="big"),
                 Response(
                     retrieved_trace=RetrievedTraceWrapper(
-                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        trace=ParseDict(TEST_TRACE.data, TracesData()),
                         current_trace_count=2,
                         total_trace_count=2,
                     )
@@ -139,7 +141,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
                 int(2).to_bytes(length=4, byteorder="big"),
                 Response(
                     retrieved_trace=RetrievedTraceWrapper(
-                        trace=ParseDict(TEST_TRACES_DATA, TracesData()),
+                        trace=ParseDict(TEST_TRACE.data, TracesData()),
                         current_trace_count=1,
                         total_trace_count=1,
                     )
@@ -187,13 +189,13 @@ def test_get_traces(
         assert len(result) == len(recv_side_effect)  # for_support_bundle effectively doubles the return items
         assert isinstance(result, list)
         assert isinstance(result[0], tuple)
+        assert isinstance(result[0][0], ZipInfo)
 
     if trace_dir:
         zipfile_init_kwargs = mocked_zipfile.mock_calls.pop(0).kwargs
         assert "mq_traces_" in zipfile_init_kwargs["file"]
         assert zipfile_init_kwargs["mode"] == "w"
-        # ZIP_DEFLATED == 8
-        assert zipfile_init_kwargs["compression"] == 8
+        assert zipfile_init_kwargs["compression"] == ZIP_DEFLATED
         mocked_zipfile.mock_calls.pop(-1)  # Remove close()
         # When writing to zip, the operation effectively writes 2 files per trace.
         # One in vanilla OTLP one in Tempo format.
@@ -279,3 +281,33 @@ def test__fetch_bytes(mocker, total_bytes: int, fetch_bytes: int):
         return
 
     assert len(result) == total_bytes
+
+
+def test___determine_root_span():
+    from azext_edge.edge.providers.stats import _determine_root_span
+
+    root_span, resource_name, timestamp = _determine_root_span(message_dict=deepcopy(TEST_TRACE.data))
+    assert root_span == TEST_TRACE.root_span
+    assert resource_name == TEST_TRACE.resource_name
+    assert timestamp == TEST_TRACE.timestamp
+
+    root_span, resource_name, timestamp = _determine_root_span(message_dict=deepcopy(TEST_TRACE_PARTIAL.data))
+    assert root_span is None
+    assert resource_name is None
+    assert timestamp is None
+
+    partial_trace_mod = deepcopy(TEST_TRACE_PARTIAL.data)
+    del partial_trace_mod["resourceSpans"][0]["scopeSpans"][0]["spans"][0]["traceId"]
+    del partial_trace_mod["resourceSpans"][0]["scopeSpans"][0]["spans"][0]["spanId"]
+    del partial_trace_mod["resourceSpans"][0]["resource"]
+    del partial_trace_mod["resourceSpans"][0]["scopeSpans"][0]["spans"][0]["parentSpanId"]
+    del partial_trace_mod["resourceSpans"][0]["scopeSpans"][0]["spans"][0]["startTimeUnixNano"]
+    root_span, resource_name, timestamp = _determine_root_span(message_dict=partial_trace_mod)
+    assert root_span
+    assert resource_name is None
+    assert timestamp is None
+
+    root_span, resource_name, timestamp = _determine_root_span(message_dict={})
+    assert root_span is None
+    assert resource_name is None
+    assert timestamp is None
