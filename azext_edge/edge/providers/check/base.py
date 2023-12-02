@@ -522,13 +522,13 @@ def evaluate_pod_health(
 ) -> None:
     target_service_pod = f"pod/{pod}"
     check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=[f"{target_service_pod}.status.phase"])
-    diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
+    pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
     process_pods_status(
         check_manager=check_manager,
         namespace=namespace,
         target=target,
         target_service_pod=target_service_pod,
-        pods=diagnostics_pods,
+        pods=pods,
         display_padding=display_padding,
     )
 
