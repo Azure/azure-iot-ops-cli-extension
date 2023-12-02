@@ -8,7 +8,6 @@
 CLI parameter definitions.
 """
 
-from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
 from azext_edge.edge.providers.edge_api.opcua import OpcuaResourceKinds
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
