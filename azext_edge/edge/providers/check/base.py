@@ -17,7 +17,7 @@ from kubernetes.client.models import (
 from rich.console import Console, NewLine
 from rich.padding import Padding
 
-from .common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
+from .common import ALL_NAMESPACES_TARGET, CORE_SERVICE_RUNTIME_RESOURCE, ResourceOutputDetailLevel
 from ...common import CheckTaskStatus, ListableEnum
 
 from ...providers.edge_api import EdgeResourceApi
@@ -70,8 +70,9 @@ def check_post_deployment(
     lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
     if lowercase_api_resources:
-        for api_resource, evaluate_func in evaluate_funcs.items():
-            if api_resource.value in lowercase_api_resources and check_resources[api_resource]:
+        for resource, evaluate_func in evaluate_funcs.items():
+            if (resource == CORE_SERVICE_RUNTIME_RESOURCE) or\
+                    (resource.value in lowercase_api_resources and check_resources[resource]):
                 result["postDeployment"].append(evaluate_func(detail_level=detail_level, as_list=as_list))
 
 
@@ -521,8 +522,26 @@ def evaluate_pod_health(
 ) -> None:
     target_service_pod = f"pod/{pod}"
     check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=[f"{target_service_pod}.status.phase"])
-    diagnostics_pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
-    if not diagnostics_pods:
+    pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
+    process_pods_status(
+        check_manager=check_manager,
+        namespace=namespace,
+        target=target,
+        target_service_pod=target_service_pod,
+        pods=pods,
+        display_padding=display_padding,
+    )
+
+
+def process_pods_status(
+    check_manager: CheckManager,
+    namespace: str,
+    target: str,
+    target_service_pod: str,
+    pods: List[dict],
+    display_padding: int,
+) -> None:
+    if not pods:
         add_display_and_eval(
             check_manager=check_manager,
             target_name=target,
@@ -535,11 +554,12 @@ def evaluate_pod_health(
         )
 
     else:
-        for pod in diagnostics_pods:
+        for pod in pods:
             pod_dict = pod.to_dict()
             pod_name = pod_dict["metadata"]["name"]
             pod_phase = pod_dict.get("status", {}).get("phase")
             pod_phase_deco, status = decorate_pod_phase(pod_phase)
+            target_service_pod = f"pod/{pod_name}"
 
             check_manager.add_target_eval(
                 target_name=target,
@@ -690,3 +710,8 @@ def resources_grouped_by_namespace(resources: List[dict]):
 
 def filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
     return [resource for resource in resources if get_resource_namespace(resource) == namespace]
+
+
+def generate_target_resource_name(api_info: EdgeResourceApi, resource_kind: str) -> str:
+    resource_plural = api_info._kinds[resource_kind] if api_info._kinds else f"{resource_kind}s"
+    return f"{resource_plural}.{api_info.group}"

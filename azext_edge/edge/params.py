@@ -8,6 +8,7 @@
 CLI parameter definitions.
 """
 
+from azext_edge.edge.providers.edge_api.opcua import OpcuaResourceKinds
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
@@ -92,7 +93,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "ops_service",
             options_list=["--ops-service", "--svc"],
-            choices=CaseInsensitiveList(["mq", "dataprocessor", "lnm"]),
+            choices=CaseInsensitiveList(["mq", "dataprocessor", "lnm", "opcua"]),
             help="The IoT Operations service deployment that will be evaluated.",
         )
         context.argument(
@@ -110,6 +111,7 @@ def load_iotops_arguments(self, _):
                     DataProcessorResourceKinds.DATASET.value,
                     DataProcessorResourceKinds.PIPELINE.value,
                     DataProcessorResourceKinds.INSTANCE.value,
+                    OpcuaResourceKinds.ASSET_TYPE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",

@@ -11,6 +11,7 @@ from .base import (
     decorate_resource_status,
     check_post_deployment,
     evaluate_pod_health,
+    generate_target_resource_name,
     process_properties,
     process_property_by_type,
     resources_grouped_by_namespace,
@@ -73,12 +74,12 @@ def evaluate_instances(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Data processor instance")
 
-    target_instances = "instances.dataprocessor.iotoperations.azure.com"
     instance_namespace_conditions = ["len(instances)==1", "provisioningStatus"]
     instance_all_conditions = ["instances"]
-    check_manager.add_target(target_name=target_instances, conditions=instance_all_conditions)
 
     instance_resources: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
+    target_instances = generate_target_resource_name(api_info=DATA_PROCESSOR_API_V1, resource_kind=DataProcessorResourceKinds.INSTANCE.value)
+    check_manager.add_target(target_name=target_instances, conditions=instance_all_conditions)
     all_instances: list = instance_resources.get("items", []) if instance_resources else []
 
     if not all_instances:
@@ -211,7 +212,7 @@ def evaluate_pipelines(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Data processor pipeline")
 
-    target_pipelines = "pipelines.dataprocessor.iotoperations.azure.com"
+    target_pipelines = generate_target_resource_name(api_info=DATA_PROCESSOR_API_V1, resource_kind=DataProcessorResourceKinds.PIPELINE.value)
     pipeline_all_conditions = ["pipelines"]
     pipeline_namespace_conditions = [
         "len(pipelines)>=1",
@@ -394,7 +395,7 @@ def evaluate_datasets(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Data processor dataset")
 
-    target_datasets = "datasets.dataprocessor.iotoperations.azure.com"
+    target_datasets = generate_target_resource_name(api_info=DATA_PROCESSOR_API_V1, resource_kind=DataProcessorResourceKinds.DATASET.value)
     dataset_all_conditions = ["datasets"]
     dataset_namespace_conditions = ["provisioningState"]
     check_manager.add_target(target_name=target_datasets, conditions=dataset_all_conditions)

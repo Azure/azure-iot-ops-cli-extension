@@ -13,6 +13,7 @@ from .base import (
     add_display_and_eval,
     check_post_deployment,
     decorate_pod_phase,
+    generate_target_resource_name,
     process_properties,
     resources_grouped_by_namespace,
 )
@@ -70,10 +71,10 @@ def evaluate_lnms(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalLnms", check_desc="Evaluate LNM instances")
 
-    target_lnms = "lnmz.layerednetworkmgmt.iotoperations.azure.com"
     lnm_namespace_conditions = ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"]
 
     all_lnms: dict = LNM_API_V1B1.get_resources(LnmResourceKinds.LNM).get("items", [])
+    target_lnms = generate_target_resource_name(api_info=LNM_API_V1B1, resource_kind=LnmResourceKinds.LNM.value)
 
     if not all_lnms:
         fetch_lnms_error_text = "Unable to fetch LNM instances in any namespaces."
