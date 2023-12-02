@@ -165,7 +165,7 @@ LNM_EXCLUDED_SUBRESOURCE = [
 ALL_NAMESPACES_TARGET = '_all_'
 # when there are runtime resources related to the service but not
 # related to any service resource, use this constant as the resource name
-CORE_SERVICE_RUNTIME_RESOURCE = "coreServiceRuntimeResources"
+CORE_SERVICE_RUNTIME_RESOURCE = "coreServiceRuntimeResource"
 
 
 # MQ connector enums
