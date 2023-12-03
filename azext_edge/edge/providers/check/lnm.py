@@ -89,6 +89,7 @@ def evaluate_core_service_runtime(
 
     return check_manager.as_dict(as_list)
 
+
 def evaluate_lnms(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
@@ -295,9 +296,6 @@ def evaluate_lnms(
     return check_manager.as_dict(as_list)
 
 
-def _get_lnm_pods_namespace(pod: V1Pod) -> str:
-    return pod.metadata.namespace
-
 def _process_lnm_pods(
     check_manager: CheckManager,
     description: str,
@@ -309,6 +307,9 @@ def _process_lnm_pods(
     padding: int,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
+    def _get_lnm_pods_namespace(pod: V1Pod) -> str:
+        return pod.metadata.namespace
+
     pods = get_namespaced_pods_by_prefix(prefix=prefix, namespace=namespace, label_selector=label_selector)
 
     pods.sort(key=_get_lnm_pods_namespace)
@@ -405,7 +406,8 @@ def _evaluate_lnm_pod_health(
             )
 
         for condition in pod_conditions:
-            condition_type = LNM_POD_CONDITION_TEXT_MAP[condition.get("type")]
+            type = condition.get("type")
+            condition_type = LNM_POD_CONDITION_TEXT_MAP[type]
             condition_status = True if condition.get("status") == "True" else False
             pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
 
@@ -414,7 +416,7 @@ def _evaluate_lnm_pod_health(
                 target_name=target,
                 display_text=f"{condition_type}: {pod_condition_deco}",
                 eval_status=status,
-                eval_value={"name": pod_name, f"status.conditions.{condition_type.lower()}": condition_status},
+                eval_value={"name": pod_name, f"status.conditions.{type.lower()}": condition_status},
                 resource_name=target_service_pod,
                 namespace=namespace,
                 padding=(0, 0, 0, display_padding + 8)
