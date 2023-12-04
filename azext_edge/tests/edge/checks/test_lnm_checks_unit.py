@@ -148,57 +148,57 @@ def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, r
                 ],
             ]
         ),
-        # (
-        #     # lnms
-        #     [
-        #         {
-        #             "metadata": {
-        #                 "name": "test-lnm2",
-        #             },
-        #             "status": {
-        #                 "configStatusLevel": "warn",
-        #                 "configStatusDescription": "test warning"
-        #             },
-        #             "spec": {
-        #                 "allowList": {
-        #                     "domains": [
-        #                         {
-        #                             "destinationType": "internal",
-        #                             "destinationUrl": "microsoft.com"
-        #                         },
-        #                         {
-        #                             "destinationType": "external",
-        #                             "destinationUrl": "microsoftonline.com"
-        #                         }
-        #                     ],
-        #                     "enableArcDomains": True,
-        #                     "sourceIpRange": ""
-        #                 }
-        #             }
-        #         }
-        #     ],
-        #     # namespace conditions str
-        #     ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"],
-        #     # namespace evaluations str
-        #     [
-        #         [
-        #             ("status", "warning"),
-        #             ("value/status.configStatusLevel", "warn"),
-        #         ],
-        #     ]
-        # ),
-        # (
-        #     # lnms
-        #     [],
-        #     # namespace conditions str
-        #     [],
-        #     # namespace evaluations str
-        #     [
-        #         [
-        #             ("status", "skipped")
-        #         ],
-        #     ]
-        # ),
+        (
+            # lnms
+            [
+                {
+                    "metadata": {
+                        "name": "test-lnm2",
+                    },
+                    "status": {
+                        "configStatusLevel": "warn",
+                        "configStatusDescription": "test warning"
+                    },
+                    "spec": {
+                        "allowList": {
+                            "domains": [
+                                {
+                                    "destinationType": "internal",
+                                    "destinationUrl": "microsoft.com"
+                                },
+                                {
+                                    "destinationType": "external",
+                                    "destinationUrl": "microsoftonline.com"
+                                }
+                            ],
+                            "enableArcDomains": True,
+                            "sourceIpRange": ""
+                        }
+                    }
+                }
+            ],
+            # namespace conditions str
+            ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "warning"),
+                    ("value/status.configStatusLevel", "warn"),
+                ],
+            ]
+        ),
+        (
+            # lnms
+            [],
+            # namespace conditions str
+            [],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "skipped")
+                ],
+            ]
+        ),
     ]
 )
 def test_lnm_checks(
