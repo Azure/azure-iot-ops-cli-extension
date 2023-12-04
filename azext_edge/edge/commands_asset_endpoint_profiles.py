@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 
 from knack.log import get_logger
 
-from .providers.adr.asset_endpoint_profiles import AssetEndpointProfileProvider
+from .providers.rpsaas.adr.asset_endpoint_profiles import AssetEndpointProfileProvider
 
 logger = get_logger(__name__)
 
