@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from itertools import groupby
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
 
@@ -77,12 +77,10 @@ def evaluate_core_service_runtime(
     lnm_operator_label = f"app in ({','.join(LNM_APP_LABELS)})"
     _process_lnm_pods(
         check_manager=check_manager,
-        description="LNM runtime resources in namespace {{[purple]{}[/purple]}}",
+        description="LNM runtime resources",
         target=CORE_SERVICE_RUNTIME_RESOURCE,
         prefix=AIO_LNM_PREFIX,
         label_selector=lnm_operator_label,
-        conditions=[],
-        namespace="",
         padding=6,
         detail_level=detail_level,
     )
@@ -283,12 +281,10 @@ def evaluate_lnms(
     # evaluate lnm svclb pod in other namespace
     _process_lnm_pods(
         check_manager=check_manager,
-        description="LNM resource health for namespace {{[purple]{}[/purple]}}",
+        description="LNM resource health",
         target=target_lnms,
         prefix=f"svclb-{AIO_LNM_PREFIX}",
-        label_selector=None,
         conditions=lnm_namespace_conditions,
-        namespace="",
         padding=6,
         detail_level=detail_level,
     )
@@ -301,10 +297,10 @@ def _process_lnm_pods(
     description: str,
     target: str,
     prefix: str,
-    label_selector: str,
-    conditions: List[str],
-    namespace: str,
     padding: int,
+    label_selector: Optional[str] = None,
+    conditions: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
     def _get_lnm_pods_namespace(pod: V1Pod) -> str:
@@ -319,7 +315,7 @@ def _process_lnm_pods(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                description.format(namespace),
+                f"{description} in namespace {{[purple]{namespace}[/purple]}}",
                 (0, 0, 0, padding)
             )
         )
