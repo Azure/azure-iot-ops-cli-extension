@@ -8,12 +8,16 @@
 CLI parameter definitions.
 """
 
-from azext_edge.edge.providers.edge_api.opcua import OpcuaResourceKinds
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
 from .common import OpsServiceType
-from .providers.edge_api import DataProcessorResourceKinds, MqResourceKinds
+from .providers.edge_api import (
+    DataProcessorResourceKinds,
+    LnmResourceKinds,
+    MqResourceKinds,
+    OpcuaResourceKinds
+)
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 
@@ -102,15 +106,16 @@ def load_iotops_arguments(self, _):
             options_list=["--resources"],
             choices=CaseInsensitiveList(
                 [
+                    DataProcessorResourceKinds.DATASET.value,
+                    DataProcessorResourceKinds.PIPELINE.value,
+                    DataProcessorResourceKinds.INSTANCE.value,
+                    LnmResourceKinds.LNM.value,
                     MqResourceKinds.BROKER.value,
                     MqResourceKinds.BROKER_LISTENER.value,
                     MqResourceKinds.DIAGNOSTIC_SERVICE.value,
                     MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
                     MqResourceKinds.DATALAKE_CONNECTOR.value,
                     MqResourceKinds.KAFKA_CONNECTOR.value,
-                    DataProcessorResourceKinds.DATASET.value,
-                    DataProcessorResourceKinds.PIPELINE.value,
-                    DataProcessorResourceKinds.INSTANCE.value,
                     OpcuaResourceKinds.ASSET_TYPE.value,
                 ]
             ),

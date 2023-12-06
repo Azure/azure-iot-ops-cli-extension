@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 import pytest
-from kubernetes.client import V1Pod, V1ObjectMeta, V1PodStatus
+from kubernetes.client import V1Pod, V1ObjectMeta, V1PodStatus, V1PodCondition
 from typing import List, Dict, Any
 from azext_edge.edge.providers.checks import run_checks
 from azext_edge.edge.providers.check.common import CORE_SERVICE_RUNTIME_RESOURCE
@@ -25,12 +25,6 @@ def mock_evaluate_cloud_connector_pod_health(mocker):
 @pytest.fixture
 def mock_evaluate_dataprocessor_pod_health(mocker):
     patched = mocker.patch("azext_edge.edge.providers.check.dataprocessor.evaluate_pod_health", return_value={})
-    yield patched
-
-
-@pytest.fixture
-def mock_evaluate_lnm_pod_health(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.lnm._evaluate_lnm_pod_health", return_value={})
     yield patched
 
 
@@ -159,9 +153,14 @@ def generate_resource_stub(
 def generate_pod_stub(
     name: str,
     phase: str,
+    conditions: List[Dict[str, Any]] = [],
 ):
     metadata = V1ObjectMeta(name=name)
-    pod_status = V1PodStatus(phase=phase)
+    condition_list = []
+    if conditions:
+        for condition in conditions:
+            condition_list.append(V1PodCondition(**condition))
+    pod_status = V1PodStatus(phase=phase, conditions=condition_list)
     pod = V1Pod(metadata=metadata, status=pod_status)
     return pod
 
