@@ -216,7 +216,10 @@ class WorkManager:
                             work_kpis["csiDriver"]["rotationPollInterval"] = self._kwargs.get("rotation_poll_interval")
                             work_kpis["csiDriver"]["enableSecretRotation"] = enable_secret_rotation
 
-                            provision_akv_csi_driver(enable_secret_rotation=enable_secret_rotation, **self._kwargs)
+                            akv_csi_driver_result = provision_akv_csi_driver(
+                                enable_secret_rotation=enable_secret_rotation, **self._kwargs
+                            )
+                            work_kpis["csiDriver"]["version"] = akv_csi_driver_result["properties"]["version"]
 
                             self._completed_steps[WorkStepKey.KV_CSI_DEPLOY] = 1
                             self.render_display(category=WorkCategoryKey.CSI_DRIVER)

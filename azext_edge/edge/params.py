@@ -70,7 +70,8 @@ def load_iotops_arguments(self, _):
             "include_mq_traces",
             options_list=["--mq-traces"],
             arg_type=get_three_state_flag(),
-            help="Include mq traces in the support bundle.",
+            help="Include mq traces in the support bundle. Usage may add considerable "
+            "size to the produced bundle.",
         )
 
     with self.argument_context("iot ops check") as context:
@@ -128,9 +129,9 @@ def load_iotops_arguments(self, _):
             choices=ResourceOutputDetailLevel.list(),
             arg_type=get_enum_type(ResourceOutputDetailLevel),
             help="Controls the level of detail displayed in the check output. "
-            "Choose 0 for a summary view, (minimal output), "
-            "1 for a detailed view, (more comprehensive information) "
-            "or 2 for a verbose view, (all available information).",
+            "Choose 0 for a summary view (minimal output), "
+            "1 for a detailed view (more comprehensive information), "
+            "or 2 for a verbose view (all available information).",
         )
 
     with self.argument_context("iot ops mq get-password-hash") as context:

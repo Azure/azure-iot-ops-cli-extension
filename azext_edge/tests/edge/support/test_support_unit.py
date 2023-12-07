@@ -184,6 +184,13 @@ def test_create_bundle(
                 mock_names=["opcplc-0000000"],
             )
             assert_list_services(mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, resource_api=OPCUA_API_V1)
+            # TODO: one-off field selector remove after label
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                field_selector="metadata.name==aio-opc-asset-discovery",
+                resource_api=OPCUA_API_V1,
+            )
 
         if api in [DATA_PROCESSOR_API_V1]:
             # Assert runtime resources
@@ -281,11 +288,6 @@ def test_create_bundle(
                 )
                 assert_list_services(mocked_client, mocked_zipfile, label_selector=orc_label, resource_api=ORC_API_V1)
 
-            # TODO: one-off field selector remove after label
-            assert_list_services(
-                mocked_client, mocked_zipfile, field_selector="metadata.name==aio-orc-service", resource_api=ORC_API_V1
-            )
-
         if api in [AKRI_API_V0]:
             assert_list_pods(
                 mocked_client,
@@ -326,7 +328,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=None,
                 resource_api=AKRI_API_V0,
-                mock_names=["aio-akri-agent-daemonset", "akri-opcua-asset-discovery-daemonset"],
+                mock_names=["aio-akri-agent-daemonset"],
             )
 
         if api in [LNM_API_V1B1]:
@@ -527,11 +529,14 @@ def assert_list_services(
 def assert_list_daemon_sets(
     mocked_client,
     mocked_zipfile,
-    label_selector: str,
     resource_api: EdgeResourceApi,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
     mock_names: Optional[List[str]] = None,
 ):
-    mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
+    mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
 
     mock_names = mock_names or ["mock_daemonset"]
     for name in mock_names:

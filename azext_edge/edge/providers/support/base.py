@@ -301,6 +301,7 @@ def process_replicasets(
 def process_daemonsets(
     resource_api: EdgeResourceApi,
     label_selector: str = None,
+    field_selector: str = None,
     prefix_names: List[str] = None,
 ):
     from kubernetes.client.models import V1DaemonSet, V1DaemonSetList
@@ -311,7 +312,9 @@ def process_daemonsets(
     if not prefix_names:
         prefix_names = []
 
-    daemonsets: V1DaemonSetList = v1_apps.list_daemon_set_for_all_namespaces(label_selector=label_selector)
+    daemonsets: V1DaemonSetList = v1_apps.list_daemon_set_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
     logger.info(f"Detected {len(daemonsets.items)} daemonsets.")
 
     for daemonset in daemonsets.items:
