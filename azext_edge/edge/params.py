@@ -12,7 +12,12 @@ from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
 from .common import OpsServiceType
-from .providers.edge_api import DataProcessorResourceKinds, MqResourceKinds
+from .providers.edge_api import (
+    DataProcessorResourceKinds,
+    LnmResourceKinds,
+    MqResourceKinds,
+    OpcuaResourceKinds
+)
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 
@@ -66,7 +71,6 @@ def load_iotops_arguments(self, _):
             options_list=["--mq-traces"],
             arg_type=get_three_state_flag(),
             help="Include mq traces in the support bundle.",
-            deprecate_info=context.deprecate(hide=True),
         )
 
     with self.argument_context("iot ops check") as context:
@@ -93,7 +97,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "ops_service",
             options_list=["--ops-service", "--svc"],
-            choices=CaseInsensitiveList(["mq", "dataprocessor", "lnm", "akri"]),
+            choices=CaseInsensitiveList(["akri", "dataprocessor", "lnm", "mq", "opcua"]),
             help="The IoT Operations service deployment that will be evaluated.",
         )
         context.argument(
@@ -102,15 +106,17 @@ def load_iotops_arguments(self, _):
             options_list=["--resources"],
             choices=CaseInsensitiveList(
                 [
+                    DataProcessorResourceKinds.DATASET.value,
+                    DataProcessorResourceKinds.PIPELINE.value,
+                    DataProcessorResourceKinds.INSTANCE.value,
+                    LnmResourceKinds.LNM.value,
                     MqResourceKinds.BROKER.value,
                     MqResourceKinds.BROKER_LISTENER.value,
                     MqResourceKinds.DIAGNOSTIC_SERVICE.value,
                     MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
                     MqResourceKinds.DATALAKE_CONNECTOR.value,
                     MqResourceKinds.KAFKA_CONNECTOR.value,
-                    DataProcessorResourceKinds.DATASET.value,
-                    DataProcessorResourceKinds.PIPELINE.value,
-                    DataProcessorResourceKinds.INSTANCE.value,
+                    OpcuaResourceKinds.ASSET_TYPE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
@@ -186,14 +192,12 @@ def load_iotops_arguments(self, _):
             options_list=["--trace-ids"],
             help="Space-separated trace ids in hex format.",
             arg_group="Trace",
-            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "trace_dir",
             options_list=["--trace-dir"],
             help="Local directory where traces will be bundled and stored at.",
             arg_group="Trace",
-            deprecate_info=context.deprecate(hide=True),
         )
 
     with self.argument_context("iot ops init") as context:

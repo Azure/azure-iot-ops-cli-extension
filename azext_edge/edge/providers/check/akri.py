@@ -60,7 +60,7 @@ def evaluate_configurations(
 ) -> Dict[str, Any]:
     def _validate_one_of_conditions(
             conditions: List[tuple],
-            check_manager: check_manager,
+            check_manager: CheckManager,
             eval_value: dict,
             namespace: str,
     ) -> None:
@@ -334,6 +334,23 @@ def evaluate_configurations(
                                             (0, 0, 0, 20),
                                         ),
                                     )
+            
+            if detail_level >= ResourceOutputDetailLevel.detail.value and capacity:
+                check_manager.add_display(
+                    target_name=target_configurations,
+                    namespace=namespace,
+                    display=Padding(
+                        f"Capacity: [cyan]{capacity}[/cyan]",
+                        (0, 0, 0, 16),
+                    ),
+                )
+
+                if detail_level == ResourceOutputDetailLevel.verbose.value:
+                    # broker spec
+                    if broker_spec:
+                        b
+                
+            
 
 
                 

@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     # pylint: disable=no-name-in-module
     from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
     from socket import socket
+    from zipfile import ZipInfo
 
 
 def _preprocess_stats(
@@ -212,14 +213,14 @@ def get_traces(
     pod_protobuf_port: int = PROTOBUF_SERVICE_API_PORT,
     trace_ids: Optional[List[str]] = None,
     trace_dir: Optional[str] = None,
-) -> Union[List["TracesData"], List[Tuple[str, str]], None]:
+) -> Union[List["TracesData"], List[Tuple["ZipInfo", str]], None]:
     """
     trace_ids: List[str] hex representation of trace Ids.
     """
     if not any([trace_ids, trace_dir]):
         raise ValueError("At least trace_ids or trace_dir is required.")
 
-    from zipfile import ZIP_DEFLATED, ZipFile
+    from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
     from google.protobuf.json_format import MessageToDict
     from rich.progress import MofNCompleteColumn, Progress
@@ -296,12 +297,12 @@ def get_traces(
                         progress_set = True
 
                     msg_dict = MessageToDict(message=response.retrieved_trace.trace, use_integers_for_enums=True)
-                    root_span, resource_name = _determine_root_span(message_dict=msg_dict)
+                    root_span, resource_name, timestamp = _determine_root_span(message_dict=msg_dict)
 
                     if progress_set:
                         progress.update(progress_task, advance=1)
-                    if not root_span:
-                        logger.warning("Could not determine root span. Skipping trace.")
+                    if not all([root_span, resource_name, timestamp]):
+                        logger.debug("Could not process root span. Skipping trace.")
                         continue
 
                     span_trace_id = root_span["traceId"]
@@ -314,9 +315,19 @@ def get_traces(
                         pb_suffix = ".otlp.pb"
                         tempo_suffix = ".tempo.json"
 
-                        otlp_format_pair = (f"{archive}{pb_suffix}", response.retrieved_trace.trace.SerializeToString())
+                        datetime_tuple = tuple(timestamp.timetuple())
+                        zinfo_pb = ZipInfo(filename=f"{archive}{pb_suffix}", date_time=datetime_tuple)
+                        # Fixed in Py 3.9 https://github.com/python/cpython/issues/70373
+                        zinfo_pb.file_size = 0
+                        zinfo_pb.compress_size = 0
+
+                        zinfo_tempo = ZipInfo(filename=f"{archive}{tempo_suffix}", date_time=datetime_tuple)
+                        zinfo_tempo.file_size = 0
+                        zinfo_tempo.compress_size = 0
+
+                        otlp_format_pair = (zinfo_pb, response.retrieved_trace.trace.SerializeToString())
                         tempo_format_pair = (
-                            f"{archive}{tempo_suffix}",
+                            zinfo_tempo,
                             json.dumps(_convert_otlp_to_tempo(msg_dict), sort_keys=True),
                         )
 
@@ -344,30 +355,40 @@ def get_traces(
                     myzip.close()
 
 
-def _determine_root_span(message_dict: dict) -> Tuple[str, str]:
+def _determine_root_span(message_dict: dict) -> Tuple[str, str, Union[datetime, None]]:
     """
-    Attempts to determine root span, and normalizes traceId and spaceId to hex.
+    Attempts to determine root span, and normalizes traceId, spanId and parentSpanId to hex.
     """
     import base64
 
     root_span = None
     resource_name = None
+    timestamp = None
 
     for resource_span in message_dict.get("resourceSpans", []):
         for scope_span in resource_span.get("scopeSpans", []):
             for span in scope_span.get("spans", []):
-                span["traceId"] = base64.b64decode(span["traceId"]).hex()
-                span["spanId"] = base64.b64decode(span["spanId"]).hex()
-                if not span.get("parentSpanId"):
+                if "traceId" in span:
+                    span["traceId"] = base64.b64decode(span["traceId"]).hex()
+                if "spanId" in span:
+                    span["spanId"] = base64.b64decode(span["spanId"]).hex()
+                if "parentSpanId" in span:
+                    span["parentSpanId"] = base64.b64decode(span["parentSpanId"]).hex()
+                else:
                     root_span = span
+
+                    if "startTimeUnixNano" in root_span:
+                        timestamp_unix_nano = root_span["startTimeUnixNano"]
+                        timestamp = datetime.utcfromtimestamp(float(timestamp_unix_nano) / 1e9)
+
                     # determine resource name
-                    resource = resource_span["resource"]
-                    attributes = resource["attributes"]
+                    resource = resource_span.get("resource", {})
+                    attributes = resource.get("attributes", [])
                     for a in attributes:
                         if a["key"] == "service.name":
                             resource_name = a["value"].get("stringValue", "unknown")
 
-    return root_span, resource_name
+    return root_span, resource_name, timestamp
 
 
 def _convert_otlp_to_tempo(message_dict: dict) -> dict:

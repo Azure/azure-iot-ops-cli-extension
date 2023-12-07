@@ -5,15 +5,16 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
 import pytest
+from azext_edge.edge.providers.check.common import CORE_SERVICE_RUNTIME_RESOURCE, ResourceOutputDetailLevel
 from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
-from azext_edge.edge.providers.check.lnm import evaluate_lnms
+from azext_edge.edge.providers.check.lnm import evaluate_core_service_runtime, evaluate_lnms
 
 from .conftest import (
     assert_check_by_resource_types,
     assert_conditions,
     assert_evaluations,
+    generate_pod_stub,
     generate_resource_stub
 )
 from ...generators import generate_generic_id
@@ -30,6 +31,7 @@ from ...generators import generate_generic_id
 @pytest.mark.parametrize('ops_service', ['lnm'])
 def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
+        CORE_SERVICE_RUNTIME_RESOURCE: "azext_edge.edge.providers.check.lnm.evaluate_core_service_runtime",
         LnmResourceKinds.LNM.value: "azext_edge.edge.providers.check.lnm.evaluate_lnms",
     }
 
@@ -202,6 +204,7 @@ def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, r
 def test_lnm_checks(
     mocker,
     mock_get_namespaced_pods_by_prefix,
+    mock_generate_lnm_target_resources,
     lnms,
     namespace_conditions,
     namespace_evaluations,
@@ -223,6 +226,123 @@ def test_lnm_checks(
 
     for namespace in target:
         assert namespace in result["targets"]["lnmz.layerednetworkmgmt.iotoperations.azure.com"]
+
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
+        assert_conditions(target[namespace], namespace_conditions)
+        assert_evaluations(target[namespace], namespace_evaluations)
+
+
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize(
+    "pods, namespace_conditions, namespace_evaluations",
+    [
+        (
+            # pods
+            [
+                generate_pod_stub(
+                    name="lnm-operator-1",
+                    phase="Running",
+                    conditions=[
+                        {
+                            "type": "Ready",
+                            "status": "True",
+                        }
+                    ]
+                )
+            ],
+            # namespace conditions str
+            [
+                "pod/lnm-operator-1.status.phase",
+                "pod/lnm-operator-1.status.conditions.ready",
+            ],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/status.phase", "Running"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/status.conditions.ready", True),
+                ],
+            ]
+        ),
+        (
+            # pods
+            [
+                generate_pod_stub(
+                    name="lnm-operator-1",
+                    phase="Running",
+                    conditions=[
+                        {
+                            "type": "Ready",
+                            "status": "False",
+                            "reason": "ContainersNotReady",
+                            "message": "containers with unready status: [lnm-operator]",
+                        }
+                    ]
+                )
+            ],
+            # namespace conditions str
+            [
+                "pod/lnm-operator-1.status.phase",
+                "pod/lnm-operator-1.status.conditions.ready",
+            ],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/status.phase", "Running"),
+                ],
+                [
+                    ("status", "error"),
+                    ("value/status.conditions.ready", False),
+                ],
+            ]
+        ),
+        (
+            # pods
+            [
+                generate_pod_stub(
+                    name="lnm-operator-1",
+                    phase="Failed",
+                )
+            ],
+            # namespace conditions str
+            [],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "error")
+                ],
+            ]
+        ),
+    ]
+)
+def test_evaluate_core_service_runtime(
+    mocker,
+    pods,
+    namespace_conditions,
+    namespace_evaluations,
+    mock_get_namespaced_pods_by_prefix,
+    detail_level,
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.check.lnm.get_namespaced_pods_by_prefix",
+        return_value=pods,
+    )
+
+    namespace = generate_generic_id()
+    for pod in pods:
+        pod.metadata.namespace = namespace
+    result = evaluate_core_service_runtime(detail_level=detail_level)
+
+    assert result["name"] == "evalCoreServiceRuntime"
+    assert result["targets"][CORE_SERVICE_RUNTIME_RESOURCE]
+    target = result["targets"][CORE_SERVICE_RUNTIME_RESOURCE]
+
+    for namespace in target:
+        assert namespace in result["targets"][CORE_SERVICE_RUNTIME_RESOURCE]
 
         target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)
