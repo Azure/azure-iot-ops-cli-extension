@@ -87,6 +87,7 @@ def load_iotops_help():
             - {COMPAT_MQ_APIS.as_str()}
             - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_LNM_APIS.as_str()}
+            - {COMPAT_OPCUA_APIS.as_str()}
 
         examples:
         - name: Basic usage. Checks `mq` health with summary output.
