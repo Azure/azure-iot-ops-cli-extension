@@ -6,7 +6,7 @@
 
 import json
 from time import sleep
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List, NamedTuple, Optional, Tuple, TYPE_CHECKING
 
 from azure.cli.core.azclierror import HTTPError
 from knack.log import get_logger
@@ -34,7 +34,13 @@ from .components import (
 logger = get_logger(__name__)
 
 
+if TYPE_CHECKING:
+    from azure.mgmt.resource.resources.models import GenericResource
+    from azure.core.polling import LROPoller
+
+
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
+KEYVAULT_ARC_EXTENSION_VERSION = "1.5.1"
 
 DEFAULT_POLL_RETRIES = 240
 DEFAULT_POLL_WAIT_SEC = 15
@@ -67,6 +73,8 @@ def provision_akv_csi_driver(
             parameters={
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
+                    "autoUpgradeMinorVersion": False,
+                    "version": KEYVAULT_ARC_EXTENSION_VERSION,
                     "extensionType": "microsoft.azurekeyvaultsecretsprovider",
                     "configurationSettings": {
                         "secrets-store-csi-driver.enableSecretRotation": enable_secret_rotation,
@@ -77,7 +85,7 @@ def provision_akv_csi_driver(
                 },
             },
         )
-    )
+    ).as_dict()
 
 
 def configure_cluster_secrets(
@@ -424,7 +432,7 @@ def deploy_template(
     return result, deployment
 
 
-def wait_for_terminal_state(poller) -> dict:
+def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
     # resource client does not handle sigint well
     counter = 0
     while counter < DEFAULT_POLL_RETRIES:

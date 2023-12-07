@@ -6,6 +6,7 @@
 
 import pytest
 from azext_edge.edge.util import get_timestamp_now_utc
+from azext_edge.edge.providers.orchestration.base import KEYVAULT_ARC_EXTENSION_VERSION
 
 
 @pytest.fixture
@@ -17,6 +18,11 @@ def mocked_deploy(mocker):
 @pytest.fixture
 def mocked_provision_akv_csi_driver(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.provision_akv_csi_driver", autospec=True)
+
+    def handle_return(*args, **kwargs):
+        return {"properties": {"version": KEYVAULT_ARC_EXTENSION_VERSION}}
+
+    patched.side_effect = handle_return
     yield patched
 
 

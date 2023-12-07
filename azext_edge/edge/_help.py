@@ -46,14 +46,32 @@ def load_iotops_help():
         type: command
         short-summary: Creates a standard support bundle zip archive for use in troubleshooting and diagnostics.
         long-summary: |
-            [Supported service APIs]
-                {COMPAT_MQ_APIS.as_str()}
-                {COMPAT_OPCUA_APIS.as_str()}
-                {COMPAT_DATA_PROCESSOR_APIS.as_str()}
-                {COMPAT_ORC_APIS.as_str()}
-                {COMPAT_AKRI_APIS.as_str()}
-                {COMPAT_LNM_APIS.as_str()}
-                {COMPAT_DEVICEREGISTRY_APIS.as_str()}
+            {{Supported service APIs}}
+            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_OPCUA_APIS.as_str()}
+            - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
+            - {COMPAT_ORC_APIS.as_str()}
+            - {COMPAT_AKRI_APIS.as_str()}
+            - {COMPAT_LNM_APIS.as_str()}
+            - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
+
+        examples:
+        - name: Basic usage with default options. This form of the command will auto detect IoT Operations APIs and build a suitable bundle
+                capturing the last 24 hours of container logs. The bundle will be produced in the current working directory.
+          text: >
+            az iot ops support create-bundle
+
+        - name: Constrain data capture on a specific service as well as producing the bundle in a custom output dir.
+          text: >
+            az iot ops support create-bundle --ops-service opcua --bundle-dir ~/ops
+
+        - name: Specify a custom container log age in seconds.
+          text: >
+            az iot ops support create-bundle --ops-service mq --log-age 172800
+
+        - name: Include mq traces in the support bundle. This is an alias for stats trace fetch capability.
+          text: >
+            az iot ops support create-bundle --ops-service mq --mq-traces
     """
 
     helps[
@@ -62,10 +80,30 @@ def load_iotops_help():
         type: command
         short-summary: Evaluate IoT Operations service deployment for health, configuration and usability.
         long-summary: |
-            [Supported service APIs]
-                {COMPAT_MQ_APIS.as_str()}
-                {COMPAT_DATA_PROCESSOR_APIS.as_str()}
-                {COMPAT_LNM_APIS.as_str()}
+            The command by default shows a human friendly _summary_ view of the selected service.
+            More detail can be requested via `--detail-level`.
+
+            {{Supported service APIs}}
+            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
+            - {COMPAT_LNM_APIS.as_str()}
+
+        examples:
+        - name: Basic usage. Checks `mq` health with summary output.
+          text: >
+            az iot ops check
+
+        - name: Evaluates `mq` like prior example, however output is optimized for CI.
+          text: >
+            az iot ops check --as-object
+
+        - name: Checks `dataprocessor` health and configuration with detailed output.
+          text: >
+            az iot ops check --svc dataprocessor --detail-level 1
+
+        - name: Same as prior example, except constraining results to the `pipeline` resource.
+          text: >
+            az iot ops check --svc dataprocessor --detail-level 1 --resources pipeline
     """
 
     helps[
@@ -81,8 +119,31 @@ def load_iotops_help():
         type: command
         short-summary: Show dmqtt running statistics.
         long-summary: |
-            [Supported service APIs]
-                {MQ_ACTIVE_API.as_str()}
+            {{Supported service APIs}}
+            - {MQ_ACTIVE_API.as_str()}
+
+        examples:
+        - name: Fetch key performance indicators from the diagnostics Prometheus metrics endpoint.
+          text: >
+            az iot ops mq stats
+
+        - name: Same as prior example except with a dynamic display that refreshes periodically.
+          text: >
+            az iot ops mq stats --watch
+
+        - name: Return the raw output of the metrics endpoint with minimum processing.
+          text: >
+            az iot ops mq stats --raw
+
+        - name: Fetch all available mq traces from the diagnostics Protobuf endpoint.
+                This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
+                A trace files last modified attribute will match the trace timestamp.
+          text: >
+            az iot ops mq stats --trace-dir .
+
+        - name: Fetch traces by trace Ids provided in space-separated hex format. Only `Otel` format is shown.
+          text: >
+            az iot ops mq stats --trace-ids 4e84000155a98627cdac7de46f53055d
     """
 
     helps[
@@ -90,6 +151,11 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Generates a PBKDF2 hash of the passphrase applying PBKDF2-HMAC-SHA512. A 128-bit salt is used from os.urandom.
+
+        examples:
+        - name: Produce a hash of the phrase 'mypassphrase' using the default number of hash iterations.
+          text: >
+            az iot ops mq get-password-hash -p mypassphrase
     """
 
     helps[
@@ -97,6 +163,35 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Bootstrap, configure and deploy IoT Operations to the target cluster.
+        long-summary: For additional resources including how to arc-enable a cluster see
+                      https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
+
+        examples:
+        - name: Minimum input for complete setup. This includes Key Vault configuration, CSI driver deployment, TLS config and deployment of IoT Operations.
+          text: >
+            az iot ops init --cluster mycluster -g myresourcegroup --kv-id /subscriptions/2cb3a427-1abc-48d0-9d03-dd240819742a/resourceGroups/myresourcegroup/providers/Microsoft.KeyVault/vaults/mykeyvault
+
+        - name: You can always combine other commands. In this `bash` example, we are creating a KeyVault in-line and grabbing its Id prior to running init.
+          text: >
+            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $(az keyvault create -n mykeyvault -g myresourcegroup -o tsv --query id)
+
+        - name: Same setup as prior example, except with the usage of an existing app Id and a flag to include a simulated PLC server as part of the deployment.
+                Including the app Id will prevent `init` from creating an app registration.
+          text: >
+            az iot ops init --cluster <cluster name> -g <rg> --kv-id <keyvault resource Id> --sp-app-id <app reg guid> --simulate-plc
+
+        - name: To skip deployment and focus only on the Key Vault CSI driver and TLS config workflows simple pass in `--no-deploy`.
+                This can be useful when desiring to deploy from a different tool such as Portal.
+          text: >
+            az iot ops init --cluster <cluster name> -g <rg> --kv-id <keyvault resource Id> --sp-app-id <app reg guid> --no-deploy
+
+        - name: To only deploy IoT Operations on a cluster that has already been prepped, simply omit `--kv-id` and include `--no-tls`.
+          text: >
+            az iot ops init --cluster <cluster name> -g <rg> --no-tls
+
+        - name: Use `--no-block` to do other work while the deployment is on-going vs waiting for the deployment to finish before starting the other work.
+          text: >
+            az iot ops init --cluster <cluster name> -g <rg> --kv-id <keyvault resource Id> --sp-app-id <app reg guid> --no-block
     """
 
     helps[

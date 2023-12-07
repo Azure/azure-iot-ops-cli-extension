@@ -12,6 +12,7 @@ import pytest
 
 from azext_edge.edge.commands_edge import init
 from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
+from azext_edge.edge.providers.orchestration.base import KEYVAULT_ARC_EXTENSION_VERSION
 from azext_edge.edge.providers.orchestration.common import (
     MqMemoryProfile,
     MqMode,
@@ -22,6 +23,7 @@ from azext_edge.edge.providers.orchestration.work import (
     CLUSTER_SECRET_CLASS_NAME,
     CLUSTER_SECRET_REF,
     TemplateVer,
+    CURRENT_TEMPLATE,
 )
 from azext_edge.edge.util import url_safe_hash_phrase
 
@@ -511,6 +513,7 @@ def test_work_order(
     if keyvault_resource_id:
         assert result["csiDriver"]
         assert result["csiDriver"]["spAppId"]
+        assert result["csiDriver"]["version"] == KEYVAULT_ARC_EXTENSION_VERSION
         assert result["csiDriver"]["spObjectId"]
         assert result["csiDriver"]["keyVaultId"] == keyvault_resource_id
         assert (
@@ -619,7 +622,7 @@ def test_work_order(
         assert result["deploymentState"]
         assert result["deploymentState"]["status"]
         assert result["deploymentState"]["correlationId"]
-        assert result["deploymentState"]["opsVersion"]
+        assert result["deploymentState"]["opsVersion"] == CURRENT_TEMPLATE.component_vers
         assert result["deploymentState"]["timestampUtc"]
         assert result["deploymentState"]["timestampUtc"]["started"]
         assert result["deploymentState"]["timestampUtc"]["ended"]
