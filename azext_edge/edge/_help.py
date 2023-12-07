@@ -171,10 +171,6 @@ def load_iotops_help():
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id /subscriptions/2cb3a427-1abc-48d0-9d03-dd240819742a/resourceGroups/myresourcegroup/providers/Microsoft.KeyVault/vaults/mykeyvault
 
-        - name: You can always combine other commands. In this `bash` example, we are creating a KeyVault in-line and grabbing its Id prior to running init.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $(az keyvault create -n mykeyvault -g myresourcegroup -o tsv --query id)
-
         - name: Same setup as prior example, except with the usage of an existing app Id and a flag to include a simulated PLC server as part of the deployment.
                 Including the app Id will prevent `init` from creating an app registration.
           text: >
@@ -193,8 +189,9 @@ def load_iotops_help():
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-block
 
-        - name: To avoid calling MS Graph such as for CI scenarios where the logged-in to az cli service principal permissions are limited, provide
-                all of `--sp-app-id`, `--sp-object-id` and `--sp-secret`. These should reflect the desired service principal that will be used for Key Vault CSI driver setup.
+        - name: To avoid calling MS Graph such as for CI scenarios where the logged-in to az cli service principal permissions are limited or an existing
+                service principal should be re-used, provide all of `--sp-app-id`, `--sp-object-id` and `--sp-secret`.
+                These values should reflect the desired service principal that will be used for the Key Vault CSI driver setup.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29
             --sp-secret $SP_SECRET
