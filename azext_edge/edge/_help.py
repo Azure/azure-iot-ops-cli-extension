@@ -178,20 +178,26 @@ def load_iotops_help():
         - name: Same setup as prior example, except with the usage of an existing app Id and a flag to include a simulated PLC server as part of the deployment.
                 Including the app Id will prevent `init` from creating an app registration.
           text: >
-            az iot ops init --cluster <cluster name> -g <rg> --kv-id <keyvault resource Id> --sp-app-id <app reg guid> --simulate-plc
+            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --simulate-plc
 
         - name: To skip deployment and focus only on the Key Vault CSI driver and TLS config workflows simple pass in `--no-deploy`.
                 This can be useful when desiring to deploy from a different tool such as Portal.
           text: >
-            az iot ops init --cluster <cluster name> -g <rg> --kv-id <keyvault resource Id> --sp-app-id <app reg guid> --no-deploy
+            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-deploy
 
         - name: To only deploy IoT Operations on a cluster that has already been prepped, simply omit `--kv-id` and include `--no-tls`.
           text: >
-            az iot ops init --cluster <cluster name> -g <rg> --no-tls
+            az iot ops init --cluster mycluster -g myresourcegroup --no-tls
 
         - name: Use `--no-block` to do other work while the deployment is on-going vs waiting for the deployment to finish before starting the other work.
           text: >
-            az iot ops init --cluster <cluster name> -g <rg> --kv-id <keyvault resource Id> --sp-app-id <app reg guid> --no-block
+            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-block
+
+        - name: To avoid calling MS Graph such as for CI scenarios where the logged-in to az cli service principal permissions are limited, provide
+                all of `--sp-app-id`, `--sp-object-id` and `--sp-secret`. These should reflect the desired service principal that will be used for Key Vault CSI driver setup.
+          text: >
+            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29
+            --sp-secret $SP_SECRET
     """
 
     helps[

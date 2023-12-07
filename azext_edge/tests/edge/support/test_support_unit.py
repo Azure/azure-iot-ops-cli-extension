@@ -288,7 +288,6 @@ def test_create_bundle(
                 )
                 assert_list_services(mocked_client, mocked_zipfile, label_selector=orc_label, resource_api=ORC_API_V1)
 
-
         if api in [AKRI_API_V0]:
             assert_list_pods(
                 mocked_client,
