@@ -834,14 +834,15 @@ def load_iotops_arguments(self, _):
             help="Asset Endpoint name.",
         )
         context.argument(
-            "password",
+            "password_reference",
             options_list=["--password-ref", "--pr"],
-            help="Reference for the certificate password.",
+            help="Reference for pem file that contains the certificate password.",
         )
         context.argument(
-            "secret",
+            "secret_reference",
             options_list=["--secret-ref", "--sr"],
-            help="Reference for the certificate. The referenced file should contain the certificate and the key.",
+            help="Reference for the der file that contains the certificate. The referenced file should contain the "
+            "certificate and the key.",
         )
         context.argument(
             "thumbprint",
