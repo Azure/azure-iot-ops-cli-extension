@@ -15,6 +15,14 @@ from azure.cli.core.azclierror import (
 from .base import ADRBaseProvider
 from ....util import assemble_nargs_to_dict, build_query
 from ....common import ResourceTypeMapping, AEPAuthModes
+from .constants import (
+    AUTH_REF_MISMATCH_ERROR,
+    GENERAL_AUTH_REF_MISMATCH_ERROR,
+    MISSING_USERPASS_REF_ERROR,
+    MISSING_TRANS_AUTH_PROP_ERROR,
+    REMOVED_CERT_REF_MSG,
+    REMOVED_USERPASS_REF_MSG
+)
 
 logger = get_logger(__name__)
 
@@ -41,9 +49,9 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         custom_location_subscription: Optional[str] = None,
         transport_authentication: Optional[str] = None,
         location: Optional[str] = None,
-        password: Optional[str] = None,
+        password_reference: Optional[str] = None,
+        username_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
-        username: Optional[str] = None,
     ):
         extended_location = self._check_cluster_and_custom_location(
             custom_location_name=custom_location_name,
@@ -59,18 +67,18 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
             location = self.get_location(resource_group_name)
 
         auth_mode = None
-        if not any([username, password, certificate_reference]):
+        if not any([username_reference, password_reference, certificate_reference]):
             auth_mode = AEPAuthModes.anonymous.value
 
-        # Properties
-        properties = {}
+        # Properties - bandaid for UI so it processes no transport auth correctly
+        properties = {"transportAuthentication": {"ownCertificates": []}}
         _update_properties(
             properties,
             target_address=target_address,
             additional_configuration=additional_configuration,
             auth_mode=auth_mode,
-            username=username,
-            password=password,
+            username_reference=username_reference,
+            password_reference=password_reference,
             certificate_reference=certificate_reference,
             transport_authentication=transport_authentication
         )
@@ -126,8 +134,8 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         target_address: Optional[str] = None,
         additional_configuration: Optional[str] = None,
         auth_mode: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username_reference: Optional[str] = None,
+        password_reference: Optional[str] = None,
         certificate_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
     ):
@@ -146,8 +154,8 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
             target_address=target_address,
             additional_configuration=additional_configuration,
             auth_mode=auth_mode,
-            username=username,
-            password=password,
+            username_reference=username_reference,
+            password_reference=password_reference,
             certificate_reference=certificate_reference,
         )
 
@@ -162,8 +170,8 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         self,
         asset_endpoint_profile_name: str,
         resource_group_name: str,
-        password: str,
-        secret: str,
+        password_reference: str,
+        secret_reference: str,
         thumbprint: str,
     ):
         original_aep = self.show_and_check(
@@ -177,8 +185,8 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
 
         cert = {
             "certThumbprint": thumbprint,
-            "certSecretReference": secret,
-            "certPasswordReference": password,
+            "certSecretReference": secret_reference,
+            "certPasswordReference": password_reference,
         }
         original_aep["properties"]["transportAuthentication"]["ownCertificates"].append(cert)
 
@@ -203,10 +211,7 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
             resource_group_name=resource_group_name
         )
 
-        return original_aep["properties"].get(
-            "transportAuthentication",
-            {"ownCertificates": []}
-        )
+        return original_aep["properties"].get("transportAuthentication", {"ownCertificates": []})
 
     def remove_transport_auth(
         self,
@@ -245,41 +250,40 @@ def _process_authentication(
     auth_mode: Optional[str] = None,
     auth_props: Optional[Dict[str, str]] = None,
     certificate_reference: Optional[str] = None,
-    password: Optional[str] = None,
-    username: Optional[str] = None
+    password_reference: Optional[str] = None,
+    username_reference: Optional[str] = None
 ) -> Dict[str, str]:
     if not auth_props:
         auth_props = {}
     # add checking for ensuring auth mode is set with proper params
-    if certificate_reference and (username or password):
-        raise Exception("Please choose to use a certificate reference or a username/password for authentication.")
+    if certificate_reference and (username_reference or password_reference):
+        raise MutuallyExclusiveArgumentError(AUTH_REF_MISMATCH_ERROR)
 
     if certificate_reference and auth_mode in [None, AEPAuthModes.certificate.value]:
         auth_props["mode"] = AEPAuthModes.certificate.value
         auth_props["x509Credentials"] = {"certificateReference": certificate_reference}
         if auth_props.pop("usernamePasswordCredentials", None):
-            logger.warning("Previously used username and password references were removed.")
-
-    elif (username or password) and auth_mode in [None, AEPAuthModes.userpass.value]:
+            logger.warning(REMOVED_USERPASS_REF_MSG)
+    elif (username_reference or password_reference) and auth_mode in [None, AEPAuthModes.userpass.value]:
         auth_props["mode"] = AEPAuthModes.userpass.value
         user_creds = auth_props.get("usernamePasswordCredentials", {})
-        user_creds["usernameReference"] = username
-        user_creds["passwordReference"] = password
+        user_creds["usernameReference"] = username_reference
+        user_creds["passwordReference"] = password_reference
         if not all([user_creds["usernameReference"], user_creds["passwordReference"]]):
-            raise RequiredArgumentMissingError(
-                "Please provide username and password reference for UsernamePassword authentication."
-            )
+            raise RequiredArgumentMissingError(MISSING_USERPASS_REF_ERROR)
         auth_props["usernamePasswordCredentials"] = user_creds
         if auth_props.pop("x509Credentials", None):
-            logger.warning("Previously used certificate reference was removed.")
-    elif auth_mode == AEPAuthModes.anonymous.value and not any([certificate_reference, username, password]):
+            logger.warning(REMOVED_CERT_REF_MSG)
+    elif auth_mode == AEPAuthModes.anonymous.value and not any(
+        [certificate_reference, username_reference, password_reference]
+    ):
         auth_props["mode"] = AEPAuthModes.anonymous.value
         if auth_props.pop("x509Credentials", None):
-            logger.warning("Previously used certificate reference was removed.")
+            logger.warning(REMOVED_CERT_REF_MSG)
         if auth_props.pop("usernamePasswordCredentials", None):
-            logger.warning("Previously used username and password references were removed.")
-    elif any([auth_mode, certificate_reference, username, password]):
-        raise MutuallyExclusiveArgumentError("Invalid combination of authentication mode and parameters.")
+            logger.warning(REMOVED_USERPASS_REF_MSG)
+    elif any([auth_mode, certificate_reference, username_reference, password_reference]):
+        raise MutuallyExclusiveArgumentError(GENERAL_AUTH_REF_MISMATCH_ERROR)
 
     return auth_props
 
@@ -292,9 +296,7 @@ def _process_certificates(cert_list: Optional[List[List[str]]] = None) -> List[D
     for cert in cert_list:
         parsed_cert = assemble_nargs_to_dict(cert)
         if set(parsed_cert.keys()) != set(["password", "thumbprint", "secret"]):
-            raise RequiredArgumentMissingError(
-                f"Transport authentication ({cert}) needs to have all of [password, thumbprint, and secret]."
-            )
+            raise RequiredArgumentMissingError(MISSING_TRANS_AUTH_PROP_ERROR.format(cert))
 
         processed_point = {
             "certThumbprint": parsed_cert["thumbprint"],
@@ -311,8 +313,8 @@ def _update_properties(
     target_address: Optional[str] = None,
     additional_configuration: Optional[str] = None,
     auth_mode: Optional[str] = None,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
+    username_reference: Optional[str] = None,
+    password_reference: Optional[str] = None,
     certificate_reference: Optional[str] = None,
     transport_authentication: Optional[List[str]] = None,
 ):
@@ -324,12 +326,12 @@ def _update_properties(
         properties["transportAuthentication"] = {
             "ownCertificates": _process_certificates(transport_authentication)
         }
-    if any([auth_mode, username, password, certificate_reference]):
+    if any([auth_mode, username_reference, password_reference, certificate_reference]):
         auth_props = properties.get("userAuthentication", {})
         properties["userAuthentication"] = _process_authentication(
             auth_props=auth_props,
             auth_mode=auth_mode,
             certificate_reference=certificate_reference,
-            username=username,
-            password=password
+            username_reference=username_reference,
+            password_reference=password_reference
         )

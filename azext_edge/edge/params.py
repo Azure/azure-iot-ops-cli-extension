@@ -663,7 +663,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "tags",
             options_list=["--tags"],
-            help="Asset tags. Property bag in key-value pairs with the following format: a=b c=d",
+            help="Asset resource tags. Property bag in key-value pairs with the following format: a=b c=d",
             arg_type=tags_type,
         )
         context.argument(
@@ -773,13 +773,13 @@ def load_iotops_arguments(self, _):
             arg_group="Authentication"
         )
         context.argument(
-            "password",
+            "password_reference",
             options_list=["--password-ref", "--pr"],
             help="Reference for the password used in authentication.",
             arg_group="Authentication"
         )
         context.argument(
-            "username",
+            "username_reference",
             options_list=["--username-reference", "--ur"],
             help="Reference for the username used in authentication.",
             arg_group="Authentication"
@@ -823,7 +823,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "tags",
             options_list=["--tags"],
-            help="Asset Endpoint tags. Property bag in key-value pairs with the following format: a=b c=d",
+            help="Asset Endpoint resource tags. Property bag in key-value pairs with the following format: a=b c=d",
             arg_type=tags_type,
         )
 

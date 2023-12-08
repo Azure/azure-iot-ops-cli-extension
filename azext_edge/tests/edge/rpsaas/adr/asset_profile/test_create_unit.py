@@ -30,8 +30,8 @@ from .....generators import generate_generic_id
         "cluster_resource_group": generate_generic_id(),
         "cluster_subscription": generate_generic_id(),
         "additional_configuration": generate_generic_id(),
-        "username": generate_generic_id(),
-        "password": generate_generic_id(),
+        "username_reference": generate_generic_id(),
+        "password_reference": generate_generic_id(),
         "certificate_reference": generate_generic_id(),
         "tags": generate_generic_id(),
     },
@@ -39,8 +39,8 @@ from .....generators import generate_generic_id
         "custom_location_resource_group": generate_generic_id(),
         "cluster_subscription": generate_generic_id(),
         "additional_configuration": generate_generic_id(),
-        "username": generate_generic_id(),
-        "password": generate_generic_id(),
+        "username_reference": generate_generic_id(),
+        "password_reference": generate_generic_id(),
     },
 ])
 def test_create_asset_endpoint_profile(mocker, mocked_cmd, mocked_resource_management_client, aep_helpers_fixture, req):
@@ -96,7 +96,7 @@ def test_create_asset_endpoint_profile(mocker, mocked_cmd, mocked_resource_manag
     # Properties
     request_props = request_body["properties"]
     req["target_address"] = target_address
-    if all(["username" not in req, "password" not in req, "certificate_reference" not in req]):
+    if all(["username_reference" not in req, "password_reference" not in req, "certificate_reference" not in req]):
         req["auth_mode"] = "Anonymous"
     assert request_props["result"]
 

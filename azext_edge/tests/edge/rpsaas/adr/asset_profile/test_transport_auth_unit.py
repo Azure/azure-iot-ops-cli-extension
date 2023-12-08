@@ -46,16 +46,16 @@ def test_add_asset_endpoint_profile_transport_auth(
 ):
     asset_endpoint_profile_name = generate_generic_id()
     resource_group_name = generate_generic_id()
-    secret = generate_generic_id()
+    secret_reference = generate_generic_id()
     thumbprint = generate_generic_id()
-    password = generate_generic_id()
+    password_reference = generate_generic_id()
     result = add_asset_endpoint_profile_transport_auth(
         cmd=mocked_cmd,
         asset_endpoint_profile_name=asset_endpoint_profile_name,
         resource_group_name=resource_group_name,
-        secret=secret,
+        secret_reference=secret_reference,
         thumbprint=thumbprint,
-        password=password
+        password_reference=password_reference
     )
     mocked_resource_management_client.resources.get.assert_called_once()
     mocked_resource_management_client.resources.begin_create_or_update_by_id.assert_called_once()
@@ -75,9 +75,9 @@ def test_add_asset_endpoint_profile_transport_auth(
 
     assert request_aep_certs[:-1] == original_certs
     added_cert = request_aep_certs[-1]
-    assert added_cert["certSecretReference"] == secret
+    assert added_cert["certSecretReference"] == secret_reference
     assert added_cert["certThumbprint"] == thumbprint
-    assert added_cert["certPasswordReference"] == password
+    assert added_cert["certPasswordReference"] == password_reference
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [

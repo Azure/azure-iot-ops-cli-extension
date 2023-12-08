@@ -28,9 +28,9 @@ def create_asset_endpoint_profile(
     custom_location_subscription: Optional[str] = None,
     transport_authentication: Optional[str] = None,
     location: Optional[str] = None,
-    password: Optional[str] = None,
+    password_reference: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
-    username: Optional[str] = None,
+    username_reference: Optional[str] = None,
 ):
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.create(
@@ -47,8 +47,8 @@ def create_asset_endpoint_profile(
         custom_location_subscription=custom_location_subscription,
         transport_authentication=transport_authentication,
         location=location,
-        password=password,
-        username=username,
+        password_reference=password_reference,
+        username_reference=username_reference,
         tags=tags
     )
 
@@ -112,8 +112,8 @@ def update_asset_endpoint_profile(
     target_address: Optional[str] = None,
     additional_configuration: Optional[str] = None,
     auth_mode: Optional[str] = None,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
+    username_reference: Optional[str] = None,
+    password_reference: Optional[str] = None,
     certificate_reference: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
 ) -> dict:
@@ -125,8 +125,8 @@ def update_asset_endpoint_profile(
         additional_configuration=additional_configuration,
         auth_mode=auth_mode,
         certificate_reference=certificate_reference,
-        password=password,
-        username=username,
+        password_reference=password_reference,
+        username_reference=username_reference,
         tags=tags
     )
 
@@ -135,17 +135,17 @@ def add_asset_endpoint_profile_transport_auth(
     cmd,
     asset_endpoint_profile_name: str,
     resource_group_name: str,
-    password: str,
-    secret: str,
+    password_reference: str,
+    secret_reference: str,
     thumbprint: str,
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.add_transport_auth(
         asset_endpoint_profile_name,
         resource_group_name=resource_group_name,
-        secret=secret,
+        secret_reference=secret_reference,
         thumbprint=thumbprint,
-        password=password
+        password_reference=password_reference
     )
 
 

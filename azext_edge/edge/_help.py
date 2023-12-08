@@ -431,9 +431,10 @@ def load_iotops_help():
           text: >
             az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
             --target-address {target_address} --cert secret={secret_reference} password={password_reference} thumbprint {thumbprint}
-            --cert secret={secret_reference} password={password_reference} thumbprint {thumbprint}
+            --cert secret={secret_reference} password={password_reference} thumbprint={thumbprint}
         - name: Create an asset endpoint with username-password user authentication and preconfigurated owned certificates with
-                prefilled values.
+                prefilled values.The username and password references are set via the Azure Keyvault Container Storage Interface
+                driver.
           text: >
             az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
             --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
@@ -542,8 +543,8 @@ def load_iotops_help():
         - name: Add a certificate to an asset endpoint that uses a password with prefilled values.
           text: >
             az iot ops asset endpoint certificate add --endpoint {asset_endpoint} -g {resource_group}
-            --secret-ref aio-opc-ua-broker-client-certificate --thumbprint 000000000000000000
-            --password-ref aio-opc-ua-broker-client-certificate-password
+            --secret-ref "aio-opc-ua-broker-client/certificate" --thumbprint 000000000000000000
+            --password-ref "aio-opc-ua-broker-client/certificate-password"
     """
 
     helps[

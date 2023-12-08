@@ -45,12 +45,12 @@ from .....generators import generate_generic_id
     },
     {
         "auth_mode": AEPAuthModes.userpass.value,
-        "password": generate_generic_id(),
-        "username": generate_generic_id()
+        "password_reference": generate_generic_id(),
+        "username_reference": generate_generic_id()
     },
     {
-        "password": generate_generic_id(),
-        "username": generate_generic_id()
+        "password_reference": generate_generic_id(),
+        "username_reference": generate_generic_id()
     },
 ])
 def test_process_authentication(
@@ -66,7 +66,7 @@ def test_process_authentication(
     expected_auth = req.get("auth_mode") or original_props.get("mode")
     if expected_auth is None and req.get("certificate_reference"):
         expected_auth = AEPAuthModes.certificate.value
-    if expected_auth is None and req.get("password"):
+    if expected_auth is None and req.get("password_reference"):
         expected_auth = AEPAuthModes.userpass.value
     assert result.get("mode") == expected_auth
 
@@ -78,8 +78,8 @@ def test_process_authentication(
         assert result.get("usernamePasswordCredentials") is None
     elif result.get("mode") == AEPAuthModes.userpass.value:
         assert result.get("x509Credentials") is None
-        assert result["usernamePasswordCredentials"]["passwordReference"] == req["password"]
-        assert result["usernamePasswordCredentials"]["usernameReference"] == req["username"]
+        assert result["usernamePasswordCredentials"]["passwordReference"] == req["password_reference"]
+        assert result["usernamePasswordCredentials"]["usernameReference"] == req["username_reference"]
     else:
         assert result == original_props
 
@@ -91,22 +91,22 @@ def test_process_authentication(
     },
     {
         "auth_mode": AEPAuthModes.anonymous.value,
-        "password": generate_generic_id(),
+        "password_reference": generate_generic_id(),
     },
     {
         "auth_mode": AEPAuthModes.anonymous.value,
-        "username": generate_generic_id()
+        "username_reference": generate_generic_id()
     },
     {
         "auth_mode": AEPAuthModes.certificate.value,
     },
     {
         "auth_mode": AEPAuthModes.certificate.value,
-        "password": generate_generic_id(),
+        "password_reference": generate_generic_id(),
     },
     {
         "auth_mode": AEPAuthModes.certificate.value,
-        "username": generate_generic_id()
+        "username_reference": generate_generic_id()
     },
     {
         "auth_mode": AEPAuthModes.userpass.value,
@@ -117,17 +117,17 @@ def test_process_authentication(
     },
     {
         "auth_mode": AEPAuthModes.userpass.value,
-        "password": generate_generic_id(),
+        "password_reference": generate_generic_id(),
     },
     {
         "auth_mode": AEPAuthModes.userpass.value,
-        "username": generate_generic_id(),
+        "username_reference": generate_generic_id(),
     },
     {
-        "password": generate_generic_id(),
+        "password_reference": generate_generic_id(),
     },
     {
-        "username": generate_generic_id(),
+        "username_reference": generate_generic_id(),
     },
 ])
 def test_process_authentication_error(
@@ -139,7 +139,9 @@ def test_process_authentication_error(
             **req
         )
 
-    if req.get("auth_mode") in [None, AEPAuthModes.userpass.value] and any([req.get("username"), req.get("password")]):
+    if req.get("auth_mode") in [None, AEPAuthModes.userpass.value] and any(
+        [req.get("username_reference"), req.get("password_reference")]
+    ):
         assert isinstance(e.value, RequiredArgumentMissingError)
     else:
         assert isinstance(e.value, MutuallyExclusiveArgumentError)
@@ -189,7 +191,9 @@ def test_process_certificates(cert_list):
 
 @pytest.mark.parametrize("missing_arg", ["password", "thumbprint", "secert"])
 def test_process_certificates_error(missing_arg):
-    cert = [f"{arg}={generate_generic_id()}" for arg in ["password", "thumbprint", "secert"] if arg != missing_arg]
+    cert = [
+        f"{arg}={generate_generic_id()}" for arg in ["password", "thumbprint", "secert"] if arg != missing_arg
+    ]
     with pytest.raises(RequiredArgumentMissingError) as e:
         _process_certificates(
             [cert]
@@ -242,8 +246,8 @@ def test_process_certificates_error(missing_arg):
     {
         "target_address": generate_generic_id(),
         "auth_mode": AEPAuthModes.userpass.value,
-        "username": generate_generic_id(),
-        "password": generate_generic_id(),
+        "username_reference": generate_generic_id(),
+        "password_reference": generate_generic_id(),
         "transport_authentication": [
             [
                 f"password={generate_generic_id()}",
@@ -285,7 +289,7 @@ def test_update_properties(properties, req):
         auth_props=properties.get("userAuthentication", {}),
         auth_mode=req.get("auth_mode"),
         certificate_reference=req.get("certificate_reference"),
-        username=req.get("username"),
-        password=req.get("password")
+        username_reference=req.get("username_reference"),
+        password_reference=req.get("password_reference")
     )
     assert properties.get("userAuthentication", {}) == expected_auth
