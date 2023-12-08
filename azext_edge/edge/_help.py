@@ -440,15 +440,36 @@ def load_iotops_help():
             --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
             --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password" --cert secret=aio-opc-ua-broker-client-certificate
             thumbprint=000000000000000000 password=aio-opc-ua-broker-client-certificate-password
-        - name: Create an asset endpoint with certificate user authentication and additional configuration with prefilled values.
+        - name: Create an asset endpoint with certificate user authentication and additional configuration with prefilled values
+                (powershell syntax example).
           text: >
             az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
             --target-address "opc.tcp://opcplc-000000:50000"
             --certificate-ref "aio-opc-ua-broker-user-authentication/opc-plc-certificate"
-            --additional-config '{\\\"applicationName\\\": \\\"opcua-connector\\\",\\\"defaults\\\": {
+            --additional-config '{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
             \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
-            \\\"session\\\": {  \\\"timeout\\\": 60000},\\\"subscription\\\": {  \\\"maxItems\\\": 1000,},\\\"security\\\": {
+            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
             \\\"autoAcceptUntrustedServerCertificates\\\": true}}'
+        - name: Create an asset endpoint with certificate user authentication and additional configuration with prefilled values
+                (cmd syntax example).
+          text: >
+            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
+            --target-address "opc.tcp://opcplc-000000:50000"
+            --certificate-ref "aio-opc-ua-broker-user-authentication/opc-plc-certificate"
+            --additional-config "{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
+            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
+            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
+            \\\"autoAcceptUntrustedServerCertificates\\\": true}}"
+        - name: Create an asset endpoint with certificate user authentication and additional configuration with prefilled values
+                (bash syntax example).
+          text: >
+            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
+            --target-address "opc.tcp://opcplc-000000:50000"
+            --certificate-ref "aio-opc-ua-broker-user-authentication/opc-plc-certificate"
+            --additional-config '{"applicationName": "opcua-connector", "defaults": {
+            "publishingIntervalMilliseconds": 100,  "samplingIntervalMilliseconds": 500,  "queueSize": 15,},
+            "session": {"timeout": 60000}, "subscription": {"maxItems": 1000}, "security": {
+            "autoAcceptUntrustedServerCertificates": true}}'
     """
 
     helps[
