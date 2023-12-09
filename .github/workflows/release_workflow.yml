@@ -1,64 +1,71 @@
 name: Build and Publish Release
-run-name: 'Build and publish release - Deployment: ${{ inputs.release_strategy }}' 
+run-name: Build and publish release${{ github.event.inputs.upload_wheel == 'true' &&  ' - Wheel upload' || ''}}${{ github.event.inputs.github_release == 'true' &&  ' - Stage Release' || ''}}
 on:
   # only manual trigger
   workflow_dispatch:
     inputs:
-      continue-on-fail:
-        description: Continue build even if pre-checks fail
+      continue-on-error:
+        description: Continue release if pre-checks fail
         type: boolean
         required: false
         default: false
-      release_strategy:
-        description: |
-          Post-build actions:
-          Select 'upload-wheel' to upload wheel to storage.
-          Select 'prod-release' to draft a github release and then upload wheel
-        type: choice
-        required: true
-        default: "none"
-        options:
-          - 'none'
-          - 'upload-wheel'
-          - 'prod-release'
+      github_release:
+        description: Stage github release
+        type: boolean
+        required: false
+        default: false
+      upload_wheel:
+        description: Upload wheel to storage
+        type: boolean
+        required: false
+        default: false
 jobs:
   security:
     uses: ./.github/workflows/security_checks.yml
+    with:
+      continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
   build:
     uses: ./.github/workflows/release_build.yml
   test:
     uses: ./.github/workflows/tox.yml
-  linter:
+    with:
+      continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
+  azdev_linter:
     needs: [build]
     uses: ./.github/workflows/azdev_linter.yml
+    with:
+      continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
   # smoke tests are temporarily disabled until a suitable deployment replacement is built
   # smoke_test:
   #   needs: [build]
   #   uses: ./.github/workflows/smoke_test.yml
+  #   with:
+  #     continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
   approval:
-    needs: [security, build, test, linter]
-    if: ${{ (success() || inputs.continue-on-fail == 'true') && inputs.release_strategy != 'none' }}
+    needs: [security, build, test, azdev_linter]
+    # only needed if (release || wheel)
+    if: (github.event.inputs.github_release == 'true' || github.event.inputs.upload_wheel == 'true')
     environment: production
     runs-on: ubuntu-latest
     steps:
       - name: Confirm
         run: |
-          echo "Approved"
-          echo "Release Strategy: ${{ inputs.release_strategy }}"
-          if [ "${{ inputs.release_strategy }}" == "upload-wheel"]; then
-            echo "Wheel will be uploaded to storage account."
-          elif [ "${{ inputs.release_strategy }}" == "prod-release"]; then
-            echo "Wheel will be uploaded to storage account after drafting a github release"
+          echo "Approved" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.upload_wheel }}" == "true" ]; then
+            echo "Wheel will be uploaded to storage account." >> $GITHUB_STEP_SUMMARY
           fi
-  # occurs when release_strategy is prod-release
+          if [ "${{ inputs.github_release }}" == "true" ]; then
+            echo "Github release will be drafted." >> $GITHUB_STEP_SUMMARY
+          fi
+  # github_release == 'true'
   draft_github_release:
     needs: [approval]
-    if: needs.approval.result == 'success' && inputs.release_strategy == 'prod-release'
+    if: github.event.inputs.github_release == 'true'
     uses: ./.github/workflows/stage_release.yml
     secrets: inherit
-  # occurs when release_strategy is not 'none'
+  # upload_wheel == 'true'
   upload_wheel:
     needs: [approval]
-    if: needs.approval.result == 'success' && inputs.release_strategy != 'none'
+    if: github.event.inputs.upload_wheel == 'true'
     uses: ./.github/workflows/upload_wheel.yml
     secrets: inherit

@@ -1,9 +1,15 @@
 name: "[auto] CLI Command Table Linter"
 on:
   workflow_call:
+    inputs:
+      continue-on-error:
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   linter:
+    continue-on-error: ${{ inputs.continue-on-error }}
     name: Evaluate command table
     runs-on: ubuntu-latest
     steps:
