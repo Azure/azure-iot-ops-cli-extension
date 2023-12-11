@@ -11,7 +11,9 @@
 			"version": "latest"
 		},
 		"ghcr.io/rio/features/k3d:1": {},
-		"ghcr.io/rio/features/k9s:1": {}
+		"ghcr.io/rio/features/k9s:1": {
+			"version": "v0.28.2"
+		}
 	},
 	"customizations": {
 		"vscode": {
