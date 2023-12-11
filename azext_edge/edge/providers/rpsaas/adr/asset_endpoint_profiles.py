@@ -9,14 +9,17 @@ from typing import Dict, List, Optional
 from knack.log import get_logger
 
 from azure.cli.core.azclierror import (
+    InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
+
 )
 from .base import ADRBaseProvider
 from ....util import assemble_nargs_to_dict, build_query
 from ....common import ResourceTypeMapping, AEPAuthModes
 from .constants import (
     AUTH_REF_MISMATCH_ERROR,
+    CERT_AUTH_NOT_SUPPORTED,
     GENERAL_AUTH_REF_MISMATCH_ERROR,
     MISSING_USERPASS_REF_ERROR,
     MISSING_TRANS_AUTH_PROP_ERROR,
@@ -53,6 +56,8 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         username_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
     ):
+        if certificate_reference:
+            raise InvalidArgumentValueError(CERT_AUTH_NOT_SUPPORTED)
         extended_location = self._check_cluster_and_custom_location(
             custom_location_name=custom_location_name,
             custom_location_resource_group=custom_location_resource_group,

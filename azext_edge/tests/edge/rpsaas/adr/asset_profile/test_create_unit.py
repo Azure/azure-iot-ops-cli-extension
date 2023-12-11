@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
+from azure.cli.core.azclierror import InvalidArgumentValueError
 
 from azext_edge.edge.commands_asset_endpoint_profiles import create_asset_endpoint_profile
 from azext_edge.edge.common import ResourceTypeMapping
@@ -32,7 +33,7 @@ from .....generators import generate_generic_id
         "additional_configuration": generate_generic_id(),
         "username_reference": generate_generic_id(),
         "password_reference": generate_generic_id(),
-        "certificate_reference": generate_generic_id(),
+        # "certificate_reference": generate_generic_id(),
         "tags": generate_generic_id(),
     },
     {
@@ -103,3 +104,14 @@ def test_create_asset_endpoint_profile(mocker, mocked_cmd, mocked_resource_manag
     for arg in aep_helpers_fixture.call_args.kwargs:
         assert aep_helpers_fixture.call_args.kwargs[arg] == req.get(arg)
         assert request_props.get(arg) is None
+
+
+def test_create_asset_endpoint_profile_error(mocker, mocked_cmd):
+    with pytest.raises(InvalidArgumentValueError):
+        create_asset_endpoint_profile(
+            cmd=mocked_cmd,
+            asset_endpoint_profile_name=generate_generic_id(),
+            resource_group_name=generate_generic_id(),
+            target_address=generate_generic_id(),
+            certificate_reference=generate_generic_id()
+        )

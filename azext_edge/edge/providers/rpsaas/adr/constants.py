@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 
+CERT_AUTH_NOT_SUPPORTED = "Certificate authentication for user authentication is not supported yet."
 REMOVED_CERT_REF_MSG = "Previously used certificate reference was removed."
 REMOVED_USERPASS_REF_MSG = "Previously used username and password references were removed."
 MISSING_USERPASS_REF_ERROR = "Please provide username and password reference for Username-Password authentication."

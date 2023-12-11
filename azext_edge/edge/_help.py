@@ -404,6 +404,9 @@ def load_iotops_help():
                       Either custom location or cluster name must be provided. This command will check
                       for the existance of the associated custom location and cluster and ensure that
                       both are set up correctly with the microsoft.deviceregistry.assets extension.
+
+                      Azure IoT OPC UA Broker (preview) uses the same client certificate for all secure
+                      channels between itself and the OPC UA servers that it connects to.
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given custom location.
           text: >
@@ -421,12 +424,12 @@ def load_iotops_help():
             az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
             --cluster-resource-group {cluster_resource_group} --target-address {target_address}
             --username-ref {username_reference} --password-ref {password_reference}
-        - name: Create an asset endpoint with certificate user authentication and additional configuration using the given custom
-                location and cluster name.
-          text: >
-            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
-            --custom-location {custom_location} --target-address {target_address} --certificate-ref {certificate_reference}
-            --additional-config {additional_configuration}
+        # - name: Create an asset endpoint with certificate user authentication and additional configuration using the given custom
+        #         location and cluster name.
+        #   text: >
+        #     az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
+        #     --custom-location {custom_location} --target-address {target_address} --certificate-ref {certificate_reference}
+        #     --additional-config {additional_configuration}
         - name: Create an asset endpoint with anonymous user authentication with preconfigured owned certificates.
           text: >
             az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}

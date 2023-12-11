@@ -769,8 +769,9 @@ def load_iotops_arguments(self, _):
         context.argument(
             "certificate_reference",
             options_list=["--certificate-ref", "--cert-ref", "--cr"],
-            help="Reference for the certificate used in authentication.",
-            arg_group="Authentication"
+            help="Reference for the certificate used in authentication. This method of user authentication is not "
+            "supported yet.",
+            arg_group="Authentication",
         )
         context.argument(
             "password_reference",
