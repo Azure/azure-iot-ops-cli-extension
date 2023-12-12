@@ -418,23 +418,23 @@ def load_iotops_help():
           text: >
             az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
             --custom-location-resource-group {custom_location_resource_group} --target-address {target_address}
-        - name: Create an asset endpoint with username-password user authentication using the given cluster name. The resource
-                group must be included if there are multiple clusters with the same name within a subscription.
-          text: >
-            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
-            --cluster-resource-group {cluster_resource_group} --target-address {target_address}
-            --username-ref {username_reference} --password-ref {password_reference}
+        # - name: Create an asset endpoint with username-password user authentication using the given cluster name. The resource
+        #         group must be included if there are multiple clusters with the same name within a subscription.
+        #   text: >
+        #     az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
+        #     --cluster-resource-group {cluster_resource_group} --target-address {target_address}
+        #     --username-ref {username_reference} --password-ref {password_reference}
         # - name: Create an asset endpoint with certificate user authentication and additional configuration using the given custom
         #         location and cluster name.
         #   text: >
         #     az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
         #     --custom-location {custom_location} --target-address {target_address} --certificate-ref {certificate_reference}
         #     --additional-config {additional_configuration}
-        - name: Create an asset endpoint with anonymous user authentication with preconfigured owned certificates.
-          text: >
-            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
-            --target-address {target_address} --cert secret={secret_reference} password={password_reference} thumbprint {thumbprint}
-            --cert secret={secret_reference} password={password_reference} thumbprint={thumbprint}
+        # - name: Create an asset endpoint with anonymous user authentication with preconfigured owned certificates.
+        #   text: >
+        #     az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
+        #     --target-address {target_address} --cert secret={secret_reference} password={password_reference} thumbprint {thumbprint}
+        #     --cert secret={secret_reference} password={password_reference} thumbprint={thumbprint}
         - name: Create an asset endpoint with username-password user authentication and preconfigurated owned certificates with
                 prefilled values.The username and password references are set via the Azure Keyvault Container Storage Interface
                 driver.
@@ -521,19 +521,43 @@ def load_iotops_help():
         short-summary: Update an asset endpoint.
         long-summary: To update owned certificates, please use the command group `az iot ops asset endpoint certificate`.
         examples:
-        - name: Update an asset endpoint's username and password reference. This will transform the authentication mode to
-                username-password if it is not so already.
-          text: >
-            az iot ops asset endpoint update --name {asset_endpoint} -g {resource_group}
-            --username-ref {username_reference} --password-ref {password_reference}
-        - name: Update an asset endpoint's target address and additional configuration.
-          text: >
-            az iot ops asset endpoint update --name {asset_endpoint} -g {resource_group}
-            --target-address {target_address} --additional-config {additional_configuration}
         - name: Update an asset endpoint's authentication mode to use anonymous user authentication.
           text: >
             az iot ops asset endpoint update --name {asset_endpoint} -g {resource_group}
             --authentication-mode Anonymous
+        - name: Update an asset endpoint's username and password reference with prefilled values. This will transform the
+                authentication mode to username-password if it is not so already.
+          text: >
+            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
+            --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
+            --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password"
+        - name: Update an asset endpoint's target address and additional configuration with prefilled values
+                (powershell syntax example).
+          text: >
+            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
+            --target-address "opc.tcp://opcplc-000000:50000"
+            --additional-config '{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
+            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
+            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
+            \\\"autoAcceptUntrustedServerCertificates\\\": true}}'
+        - name: Update an asset endpoint's target address and additional configuration with prefilled values
+                (cmd syntax example).
+          text: >
+            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
+            --target-address "opc.tcp://opcplc-000000:50000"
+            --additional-config "{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
+            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
+            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
+            \\\"autoAcceptUntrustedServerCertificates\\\": true}}"
+        - name: Update an asset endpoint's target address and additional configuration with prefilled values
+                (bash syntax example).
+          text: >
+            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
+            --target-address "opc.tcp://opcplc-000000:50000"
+            --additional-config '{"applicationName": "opcua-connector", "defaults": {
+            "publishingIntervalMilliseconds": 100,  "samplingIntervalMilliseconds": 500,  "queueSize": 15,},
+            "session": {"timeout": 60000}, "subscription": {"maxItems": 1000}, "security": {
+            "autoAcceptUntrustedServerCertificates": true}}'
     """
 
     helps[
