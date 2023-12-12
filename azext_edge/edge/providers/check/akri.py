@@ -34,7 +34,7 @@ from ..edge_api import (
     AkriResourceKinds,
 )
 
-from ..support.akri import AKRI_PREFIXES, AKRI_NAME_LABEL
+from ..support.akri import AKRI_PREFIXES
 
 
 def check_akri_deployment(
@@ -116,7 +116,6 @@ def evaluate_configurations(
             eval_value: dict,
             namespace: str,
     ) -> None:
-        # import pdb; pdb.set_trace()
         if len(conditions) == 1:
             return
         
@@ -349,7 +348,6 @@ def evaluate_configurations(
                             )
 
                             if secret_key_ref or config_map_key_ref:
-                                # key_ref_property (keyrefname, keyrefvalue)
                                 key_ref_property = ("secret_key_ref", secret_key_ref) if secret_key_ref else ("config_map_key_ref", config_map_key_ref)
                                 key_ref_name = key_ref_property[1].get("name", "")
                                 key_ref_key = key_ref_property[1].get("key", "")
@@ -494,13 +492,13 @@ def evaluate_instances(
     all_instances: dict = AKRI_API_V0.get_resources(AkriResourceKinds.INSTANCE).get("items", [])
 
     if not all_instances:
-        fetch_instances_error_text = "Unable to fetch Akri instances in any namespaces."
+        fetch_instances_skip_text = "Unable to fetch Akri instances in any namespaces."
         check_manager.add_target_eval(
             target_name=target_instances,
             status=CheckTaskStatus.skipped.value,
-            value={"instances": fetch_instances_error_text}
+            value={"instances": fetch_instances_skip_text}
         )
-        check_manager.add_display(target_name=target_instances, display=Padding(fetch_instances_error_text, (0, 0, 0, 8)))
+        check_manager.add_display(target_name=target_instances, display=Padding(fetch_instances_skip_text, (0, 0, 0, 8)))
 
     for (namespace, instances) in resources_grouped_by_namespace(all_instances):
         check_manager.add_target(

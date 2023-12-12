@@ -5,8 +5,8 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from azext_edge.edge.providers.check.common import CORE_SERVICE_RUNTIME_RESOURCE, ResourceOutputDetailLevel
 import pytest
+from azext_edge.edge.providers.check.common import CORE_SERVICE_RUNTIME_RESOURCE, ResourceOutputDetailLevel
 from azext_edge.edge.providers.edge_api.akri import AkriResourceKinds
 from azext_edge.edge.providers.check.akri import evaluate_configurations, evaluate_core_service_runtime, evaluate_instances
 
@@ -567,7 +567,7 @@ def test_evaluate_instances(
             # pods
             [
                 generate_pod_stub(
-                    name="opcua-broker-1",
+                    name="akri-1",
                     phase="Failed",
                 )
             ],
