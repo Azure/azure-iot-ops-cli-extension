@@ -15,8 +15,6 @@ from azure.cli.core.azclierror import (
 
 )
 from .base import ADRBaseProvider
-from ....util import assemble_nargs_to_dict, build_query
-from ....common import ResourceTypeMapping, AEPAuthModes
 from .constants import (
     AUTH_REF_MISMATCH_ERROR,
     CERT_AUTH_NOT_SUPPORTED,
@@ -26,6 +24,8 @@ from .constants import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG
 )
+from ....util import assemble_nargs_to_dict, build_query
+from ....common import ResourceTypeMapping, AEPAuthModes
 
 logger = get_logger(__name__)
 

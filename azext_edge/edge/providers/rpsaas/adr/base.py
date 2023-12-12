@@ -12,6 +12,16 @@ from azure.cli.core.azclierror import (
     ValidationError
 )
 
+from .constants import (
+    CUSTOM_LOCATION_DOES_NOT_EXIST_ERROR,
+    CUSTOM_LOCATION_NOT_FOUND_ERROR,
+    CLUSTER_NOT_FOUND_ERROR,
+    CLUSTER_OFFLINE,
+    MISSING_CLUSTER_CUSTOM_LOCATION_ERROR,
+    MISSING_EXTENSION_ERROR,
+    MULTIPLE_CUSTOM_LOCATIONS_ERROR,
+    MULTIPLE_POSSIBLE_ITEMS_ERROR
+)
 from ..base_provider import RPSaaSBaseProvider
 from ....util import build_query
 from ....common import ResourceTypeMapping
@@ -72,9 +82,7 @@ class ADRBaseProvider(RPSaaSBaseProvider):
             type=ResourceTypeMapping.custom_location.value
         )
         if len(custom_location_query_result) == 0:
-            logger.warning(
-                f"Custom location {custom_location_id} not found. The command may fail."
-            )
+            logger.warning(CUSTOM_LOCATION_NOT_FOUND_ERROR.format(custom_location_id))
             return
         query = f'| where id =~ "{custom_location_query_result[0]["properties"]["hostResourceId"]}"'
         cluster_query_result = build_query(
@@ -84,16 +92,11 @@ class ADRBaseProvider(RPSaaSBaseProvider):
         )
         # TODO: add option to fail on these
         if len(cluster_query_result) == 0:
-            logger.warning(
-                f"Cluster associated with the custom location {custom_location_id} not found. "
-                "The command may fail."
-            )
+            logger.warning(CLUSTER_NOT_FOUND_ERROR.format(custom_location_id))
             return
         cluster = cluster_query_result[0]
         if cluster["properties"]["connectivityStatus"].lower() != "connected":
-            logger.warning(
-                f"Cluster {cluster['name']} is not connected. The cluster may not update correctly."
-            )
+            logger.warning(CLUSTER_OFFLINE.format(cluster["name"]))
 
     def _check_cluster_and_custom_location(
         self,
@@ -105,7 +108,7 @@ class ADRBaseProvider(RPSaaSBaseProvider):
         cluster_subscription: Optional[str] = None,
     ) -> Dict[str, str]:
         if not any([cluster_name, custom_location_name]):
-            raise RequiredArgumentMissingError("Need to provide either cluster name or custom location")
+            raise RequiredArgumentMissingError(MISSING_CLUSTER_CUSTOM_LOCATION_ERROR)
         query = ""
         cluster = None
 
@@ -122,8 +125,7 @@ class ADRBaseProvider(RPSaaSBaseProvider):
                 raise ResourceNotFoundError(f"Cluster {cluster_name} not found.")
             if len(cluster_query_result) > 1:
                 raise ValidationError(
-                    f"Found {len(cluster_query_result)} clusters with the name {cluster_name}. Please "
-                    "provide the resource group for the cluster."
+                    MULTIPLE_POSSIBLE_ITEMS_ERROR.format(len(cluster_query_result), "cluster", cluster_name)
                 )
             cluster = cluster_query_result[0]
             # reset query so the location query will ensure that the cluster is associated
@@ -150,8 +152,11 @@ class ADRBaseProvider(RPSaaSBaseProvider):
 
         if len(location_query_result) > 1 and cluster_name is None:
             raise ValidationError(
-                f"Found {len(location_query_result)} custom locations with the name {custom_location_name}. Please "
-                "provide the resource group for the custom location."
+                MULTIPLE_POSSIBLE_ITEMS_ERROR.format(
+                    len(location_query_result),
+                    "custom location",
+                    custom_location_name
+                )
             )
         # by this point there should be at least one custom location
         # if cluster name was given (and no custom_location_names), there can be more than one
@@ -167,16 +172,12 @@ class ADRBaseProvider(RPSaaSBaseProvider):
                 type=ResourceTypeMapping.connected_cluster.value
             )
             if len(cluster_query_result) == 0:
-                raise ValidationError(
-                    f"Cluster associated with custom location {custom_location_name} does not exist."
-                )
+                raise ValidationError(CUSTOM_LOCATION_DOES_NOT_EXIST_ERROR.format(custom_location_name))
             cluster = cluster_query_result[0]
         # by this point, cluster is populated
 
         if cluster["properties"]["connectivityStatus"].lower() != "connected":
-            logger.warning(
-                f"Cluster {cluster['name']} is not connected. The command may fail."
-            )
+            logger.warning(CLUSTER_OFFLINE.format(cluster["name"]))
 
         possible_locations = []
         for location in location_query_result:
@@ -195,16 +196,11 @@ class ADRBaseProvider(RPSaaSBaseProvider):
 
         # throw if there are no suitable extensions (in the cluster)
         if len(possible_locations) == 0:
-            raise ValidationError(
-                f"Cluster {cluster['name']} is missing the {self.required_extension} extension."
-            )
+            raise ValidationError(MISSING_EXTENSION_ERROR.format(cluster["name"], self.required_extension))
         # here we warn about multiple custom locations (cluster name given, multiple locations possible)
         if len(possible_locations) > 1:
             possible_locations = "\n".join(possible_locations)
-            raise ValidationError(
-                f"The following custom locations were found for cluster {cluster['id']}: \n{possible_locations}. "
-                "Please specify which custom location to use."
-            )
+            raise ValidationError(MULTIPLE_CUSTOM_LOCATIONS_ERROR.format(cluster['id'], possible_locations))
 
         extended_location = {
             "type": "CustomLocation",

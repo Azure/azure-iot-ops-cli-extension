@@ -15,6 +15,7 @@ from azure.cli.core.azclierror import (
 )
 
 from .base import ADRBaseProvider
+from .constants import MISSING_DATA_EVENT_ERROR, ENDPOINT_NOT_FOUND_WARNING
 from ....util import assemble_nargs_to_dict, build_query
 from ....common import ResourceTypeMapping
 
@@ -64,9 +65,7 @@ class AssetProvider(ADRBaseProvider):
         tags: Optional[Dict[str, str]] = None,
     ):
         if not any([data_points, events]):
-            raise RequiredArgumentMissingError(
-                "At least one data point or event is required to create the asset."
-            )
+            raise RequiredArgumentMissingError(MISSING_DATA_EVENT_ERROR)
         extended_location = self._check_cluster_and_custom_location(
             custom_location_name=custom_location_name,
             custom_location_resource_group=custom_location_resource_group,
@@ -358,9 +357,7 @@ class AssetProvider(ADRBaseProvider):
         )
         # future TODO: add option flag to fail on these
         if not possible_endpoints:
-            logger.warning(
-                f"Endpoint {endpoint} not found. The asset may fail provisioning."
-            )
+            logger.warning(ENDPOINT_NOT_FOUND_WARNING.format(endpoint))
 
 
 # Helpers
