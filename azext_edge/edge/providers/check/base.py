@@ -71,8 +71,15 @@ def check_post_deployment(
 
     if lowercase_api_resources:
         for resource, evaluate_func in evaluate_funcs.items():
-            if (resource == CORE_SERVICE_RUNTIME_RESOURCE) or\
-                    (resource.value in lowercase_api_resources and check_resources[resource]):
+            append_resource = False
+            # only add core service evaluation if there is no resource filter
+            if resource == CORE_SERVICE_RUNTIME_RESOURCE:
+                if resource_kinds is None or resource_kinds == []:
+                    append_resource = True
+            elif (resource and resource.value in lowercase_api_resources and check_resources[resource]):
+                append_resource = True
+
+            if append_resource:  
                 result["postDeployment"].append(evaluate_func(detail_level=detail_level, as_list=as_list))
 
 
@@ -717,10 +724,23 @@ def process_dict_resource(
     target_name: str,
     resource: dict,
     namespace: str,
-    padding: int
+    padding: int,
+    prop_name: Optional[str] = None
 ) -> None:
+    if prop_name:
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(f"{prop_name}:", (0, 0, 0, padding))
+        )
+        padding += 4
     for key, value in resource.items():
         if isinstance(value, dict):
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(f"{key}:", (0, 0, 0, padding))
+            )
             process_dict_resource(
                 check_manager=check_manager,
                 target_name=target_name,
@@ -740,28 +760,36 @@ def process_dict_resource(
             )
 
             for item in value:
-                if isinstance(item, dict):
-                    process_dict_resource(
-                        check_manager=check_manager,
-                        target_name=target_name,
-                        resource=item,
-                        namespace=namespace,
-                        padding=padding + 4
-                    )
-                else:
-                    display_text = f"- {key} {value.index(item) + 1}: [cyan]{item}[/cyan]"
-                    check_manager.add_display(
-                        target_name=target_name,
-                        namespace=namespace,
-                        display=Padding(display_text, (0, 0, 0, padding + 2))
-                    )
+                process_dict_resource(
+                    check_manager=check_manager,
+                    target_name=target_name,
+                    resource=item,
+                    namespace=namespace,
+                    padding=padding + 4,
+                    prop_name=f"{key} {value.index(item) + 1}"
+                )
         else:
-            display_text = f"{key}: [cyan]{value}[/cyan]"
-            check_manager.add_display(
-                target_name=target_name,
-                namespace=namespace,
-                display=Padding(display_text, (0, 0, 0, padding))
-            )
+            display_text = ""
+            if isinstance(value, str) and len(value) > 50:
+                display_text = f"{key}:"
+                check_manager.add_display(
+                    target_name=target_name,
+                    namespace=namespace,
+                    display=Padding(display_text, (0, 0, 0, padding))
+                )
+                display_text = f"[cyan]{value}[/cyan]"
+                check_manager.add_display(
+                    target_name=target_name,
+                    namespace=namespace,
+                    display=Padding(display_text, (0, 0, 0, padding + 4))
+                )
+            else:
+                display_text = f"{key}: [cyan]{value}[/cyan]"
+                check_manager.add_display(
+                    target_name=target_name,
+                    namespace=namespace,
+                    display=Padding(display_text, (0, 0, 0, padding))
+                )
 
 
 def generate_target_resource_name(api_info: EdgeResourceApi, resource_kind: str) -> str:

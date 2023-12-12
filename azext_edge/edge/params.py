@@ -8,6 +8,7 @@
 CLI parameter definitions.
 """
 
+from azext_edge.edge.providers.edge_api.akri import AkriResourceKinds
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
@@ -117,6 +118,8 @@ def load_iotops_arguments(self, _):
                     MqResourceKinds.DATALAKE_CONNECTOR.value,
                     MqResourceKinds.KAFKA_CONNECTOR.value,
                     OpcuaResourceKinds.ASSET_TYPE.value,
+                    AkriResourceKinds.CONFIGURATION.value,
+                    AkriResourceKinds.INSTANCE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",

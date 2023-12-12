@@ -5,12 +5,18 @@
 # ----------------------------------------------------------------------------------------------
 
 import re
+from itertools import groupby
+from kubernetes.client.models import V1Pod
 from typing import Any, Dict, List
+
+from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
 
 from .base import (
     CheckManager,
     check_post_deployment,
-    evaluate_pod_health,
+    generate_target_resource_name,
+    process_dict_resource,
+    process_pods_status,
     resources_grouped_by_namespace,
 )
 
@@ -19,6 +25,7 @@ from rich.padding import Padding
 from ...common import CheckTaskStatus
 
 from .common import (
+    CORE_SERVICE_RUNTIME_RESOURCE,
     ResourceOutputDetailLevel,
 )
 
@@ -37,6 +44,7 @@ def check_akri_deployment(
     resource_kinds: List[str] = None
 ) -> None:
     evaluate_funcs = {
+        CORE_SERVICE_RUNTIME_RESOURCE: evaluate_core_service_runtime,
         AkriResourceKinds.CONFIGURATION: evaluate_configurations,
         AkriResourceKinds.INSTANCE: evaluate_instances,
     }
@@ -54,6 +62,50 @@ def check_akri_deployment(
     )
 
 
+def evaluate_core_service_runtime(
+    as_list: bool = False,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> Dict[str, Any]:
+    check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate Akri core service")
+
+    akri_runtime_resources: List[dict] = []
+    for prefix in AKRI_PREFIXES:
+        akri_runtime_resources.extend(
+            get_namespaced_pods_by_prefix(
+                prefix=prefix,
+                namespace="",
+                label_selector="",
+            )
+        )
+
+    def get_namespace(pod: V1Pod) -> str:
+        return pod.metadata.namespace
+
+    akri_runtime_resources.sort(key=get_namespace)
+
+    for (namespace, pods) in groupby(akri_runtime_resources, get_namespace):
+        check_manager.add_target(target_name=CORE_SERVICE_RUNTIME_RESOURCE, namespace=namespace)
+        check_manager.add_display(
+            target_name=CORE_SERVICE_RUNTIME_RESOURCE,
+            namespace=namespace,
+            display=Padding(
+                f"Akri runtime resources in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 6)
+            )
+        )
+
+        process_pods_status(
+            check_manager=check_manager,
+            target_service_pod="",
+            target=CORE_SERVICE_RUNTIME_RESOURCE,
+            pods=list(pods),
+            namespace=namespace,
+            display_padding=10,
+        )
+
+    return check_manager.as_dict(as_list)
+
+
 def evaluate_configurations(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
@@ -64,6 +116,7 @@ def evaluate_configurations(
             eval_value: dict,
             namespace: str,
     ) -> None:
+        # import pdb; pdb.set_trace()
         if len(conditions) == 1:
             return
         
@@ -95,6 +148,11 @@ def evaluate_configurations(
             )
             eval_status = CheckTaskStatus.error.value
         
+        check_manager.add_target_conditions(
+            target_name=target_configurations,
+            namespace=namespace,
+            conditions=[condition[0] for condition in conditions]
+        )
         check_manager.add_target_eval(
             target_name=target_configurations,
             namespace=namespace,
@@ -104,7 +162,7 @@ def evaluate_configurations(
 
     check_manager = CheckManager(check_name="evalConfigurations", check_desc="Evaluate Akri configurations")
 
-    target_configurations = "configurations.akri.sh"
+    target_configurations = generate_target_resource_name(api_info=AKRI_API_V0, resource_kind=AkriResourceKinds.CONFIGURATION.value)
     configuration_conditions = []
 
     all_configurations: dict = AKRI_API_V0.get_resources(AkriResourceKinds.CONFIGURATION).get("items", [])
@@ -173,10 +231,38 @@ def evaluate_configurations(
                 discovery_details = discovery_handler.get("discoveryDetails", "")
                 discovery_properties = discovery_handler.get("discoveryProperties", [])
 
+                if detail_level >= ResourceOutputDetailLevel.detail.value:
+                    check_manager.add_display(
+                        target_name=target_configurations,
+                        namespace=namespace,
+                        display=Padding(
+                            f"Name: [cyan]{name}[/cyan]",
+                            (0, 0, 0, 16),
+                        ),
+                    )
+
+                if detail_level >= ResourceOutputDetailLevel.detail.value and discovery_details:
+                    check_manager.add_display(
+                        target_name=target_configurations,
+                        namespace=namespace,
+                        display=Padding(
+                            "Discovery details:",
+                            (0, 0, 0, 16),
+                        ),
+                    )
+
+                    check_manager.add_display(
+                        target_name=target_configurations,
+                        namespace=namespace,
+                        display=Padding(
+                            f"[cyan]{discovery_details}[/cyan]",
+                            (0, 0, 0, 20),
+                        ),
+                    )
+
                 if discovery_properties:
                     for property in discovery_properties:
                         property_name: str = property.get("name", "")
-                        property_value = property.get("value", "")
                         property_condition_str = f"spec.discoveryHandler.discoveryProperties['{property_name}']"
 
                         # name
@@ -246,8 +332,8 @@ def evaluate_configurations(
                                     ),
                                 )
                         elif value_from:
-                            secret_key_ref = value.get("secretKeyRef", {})
-                            config_map_key_ref = value.get("configMapKeyRef", {})
+                            secret_key_ref = value_from.get("secretKeyRef", {})
+                            config_map_key_ref = value_from.get("configMapKeyRef", {})
                             key_ref_eval_value = {
                                 f"{property_condition_str}.valueFrom.secretKeyRef": secret_key_ref,
                                 f"{property_condition_str}.valueFrom.configMapKeyRef": config_map_key_ref
@@ -262,78 +348,79 @@ def evaluate_configurations(
                                 namespace=namespace
                             )
 
-                            # key_ref_property (keyrefname, keyrefvalue)
-                            key_ref_property = ("secret_key_ref", secret_key_ref) if secret_key_ref else ("config_map_key_ref", config_map_key_ref)
-                            key_ref_name = key_ref_property[1].get("name", "")
-                            key_ref_key = key_ref_property[1].get("key", "")
-                            key_ref_namespace = key_ref_property[1].get("namespace", "")
-                            key_ref_optional = key_ref_property[1].get("optional", False)
+                            if secret_key_ref or config_map_key_ref:
+                                # key_ref_property (keyrefname, keyrefvalue)
+                                key_ref_property = ("secret_key_ref", secret_key_ref) if secret_key_ref else ("config_map_key_ref", config_map_key_ref)
+                                key_ref_name = key_ref_property[1].get("name", "")
+                                key_ref_key = key_ref_property[1].get("key", "")
+                                key_ref_namespace = key_ref_property[1].get("namespace", "")
+                                key_ref_optional = key_ref_property[1].get("optional", False)
 
-                            check_manager.set_target_conditions(
-                                target_name=target_configurations,
-                                namespace=namespace,
-                                conditions=[
-                                    f"{property_condition_str}.valueFrom.{key_ref_property[0]}.name",
-                                ],
-                            )
-
-                            key_ref_name_eval_value = {f"{property_condition_str}.valueFrom.{key_ref_property[0]}.name": key_ref_name}
-                            key_ref_name_eval_status = CheckTaskStatus.success.value
-                            if not key_ref_name:
-                                key_ref_name_error_text = f"[red]Property {key_ref_property[0]} name is required.[/red]"
-                                key_ref_name_eval_status = CheckTaskStatus.error.value
-                                check_manager.add_display(
+                                check_manager.add_target_conditions(
                                     target_name=target_configurations,
                                     namespace=namespace,
-                                    display=Padding(key_ref_name_error_text, (0, 0, 0, 16)),
+                                    conditions=[
+                                        f"{property_condition_str}.valueFrom.{key_ref_property[0]}.name",
+                                    ],
                                 )
-                            else:
-                                check_manager.add_display(
-                                    target_name=target_configurations,
-                                    namespace=namespace,
-                                    display=Padding(
-                                        f"Property {key_ref_property[0]} {{[cyan]{key_ref_name}[/cyan]}} detected.",
-                                        (0, 0, 0, 16),
-                                    ),
-                                )
-                            
-                            check_manager.add_target_eval(
-                                target_name=target_configurations,
-                                namespace=namespace,
-                                status=key_ref_name_eval_status,
-                                value=key_ref_name_eval_value
-                            )
 
-                            if detail_level >= ResourceOutputDetailLevel.detail.value:
-                                if key_ref_key:
+                                key_ref_name_eval_value = {f"{property_condition_str}.valueFrom.{key_ref_property[0]}.name": key_ref_name}
+                                key_ref_name_eval_status = CheckTaskStatus.success.value
+                                if not key_ref_name:
+                                    key_ref_name_error_text = f"[red]Property {key_ref_property[0]} name is required.[/red]"
+                                    key_ref_name_eval_status = CheckTaskStatus.error.value
+                                    check_manager.add_display(
+                                        target_name=target_configurations,
+                                        namespace=namespace,
+                                        display=Padding(key_ref_name_error_text, (0, 0, 0, 16)),
+                                    )
+                                else:
                                     check_manager.add_display(
                                         target_name=target_configurations,
                                         namespace=namespace,
                                         display=Padding(
-                                            f"Key: [cyan]{key_ref_key}[/cyan]",
-                                            (0, 0, 0, 20),
+                                            f"Property {key_ref_property[0]} {{[cyan]{key_ref_name}[/cyan]}} detected.",
+                                            (0, 0, 0, 16),
                                         ),
                                     )
                                 
-                                if key_ref_namespace:
-                                    check_manager.add_display(
-                                        target_name=target_configurations,
-                                        namespace=namespace,
-                                        display=Padding(
-                                            f"Namespace: [cyan]{key_ref_namespace}[/cyan]",
-                                            (0, 0, 0, 20),
-                                        ),
-                                    )
+                                check_manager.add_target_eval(
+                                    target_name=target_configurations,
+                                    namespace=namespace,
+                                    status=key_ref_name_eval_status,
+                                    value=key_ref_name_eval_value
+                                )
 
-                                if key_ref_optional:
-                                    check_manager.add_display(
-                                        target_name=target_configurations,
-                                        namespace=namespace,
-                                        display=Padding(
-                                            f"Optional: [cyan]{str(key_ref_optional)}[/cyan]",
-                                            (0, 0, 0, 20),
-                                        ),
-                                    )
+                                if detail_level >= ResourceOutputDetailLevel.detail.value:
+                                    if key_ref_key:
+                                        check_manager.add_display(
+                                            target_name=target_configurations,
+                                            namespace=namespace,
+                                            display=Padding(
+                                                f"Key: [cyan]{key_ref_key}[/cyan]",
+                                                (0, 0, 0, 20),
+                                            ),
+                                        )
+                                    
+                                    if key_ref_namespace:
+                                        check_manager.add_display(
+                                            target_name=target_configurations,
+                                            namespace=namespace,
+                                            display=Padding(
+                                                f"Namespace: [cyan]{key_ref_namespace}[/cyan]",
+                                                (0, 0, 0, 20),
+                                            ),
+                                        )
+
+                                    if key_ref_optional:
+                                        check_manager.add_display(
+                                            target_name=target_configurations,
+                                            namespace=namespace,
+                                            display=Padding(
+                                                f"Optional: [cyan]{str(key_ref_optional)}[/cyan]",
+                                                (0, 0, 0, 20),
+                                            ),
+                                        )
             
             if detail_level >= ResourceOutputDetailLevel.detail.value and capacity:
                 check_manager.add_display(
@@ -348,38 +435,48 @@ def evaluate_configurations(
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
                     # broker spec
                     if broker_spec:
-                        b
-                
-            
-
-
-                
-
-
-
-                        
-
-            
-
-        if configurations_count > 0:
-            check_manager.add_display(
-                target_name=target_configurations,
-                namespace=namespace,
-                display=Padding(
-                    "\nRuntime Health",
-                    (0, 0, 0, 10),
-                ),
-            )
-
-            for pod in AKRI_PREFIXES:
-                evaluate_pod_health(
-                    check_manager=check_manager,
-                    target=target_configurations,
-                    pod=pod,
-                    display_padding=12,
-                    service_label=AKRI_NAME_LABEL if pod == "" else AKRI_NAME_LABEL,
-                    namespace=namespace,
-                )
+                        process_dict_resource(
+                            check_manager=check_manager,
+                            target_name=target_configurations,
+                            resource=broker_spec,
+                            namespace=namespace,
+                            padding=16,
+                            prop_name="Broker spec",
+                        )
+                    
+                    # instance service spec
+                    if instance_service_spec:
+                        process_dict_resource(
+                            check_manager=check_manager,
+                            target_name=target_configurations,
+                            resource=instance_service_spec,
+                            namespace=namespace,
+                            padding=16,
+                            prop_name="Instance service spec",
+                        )
+                    
+                    # configuration service spec
+                    if configuration_service_spec:
+                        process_dict_resource(
+                            check_manager=check_manager,
+                            target_name=target_configurations,
+                            resource=configuration_service_spec,
+                            namespace=namespace,
+                            padding=16,
+                            prop_name="Configuration service spec",
+                        )
+                    
+                    # broker properties
+                    if broker_properties:
+                        for key, value in broker_properties:
+                            check_manager.add_display(
+                                target_name=target_configurations,
+                                namespace=namespace,
+                                display=Padding(
+                                    f"Broker property [cyan]{key}[/cyan]: [cyan]{value}[/cyan]",
+                                    (0, 0, 0, 16),
+                                ),
+                            )
 
     return check_manager.as_dict(as_list)
 
@@ -388,192 +485,120 @@ def evaluate_instances(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalAssetTypes", check_desc="Evaluate OPCUA asset types")
+    check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Akri instances")
 
-    target_asset_types = "instances.akri.sh"
-    asset_type_conditions = ["len(asset_types)>=0"]
-    check_manager.add_target(target_name=target_asset_types, conditions=asset_type_conditions)
+    target_instances = generate_target_resource_name(api_info=AKRI_API_V0, resource_kind=AkriResourceKinds.INSTANCE.value)
+    instance_conditions = []
+    check_manager.add_target(target_name=target_instances, conditions=instance_conditions)
 
     all_instances: dict = AKRI_API_V0.get_resources(AkriResourceKinds.INSTANCE).get("items", [])
 
     if not all_instances:
-        fetch_asset_types_error_text = "Unable to fetch OPCUA asset types in any namespaces."
+        fetch_instances_error_text = "Unable to fetch Akri instances in any namespaces."
         check_manager.add_target_eval(
-            target_name=target_asset_types,
+            target_name=target_instances,
             status=CheckTaskStatus.skipped.value,
-            value={"asset_types": fetch_asset_types_error_text}
+            value={"instances": fetch_instances_error_text}
         )
-        check_manager.add_display(target_name=target_asset_types, display=Padding(fetch_asset_types_error_text, (0, 0, 0, 8)))
+        check_manager.add_display(target_name=target_instances, display=Padding(fetch_instances_error_text, (0, 0, 0, 8)))
 
-    # for (namespace, asset_types) in resources_grouped_by_namespace(all_instances):
-    #     check_manager.add_target(target_name=target_asset_types, namespace=namespace, conditions=asset_type_conditions)
-    #     check_manager.add_display(
-    #         target_name=target_asset_types,
-    #         namespace=namespace,
-    #         display=Padding(
-    #             f"OPCUA asset types in namespace {{[purple]{namespace}[/purple]}}",
-    #             (0, 0, 0, 8)
-    #         )
-    #     )
+    for (namespace, instances) in resources_grouped_by_namespace(all_instances):
+        check_manager.add_target(
+            target_name=target_instances,
+            namespace=namespace,
+            conditions=instance_conditions
+        )
+        check_manager.add_display(
+            target_name=target_instances,
+            namespace=namespace,
+            display=Padding(
+                f"Akri instances in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 8)
+            )
+        )
 
-    #     asset_types: List[dict] = list(asset_types)
-    #     asset_types_count = len(asset_types)
-    #     asset_types_count_text = "- Expecting [bright_blue]>=1[/bright_blue] instance resource per namespace. {}."
+        instances: List[dict] = list(instances)
+        instances_count = len(instances)
+        instances_count_text = "- {}."
 
-    #     if asset_types_count >= 1:
-    #         asset_types_count_text = asset_types_count_text.format(f"[green]Detected {asset_types_count}[/green]")
-    #     else:
-    #         asset_types_count_text = asset_types_count_text.format(f"[red]Detected {asset_types_count}[/red]")
-    #         check_manager.set_target_status(target_name=all_instances, status=CheckTaskStatus.error.value)
-    #     check_manager.add_display(
-    #         target_name=target_asset_types,
-    #         namespace=namespace,
-    #         display=Padding(asset_types_count_text, (0, 0, 0, 10))
-    #     )
+        instances_count_text = instances_count_text.format(f"Detected [blue]{instances_count}[/blue] instances")
 
-    #     for asset_type in asset_types:
-    #         asset_type_name = asset_type["metadata"]["name"]
+        check_manager.add_display(
+            target_name=target_instances,
+            namespace=namespace,
+            display=Padding(instances_count_text, (0, 0, 0, 10))
+        )
 
-    #         asset_type_text = (
-    #             f"- Opcua asset type {{[bright_blue]{asset_type_name}[/bright_blue]}} detected."
-    #         )
+        for instance in instances:
+            spec = instance["spec"]
+            instance_name = instance["metadata"]["name"]
 
-    #         check_manager.add_display(
-    #             target_name=target_asset_types,
-    #             namespace=namespace,
-    #             display=Padding(asset_type_text, (0, 0, 0, 12))
-    #         )
+            instance_text = (
+                f"- Akri instance {{[bright_blue]{instance_name}[/bright_blue]}} detected."
+            )
 
-    #         spec = asset_type["spec"]
-    #         if detail_level >= ResourceOutputDetailLevel.detail.value:
-    #             # label summarize
-    #             labels = spec["labels"]
-    #             check_manager.add_display(
-    #                 target_name=target_asset_types,
-    #                 namespace=namespace,
-    #                 display=Padding(
-    #                     f"Detected [cyan]{len(labels)}[/cyan] labels",
-    #                     (0, 0, 0, 16),
-    #                 ),
-    #             )
+            check_manager.add_display(
+                target_name=target_instances,
+                namespace=namespace,
+                display=Padding(instance_text, (0, 0, 0, 12))
+            )
 
-    #             if detail_level == ResourceOutputDetailLevel.verbose.value:
-    #                 # remove repeated labels
-    #                 non_repeated_labels = list(set(labels))
+            if detail_level >= ResourceOutputDetailLevel.detail.value:
+                configuration_name = spec.get("configurationName", "")
+                if configuration_name:
+                    check_manager.add_display(
+                        target_name=target_instances,
+                        namespace=namespace,
+                        display=Padding(
+                            f"Configuration name: [cyan]{configuration_name}[/cyan]",
+                            (0, 0, 0, 16),
+                        ),
+                    )
+                
+                shared = spec.get("shared", False)
+                check_manager.add_display(
+                    target_name=target_instances,
+                    namespace=namespace,
+                    display=Padding(
+                        f"Shared: [cyan]{str(shared)}[/cyan]",
+                        (0, 0, 0, 16),
+                    ),
+                )
 
-    #                 if len(non_repeated_labels) > 0:
-    #                     check_manager.add_display(
-    #                         target_name=target_asset_types,
-    #                         namespace=namespace,
-    #                         display=Padding(
-    #                             "[yellow](Only non repeatative labels will be displayed)[/yellow]",
-    #                             (0, 0, 0, 20),
-    #                         ),
-    #                     )
+                if detail_level == ResourceOutputDetailLevel.verbose.value:
+                    broker_properties = spec.get("brokerProperties", {})
+                    if broker_properties:
+                        process_dict_resource(
+                            check_manager=check_manager,
+                            target_name=target_instances,
+                            resource=broker_properties,
+                            namespace=namespace,
+                            padding=16,
+                            prop_name="Broker properties",
+                        )
 
-    #                     check_manager.add_display(
-    #                         target_name=target_asset_types,
-    #                         namespace=namespace,
-    #                         display=Padding(
-    #                             f"[cyan]{', '.join(non_repeated_labels)}[/cyan]",
-    #                             (0, 0, 0, 20),
-    #                         ),
-    #                     )
-
-    #             # schema summarize
-    #             schema = spec["schema"]
-    #             _process_schema(
-    #                 check_manager=check_manager,
-    #                 target_asset_types=target_asset_types,
-    #                 namespace=namespace,
-    #                 schema=schema,
-    #                 padding=16,
-    #                 detail_level=detail_level
-    #             )
-
-    #     if asset_types_count > 0:
-    #         check_manager.add_display(
-    #             target_name=target_asset_types,
-    #             namespace=namespace,
-    #             display=Padding(
-    #                 "\nRuntime Health",
-    #                 (0, 0, 0, 10),
-    #             ),
-    #         )
-
-    #         for pod in ["", OPC_PREFIX]:
-    #             evaluate_pod_health(
-    #                 check_manager=check_manager,
-    #                 target=target_asset_types,
-    #                 pod=pod,
-    #                 display_padding=12,
-    #                 service_label=OPC_NAME_LABEL if pod == "" else OPC_APP_LABEL,
-    #                 namespace=namespace,
-    #             )
+                    # nodes
+                    nodes = spec.get("nodes", [])
+                    for node in nodes:
+                        check_manager.add_display(
+                            target_name=target_instances,
+                            namespace=namespace,
+                            display=Padding(
+                                f"Node: [cyan]{node}[/cyan]",
+                                (0, 0, 0, 16),
+                            ),
+                        )
+                    
+                    # deviceUsage
+                    device_usage = spec.get("deviceUsage", {})
+                    if device_usage:
+                        process_dict_resource(
+                            check_manager=check_manager,
+                            target_name=target_instances,
+                            resource=device_usage,
+                            namespace=namespace,
+                            padding=16,
+                            prop_name="Device usage",
+                        )
 
     return check_manager.as_dict(as_list)
-
-
-def _process_schema(
-        check_manager: CheckManager,
-        target_asset_types: str,
-        namespace: str,
-        schema: str,
-        padding: int,
-        detail_level: int = ResourceOutputDetailLevel.summary.value
-) -> None:
-
-    if detail_level == ResourceOutputDetailLevel.detail.value:
-        # convert JSON string to dict
-        import json
-
-        schema_dict = json.loads(schema)
-
-        schema_items = {
-            "DTDL version": ("@context", lambda x: x.split(";")[1] if ';' in x else None),
-            "Type": ("@type", lambda x: x)
-        }
-
-        schema_id = schema_dict["@id"]
-        check_manager.add_display(
-            target_name=target_asset_types,
-            namespace=namespace,
-            display=Padding(f"Schema {{[cyan]{schema_id}[/cyan]}} detected.", (0, 0, 0, padding)),
-        )
-
-        padding += 4
-
-        for item_label, (schema_key, value_extractor) in schema_items.items():
-            # Extract value using the defined lambda function
-            item_value = value_extractor(schema_dict[schema_key])
-
-            # Skip adding the display if the extracted value is None
-            if item_value is None:
-                continue
-
-            message = f"{item_label}: [cyan]{item_value}[/cyan]"
-            check_manager.add_display(
-                target_name=target_asset_types,
-                namespace=namespace,
-                display=Padding(message, (0, 0, 0, padding)),
-            )
-    elif detail_level == ResourceOutputDetailLevel.verbose.value:
-        from rich.json import JSON
-
-        schema_json = JSON(schema, indent=2)
-        check_manager.add_display(
-            target_name=target_asset_types,
-            namespace=namespace,
-            display=Padding(
-                "Schema: ",
-                (0, 0, 0, padding),
-            ),
-        )
-        check_manager.add_display(
-            target_name=target_asset_types,
-            namespace=namespace,
-            display=Padding(
-                schema_json,
-                (0, 0, 0, padding + 4),
-            ),
-        )

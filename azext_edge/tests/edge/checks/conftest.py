@@ -124,8 +124,10 @@ def assert_dict_props(path: str, expected: str, obj: Dict[str, str]):
     val = obj
     for key in path.split("/"):
         val = val[key]
-    if isinstance(val, list) or isinstance(val, dict):
+    if isinstance(val, list):
         assert expected in val
+    elif isinstance(val, dict):
+        assert expected in val.values() or expected == val
     else:
         assert val == expected
 
@@ -194,6 +196,11 @@ def assert_check_by_resource_types(ops_service, mocker, mock_resource_types, res
     )
 
     if not resource_kinds:
+        # ensure core service runtime check was run once when it exists
+        if CORE_SERVICE_RUNTIME_RESOURCE in eval_lookup:
+            eval_lookup[CORE_SERVICE_RUNTIME_RESOURCE].assert_called_once()
+            del eval_lookup[CORE_SERVICE_RUNTIME_RESOURCE]
+
         # ensure all checks were run
         [eval_lookup[evaluator].assert_called_once() for evaluator in eval_lookup]
     else:
@@ -201,11 +208,6 @@ def assert_check_by_resource_types(ops_service, mocker, mock_resource_types, res
         for resource_kind in resource_kinds:
             eval_lookup[resource_kind].assert_called_once()
             del eval_lookup[resource_kind]
-
-        # ensure core service runtime check was run once when it exists
-        if CORE_SERVICE_RUNTIME_RESOURCE in eval_lookup:
-            eval_lookup[CORE_SERVICE_RUNTIME_RESOURCE].assert_called_once()
-            del eval_lookup[CORE_SERVICE_RUNTIME_RESOURCE]
 
         # ensure no other checks were run except core service runtime
         [eval_lookup[evaluator].assert_not_called() for evaluator in eval_lookup]
