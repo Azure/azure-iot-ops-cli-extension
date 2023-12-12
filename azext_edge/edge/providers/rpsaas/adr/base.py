@@ -12,7 +12,7 @@ from azure.cli.core.azclierror import (
     ValidationError
 )
 
-from .constants import (
+from .user_strings import (
     CUSTOM_LOCATION_DOES_NOT_EXIST_ERROR,
     CUSTOM_LOCATION_NOT_FOUND_ERROR,
     CLUSTER_NOT_FOUND_ERROR,

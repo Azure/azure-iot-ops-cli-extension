@@ -15,7 +15,7 @@ from azure.cli.core.azclierror import (
 
 )
 from .base import ADRBaseProvider
-from .constants import (
+from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
     CERT_AUTH_NOT_SUPPORTED,
     GENERAL_AUTH_REF_MISMATCH_ERROR,

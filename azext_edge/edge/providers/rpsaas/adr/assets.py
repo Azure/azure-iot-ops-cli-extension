@@ -15,7 +15,7 @@ from azure.cli.core.azclierror import (
 )
 
 from .base import ADRBaseProvider
-from .constants import MISSING_DATA_EVENT_ERROR, ENDPOINT_NOT_FOUND_WARNING
+from .user_strings import MISSING_DATA_EVENT_ERROR, ENDPOINT_NOT_FOUND_WARNING
 from ....util import assemble_nargs_to_dict, build_query
 from ....common import ResourceTypeMapping
 
