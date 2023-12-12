@@ -8,8 +8,8 @@ on.
 
 ## Pre-requisites
 
-- Applicable services are deployed to CNCF K8s cluster
-- This azure-iot-ops extension requires az cli `2.42.0` or higher. If you don't have az cli installed, follow [these instructions](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
+- An Azure Arc-enabled CNCF K8s cluster.
+- Azure CLI `2.42.0` or higher. If you don't have az cli installed, follow [these instructions](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
 
 ## Install az iot ops extension
 
@@ -17,18 +17,10 @@ on.
 
 ❗ Please uninstall the private preview `az edge` extension with `az extension remove --name azure-edge` if you have it installed.
 
-The current IoT Ops CLI is available via https://aka.ms/aziotopscli-latest.
+The IoT Ops CLI is part of the Azure CLI extension index. Installation is as simple as:
 
-You can download the `.whl` and install against your local copy, or use one of these fast install examples:
-
-bash
-```bash
-az extension add --source $(curl -w "%{url_effective}\n" -I -L -s -S https://aka.ms/aziotopscli-latest -o /dev/null) -y
 ```
-
-pwsh
-```pwsh
-az extension add --source ([System.Net.HttpWebRequest]::Create('https://aka.ms/aziotopscli-latest').GetResponse().ResponseUri.AbsoluteUri) -y
+az extension add --name azure-iot-ops
 ```
 
 After install, the root command group `az iot ops` should be available and ready for use.

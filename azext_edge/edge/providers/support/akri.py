@@ -16,13 +16,13 @@ from .base import (
     process_deployments,
     process_v1_pods,
     process_services,
-    process_replicasets
+    process_replicasets,
 )
 
 logger = get_logger(__name__)
 
 
-AKRI_NAME_LABEL = "name in (aio-akri-agent, akri-opcua-asset-discovery)"
+AKRI_NAME_LABEL = "name in (aio-akri-agent)"
 AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
 AKRI_PREFIXES = ["aio-akri-", "akri-"]
 

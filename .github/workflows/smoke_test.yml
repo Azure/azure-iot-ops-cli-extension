@@ -2,9 +2,15 @@
 name: "[auto] Smoke Test"
 on:
   workflow_call:
+    inputs:
+      continue-on-error:
+        type: boolean
+        required: false
+        default: false
 jobs:
   test:
     runs-on: ubuntu-latest
+    continue-on-error: ${{ inputs.continue-on-error }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v3

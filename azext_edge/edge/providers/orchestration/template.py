@@ -13,7 +13,7 @@ class TemplateVer(NamedTuple):
 
     @property
     def component_vers(self) -> dict:
-        return self.content["variables"]["__VERSION__"]
+        return self.content["variables"]["VERSIONS"]
 
     @property
     def parameters(self) -> dict:
@@ -25,12 +25,12 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="70f891a08193a7e43bfbf9ce26f4b40466425be2",
+    commit_id="a7f4e67a0bcf3362e823790908f5a3aa14950045",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.23.1.45101", "templateHash": "7874469671048964219"},
+            "_generator": {"name": "bicep", "version": "0.23.1.45101", "templateHash": "7796954663627183826"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -122,27 +122,23 @@ V1_TEMPLATE = TemplateVer(
                 "name": "aio-mq-dmqtt-frontend",
                 "satAudience": "aio-mq",
             },
-            "__VERSION__": "0.1.0-preview",
-            "__TRAIN__": "preview",
             "VERSIONS": {
-                "adr": "[variables('__VERSION__')]",
-                "opcUaBroker": "[variables('__VERSION__')]",
-                "observability": "[variables('__VERSION__')]",
-                "akri": "[variables('__VERSION__')]",
-                "mq": "[variables('__VERSION__')]",
-                "aio": "[variables('__VERSION__')]",
-                "layeredNetworking": "[variables('__VERSION__')]",
-                "processor": "[variables('__VERSION__')]",
+                "adr": "0.1.0-preview",
+                "opcUaBroker": "0.2.0-preview",
+                "observability": "0.1.0-preview",
+                "akri": "0.1.0-preview",
+                "mq": "0.2.0-preview",
+                "aio": "0.2.0-preview",
+                "layeredNetworking": "0.1.0-preview",
+                "processor": "0.1.1-preview",
             },
             "TRAINS": {
-                "mq": "[variables('__TRAIN__')]",
-                "aio": "[variables('__TRAIN__')]",
-                "processor": "[variables('__TRAIN__')]",
-                "adr": "[variables('__TRAIN__')]",
-                "akri": "[variables('__TRAIN__')]",
-                "layeredNetworking": "[variables('__TRAIN__')]",
-                "opcUaBroker": "helm",
-                "observability": "helm",
+                "mq": "preview",
+                "aio": "preview",
+                "processor": "preview",
+                "adr": "preview",
+                "akri": "preview",
+                "layeredNetworking": "preview",
             },
             "broker_fe_issuer_configuration": {
                 "name": "mq-fe-issuer-configuration",
@@ -210,21 +206,21 @@ V1_TEMPLATE = TemplateVer(
                 },
             },
             "akri_daemonset": {
-                "name": "akri-opcua-asset-discovery-daemonset",
+                "name": "aio-opc-asset-discovery",
                 "type": "yaml.k8s",
                 "properties": {
                     "resource": {
                         "apiVersion": "apps/v1",
                         "kind": "DaemonSet",
-                        "metadata": {"name": "akri-opcua-asset-discovery-daemonset"},
+                        "metadata": {"name": "aio-opc-asset-discovery"},
                         "spec": {
-                            "selector": {"matchLabels": {"name": "akri-opcua-asset-discovery"}},
+                            "selector": {"matchLabels": {"name": "aio-opc-asset-discovery"}},
                             "template": {
-                                "metadata": {"labels": {"name": "akri-opcua-asset-discovery"}},
+                                "metadata": {"labels": {"name": "aio-opc-asset-discovery"}},
                                 "spec": {
                                     "containers": [
                                         {
-                                            "name": "akri-opcua-asset-discovery",
+                                            "name": "aio-opc-asset-discovery",
                                             "image": "[format('mcr.microsoft.com/azureiotoperations/opcuabroker/discovery-handler:{0}', variables('VERSIONS').opcUaBroker)]",
                                             "imagePullPolicy": "Always",
                                             "resources": {
@@ -275,7 +271,7 @@ V1_TEMPLATE = TemplateVer(
                 "name": "opc-ua-broker",
                 "properties": {
                     "chart": {
-                        "repo": "oci://mcr.microsoft.com/azureiotoperations/opcuabroker/helmchart/microsoft.iotoperations.opcuabroker",
+                        "repo": "oci://mcr.microsoft.com/azureiotoperations/opcuabroker/helmchart/microsoft-iotoperations-opcuabroker",
                         "version": "[variables('VERSIONS').opcUaBroker]",
                     },
                     "values": {
@@ -616,21 +612,21 @@ V1_TEMPLATE = TemplateVer(
                 "properties": {
                     "authImage": {
                         "pullPolicy": "Always",
-                        "repository": "alicesprings.azurecr.io/dmqtt-authentication",
+                        "repository": "mcr.microsoft.com/azureiotoperations/dmqtt-authentication",
                         "tag": "[variables('VERSIONS').mq]",
                     },
                     "brokerImage": {
                         "pullPolicy": "Always",
-                        "repository": "alicesprings.azurecr.io/dmqtt-pod",
+                        "repository": "mcr.microsoft.com/azureiotoperations/dmqtt-pod",
                         "tag": "[variables('VERSIONS').mq]",
                     },
                     "healthManagerImage": {
                         "pullPolicy": "Always",
-                        "repository": "alicesprings.azurecr.io/dmqtt-operator",
+                        "repository": "mcr.microsoft.com/azureiotoperations/dmqtt-operator",
                         "tag": "[variables('VERSIONS').mq]",
                     },
                     "diagnostics": {
-                        "probeImage": "[format('alicesprings.azurecr.io/diagnostics-probe:{0}', variables('VERSIONS').mq)]",
+                        "probeImage": "[format('mcr.microsoft.com/azureiotoperations/diagnostics-probe:{0}', variables('VERSIONS').mq)]",
                         "enableSelfCheck": True,
                     },
                     "mode": "[parameters('mqMode')]",
@@ -663,7 +659,7 @@ V1_TEMPLATE = TemplateVer(
                 },
                 "properties": {
                     "image": {
-                        "repository": "alicesprings.azurecr.io/diagnostics-service",
+                        "repository": "mcr.microsoft.com/azureiotoperations/diagnostics-service",
                         "tag": "[variables('VERSIONS').mq]",
                     },
                     "logLevel": "info",
