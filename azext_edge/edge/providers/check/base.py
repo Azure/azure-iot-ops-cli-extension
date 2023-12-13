@@ -79,7 +79,7 @@ def check_post_deployment(
             elif (resource and resource.value in lowercase_api_resources and check_resources[resource]):
                 append_resource = True
 
-            if append_resource:  
+            if append_resource:
                 result["postDeployment"].append(evaluate_func(detail_level=detail_level, as_list=as_list))
 
 

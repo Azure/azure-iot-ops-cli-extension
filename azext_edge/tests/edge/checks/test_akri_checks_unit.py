@@ -6,16 +6,22 @@
 
 
 import pytest
-from azext_edge.edge.providers.check.common import CORE_SERVICE_RUNTIME_RESOURCE, ResourceOutputDetailLevel
+from azext_edge.edge.providers.check.akri import (
+    evaluate_configurations,
+    evaluate_core_service_runtime,
+    evaluate_instances
+)
+from azext_edge.edge.providers.check.common import (
+    CORE_SERVICE_RUNTIME_RESOURCE,
+    ResourceOutputDetailLevel
+)
 from azext_edge.edge.providers.edge_api.akri import AkriResourceKinds
-from azext_edge.edge.providers.check.akri import evaluate_configurations, evaluate_core_service_runtime, evaluate_instances
 
 from .conftest import (
     assert_check_by_resource_types,
     assert_conditions,
     assert_evaluations,
     generate_pod_stub,
-    generate_resource_stub
 )
 from ...generators import generate_generic_id
 
@@ -199,7 +205,7 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
                             "discoveryProperties": [
                                 {
                                     "name": "example",
-                                    "valueFrom":{
+                                    "valueFrom": {
                                         "hello": "world"
                                     }
                                 }
@@ -247,7 +253,7 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
                             "discoveryProperties": [
                                 {
                                     "name": "example",
-                                    "valueFrom":{
+                                    "valueFrom": {
                                         "secretKeyRef": {
                                             "name": "example",
                                             "key": "example"
@@ -317,7 +323,7 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
                             "discoveryProperties": [
                                 {
                                     "name": "example",
-                                    "valueFrom":{
+                                    "valueFrom": {
                                         "secretKeyRef": {
                                             "key": "example"
                                         }
@@ -378,7 +384,7 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
                             "discoveryProperties": [
                                 {
                                     "name": "example",
-                                    "valueFrom":{
+                                    "valueFrom": {
                                         "configMapKeyRef": {
                                             "key": "example"
                                         }
@@ -422,7 +428,10 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
                 ],
                 [
                     ("status", "error"),
-                    ("value/spec.discoveryHandler.discoveryProperties['example'].valueFrom.config_map_key_ref.name", ""),
+                    (
+                        "value/spec.discoveryHandler.discoveryProperties['example'].valueFrom.config_map_key_ref.name",
+                        ""
+                    ),
                 ],
             ],
         ),

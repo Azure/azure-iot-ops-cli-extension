@@ -110,55 +110,6 @@ def evaluate_configurations(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
-    def _validate_one_of_conditions(
-            conditions: List[tuple],
-            check_manager: CheckManager,
-            eval_value: dict,
-            namespace: str,
-    ) -> None:
-        if len(conditions) == 1:
-            return
-        
-        non_empty_conditions_count = 0
-        for condition in conditions:
-            if condition[1]:
-                non_empty_conditions_count += 1
-
-        eval_status = CheckTaskStatus.success.value
-        conditions_names = ", ".join([f"'{condition[0]}'" for condition in conditions])
-        if non_empty_conditions_count == 0:
-            check_manager.add_display(
-                target_name=target_configurations,
-                namespace=namespace,
-                display=Padding(
-                    f"One of {conditions_names} should be specified",
-                    (0, 0, 0, 16),
-                ),
-            )
-            eval_status = CheckTaskStatus.error.value
-        elif non_empty_conditions_count > 1:
-            check_manager.add_display(
-                target_name=target_configurations,
-                namespace=namespace,
-                display=Padding(
-                    f"Only one of {conditions_names} should be specified",
-                    (0, 0, 0, 16),
-                ),
-            )
-            eval_status = CheckTaskStatus.error.value
-        
-        check_manager.add_target_conditions(
-            target_name=target_configurations,
-            namespace=namespace,
-            conditions=[condition[0] for condition in conditions]
-        )
-        check_manager.add_target_eval(
-            target_name=target_configurations,
-            namespace=namespace,
-            status=eval_status,
-            value=eval_value
-        )
-
     check_manager = CheckManager(check_name="evalConfigurations", check_desc="Evaluate Akri configurations")
 
     target_configurations = generate_target_resource_name(api_info=AKRI_API_V0, resource_kind=AkriResourceKinds.CONFIGURATION.value)
@@ -224,202 +175,14 @@ def evaluate_configurations(
             configuration_service_spec = spec.get("configurationServiceSpec", {})
             broker_properties = spec.get("brokerProperties", {})
 
-            # discovery handler
-            if discovery_handler:
-                name = discovery_handler.get("name", "")
-                discovery_details = discovery_handler.get("discoveryDetails", "")
-                discovery_properties = discovery_handler.get("discoveryProperties", [])
+            _evaluate_discovery_handler(
+                check_manager=check_manager,
+                target_name=target_configurations,
+                namespace=namespace,
+                discovery_handler=discovery_handler,
+                detail_level=detail_level,
+            )
 
-                if detail_level >= ResourceOutputDetailLevel.detail.value:
-                    check_manager.add_display(
-                        target_name=target_configurations,
-                        namespace=namespace,
-                        display=Padding(
-                            f"Name: [cyan]{name}[/cyan]",
-                            (0, 0, 0, 16),
-                        ),
-                    )
-
-                if detail_level >= ResourceOutputDetailLevel.detail.value and discovery_details:
-                    check_manager.add_display(
-                        target_name=target_configurations,
-                        namespace=namespace,
-                        display=Padding(
-                            "Discovery details:",
-                            (0, 0, 0, 16),
-                        ),
-                    )
-
-                    check_manager.add_display(
-                        target_name=target_configurations,
-                        namespace=namespace,
-                        display=Padding(
-                            f"[cyan]{discovery_details}[/cyan]",
-                            (0, 0, 0, 20),
-                        ),
-                    )
-
-                if discovery_properties:
-                    for property in discovery_properties:
-                        property_name: str = property.get("name", "")
-                        property_condition_str = f"spec.discoveryHandler.discoveryProperties['{property_name}']"
-
-                        # name
-                        check_manager.set_target_conditions(
-                            target_name=target_configurations,
-                            namespace=namespace,
-                            conditions=[f"{property_condition_str}.name"],
-                        )
-
-                        if detail_level >= ResourceOutputDetailLevel.detail.value:
-                            check_manager.add_display(
-                                target_name=target_configurations,
-                                namespace=namespace,
-                                display=Padding(
-                                    f"Property name: [cyan]{property_name}[/cyan]",
-                                    (0, 0, 0, 16),
-                                ),
-                            )
-                        property_name_eval_value = {f"{property_condition_str}.name": property_name}
-                        property_name_eval_status = CheckTaskStatus.success.value
-                        name_pattern = "^[_A-Za-z][_A-Za-z0-9]*$"
-
-                        # name should be a valid identifier match the pattern
-                        if not property_name or not re.match(name_pattern, property_name):
-                            property_name_error_text = (
-                                f"[red]Property name should be a valid identifier match the pattern {name_pattern}.[/red]"
-                            )
-                            property_name_eval_status = CheckTaskStatus.error.value
-                            check_manager.add_display(
-                                target_name=target_configurations,
-                                namespace=namespace,
-                                display=Padding(property_name_error_text, (0, 0, 0, 16)),
-                            )
-                        
-                        check_manager.add_target_eval(
-                            target_name=target_configurations,
-                            namespace=namespace,
-                            status=property_name_eval_status,
-                            value=property_name_eval_value
-                        )
-                    
-                        # "value" and "valueFrom" are mutually exclusive
-                        value = property.get("value", "")
-                        value_from = property.get("valueFrom", "")
-                        value_eval_value = {
-                            f"{property_condition_str}.value": value,
-                            f"{property_condition_str}.valueFrom": value_from
-                        }
-                        _validate_one_of_conditions(
-                            conditions=[
-                                ("value", value),
-                                ("valueFrom", value_from)
-                            ],
-                            check_manager=check_manager,
-                            eval_value=value_eval_value,
-                            namespace=namespace
-                        )
-
-                        if value:
-                            if detail_level >= ResourceOutputDetailLevel.detail.value:
-                                check_manager.add_display(
-                                    target_name=target_configurations,
-                                    namespace=namespace,
-                                    display=Padding(
-                                        f"Property value: [cyan]{value}[/cyan]",
-                                        (0, 0, 0, 16),
-                                    ),
-                                )
-                        elif value_from:
-                            secret_key_ref = value_from.get("secretKeyRef", {})
-                            config_map_key_ref = value_from.get("configMapKeyRef", {})
-                            key_ref_eval_value = {
-                                f"{property_condition_str}.valueFrom.secretKeyRef": secret_key_ref,
-                                f"{property_condition_str}.valueFrom.configMapKeyRef": config_map_key_ref
-                            }
-                            _validate_one_of_conditions(
-                                conditions=[
-                                    ("secretKeyRef", secret_key_ref),
-                                    ("configMapKeyRef", config_map_key_ref)
-                                ],
-                                check_manager=check_manager,
-                                eval_value=key_ref_eval_value,
-                                namespace=namespace
-                            )
-
-                            if secret_key_ref or config_map_key_ref:
-                                key_ref_property = ("secret_key_ref", secret_key_ref) if secret_key_ref else ("config_map_key_ref", config_map_key_ref)
-                                key_ref_name = key_ref_property[1].get("name", "")
-                                key_ref_key = key_ref_property[1].get("key", "")
-                                key_ref_namespace = key_ref_property[1].get("namespace", "")
-                                key_ref_optional = key_ref_property[1].get("optional", False)
-
-                                check_manager.add_target_conditions(
-                                    target_name=target_configurations,
-                                    namespace=namespace,
-                                    conditions=[
-                                        f"{property_condition_str}.valueFrom.{key_ref_property[0]}.name",
-                                    ],
-                                )
-
-                                key_ref_name_eval_value = {f"{property_condition_str}.valueFrom.{key_ref_property[0]}.name": key_ref_name}
-                                key_ref_name_eval_status = CheckTaskStatus.success.value
-                                if not key_ref_name:
-                                    key_ref_name_error_text = f"[red]Property {key_ref_property[0]} name is required.[/red]"
-                                    key_ref_name_eval_status = CheckTaskStatus.error.value
-                                    check_manager.add_display(
-                                        target_name=target_configurations,
-                                        namespace=namespace,
-                                        display=Padding(key_ref_name_error_text, (0, 0, 0, 16)),
-                                    )
-                                else:
-                                    check_manager.add_display(
-                                        target_name=target_configurations,
-                                        namespace=namespace,
-                                        display=Padding(
-                                            f"Property {key_ref_property[0]} {{[cyan]{key_ref_name}[/cyan]}} detected.",
-                                            (0, 0, 0, 16),
-                                        ),
-                                    )
-                                
-                                check_manager.add_target_eval(
-                                    target_name=target_configurations,
-                                    namespace=namespace,
-                                    status=key_ref_name_eval_status,
-                                    value=key_ref_name_eval_value
-                                )
-
-                                if detail_level >= ResourceOutputDetailLevel.detail.value:
-                                    if key_ref_key:
-                                        check_manager.add_display(
-                                            target_name=target_configurations,
-                                            namespace=namespace,
-                                            display=Padding(
-                                                f"Key: [cyan]{key_ref_key}[/cyan]",
-                                                (0, 0, 0, 20),
-                                            ),
-                                        )
-                                    
-                                    if key_ref_namespace:
-                                        check_manager.add_display(
-                                            target_name=target_configurations,
-                                            namespace=namespace,
-                                            display=Padding(
-                                                f"Namespace: [cyan]{key_ref_namespace}[/cyan]",
-                                                (0, 0, 0, 20),
-                                            ),
-                                        )
-
-                                    if key_ref_optional:
-                                        check_manager.add_display(
-                                            target_name=target_configurations,
-                                            namespace=namespace,
-                                            display=Padding(
-                                                f"Optional: [cyan]{str(key_ref_optional)}[/cyan]",
-                                                (0, 0, 0, 20),
-                                            ),
-                                        )
-            
             if detail_level >= ResourceOutputDetailLevel.detail.value and capacity:
                 check_manager.add_display(
                     target_name=target_configurations,
@@ -430,51 +193,33 @@ def evaluate_configurations(
                     ),
                 )
 
-                if detail_level == ResourceOutputDetailLevel.verbose.value:
-                    # broker spec
-                    if broker_spec:
+            if detail_level == ResourceOutputDetailLevel.verbose.value:
+                for prop_name, prop_value in {
+                    "Broker spec": broker_spec,
+                    "Instance service spec": instance_service_spec,
+                    "Configuration service spec": configuration_service_spec,
+                }.items():
+                    if prop_value:
                         process_dict_resource(
                             check_manager=check_manager,
                             target_name=target_configurations,
-                            resource=broker_spec,
+                            resource=prop_value,
                             namespace=namespace,
                             padding=16,
-                            prop_name="Broker spec",
+                            prop_name=prop_name,
                         )
-                    
-                    # instance service spec
-                    if instance_service_spec:
-                        process_dict_resource(
-                            check_manager=check_manager,
+
+                # broker properties
+                if broker_properties:
+                    for key, value in broker_properties:
+                        check_manager.add_display(
                             target_name=target_configurations,
-                            resource=instance_service_spec,
                             namespace=namespace,
-                            padding=16,
-                            prop_name="Instance service spec",
+                            display=Padding(
+                                f"Broker property [cyan]{key}[/cyan]: [cyan]{value}[/cyan]",
+                                (0, 0, 0, 16),
+                            ),
                         )
-                    
-                    # configuration service spec
-                    if configuration_service_spec:
-                        process_dict_resource(
-                            check_manager=check_manager,
-                            target_name=target_configurations,
-                            resource=configuration_service_spec,
-                            namespace=namespace,
-                            padding=16,
-                            prop_name="Configuration service spec",
-                        )
-                    
-                    # broker properties
-                    if broker_properties:
-                        for key, value in broker_properties:
-                            check_manager.add_display(
-                                target_name=target_configurations,
-                                namespace=namespace,
-                                display=Padding(
-                                    f"Broker property [cyan]{key}[/cyan]: [cyan]{value}[/cyan]",
-                                    (0, 0, 0, 16),
-                                ),
-                            )
 
     return check_manager.as_dict(as_list)
 
@@ -552,7 +297,7 @@ def evaluate_instances(
                             (0, 0, 0, 16),
                         ),
                     )
-                
+
                 shared = spec.get("shared", False)
                 check_manager.add_display(
                     target_name=target_instances,
@@ -586,7 +331,7 @@ def evaluate_instances(
                                 (0, 0, 0, 16),
                             ),
                         )
-                    
+
                     # deviceUsage
                     device_usage = spec.get("deviceUsage", {})
                     if device_usage:
@@ -600,3 +345,259 @@ def evaluate_instances(
                         )
 
     return check_manager.as_dict(as_list)
+
+
+def _validate_one_of_conditions(
+        conditions: List[tuple],
+        check_manager: CheckManager,
+        eval_value: dict,
+        namespace: str,
+        target_name: str,
+) -> None:
+    if len(conditions) == 1:
+        return
+
+    non_empty_conditions_count = 0
+    for condition in conditions:
+        if condition[1]:
+            non_empty_conditions_count += 1
+
+    eval_status = CheckTaskStatus.success.value
+    conditions_names = ", ".join([f"'{condition[0]}'" for condition in conditions])
+    if non_empty_conditions_count == 0:
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(
+                f"One of {conditions_names} should be specified",
+                (0, 0, 0, 16),
+            ),
+        )
+        eval_status = CheckTaskStatus.error.value
+    elif non_empty_conditions_count > 1:
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(
+                f"Only one of {conditions_names} should be specified",
+                (0, 0, 0, 16),
+            ),
+        )
+        eval_status = CheckTaskStatus.error.value
+
+    check_manager.add_target_conditions(
+        target_name=target_name,
+        namespace=namespace,
+        conditions=[condition[0] for condition in conditions]
+    )
+    check_manager.add_target_eval(
+        target_name=target_name,
+        namespace=namespace,
+        status=eval_status,
+        value=eval_value
+    )
+
+
+def _evaluate_discovery_handler(
+    check_manager: CheckManager,
+    target_name: str,
+    namespace: str,
+    discovery_handler: dict,
+    detail_level: int,
+) -> None:
+    if discovery_handler:
+        name = discovery_handler.get("name", "")
+        discovery_details = discovery_handler.get("discoveryDetails", "")
+        discovery_properties = discovery_handler.get("discoveryProperties", [])
+
+        if detail_level >= ResourceOutputDetailLevel.detail.value:
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(
+                    f"Name: [cyan]{name}[/cyan]",
+                    (0, 0, 0, 16),
+                ),
+            )
+
+            if discovery_details:
+                check_manager.add_display(
+                    target_name=target_name,
+                    namespace=namespace,
+                    display=Padding(
+                        "Discovery details:",
+                        (0, 0, 0, 16),
+                    ),
+                )
+
+                check_manager.add_display(
+                    target_name=target_name,
+                    namespace=namespace,
+                    display=Padding(
+                        f"[cyan]{discovery_details}[/cyan]",
+                        (0, 0, 0, 20),
+                    ),
+                )
+
+        if discovery_properties:
+            for property in discovery_properties:
+                property_name: str = property.get("name", "")
+                property_condition_str = f"spec.discoveryHandler.discoveryProperties['{property_name}']"
+
+                # name
+                check_manager.set_target_conditions(
+                    target_name=target_name,
+                    namespace=namespace,
+                    conditions=[f"{property_condition_str}.name"],
+                )
+
+                if detail_level >= ResourceOutputDetailLevel.detail.value:
+                    check_manager.add_display(
+                        target_name=target_name,
+                        namespace=namespace,
+                        display=Padding(
+                            f"Property name: [cyan]{property_name}[/cyan]",
+                            (0, 0, 0, 16),
+                        ),
+                    )
+                property_name_eval_value = {f"{property_condition_str}.name": property_name}
+                property_name_eval_status = CheckTaskStatus.success.value
+                name_pattern = "^[_A-Za-z][_A-Za-z0-9]*$"
+
+                # name should be a valid identifier match the pattern
+                if not property_name or not re.match(name_pattern, property_name):
+                    property_name_error_text = (
+                        f"[red]Property name should be a valid identifier match the pattern {name_pattern}.[/red]"
+                    )
+                    property_name_eval_status = CheckTaskStatus.error.value
+                    check_manager.add_display(
+                        target_name=target_name,
+                        namespace=namespace,
+                        display=Padding(property_name_error_text, (0, 0, 0, 16)),
+                    )
+
+                check_manager.add_target_eval(
+                    target_name=target_name,
+                    namespace=namespace,
+                    status=property_name_eval_status,
+                    value=property_name_eval_value
+                )
+
+                # "value" and "valueFrom" are mutually exclusive
+                value = property.get("value", "")
+                value_from = property.get("valueFrom", "")
+                value_eval_value = {
+                    f"{property_condition_str}.value": value,
+                    f"{property_condition_str}.valueFrom": value_from
+                }
+                _validate_one_of_conditions(
+                    conditions=[
+                        ("value", value),
+                        ("valueFrom", value_from)
+                    ],
+                    check_manager=check_manager,
+                    eval_value=value_eval_value,
+                    namespace=namespace,
+                    target_name=target_name
+                )
+
+                if value:
+                    if detail_level >= ResourceOutputDetailLevel.detail.value:
+                        check_manager.add_display(
+                            target_name=target_name,
+                            namespace=namespace,
+                            display=Padding(
+                                f"Property value: [cyan]{value}[/cyan]",
+                                (0, 0, 0, 16),
+                            ),
+                        )
+                elif value_from:
+                    secret_key_ref = value_from.get("secretKeyRef", {})
+                    config_map_key_ref = value_from.get("configMapKeyRef", {})
+                    key_ref_eval_value = {
+                        f"{property_condition_str}.valueFrom.secretKeyRef": secret_key_ref,
+                        f"{property_condition_str}.valueFrom.configMapKeyRef": config_map_key_ref
+                    }
+                    _validate_one_of_conditions(
+                        conditions=[
+                            ("secretKeyRef", secret_key_ref),
+                            ("configMapKeyRef", config_map_key_ref)
+                        ],
+                        check_manager=check_manager,
+                        eval_value=key_ref_eval_value,
+                        namespace=namespace,
+                        target_name=target_name
+                    )
+
+                    if secret_key_ref or config_map_key_ref:
+                        key_ref_property = ("secret_key_ref", secret_key_ref) if secret_key_ref else ("config_map_key_ref", config_map_key_ref)
+                        key_ref_name = key_ref_property[1].get("name", "")
+                        key_ref_key = key_ref_property[1].get("key", "")
+                        key_ref_namespace = key_ref_property[1].get("namespace", "")
+                        key_ref_optional = key_ref_property[1].get("optional", False)
+
+                        check_manager.add_target_conditions(
+                            target_name=target_name,
+                            namespace=namespace,
+                            conditions=[
+                                f"{property_condition_str}.valueFrom.{key_ref_property[0]}.name",
+                            ],
+                        )
+
+                        key_ref_name_eval_value = {f"{property_condition_str}.valueFrom.{key_ref_property[0]}.name": key_ref_name}
+                        key_ref_name_eval_status = CheckTaskStatus.success.value
+                        if not key_ref_name:
+                            key_ref_name_error_text = f"[red]Property {key_ref_property[0]} name is required.[/red]"
+                            key_ref_name_eval_status = CheckTaskStatus.error.value
+                            check_manager.add_display(
+                                target_name=target_name,
+                                namespace=namespace,
+                                display=Padding(key_ref_name_error_text, (0, 0, 0, 16)),
+                            )
+                        else:
+                            check_manager.add_display(
+                                target_name=target_name,
+                                namespace=namespace,
+                                display=Padding(
+                                    f"Property {key_ref_property[0]} {{[cyan]{key_ref_name}[/cyan]}} detected.",
+                                    (0, 0, 0, 16),
+                                ),
+                            )
+
+                        check_manager.add_target_eval(
+                            target_name=target_name,
+                            namespace=namespace,
+                            status=key_ref_name_eval_status,
+                            value=key_ref_name_eval_value
+                        )
+
+                        if detail_level >= ResourceOutputDetailLevel.detail.value:
+                            if key_ref_key:
+                                check_manager.add_display(
+                                    target_name=target_name,
+                                    namespace=namespace,
+                                    display=Padding(
+                                        f"Key: [cyan]{key_ref_key}[/cyan]",
+                                        (0, 0, 0, 20),
+                                    ),
+                                )
+
+                            if key_ref_namespace:
+                                check_manager.add_display(
+                                    target_name=target_name,
+                                    namespace=namespace,
+                                    display=Padding(
+                                        f"Namespace: [cyan]{key_ref_namespace}[/cyan]",
+                                        (0, 0, 0, 20),
+                                    ),
+                                )
+
+                            if key_ref_optional:
+                                check_manager.add_display(
+                                    target_name=target_name,
+                                    namespace=namespace,
+                                    display=Padding(
+                                        f"Optional: [cyan]{str(key_ref_optional)}[/cyan]",
+                                        (0, 0, 0, 20),
+                                    ),
+                                )
