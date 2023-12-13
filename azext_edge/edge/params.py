@@ -8,12 +8,12 @@
 CLI parameter definitions.
 """
 
-from azext_edge.edge.providers.edge_api.akri import AkriResourceKinds
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
 from .common import OpsServiceType
 from .providers.edge_api import (
+    AkriResourceKinds,
     DataProcessorResourceKinds,
     LnmResourceKinds,
     MqResourceKinds,

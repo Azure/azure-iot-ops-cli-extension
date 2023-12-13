@@ -7,27 +7,10 @@
 import re
 from itertools import groupby
 from kubernetes.client.models import V1Pod
+from rich.padding import Padding
 from typing import Any, Dict, List
 
-from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
-
-from .base import (
-    CheckManager,
-    check_post_deployment,
-    generate_target_resource_name,
-    process_dict_resource,
-    process_pods_status,
-    resources_grouped_by_namespace,
-)
-
-from rich.padding import Padding
-
 from ...common import CheckTaskStatus
-
-from .common import (
-    CORE_SERVICE_RUNTIME_RESOURCE,
-    ResourceOutputDetailLevel,
-)
 
 from ..edge_api import (
     AKRI_API_V0,
@@ -35,6 +18,21 @@ from ..edge_api import (
 )
 
 from ..support.akri import AKRI_PREFIXES
+
+from .base import (
+    CheckManager,
+    check_post_deployment,
+    generate_target_resource_name,
+    get_namespaced_pods_by_prefix,
+    process_dict_resource,
+    process_pods_status,
+    resources_grouped_by_namespace,
+)
+
+from .common import (
+    CORE_SERVICE_RUNTIME_RESOURCE,
+    ResourceOutputDetailLevel,
+)
 
 
 def check_akri_deployment(

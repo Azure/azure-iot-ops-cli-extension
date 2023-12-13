@@ -74,7 +74,7 @@ def check_post_deployment(
             append_resource = False
             # only add core service evaluation if there is no resource filter
             if resource == CORE_SERVICE_RUNTIME_RESOURCE:
-                if resource_kinds is None or resource_kinds == []:
+                if not resource_kinds:
                     append_resource = True
             elif (resource and resource.value in lowercase_api_resources and check_resources[resource]):
                 append_resource = True
