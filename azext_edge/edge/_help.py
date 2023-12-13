@@ -476,20 +476,6 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops asset endpoint list"
-    ] = """
-        type: command
-        short-summary: List asset endpoints.
-        examples:
-        - name: List all asset endpoints in the current subscription.
-          text: >
-            az iot ops asset endpoint list
-        - name: List all asset endpoints in a resource group.
-          text: >
-            az iot ops asset endpoint list -g {resource_group}
-    """
-
-    helps[
         "iot ops asset endpoint query"
     ] = """
         type: command
@@ -590,7 +576,7 @@ def load_iotops_help():
             --secret-ref {secret_reference} --thumbprint {thumbprint} --password-ref {password_reference}
         - name: Add a certificate to an asset endpoint that uses a password with prefilled values.
           text: >
-            az iot ops asset endpoint certificate add --endpoint {asset_endpoint} -g {resource_group}
+            az iot ops asset endpoint certificate add --endpoint myAssetEndpoint -g myRG
             --secret-ref "aio-opc-ua-broker-client/certificate" --thumbprint 000000000000000000
             --password-ref "aio-opc-ua-broker-client/certificate-password"
     """

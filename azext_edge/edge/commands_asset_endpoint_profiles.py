@@ -65,14 +65,6 @@ def delete_asset_endpoint_profile(
     )
 
 
-def list_asset_endpoint_profiles(
-    cmd,
-    resource_group_name: Optional[str] = None,
-) -> dict:
-    aep_provider = AssetEndpointProfileProvider(cmd)
-    return aep_provider.list(resource_group_name=resource_group_name)
-
-
 def query_asset_endpoint_profiles(
     cmd,
     additional_configuration: Optional[str] = None,

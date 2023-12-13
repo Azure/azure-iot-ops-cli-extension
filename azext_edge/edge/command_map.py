@@ -73,7 +73,6 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("create", "create_asset_endpoint_profile")
         cmd_group.command("delete", "delete_asset_endpoint_profile")
-        cmd_group.command("list", "list_asset_endpoint_profiles")
         cmd_group.command("query", "query_asset_endpoint_profiles")
         cmd_group.show_command("show", "show_asset_endpoint_profile")
         cmd_group.command("update", "update_asset_endpoint_profile")
