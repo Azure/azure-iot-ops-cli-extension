@@ -30,7 +30,8 @@ def test_show(
     provider = RPSaaSBaseProvider(
         mocked_cmd,
         api_version,
-        resource_type
+        resource_type,
+        generate_generic_id()
     )
     result = provider.show(resource_name, resource_group_name, check_cluster_connectivity)
 

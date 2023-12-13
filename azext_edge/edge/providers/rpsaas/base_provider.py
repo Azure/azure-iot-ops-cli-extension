@@ -36,7 +36,7 @@ class RPSaaSBaseProvider:
         cmd,
         api_version: str,
         resource_type: str,
-        required_extension: Optional[str] = None,
+        required_extension: str,
     ):
         from azure.cli.core.commands.client_factory import get_subscription_id
         from ...util.az_client import get_resource_client

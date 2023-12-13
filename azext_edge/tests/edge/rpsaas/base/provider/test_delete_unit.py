@@ -32,6 +32,7 @@ def test_delete(
         mocked_cmd,
         api_version,
         resource_type,
+        generate_generic_id()
     )
     result = provider.delete(resource_name, resource_group_name, check_cluster_connectivity)
 

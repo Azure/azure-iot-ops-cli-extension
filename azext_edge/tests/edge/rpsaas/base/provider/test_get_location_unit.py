@@ -19,6 +19,7 @@ def test_get_location(mocked_cmd, mocked_resource_management_client):
     provider = RPSaaSBaseProvider(
         mocked_cmd,
         generate_generic_id(),
+        generate_generic_id(),
         generate_generic_id()
     )
     result = provider.get_location(resource_group_name)

@@ -31,7 +31,8 @@ def test_list_assets(
     provider = RPSaaSBaseProvider(
         mocked_cmd,
         api_version,
-        resource_type
+        resource_type,
+        generate_generic_id()
     )
     result = provider.list(resource_group)
 
