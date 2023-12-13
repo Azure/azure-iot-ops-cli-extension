@@ -838,6 +838,7 @@ def load_iotops_arguments(self, _):
             "password_reference",
             options_list=["--password-ref", "--pr"],
             help="Reference for pem file that contains the certificate password.",
+            arg_group=None
         )
         context.argument(
             "secret_reference",
