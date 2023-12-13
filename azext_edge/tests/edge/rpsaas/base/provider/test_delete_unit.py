@@ -11,9 +11,18 @@ context_name = generate_generic_id()
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [
-    {"resources.begin_delete": {"result": generate_generic_id()}},
+    {
+        "resources.begin_delete": {"result": generate_generic_id()},
+        "resources.get": {"extendedLocation": {"name": generate_generic_id()}}
+    },
 ], ids=["result"], indirect=True)
-def test_delete(mocked_cmd, mocked_resource_management_client):
+@pytest.mark.parametrize("check_cluster_connectivity", [True, False])
+def test_delete(
+    mocked_cmd,
+    mock_check_cluster_connectivity,
+    mocked_resource_management_client,
+    check_cluster_connectivity
+):
     from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
     api_version = generate_generic_id()
     resource_type = generate_generic_id()
@@ -22,9 +31,11 @@ def test_delete(mocked_cmd, mocked_resource_management_client):
     provider = RPSaaSBaseProvider(
         mocked_cmd,
         api_version,
-        resource_type
+        resource_type,
     )
-    result = provider.delete(resource_name, resource_group_name)
+    result = provider.delete(resource_name, resource_group_name, check_cluster_connectivity)
+
+    assert mock_check_cluster_connectivity.called is check_cluster_connectivity
 
     mocked_resource_management_client.resources.begin_delete.assert_called_once()
     kwargs = mocked_resource_management_client.resources.begin_delete.call_args.kwargs

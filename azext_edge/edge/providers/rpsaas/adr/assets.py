@@ -215,9 +215,10 @@ class AssetProvider(ADRBaseProvider):
         tags: Optional[Dict[str, str]] = None,
     ):
         # get the asset
-        original_asset = self.show_and_check(
+        original_asset = self.show(
             resource_name=asset_name,
-            resource_group_name=resource_group_name
+            resource_group_name=resource_group_name,
+            check_cluster_connectivity=True
         )
         if tags:
             original_asset["tags"] = tags
@@ -269,9 +270,10 @@ class AssetProvider(ADRBaseProvider):
         queue_size: Optional[int] = None,
         sampling_interval: Optional[int] = None,
     ):
-        asset = self.show_and_check(
+        asset = self.show(
             resource_name=asset_name,
-            resource_group_name=resource_group_name
+            resource_group_name=resource_group_name,
+            check_cluster_connectivity=True
         )
 
         sub_point = _build_asset_sub_point(
@@ -321,9 +323,10 @@ class AssetProvider(ADRBaseProvider):
         event_notifier: Optional[str] = None,
         name: Optional[str] = None,
     ):
-        asset = self.show_and_check(
+        asset = self.show(
             resource_name=asset_name,
-            resource_group_name=resource_group_name
+            resource_group_name=resource_group_name,
+            check_cluster_connectivity=True
         )
 
         if sub_point_type not in asset["properties"]:

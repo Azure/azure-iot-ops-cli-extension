@@ -145,9 +145,10 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         tags: Optional[Dict[str, str]] = None,
     ):
         # get the asset
-        original_aep = self.show_and_check(
+        original_aep = self.show(
             asset_endpoint_profile_name,
-            resource_group_name=resource_group_name
+            resource_group_name=resource_group_name,
+            check_cluster_connectivity=True
         )
         if tags:
             original_aep["tags"] = tags
@@ -179,9 +180,10 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         secret_reference: str,
         thumbprint: str,
     ):
-        original_aep = self.show_and_check(
+        original_aep = self.show(
             asset_endpoint_profile_name,
-            resource_group_name=resource_group_name
+            resource_group_name=resource_group_name,
+            check_cluster_connectivity=True
         )
         if original_aep["properties"].get("transportAuthentication") is None:
             original_aep["properties"]["transportAuthentication"] = {
@@ -224,9 +226,10 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         thumbprint: str,
         resource_group_name: str,
     ):
-        original_aep = self.show_and_check(
+        original_aep = self.show(
             asset_endpoint_profile_name,
-            resource_group_name=resource_group_name
+            resource_group_name=resource_group_name,
+            check_cluster_connectivity=True
         )
         if original_aep["properties"].get("transportAuthentication") is None:
             original_aep["properties"]["transportAuthentication"] = {

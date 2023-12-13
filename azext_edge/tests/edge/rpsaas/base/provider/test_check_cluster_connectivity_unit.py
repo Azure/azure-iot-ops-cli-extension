@@ -7,12 +7,12 @@
 import pytest
 
 from azext_edge.edge.common import ResourceTypeMapping
-from .conftest import RM_PATH
-from ....generators import generate_generic_id
+from ...conftest import BP_PATH
+from .....generators import generate_generic_id
 
 
 @pytest.mark.parametrize("mocked_build_query", [{
-    "path": RM_PATH,
+    "path": BP_PATH,
     "return_value": []
 }], indirect=True)
 def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
@@ -29,7 +29,7 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
 
 @pytest.mark.parametrize("mocked_build_query", [
     {
-        "path": RM_PATH,
+        "path": BP_PATH,
         "side_effect": [
             [{
                 "name": generate_generic_id(),
@@ -41,7 +41,7 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
         ]
     },
     {
-        "path": RM_PATH,
+        "path": BP_PATH,
         "side_effect": [
             [{
                 "name": generate_generic_id(),
@@ -58,7 +58,7 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
         ]
     },
     {
-        "path": RM_PATH,
+        "path": BP_PATH,
         "side_effect": [
             [{
                 "name": generate_generic_id(),

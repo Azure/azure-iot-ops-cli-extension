@@ -61,7 +61,8 @@ def delete_asset_endpoint_profile(
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.delete(
         asset_endpoint_profile_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        check_cluster_connectivity=True
     )
 
 

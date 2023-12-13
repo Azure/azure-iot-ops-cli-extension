@@ -10,15 +10,15 @@ from azure.cli.core.azclierror import (
 )
 
 from azext_edge.edge.common import ResourceTypeMapping
-from .conftest import RM_PATH
-from ....generators import generate_generic_id
+from ...conftest import BP_PATH
+from .....generators import generate_generic_id
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [{
     "resources.get_by_id": {"properties": {"extensionType": "microsoft.deviceregistry.assets"}},
 }], ids=["extension"], indirect=True)
 @pytest.mark.parametrize("mocked_build_query", [{
-    "path": RM_PATH,
+    "path": BP_PATH,
     "side_effect": [[{
         "id": generate_generic_id(),
         "properties": {
@@ -138,11 +138,11 @@ def test_check_cluster_and_custom_location_argument_error(
 
 @pytest.mark.parametrize("mocked_build_query", [
     {
-        "path": RM_PATH,
+        "path": BP_PATH,
         "return_value": []
     },
     {
-        "path": RM_PATH,
+        "path": BP_PATH,
         "return_value": generate_generic_id()
     },
 ], ids=["not found", "too many"], indirect=True)
@@ -198,7 +198,7 @@ def test_check_cluster_and_custom_location_build_query_error(
 ], ids=["invalid_extensions"], indirect=True)
 @pytest.mark.parametrize("mocked_build_query", [
     {
-        "path": RM_PATH,
+        "path": BP_PATH,
         "return_value": [{
             "name": generate_generic_id(),
             "id": generate_generic_id(),

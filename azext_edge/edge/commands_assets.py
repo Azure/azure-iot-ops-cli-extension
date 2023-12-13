@@ -93,7 +93,11 @@ def delete_asset(
     resource_group_name: str,
 ) -> dict:
     asset_provider = AssetProvider(cmd)
-    return asset_provider.delete(resource_name=asset_name, resource_group_name=resource_group_name)
+    return asset_provider.delete(
+        resource_name=asset_name,
+        resource_group_name=resource_group_name,
+        check_cluster_connectivity=True
+    )
 
 
 def list_assets(
