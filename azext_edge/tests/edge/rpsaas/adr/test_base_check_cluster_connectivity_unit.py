@@ -19,7 +19,7 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
     from azext_edge.edge.providers.rpsaas.adr.base import ADRBaseProvider
     provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
     custom_location_id = generate_generic_id()
-    provider._check_cluster_connectivity(custom_location_id)
+    provider.check_cluster_connectivity(custom_location_id)
     assert mocked_build_query.call_count == 1
 
     cluster_query_kwargs = mocked_build_query.call_args.kwargs
@@ -83,7 +83,7 @@ def test_check_cluster_connectivity(mocked_cmd, mocked_build_query):
     from azext_edge.edge.providers.rpsaas.adr.base import ADRBaseProvider
     provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
     custom_location_id = generate_generic_id()
-    provider._check_cluster_connectivity(custom_location_id)
+    provider.check_cluster_connectivity(custom_location_id)
     assert mocked_build_query.call_count == 2
 
     cluster_query_kwargs = mocked_build_query.call_args_list[0].kwargs

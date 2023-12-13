@@ -13,7 +13,7 @@ from azext_edge.edge.commands_assets import (
     list_asset_data_points,
     remove_asset_data_point
 )
-from azext_edge.edge.providers.rpsaas.adr.base import API_VERSION
+from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
 from .conftest import (
     MINIMUM_ASSET,
@@ -78,7 +78,7 @@ def test_add_asset_data_point(
     # Asset changes
     call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
     assert call_kwargs["resource_id"] == original_asset["id"]
-    assert call_kwargs["api_version"] == API_VERSION
+    assert call_kwargs["api_version"] == ADR_API_VERSION
 
     # Check update request
     request_data_points = call_kwargs["parameters"]["properties"]["dataPoints"]
@@ -158,7 +158,7 @@ def test_remove_asset_data_point(
     # Asset changes
     call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
     assert call_kwargs["resource_id"] == original_asset["id"]
-    assert call_kwargs["api_version"] == API_VERSION
+    assert call_kwargs["api_version"] == ADR_API_VERSION
 
     # Check update request
     request_data_points = call_kwargs["parameters"]["properties"]["dataPoints"]

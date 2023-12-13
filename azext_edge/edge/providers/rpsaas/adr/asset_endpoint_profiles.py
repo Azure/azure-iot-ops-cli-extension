@@ -58,7 +58,7 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
     ):
         if certificate_reference:
             raise InvalidArgumentValueError(CERT_AUTH_NOT_SUPPORTED)
-        extended_location = self._check_cluster_and_custom_location(
+        extended_location = self.check_cluster_and_custom_location(
             custom_location_name=custom_location_name,
             custom_location_resource_group=custom_location_resource_group,
             custom_location_subscription=custom_location_subscription,

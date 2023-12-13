@@ -110,6 +110,14 @@ class ResourceTypeMapping(Enum):
     cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
 
 
+class ClusterExtensionsMapping(Enum):
+    """
+    Cluster extension mappings.
+    """
+
+    asset = "microsoft.deviceregistry.assets"
+
+
 class AEPAuthModes(Enum):
     """
     Authentication modes for asset endpoints

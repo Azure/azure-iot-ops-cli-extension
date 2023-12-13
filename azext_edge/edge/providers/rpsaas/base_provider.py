@@ -35,9 +35,9 @@ class RPSaaSBaseProvider:
     ):
         return self.resource_client.resources.begin_delete(
             resource_group_name=resource_group_name,
-            resource_provider_namespace=self.resource_type,
+            resource_provider_namespace="",
             parent_resource_path="",
-            resource_type="",
+            resource_type=self.resource_type,
             resource_name=resource_name,
             api_version=self.api_version
         )
@@ -71,9 +71,9 @@ class RPSaaSBaseProvider:
     ) -> Dict[str, Any]:
         result = self.resource_client.resources.get(
             resource_group_name=resource_group_name,
-            resource_provider_namespace=self.resource_type,
+            resource_provider_namespace="",
             parent_resource_path="",
-            resource_type="",
+            resource_type=self.resource_type,
             resource_name=resource_name,
             api_version=self.api_version
         )

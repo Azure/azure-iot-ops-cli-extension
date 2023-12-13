@@ -29,9 +29,9 @@ def test_delete(mocked_cmd, mocked_resource_management_client):
     mocked_resource_management_client.resources.begin_delete.assert_called_once()
     kwargs = mocked_resource_management_client.resources.begin_delete.call_args.kwargs
     assert kwargs["resource_group_name"] == resource_group_name
-    assert kwargs["resource_provider_namespace"] == resource_type
+    assert kwargs["resource_provider_namespace"] == ""
     assert kwargs["parent_resource_path"] == ""
-    assert kwargs["resource_type"] == ""
+    assert kwargs["resource_type"] == resource_type
     assert kwargs["resource_name"] == resource_name
     assert kwargs["api_version"] == api_version
     assert result is None

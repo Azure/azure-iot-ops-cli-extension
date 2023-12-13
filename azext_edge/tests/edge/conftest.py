@@ -76,10 +76,10 @@ def mocked_build_query(mocker, request):
         "return_value": []
     })
     build_query_mock = mocker.patch(f"{request_params['path']}.build_query", autospec=True)
-    if request_params.get("side_effect"):
+    if request_params.get("side_effect") is not None:
         build_query_mock.side_effect = request_params["side_effect"]
         # ensure original values are kept
         build_query_mock.side_effect_values = request_params["side_effect"]
-    if request_params.get("return_value"):
+    if request_params.get("return_value") is not None:
         build_query_mock.return_value = request_params["return_value"]
     yield build_query_mock

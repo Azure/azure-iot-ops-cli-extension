@@ -12,7 +12,7 @@ RM_PATH = "azext_edge.edge.providers.rpsaas.adr.base"
 
 @pytest.fixture()
 def mock_check_cluster_connectivity(mocker):
-    patched = mocker.patch(f"{RM_PATH}.ADRBaseProvider._check_cluster_connectivity")
+    patched = mocker.patch(f"{RM_PATH}.ADRBaseProvider.check_cluster_connectivity")
     patched.return_value = None
 
     yield patched

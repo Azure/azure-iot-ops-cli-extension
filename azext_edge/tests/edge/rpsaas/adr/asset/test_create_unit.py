@@ -12,7 +12,7 @@ from azure.cli.core.azclierror import (
 
 from azext_edge.edge.commands_assets import create_asset
 from azext_edge.edge.common import ResourceTypeMapping
-from azext_edge.edge.providers.rpsaas.adr.base import API_VERSION
+from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
 from .....generators import generate_generic_id
 
@@ -73,7 +73,7 @@ from .....generators import generate_generic_id
 def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, asset_helpers_fixture, req):
     patched_sp, patched_up = asset_helpers_fixture
     patched_cap = mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr.base.ADRBaseProvider._check_cluster_and_custom_location"
+        "azext_edge.edge.providers.rpsaas.adr.base.ADRBaseProvider.check_cluster_and_custom_location"
     )
     patched_cap.return_value = generate_generic_id()
 
@@ -108,7 +108,7 @@ def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, ass
     expected_resource_path = f"/resourceGroups/{resource_group_name}/providers/{ResourceTypeMapping.asset.value}"\
         f"/{asset_name}"
     assert expected_resource_path in call_kwargs["resource_id"]
-    assert call_kwargs["api_version"] == API_VERSION
+    assert call_kwargs["api_version"] == ADR_API_VERSION
 
     # asset body
     request_body = call_kwargs["parameters"]

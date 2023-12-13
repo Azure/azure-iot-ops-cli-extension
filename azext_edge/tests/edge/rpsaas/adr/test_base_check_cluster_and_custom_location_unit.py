@@ -77,7 +77,7 @@ def test_check_cluster_and_custom_location(
         query_results.append([cluster_query_result])
     mocked_build_query.side_effect = query_results
 
-    result = provider._check_cluster_and_custom_location(
+    result = provider.check_cluster_and_custom_location(
         custom_location_name=custom_location_name,
         custom_location_resource_group=custom_location_resource_group,
         custom_location_subscription=custom_location_subscription,
@@ -130,7 +130,7 @@ def test_check_cluster_and_custom_location_argument_error(
     provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
 
     with pytest.raises(RequiredArgumentMissingError):
-        provider._check_cluster_and_custom_location(
+        provider.check_cluster_and_custom_location(
             custom_location_name=None,
             cluster_name=None,
         )
@@ -175,7 +175,7 @@ def test_check_cluster_and_custom_location_build_query_error(
     expected_result = mocked_build_query.return_value
 
     with pytest.raises(Exception) as e:
-        provider._check_cluster_and_custom_location(
+        provider.check_cluster_and_custom_location(
             custom_location_name=custom_location_name,
             cluster_name=cluster_name,
         )
@@ -219,7 +219,7 @@ def test_check_cluster_and_custom_location_no_extension_error(
     provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
 
     with pytest.raises(Exception) as e:
-        provider._check_cluster_and_custom_location(
+        provider.check_cluster_and_custom_location(
             custom_location_name=generate_generic_id(),
             cluster_name=generate_generic_id(),
         )

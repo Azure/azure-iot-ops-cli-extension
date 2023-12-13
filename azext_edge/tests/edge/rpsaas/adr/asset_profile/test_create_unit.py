@@ -9,7 +9,7 @@ from azure.cli.core.azclierror import InvalidArgumentValueError
 
 from azext_edge.edge.commands_asset_endpoint_profiles import create_asset_endpoint_profile
 from azext_edge.edge.common import ResourceTypeMapping
-from azext_edge.edge.providers.rpsaas.adr.base import API_VERSION
+from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
 from .....generators import generate_generic_id
 
@@ -46,7 +46,7 @@ from .....generators import generate_generic_id
 ])
 def test_create_asset_endpoint_profile(mocker, mocked_cmd, mocked_resource_management_client, aep_helpers_fixture, req):
     patched_cap = mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr.base.ADRBaseProvider._check_cluster_and_custom_location"
+        "azext_edge.edge.providers.rpsaas.adr.base.ADRBaseProvider.check_cluster_and_custom_location"
     )
     patched_cap.return_value = generate_generic_id()
 
@@ -81,7 +81,7 @@ def test_create_asset_endpoint_profile(mocker, mocked_cmd, mocked_resource_manag
     expected_resource_path = f"/resourceGroups/{resource_group_name}/providers/"\
         f"{ResourceTypeMapping.asset_endpoint_profile.value}/{asset_endpoint_profile_name}"
     assert expected_resource_path in call_kwargs["resource_id"]
-    assert call_kwargs["api_version"] == API_VERSION
+    assert call_kwargs["api_version"] == ADR_API_VERSION
 
     # asset body
     request_body = call_kwargs["parameters"]
