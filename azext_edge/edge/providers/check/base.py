@@ -784,6 +784,8 @@ def process_dict_resource(
                     display=Padding(display_text, (0, 0, 0, padding + 4))
                 )
             else:
+                # replace empty string with N/A
+                value = value if value else "N/A"
                 display_text = f"{key}: [cyan]{value}[/cyan]"
                 check_manager.add_display(
                     target_name=target_name,
