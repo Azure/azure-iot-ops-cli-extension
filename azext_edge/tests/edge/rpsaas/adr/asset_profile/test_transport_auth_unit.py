@@ -39,16 +39,17 @@ FULL_CERT = FULL_AEP["properties"]["transportAuthentication"]["ownCertificates"]
         }
     },
 ], ids=["minimal", "full"], indirect=True)
+@pytest.mark.parametrize("password_reference", [None, generate_generic_id()])
 def test_add_asset_endpoint_profile_transport_auth(
     mocked_cmd,
     mocked_resource_management_client,
-    mocked_build_query
+    mocked_build_query,
+    password_reference
 ):
     asset_endpoint_profile_name = generate_generic_id()
     resource_group_name = generate_generic_id()
     secret_reference = generate_generic_id()
     thumbprint = generate_generic_id()
-    password_reference = generate_generic_id()
     result = add_asset_endpoint_profile_transport_auth(
         cmd=mocked_cmd,
         asset_endpoint_profile_name=asset_endpoint_profile_name,

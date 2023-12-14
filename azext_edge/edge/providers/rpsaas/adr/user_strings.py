@@ -14,8 +14,9 @@ AUTH_REF_MISMATCH_ERROR = "Please choose to use a certificate reference or usern
     "authentication."
 CERT_AUTH_NOT_SUPPORTED = "Certificate authentication for user authentication is not supported yet."
 GENERAL_AUTH_REF_MISMATCH_ERROR = "Invalid combination of authentication mode and parameters."
-MISSING_TRANS_AUTH_PROP_ERROR = "Transport authentication ({0}) needs to have all of [password, thumbprint, "\
-    "and secret]."
+MISSING_TRANS_AUTH_PROP_ERROR = "Transport authentication ({0}) needs to have both thumbprint and secret."
 MISSING_USERPASS_REF_ERROR = "Please provide username and password reference for Username-Password authentication."
 REMOVED_CERT_REF_MSG = "Previously used certificate reference was removed."
 REMOVED_USERPASS_REF_MSG = "Previously used username and password references were removed."
+UNRECOGNIZED_TRANS_AUTH_PROP_ERROR = "Transport authentication ({0}) has unrecognized inputs. Accepted inputs are "\
+    "`thumbprint`, `secret`, and `password`."

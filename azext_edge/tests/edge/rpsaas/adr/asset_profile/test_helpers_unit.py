@@ -7,7 +7,12 @@
 import json
 import pytest
 
-from azure.cli.core.azclierror import CLIError, MutuallyExclusiveArgumentError, RequiredArgumentMissingError
+from azure.cli.core.azclierror import (
+    CLIError,
+    MutuallyExclusiveArgumentError,
+    RequiredArgumentMissingError,
+    UnrecognizedArgumentError
+)
 from azext_edge.edge.util.common import assemble_nargs_to_dict
 from azext_edge.edge.common import AEPAuthModes
 
@@ -159,6 +164,12 @@ def test_process_authentication_error(
     None,
     [
         [
+            f"thumbprint={generate_generic_id()}",
+            f"secret={generate_generic_id()}",
+        ],
+    ],
+    [
+        [
             f"password={generate_generic_id()}",
             f"thumbprint={generate_generic_id()}",
             f"secret={generate_generic_id()}",
@@ -171,7 +182,6 @@ def test_process_authentication_error(
             f"secret={generate_generic_id()}",
         ],
         [
-            f"password={generate_generic_id()}",
             f"thumbprint={generate_generic_id()}",
             f"secret={generate_generic_id()}",
         ],
@@ -186,11 +196,11 @@ def test_process_certificates(cert_list):
         expected_item = assemble_nargs_to_dict(cert_list[i])
         assert result[i]["certThumbprint"] == expected_item["thumbprint"]
         assert result[i]["certSecretReference"] == expected_item["secret"]
-        assert result[i]["certPasswordReference"] == expected_item["password"]
+        assert result[i]["certPasswordReference"] == expected_item.get("password")
 
 
-@pytest.mark.parametrize("missing_arg", ["password", "thumbprint", "secert"])
-def test_process_certificates_error(missing_arg):
+@pytest.mark.parametrize("missing_arg", ["thumbprint", "secert"])
+def test_process_certificates_missing_error(missing_arg):
     cert = [
         f"{arg}={generate_generic_id()}" for arg in ["password", "thumbprint", "secert"] if arg != missing_arg
     ]
@@ -203,6 +213,22 @@ def test_process_certificates_error(missing_arg):
     with pytest.raises(RequiredArgumentMissingError) as e:
         _process_certificates(
             [[f"{missing_arg}={generate_generic_id()}"]]
+        )
+    assert e.value.error_msg.startswith("Transport authentication")
+
+
+@pytest.mark.parametrize("password", [None, generate_generic_id()])
+def test_process_certificates_unrecognized_error(password):
+    cert = [
+        f"thumbprint={generate_generic_id()}",
+        f"secret={generate_generic_id()}",
+        f"{generate_generic_id()}={generate_generic_id()}",
+    ]
+    if password:
+        cert.append(f"password={password}")
+    with pytest.raises(UnrecognizedArgumentError) as e:
+        _process_certificates(
+            [cert]
         )
     assert e.value.error_msg.startswith("Transport authentication")
 

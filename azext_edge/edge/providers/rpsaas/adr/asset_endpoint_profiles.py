@@ -12,7 +12,7 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
-
+    UnrecognizedArgumentError
 )
 from .base import ADRBaseProvider
 from .user_strings import (
@@ -22,7 +22,8 @@ from .user_strings import (
     MISSING_USERPASS_REF_ERROR,
     MISSING_TRANS_AUTH_PROP_ERROR,
     REMOVED_CERT_REF_MSG,
-    REMOVED_USERPASS_REF_MSG
+    REMOVED_USERPASS_REF_MSG,
+    UNRECOGNIZED_TRANS_AUTH_PROP_ERROR
 )
 from ....util import assemble_nargs_to_dict, build_query
 from ....common import ResourceTypeMapping, AEPAuthModes
@@ -303,13 +304,15 @@ def _process_certificates(cert_list: Optional[List[List[str]]] = None) -> List[D
     processed_certs = []
     for cert in cert_list:
         parsed_cert = assemble_nargs_to_dict(cert)
-        if set(parsed_cert.keys()) != set(["password", "thumbprint", "secret"]):
+        if not all(["thumbprint" in parsed_cert, "secret" in parsed_cert]):
             raise RequiredArgumentMissingError(MISSING_TRANS_AUTH_PROP_ERROR.format(cert))
+        if not set(parsed_cert.keys()).issubset(set(["password", "thumbprint", "secret"])):
+            raise UnrecognizedArgumentError(UNRECOGNIZED_TRANS_AUTH_PROP_ERROR.format(cert))
 
         processed_point = {
             "certThumbprint": parsed_cert["thumbprint"],
             "certSecretReference": parsed_cert["secret"],
-            "certPasswordReference": parsed_cert["password"],
+            "certPasswordReference": parsed_cert.get("password"),
         }
         processed_certs.append(processed_point)
 

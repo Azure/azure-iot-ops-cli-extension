@@ -128,9 +128,9 @@ def add_asset_endpoint_profile_transport_auth(
     cmd,
     asset_endpoint_profile_name: str,
     resource_group_name: str,
-    password_reference: str,
     secret_reference: str,
     thumbprint: str,
+    password_reference: Optional[str] = None,
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.add_transport_auth(
