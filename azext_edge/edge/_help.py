@@ -284,22 +284,6 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops asset list"
-    ] = """
-        type: command
-        short-summary: List assets.
-
-        examples:
-        - name: List all assets in the current subscription.
-          text: >
-            az iot ops asset list
-
-        - name: List all assets in a resource group.
-          text: >
-            az iot ops asset list -g {resource_group}
-    """
-
-    helps[
         "iot ops asset query"
     ] = """
         type: command
