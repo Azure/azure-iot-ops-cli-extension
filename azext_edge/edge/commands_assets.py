@@ -100,14 +100,6 @@ def delete_asset(
     )
 
 
-def list_assets(
-    cmd,
-    resource_group_name: Optional[str] = None,
-) -> dict:
-    asset_provider = AssetProvider(cmd)
-    return asset_provider.list(resource_group_name=resource_group_name)
-
-
 def query_assets(
     cmd,
     asset_type: Optional[str] = None,
