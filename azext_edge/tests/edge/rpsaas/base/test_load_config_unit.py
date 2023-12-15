@@ -6,7 +6,7 @@
 
 import pytest
 from azext_edge.edge.providers.base import load_config_context
-from ...generators import generate_generic_id
+from ....generators import generate_generic_id
 
 context_name = generate_generic_id()
 

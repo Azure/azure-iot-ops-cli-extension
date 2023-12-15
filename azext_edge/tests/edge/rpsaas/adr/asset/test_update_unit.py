@@ -7,13 +7,13 @@
 import pytest
 
 from azext_edge.edge.commands_assets import update_asset
-from azext_edge.edge.providers.assets import API_VERSION
+from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
 from .conftest import (
     MINIMUM_ASSET,
     FULL_ASSET
 )
-from ...generators import generate_generic_id
+from .....generators import generate_generic_id
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [
@@ -63,7 +63,11 @@ from ...generators import generate_generic_id
     },
 ])
 def test_update_asset(
-    mocked_cmd, mocked_resource_management_client, asset_helpers_fixture, req
+    mocked_cmd,
+    mock_check_cluster_connectivity,
+    mocked_resource_management_client,
+    asset_helpers_fixture,
+    req
 ):
     _, patched_up = asset_helpers_fixture
     # Required params
@@ -86,7 +90,7 @@ def test_update_asset(
     # Update call
     call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
     assert call_kwargs["resource_id"] == original_asset["id"]
-    assert call_kwargs["api_version"] == API_VERSION
+    assert call_kwargs["api_version"] == ADR_API_VERSION
 
     # Check update request
     request_body = call_kwargs["parameters"]

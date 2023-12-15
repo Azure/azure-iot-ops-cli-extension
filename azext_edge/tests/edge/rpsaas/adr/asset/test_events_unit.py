@@ -13,13 +13,13 @@ from azext_edge.edge.commands_assets import (
     list_asset_events,
     remove_asset_event
 )
-from azext_edge.edge.providers.assets import API_VERSION
+from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
 from .conftest import (
     MINIMUM_ASSET,
     FULL_ASSET
 )
-from ...generators import generate_generic_id
+from .....generators import generate_generic_id
 
 
 FULL_EVENT = FULL_ASSET["properties"]["events"][0]
@@ -46,6 +46,7 @@ FULL_EVENT = FULL_ASSET["properties"]["events"][0]
 @pytest.mark.parametrize("sampling_interval", [None, 33])
 def test_add_asset_event(
     mocked_cmd,
+    mock_check_cluster_connectivity,
     mocked_resource_management_client,
     capability_id,
     name,
@@ -77,7 +78,7 @@ def test_add_asset_event(
     # Asset changes
     call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
     assert call_kwargs["resource_id"] == original_asset["id"]
-    assert call_kwargs["api_version"] == API_VERSION
+    assert call_kwargs["api_version"] == ADR_API_VERSION
 
     # Check update request
     request_events = call_kwargs["parameters"]["properties"]["events"]
@@ -132,7 +133,11 @@ def test_list_asset_events(mocked_cmd, mocked_resource_management_client):
     (None, generate_generic_id()),
 ])
 def test_remove_asset_event(
-    mocked_cmd, mocked_resource_management_client, event_notifier, name
+    mocked_cmd,
+    mock_check_cluster_connectivity,
+    mocked_resource_management_client,
+    event_notifier,
+    name
 ):
     asset_name = generate_generic_id()
     resource_group_name = generate_generic_id()
@@ -153,7 +158,7 @@ def test_remove_asset_event(
     # Asset changes
     call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
     assert call_kwargs["resource_id"] == original_asset["id"]
-    assert call_kwargs["api_version"] == API_VERSION
+    assert call_kwargs["api_version"] == ADR_API_VERSION
 
     # Check update request
     request_events = call_kwargs["parameters"]["properties"]["events"]

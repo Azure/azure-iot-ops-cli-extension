@@ -6,10 +6,7 @@
 
 import pytest
 
-from azext_edge.edge.commands_assets import list_assets
-from azext_edge.edge.providers.assets import API_VERSION
-
-from ...generators import generate_generic_id
+from .....generators import generate_generic_id
 
 
 @pytest.mark.parametrize("mocked_send_raw_request", [
@@ -28,14 +25,21 @@ def test_list_assets(
     mocked_send_raw_request,
     resource_group
 ):
-    result = list_assets(
-        cmd=mocked_cmd,
-        resource_group_name=resource_group
+    from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
+    api_version = generate_generic_id()
+    resource_type = generate_generic_id()
+    provider = RPSaaSBaseProvider(
+        mocked_cmd,
+        api_version,
+        resource_type,
+        generate_generic_id()
     )
+    result = provider.list(resource_group)
+
     assert result == mocked_send_raw_request.return_value.json.return_value["value"]
     mocked_send_raw_request.assert_called_once()
     call_kwargs = mocked_send_raw_request.call_args.kwargs
     assert call_kwargs["cli_ctx"] == mocked_cmd.cli_ctx
     assert call_kwargs["method"] == "GET"
-    assert f"/providers/Microsoft.DeviceRegistry/assets?api-version={API_VERSION}" in call_kwargs["url"]
+    assert f"/providers/{resource_type}?api-version={api_version}" in call_kwargs["url"]
     assert (f"/resourceGroups/{resource_group}" in call_kwargs["url"]) is (resource_group is not None)

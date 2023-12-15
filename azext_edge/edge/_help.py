@@ -486,3 +486,219 @@ def load_iotops_help():
           text: >
             az iot ops asset event remove --asset {asset} -g {resource_group} --name {name}
     """
+
+    helps[
+        "iot ops asset endpoint"
+    ] = """
+        type: group
+        short-summary: Manage asset endpoint profiles.
+    """
+
+    helps[
+        "iot ops asset endpoint create"
+    ] = """
+        type: command
+        short-summary: Create an asset endpoint.
+        long-summary: |
+                      Either custom location or cluster name must be provided. This command will check
+                      for the existance of the associated custom location and cluster and ensure that
+                      both are set up correctly with the microsoft.deviceregistry.assets extension.
+
+                      Azure IoT OPC UA Broker (preview) uses the same client certificate for all secure
+                      channels between itself and the OPC UA servers that it connects to.
+        examples:
+        - name: Create an asset endpoint with anonymous user authentication using the given custom location.
+          text: >
+            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
+            --target-address {target_address}
+        - name: Create an asset endpoint with anonymous user authentication using the given custom location and resource group
+                for the custom location. The resource group must be included if there are multiple custom locations with the
+                same name within a subscription.
+          text: >
+            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
+            --custom-location-resource-group {custom_location_resource_group} --target-address {target_address}
+        # - name: Create an asset endpoint with username-password user authentication using the given cluster name. The resource
+        #         group must be included if there are multiple clusters with the same name within a subscription.
+        #   text: >
+        #     az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
+        #     --cluster-resource-group {cluster_resource_group} --target-address {target_address}
+        #     --username-ref {username_reference} --password-ref {password_reference}
+        # - name: Create an asset endpoint with certificate user authentication and additional configuration using the given custom
+        #         location and cluster name.
+        #   text: >
+        #     az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
+        #     --custom-location {custom_location} --target-address {target_address} --certificate-ref {certificate_reference}
+        #     --additional-config {additional_configuration}
+        # - name: Create an asset endpoint with anonymous user authentication with preconfigured owned certificates.
+        #   text: >
+        #     az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
+        #     --target-address {target_address} --cert secret={secret_reference} password={password_reference} thumbprint {thumbprint}
+        #     --cert secret={secret_reference} password={password_reference} thumbprint={thumbprint}
+        - name: Create an asset endpoint with username-password user authentication and preconfigurated owned certificates with
+                prefilled values.The username and password references are set via the Azure Keyvault Container Storage Interface
+                driver.
+          text: >
+            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
+            --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
+            --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password" --cert secret=aio-opc-ua-broker-client-certificate
+            thumbprint=000000000000000000 password=aio-opc-ua-broker-client-certificate-password
+        - name: Create an asset endpoint with username-password user authentication and additional configuration with prefilled values
+                (powershell syntax example).
+          text: >
+            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
+            --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
+            --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password"
+            --additional-config '{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
+            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
+            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
+            \\\"autoAcceptUntrustedServerCertificates\\\": true}}'
+        - name: Create an asset endpoint with username-password user authentication and additional configuration with prefilled values
+                (cmd syntax example).
+          text: >
+            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
+            --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
+            --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password"
+            --additional-config "{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
+            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
+            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
+            \\\"autoAcceptUntrustedServerCertificates\\\": true}}"
+        - name: Create an asset endpoint with username-password user authentication and additional configuration with prefilled values
+                (bash syntax example).
+          text: >
+            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
+            --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
+            --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password"
+            --additional-config '{"applicationName": "opcua-connector", "defaults": {
+            "publishingIntervalMilliseconds": 100,  "samplingIntervalMilliseconds": 500,  "queueSize": 15,},
+            "session": {"timeout": 60000}, "subscription": {"maxItems": 1000}, "security": {
+            "autoAcceptUntrustedServerCertificates": true}}'
+    """
+
+    helps[
+        "iot ops asset endpoint query"
+    ] = """
+        type: command
+        short-summary: Query the Resource Graph for asset endpoints.
+        examples:
+        - name: Query for asset endpoints that hae anonymous authentication.
+          text: >
+            az iot ops asset endpoint query --authentication-mode Anonymous
+        - name: Query for asset endpoints that have the given target address and custom location.
+          text: >
+            az iot ops asset endpoint query --target-address {target_address} --custom-location {custom_location}
+    """
+
+    helps[
+        "iot ops asset endpoint show"
+    ] = """
+        type: command
+        short-summary: Show an asset endpoint.
+        examples:
+        - name: Show the details of an asset endpoint.
+          text: >
+            az iot ops asset endpoint show --name {asset_endpoint} -g {resource_group}
+    """
+
+    helps[
+        "iot ops asset endpoint update"
+    ] = """
+        type: command
+        short-summary: Update an asset endpoint.
+        long-summary: To update owned certificates, please use the command group `az iot ops asset endpoint certificate`.
+        examples:
+        - name: Update an asset endpoint's authentication mode to use anonymous user authentication.
+          text: >
+            az iot ops asset endpoint update --name {asset_endpoint} -g {resource_group}
+            --authentication-mode Anonymous
+        - name: Update an asset endpoint's username and password reference with prefilled values. This will transform the
+                authentication mode to username-password if it is not so already.
+          text: >
+            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
+            --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
+            --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password"
+        - name: Update an asset endpoint's target address and additional configuration with prefilled values
+                (powershell syntax example).
+          text: >
+            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
+            --target-address "opc.tcp://opcplc-000000:50000"
+            --additional-config '{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
+            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
+            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
+            \\\"autoAcceptUntrustedServerCertificates\\\": true}}'
+        - name: Update an asset endpoint's target address and additional configuration with prefilled values
+                (cmd syntax example).
+          text: >
+            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
+            --target-address "opc.tcp://opcplc-000000:50000"
+            --additional-config "{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
+            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
+            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
+            \\\"autoAcceptUntrustedServerCertificates\\\": true}}"
+        - name: Update an asset endpoint's target address and additional configuration with prefilled values
+                (bash syntax example).
+          text: >
+            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
+            --target-address "opc.tcp://opcplc-000000:50000"
+            --additional-config '{"applicationName": "opcua-connector", "defaults": {
+            "publishingIntervalMilliseconds": 100,  "samplingIntervalMilliseconds": 500,  "queueSize": 15,},
+            "session": {"timeout": 60000}, "subscription": {"maxItems": 1000}, "security": {
+            "autoAcceptUntrustedServerCertificates": true}}'
+    """
+
+    helps[
+        "iot ops asset endpoint delete"
+    ] = """
+        type: command
+        short-summary: Delete an asset endpoint.
+        examples:
+        - name: Delete an asset endpoint.
+          text: >
+            az iot ops asset endpoint delete --name {asset_endpoint} -g {resource_group}
+    """
+
+    helps[
+        "iot ops asset endpoint certificate"
+    ] = """
+        type: group
+        short-summary: Manage owned certificates in an asset endpoint.
+    """
+
+    helps[
+        "iot ops asset endpoint certificate add"
+    ] = """
+        type: command
+        short-summary: Add an owned certificate to an asset endpoint.
+        examples:
+        - name: Add a certificate to an asset endpoint.
+          text: >
+            az iot ops asset endpoint certificate add --endpoint {asset_endpoint} -g {resource_group}
+            --secret-ref {secret_reference} --thumbprint {thumbprint} --password-ref {password_reference}
+        - name: Add a certificate to an asset endpoint that uses a password with prefilled values.
+          text: >
+            az iot ops asset endpoint certificate add --endpoint myAssetEndpoint -g myRG
+            --secret-ref "aio-opc-ua-broker-client/certificate" --thumbprint 000000000000000000
+            --password-ref "aio-opc-ua-broker-client/certificate-password"
+    """
+
+    helps[
+        "iot ops asset endpoint certificate list"
+    ] = """
+        type: command
+        short-summary: List owned certificates in an asset endpoint.
+        examples:
+        - name: List all owned certificates in an asset endpoint.
+          text: >
+            az iot ops asset endpoint certificate list --endpoint {asset_endpoint} -g {resource_group}
+    """
+
+    helps[
+        "iot ops asset endpoint certificate remove"
+    ] = """
+        type: command
+        short-summary: Remove an owned certificate in an asset endpoint.
+        examples:
+        - name: Remove a certificate from an asset endpoint.
+          text: >
+            az iot ops asset endpoint certificate remove --endpoint {asset_endpoint} -g {resource_group}
+            --thumbprint {thumbprint}
+    """
