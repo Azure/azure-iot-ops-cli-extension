@@ -13,6 +13,7 @@ from ..common import ListableEnum, OpsServiceType
 from .check.base import check_pre_deployment, process_as_list
 from .check.common import ResourceOutputDetailLevel
 from .check.dataprocessor import check_dataprocessor_deployment
+from .check.deviceregistry import check_deviceregistry_deployment
 from .check.lnm import check_lnm_deployment
 from .check.mq import check_mq_deployment
 from .check.opcua import check_opcua_deployment
@@ -52,6 +53,7 @@ def run_checks(
             service_check_dict = {
                 OpsServiceType.mq.value: check_mq_deployment,
                 OpsServiceType.dataprocessor.value: check_dataprocessor_deployment,
+                OpsServiceType.deviceregistry.value: check_deviceregistry_deployment,
                 OpsServiceType.lnm.value: check_lnm_deployment,
                 OpsServiceType.opcua.value: check_opcua_deployment,
             }
