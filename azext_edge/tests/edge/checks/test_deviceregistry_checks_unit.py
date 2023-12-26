@@ -125,6 +125,91 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                 ],
             ]
         ),
+        # no assets
+        (
+            # assets
+            [],
+            # namespace conditions str
+            [],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "skipped"),
+                    ("value/assets", None),
+                ],
+            ]
+        ),
+        # status failed
+        (
+            # assets
+            [
+                {
+                    "metadata": {
+                        "name": "asset-1",
+                    },
+                    "spec": {
+                        "assetEndpointProfileUri": "endpoint",
+                        "status": {
+                            "errors": [
+                                {
+                                    "code": "404",
+                                    "message": "error",
+                                }
+                            ]
+                        }
+                    }
+                },
+            ],
+            # namespace conditions str
+            ["spec.assetEndpointProfileUri", "spec.status"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/spec.assetEndpointProfileUri", 'endpoint'),
+                ],
+                [
+                    ("status", "error"),
+                    ("value/spec.status", "{'errors': [{'code': '404', 'message': 'error'}]}"),
+                ],
+            ]
+        ),
+        # event Notifier not defined
+        (
+            # assets
+            [
+                {
+                    "metadata": {
+                        "name": "asset-1",
+                    },
+                    "spec": {
+                        "assetEndpointProfileUri": "endpoint",
+                        "events": [
+                            {
+                                "name": "event-1",
+                            },
+                        ]
+                    }
+                },
+            ],
+            # namespace conditions str
+            ["spec.assetEndpointProfileUri", "len(spec.events)", "spec.events.[0].eventNotifier"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/spec.assetEndpointProfileUri", 'endpoint'),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/len(spec.events)", 1),
+                ],
+                [
+                    ("status", "error"),
+                    ("value/spec.events.[0].eventNotifier", ""),
+                ],
+            ]
+        ),
     ]
 )
 def test_assets_checks(
@@ -293,6 +378,20 @@ def test_assets_checks(
                 [
                     ("status", "error"),
                     ("value/spec.userAuthentication.x509Credentials.certificateReference", None),
+                ],
+            ]
+        ),
+        # no assetEndpointProfiles
+        (
+            # assetEndpointProfiles
+            [],
+            # namespace conditions str
+            [],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "skipped"),
+                    ("value/assetEndpointProfiles", None),
                 ],
             ]
         ),

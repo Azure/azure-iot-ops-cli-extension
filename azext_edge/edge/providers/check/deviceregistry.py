@@ -13,7 +13,6 @@ from .base import (
     CheckManager,
     add_display_and_eval,
     check_post_deployment,
-    decorate_pod_phase,
     generate_target_resource_name,
     process_properties,
     resources_grouped_by_namespace,
@@ -25,16 +24,10 @@ from kubernetes.client.models import V1Pod
 from ...common import CheckTaskStatus
 
 from .common import (
-    AIO_LNM_PREFIX,
     ASSET_DATAPOINT_PROPERTIES,
     ASSET_ENDPOINT_OWNCERTIFICATE_PROPERTIES,
+    ASSET_EVENT_PROPERTIES,
     ASSET_PROPERTIES,
-    CORE_SERVICE_RUNTIME_RESOURCE,
-    LNM_ALLOWLIST_PROPERTIES,
-    LNM_EXCLUDED_SUBRESOURCE,
-    LNM_IMAGE_PROPERTIES,
-    LNM_POD_CONDITION_TEXT_MAP,
-    LNM_REST_PROPERTIES,
     ResourceOutputDetailLevel,
 )
 
@@ -42,8 +35,6 @@ from ..edge_api import (
     DEVICEREGISTRY_API_V1,
     DeviceRegistryResourceKinds,
 )
-
-from ..support.lnm import LNM_APP_LABELS, LNM_LABEL_PREFIX
 
 
 def check_deviceregistry_deployment(
@@ -146,78 +137,80 @@ def evaluate_assets(
                     
             # data points
             data_points = asset_spec.get("dataPoints", [])
-            check_manager.add_target_conditions(
-                target_name=target_assets,
-                namespace=namespace,
-                conditions=["len(spec.dataPoints)"]
-            )
-            data_points_count = len(data_points)
-            data_points_value = {"len(spec.dataPoints)": data_points_count}
-            data_points_status = CheckTaskStatus.success.value
 
-            if data_points_count > 1000:
-                data_points_text = (
-                    # expecting no more than 1000 data points per asset
-                    f"Data points [red]exceeding 1000[/red]. Detected {data_points_count}."
-                )
-            else:
-                data_points_text = (
-                    f"[bright_blue]{data_points_count}[/bright_blue] data points detected."
-                )
-            
-            add_display_and_eval(
-                check_manager=check_manager,
-                target_name=target_assets,
-                display_text=data_points_text,
-                eval_status=data_points_status,
-                eval_value=data_points_value,
-                resource_name=asset_name,
-                namespace=namespace,
-                padding=(0, 0, 0, 14)
-            )
-
-            for data_point in data_points:
-                data_point_data_source = data_point.get("dataSource", "")
-                index = data_points.index(data_point)
-
+            if data_points:
                 check_manager.add_target_conditions(
                     target_name=target_assets,
                     namespace=namespace,
-                    conditions=[f"spec.dataPoints.[{index}].dataSource"]
+                    conditions=["len(spec.dataPoints)"]
                 )
-                data_point_data_source_value = {f"spec.dataPoints.[{index}].dataSource": data_point_data_source}
-                data_point_data_source_status = CheckTaskStatus.success.value
-                if data_point_data_source:
-                    data_point_data_source_text = (
-                        f"- Data source: {{[bright_blue]{data_point_data_source}[/bright_blue]}} [green]detected[/green]."
+                data_points_count = len(data_points)
+                data_points_value = {"len(spec.dataPoints)": data_points_count}
+                data_points_status = CheckTaskStatus.success.value
+
+                if data_points_count > 1000:
+                    data_points_text = (
+                        # expecting no more than 1000 data points per asset
+                        f"Data points [red]exceeding 1000[/red]. Detected {data_points_count}."
                     )
                 else:
-                    data_point_data_source_text = (
-                        "Data source [red]not detected[/red]."
+                    data_points_text = (
+                        f"[bright_blue]{data_points_count}[/bright_blue] data points detected."
                     )
-                    data_point_data_source_status = CheckTaskStatus.error.value
                 
                 add_display_and_eval(
                     check_manager=check_manager,
                     target_name=target_assets,
-                    display_text=data_point_data_source_text,
-                    eval_status=data_point_data_source_status,
-                    eval_value=data_point_data_source_value,
+                    display_text=data_points_text,
+                    eval_status=data_points_status,
+                    eval_value=data_points_value,
                     resource_name=asset_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 18)
+                    padding=(0, 0, 0, 14)
                 )
 
-                if detail_level > ResourceOutputDetailLevel.summary.value:
-                    process_properties(
-                        check_manager=check_manager,
-                        detail_level=detail_level,
+                for data_point in data_points:
+                    data_point_data_source = data_point.get("dataSource", "")
+                    index = data_points.index(data_point)
+
+                    check_manager.add_target_conditions(
                         target_name=target_assets,
-                        prop_value=data_point,
-                        properties=ASSET_DATAPOINT_PROPERTIES,
                         namespace=namespace,
-                        padding=(0, 0, 0, 20)
+                        conditions=[f"spec.dataPoints.[{index}].dataSource"]
                     )
+                    data_point_data_source_value = {f"spec.dataPoints.[{index}].dataSource": data_point_data_source}
+                    data_point_data_source_status = CheckTaskStatus.success.value
+                    if data_point_data_source:
+                        data_point_data_source_text = (
+                            f"- Data source: {{[bright_blue]{data_point_data_source}[/bright_blue]}} [green]detected[/green]."
+                        )
+                    else:
+                        data_point_data_source_text = (
+                            "Data source [red]not detected[/red]."
+                        )
+                        data_point_data_source_status = CheckTaskStatus.error.value
+                    
+                    add_display_and_eval(
+                        check_manager=check_manager,
+                        target_name=target_assets,
+                        display_text=data_point_data_source_text,
+                        eval_status=data_point_data_source_status,
+                        eval_value=data_point_data_source_value,
+                        resource_name=asset_name,
+                        namespace=namespace,
+                        padding=(0, 0, 0, 18)
+                    )
+
+                    if detail_level > ResourceOutputDetailLevel.summary.value:
+                        process_properties(
+                            check_manager=check_manager,
+                            detail_level=detail_level,
+                            target_name=target_assets,
+                            prop_value=data_point,
+                            properties=ASSET_DATAPOINT_PROPERTIES,
+                            namespace=namespace,
+                            padding=(0, 0, 0, 20)
+                        )
 
             if detail_level > ResourceOutputDetailLevel.summary.value:
                 process_properties(
@@ -230,6 +223,84 @@ def evaluate_assets(
                     padding=(0, 0, 0, 14)
                 )
             
+            # events
+            events = asset_spec.get("events", [])
+            if events:
+                check_manager.add_target_conditions(
+                    target_name=target_assets,
+                    namespace=namespace,
+                    conditions=["len(spec.events)"]
+                )
+                events_count = len(events)
+                events_count_value = {"len(spec.events)": events_count}
+                events_count_status = CheckTaskStatus.success.value
+
+                if events_count > 1000:
+                    events_count_text = (
+                        # expecting no more than 1000 events per asset
+                        f"Events [red]exceeding 1000[/red]. Detected {events_count}."
+                    )
+                    events_count_status = CheckTaskStatus.error.value
+                else:
+                    events_count_text = (
+                        f"[bright_blue]{events_count}[/bright_blue] events detected."
+                    )
+            
+                add_display_and_eval(
+                    check_manager=check_manager,
+                    target_name=target_assets,
+                    display_text=events_count_text,
+                    eval_status=events_count_status,
+                    eval_value=events_count_value,
+                    resource_name=asset_name,
+                    namespace=namespace,
+                    padding=(0, 0, 0, 14)
+                )
+
+                for event in events:
+                    event_notifier = event.get("eventNotifier", "")
+                    index = events.index(event)
+
+                    check_manager.add_target_conditions(
+                        target_name=target_assets,
+                        namespace=namespace,
+                        conditions=[f"spec.events.[{index}].eventNotifier"]
+                    )
+                    event_notifier_value = {f"spec.events.[{index}].eventNotifier": event_notifier}
+                    event_notifier_status = CheckTaskStatus.success.value
+                    if event_notifier:
+                        event_notifier_text = (
+                            f"- Event notifier: {{[bright_blue]{event_notifier}[/bright_blue]}} [green]detected[/green]."
+                        )
+                    else:
+                        event_notifier_text = (
+                            "Event notifier [red]not detected[/red]."
+                        )
+                        event_notifier_status = CheckTaskStatus.error.value
+                    
+                    add_display_and_eval(
+                        check_manager=check_manager,
+                        target_name=target_assets,
+                        display_text=event_notifier_text,
+                        eval_status=event_notifier_status,
+                        eval_value=event_notifier_value,
+                        resource_name=asset_name,
+                        namespace=namespace,
+                        padding=(0, 0, 0, 18)
+                    )
+
+                    if detail_level > ResourceOutputDetailLevel.summary.value:
+                        process_properties(
+                            check_manager=check_manager,
+                            detail_level=detail_level,
+                            target_name=target_assets,
+                            prop_value=event,
+                            properties=ASSET_EVENT_PROPERTIES,
+                            namespace=namespace,
+                            padding=(0, 0, 0, 20)
+                        )
+
+            
             # status
             status = asset_spec.get("status", "")
             if status:
@@ -239,11 +310,14 @@ def evaluate_assets(
                     conditions=["spec.status"]
                 )
 
-                status_value = {"spec.status": status}
+                status_value = {"spec.status": str(status)}
                 status_status = CheckTaskStatus.success.value
 
                 errors = status.get("errors", [])
                 if errors:
+                    status_text = (
+                        "Asset status [red]error[/red]."
+                    )
                     for error in errors:
                         error_code = error.get("code", "")
                         message = error.get("message", "")
@@ -254,14 +328,14 @@ def evaluate_assets(
                         check_manager.add_display(
                             target_name=target_assets,
                             namespace=namespace,
-                            display=Padding(error_text, (0, 0, 0, 14)),
+                            display=Padding(error_text, (0, 0, 0, 18)),
                         )
                     status_status = CheckTaskStatus.error.value
                 else:
                     status_text = (
-                        "- Asset status [green]OK[/green]."
+                        "Asset status [green]OK[/green]."
                     )
-                
+
                 add_display_and_eval(
                     check_manager=check_manager,
                     target_name=target_assets,
@@ -270,7 +344,7 @@ def evaluate_assets(
                     eval_value=status_value,
                     resource_name=asset_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 12)
+                    padding=(0, 0, 0, 14)
                 )
 
     return check_manager.as_dict(as_list)
@@ -528,46 +602,6 @@ def evaluate_asset_endpoint_profiles(
                         namespace=namespace,
                         padding=(0, 0, 0, 22)
                     )
-            
-            # check status if exists
-            status = asset_endpoint_profile.get("status", {})
-            if status:
-                check_manager.add_target_conditions(
-                    target_name=target_asset_endpoint_profiles,
-                    namespace=namespace,
-                    conditions=["status"]
-                )
-                status_value = {"status": status}
-                status_errors = status.get("errors", [])
-                if status_errors:
-                    for error in status_errors:
-                        error_code = error.get("code", "")
-                        message = error.get("message", "")
-                        error_text = (
-                            f"- Asset endpoint profile status error code: [red]{error_code}[/red]. Message: {message}"
-                        )
-                        
-                        check_manager.add_display(
-                            target_name=target_asset_endpoint_profiles,
-                            namespace=namespace,
-                            display=Padding(error_text, (0, 0, 0, 14)),
-                        )
-                    status_status = CheckTaskStatus.error.value
-                else:
-                    status_text = (
-                        "- Asset endpoint profile status [green]OK[/green]."
-                    )
-                
-                add_display_and_eval(
-                    check_manager=check_manager,
-                    target_name=target_asset_endpoint_profiles,
-                    display_text=status_text,
-                    eval_status=status_status,
-                    eval_value=status_value,
-                    resource_name=asset_endpoint_profile_name,
-                    namespace=namespace,
-                    padding=(0, 0, 0, 12)
-                )
         
             if detail_level > ResourceOutputDetailLevel.summary.value:
                 process_properties(

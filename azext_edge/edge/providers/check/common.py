@@ -177,7 +177,6 @@ ASSET_PROPERTIES = [
     ("displayName", "Display Name", False),
     ("documentationUri", "Documentation Uri", False),
     ("enabled", "Enabled", False),
-    ("events", "Events", True),
     ("observabilityMode", "Observability Mode", False),
     ("externalAssetId", "External Asset Id", False),
     ("hardwareRevision", "Hardware Revision", False),
@@ -189,6 +188,13 @@ ASSET_PROPERTIES = [
     ("softwareRevision", "Software Revision", False),
     ("uuid", "Uuid", False),
     ("version", "Version", False),
+]
+
+ASSET_EVENT_PROPERTIES = [
+    ("name", "Name", False),
+    ("capabilityId", "Capability Id", True),
+    ("eventConfiguration", "Configuration", False),
+    ("observabilityMode", "Observability Mode", False),
 ]
 
 ASSET_ENDPOINT_OWNCERTIFICATE_PROPERTIES = [
