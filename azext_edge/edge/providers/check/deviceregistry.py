@@ -4,10 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from itertools import groupby
-from typing import Any, Dict, List, Optional, Tuple
-
-from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
+from typing import Any, Dict, List
 
 from .base import (
     CheckManager,
@@ -19,7 +16,6 @@ from .base import (
 )
 
 from rich.padding import Padding
-from kubernetes.client.models import V1Pod
 
 from ...common import CheckTaskStatus
 
@@ -123,7 +119,7 @@ def evaluate_assets(
                     "Asset endpoint profile uri [red]not detected[/red]."
                 )
                 endpoint_profile_uri_status = CheckTaskStatus.error.value
-            
+
             add_display_and_eval(
                 check_manager=check_manager,
                 target_name=target_assets,
@@ -134,7 +130,7 @@ def evaluate_assets(
                 namespace=namespace,
                 padding=(0, 0, 0, 14)
             )
-                    
+
             # data points
             data_points = asset_spec.get("dataPoints", [])
 
@@ -157,7 +153,7 @@ def evaluate_assets(
                     data_points_text = (
                         f"[bright_blue]{data_points_count}[/bright_blue] data points detected."
                     )
-                
+
                 add_display_and_eval(
                     check_manager=check_manager,
                     target_name=target_assets,
@@ -189,7 +185,7 @@ def evaluate_assets(
                             "Data source [red]not detected[/red]."
                         )
                         data_point_data_source_status = CheckTaskStatus.error.value
-                    
+
                     add_display_and_eval(
                         check_manager=check_manager,
                         target_name=target_assets,
@@ -222,7 +218,7 @@ def evaluate_assets(
                     namespace=namespace,
                     padding=(0, 0, 0, 14)
                 )
-            
+
             # events
             events = asset_spec.get("events", [])
             if events:
@@ -245,7 +241,7 @@ def evaluate_assets(
                     events_count_text = (
                         f"[bright_blue]{events_count}[/bright_blue] events detected."
                     )
-            
+
                 add_display_and_eval(
                     check_manager=check_manager,
                     target_name=target_assets,
@@ -277,7 +273,7 @@ def evaluate_assets(
                             "Event notifier [red]not detected[/red]."
                         )
                         event_notifier_status = CheckTaskStatus.error.value
-                    
+
                     add_display_and_eval(
                         check_manager=check_manager,
                         target_name=target_assets,
@@ -300,7 +296,6 @@ def evaluate_assets(
                             padding=(0, 0, 0, 20)
                         )
 
-            
             # status
             status = asset_spec.get("status", "")
             if status:
@@ -324,7 +319,7 @@ def evaluate_assets(
                         error_text = (
                             f"- Asset status error code: [red]{error_code}[/red]. Message: {message}"
                         )
-                        
+
                         check_manager.add_display(
                             target_name=target_assets,
                             namespace=namespace,
@@ -446,7 +441,7 @@ def evaluate_asset_endpoint_profiles(
                 transport_authentication_own_certificates_value = {"spec.transportAuthentication.ownCertificates": transport_authentication_own_certificates}
                 transport_authentication_own_certificates_status = CheckTaskStatus.success.value
 
-                if transport_authentication_own_certificates == None:
+                if transport_authentication_own_certificates is None:
                     transport_authentication_own_certificates_text = (
                         "Own certificates [red]not detected[/red]."
                     )
@@ -455,7 +450,7 @@ def evaluate_asset_endpoint_profiles(
                     transport_authentication_own_certificates_text = (
                         f"Own certificates: {len(transport_authentication_own_certificates)} [green]detected[/green]."
                     )
-                
+
                 add_display_and_eval(
                     check_manager=check_manager,
                     target_name=target_asset_endpoint_profiles,
@@ -487,7 +482,7 @@ def evaluate_asset_endpoint_profiles(
                             namespace=namespace,
                             padding=(0, 0, 0, 26)
                         )
-                
+
             # userAuthentication
             user_authentication = asset_endpoint_profile_spec.get("userAuthentication", {})
             if user_authentication:
@@ -553,7 +548,7 @@ def evaluate_asset_endpoint_profiles(
                             "Certificate reference [red]not detected[/red]."
                         )
                         user_authentication_x509_credentials_status = CheckTaskStatus.error.value
-                    
+
                     add_display_and_eval(
                         check_manager=check_manager,
                         target_name=target_asset_endpoint_profiles,
@@ -591,7 +586,7 @@ def evaluate_asset_endpoint_profiles(
                             "Username reference or password reference [red]not detected[/red]."
                         )
                         user_authentication_username_password_credentials_status = CheckTaskStatus.error.value
-                    
+
                     add_display_and_eval(
                         check_manager=check_manager,
                         target_name=target_asset_endpoint_profiles,
@@ -602,7 +597,7 @@ def evaluate_asset_endpoint_profiles(
                         namespace=namespace,
                         padding=(0, 0, 0, 22)
                     )
-        
+
             if detail_level > ResourceOutputDetailLevel.summary.value:
                 process_properties(
                     check_manager=check_manager,

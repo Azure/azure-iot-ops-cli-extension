@@ -33,8 +33,10 @@ from ...generators import generate_generic_id
 @pytest.mark.parametrize('ops_service', ['deviceregistry'])
 def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        DeviceRegistryResourceKinds.ASSET.value: "azext_edge.edge.providers.check.deviceregistry.evaluate_assets",
-        DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value: "azext_edge.edge.providers.check.deviceregistry.evaluate_asset_endpoint_profiles",
+        DeviceRegistryResourceKinds.ASSET.value:
+            "azext_edge.edge.providers.check.deviceregistry.evaluate_assets",
+        DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value:
+            "azext_edge.edge.providers.check.deviceregistry.evaluate_asset_endpoint_profiles",
     }
 
     assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
