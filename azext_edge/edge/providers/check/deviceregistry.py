@@ -27,6 +27,7 @@ from ...common import CheckTaskStatus
 from .common import (
     AIO_LNM_PREFIX,
     ASSET_DATAPOINT_PROPERTIES,
+    ASSET_ENDPOINT_OWNCERTIFICATE_PROPERTIES,
     ASSET_PROPERTIES,
     CORE_SERVICE_RUNTIME_RESOURCE,
     LNM_ALLOWLIST_PROPERTIES,
@@ -53,6 +54,7 @@ def check_deviceregistry_deployment(
 ) -> None:
     evaluate_funcs = {
         DeviceRegistryResourceKinds.ASSET: evaluate_assets,
+        DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE: evaluate_asset_endpoint_profiles,
     }
 
     check_post_deployment(
@@ -68,33 +70,13 @@ def check_deviceregistry_deployment(
     )
 
 
-# def evaluate_core_service_runtime(
-#     as_list: bool = False,
-#     detail_level: int = ResourceOutputDetailLevel.summary.value,
-# ) -> Dict[str, Any]:
-#     check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate LNM core service")
-
-#     lnm_operator_label = f"app in ({','.join(LNM_APP_LABELS)})"
-#     _process_lnm_pods(
-#         check_manager=check_manager,
-#         description="LNM runtime resources",
-#         target=CORE_SERVICE_RUNTIME_RESOURCE,
-#         prefix=AIO_LNM_PREFIX,
-#         label_selector=lnm_operator_label,
-#         padding=6,
-#         detail_level=detail_level,
-#     )
-
-#     return check_manager.as_dict(as_list)
-
-
 def evaluate_assets(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalAssets", check_desc="Evaluate Device Registry instances")
 
-    lnm_namespace_conditions = ["spec.assetEndpointProfileUri", "spec.allowList", "spec.image"]
+    asset_namespace_conditions = ["spec.assetEndpointProfileUri"]
 
     all_assets: dict = DEVICEREGISTRY_API_V1.get_resources(DeviceRegistryResourceKinds.ASSET).get("items", [])
     target_assets = generate_target_resource_name(api_info=DEVICEREGISTRY_API_V1, resource_kind=DeviceRegistryResourceKinds.ASSET.value)
@@ -111,7 +93,7 @@ def evaluate_assets(
         return check_manager.as_dict(as_list)
 
     for (namespace, assets) in resources_grouped_by_namespace(all_assets):
-        check_manager.add_target(target_name=target_assets, namespace=namespace, conditions=lnm_namespace_conditions)
+        check_manager.add_target(target_name=target_assets, namespace=namespace, conditions=asset_namespace_conditions)
         check_manager.add_display(
             target_name=target_assets,
             namespace=namespace,
@@ -161,37 +143,6 @@ def evaluate_assets(
                 namespace=namespace,
                 padding=(0, 0, 0, 14)
             )
-
-            # if detail_level > ResourceOutputDetailLevel.summary.value:
-            #     # asset type
-            #     asset_type = asset_spec.get("assetType", "")
-
-            #     if asset_type:
-            #         asset_type_text = (
-            #             f"Asset Type: {asset_type}"
-            #         )
-
-            #         check_manager.add_display(
-            #             target_name=target_assets,
-            #             namespace=namespace,
-            #             display=Padding(asset_type_text, (0, 0, 0, 12)),
-            #         )
-                
-            #     if detail_level == ResourceOutputDetailLevel.verbose.value:
-            #         # attibutes key-value pairs
-            #         attributes = asset_spec.get("attributes", {})
-            #         for attribute in attributes:
-            #             attribute_name = attribute.get("name", "")
-            #             attribute_value = attribute.get("value", "")
-            #             attribute_text = (
-            #                 f"Attribute {attribute_name} : {attribute_value}"
-            #             )
-
-            #             check_manager.add_display(
-            #                 target_name=target_assets,
-            #                 namespace=namespace,
-            #                 display=Padding(attribute_text, (0, 0, 0, 12)),
-            #             )
                     
             # data points
             data_points = asset_spec.get("dataPoints", [])
@@ -227,13 +178,14 @@ def evaluate_assets(
 
             for data_point in data_points:
                 data_point_data_source = data_point.get("dataSource", "")
+                index = data_points.index(data_point)
 
                 check_manager.add_target_conditions(
                     target_name=target_assets,
                     namespace=namespace,
-                    conditions=[f"spec.dataPoints.{data_point_data_source}.dataSource"]
+                    conditions=[f"spec.dataPoints.[{index}].dataSource"]
                 )
-                data_point_data_source_value = {f"spec.dataPoints.{data_point_data_source}.dataSource": data_point_data_source}
+                data_point_data_source_value = {f"spec.dataPoints.[{index}].dataSource": data_point_data_source}
                 data_point_data_source_status = CheckTaskStatus.success.value
                 if data_point_data_source:
                     data_point_data_source_text = (
@@ -324,144 +276,311 @@ def evaluate_assets(
     return check_manager.as_dict(as_list)
 
 
-def _process_lnm_pods(
-    check_manager: CheckManager,
-    description: str,
-    target: str,
-    prefix: str,
-    padding: int,
-    label_selector: Optional[str] = None,
-    conditions: Optional[List[str]] = None,
-    namespace: Optional[str] = None,
+def evaluate_asset_endpoint_profiles(
+    as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> None:
-    def _get_lnm_pods_namespace(pod: V1Pod) -> str:
-        return pod.metadata.namespace
+) -> Dict[str, Any]:
+    check_manager = CheckManager(check_name="evalAssetEndpointProfiles", check_desc="Evaluate Asset Endpoint Profiles")
 
-    pods = get_namespaced_pods_by_prefix(prefix=prefix, namespace=namespace, label_selector=label_selector)
+    lnm_namespace_conditions = ["spec.uuid"]
 
-    pods.sort(key=_get_lnm_pods_namespace)
-    for (namespace, pods) in groupby(pods, _get_lnm_pods_namespace):
-        check_manager.add_target(target_name=target, namespace=namespace, conditions=conditions)
+    all_asset_endpoint_profiles: dict = DEVICEREGISTRY_API_V1.get_resources(DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE).get("items", [])
+    target_asset_endpoint_profiles = generate_target_resource_name(api_info=DEVICEREGISTRY_API_V1, resource_kind=DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value)
+
+    if not all_asset_endpoint_profiles:
+        fetch_asset_endpoint_profiles_warning_text = "Unable to fetch asset endpoint profiles in any namespaces."
+        check_manager.add_target(target_name=target_asset_endpoint_profiles)
+        check_manager.add_display(target_name=target_asset_endpoint_profiles, display=Padding(fetch_asset_endpoint_profiles_warning_text, (0, 0, 0, 8)))
+        check_manager.add_target_eval(
+            target_name=target_asset_endpoint_profiles,
+            status=CheckTaskStatus.skipped.value,
+            value={"assetEndpointProfiles": None}
+        )
+        return check_manager.as_dict(as_list)
+
+    for (namespace, asset_endpoint_profiles) in resources_grouped_by_namespace(all_asset_endpoint_profiles):
+        check_manager.add_target(target_name=target_asset_endpoint_profiles, namespace=namespace, conditions=lnm_namespace_conditions)
         check_manager.add_display(
-            target_name=target,
+            target_name=target_asset_endpoint_profiles,
             namespace=namespace,
             display=Padding(
-                f"{description} in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, padding)
+                f"Asset Endpoint Profiles in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 8)
             )
         )
 
-        for pod in pods:
-            _evaluate_lnm_pod_health(
-                check_manager=check_manager,
-                target=target,
-                pod=pod,
-                display_padding=padding + 4,
-                namespace=namespace,
-                detail_level=detail_level,
+        asset_endpoint_profiles: List[dict] = list(asset_endpoint_profiles)
+
+        for asset_endpoint_profile in asset_endpoint_profiles:
+            asset_endpoint_profile_name = asset_endpoint_profile["metadata"]["name"]
+
+            asset_endpoint_profile_status_text = (
+                f"- Asset endpoint profile {{[bright_blue]{asset_endpoint_profile_name}[/bright_blue]}} detected."
             )
 
-    return pods
-
-
-def _evaluate_lnm_pod_health(
-    check_manager: CheckManager,
-    target: str,
-    pod: V1Pod,
-    display_padding: int,
-    namespace: str,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> None:
-
-    def _decorate_pod_condition(condition: bool) -> Tuple[str, str]:
-        if condition:
-            return f"[green]{condition}[/green]", CheckTaskStatus.success.value
-        return f"[red]{condition}[/red]", CheckTaskStatus.error.value
-
-    target_service_pod = f"pod/{pod.metadata.name}"
-
-    pod_conditions = [
-        f"{target_service_pod}.status.phase",
-        f"{target_service_pod}.status.conditions.ready",
-        f"{target_service_pod}.status.conditions.initialized",
-        f"{target_service_pod}.status.conditions.containersready",
-        f"{target_service_pod}.status.conditions.podscheduled",
-    ]
-
-    if check_manager.targets.get(target, {}).get(namespace, {}).get("conditions", None):
-        check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
-    else:
-        check_manager.set_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
-
-    if not pod:
-        add_display_and_eval(
-            check_manager=check_manager,
-            target_name=target,
-            display_text=f"{target_service_pod}* [yellow]not detected[/yellow].",
-            eval_status=CheckTaskStatus.warning.value,
-            eval_value=None,
-            resource_name=target_service_pod,
-            namespace=namespace,
-            padding=(0, 0, 0, display_padding)
-        )
-    else:
-        pod_dict = pod.to_dict()
-        pod_name = pod_dict["metadata"]["name"]
-        pod_phase = pod_dict.get("status", {}).get("phase")
-        pod_conditions = pod_dict.get("status", {}).get("conditions", {})
-        pod_phase_deco, status = decorate_pod_phase(pod_phase)
-
-        check_manager.add_target_eval(
-            target_name=target,
-            namespace=namespace,
-            status=status,
-            resource_name=target_service_pod,
-            value={"name": pod_name, "status.phase": pod_phase},
-        )
-
-        for text in [
-            f"\nPod {{[bright_blue]{pod_name}[/bright_blue]}}",
-            f"- Phase: {pod_phase_deco}",
-            "- Conditions:"
-        ]:
-            padding = 2 if "\nPod" not in text else 0
-            padding += display_padding
             check_manager.add_display(
-                target_name=target,
+                target_name=target_asset_endpoint_profiles,
                 namespace=namespace,
-                display=Padding(text, (0, 0, 0, padding)),
+                display=Padding(asset_endpoint_profile_status_text, (0, 0, 0, 10)),
             )
 
-        for condition in pod_conditions:
-            type = condition.get("type")
-            condition_type = LNM_POD_CONDITION_TEXT_MAP[type]
-            condition_status = True if condition.get("status") == "True" else False
-            pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
+            asset_endpoint_profile_spec = asset_endpoint_profile["spec"]
+            endpoint_profile_uuid = asset_endpoint_profile_spec.get("uuid", "")
+
+            endpoint_profile_uuid_value = {"spec.uuid": endpoint_profile_uuid}
+            endpoint_profile_uuid_status = CheckTaskStatus.success.value
+
+            if endpoint_profile_uuid:
+                endpoint_profile_uuid_text = (
+                    f"Endpoint profile uuid: {{[bright_blue]{endpoint_profile_uuid}[/bright_blue]}} [green]detected[/green]."
+                )
+            else:
+                endpoint_profile_uuid_text = (
+                    "Endpoint profile uuid [red]not detected[/red]."
+                )
+                endpoint_profile_uuid_status = CheckTaskStatus.error.value
 
             add_display_and_eval(
                 check_manager=check_manager,
-                target_name=target,
-                display_text=f"{condition_type}: {pod_condition_deco}",
-                eval_status=status,
-                eval_value={"name": pod_name, f"status.conditions.{type.lower()}": condition_status},
-                resource_name=target_service_pod,
+                target_name=target_asset_endpoint_profiles,
+                display_text=endpoint_profile_uuid_text,
+                eval_status=endpoint_profile_uuid_status,
+                eval_value=endpoint_profile_uuid_value,
+                resource_name=asset_endpoint_profile_name,
                 namespace=namespace,
-                padding=(0, 0, 0, display_padding + 8)
+                padding=(0, 0, 0, 14)
             )
 
-            if detail_level > ResourceOutputDetailLevel.summary.value:
-                condition_reason = condition.get("message")
-                condition_reason_text = f"{condition_reason}" if condition_reason else ""
-
-                if condition_reason_text:
-                    # remove the [ and ] to prevent console not printing the text
-                    condition_reason_text = condition_reason_text.replace("[", "\\[")
-                    check_manager.add_display(
-                        target_name=target,
-                        namespace=namespace,
-                        display=Padding(
-                            f"[red]Reason: {condition_reason_text}[/red]",
-                            (0, 0, 0, display_padding + 8),
-                        ),
+            # transportAuthentication
+            transport_authentication = asset_endpoint_profile_spec.get("transportAuthentication", {})
+            if transport_authentication:
+                check_manager.add_display(
+                    target_name=target_asset_endpoint_profiles,
+                    namespace=namespace,
+                    display=Padding(
+                        "Transport authentication:",
+                        (0, 0, 0, 14)
                     )
+                )
+                transport_authentication_own_certificates = transport_authentication.get("ownCertificates", None)
+                check_manager.add_target_conditions(
+                    target_name=target_asset_endpoint_profiles,
+                    namespace=namespace,
+                    conditions=["spec.transportAuthentication.ownCertificates"]
+                )
+
+                transport_authentication_own_certificates_value = {"spec.transportAuthentication.ownCertificates": transport_authentication_own_certificates}
+                transport_authentication_own_certificates_status = CheckTaskStatus.success.value
+
+                if transport_authentication_own_certificates == None:
+                    transport_authentication_own_certificates_text = (
+                        "Own certificates [red]not detected[/red]."
+                    )
+                    transport_authentication_own_certificates_status = CheckTaskStatus.error.value
+                else:
+                    transport_authentication_own_certificates_text = (
+                        f"Own certificates: {len(transport_authentication_own_certificates)} [green]detected[/green]."
+                    )
+                
+                add_display_and_eval(
+                    check_manager=check_manager,
+                    target_name=target_asset_endpoint_profiles,
+                    display_text=transport_authentication_own_certificates_text,
+                    eval_status=transport_authentication_own_certificates_status,
+                    eval_value=transport_authentication_own_certificates_value,
+                    resource_name=asset_endpoint_profile_name,
+                    namespace=namespace,
+                    padding=(0, 0, 0, 18)
+                )
+
+                if detail_level > ResourceOutputDetailLevel.detail.value and transport_authentication_own_certificates:
+                    for ownCertificate in transport_authentication_own_certificates:
+                        index = transport_authentication_own_certificates.index(ownCertificate)
+                        check_manager.add_display(
+                            target_name=target_asset_endpoint_profiles,
+                            namespace=namespace,
+                            display=Padding(
+                                f"- Own certificate {index}:",
+                                (0, 0, 0, 22)
+                            )
+                        )
+                        process_properties(
+                            check_manager=check_manager,
+                            detail_level=detail_level,
+                            target_name=target_asset_endpoint_profiles,
+                            prop_value=ownCertificate,
+                            properties=ASSET_ENDPOINT_OWNCERTIFICATE_PROPERTIES,
+                            namespace=namespace,
+                            padding=(0, 0, 0, 26)
+                        )
+                
+            # userAuthentication
+            user_authentication = asset_endpoint_profile_spec.get("userAuthentication", {})
+            if user_authentication:
+                check_manager.add_display(
+                    target_name=target_asset_endpoint_profiles,
+                    namespace=namespace,
+                    display=Padding(
+                        "User authentication:",
+                        (0, 0, 0, 14)
+                    )
+                )
+
+                # check required mode
+                user_authentication_mode = user_authentication.get("mode", "")
+                check_manager.add_target_conditions(
+                    target_name=target_asset_endpoint_profiles,
+                    namespace=namespace,
+                    conditions=["spec.userAuthentication.mode"]
+                )
+
+                user_authentication_mode_value = {"spec.userAuthentication.mode": user_authentication_mode}
+                user_authentication_mode_status = CheckTaskStatus.success.value
+
+                if user_authentication_mode:
+                    user_authentication_mode_text = (
+                        f"User authentication mode: {{[bright_blue]{user_authentication_mode}[/bright_blue]}} [green]detected[/green]."
+                    )
+                else:
+                    user_authentication_mode_text = (
+                        "User authentication mode [red]not detected[/red]."
+                    )
+                    user_authentication_mode_status = CheckTaskStatus.error.value
+
+                add_display_and_eval(
+                    check_manager=check_manager,
+                    target_name=target_asset_endpoint_profiles,
+                    display_text=user_authentication_mode_text,
+                    eval_status=user_authentication_mode_status,
+                    eval_value=user_authentication_mode_value,
+                    resource_name=asset_endpoint_profile_name,
+                    namespace=namespace,
+                    padding=(0, 0, 0, 18)
+                )
+
+                if user_authentication_mode == "Certificate":
+                    # check x509Credentials
+                    user_authentication_x509_credentials = user_authentication.get("x509Credentials", {})
+                    check_manager.add_target_conditions(
+                        target_name=target_asset_endpoint_profiles,
+                        namespace=namespace,
+                        conditions=["spec.userAuthentication.x509Credentials.certificateReference"]
+                    )
+
+                    certificate_reference = user_authentication_x509_credentials.get("certificateReference", "")
+                    user_authentication_x509_credentials_value = {"spec.userAuthentication.x509Credentials.certificateReference": certificate_reference}
+                    user_authentication_x509_credentials_status = CheckTaskStatus.success.value
+                    if certificate_reference:
+                        user_authentication_x509_credentials_text = (
+                            f"Certificate reference: {{[bright_blue]{certificate_reference}[/bright_blue]}} [green]detected[/green]."
+                        )
+                    else:
+                        user_authentication_x509_credentials_text = (
+                            "Certificate reference [red]not detected[/red]."
+                        )
+                        user_authentication_x509_credentials_status = CheckTaskStatus.error.value
+                    
+                    add_display_and_eval(
+                        check_manager=check_manager,
+                        target_name=target_asset_endpoint_profiles,
+                        display_text=user_authentication_x509_credentials_text,
+                        eval_status=user_authentication_x509_credentials_status,
+                        eval_value=user_authentication_x509_credentials_value,
+                        resource_name=asset_endpoint_profile_name,
+                        namespace=namespace,
+                        padding=(0, 0, 0, 22)
+                    )
+
+                elif user_authentication_mode == "UsernamePassword":
+                    # check usernamePasswordCredentials
+                    user_authentication_username_password_credentials = user_authentication.get("usernamePasswordCredentials", {})
+                    check_manager.add_target_conditions(
+                        target_name=target_asset_endpoint_profiles,
+                        namespace=namespace,
+                        conditions=["spec.userAuthentication.usernamePasswordCredentials.usernameReference", "spec.userAuthentication.usernamePasswordCredentials.passwordReference"]
+                    )
+
+                    username_reference = user_authentication_username_password_credentials.get("usernameReference", "")
+                    password_reference = user_authentication_username_password_credentials.get("passwordReference", "")
+                    user_authentication_username_password_credentials_value = {
+                        "spec.userAuthentication.usernamePasswordCredentials.usernameReference": username_reference,
+                        "spec.userAuthentication.usernamePasswordCredentials.passwordReference": password_reference
+                    }
+                    user_authentication_username_password_credentials_status = CheckTaskStatus.success.value
+                    if username_reference and password_reference:
+                        user_authentication_username_password_credentials_text = (
+                            f"Username reference: {{[bright_blue]{username_reference}[/bright_blue]}} [green]detected[/green].\n"
+                            f"Password reference: {{[bright_blue]{password_reference}[/bright_blue]}} [green]detected[/green]."
+                        )
+                    else:
+                        user_authentication_username_password_credentials_text = (
+                            "Username reference or password reference [red]not detected[/red]."
+                        )
+                        user_authentication_username_password_credentials_status = CheckTaskStatus.error.value
+                    
+                    add_display_and_eval(
+                        check_manager=check_manager,
+                        target_name=target_asset_endpoint_profiles,
+                        display_text=user_authentication_username_password_credentials_text,
+                        eval_status=user_authentication_username_password_credentials_status,
+                        eval_value=user_authentication_username_password_credentials_value,
+                        resource_name=asset_endpoint_profile_name,
+                        namespace=namespace,
+                        padding=(0, 0, 0, 22)
+                    )
+            
+            # check status if exists
+            status = asset_endpoint_profile.get("status", {})
+            if status:
+                check_manager.add_target_conditions(
+                    target_name=target_asset_endpoint_profiles,
+                    namespace=namespace,
+                    conditions=["status"]
+                )
+                status_value = {"status": status}
+                status_errors = status.get("errors", [])
+                if status_errors:
+                    for error in status_errors:
+                        error_code = error.get("code", "")
+                        message = error.get("message", "")
+                        error_text = (
+                            f"- Asset endpoint profile status error code: [red]{error_code}[/red]. Message: {message}"
+                        )
+                        
+                        check_manager.add_display(
+                            target_name=target_asset_endpoint_profiles,
+                            namespace=namespace,
+                            display=Padding(error_text, (0, 0, 0, 14)),
+                        )
+                    status_status = CheckTaskStatus.error.value
+                else:
+                    status_text = (
+                        "- Asset endpoint profile status [green]OK[/green]."
+                    )
+                
+                add_display_and_eval(
+                    check_manager=check_manager,
+                    target_name=target_asset_endpoint_profiles,
+                    display_text=status_text,
+                    eval_status=status_status,
+                    eval_value=status_value,
+                    resource_name=asset_endpoint_profile_name,
+                    namespace=namespace,
+                    padding=(0, 0, 0, 12)
+                )
+        
+            if detail_level > ResourceOutputDetailLevel.summary.value:
+                process_properties(
+                    check_manager=check_manager,
+                    detail_level=detail_level,
+                    target_name=target_asset_endpoint_profiles,
+                    prop_value=asset_endpoint_profile_spec,
+                    properties=[
+                        ("additionalConfiguration", "Additional configuration", True),
+                        ("targetAddress", "Target address", False),
+                    ],
+                    namespace=namespace,
+                    padding=(0, 0, 0, 14)
+                )
+
+    return check_manager.as_dict(as_list)

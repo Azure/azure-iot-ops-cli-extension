@@ -18,6 +18,7 @@ from .check.lnm import check_lnm_deployment
 from .check.mq import check_mq_deployment
 from .check.opcua import check_opcua_deployment
 from .edge_api.dataprocessor import DataProcessorResourceKinds
+from .edge_api.deviceregistry import DeviceRegistryResourceKinds
 from .edge_api.lnm import LnmResourceKinds
 from .edge_api.mq import MqResourceKinds
 from .edge_api.opcua import OpcuaResourceKinds
@@ -72,9 +73,10 @@ def run_checks(
 def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: List[str]) -> None:
     service_kinds_dict: Dict[str, ListableEnum] = {
         OpsServiceType.dataprocessor.value: DataProcessorResourceKinds,
+        OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
         OpsServiceType.lnm.value: LnmResourceKinds,
-        OpsServiceType.opcua.value: OpcuaResourceKinds
+        OpsServiceType.opcua.value: OpcuaResourceKinds,
     }
 
     valid_resource_kinds = service_kinds_dict[ops_service].list() if ops_service in service_kinds_dict else []

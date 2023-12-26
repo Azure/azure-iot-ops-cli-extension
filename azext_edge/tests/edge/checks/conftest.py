@@ -41,6 +41,15 @@ def mock_get_namespaced_pods_by_prefix(mocker):
 
 
 @pytest.fixture
+def mock_generate_deviceregistry_asset_target_resources(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.check.deviceregistry.generate_target_resource_name",
+        return_value="deviceregistry.microsoft.com"
+    )
+    yield patched
+
+
+@pytest.fixture
 def mock_generate_lnm_target_resources(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.check.lnm.generate_target_resource_name",
@@ -100,6 +109,14 @@ def mock_resource_types(mocker, ops_service):
             {},
             {
                 "AssetType": [{}],
+            }
+        )
+    elif ops_service == "deviceregistry":
+        patched.return_value = (
+            {},
+            {
+                "Asset": [{}],
+                "AssetEndpointProfile": [{}],
             }
         )
 

@@ -191,6 +191,12 @@ ASSET_PROPERTIES = [
     ("version", "Version", False),
 ]
 
+ASSET_ENDPOINT_OWNCERTIFICATE_PROPERTIES = [
+    ("certPasswordReference", "Secret Reference Name (Pfx or Pem password)", True),
+    ("certSecretReference", "Secret Reference name (cert and private key)", True),
+    ("certThumbprint", "Certificate Thumbprint", True),
+]
+
 # Check constants
 ALL_NAMESPACES_TARGET = '_all_'
 # when there are runtime resources related to the service but not
