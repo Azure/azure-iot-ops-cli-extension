@@ -1,0 +1,139 @@
+name: Integration tests
+on:
+  workflow_call:
+    inputs:
+      resource_group:
+        description: Resource group for cluster creation
+        type: string
+        required: true
+        default: ops-cli-int-test-rg
+      cleanup:
+        description: Attempt to cleanup resources after testing
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+      AZURE_OBJECT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: Resource group for cluster creation
+        type: string
+        required: true
+        default: ops-cli-int-test-rg
+      cleanup:
+        description: Attempt to cleanup resources after testing
+        type: boolean
+        required: false
+        default: false
+
+env:
+  CLUSTER_NAME: "az-iot-ops-test-cluster-${{ github.run_id }}-${{ github.run_attempt }}"
+  KV_NAME: "opstestkv-${{ github.run_id }}-${{ github.run_attempt }}"
+  CLUSTER_RG: ${{ inputs.resource_group }}
+  CUSTOM_LOCATIONS_OID: "51dfe1e8-70c6-4de5-a08e-e18aff23d815"
+  EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
+  K3D_VERSION: "v5.5.1"
+
+jobs:
+  integration_test:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    name: Integration test
+    runs-on: ubuntu-latest
+    outputs:
+      cluster_name: ${{ env.CLUSTER_NAME }}
+      resource_group: ${{ env.CLUSTER_RG }}
+      keyvault_name: ${{ env.KV_NAME }}
+    steps:
+      - name: "Setup python"
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+      - name: "Checkout extension source"
+        uses: actions/checkout@v3
+        with:
+          # ensure source checkout uses our repo instead of calling workflow
+          repository: azure/azure-iot-ops-cli-extension
+          path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+      - name: "Create k3d cluster"
+        run: |
+          release_url="https://github.com/k3d-io/k3d/releases/download"
+          k3d_binary="k3d-linux-amd64"
+          k3d_url="$release_url/${{ env.K3D_VERSION }}/$k3d_binary"
+          k3d_install_dir="/usr/local/bin"
+
+          # install k3d
+          curl -sL $k3d_url -o "$k3d_binary"
+          sudo chmod +x "$k3d_binary"
+          sudo cp "$k3d_binary" "$k3d_install_dir/k3d"
+
+          # create cluster
+          export K3D_FIX_MOUNTS=1
+          k3d cluster create -i ghcr.io/jlian/k3d-nfs:v1.25.3-k3s1 \
+          -p '1883:1883@loadbalancer' \
+          -p '8883:8883@loadbalancer' \
+          -p '6001:6001@loadbalancer' \
+          -p '4000:80@loadbalancer'
+      - name: "Az CLI login"
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Build and install IoT Ops extension"
+        run: |
+          pip install wheel==0.30.0
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          python -m setup bdist_wheel -d dist
+          wheel=$(find ./dist/*.whl)
+          az extension add --source $wheel -y
+      - name: "ARC connect cluster"
+        run: >-
+          az extension add --name connectedk8s -y
+
+          az connectedk8s connect -n ${{ env.CLUSTER_NAME }} -g ${{ env.CLUSTER_RG }}
+
+          az connectedk8s enable-features
+          -n ${{ env.CLUSTER_NAME }}
+          -g ${{ env.CLUSTER_RG }}
+          --features custom-locations cluster-connect
+          --custom-locations-oid ${{ env.CUSTOM_LOCATIONS_OID }}
+      - name: "AIO Deployment"
+        run: >-
+          az iot ops init
+          -g ${{ env.CLUSTER_RG }}
+          --cluster ${{ env.CLUSTER_NAME }}
+          --kv-id $(az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.CLUSTER_RG }} -o tsv --query id)
+          --sp-app-id ${{ secrets.AZURE_CLIENT_ID }}
+          --sp-object-id ${{ secrets.AZURE_OBJECT_ID }}
+          --sp-secret ${{ secrets.AZURE_CLIENT_SECRET }}
+          --no-progress
+      - name: "Allow cluster to finish provisioning"
+        run: |
+          sleep 1m
+      - name: "Run 'az iot ops check'"
+        run: |
+          echo "### Run checks" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          az iot ops check >> $GITHUB_STEP_SUMMARY
+  # Optional cleanup job
+  cleanup:
+    needs: [integration_test]
+    if: ${{ github.event.inputs.cleanup == 'true' }}
+    uses: './.github/workflows/cluster_cleanup.yml'
+    with:
+      cluster_prefix: ${{ needs.integration_test.outputs.cluster_name }}
+      resource_group: ${{ needs.integration_test.outputs.resource_group }}
+      keyvault_prefix: ${{ needs.integration_test.outputs.keyvault_name }}
+    secrets: inherit
