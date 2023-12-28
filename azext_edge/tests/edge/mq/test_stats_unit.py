@@ -36,6 +36,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
 
     attrs = {"read.return_value": stub_raw_stats.read()}
     response = MagicMock(**attrs)
+    # pylint: disable-next=unnecessary-dunder-call
     mocked_urlopen.return_value.__enter__.return_value = response
 
     namespace = generate_generic_id()
@@ -153,6 +154,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
 def test_get_traces(
     mocker, mocked_cmd, mocked_client, mocked_config, mocked_zipfile, trace_ids, trace_dir, recv_side_effect
 ):
+    # pylint: disable=unnecessary-dunder-call
     pods = [V1Pod(metadata=V1ObjectMeta(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace="namespace"))]
     pod_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
@@ -201,6 +203,7 @@ def test_get_traces(
         # One in vanilla OTLP one in Tempo format.
         # TODO assert formats.
         assert len(mocked_zipfile.mock_calls) == len(recv_side_effect)
+    # pylint: enable=unnecessary-dunder-call
 
 
 def min_stats_assert(stats_map: dict):
