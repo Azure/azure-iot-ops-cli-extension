@@ -30,7 +30,7 @@ from .base import (
 )
 
 from .common import (
-    CORE_SERVICE_RUNTIME_RESOURCE,
+    CoreServiceResourceKinds,
     ResourceOutputDetailLevel,
 )
 
@@ -42,7 +42,7 @@ def check_akri_deployment(
     resource_kinds: List[str] = None
 ) -> None:
     evaluate_funcs = {
-        CORE_SERVICE_RUNTIME_RESOURCE: evaluate_core_service_runtime,
+        CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
         AkriResourceKinds.CONFIGURATION: evaluate_configurations,
         AkriResourceKinds.INSTANCE: evaluate_instances,
     }
@@ -82,9 +82,9 @@ def evaluate_core_service_runtime(
     akri_runtime_resources.sort(key=get_namespace)
 
     for (namespace, pods) in groupby(akri_runtime_resources, get_namespace):
-        check_manager.add_target(target_name=CORE_SERVICE_RUNTIME_RESOURCE, namespace=namespace)
+        check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
-            target_name=CORE_SERVICE_RUNTIME_RESOURCE,
+            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             namespace=namespace,
             display=Padding(
                 f"Akri runtime resources in namespace {{[purple]{namespace}[/purple]}}",
@@ -95,7 +95,7 @@ def evaluate_core_service_runtime(
         process_pods_status(
             check_manager=check_manager,
             target_service_pod="",
-            target=CORE_SERVICE_RUNTIME_RESOURCE,
+            target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             pods=list(pods),
             namespace=namespace,
             display_padding=10,
@@ -355,10 +355,7 @@ def _validate_one_of_conditions(
     if len(conditions) == 1:
         return
 
-    non_empty_conditions_count = 0
-    for condition in conditions:
-        if condition[1]:
-            non_empty_conditions_count += 1
+    non_empty_conditions_count = len([condition for condition in conditions if condition[1]])
 
     eval_status = CheckTaskStatus.success.value
     conditions_names = ", ".join([f"'{condition[0]}'" for condition in conditions])
@@ -465,7 +462,7 @@ def _evaluate_discovery_handler(
                 # name should be a valid identifier match the pattern
                 if not property_name or not re.match(name_pattern, property_name):
                     property_name_error_text = (
-                        f"[red]Property name should be a valid identifier match the pattern {name_pattern}.[/red]"
+                        f"[red]Property name should be a valid identifier that matches the pattern {name_pattern}.[/red]"
                     )
                     property_name_eval_status = CheckTaskStatus.error.value
                     check_manager.add_display(

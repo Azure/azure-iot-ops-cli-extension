@@ -26,7 +26,8 @@ from ...common import CheckTaskStatus
 
 from .common import (
     AIO_LNM_PREFIX,
-    CORE_SERVICE_RUNTIME_RESOURCE,
+    PADDING_SIZE,
+    CoreServiceResourceKinds,
     LNM_ALLOWLIST_PROPERTIES,
     LNM_EXCLUDED_SUBRESOURCE,
     LNM_IMAGE_PROPERTIES,
@@ -50,7 +51,7 @@ def check_lnm_deployment(
     resource_kinds: List[str] = None
 ) -> None:
     evaluate_funcs = {
-        CORE_SERVICE_RUNTIME_RESOURCE: evaluate_core_service_runtime,
+        CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
         LnmResourceKinds.LNM: evaluate_lnms,
     }
 
@@ -78,7 +79,7 @@ def evaluate_core_service_runtime(
     _process_lnm_pods(
         check_manager=check_manager,
         description="LNM runtime resources",
-        target=CORE_SERVICE_RUNTIME_RESOURCE,
+        target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
         prefix=AIO_LNM_PREFIX,
         label_selector=lnm_operator_label,
         padding=6,
@@ -325,7 +326,7 @@ def _process_lnm_pods(
                 check_manager=check_manager,
                 target=target,
                 pod=pod,
-                display_padding=padding + 4,
+                display_padding=padding + PADDING_SIZE,
                 namespace=namespace,
                 detail_level=detail_level,
             )

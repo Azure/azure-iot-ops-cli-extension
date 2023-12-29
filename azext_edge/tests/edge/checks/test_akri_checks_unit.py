@@ -12,7 +12,7 @@ from azext_edge.edge.providers.check.akri import (
     evaluate_instances
 )
 from azext_edge.edge.providers.check.common import (
-    CORE_SERVICE_RUNTIME_RESOURCE,
+    CoreServiceResourceKinds,
     ResourceOutputDetailLevel
 )
 from azext_edge.edge.providers.edge_api.akri import AkriResourceKinds
@@ -39,7 +39,8 @@ from ...generators import generate_generic_id
 @pytest.mark.parametrize('ops_service', ['akri'])
 def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        CORE_SERVICE_RUNTIME_RESOURCE: "azext_edge.edge.providers.check.akri.evaluate_core_service_runtime",
+        CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
+            "azext_edge.edge.providers.check.akri.evaluate_core_service_runtime",
         AkriResourceKinds.CONFIGURATION.value: "azext_edge.edge.providers.check.akri.evaluate_configurations",
         AkriResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.akri.evaluate_instances",
     }
@@ -609,11 +610,11 @@ def test_evaluate_core_service_runtime(
     result = evaluate_core_service_runtime(detail_level=detail_level)
 
     assert result["name"] == "evalCoreServiceRuntime"
-    assert result["targets"][CORE_SERVICE_RUNTIME_RESOURCE]
-    target = result["targets"][CORE_SERVICE_RUNTIME_RESOURCE]
+    assert result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
+    target = result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 
     for namespace in target:
-        assert namespace in result["targets"][CORE_SERVICE_RUNTIME_RESOURCE]
+        assert namespace in result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 
         target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)

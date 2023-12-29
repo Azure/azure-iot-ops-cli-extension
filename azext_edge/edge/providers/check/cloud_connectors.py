@@ -17,7 +17,7 @@ from rich.padding import Padding
 
 from ...common import CheckTaskStatus
 
-from .common import ResourceOutputDetailLevel
+from .common import PADDING_SIZE, ResourceOutputDetailLevel
 
 from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
 from ..support.mq import MQ_LABEL
@@ -202,7 +202,7 @@ def _display_connector_runtime_health(
                 (0, 0, 0, padding),
             ),
         )
-        padding += 4
+        padding += PADDING_SIZE
         pod_name_prefixes = [
             f"{prefix}{connector['metadata']['name']}" for connector in connectors
         ]

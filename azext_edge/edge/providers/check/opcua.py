@@ -22,7 +22,8 @@ from .base import (
 from ...common import CheckTaskStatus
 
 from .common import (
-    CORE_SERVICE_RUNTIME_RESOURCE,
+    PADDING_SIZE,
+    CoreServiceResourceKinds,
     ResourceOutputDetailLevel,
 )
 
@@ -41,7 +42,7 @@ def check_opcua_deployment(
     resource_kinds: List[str] = None
 ) -> None:
     evaluate_funcs = {
-        CORE_SERVICE_RUNTIME_RESOURCE: evaluate_core_service_runtime,
+        CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
         OpcuaResourceKinds.ASSET_TYPE: evaluate_asset_types,
     }
 
@@ -80,9 +81,9 @@ def evaluate_core_service_runtime(
     opcua_runtime_resources.sort(key=get_namespace)
 
     for (namespace, pods) in groupby(opcua_runtime_resources, get_namespace):
-        check_manager.add_target(target_name=CORE_SERVICE_RUNTIME_RESOURCE, namespace=namespace)
+        check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
-            target_name=CORE_SERVICE_RUNTIME_RESOURCE,
+            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             namespace=namespace,
             display=Padding(
                 f"OPC UA broker runtime resources in namespace {{[purple]{namespace}[/purple]}}",
@@ -93,7 +94,7 @@ def evaluate_core_service_runtime(
         process_pods_status(
             check_manager=check_manager,
             target_service_pod="",
-            target=CORE_SERVICE_RUNTIME_RESOURCE,
+            target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             pods=list(pods),
             namespace=namespace,
             display_padding=10,
@@ -233,7 +234,7 @@ def _process_schema(
             display=Padding(f"Schema {{[cyan]{schema_id}[/cyan]}} detected.", (0, 0, 0, padding)),
         )
 
-        padding += 4
+        padding += PADDING_SIZE
 
         for item_label, (schema_key, value_extractor) in schema_items.items():
             # Extract value using the defined lambda function
@@ -266,6 +267,6 @@ def _process_schema(
             namespace=namespace,
             display=Padding(
                 schema_json,
-                (0, 0, 0, padding + 4),
+                (0, 0, 0, padding + PADDING_SIZE),
             ),
         )

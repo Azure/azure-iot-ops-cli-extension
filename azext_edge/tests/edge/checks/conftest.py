@@ -7,7 +7,7 @@ import pytest
 from kubernetes.client import V1Pod, V1ObjectMeta, V1PodStatus, V1PodCondition
 from typing import List, Dict, Any
 from azext_edge.edge.providers.checks import run_checks
-from azext_edge.edge.providers.check.common import CORE_SERVICE_RUNTIME_RESOURCE
+from azext_edge.edge.providers.check.common import CoreServiceResourceKinds
 
 
 @pytest.fixture
@@ -197,9 +197,9 @@ def assert_check_by_resource_types(ops_service, mocker, mock_resource_types, res
 
     if not resource_kinds:
         # ensure core service runtime check was run once when it exists
-        if CORE_SERVICE_RUNTIME_RESOURCE in eval_lookup:
-            eval_lookup[CORE_SERVICE_RUNTIME_RESOURCE].assert_called_once()
-            del eval_lookup[CORE_SERVICE_RUNTIME_RESOURCE]
+        if CoreServiceResourceKinds.RUNTIME_RESOURCE.value in eval_lookup:
+            eval_lookup[CoreServiceResourceKinds.RUNTIME_RESOURCE.value].assert_called_once()
+            del eval_lookup[CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 
         # ensure all checks were run
         [eval_lookup[evaluator].assert_called_once() for evaluator in eval_lookup]

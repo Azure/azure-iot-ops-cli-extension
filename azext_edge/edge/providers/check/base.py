@@ -17,7 +17,7 @@ from kubernetes.client.models import (
 from rich.console import Console, NewLine
 from rich.padding import Padding
 
-from .common import ALL_NAMESPACES_TARGET, CORE_SERVICE_RUNTIME_RESOURCE, ResourceOutputDetailLevel
+from .common import ALL_NAMESPACES_TARGET, PADDING_SIZE, CoreServiceResourceKinds, ResourceOutputDetailLevel
 from ...common import CheckTaskStatus, ListableEnum
 
 from ...providers.edge_api import EdgeResourceApi
@@ -73,9 +73,8 @@ def check_post_deployment(
         for resource, evaluate_func in evaluate_funcs.items():
             append_resource = False
             # only add core service evaluation if there is no resource filter
-            if resource == CORE_SERVICE_RUNTIME_RESOURCE:
-                if not resource_kinds:
-                    append_resource = True
+            if resource == CoreServiceResourceKinds.RUNTIME_RESOURCE and not resource_kinds:
+                append_resource = True
             elif (resource and resource.value in lowercase_api_resources and check_resources[resource]):
                 append_resource = True
 
@@ -650,7 +649,7 @@ def process_property_by_type(
                 check_manager.add_display(
                     target_name=target_name,
                     namespace=namespace,
-                    display=Padding(display_text, (0, 0, 0, padding_left + 4))
+                    display=Padding(display_text, (0, 0, 0, padding_left + PADDING_SIZE))
                 )
     elif isinstance(properties, str) or isinstance(properties, bool) or isinstance(properties, int):
         properties = str(properties) if properties else "undefined"
@@ -733,7 +732,7 @@ def process_dict_resource(
             namespace=namespace,
             display=Padding(f"{prop_name}:", (0, 0, 0, padding))
         )
-        padding += 4
+        padding += PADDING_SIZE
     for key, value in resource.items():
         if isinstance(value, dict):
             check_manager.add_display(
@@ -746,7 +745,7 @@ def process_dict_resource(
                 target_name=target_name,
                 resource=value,
                 namespace=namespace,
-                padding=padding + 4
+                padding=padding + PADDING_SIZE
             )
         elif isinstance(value, list):
             if len(value) == 0:
@@ -759,15 +758,13 @@ def process_dict_resource(
                 display=Padding(display_text, (0, 0, 0, padding))
             )
 
-            for item in value:
-                process_dict_resource(
-                    check_manager=check_manager,
-                    target_name=target_name,
-                    resource=item,
-                    namespace=namespace,
-                    padding=padding + 4,
-                    prop_name=f"{key} {value.index(item) + 1}"
-                )
+            process_list_resource(
+                check_manager=check_manager,
+                target_name=target_name,
+                resource=value,
+                namespace=namespace,
+                padding=padding + PADDING_SIZE
+            )
         else:
             display_text = ""
             if isinstance(value, str) and len(value) > 50:
@@ -781,7 +778,7 @@ def process_dict_resource(
                 check_manager.add_display(
                     target_name=target_name,
                     namespace=namespace,
-                    display=Padding(display_text, (0, 0, 0, padding + 4))
+                    display=Padding(display_text, (0, 0, 0, padding + PADDING_SIZE))
                 )
             else:
                 # replace empty string with N/A
@@ -792,6 +789,46 @@ def process_dict_resource(
                     namespace=namespace,
                     display=Padding(display_text, (0, 0, 0, padding))
                 )
+
+
+def process_list_resource(
+    check_manager: CheckManager,
+    target_name: str,
+    resource: List[dict],
+    namespace: str,
+    padding: int
+) -> None:
+    for item in resource:
+        name = item.pop("name", None)
+
+        # when name property exists, use name as header; if not, use property type and index as header
+        if name:
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(f"- name: [cyan]{name}[/cyan]", (0, 0, 0, padding))
+            )
+        else:
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(f"- item {resource.index(item) + 1}", (0, 0, 0, padding))
+            )
+
+        if isinstance(item, dict):
+            process_dict_resource(
+                check_manager=check_manager,
+                target_name=target_name,
+                resource=item,
+                namespace=namespace,
+                padding=padding + 2
+            )
+        elif isinstance(item, str):
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(f"[cyan]{item}[/cyan]", (0, 0, 0, padding + 2))
+            )
 
 
 def generate_target_resource_name(api_info: EdgeResourceApi, resource_kind: str) -> str:
