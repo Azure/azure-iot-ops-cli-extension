@@ -480,7 +480,6 @@ def _evaluate_discovery_handler(
                 name_pattern = "^[_A-Za-z][_A-Za-z0-9]*$"
                 property_padding = property_header_padding + PADDING_SIZE
 
-
                 # name should be a valid identifier match the pattern
                 if not property_name or not re.match(name_pattern, property_name):
                     property_name_error_text = (

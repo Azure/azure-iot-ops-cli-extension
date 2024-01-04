@@ -630,7 +630,7 @@ def _evaluate_source_node(
 
     if pipeline_source_node_topics_count < 1 or pipeline_source_node_topics_count > 50:
         pipeline_source_topics_eval_status = CheckTaskStatus.error.value
-    
+
     property_padding = padding + PADDING_SIZE
     check_manager.add_display(
         target_name=target_pipelines,
