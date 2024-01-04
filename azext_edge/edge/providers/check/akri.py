@@ -30,6 +30,7 @@ from .base import (
 )
 
 from .common import (
+    PADDING_SIZE,
     CoreServiceResourceKinds,
     ResourceOutputDetailLevel,
 )
@@ -66,6 +67,7 @@ def evaluate_core_service_runtime(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate Akri core service")
 
+    padding = 6
     akri_runtime_resources: List[dict] = []
     for prefix in AKRI_PREFIXES:
         akri_runtime_resources.extend(
@@ -88,7 +90,7 @@ def evaluate_core_service_runtime(
             namespace=namespace,
             display=Padding(
                 f"Akri runtime resources in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, 6)
+                (0, 0, 0, padding)
             )
         )
 
@@ -98,7 +100,7 @@ def evaluate_core_service_runtime(
             target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             pods=list(pods),
             namespace=namespace,
-            display_padding=10,
+            display_padding=padding + PADDING_SIZE,
         )
 
     return check_manager.as_dict(as_list)
@@ -140,6 +142,7 @@ def evaluate_configurations(
             )
         )
 
+        padding = 10
         configurations: List[dict] = list(configurations)
         configurations_count = len(configurations)
         configurations_count_text = "- {}."
@@ -149,7 +152,7 @@ def evaluate_configurations(
         check_manager.add_display(
             target_name=target_configurations,
             namespace=namespace,
-            display=Padding(configurations_count_text, (0, 0, 0, 10))
+            display=Padding(configurations_count_text, (0, 0, 0, padding))
         )
 
         for configuration in configurations:
@@ -159,10 +162,11 @@ def evaluate_configurations(
                 f"- Akri configuration {{[bright_blue]{configuration_name}[/bright_blue]}} detected."
             )
 
+            configuration_padding = padding + PADDING_SIZE
             check_manager.add_display(
                 target_name=target_configurations,
                 namespace=namespace,
-                display=Padding(configuration_text, (0, 0, 0, 12))
+                display=Padding(configuration_text, (0, 0, 0, configuration_padding))
             )
 
             spec = configuration["spec"]
@@ -173,12 +177,14 @@ def evaluate_configurations(
             configuration_service_spec = spec.get("configurationServiceSpec", {})
             broker_properties = spec.get("brokerProperties", {})
 
+            property_padding = configuration_padding + PADDING_SIZE
             _evaluate_discovery_handler(
                 check_manager=check_manager,
                 target_name=target_configurations,
                 namespace=namespace,
                 discovery_handler=discovery_handler,
                 detail_level=detail_level,
+                padding=property_padding,
             )
 
             if detail_level >= ResourceOutputDetailLevel.detail.value and capacity:
@@ -187,7 +193,7 @@ def evaluate_configurations(
                     namespace=namespace,
                     display=Padding(
                         f"Capacity: [cyan]{capacity}[/cyan]",
-                        (0, 0, 0, 16),
+                        (0, 0, 0, property_padding),
                     ),
                 )
 
@@ -261,18 +267,20 @@ def evaluate_instances(
         instances: List[dict] = list(instances)
         instances_count = len(instances)
         instances_count_text = "- {}."
+        padding = 10
 
         instances_count_text = instances_count_text.format(f"Detected [blue]{instances_count}[/blue] instances")
 
         check_manager.add_display(
             target_name=target_instances,
             namespace=namespace,
-            display=Padding(instances_count_text, (0, 0, 0, 10))
+            display=Padding(instances_count_text, (0, 0, 0, padding))
         )
 
         for instance in instances:
             spec = instance["spec"]
             instance_name = instance["metadata"]["name"]
+            instance_padding = padding + PADDING_SIZE
 
             instance_text = (
                 f"- Akri instance {{[bright_blue]{instance_name}[/bright_blue]}} detected."
@@ -281,9 +289,10 @@ def evaluate_instances(
             check_manager.add_display(
                 target_name=target_instances,
                 namespace=namespace,
-                display=Padding(instance_text, (0, 0, 0, 12))
+                display=Padding(instance_text, (0, 0, 0, instance_padding))
             )
 
+            property_padding = instance_padding + PADDING_SIZE
             if detail_level >= ResourceOutputDetailLevel.detail.value:
                 configuration_name = spec.get("configurationName", "")
                 if configuration_name:
@@ -292,7 +301,7 @@ def evaluate_instances(
                         namespace=namespace,
                         display=Padding(
                             f"Configuration name: [cyan]{configuration_name}[/cyan]",
-                            (0, 0, 0, 16),
+                            (0, 0, 0, property_padding),
                         ),
                     )
 
@@ -302,7 +311,7 @@ def evaluate_instances(
                     namespace=namespace,
                     display=Padding(
                         f"Shared: [cyan]{str(shared)}[/cyan]",
-                        (0, 0, 0, 16),
+                        (0, 0, 0, property_padding),
                     ),
                 )
 
@@ -314,7 +323,7 @@ def evaluate_instances(
                             target_name=target_instances,
                             resource=broker_properties,
                             namespace=namespace,
-                            padding=16,
+                            padding=property_padding,
                             prop_name="Broker properties",
                         )
 
@@ -326,7 +335,7 @@ def evaluate_instances(
                             namespace=namespace,
                             display=Padding(
                                 f"Node: [cyan]{node}[/cyan]",
-                                (0, 0, 0, 16),
+                                (0, 0, 0, property_padding),
                             ),
                         )
 
@@ -338,7 +347,7 @@ def evaluate_instances(
                             target_name=target_instances,
                             resource=device_usage,
                             namespace=namespace,
-                            padding=16,
+                            padding=property_padding,
                             prop_name="Device usage",
                         )
 
@@ -351,6 +360,7 @@ def _validate_one_of_conditions(
         eval_value: dict,
         namespace: str,
         target_name: str,
+        padding: int,
 ) -> None:
     if len(conditions) == 1:
         return
@@ -365,7 +375,7 @@ def _validate_one_of_conditions(
             namespace=namespace,
             display=Padding(
                 f"One of {conditions_names} should be specified",
-                (0, 0, 0, 16),
+                (0, 0, 0, padding),
             ),
         )
         eval_status = CheckTaskStatus.error.value
@@ -375,7 +385,7 @@ def _validate_one_of_conditions(
             namespace=namespace,
             display=Padding(
                 f"Only one of {conditions_names} should be specified",
-                (0, 0, 0, 16),
+                (0, 0, 0, padding),
             ),
         )
         eval_status = CheckTaskStatus.error.value
@@ -399,6 +409,7 @@ def _evaluate_discovery_handler(
     namespace: str,
     discovery_handler: dict,
     detail_level: int,
+    padding: int,
 ) -> None:
     if discovery_handler:
         name = discovery_handler.get("name", "")
@@ -411,7 +422,7 @@ def _evaluate_discovery_handler(
                 namespace=namespace,
                 display=Padding(
                     f"Name: [cyan]{name}[/cyan]",
-                    (0, 0, 0, 16),
+                    (0, 0, 0, padding),
                 ),
             )
 
@@ -421,7 +432,7 @@ def _evaluate_discovery_handler(
                     namespace=namespace,
                     display=Padding(
                         "Discovery details:",
-                        (0, 0, 0, 16),
+                        (0, 0, 0, padding),
                     ),
                 )
 
@@ -430,11 +441,21 @@ def _evaluate_discovery_handler(
                     namespace=namespace,
                     display=Padding(
                         f"[cyan]{discovery_details}[/cyan]",
-                        (0, 0, 0, 20),
+                        (0, 0, 0, padding + PADDING_SIZE),
                     ),
                 )
 
+        property_header_padding = padding + PADDING_SIZE
+
         if discovery_properties:
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(
+                    "Discovery properties:",
+                    (0, 0, 0, padding),
+                ),
+            )
             for property in discovery_properties:
                 property_name: str = property.get("name", "")
                 property_condition_str = f"spec.discoveryHandler.discoveryProperties['{property_name}']"
@@ -446,18 +467,19 @@ def _evaluate_discovery_handler(
                     conditions=[f"{property_condition_str}.name"],
                 )
 
-                if detail_level >= ResourceOutputDetailLevel.detail.value:
-                    check_manager.add_display(
-                        target_name=target_name,
-                        namespace=namespace,
-                        display=Padding(
-                            f"Property name: [cyan]{property_name}[/cyan]",
-                            (0, 0, 0, 16),
-                        ),
-                    )
+                check_manager.add_display(
+                    target_name=target_name,
+                    namespace=namespace,
+                    display=Padding(
+                        f"- Property [cyan]{property_name}[/cyan] detected.",
+                        (0, 0, 0, property_header_padding),
+                    ),
+                )
                 property_name_eval_value = {f"{property_condition_str}.name": property_name}
                 property_name_eval_status = CheckTaskStatus.success.value
                 name_pattern = "^[_A-Za-z][_A-Za-z0-9]*$"
+                property_padding = property_header_padding + PADDING_SIZE
+
 
                 # name should be a valid identifier match the pattern
                 if not property_name or not re.match(name_pattern, property_name):
@@ -468,7 +490,7 @@ def _evaluate_discovery_handler(
                     check_manager.add_display(
                         target_name=target_name,
                         namespace=namespace,
-                        display=Padding(property_name_error_text, (0, 0, 0, 16)),
+                        display=Padding(property_name_error_text, (0, 0, 0, property_padding)),
                     )
 
                 check_manager.add_target_eval(
@@ -493,7 +515,8 @@ def _evaluate_discovery_handler(
                     check_manager=check_manager,
                     eval_value=value_eval_value,
                     namespace=namespace,
-                    target_name=target_name
+                    target_name=target_name,
+                    padding=property_padding
                 )
 
                 if value:
@@ -503,10 +526,20 @@ def _evaluate_discovery_handler(
                             namespace=namespace,
                             display=Padding(
                                 f"Property value: [cyan]{value}[/cyan]",
-                                (0, 0, 0, 16),
+                                (0, 0, 0, property_padding),
                             ),
                         )
                 elif value_from:
+                    check_manager.add_display(
+                        target_name=target_name,
+                        namespace=namespace,
+                        display=Padding(
+                            "Value from:",
+                            (0, 0, 0, property_padding),
+                        ),
+                    )
+
+                    key_ref_padding = property_padding + PADDING_SIZE
                     secret_key_ref = value_from.get("secretKeyRef", {})
                     config_map_key_ref = value_from.get("configMapKeyRef", {})
                     key_ref_eval_value = {
@@ -521,7 +554,8 @@ def _evaluate_discovery_handler(
                         check_manager=check_manager,
                         eval_value=key_ref_eval_value,
                         namespace=namespace,
-                        target_name=target_name
+                        target_name=target_name,
+                        padding=key_ref_padding
                     )
 
                     if secret_key_ref or config_map_key_ref:
@@ -547,7 +581,7 @@ def _evaluate_discovery_handler(
                             check_manager.add_display(
                                 target_name=target_name,
                                 namespace=namespace,
-                                display=Padding(key_ref_name_error_text, (0, 0, 0, 16)),
+                                display=Padding(key_ref_name_error_text, (0, 0, 0, key_ref_padding)),
                             )
                         else:
                             check_manager.add_display(
@@ -555,7 +589,7 @@ def _evaluate_discovery_handler(
                                 namespace=namespace,
                                 display=Padding(
                                     f"Property {key_ref_property[0]} {{[cyan]{key_ref_name}[/cyan]}} detected.",
-                                    (0, 0, 0, 16),
+                                    (0, 0, 0, key_ref_padding),
                                 ),
                             )
 
@@ -567,13 +601,14 @@ def _evaluate_discovery_handler(
                         )
 
                         if detail_level >= ResourceOutputDetailLevel.detail.value:
+                            key_ref_property_padding = key_ref_padding + PADDING_SIZE
                             if key_ref_key:
                                 check_manager.add_display(
                                     target_name=target_name,
                                     namespace=namespace,
                                     display=Padding(
                                         f"Key: [cyan]{key_ref_key}[/cyan]",
-                                        (0, 0, 0, 20),
+                                        (0, 0, 0, key_ref_property_padding),
                                     ),
                                 )
 
@@ -583,7 +618,7 @@ def _evaluate_discovery_handler(
                                     namespace=namespace,
                                     display=Padding(
                                         f"Namespace: [cyan]{key_ref_namespace}[/cyan]",
-                                        (0, 0, 0, 20),
+                                        (0, 0, 0, key_ref_property_padding),
                                     ),
                                 )
 
@@ -593,6 +628,6 @@ def _evaluate_discovery_handler(
                                     namespace=namespace,
                                     display=Padding(
                                         f"Optional: [cyan]{str(key_ref_optional)}[/cyan]",
-                                        (0, 0, 0, 20),
+                                        (0, 0, 0, key_ref_property_padding),
                                     ),
                                 )

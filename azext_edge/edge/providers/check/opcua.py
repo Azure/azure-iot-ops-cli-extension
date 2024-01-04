@@ -81,13 +81,14 @@ def evaluate_core_service_runtime(
     opcua_runtime_resources.sort(key=get_namespace)
 
     for (namespace, pods) in groupby(opcua_runtime_resources, get_namespace):
+        padding = 6
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             namespace=namespace,
             display=Padding(
                 f"OPC UA broker runtime resources in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, 6)
+                (0, 0, 0, padding)
             )
         )
 
@@ -97,7 +98,7 @@ def evaluate_core_service_runtime(
             target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             pods=list(pods),
             namespace=namespace,
-            display_padding=10,
+            display_padding=padding + PADDING_SIZE,
         )
 
     return check_manager.as_dict(as_list)
@@ -141,6 +142,7 @@ def evaluate_asset_types(
         asset_types: List[dict] = list(asset_types)
         asset_types_count = len(asset_types)
         asset_types_count_text = "- Expecting [bright_blue]>=1[/bright_blue] asset type resource per namespace. {}."
+        padding = 10
 
         if asset_types_count >= 1:
             asset_types_count_text = asset_types_count_text.format(f"[green]Detected {asset_types_count}[/green]")
@@ -150,7 +152,7 @@ def evaluate_asset_types(
         check_manager.add_display(
             target_name=target_asset_types,
             namespace=namespace,
-            display=Padding(asset_types_count_text, (0, 0, 0, 10))
+            display=Padding(asset_types_count_text, (0, 0, 0, padding))
         )
 
         for asset_type in asset_types:
@@ -159,14 +161,17 @@ def evaluate_asset_types(
             asset_type_text = (
                 f"- Asset type {{[bright_blue]{asset_type_name}[/bright_blue]}} detected."
             )
+            asset_type_padding = padding + PADDING_SIZE
 
             check_manager.add_display(
                 target_name=target_asset_types,
                 namespace=namespace,
-                display=Padding(asset_type_text, (0, 0, 0, 12))
+                display=Padding(asset_type_text, (0, 0, 0, asset_type_padding))
             )
 
             spec = asset_type["spec"]
+            property_padding = asset_type_padding + PADDING_SIZE
+
             if detail_level >= ResourceOutputDetailLevel.detail.value:
                 # label summarize
                 labels = spec["labels"]
@@ -178,7 +183,7 @@ def evaluate_asset_types(
                     namespace=namespace,
                     display=Padding(
                         f"Detected [cyan]{len(non_repeated_labels)}[/cyan] unique labels",
-                        (0, 0, 0, 16),
+                        (0, 0, 0, property_padding),
                     ),
                 )
 
@@ -189,7 +194,7 @@ def evaluate_asset_types(
                             namespace=namespace,
                             display=Padding(
                                 f"[cyan]{', '.join(non_repeated_labels)}[/cyan]",
-                                (0, 0, 0, 20),
+                                (0, 0, 0, property_padding + PADDING_SIZE),
                             ),
                         )
 
@@ -200,7 +205,7 @@ def evaluate_asset_types(
                     target_asset_types=target_asset_types,
                     namespace=namespace,
                     schema=schema,
-                    padding=16,
+                    padding=property_padding,
                     detail_level=detail_level
                 )
 

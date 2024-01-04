@@ -34,6 +34,7 @@ from .common import (
     DATA_PROCESSOR_REFDATA_STORE_PREFIX,
     DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
     ERROR_NO_DETAIL,
+    PADDING_SIZE,
     ResourceOutputDetailLevel,
 )
 
@@ -226,6 +227,7 @@ def evaluate_pipelines(
 
     check_manager.add_target(target_name=target_pipelines, conditions=pipeline_all_conditions)
     all_pipelines: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.PIPELINE).get("items", [])
+    padding = 8
 
     if not all_pipelines:
         fetch_pipelines_error_text = f"Unable to fetch {DataProcessorResourceKinds.PIPELINE.value}s in any namespaces."
@@ -236,7 +238,7 @@ def evaluate_pipelines(
         )
         check_manager.add_display(
             target_name=target_pipelines,
-            display=Padding(fetch_pipelines_error_text, (0, 0, 0, 8))
+            display=Padding(fetch_pipelines_error_text, (0, 0, 0, padding))
         )
         return check_manager.as_dict(as_list)
 
@@ -273,7 +275,7 @@ def evaluate_pipelines(
         check_manager.add_display(
             target_name=target_pipelines,
             namespace=namespace,
-            display=Padding(pipelines_count_text, (0, 0, 0, 8))
+            display=Padding(pipelines_count_text, (0, 0, 0, padding))
         )
 
         for p in pipelines:
@@ -310,6 +312,8 @@ def evaluate_pipelines(
                 namespace=namespace
             )
 
+            pipeline_property_padding = padding + PADDING_SIZE
+
             # check provisioning status
             pipeline_provisioning_status = p["status"]["provisioningStatus"]
             pipeline_status = pipeline_provisioning_status["status"]
@@ -338,7 +342,7 @@ def evaluate_pipelines(
                 eval_status=pipeline_provisioningStatus_eval_status,
                 eval_value=pipeline_provisioningStatus_eval_value,
                 resource_name=pipeline_name,
-                padding=(0, 0, 0, 12),
+                padding=(0, 0, 0, pipeline_property_padding),
                 namespace=namespace
             )
 
@@ -346,7 +350,7 @@ def evaluate_pipelines(
                 check_manager.add_display(
                     target_name=target_pipelines,
                     namespace=namespace,
-                    display=Padding(error_display_text, (0, 0, 0, 14))
+                    display=Padding(error_display_text, (0, 0, 0, pipeline_property_padding + PADDING_SIZE))
                 )
 
             # pipeline source node
@@ -356,7 +360,8 @@ def evaluate_pipelines(
                 pipeline_name=pipeline_name,
                 check_manager=check_manager,
                 detail_level=detail_level,
-                namespace=namespace
+                namespace=namespace,
+                padding=pipeline_property_padding
             )
 
             # pipeline intermediate node
@@ -373,7 +378,8 @@ def evaluate_pipelines(
                 target_pipelines=target_pipelines,
                 check_manager=check_manager,
                 detail_level=detail_level,
-                namespace=namespace
+                namespace=namespace,
+                padding=pipeline_property_padding
             )
 
             # pipeline destination node
@@ -383,7 +389,8 @@ def evaluate_pipelines(
                 pipeline_name=pipeline_name,
                 check_manager=check_manager,
                 detail_level=detail_level,
-                namespace=namespace
+                namespace=namespace,
+                padding=pipeline_property_padding
             )
 
     return check_manager.as_dict(as_list)
@@ -399,6 +406,7 @@ def evaluate_datasets(
     dataset_all_conditions = ["datasets"]
     dataset_namespace_conditions = ["provisioningState"]
     check_manager.add_target(target_name=target_datasets, conditions=dataset_all_conditions)
+    padding = 8
 
     all_datasets: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.DATASET).get("items", [])
 
@@ -426,7 +434,7 @@ def evaluate_datasets(
             namespace=namespace,
             display=Padding(
                 f"Data processor dataset in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, 8)
+                (0, 0, 0, padding)
             )
         )
 
@@ -451,19 +459,20 @@ def evaluate_datasets(
             check_manager.add_display(
                 target_name=target_datasets,
                 namespace=namespace,
-                display=Padding(no_dataset_text, (0, 0, 0, 8))
+                display=Padding(no_dataset_text, (0, 0, 0, padding))
             )
             return check_manager.as_dict(as_list)
 
         check_manager.add_display(
             target_name=target_datasets,
             namespace=namespace,
-            display=Padding(datasets_count_text, (0, 0, 0, 8))
+            display=Padding(datasets_count_text, (0, 0, 0, padding))
         )
 
         for d in datasets:
             dataset_name = d["metadata"]["name"]
             dataset_status = d["status"]["provisioningStatus"]["status"]
+            property_padding = padding + PADDING_SIZE
 
             status_display_text = f"Provisiong Status: {{{decorate_resource_status(dataset_status)}}}"
 
@@ -473,12 +482,12 @@ def evaluate_datasets(
             check_manager.add_display(
                 target_name=target_datasets,
                 namespace=namespace,
-                display=Padding(target_dataset_text, (0, 0, 0, 8))
+                display=Padding(target_dataset_text, (0, 0, 0, padding))
             )
             check_manager.add_display(
                 target_name=target_datasets,
                 namespace=namespace,
-                display=Padding(status_display_text, (0, 0, 0, 12))
+                display=Padding(status_display_text, (0, 0, 0, property_padding))
             )
 
             dataset_eval_value = {"provisioningState": dataset_status}
@@ -491,7 +500,7 @@ def evaluate_datasets(
                 check_manager.add_display(
                     target_name=target_datasets,
                     namespace=namespace,
-                    display=Padding(error_display_text, (0, 0, 0, 14)))
+                    display=Padding(error_display_text, (0, 0, 0, property_padding + PADDING_SIZE)))
             elif dataset_status in [
                 ProvisioningState.updating.value,
                 ProvisioningState.provisioning.value,
@@ -517,7 +526,7 @@ def evaluate_datasets(
                         namespace=namespace,
                         display=Padding(
                             f"Payload path: [cyan]{dataset_payload}[/cyan]",
-                            (0, 0, 0, 12),
+                            (0, 0, 0, property_padding),
                         ),
                     )
 
@@ -528,7 +537,7 @@ def evaluate_datasets(
                         namespace=namespace,
                         display=Padding(
                             f"Timestamp: [cyan]{dataset_timestamp}[/cyan]",
-                            (0, 0, 0, 12),
+                            (0, 0, 0, property_padding),
                         ),
                     )
 
@@ -539,7 +548,7 @@ def evaluate_datasets(
                         namespace=namespace,
                         display=Padding(
                             f"Expiration time: [cyan]{dataset_ttl}[/cyan]",
-                            (0, 0, 0, 12),
+                            (0, 0, 0, property_padding),
                         ),
                     )
 
@@ -549,7 +558,7 @@ def evaluate_datasets(
                     target_name=target_datasets,
                     properties=d["spec"]["keys"],
                     display_name="Dataset configuration key",
-                    padding=(0, 0, 0, 12),
+                    padding=(0, 0, 0, property_padding),
                     namespace=namespace
                 )
 
@@ -586,6 +595,7 @@ def _evaluate_source_node(
     pipeline_name: str,
     check_manager: CheckManager,
     namespace: str,
+    padding: int,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
 
@@ -606,7 +616,7 @@ def _evaluate_source_node(
         eval_status=pipeline_source_count_eval_status,
         eval_value=pipeline_source_count_eval_value,
         resource_name=pipeline_name,
-        padding=(0, 0, 0, 12),
+        padding=(0, 0, 0, padding),
         namespace=namespace
     )
 
@@ -620,10 +630,12 @@ def _evaluate_source_node(
 
     if pipeline_source_node_topics_count < 1 or pipeline_source_node_topics_count > 50:
         pipeline_source_topics_eval_status = CheckTaskStatus.error.value
+    
+    property_padding = padding + PADDING_SIZE
     check_manager.add_display(
         target_name=target_pipelines,
         namespace=namespace,
-        display=Padding(source_topics_display_text, (0, 0, 0, 16))
+        display=Padding(source_topics_display_text, (0, 0, 0, property_padding))
     )
 
     check_manager.add_target_eval(
@@ -641,7 +653,7 @@ def _evaluate_source_node(
             check_manager.add_display(
                 target_name=target_pipelines,
                 namespace=namespace,
-                display=Padding(topic_display_text, (0, 0, 0, 18))
+                display=Padding(topic_display_text, (0, 0, 0, property_padding + PADDING_SIZE))
             )
 
         # data source broker URL
@@ -651,7 +663,7 @@ def _evaluate_source_node(
         check_manager.add_display(
             target_name=target_pipelines,
             namespace=namespace,
-            display=Padding(source_broker_display_text, (0, 0, 0, 16)))
+            display=Padding(source_broker_display_text, (0, 0, 0, property_padding)))
 
         # data source message format type
         pipeline_source_node_format_type = pipeline_source_node["format"]["type"]
@@ -659,7 +671,7 @@ def _evaluate_source_node(
         check_manager.add_display(
             target_name=target_pipelines,
             namespace=namespace,
-            display=Padding(source_format_type_display_text, (0, 0, 0, 16))
+            display=Padding(source_format_type_display_text, (0, 0, 0, property_padding))
         )
 
         # data source qos
@@ -668,7 +680,7 @@ def _evaluate_source_node(
         check_manager.add_display(
             target_name=target_pipelines,
             namespace=namespace,
-            display=Padding(source_qos_display_text, (0, 0, 0, 16))
+            display=Padding(source_qos_display_text, (0, 0, 0, property_padding))
         )
 
     # check data source partition
@@ -686,7 +698,7 @@ def _evaluate_source_node(
     check_manager.add_display(
         target_name=target_pipelines,
         namespace=namespace,
-        display=Padding(source_partition_count_display_text, (0, 0, 0, 16))
+        display=Padding(source_partition_count_display_text, (0, 0, 0, property_padding))
     )
 
     if detail_level != ResourceOutputDetailLevel.summary.value:
@@ -695,7 +707,7 @@ def _evaluate_source_node(
         check_manager.add_display(
             target_name=target_pipelines,
             namespace=namespace,
-            display=Padding(source_partition_strategy_display_text, (0, 0, 0, 18))
+            display=Padding(source_partition_strategy_display_text, (0, 0, 0, property_padding + PADDING_SIZE))
         )
 
     check_manager.add_target_eval(
@@ -713,7 +725,7 @@ def _evaluate_source_node(
         check_manager.add_display(
             target_name=target_pipelines,
             namespace=namespace,
-            display=Padding(source_authentication_display_text, (0, 0, 0, 16))
+            display=Padding(source_authentication_display_text, (0, 0, 0, property_padding))
         )
 
         if detail_level != ResourceOutputDetailLevel.summary.value:
@@ -723,12 +735,12 @@ def _evaluate_source_node(
             check_manager.add_display(
                 target_name=target_pipelines,
                 namespace=namespace,
-                display=Padding(f"Username: [cyan]{authentication_username}[/cyan]", (0, 0, 0, 20))
+                display=Padding(f"Username: [cyan]{authentication_username}[/cyan]", (0, 0, 0, property_padding + PADDING_SIZE))
             )
             check_manager.add_display(
                 target_name=target_pipelines,
                 namespace=namespace,
-                display=Padding(f"Password: [cyan]{masked_password}[/cyan]", (0, 0, 0, 20))
+                display=Padding(f"Password: [cyan]{masked_password}[/cyan]", (0, 0, 0, property_padding + PADDING_SIZE))
             )
 
 
@@ -738,6 +750,7 @@ def _evaluate_intermediate_nodes(
     target_pipelines: str,
     check_manager: CheckManager,
     namespace: str,
+    padding: int,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
 
@@ -752,8 +765,10 @@ def _evaluate_intermediate_nodes(
     check_manager.add_display(
         target_name=target_pipelines,
         namespace=namespace,
-        display=Padding(stage_count_display_text, (0, 0, 0, 12))
+        display=Padding(stage_count_display_text, (0, 0, 0, padding))
     )
+
+    property_padding = padding + PADDING_SIZE
 
     if detail_level != ResourceOutputDetailLevel.summary.value:
         for stage_name in pipeline_intermediate_stages_node:
@@ -762,7 +777,7 @@ def _evaluate_intermediate_nodes(
             check_manager.add_display(
                 target_name=target_pipelines,
                 namespace=namespace,
-                display=Padding(stage_display_text, (0, 0, 0, 16))
+                display=Padding(stage_display_text, (0, 0, 0, property_padding))
             )
 
             _process_stage_properties(
@@ -771,7 +786,7 @@ def _evaluate_intermediate_nodes(
                 target_name=target_pipelines,
                 stage=pipeline_intermediate_stages_node[stage_name],
                 stage_properties=DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES,
-                padding=(0, 0, 0, 20),
+                padding=(0, 0, 0, property_padding + PADDING_SIZE),
                 namespace=namespace
             )
 
@@ -782,6 +797,7 @@ def _evaluate_destination_node(
     pipeline_name: str,
     check_manager: CheckManager,
     namespace: str,
+    padding: int,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
     pipeline_destination_node_count = 1 if output_node else 0
@@ -799,18 +815,19 @@ def _evaluate_destination_node(
         eval_status=pipeline_destination_eval_status,
         eval_value=pipeline_destination_eval_value,
         resource_name=pipeline_name,
-        padding=(0, 0, 0, 12),
+        padding=(0, 0, 0, padding),
         namespace=namespace
     )
 
     if output_node:
         if detail_level != ResourceOutputDetailLevel.summary.value:
+            property_padding = padding + PADDING_SIZE
             _process_stage_properties(
                 check_manager,
                 detail_level,
                 target_name=target_pipelines,
                 stage=output_node[1],
                 stage_properties=DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES,
-                padding=(0, 0, 0, 16),
+                padding=(0, 0, 0, property_padding),
                 namespace=namespace
             )

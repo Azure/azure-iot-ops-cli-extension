@@ -126,6 +126,7 @@ def evaluate_lnms(
         lnms: List[dict] = list(lnms)
         lnms_count = len(lnms)
         lnms_count_text = "- Expecting [bright_blue]>=1[/bright_blue] instance resource per namespace. {}."
+        padding = 10
 
         if lnms_count >= 1:
             lnms_count_text = lnms_count_text.format(f"[green]Detected {lnms_count}[/green]")
@@ -135,10 +136,11 @@ def evaluate_lnms(
         check_manager.add_display(
             target_name=target_lnms,
             namespace=namespace,
-            display=Padding(lnms_count_text, (0, 0, 0, 10))
+            display=Padding(lnms_count_text, (0, 0, 0, padding))
         )
 
         for lnm in lnms:
+            lnm_padding = padding + PADDING_SIZE
             lnm_name = lnm["metadata"]["name"]
             lnm_names.append(lnm_name)
             status = lnm.get("status", {}).get("configStatusLevel", "undefined")
@@ -165,10 +167,11 @@ def evaluate_lnms(
                 eval_value=lnm_status_eval_value,
                 resource_name=lnm_name,
                 namespace=namespace,
-                padding=(0, 0, 0, 12)
+                padding=(0, 0, 0, lnm_padding)
             )
 
             lnm_allowlist = lnm["spec"].get("allowList", None)
+            property_padding = lnm_padding + PADDING_SIZE
 
             if detail_level > ResourceOutputDetailLevel.summary.value:
 
@@ -192,7 +195,7 @@ def evaluate_lnms(
                     eval_value=lnm_allowlist_eval_value,
                     resource_name=lnm_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 16)
+                    padding=(0, 0, 0, property_padding)
                 )
 
                 process_properties(
@@ -202,7 +205,7 @@ def evaluate_lnms(
                     prop_value=lnm_allowlist,
                     properties=LNM_ALLOWLIST_PROPERTIES,
                     namespace=namespace,
-                    padding=(0, 0, 0, 18)
+                    padding=(0, 0, 0, property_padding + PADDING_SIZE)
                 )
 
                 process_properties(
@@ -212,7 +215,7 @@ def evaluate_lnms(
                     prop_value=lnm["spec"],
                     properties=LNM_REST_PROPERTIES,
                     namespace=namespace,
-                    padding=(0, 0, 0, 16)
+                    padding=(0, 0, 0, property_padding)
                 )
 
             if detail_level == ResourceOutputDetailLevel.verbose.value:
@@ -238,7 +241,7 @@ def evaluate_lnms(
                     eval_value=lnm_image_eval_value,
                     resource_name=lnm_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 16)
+                    padding=(0, 0, 0, property_padding)
                 )
 
                 process_properties(
@@ -248,7 +251,7 @@ def evaluate_lnms(
                     prop_value=lnm_image,
                     properties=LNM_IMAGE_PROPERTIES,
                     namespace=namespace,
-                    padding=(0, 0, 0, 18)
+                    padding=(0, 0, 0, property_padding + PADDING_SIZE)
                 )
 
         if lnms_count > 0:
@@ -257,7 +260,7 @@ def evaluate_lnms(
                 namespace=namespace,
                 display=Padding(
                     "\nRuntime Health",
-                    (0, 0, 0, 10),
+                    (0, 0, 0, padding),
                 ),
             )
 
@@ -274,7 +277,7 @@ def evaluate_lnms(
                     check_manager=check_manager,
                     target=target_lnms,
                     pod=pod,
-                    display_padding=12,
+                    display_padding=padding + PADDING_SIZE,
                     namespace=namespace,
                     detail_level=detail_level,
                 )
