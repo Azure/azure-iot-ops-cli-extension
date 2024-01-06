@@ -45,6 +45,13 @@ KEYVAULT_ARC_EXTENSION_VERSION = "1.5.1"
 DEFAULT_POLL_RETRIES = 240
 DEFAULT_POLL_WAIT_SEC = 15
 
+PROVIDERS_REG_MAP = {
+    "Microsoft.IoTOperationsOrchestrator": False,
+    "Microsoft.IoTOperationsMQ": False,
+    "Microsoft.IoTOperationsDataProcessor": False,
+    "Microsoft.DeviceRegistry": False,
+}
+
 
 class ServicePrincipal(NamedTuple):
     client_id: str

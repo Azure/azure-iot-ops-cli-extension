@@ -23,23 +23,29 @@ from ...util import get_timestamp_now_utc
 from ...util.x509 import DEFAULT_EC_ALGO
 from .template import CURRENT_TEMPLATE, TemplateVer
 
+from time import sleep
+
 logger = get_logger(__name__)
 
 
 class WorkCategoryKey(IntEnum):
-    CSI_DRIVER = 1
-    TLS_CA = 2
-    DEPLOY_AIO = 3
+    PRE_CHECK = 1
+    CSI_DRIVER = 2
+    TLS_CA = 3
+    DEPLOY_AIO = 4
 
 
 class WorkStepKey(IntEnum):
     SP = 1
-    KV_CLOUD_AP = 2
-    KV_CLOUD_SEC = 3
-    KV_CSI_DEPLOY = 4
-    KV_CSI_CLUSTER = 5
-    TLS_CERT = 6
-    TLS_CLUSTER = 7
+    KV_CLOUD_PERM_MODEL = 2
+    KV_CLOUD_AP = 3
+    KV_CLOUD_SEC = 4
+    KV_CSI_DEPLOY = 5
+    KV_CSI_CLUSTER = 6
+    TLS_CERT = 7
+    TLS_CLUSTER = 8
+
+    REG_RP = 9
 
 
 class WorkRecord:
@@ -113,8 +119,20 @@ class WorkManager:
         self._build_display()
 
     def _build_display(self):
-        kv_csi_cat_desc = "KeyVault CSI Driver"
+        pre_check_cat_desc = "Pre-checks"
+        self.display.add_category(WorkCategoryKey.PRE_CHECK, pre_check_cat_desc)
+        self.display.add_step(WorkCategoryKey.PRE_CHECK, WorkStepKey.REG_RP, "Resource providers are registered")
+
+        kv_csi_cat_desc = "Key Vault CSI Driver"
         self.display.add_category(WorkCategoryKey.CSI_DRIVER, kv_csi_cat_desc, skipped=not self._keyvault_resource_id)
+
+        kv_cloud_perm_model_desc = "Verify Key Vault{}permission model"
+        kv_cloud_perm_model_desc = kv_cloud_perm_model_desc.format(
+            f" '[green]{self._keyvault_name}[/green]' " if self._keyvault_resource_id else " "
+        )
+        self.display.add_step(
+            WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_PERM_MODEL, description=kv_cloud_perm_model_desc
+        )
 
         if self._sp_app_id:
             sp_desc = f"Use app '[green]{self._sp_app_id}[/green]'"
@@ -124,11 +142,7 @@ class WorkManager:
             sp_desc = "Created app"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.SP, description=sp_desc)
 
-        kv_cloud_ap_desc = "Ensure KeyVault{}access policy"
-        kv_cloud_ap_desc = kv_cloud_ap_desc.format(
-            f" '[green]{self._keyvault_name}[/green]' " if self._keyvault_resource_id else " "
-        )
-        self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_AP, description=kv_cloud_ap_desc)
+        self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_AP, description="Configure access policy")
 
         kv_cloud_sec_desc = f"Ensure secret name '[green]{self._keyvault_sat_secret_name}[/green]' for service account"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_SEC, description=kv_cloud_sec_desc)
@@ -168,6 +182,12 @@ class WorkManager:
         work_kpis = {}
 
         try:
+            # Pre-check segment
+            self.render_display(category=WorkCategoryKey.PRE_CHECK)
+            self._completed_steps[WorkStepKey.REG_RP] = 1
+            sleep(1)
+            self.render_display(category=WorkCategoryKey.PRE_CHECK)
+
             # CSI driver segment
             if self._keyvault_resource_id:
                 work_kpis["csiDriver"] = {}
@@ -176,36 +196,49 @@ class WorkManager:
                     and not self.display.categories[WorkCategoryKey.CSI_DRIVER][1]
                 ):
                     self.render_display(category=WorkCategoryKey.CSI_DRIVER)
+                    if WorkStepKey.KV_CLOUD_PERM_MODEL in self.display.steps[WorkCategoryKey.CSI_DRIVER]:
+                        self._completed_steps[WorkStepKey.KV_CLOUD_PERM_MODEL] = 1
+                        sleep(1)
+                        self.render_display(category=WorkCategoryKey.CSI_DRIVER)
+                        pass
+
                     if WorkStepKey.SP in self.display.steps[WorkCategoryKey.CSI_DRIVER]:
-                        sp_record = prepare_sp(deployment_name=self._work_name, **self._kwargs)
-                        if sp_record.created_app:
-                            self.display.steps[WorkCategoryKey.CSI_DRIVER][
-                                WorkStepKey.SP
-                            ].title = f"Created app '[green]{sp_record.client_id}[/green]'"
-                            self.render_display(category=WorkCategoryKey.CSI_DRIVER)
-                        work_kpis["csiDriver"]["spAppId"] = sp_record.client_id
-                        work_kpis["csiDriver"]["spObjectId"] = sp_record.object_id
-                        work_kpis["csiDriver"]["keyVaultId"] = self._keyvault_resource_id
+                        # sp_record = prepare_sp(deployment_name=self._work_name, **self._kwargs)
+                        # if sp_record.created_app:
+                        #     self.display.steps[WorkCategoryKey.CSI_DRIVER][
+                        #         WorkStepKey.SP
+                        #     ].title = f"Created app '[green]{sp_record.client_id}[/green]'"
+                        #     self.render_display(category=WorkCategoryKey.CSI_DRIVER)
+                        # work_kpis["csiDriver"]["spAppId"] = sp_record.client_id
+                        # work_kpis["csiDriver"]["spObjectId"] = sp_record.object_id
+                        # work_kpis["csiDriver"]["keyVaultId"] = self._keyvault_resource_id
+                        work_kpis["csiDriver"]["spAppId"] = "mock"
+                        work_kpis["csiDriver"]["spObjectId"] = "mock"
+                        work_kpis["csiDriver"]["keyVaultId"] = "mock"
 
                         self._completed_steps[WorkStepKey.SP] = 1
+                        sleep(1)
                         self.render_display(category=WorkCategoryKey.CSI_DRIVER)
 
                         if WorkStepKey.KV_CLOUD_AP in self.display.steps[WorkCategoryKey.CSI_DRIVER]:
-                            vault_uri = prepare_keyvault_access_policy(
-                                sp_record=sp_record,
-                                **self._kwargs,
-                            )
+                            # vault_uri = prepare_keyvault_access_policy(
+                            #     sp_record=sp_record,
+                            #     **self._kwargs,
+                            # )
+                            sleep(1)
 
                             self._completed_steps[WorkStepKey.KV_CLOUD_AP] = 1
                             self.render_display(category=WorkCategoryKey.CSI_DRIVER)
 
                             if WorkStepKey.KV_CLOUD_SEC in self.display.steps[WorkCategoryKey.CSI_DRIVER]:
-                                keyvault_sat_secret_name = prepare_keyvault_secret(
-                                    deployment_name=self._work_name,
-                                    vault_uri=vault_uri,
-                                    **self._kwargs,
-                                )
-                                work_kpis["csiDriver"]["kvSatSecretName"] = keyvault_sat_secret_name
+                                # keyvault_sat_secret_name = prepare_keyvault_secret(
+                                #     deployment_name=self._work_name,
+                                #     vault_uri=vault_uri,
+                                #     **self._kwargs,
+                                # )
+                                # work_kpis["csiDriver"]["kvSatSecretName"] = keyvault_sat_secret_name
+                                work_kpis["csiDriver"]["kvSatSecretName"] = "mock"
+                                sleep(1)
 
                                 self._completed_steps[WorkStepKey.KV_CLOUD_SEC] = 1
                                 self.render_display(category=WorkCategoryKey.CSI_DRIVER)
@@ -216,21 +249,24 @@ class WorkManager:
                             work_kpis["csiDriver"]["rotationPollInterval"] = self._kwargs.get("rotation_poll_interval")
                             work_kpis["csiDriver"]["enableSecretRotation"] = enable_secret_rotation
 
-                            akv_csi_driver_result = provision_akv_csi_driver(
-                                enable_secret_rotation=enable_secret_rotation, **self._kwargs
-                            )
-                            work_kpis["csiDriver"]["version"] = akv_csi_driver_result["properties"]["version"]
+                            # akv_csi_driver_result = provision_akv_csi_driver(
+                            #     enable_secret_rotation=enable_secret_rotation, **self._kwargs
+                            # )
+                            # work_kpis["csiDriver"]["version"] = akv_csi_driver_result["properties"]["version"]
+                            sleep(1)
+                            work_kpis["csiDriver"]["version"] = "mock"
 
                             self._completed_steps[WorkStepKey.KV_CSI_DEPLOY] = 1
                             self.render_display(category=WorkCategoryKey.CSI_DRIVER)
 
                         if WorkStepKey.KV_CSI_CLUSTER in self.display.steps[WorkCategoryKey.CSI_DRIVER]:
-                            configure_cluster_secrets(
-                                cluster_secret_ref=self._cluster_secret_ref,
-                                cluster_akv_secret_class_name=self._cluster_secret_class_name,
-                                sp_record=sp_record,
-                                **self._kwargs,
-                            )
+                            # configure_cluster_secrets(
+                            #     cluster_secret_ref=self._cluster_secret_ref,
+                            #     cluster_akv_secret_class_name=self._cluster_secret_class_name,
+                            #     sp_record=sp_record,
+                            #     **self._kwargs,
+                            # )
+                            sleep(1)
 
                             self._completed_steps[WorkStepKey.KV_CSI_CLUSTER] = 1
                             self.render_display(category=WorkCategoryKey.CSI_DRIVER)
@@ -253,13 +289,14 @@ class WorkManager:
                 self._completed_steps[WorkStepKey.TLS_CERT] = 1
                 self.render_display(category=WorkCategoryKey.TLS_CA)
 
-                configure_cluster_tls(
-                    public_ca=public_ca,
-                    private_key=private_key,
-                    secret_name=secret_name,
-                    cm_name=cm_name,
-                    **self._kwargs,
-                )
+                # configure_cluster_tls(
+                #     public_ca=public_ca,
+                #     private_key=private_key,
+                #     secret_name=secret_name,
+                #     cm_name=cm_name,
+                #     **self._kwargs,
+                # )
+                sleep(1)
                 self._completed_steps[WorkStepKey.TLS_CLUSTER] = 1
                 self.render_display(category=WorkCategoryKey.TLS_CA)
             else:
@@ -278,36 +315,37 @@ class WorkManager:
             ):
                 self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
                 template, parameters = self.build_template(work_kpis=work_kpis)
+                sleep(1)
 
-                deployment_result, deployment_poller = deploy_template(
-                    template=template.content, parameters=parameters, deployment_name=self._work_name, **self._kwargs
-                )
-                work_kpis.update(deployment_result)
+                # deployment_result, deployment_poller = deploy_template(
+                #     template=template.content, parameters=parameters, deployment_name=self._work_name, **self._kwargs
+                # )
+                # work_kpis.update(deployment_result)
 
-                if self._no_block:
-                    return work_kpis
+                # if self._no_block:
+                #     return work_kpis
 
-                # Pattern needs work, its this way to dynamically update UI
-                self.display.categories[WorkCategoryKey.DEPLOY_AIO][0].title = (
-                    f"[link={deployment_result['deploymentLink']}]"
-                    f"{self.display.categories[WorkCategoryKey.DEPLOY_AIO][0].title}[/link]"
-                )
-                self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
+                # # Pattern needs work, its this way to dynamically update UI
+                # self.display.categories[WorkCategoryKey.DEPLOY_AIO][0].title = (
+                #     f"[link={deployment_result['deploymentLink']}]"
+                #     f"{self.display.categories[WorkCategoryKey.DEPLOY_AIO][0].title}[/link]"
+                # )
+                # self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
 
-                terminal_deployment = wait_for_terminal_state(deployment_poller)
-                deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
-                deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
-                deployment_result["deploymentState"]["opsVersion"] = template.component_vers
-                deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
-                deployment_result["deploymentState"]["resources"] = [
-                    resource.id.split(
-                        f"/subscriptions/{self._subscription_id}/resourceGroups/"
-                        f"{self._kwargs['resource_group_name']}/providers/"
-                    )[1]
-                    for resource in terminal_deployment.properties.output_resources
-                ]
+                # terminal_deployment = wait_for_terminal_state(deployment_poller)
+                # deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
+                # deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
+                # deployment_result["deploymentState"]["opsVersion"] = template.component_vers
+                # deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
+                # deployment_result["deploymentState"]["resources"] = [
+                #     resource.id.split(
+                #         f"/subscriptions/{self._subscription_id}/resourceGroups/"
+                #         f"{self._kwargs['resource_group_name']}/providers/"
+                #     )[1]
+                #     for resource in terminal_deployment.properties.output_resources
+                # ]
 
-                work_kpis.update(deployment_result)
+                # work_kpis.update(deployment_result)
                 return work_kpis
 
         except HttpResponseError as e:
