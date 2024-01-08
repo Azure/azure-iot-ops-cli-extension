@@ -106,11 +106,11 @@ def load_iotops_help():
           text: >
             az iot ops check --svc dataprocessor --detail-level 1 --resources pipeline
 
-        - name: Use resource name filter to constrain results to resource exactly matching `pipeline`.
+        - name: Use resource name filter to constrain results to `pipeline` resource exactly matching name `pipeline`.
           text: >
-            az iot ops check --svc dataprocessor --detail-level 1 --resource-name pipeline
+            az iot ops check --svc dataprocessor  --resources pipeline --resource-name pipeline
 
-        - name: Use resource name filter to constrain results to resources that start with `pipeline-name`.
+        - name: Use resource name filter to constrain results to resource names that start with `pipeline-name`.
           text: >
             az iot ops check --svc dataprocessor --detail-level 1 --resource-name pipeline-name*
     """
