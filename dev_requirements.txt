@@ -6,7 +6,7 @@ responses
 black
 wheel==0.30.0
 pre-commit
-pylint==2.11.1
+pylint==3.0.3
 flake8
 pytest-xdist
 pytest-rerunfailures
