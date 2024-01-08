@@ -39,6 +39,7 @@ def process_cloud_connector(
     ],
     detail_level: str = ResourceOutputDetailLevel.summary.value,
     as_list: bool = False,
+    connector_resource_name: str = None,
 ):
     # Create check manager
     check_manager = CheckManager(

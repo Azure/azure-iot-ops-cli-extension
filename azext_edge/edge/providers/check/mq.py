@@ -14,6 +14,7 @@ from .base import (
     check_post_deployment,
     evaluate_pod_health,
     get_resource_name,
+    get_resources_by_name,
     resources_grouped_by_namespace
 )
 
@@ -49,6 +50,7 @@ def check_mq_deployment(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
+    resource_name: str = None,
 ) -> None:
     evaluate_funcs = {
         MqResourceKinds.BROKER: evaluate_brokers,
@@ -68,31 +70,36 @@ def check_mq_deployment(
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
-        resource_kinds=resource_kinds
+        resource_kinds=resource_kinds,
+        resource_name=resource_name,
     )
 
 
 def evaluate_diagnostics_service(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(
         check_name="evalBrokerDiag",
         check_desc="Evaluate MQ Diagnostics Service",
     )
-    all_diagnostic_services = MQ_ACTIVE_API.get_resources(
-        kind=MqResourceKinds.DIAGNOSTIC_SERVICE
-    ).get("items", [])
+    all_diagnostic_services = get_resources_by_name(
+        api_info=MQ_ACTIVE_API,
+        kind=MqResourceKinds.DIAGNOSTIC_SERVICE,
+        resource_name=resource_name,
+    )
     target_diagnostic_service = "diagnosticservices.mq.iotoperations.azure.com"
 
     if not all_diagnostic_services:
+        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_diagnostics_services_error = f"Unable to fetch {MqResourceKinds.DIAGNOSTIC_SERVICE.value}s in any namespace."
         check_manager.add_target(
             target_name=target_diagnostic_service
         )
         check_manager.add_target_eval(
             target_name=target_diagnostic_service,
-            status=CheckTaskStatus.error.value,
+            status=status,
             value=fetch_diagnostics_services_error,
         )
         check_manager.add_display(
@@ -264,6 +271,7 @@ def evaluate_diagnostics_service(
 def evaluate_broker_listeners(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(
         check_name="evalBrokerListeners",
@@ -279,15 +287,21 @@ def evaluate_broker_listeners(
         "status",
     ]
 
-    all_listeners = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER_LISTENER).get("items", [])
+    # all_listeners = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER_LISTENER).get("items", [])
+    all_listeners = get_resources_by_name(
+        api_info=MQ_ACTIVE_API,
+        kind=MqResourceKinds.BROKER_LISTENER,
+        resource_name=resource_name,
+    )
     if not all_listeners:
+        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_listeners_error_text = f"Unable to fetch {MqResourceKinds.BROKER_LISTENER.value}s in any namespace."
         check_manager.add_target(
             target_name=target_listeners
         )
         check_manager.add_target_eval(
             target_name=target_listeners,
-            status=CheckTaskStatus.error.value,
+            status=status,
             value=fetch_listeners_error_text,
         )
         check_manager.add_display(
@@ -508,21 +522,27 @@ def evaluate_broker_listeners(
 def evaluate_brokers(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate MQ brokers")
 
     target_brokers = "brokers.mq.iotoperations.azure.com"
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
-    all_brokers: dict = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER).get("items", [])
+    all_brokers: dict = get_resources_by_name(
+        api_info=MQ_ACTIVE_API,
+        kind=MqResourceKinds.BROKER,
+        resource_name=resource_name,
+    )
 
     if not all_brokers:
+        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_brokers_error_text = f"Unable to fetch {MqResourceKinds.BROKER.value}s in any namespace."
         check_manager.add_target(
             target_name=target_brokers
         )
         check_manager.add_target_eval(
             target_name=target_brokers,
-            status=CheckTaskStatus.error.value,
+            status=status,
             value=fetch_brokers_error_text,
         )
         check_manager.add_display(
@@ -757,6 +777,7 @@ def evaluate_brokers(
 def evaluate_mqtt_bridge_connectors(
     as_list: bool = False,
     detail_level: str = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     from rich.table import Table
 
@@ -934,13 +955,15 @@ def evaluate_mqtt_bridge_connectors(
         connector_display_func=display_connector_info,
         topic_map_display_func=display_topic_maps,
         detail_level=detail_level,
-        as_list=as_list
+        as_list=as_list,
+        connector_resource_name=resource_name,
     )
 
 
 def evaluate_datalake_connectors(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     from rich.table import Table
 
@@ -1118,13 +1141,15 @@ def evaluate_datalake_connectors(
         connector_display_func=display_connector_info,
         topic_map_display_func=display_topic_maps,
         detail_level=detail_level,
-        as_list=as_list
+        as_list=as_list,
+        connector_resource_name=resource_name,
     )
 
 
 def evaluate_kafka_connectors(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     def display_connector_info(check_manager: CheckManager, target: str, namespace: str, connector: Dict[str, Any], detail_level: str, padding: tuple):
         connector_name = get_resource_name(connector)
@@ -1398,7 +1423,8 @@ def evaluate_kafka_connectors(
         connector_display_func=display_connector_info,
         topic_map_display_func=display_topic_maps,
         detail_level=detail_level,
-        as_list=as_list
+        as_list=as_list,
+        connector_resource_name=resource_name,
     )
 
 

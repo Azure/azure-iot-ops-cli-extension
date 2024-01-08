@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
+import re
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from enum import Enum
 
@@ -59,6 +60,7 @@ def check_post_deployment(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: Optional[List[str]] = None,
+    resource_name: str = None,
     excluded_resources: Optional[List[str]] = None,
 ) -> None:
     check_resources = {}
@@ -73,7 +75,43 @@ def check_post_deployment(
         for resource, evaluate_func in evaluate_funcs.items():
             if (resource == CORE_SERVICE_RUNTIME_RESOURCE) or\
                     (resource.value in lowercase_api_resources and check_resources[resource]):
-                result["postDeployment"].append(evaluate_func(detail_level=detail_level, as_list=as_list))
+                result["postDeployment"].append(evaluate_func(detail_level=detail_level, as_list=as_list, resource_name=resource_name))
+
+
+def filter_resources_by_name(
+    resources: List[dict],
+    resource_name: str,
+) -> List[dict]:
+    # decide if to use resource["metadata"]["name"] or resource.metadata.name
+    def get_resource_name(resource: dict) -> str:
+        # get lowercase name from resource
+        if isinstance(resource, dict):
+            return resource.get("metadata", {}).get("name", "").lower()
+        return resource.metadata.name.lower()
+
+    if resource_name:
+        resource_name = resource_name.lower()
+        # check resource for wildcarded name
+        if "*" in resource_name:
+            resource_name = resource_name.replace("*", ".*")
+            # add beginning and end of string regex
+            resource_name = f"^{resource_name}$"
+            resources = [resource for resource in resources if re.match(resource_name, get_resource_name(resource))]
+        else:
+            resources = [resource for resource in resources if resource_name == get_resource_name(resource)]
+
+    return resources
+
+
+def get_resources_by_name(
+    api_info: EdgeResourceApi,
+    kind: Union[str, Enum],
+    resource_name: str,
+    namespace: str = None,
+) -> List[dict]:
+    resources: list = api_info.get_resources(kind=kind, namespace=namespace).get("items", [])
+    resources = filter_resources_by_name(resources, resource_name)
+    return resources
 
 
 def process_as_list(console: Console, result: Dict[str, Any]) -> None:

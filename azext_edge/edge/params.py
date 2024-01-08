@@ -132,7 +132,14 @@ def load_iotops_arguments(self, _):
             "Choose 0 for a summary view (minimal output), "
             "1 for a detailed view (more comprehensive information), "
             "or 2 for a verbose view (all available information).",
-        )
+        ),
+        context.argument(
+            "resource_name",
+            options_list=["--resource-name", "--rn"],
+            help="Filter checks to specific resource name. "
+            "Name can be wildcarded using the '*' character and case insensitive. "
+            "If not provided, all resources of the specified kind will be evaluated. ",
+        ),
 
     with self.argument_context("iot ops mq get-password-hash") as context:
         context.argument(

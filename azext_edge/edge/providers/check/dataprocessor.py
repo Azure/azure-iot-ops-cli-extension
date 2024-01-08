@@ -12,6 +12,7 @@ from .base import (
     check_post_deployment,
     evaluate_pod_health,
     generate_target_resource_name,
+    get_resources_by_name,
     process_properties,
     process_property_by_type,
     resources_grouped_by_namespace,
@@ -47,7 +48,8 @@ def check_dataprocessor_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    resource_kinds: List[str] = None
+    resource_kinds: List[str] = None,
+    resource_name: str = None,
 ) -> None:
     evaluate_funcs = {
         DataProcessorResourceKinds.INSTANCE: evaluate_instances,
@@ -61,6 +63,7 @@ def check_dataprocessor_deployment(
         check_desc="Enumerate Data Processor API resources",
         result=result,
         resource_kinds_enum=DataProcessorResourceKinds,
+        resource_name=resource_name,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
@@ -71,35 +74,34 @@ def check_dataprocessor_deployment(
 def evaluate_instances(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Data processor instance")
 
     instance_namespace_conditions = ["len(instances)==1", "provisioningStatus"]
-    instance_all_conditions = ["instances"]
 
-    instance_resources: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
     target_instances = generate_target_resource_name(api_info=DATA_PROCESSOR_API_V1, resource_kind=DataProcessorResourceKinds.INSTANCE.value)
-    check_manager.add_target(target_name=target_instances, conditions=instance_all_conditions)
-    all_instances: list = instance_resources.get("items", []) if instance_resources else []
+
+    all_instances = get_resources_by_name(
+        api_info=DATA_PROCESSOR_API_V1,
+        kind=DataProcessorResourceKinds.INSTANCE,
+        resource_name=resource_name
+    )
 
     if not all_instances:
+        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_instances_error_text = f"Unable to fetch {DataProcessorResourceKinds.INSTANCE.value}s in any namespaces."
+        check_manager.add_target(target_name=target_instances)
         check_manager.add_target_eval(
             target_name=target_instances,
-            status=CheckTaskStatus.error.value,
-            value={"instances": None}
+            status=status,
+            value=fetch_instances_error_text
         )
         check_manager.add_display(
             target_name=target_instances,
             display=Padding(fetch_instances_error_text, (0, 0, 0, 8))
         )
         return check_manager.as_dict(as_list)
-
-    check_manager.add_target_eval(
-        target_name=target_instances,
-        status=CheckTaskStatus.success.value,
-        value={"instances": len(all_instances)}
-    )
 
     for (namespace, instances) in resources_grouped_by_namespace(all_instances):
         check_manager.add_target(target_name=target_instances, namespace=namespace, conditions=instance_namespace_conditions)
@@ -209,11 +211,11 @@ def evaluate_instances(
 def evaluate_pipelines(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Data processor pipeline")
 
     target_pipelines = generate_target_resource_name(api_info=DATA_PROCESSOR_API_V1, resource_kind=DataProcessorResourceKinds.PIPELINE.value)
-    pipeline_all_conditions = ["pipelines"]
     pipeline_namespace_conditions = [
         "len(pipelines)>=1",
         "mode.enabled",
@@ -224,27 +226,25 @@ def evaluate_pipelines(
         "destinationNodeCount==1"
     ]
 
-    check_manager.add_target(target_name=target_pipelines, conditions=pipeline_all_conditions)
-    all_pipelines: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.PIPELINE).get("items", [])
+    all_pipelines = get_resources_by_name(
+        api_info=DATA_PROCESSOR_API_V1,
+        kind=DataProcessorResourceKinds.PIPELINE,
+        resource_name=resource_name
+    )
 
     if not all_pipelines:
+        check_manager.add_target(target_name=target_pipelines)
         fetch_pipelines_error_text = f"Unable to fetch {DataProcessorResourceKinds.PIPELINE.value}s in any namespaces."
         check_manager.add_target_eval(
             target_name=target_pipelines,
             status=CheckTaskStatus.skipped.value,
-            value={"pipelines": None}
+            value=fetch_pipelines_error_text
         )
         check_manager.add_display(
             target_name=target_pipelines,
             display=Padding(fetch_pipelines_error_text, (0, 0, 0, 8))
         )
         return check_manager.as_dict(as_list)
-
-    check_manager.add_target_eval(
-        target_name=target_pipelines,
-        status=CheckTaskStatus.success.value,
-        value={"pipelines": len(all_pipelines)}
-    )
 
     for (namespace, pipelines) in resources_grouped_by_namespace(all_pipelines):
         check_manager.add_target(target_name=target_pipelines, namespace=namespace, conditions=pipeline_namespace_conditions)
@@ -392,32 +392,30 @@ def evaluate_pipelines(
 def evaluate_datasets(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Data processor dataset")
 
     target_datasets = generate_target_resource_name(api_info=DATA_PROCESSOR_API_V1, resource_kind=DataProcessorResourceKinds.DATASET.value)
-    dataset_all_conditions = ["datasets"]
     dataset_namespace_conditions = ["provisioningState"]
-    check_manager.add_target(target_name=target_datasets, conditions=dataset_all_conditions)
 
-    all_datasets: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.DATASET).get("items", [])
+    all_datasets = get_resources_by_name(
+        api_info=DATA_PROCESSOR_API_V1,
+        kind=DataProcessorResourceKinds.DATASET,
+        resource_name=resource_name
+    )
 
     if not all_datasets:
+        check_manager.add_target(target_name=target_datasets)
         fetch_datasets_warn_text = f"Unable to fetch {DataProcessorResourceKinds.DATASET.value}s in any namespaces."
         add_display_and_eval(
             check_manager=check_manager,
             target_name=target_datasets,
             display_text=fetch_datasets_warn_text,
             eval_status=CheckTaskStatus.skipped.value,
-            eval_value={"datasets": None}
+            eval_value=fetch_datasets_warn_text
         )
         return check_manager.as_dict(as_list)
-
-    check_manager.add_target_eval(
-        target_name=target_datasets,
-        status=CheckTaskStatus.success.value,
-        value={"datasets": len(all_datasets)}
-    )
 
     for (namespace, datasets) in resources_grouped_by_namespace(all_datasets):
         check_manager.add_target(target_name=target_datasets, namespace=namespace, conditions=dataset_namespace_conditions)

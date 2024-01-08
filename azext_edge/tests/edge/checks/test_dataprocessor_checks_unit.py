@@ -54,19 +54,20 @@ def test_check_dataprocessor_by_resource_types(ops_service, mocker, mock_resourc
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", ["test_instance", "test_instance2"])
 @pytest.mark.parametrize(
-    "instance, namespace_conditions, all_conditions, namespace_evaluations, all_evaluations",
+    "instances, namespace_conditions, namespace_evaluations",
     [
         (
-            # instance
-            generate_resource_stub(
-                metadata={"name": "test_instance"},
-                status={"provisioningStatus": {"status": ProvisioningState.succeeded.value}}
-            ),
+            # instances
+            [
+                generate_resource_stub(
+                    metadata={"name": "test_instance"},
+                    status={"provisioningStatus": {"status": ProvisioningState.succeeded.value}}
+                ),
+            ],
             # instance namespace conditions str
             ["len(instances)==1", "provisioningStatus"],
-            # instance all conditions str
-            ["instances"],
             # namespace evaluations str
             [
                 [
@@ -74,27 +75,20 @@ def test_check_dataprocessor_by_resource_types(ops_service, mocker, mock_resourc
                     ("value/provisioningStatus", ProvisioningState.succeeded.value),
                 ],
             ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/instances", 1),
-                ]
-            ]
         ),
         (
-            # instance
-            {
-                "metadata": {"name": "test_instance"},
-                "status": {"provisioningStatus": {
-                    "error": {"message": "test error"},
-                    "status": ProvisioningState.failed.value}
+            # instances
+            [
+                {
+                    "metadata": {"name": "test_instance"},
+                    "status": {"provisioningStatus": {
+                        "error": {"message": "test error"},
+                        "status": ProvisioningState.failed.value}
+                    },
                 },
-            },
+            ],
             # namespace conditions str
             ["len(instances)==1", "provisioningStatus"],
-            # all namespace conditions str
-            ["instances"],
             # namespace evaluations str
             [
                 [
@@ -102,52 +96,40 @@ def test_check_dataprocessor_by_resource_types(ops_service, mocker, mock_resourc
                     ("value/provisioningStatus", ProvisioningState.failed.value),
                 ],
             ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/instances", 1),
-                ]
-            ]
         ),
     ],
 )
 def test_instance_checks(
     mocker,
     mock_evaluate_dataprocessor_pod_health,
-    instance,
+    instances,
     namespace_conditions,
-    all_conditions,
     namespace_evaluations,
-    all_evaluations,
-    detail_level
+    detail_level,
+    resource_name
 ):
     namespace = generate_generic_id()
-    instance['metadata']['namespace'] = namespace
+    for instance in instances:
+        instance['metadata']['namespace'] = namespace
     mocker = mocker.patch(
-        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": [instance]}],
+        "azext_edge.edge.providers.check.dataprocessor.get_resources_by_name",
+        side_effect=[instances],
     )
 
-    result = evaluate_instances(detail_level=detail_level)
+    result = evaluate_instances(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalInstances"
-    assert result["targets"]["instances.dataprocessor.iotoperations.azure.com"]
-    target = result["targets"]["instances.dataprocessor.iotoperations.azure.com"]
+    assert namespace in result["targets"]["instances.dataprocessor.iotoperations.azure.com"]
+    target = result["targets"]["instances.dataprocessor.iotoperations.azure.com"][namespace]
 
-    for namespace in target:
-        assert namespace in result["targets"]["instances.dataprocessor.iotoperations.azure.com"]
-        if namespace == ALL_NAMESPACES_TARGET:
-            assert_conditions(target[namespace], all_conditions)
-            assert_evaluations(target[namespace], all_evaluations)
-        else:
-            assert_conditions(target[namespace], namespace_conditions)
-            assert_evaluations(target[namespace], namespace_evaluations)
+    assert_conditions(target, namespace_conditions)
+    assert_evaluations(target, namespace_evaluations)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", ["test_instance", "test_instance2"])
 @pytest.mark.parametrize(
-    "pipelines, namespace_conditions, all_conditions, namespace_evaluations, all_evaluations",
+    "pipelines, namespace_conditions, namespace_evaluations",
     [
         (
             # pipelines
@@ -210,8 +192,6 @@ def test_instance_checks(
                 "spec.input.partitionCount>=1",
                 "destinationNodeCount==1"
             ],
-            # all namespace conditions str
-            ["pipelines"],
             # namespace evaluations str
             [
                 [
@@ -237,13 +217,6 @@ def test_instance_checks(
                 [
                     ("status", "success"),
                     ("value/destinationNodeCount", 1),
-                ]
-            ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/pipelines", 1),
                 ]
             ],
         ),
@@ -355,8 +328,6 @@ def test_instance_checks(
                 "spec.input.partitionCount>=1",
                 "destinationNodeCount==1"
             ],
-            # all namespace conditions str
-            ["pipelines"],
             # namespace evaluations str
             [
                 [
@@ -368,13 +339,6 @@ def test_instance_checks(
                     ("value/provisioningStatus", ProvisioningState.failed.value),
                 ],
             ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/pipelines", 2),
-                ]
-            ]
         ),
         (
             # pipelines
@@ -404,8 +368,6 @@ def test_instance_checks(
                 "spec.input.partitionCount>=1",
                 "destinationNodeCount==1"
             ],
-            # all namespace conditions str
-            ["pipelines"],
             # namespace evaluations str
             [
                 [
@@ -413,37 +375,18 @@ def test_instance_checks(
                     ("value/mode.enabled", "not running"),
                 ],
             ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/pipelines", 1),
-                ]
-            ],
         ),
         (
             # pipelines
             [],
             # namespace conditions str
-            [
-                "len(pipelines)>=1",
-                "mode.enabled",
-                "provisioningStatus",
-                "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
-                "destinationNodeCount==1"
-            ],
-            # all namespace conditions str
-            ["pipelines"],
-            # namespace evaluations str
             [],
-            # all namespace evaluation str
+            # namespace evaluations str
             [
                 [
                     ("status", "skipped"),
-                    ("value/pipelines", None),
-                ]
+                    ("value", "Unable to fetch pipelines in any namespaces."),
+                ],
             ],
         ),
     ]
@@ -453,38 +396,38 @@ def test_pipeline_checks(
     mock_evaluate_dataprocessor_pod_health,
     pipelines,
     namespace_conditions,
-    all_conditions,
     namespace_evaluations,
-    all_evaluations,
-    detail_level
+    detail_level,
+    resource_name
 ):
     mocker = mocker.patch(
-        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": pipelines}],
+        "azext_edge.edge.providers.check.dataprocessor.get_resources_by_name",
+        side_effect=[pipelines],
     )
 
     namespace = generate_generic_id()
     for pipeline in pipelines:
         pipeline['metadata']['namespace'] = namespace
-    result = evaluate_pipelines(detail_level=detail_level)
+    result = evaluate_pipelines(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalPipelines"
     assert result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"]
-    target = result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"]
 
-    for namespace in target:
+    if pipelines:
         assert namespace in result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"]
-        if namespace == ALL_NAMESPACES_TARGET:
-            assert_conditions(target[namespace], all_conditions)
-            assert_evaluations(target[namespace], all_evaluations)
-        else:
-            assert_conditions(target[namespace], namespace_conditions)
-            assert_evaluations(target[namespace], namespace_evaluations)
+    else:
+        namespace = ALL_NAMESPACES_TARGET
+        assert namespace in result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"]
+    target = result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"][namespace]
+
+    assert_conditions(target, namespace_conditions)
+    assert_evaluations(target, namespace_evaluations)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", ["test_instance", "test_instance2"])
 @pytest.mark.parametrize(
-    "datasets, namespace_conditions, all_conditions, namespace_evaluations, all_evaluations",
+    "datasets, namespace_conditions, namespace_evaluations",
     [
         (
             # datasets
@@ -496,8 +439,6 @@ def test_pipeline_checks(
             ],
             # namespace conditions str
             ["provisioningState"],
-            # all namespace conditions str
-            ["datasets"],
             # namespace evaluations str
             [
                 [
@@ -505,13 +446,6 @@ def test_pipeline_checks(
                     ("value/provisioningState", ProvisioningState.succeeded.value),
                 ],
             ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/datasets", 1),
-                ]
-            ]
         ),
         (
             # datasets
@@ -530,8 +464,6 @@ def test_pipeline_checks(
             ],
             # namespace conditions str
             ["provisioningState"],
-            # all namespace conditions str
-            ["datasets"],
             # namespace evaluations str
             [
                 [
@@ -539,13 +471,6 @@ def test_pipeline_checks(
                     ("value/provisioningState", ProvisioningState.failed.value),
                 ],
             ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/datasets", 1),
-                ]
-            ]
         ),
     ]
 )
@@ -554,30 +479,24 @@ def test_dataset_checks(
     mock_evaluate_dataprocessor_pod_health,
     datasets,
     namespace_conditions,
-    all_conditions,
     namespace_evaluations,
-    all_evaluations,
-    detail_level
+    detail_level,
+    resource_name
 ):
     namespace = generate_generic_id()
     for dataset in datasets:
         dataset['metadata']['namespace'] = namespace
     mocker = mocker.patch(
-        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": datasets}],
+        "azext_edge.edge.providers.check.dataprocessor.get_resources_by_name",
+        side_effect=[datasets],
     )
 
-    result = evaluate_datasets(detail_level=detail_level)
+    result = evaluate_datasets(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalDatasets"
     assert result["targets"]["datasets.dataprocessor.iotoperations.azure.com"]
-    target = result["targets"]["datasets.dataprocessor.iotoperations.azure.com"]
+    assert namespace in result["targets"]["datasets.dataprocessor.iotoperations.azure.com"]
+    target = result["targets"]["datasets.dataprocessor.iotoperations.azure.com"][namespace]
 
-    for namespace in target:
-        assert namespace in result["targets"]["datasets.dataprocessor.iotoperations.azure.com"]
-        if namespace == ALL_NAMESPACES_TARGET:
-            assert_conditions(target[namespace], all_conditions)
-            assert_evaluations(target[namespace], all_evaluations)
-        else:
-            assert_conditions(target[namespace], namespace_conditions)
-            assert_evaluations(target[namespace], namespace_evaluations)
+    assert_conditions(target, namespace_conditions)
+    assert_evaluations(target, namespace_evaluations)

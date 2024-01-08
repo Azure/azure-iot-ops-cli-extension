@@ -37,6 +37,7 @@ def test_check_opcua_by_resource_types(ops_service, mocker, mock_resource_types,
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None, "boiler-1", "boiler*"])
 @pytest.mark.parametrize(
     "asset_types, namespace_conditions, namespace_evaluations",
     [
@@ -97,6 +98,7 @@ def test_asset_types_checks(
     namespace_evaluations,
     mock_generate_opcua_target_resources,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -106,7 +108,7 @@ def test_asset_types_checks(
     namespace = generate_generic_id()
     for asset_type in asset_types:
         asset_type['metadata']['namespace'] = namespace
-    result = evaluate_asset_types(detail_level=detail_level)
+    result = evaluate_asset_types(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalAssetTypes"
     assert result["targets"]["assettypes.opcuabroker.iotoperations.azure.com"]
@@ -121,6 +123,7 @@ def test_asset_types_checks(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None, "opcua-broker-1", "opcua*", "*broker*"])
 @pytest.mark.parametrize(
     "pods, namespace_conditions, namespace_evaluations",
     [
@@ -168,6 +171,7 @@ def test_evaluate_core_service_runtime(
     namespace_evaluations,
     mock_generate_opcua_target_resources,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.check.opcua.get_namespaced_pods_by_prefix",
@@ -177,7 +181,7 @@ def test_evaluate_core_service_runtime(
     namespace = generate_generic_id()
     for pod in pods:
         pod.metadata.namespace = namespace
-    result = evaluate_core_service_runtime(detail_level=detail_level)
+    result = evaluate_core_service_runtime(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalCoreServiceRuntime"
     assert result["targets"][CORE_SERVICE_RUNTIME_RESOURCE]

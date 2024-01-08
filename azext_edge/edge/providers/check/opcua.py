@@ -14,7 +14,9 @@ from ..base import get_namespaced_pods_by_prefix
 from .base import (
     CheckManager,
     check_post_deployment,
+    filter_resources_by_name,
     generate_target_resource_name,
+    get_resources_by_name,
     process_pods_status,
     resources_grouped_by_namespace,
 )
@@ -38,7 +40,8 @@ def check_opcua_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    resource_kinds: List[str] = None
+    resource_kinds: List[str] = None,
+    resource_name: str = None,
 ) -> None:
     evaluate_funcs = {
         CORE_SERVICE_RUNTIME_RESOURCE: evaluate_core_service_runtime,
@@ -55,12 +58,14 @@ def check_opcua_deployment(
         as_list=as_list,
         detail_level=detail_level,
         resource_kinds=resource_kinds,
+        resource_name=resource_name,
     )
 
 
 def evaluate_core_service_runtime(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate OPC UA broker core service")
 
@@ -76,6 +81,12 @@ def evaluate_core_service_runtime(
 
     def get_namespace(pod: V1Pod) -> str:
         return pod.metadata.namespace
+
+    if resource_name:
+        opcua_runtime_resources = filter_resources_by_name(
+            resources=opcua_runtime_resources,
+            resource_name=resource_name,
+        )
 
     opcua_runtime_resources.sort(key=get_namespace)
 
@@ -105,11 +116,16 @@ def evaluate_core_service_runtime(
 def evaluate_asset_types(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalAssetTypes", check_desc="Evaluate OPC UA broker asset types")
     asset_type_conditions = ["len(asset_types)>=0"]
 
-    all_asset_types: dict = OPCUA_API_V1.get_resources(OpcuaResourceKinds.ASSET_TYPE).get("items", [])
+    all_asset_types: dict = get_resources_by_name(
+        api_info=OPCUA_API_V1,
+        kind=OpcuaResourceKinds.ASSET_TYPE,
+        resource_name=resource_name,
+    )
     target_asset_types = generate_target_resource_name(api_info=OPCUA_API_V1, resource_kind=OpcuaResourceKinds.ASSET_TYPE.value)
 
     if not all_asset_types:

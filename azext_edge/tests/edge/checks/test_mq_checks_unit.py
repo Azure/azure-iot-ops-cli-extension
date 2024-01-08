@@ -71,6 +71,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None, "mock*", "mock_name"])
 @pytest.mark.parametrize(
     "broker, conditions, evaluations",
     [
@@ -155,14 +156,22 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
         ),
     ],
 )
-def test_broker_checks(mocker, mock_evaluate_mq_pod_health, broker, conditions, evaluations, detail_level):
+def test_broker_checks(
+    mocker,
+    mock_evaluate_mq_pod_health,
+    broker,
+    conditions,
+    evaluations,
+    detail_level,
+    resource_name
+):
     namespace = generate_generic_id()
     broker["metadata"]["namespace"] = namespace
     mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         return_value={"items": [broker]},
     )
-    result = evaluate_brokers(detail_level=detail_level)
+    result = evaluate_brokers(detail_level=detail_level, resource_name=resource_name)
 
     # all evalBroker assertions
     assert result["name"] == "evalBrokers"
@@ -174,6 +183,7 @@ def test_broker_checks(mocker, mock_evaluate_mq_pod_health, broker, conditions, 
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None, "mock*", "mock_name"])
 @pytest.mark.parametrize(
     "listener, service, conditions, evaluations",
     [
@@ -265,6 +275,7 @@ def test_broker_listener_checks(
     conditions,
     evaluations,
     detail_level,
+    resource_name,
 ):
     # mock listener values
     namespace = generate_generic_id()
@@ -284,7 +295,7 @@ def test_broker_listener_checks(
         return_value=service,
     )
 
-    result = evaluate_broker_listeners(detail_level=detail_level)
+    result = evaluate_broker_listeners(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalBrokerListeners"
     assert namespace in result["targets"]["brokerlisteners.mq.iotoperations.azure.com"]
@@ -296,6 +307,7 @@ def test_broker_listener_checks(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None, "mock*", "mock_name"])
 @pytest.mark.parametrize(
     "resource, service, conditions, evaluations",
     [
@@ -346,6 +358,7 @@ def test_diagnostic_service_checks(
     conditions,
     evaluations,
     detail_level,
+    resource_name,
 ):
     # mock service values
     namespace = generate_generic_id()
@@ -361,7 +374,7 @@ def test_diagnostic_service_checks(
         return_value=service,
     )
 
-    result = evaluate_diagnostics_service(detail_level=detail_level)
+    result = evaluate_diagnostics_service(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalBrokerDiag"
     assert namespace in result["targets"]["diagnosticservices.mq.iotoperations.azure.com"]
@@ -372,6 +385,7 @@ def test_diagnostic_service_checks(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None])
 @pytest.mark.parametrize(
     "bridge, topic_map, conditions, evaluations",
     [
@@ -469,6 +483,7 @@ def test_mqtt_checks(
     conditions,
     evaluations,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -477,7 +492,7 @@ def test_mqtt_checks(
     bridge["metadata"]["namespace"] = namespace
     topic_map["metadata"]["namespace"] = namespace
     mocker.side_effect = [{"items": [bridge]}, {"items": [topic_map]}]
-    result = evaluate_mqtt_bridge_connectors(detail_level=detail_level)
+    result = evaluate_mqtt_bridge_connectors(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalmqttbridgeconnectors"
     assert namespace in result["targets"]["mqttbridgeconnectors.mq.iotoperations.azure.com"]
@@ -489,6 +504,7 @@ def test_mqtt_checks(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None])
 @pytest.mark.parametrize(
     "connector, topic_map, conditions, evaluations",
     [
@@ -526,6 +542,7 @@ def test_datalake_checks(
     conditions,
     evaluations,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -534,7 +551,7 @@ def test_datalake_checks(
     connector["metadata"]["namespace"] = namespace
     topic_map["metadata"]["namespace"] = namespace
     mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
-    result = evaluate_datalake_connectors(detail_level=detail_level)
+    result = evaluate_datalake_connectors(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evaldatalakeconnectors"
     assert namespace in result["targets"]["datalakeconnectors.mq.iotoperations.azure.com"]
@@ -545,6 +562,7 @@ def test_datalake_checks(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None])
 @pytest.mark.parametrize(
     "connector, topic_map, conditions, evaluations",
     [
@@ -664,13 +682,14 @@ def test_kafka_checks(
     conditions,
     evaluations,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch("azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources")
     namespace = generate_generic_id()
     connector["metadata"]["namespace"] = namespace
     topic_map["metadata"]["namespace"] = namespace
     mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
-    result = evaluate_kafka_connectors(detail_level=detail_level)
+    result = evaluate_kafka_connectors(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalkafkaconnectors"
     assert namespace in result["targets"]["kafkaconnectors.mq.iotoperations.azure.com"]

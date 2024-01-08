@@ -31,6 +31,7 @@ def run_checks(
     post_deployment: bool = True,
     as_list: bool = False,
     resource_kinds: List[str] = None,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     result = {}
 
@@ -57,6 +58,7 @@ def run_checks(
             }
             service_check_dict[ops_service](
                 detail_level=detail_level,
+                resource_name=resource_name,
                 result=result,
                 as_list=as_list,
                 resource_kinds=resource_kinds
