@@ -9,6 +9,7 @@ from .base import (
     CheckManager,
     evaluate_pod_health,
     filter_by_namespace,
+    filter_resources_by_name,
     get_resource_name,
     resources_grouped_by_namespace,
 )
@@ -57,6 +58,31 @@ def process_cloud_connector(
         "items", []
     )
 
+    if connector_resource_name:
+        filtered_connectors = filter_resources_by_name(
+            resources=all_connectors, resource_name=connector_resource_name
+        )
+
+        excluded_connectors = [
+            connector
+            for connector in all_connectors
+            if connector not in filtered_connectors
+        ]
+
+        all_connectors = filtered_connectors
+
+        # remove topic maps that reference excluded connectors
+        excluded_connector_names = [
+            get_resource_name(connector) for connector in excluded_connectors
+        ]
+
+        all_topic_maps = [
+            map
+            for map in all_topic_maps
+            if map.get("spec", {}).get(topic_map_reference_key)
+            not in excluded_connector_names
+        ]
+
     # if we have no connectors of this type, mark as skipped
     if not all_connectors:
         _mark_connector_target_as_skipped(
@@ -65,7 +91,7 @@ def process_cloud_connector(
             message=f"No {connector_display_name} resources detected",
             padding=connector_padding,
         )
-        if detail_level != ResourceOutputDetailLevel.summary.value:
+        if detail_level != ResourceOutputDetailLevel.summary.value and not connector_resource_name:
             for topic_maps, namespace in resources_grouped_by_namespace(
                 all_topic_maps
             ):
