@@ -5,8 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import re
-from itertools import groupby
-from kubernetes.client.models import V1Pod
 from rich.padding import Padding
 from typing import Any, Dict, List
 
@@ -24,6 +22,7 @@ from .base import (
     check_post_deployment,
     generate_target_resource_name,
     get_namespaced_pods_by_prefix,
+    pods_grouped_by_namespace,
     process_dict_resource,
     process_pods_status,
     resources_grouped_by_namespace,
@@ -78,12 +77,7 @@ def evaluate_core_service_runtime(
             )
         )
 
-    def get_namespace(pod: V1Pod) -> str:
-        return pod.metadata.namespace
-
-    akri_runtime_resources.sort(key=get_namespace)
-
-    for (namespace, pods) in groupby(akri_runtime_resources, get_namespace):
+    for (namespace, pods) in pods_grouped_by_namespace(akri_runtime_resources):
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,

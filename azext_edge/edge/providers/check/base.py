@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
+from itertools import groupby
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from enum import Enum
 
@@ -13,6 +14,7 @@ from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import (
     V1APIResource,
     V1APIResourceList,
+    V1Pod
 )
 from rich.console import Console, NewLine
 from rich.padding import Padding
@@ -707,11 +709,18 @@ def get_resource_name(resource: dict) -> Union[str, None]:
     return resource.get("metadata", {}).get("name")
 
 
-def resources_grouped_by_namespace(resources: List[dict]):
-    from itertools import groupby
+def get_pod_namespace(pod: V1Pod) -> Union[str, None]:
+    return pod.metadata.namespace
 
+
+def resources_grouped_by_namespace(resources: List[dict]):
     resources.sort(key=get_resource_namespace)
     return groupby(resources, get_resource_namespace)
+
+
+def pods_grouped_by_namespace(pods: List[dict]):
+    pods.sort(key=get_pod_namespace)
+    return groupby(pods, get_pod_namespace)
 
 
 def filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:

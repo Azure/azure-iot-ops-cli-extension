@@ -4,8 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from itertools import groupby
-from kubernetes.client.models import V1Pod
 from rich.padding import Padding
 from typing import Any, Dict, List
 
@@ -15,6 +13,7 @@ from .base import (
     CheckManager,
     check_post_deployment,
     generate_target_resource_name,
+    pods_grouped_by_namespace,
     process_pods_status,
     resources_grouped_by_namespace,
 )
@@ -75,12 +74,7 @@ def evaluate_core_service_runtime(
             )
         )
 
-    def get_namespace(pod: V1Pod) -> str:
-        return pod.metadata.namespace
-
-    opcua_runtime_resources.sort(key=get_namespace)
-
-    for (namespace, pods) in groupby(opcua_runtime_resources, get_namespace):
+    for (namespace, pods) in pods_grouped_by_namespace(opcua_runtime_resources):
         padding = 6
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(

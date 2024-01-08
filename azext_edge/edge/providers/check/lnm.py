@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from itertools import groupby
 from typing import Any, Dict, List, Optional, Tuple
 
 from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
@@ -15,6 +14,7 @@ from .base import (
     check_post_deployment,
     decorate_pod_phase,
     generate_target_resource_name,
+    pods_grouped_by_namespace,
     process_properties,
     resources_grouped_by_namespace,
 )
@@ -307,13 +307,9 @@ def _process_lnm_pods(
     namespace: Optional[str] = None,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
-    def _get_lnm_pods_namespace(pod: V1Pod) -> str:
-        return pod.metadata.namespace
-
     pods = get_namespaced_pods_by_prefix(prefix=prefix, namespace=namespace, label_selector=label_selector)
 
-    pods.sort(key=_get_lnm_pods_namespace)
-    for (namespace, pods) in groupby(pods, _get_lnm_pods_namespace):
+    for (namespace, pods) in pods_grouped_by_namespace(pods):
         check_manager.add_target(target_name=target, namespace=namespace, conditions=conditions)
         check_manager.add_display(
             target_name=target,
