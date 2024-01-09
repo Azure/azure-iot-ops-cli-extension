@@ -142,13 +142,14 @@ def url_safe_hash_phrase(phrase: str):
 
 
 def ensure_azure_namespace_path():
-    import os
-    import sys
-
     """
     Run prior to importing azure namespace packages (azure.*) to ensure the
     extension root path is configured for package import.
     """
+
+    import os
+    import sys
+
     from azure.cli.core.extension import get_extension_path
     from ...constants import EXTENSION_NAME
 
@@ -168,5 +169,3 @@ def ensure_azure_namespace_path():
 
     if sys.path and sys.path[0] != ext_path:
         sys.path.insert(0, ext_path)
-
-    return

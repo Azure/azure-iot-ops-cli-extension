@@ -564,6 +564,7 @@ def assert_shared_kpis(mocked_client, mocked_zipfile):
 
 # TODO: base test class?
 def assert_zipfile_write(mocked_zipfile, zinfo: Union[str, ZipInfo], data: str):
+    # pylint: disable=unnecessary-dunder-call
     if isinstance(zinfo, str):
         mocked_zipfile(file="").__enter__().writestr.assert_any_call(
             zinfo_or_arcname=zinfo,
@@ -579,6 +580,7 @@ def assert_zipfile_write(mocked_zipfile, zinfo: Union[str, ZipInfo], data: str):
             if zinfo.filename == called_with.filename and zinfo.date_time == called_with.date_time:
                 called_with_expected_zipinfo = True
 
+    # pylint: enable=unnecessary-dunder-call
     assert called_with_expected_zipinfo
 
 
