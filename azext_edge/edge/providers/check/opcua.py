@@ -69,6 +69,7 @@ def evaluate_core_service_runtime(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate OPC UA broker core service")
 
+    padding = 6
     opcua_runtime_resources: List[dict] = []
     for label_selector in [OPC_APP_LABEL, OPC_NAME_LABEL]:
         opcua_runtime_resources.extend(
@@ -88,6 +89,10 @@ def evaluate_core_service_runtime(
             resource_name=resource_name,
         )
 
+        if not opcua_runtime_resources:
+            check_manager.add_target(target_name=CORE_SERVICE_RUNTIME_RESOURCE)
+            check_manager.add_display(target_name=CORE_SERVICE_RUNTIME_RESOURCE, display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)))
+
     opcua_runtime_resources.sort(key=get_namespace)
 
     for (namespace, pods) in groupby(opcua_runtime_resources, get_namespace):
@@ -97,7 +102,7 @@ def evaluate_core_service_runtime(
             namespace=namespace,
             display=Padding(
                 f"OPC UA broker runtime resources in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, 6)
+                (0, 0, 0, padding)
             )
         )
 
