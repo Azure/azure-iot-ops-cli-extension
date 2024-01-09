@@ -13,6 +13,7 @@ from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_ty
 
 from .common import OpsServiceType
 from .providers.edge_api import (
+    AkriResourceKinds,
     DataProcessorResourceKinds,
     LnmResourceKinds,
     MqResourceKinds,
@@ -98,7 +99,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "ops_service",
             options_list=["--ops-service", "--svc"],
-            choices=CaseInsensitiveList(["mq", "dataprocessor", "lnm", "opcua"]),
+            choices=CaseInsensitiveList(["akri", "dataprocessor", "lnm", "mq", "opcua"]),
             help="The IoT Operations service deployment that will be evaluated.",
         )
         context.argument(
@@ -118,6 +119,8 @@ def load_iotops_arguments(self, _):
                     MqResourceKinds.DATALAKE_CONNECTOR.value,
                     MqResourceKinds.KAFKA_CONNECTOR.value,
                     OpcuaResourceKinds.ASSET_TYPE.value,
+                    AkriResourceKinds.CONFIGURATION.value,
+                    AkriResourceKinds.INSTANCE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
