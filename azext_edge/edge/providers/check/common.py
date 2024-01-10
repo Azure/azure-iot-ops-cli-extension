@@ -197,17 +197,18 @@ ASSET_EVENT_PROPERTIES = [
     ("observabilityMode", "Observability Mode", False),
 ]
 
-ASSET_ENDPOINT_OWNCERTIFICATE_PROPERTIES = [
-    ("certPasswordReference", "Secret Reference Name (Pfx or Pem password)", True),
-    ("certSecretReference", "Secret Reference name (cert and private key)", True),
-    ("certThumbprint", "Certificate Thumbprint", True),
-]
-
 # Check constants
 ALL_NAMESPACES_TARGET = '_all_'
+
+
 # when there are runtime resources related to the service but not
-# related to any service resource, use this constant as the resource name
-CORE_SERVICE_RUNTIME_RESOURCE = "coreServiceRuntimeResource"
+# related to any service resource, use this as the resource name
+class CoreServiceResourceKinds(Enum):
+    """
+    Core service resource kinds:
+    """
+
+    RUNTIME_RESOURCE = "coreServiceRuntimeResource"
 
 
 # MQ connector enums
@@ -243,3 +244,5 @@ AIO_LNM_PREFIX = "aio-lnm"
 # Pre-deployment KPIs
 
 MIN_K8S_VERSION = "1.20"
+
+PADDING_SIZE = 4

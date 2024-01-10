@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from itertools import groupby
 from typing import Any, Dict, List, Optional, Tuple
 
 from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
@@ -15,6 +14,7 @@ from .base import (
     check_post_deployment,
     decorate_pod_phase,
     generate_target_resource_name,
+    pods_grouped_by_namespace,
     process_properties,
     resources_grouped_by_namespace,
 )
@@ -26,7 +26,8 @@ from ...common import CheckTaskStatus
 
 from .common import (
     AIO_LNM_PREFIX,
-    CORE_SERVICE_RUNTIME_RESOURCE,
+    PADDING_SIZE,
+    CoreServiceResourceKinds,
     LNM_ALLOWLIST_PROPERTIES,
     LNM_EXCLUDED_SUBRESOURCE,
     LNM_IMAGE_PROPERTIES,
@@ -50,7 +51,7 @@ def check_lnm_deployment(
     resource_kinds: List[str] = None
 ) -> None:
     evaluate_funcs = {
-        CORE_SERVICE_RUNTIME_RESOURCE: evaluate_core_service_runtime,
+        CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
         LnmResourceKinds.LNM: evaluate_lnms,
     }
 
@@ -78,7 +79,7 @@ def evaluate_core_service_runtime(
     _process_lnm_pods(
         check_manager=check_manager,
         description="LNM runtime resources",
-        target=CORE_SERVICE_RUNTIME_RESOURCE,
+        target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
         prefix=AIO_LNM_PREFIX,
         label_selector=lnm_operator_label,
         padding=6,
@@ -125,6 +126,7 @@ def evaluate_lnms(
         lnms: List[dict] = list(lnms)
         lnms_count = len(lnms)
         lnms_count_text = "- Expecting [bright_blue]>=1[/bright_blue] instance resource per namespace. {}."
+        padding = 10
 
         if lnms_count >= 1:
             lnms_count_text = lnms_count_text.format(f"[green]Detected {lnms_count}[/green]")
@@ -134,10 +136,11 @@ def evaluate_lnms(
         check_manager.add_display(
             target_name=target_lnms,
             namespace=namespace,
-            display=Padding(lnms_count_text, (0, 0, 0, 10))
+            display=Padding(lnms_count_text, (0, 0, 0, padding))
         )
 
         for lnm in lnms:
+            lnm_padding = padding + PADDING_SIZE
             lnm_name = lnm["metadata"]["name"]
             lnm_names.append(lnm_name)
             status = lnm.get("status", {}).get("configStatusLevel", "undefined")
@@ -164,10 +167,11 @@ def evaluate_lnms(
                 eval_value=lnm_status_eval_value,
                 resource_name=lnm_name,
                 namespace=namespace,
-                padding=(0, 0, 0, 12)
+                padding=(0, 0, 0, lnm_padding)
             )
 
             lnm_allowlist = lnm["spec"].get("allowList", None)
+            property_padding = lnm_padding + PADDING_SIZE
 
             if detail_level > ResourceOutputDetailLevel.summary.value:
 
@@ -191,7 +195,7 @@ def evaluate_lnms(
                     eval_value=lnm_allowlist_eval_value,
                     resource_name=lnm_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 16)
+                    padding=(0, 0, 0, property_padding)
                 )
 
                 process_properties(
@@ -201,7 +205,7 @@ def evaluate_lnms(
                     prop_value=lnm_allowlist,
                     properties=LNM_ALLOWLIST_PROPERTIES,
                     namespace=namespace,
-                    padding=(0, 0, 0, 18)
+                    padding=(0, 0, 0, property_padding + PADDING_SIZE)
                 )
 
                 process_properties(
@@ -211,7 +215,7 @@ def evaluate_lnms(
                     prop_value=lnm["spec"],
                     properties=LNM_REST_PROPERTIES,
                     namespace=namespace,
-                    padding=(0, 0, 0, 16)
+                    padding=(0, 0, 0, property_padding)
                 )
 
             if detail_level == ResourceOutputDetailLevel.verbose.value:
@@ -237,7 +241,7 @@ def evaluate_lnms(
                     eval_value=lnm_image_eval_value,
                     resource_name=lnm_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 16)
+                    padding=(0, 0, 0, property_padding)
                 )
 
                 process_properties(
@@ -247,7 +251,7 @@ def evaluate_lnms(
                     prop_value=lnm_image,
                     properties=LNM_IMAGE_PROPERTIES,
                     namespace=namespace,
-                    padding=(0, 0, 0, 18)
+                    padding=(0, 0, 0, property_padding + PADDING_SIZE)
                 )
 
         if lnms_count > 0:
@@ -256,7 +260,7 @@ def evaluate_lnms(
                 namespace=namespace,
                 display=Padding(
                     "\nRuntime Health",
-                    (0, 0, 0, 10),
+                    (0, 0, 0, padding),
                 ),
             )
 
@@ -273,7 +277,7 @@ def evaluate_lnms(
                     check_manager=check_manager,
                     target=target_lnms,
                     pod=pod,
-                    display_padding=12,
+                    display_padding=padding + PADDING_SIZE,
                     namespace=namespace,
                     detail_level=detail_level,
                 )
@@ -303,13 +307,9 @@ def _process_lnm_pods(
     namespace: Optional[str] = None,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
-    def _get_lnm_pods_namespace(pod: V1Pod) -> str:
-        return pod.metadata.namespace
-
     pods = get_namespaced_pods_by_prefix(prefix=prefix, namespace=namespace, label_selector=label_selector)
 
-    pods.sort(key=_get_lnm_pods_namespace)
-    for (namespace, pods) in groupby(pods, _get_lnm_pods_namespace):
+    for (namespace, pods) in pods_grouped_by_namespace(pods):
         check_manager.add_target(target_name=target, namespace=namespace, conditions=conditions)
         check_manager.add_display(
             target_name=target,
@@ -325,7 +325,7 @@ def _process_lnm_pods(
                 check_manager=check_manager,
                 target=target,
                 pod=pod,
-                display_padding=padding + 4,
+                display_padding=padding + PADDING_SIZE,
                 namespace=namespace,
                 detail_level=detail_level,
             )

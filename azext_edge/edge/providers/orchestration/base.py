@@ -118,6 +118,7 @@ def configure_cluster_secrets(
         "aio-opc-ua-broker-client-certificate",
         "aio-opc-ua-broker-user-authentication",
         "aio-opc-ua-broker-trust-list",
+        "aio-opc-ua-broker-issuer-list",
     ]:
         yaml_configs.append(
             get_kv_secret_store_yaml(

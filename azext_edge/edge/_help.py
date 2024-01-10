@@ -84,11 +84,12 @@ def load_iotops_help():
             More detail can be requested via `--detail-level`.
 
             {{Supported service APIs}}
-            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
-            - {COMPAT_LNM_APIS.as_str()}
-            - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
+            - {COMPAT_LNM_APIS.as_str()}
+            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_OPCUA_APIS.as_str()}
 
         examples:
         - name: Basic usage. Checks `mq` health with summary output.

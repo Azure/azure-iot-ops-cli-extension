@@ -11,6 +11,7 @@ from .base import (
     add_display_and_eval,
     check_post_deployment,
     generate_target_resource_name,
+    process_list_resource,
     process_properties,
     resources_grouped_by_namespace,
 )
@@ -21,9 +22,9 @@ from ...common import CheckTaskStatus
 
 from .common import (
     ASSET_DATAPOINT_PROPERTIES,
-    ASSET_ENDPOINT_OWNCERTIFICATE_PROPERTIES,
     ASSET_EVENT_PROPERTIES,
     ASSET_PROPERTIES,
+    PADDING_SIZE,
     ResourceOutputDetailLevel,
 )
 
@@ -37,7 +38,7 @@ def check_deviceregistry_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    resource_kinds: List[str] = None
+    resource_kinds: List[str] = None,
 ) -> None:
     evaluate_funcs = {
         DeviceRegistryResourceKinds.ASSET: evaluate_assets,
@@ -47,7 +48,7 @@ def check_deviceregistry_deployment(
     check_post_deployment(
         api_info=DEVICEREGISTRY_API_V1,
         check_name="enumerateDeviceRegistryApi",
-        check_desc="Enumerate DeviceRegistry API resources",
+        check_desc="Enumerate Device Registry API resources",
         result=result,
         resource_kinds_enum=DeviceRegistryResourceKinds,
         evaluate_funcs=evaluate_funcs,
@@ -75,7 +76,7 @@ def evaluate_assets(
         check_manager.add_target_eval(
             target_name=target_assets,
             status=CheckTaskStatus.skipped.value,
-            value={"assets": None}
+            value=fetch_assets_warning_text
         )
         return check_manager.as_dict(as_list)
 
@@ -93,6 +94,7 @@ def evaluate_assets(
         assets: List[dict] = list(assets)
 
         for asset in assets:
+            padding = 10
             asset_name = asset["metadata"]["name"]
 
             asset_status_text = (
@@ -102,11 +104,12 @@ def evaluate_assets(
             check_manager.add_display(
                 target_name=target_assets,
                 namespace=namespace,
-                display=Padding(asset_status_text, (0, 0, 0, 10)),
+                display=Padding(asset_status_text, (0, 0, 0, padding)),
             )
 
             asset_spec = asset["spec"]
             endpoint_profile_uri = asset_spec.get("assetEndpointProfileUri", "")
+            spec_padding = padding + PADDING_SIZE
 
             endpoint_profile_uri_value = {"spec.assetEndpointProfileUri": endpoint_profile_uri}
             endpoint_profile_uri_status = CheckTaskStatus.success.value
@@ -128,7 +131,7 @@ def evaluate_assets(
                 eval_value=endpoint_profile_uri_value,
                 resource_name=asset_name,
                 namespace=namespace,
-                padding=(0, 0, 0, 14)
+                padding=(0, 0, 0, spec_padding)
             )
 
             # data points
@@ -162,12 +165,13 @@ def evaluate_assets(
                     eval_value=data_points_value,
                     resource_name=asset_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 14)
+                    padding=(0, 0, 0, spec_padding)
                 )
 
                 for data_point in data_points:
                     data_point_data_source = data_point.get("dataSource", "")
                     index = data_points.index(data_point)
+                    datapoint_padding = spec_padding + PADDING_SIZE
 
                     check_manager.add_target_conditions(
                         target_name=target_assets,
@@ -194,7 +198,7 @@ def evaluate_assets(
                         eval_value=data_point_data_source_value,
                         resource_name=asset_name,
                         namespace=namespace,
-                        padding=(0, 0, 0, 18)
+                        padding=(0, 0, 0, datapoint_padding)
                     )
 
                     if detail_level > ResourceOutputDetailLevel.summary.value:
@@ -205,7 +209,7 @@ def evaluate_assets(
                             prop_value=data_point,
                             properties=ASSET_DATAPOINT_PROPERTIES,
                             namespace=namespace,
-                            padding=(0, 0, 0, 20)
+                            padding=(0, 0, 0, datapoint_padding + PADDING_SIZE)
                         )
 
             if detail_level > ResourceOutputDetailLevel.summary.value:
@@ -216,7 +220,7 @@ def evaluate_assets(
                     prop_value=asset_spec,
                     properties=ASSET_PROPERTIES,
                     namespace=namespace,
-                    padding=(0, 0, 0, 14)
+                    padding=(0, 0, 0, spec_padding)
                 )
 
             # events
@@ -250,12 +254,13 @@ def evaluate_assets(
                     eval_value=events_count_value,
                     resource_name=asset_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 14)
+                    padding=(0, 0, 0, spec_padding)
                 )
 
                 for event in events:
                     event_notifier = event.get("eventNotifier", "")
                     index = events.index(event)
+                    event_padding = spec_padding + PADDING_SIZE
 
                     check_manager.add_target_conditions(
                         target_name=target_assets,
@@ -282,7 +287,7 @@ def evaluate_assets(
                         eval_value=event_notifier_value,
                         resource_name=asset_name,
                         namespace=namespace,
-                        padding=(0, 0, 0, 18)
+                        padding=(0, 0, 0, event_padding)
                     )
 
                     if detail_level > ResourceOutputDetailLevel.summary.value:
@@ -293,7 +298,7 @@ def evaluate_assets(
                             prop_value=event,
                             properties=ASSET_EVENT_PROPERTIES,
                             namespace=namespace,
-                            padding=(0, 0, 0, 20)
+                            padding=(0, 0, 0, event_padding + PADDING_SIZE)
                         )
 
             # status
@@ -323,7 +328,7 @@ def evaluate_assets(
                         check_manager.add_display(
                             target_name=target_assets,
                             namespace=namespace,
-                            display=Padding(error_text, (0, 0, 0, 18)),
+                            display=Padding(error_text, (0, 0, 0, spec_padding + PADDING_SIZE)),
                         )
                     status_status = CheckTaskStatus.error.value
                 else:
@@ -339,7 +344,7 @@ def evaluate_assets(
                     eval_value=status_value,
                     resource_name=asset_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 14)
+                    padding=(0, 0, 0, spec_padding)
                 )
 
     return check_manager.as_dict(as_list)
@@ -363,7 +368,7 @@ def evaluate_asset_endpoint_profiles(
         check_manager.add_target_eval(
             target_name=target_asset_endpoint_profiles,
             status=CheckTaskStatus.skipped.value,
-            value={"assetEndpointProfiles": None}
+            value=fetch_asset_endpoint_profiles_warning_text
         )
         return check_manager.as_dict(as_list)
 
@@ -382,17 +387,19 @@ def evaluate_asset_endpoint_profiles(
 
         for asset_endpoint_profile in asset_endpoint_profiles:
             asset_endpoint_profile_name = asset_endpoint_profile["metadata"]["name"]
+            padding = 10
 
             asset_endpoint_profile_status_text = (
-                f"- Asset endpoint profile {{[bright_blue]{asset_endpoint_profile_name}[/bright_blue]}} detected."
+                f"- Profile {{[bright_blue]{asset_endpoint_profile_name}[/bright_blue]}} detected."
             )
 
             check_manager.add_display(
                 target_name=target_asset_endpoint_profiles,
                 namespace=namespace,
-                display=Padding(asset_endpoint_profile_status_text, (0, 0, 0, 10)),
+                display=Padding(asset_endpoint_profile_status_text, (0, 0, 0, padding)),
             )
 
+            spec_padding = padding + PADDING_SIZE
             asset_endpoint_profile_spec = asset_endpoint_profile["spec"]
             endpoint_profile_uuid = asset_endpoint_profile_spec.get("uuid", "")
 
@@ -401,11 +408,11 @@ def evaluate_asset_endpoint_profiles(
 
             if endpoint_profile_uuid:
                 endpoint_profile_uuid_text = (
-                    f"Endpoint profile uuid: {{[bright_blue]{endpoint_profile_uuid}[/bright_blue]}} [green]detected[/green]."
+                    f"Uuid: {{[bright_blue]{endpoint_profile_uuid}[/bright_blue]}} [green]detected[/green]."
                 )
             else:
                 endpoint_profile_uuid_text = (
-                    "Endpoint profile uuid [red]not detected[/red]."
+                    "Uuid [red]not detected[/red]."
                 )
                 endpoint_profile_uuid_status = CheckTaskStatus.error.value
 
@@ -417,7 +424,7 @@ def evaluate_asset_endpoint_profiles(
                 eval_value=endpoint_profile_uuid_value,
                 resource_name=asset_endpoint_profile_name,
                 namespace=namespace,
-                padding=(0, 0, 0, 14)
+                padding=(0, 0, 0, spec_padding)
             )
 
             # transportAuthentication
@@ -428,7 +435,7 @@ def evaluate_asset_endpoint_profiles(
                     namespace=namespace,
                     display=Padding(
                         "Transport authentication:",
-                        (0, 0, 0, 14)
+                        (0, 0, 0, spec_padding)
                     )
                 )
                 transport_authentication_own_certificates = transport_authentication.get("ownCertificates", None)
@@ -440,6 +447,7 @@ def evaluate_asset_endpoint_profiles(
 
                 transport_authentication_own_certificates_value = {"spec.transportAuthentication.ownCertificates": transport_authentication_own_certificates}
                 transport_authentication_own_certificates_status = CheckTaskStatus.success.value
+                transport_authentication_padding = spec_padding + PADDING_SIZE
 
                 if transport_authentication_own_certificates is None:
                     transport_authentication_own_certificates_text = (
@@ -448,7 +456,7 @@ def evaluate_asset_endpoint_profiles(
                     transport_authentication_own_certificates_status = CheckTaskStatus.error.value
                 else:
                     transport_authentication_own_certificates_text = (
-                        f"Own certificates: {len(transport_authentication_own_certificates)} [green]detected[/green]."
+                        f"Own certificates: {len(transport_authentication_own_certificates)} detected."
                     )
 
                 add_display_and_eval(
@@ -459,29 +467,17 @@ def evaluate_asset_endpoint_profiles(
                     eval_value=transport_authentication_own_certificates_value,
                     resource_name=asset_endpoint_profile_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 18)
+                    padding=(0, 0, 0, transport_authentication_padding)
                 )
 
                 if detail_level > ResourceOutputDetailLevel.detail.value and transport_authentication_own_certificates:
-                    for ownCertificate in transport_authentication_own_certificates:
-                        index = transport_authentication_own_certificates.index(ownCertificate)
-                        check_manager.add_display(
-                            target_name=target_asset_endpoint_profiles,
-                            namespace=namespace,
-                            display=Padding(
-                                f"- Own certificate {index}:",
-                                (0, 0, 0, 22)
-                            )
-                        )
-                        process_properties(
-                            check_manager=check_manager,
-                            detail_level=detail_level,
-                            target_name=target_asset_endpoint_profiles,
-                            prop_value=ownCertificate,
-                            properties=ASSET_ENDPOINT_OWNCERTIFICATE_PROPERTIES,
-                            namespace=namespace,
-                            padding=(0, 0, 0, 26)
-                        )
+                    process_list_resource(
+                        check_manager=check_manager,
+                        target_name=target_asset_endpoint_profiles,
+                        resource=transport_authentication_own_certificates,
+                        namespace=namespace,
+                        padding=transport_authentication_padding + PADDING_SIZE
+                    )
 
             # userAuthentication
             user_authentication = asset_endpoint_profile_spec.get("userAuthentication", {})
@@ -491,7 +487,7 @@ def evaluate_asset_endpoint_profiles(
                     namespace=namespace,
                     display=Padding(
                         "User authentication:",
-                        (0, 0, 0, 14)
+                        (0, 0, 0, spec_padding)
                     )
                 )
 
@@ -505,6 +501,7 @@ def evaluate_asset_endpoint_profiles(
 
                 user_authentication_mode_value = {"spec.userAuthentication.mode": user_authentication_mode}
                 user_authentication_mode_status = CheckTaskStatus.success.value
+                user_authentication_padding = spec_padding + PADDING_SIZE
 
                 if user_authentication_mode:
                     user_authentication_mode_text = (
@@ -524,7 +521,7 @@ def evaluate_asset_endpoint_profiles(
                     eval_value=user_authentication_mode_value,
                     resource_name=asset_endpoint_profile_name,
                     namespace=namespace,
-                    padding=(0, 0, 0, 18)
+                    padding=(0, 0, 0, user_authentication_padding)
                 )
 
                 if user_authentication_mode == "Certificate":
@@ -557,7 +554,7 @@ def evaluate_asset_endpoint_profiles(
                         eval_value=user_authentication_x509_credentials_value,
                         resource_name=asset_endpoint_profile_name,
                         namespace=namespace,
-                        padding=(0, 0, 0, 22)
+                        padding=(0, 0, 0, user_authentication_padding + PADDING_SIZE)
                     )
 
                 elif user_authentication_mode == "UsernamePassword":
@@ -595,7 +592,7 @@ def evaluate_asset_endpoint_profiles(
                         eval_value=user_authentication_username_password_credentials_value,
                         resource_name=asset_endpoint_profile_name,
                         namespace=namespace,
-                        padding=(0, 0, 0, 22)
+                        padding=(0, 0, 0, user_authentication_padding + PADDING_SIZE)
                     )
 
             if detail_level > ResourceOutputDetailLevel.summary.value:
@@ -609,7 +606,7 @@ def evaluate_asset_endpoint_profiles(
                         ("targetAddress", "Target address", False),
                     ],
                     namespace=namespace,
-                    padding=(0, 0, 0, 14)
+                    padding=(0, 0, 0, spec_padding)
                 )
 
     return check_manager.as_dict(as_list)

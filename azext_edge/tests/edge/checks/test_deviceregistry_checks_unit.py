@@ -137,7 +137,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
             [
                 [
                     ("status", "skipped"),
-                    ("value/assets", None),
+                    ("value", "Unable to fetch assets in any namespaces."),
                 ],
             ]
         ),
@@ -393,7 +393,7 @@ def test_assets_checks(
             [
                 [
                     ("status", "skipped"),
-                    ("value/assetEndpointProfiles", None),
+                    ("value", "Unable to fetch asset endpoint profiles in any namespaces."),
                 ],
             ]
         ),
