@@ -32,6 +32,7 @@ from .common import (
     AIO_MQ_FRONTEND_PREFIX,
     AIO_MQ_BACKEND_PREFIX,
     AIO_MQ_AUTH_PREFIX,
+    PADDING_SIZE,
     KafkaTopicMapRouteType,
     ResourceOutputDetailLevel,
 )
@@ -287,7 +288,6 @@ def evaluate_broker_listeners(
         "status",
     ]
 
-    # all_listeners = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER_LISTENER).get("items", [])
     all_listeners = get_resources_by_name(
         api_info=MQ_ACTIVE_API,
         kind=MqResourceKinds.BROKER_LISTENER,
@@ -828,7 +828,7 @@ def evaluate_mqtt_bridge_connectors(
             )
 
             if detail_level != ResourceOutputDetailLevel.summary.value:
-                route_padding = (0, 0, 0, padding[3] + 4)
+                route_padding = (0, 0, 0, padding[3] + PADDING_SIZE)
                 routes = topic_map.get("spec", {}).get("routes", [])
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
                     route_table = create_routes_table(routes)
@@ -900,7 +900,7 @@ def evaluate_mqtt_bridge_connectors(
 
         connector_instances = spec.get("bridgeInstances")
         client_prefix = spec.get("clientIdPrefix")
-        detail_padding = (0, 0, 0, padding[-1] + 4)
+        detail_padding = (0, 0, 0, padding[-1] + PADDING_SIZE)
         if detail_level != ResourceOutputDetailLevel.summary.value:
             check_manager.add_display(
                 target_name=target,
@@ -1031,7 +1031,7 @@ def evaluate_datalake_connectors(
                 table = topic_mapping.get("table", {})
                 table_name = table.get("tableName")
 
-                detail_padding = (0, 0, 0, padding[3] + 4)
+                detail_padding = (0, 0, 0, padding[3] + PADDING_SIZE)
                 for row in [
                     ["Table Name", table_name],
                     ["Allowed Latency (s)", allowed_latency],
@@ -1090,7 +1090,7 @@ def evaluate_datalake_connectors(
                 padding,
             ),
         )
-        detail_padding = (0, 0, 0, padding[3] + 4)
+        detail_padding = (0, 0, 0, padding[3] + PADDING_SIZE)
         spec = connector.get("spec", {})
         connector_eval_status = connector_eval_status = (
             CheckTaskStatus.error.value
@@ -1199,7 +1199,7 @@ def evaluate_kafka_connectors(
             else CheckTaskStatus.success.value
         )
 
-        detail_padding = (0, 0, 0, padding[3] + 4)
+        detail_padding = (0, 0, 0, padding[3] + PADDING_SIZE)
 
         check_manager.add_target_eval(
             target_name=target,
@@ -1222,7 +1222,7 @@ def evaluate_kafka_connectors(
                     display=Padding(f"{label}: [bright_blue]{val}[/bright_blue]", detail_padding),
                 )
 
-            broker_detail_padding = (0, 0, 0, detail_padding[3] + 4)
+            broker_detail_padding = (0, 0, 0, detail_padding[3] + PADDING_SIZE)
 
             for (label, broker) in [
                 ("Local Broker Connection", broker),
@@ -1273,7 +1273,7 @@ def evaluate_kafka_connectors(
                 ),
             )
             spec = topic_map.get("spec", {})
-            detail_padding = (0, 0, 0, padding[3] + 4)
+            detail_padding = (0, 0, 0, padding[3] + PADDING_SIZE)
             if detail_level == ResourceOutputDetailLevel.verbose.value:
 
                 for label, key in [
@@ -1300,7 +1300,7 @@ def evaluate_kafka_connectors(
                         detail_padding
                     )
                 )
-                batch_detail_padding = (0, 0, 0, detail_padding[3] + 4)
+                batch_detail_padding = (0, 0, 0, detail_padding[3] + PADDING_SIZE)
                 batching = spec.get("batching", {})
                 for label, key in [
                     ("Enabled", "enabled"),
@@ -1342,7 +1342,7 @@ def evaluate_kafka_connectors(
             # route details are verbose
             # TODO - table output?
             if detail_level == ResourceOutputDetailLevel.verbose.value:
-                route_detail_padding = (0, 0, 0, padding[3] + 4)
+                route_detail_padding = (0, 0, 0, padding[3] + PADDING_SIZE)
 
                 kafkaTopic = route_details.get("kafkaTopic")
                 mqttTopic = route_details.get("mqttTopic")

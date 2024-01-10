@@ -4,10 +4,14 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from .common import ensure_azure_namespace_path
+from ...constants import USER_AGENT
+
+ensure_azure_namespace_path()
+
 from azure.identity import AzureCliCredential
 from azure.mgmt.resource import ResourceManagementClient
 from azure.core.pipeline.policies import UserAgentPolicy
-from ...constants import USER_AGENT
 
 AZURE_CLI_CREDENTIAL = AzureCliCredential()
 

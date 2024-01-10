@@ -43,7 +43,7 @@ def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
 
 
 def build_query(cmd, subscription_id: Optional[str] = None, custom_query: Optional[str] = None, **kwargs):
-    url = '/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01'
+    url = "/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01"
     subscriptions = [subscription_id] if subscription_id else []
     payload = {"subscriptions": subscriptions, "query": "Resources ", "options": {}}
 
@@ -139,3 +139,33 @@ def url_safe_hash_phrase(phrase: str):
     from hashlib import sha256
 
     return sha256(phrase.encode("utf8")).hexdigest()
+
+
+def ensure_azure_namespace_path():
+    """
+    Run prior to importing azure namespace packages (azure.*) to ensure the
+    extension root path is configured for package import.
+    """
+
+    import os
+    import sys
+
+    from azure.cli.core.extension import get_extension_path
+    from ...constants import EXTENSION_NAME
+
+    ext_path = get_extension_path(EXTENSION_NAME)
+    if not ext_path:
+        return
+
+    ext_azure_dir = os.path.join(ext_path, "azure")
+    if os.path.isdir(ext_azure_dir):
+        import azure
+
+        if getattr(azure, "__path__", None) and ext_azure_dir not in azure.__path__:  # _NamespacePath /w PEP420
+            if isinstance(azure.__path__, list):
+                azure.__path__.insert(0, ext_azure_dir)
+            else:
+                azure.__path__.append(ext_azure_dir)
+
+    if sys.path and sys.path[0] != ext_path:
+        sys.path.insert(0, ext_path)

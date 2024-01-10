@@ -8,7 +8,7 @@
 import pytest
 from azext_edge.edge.providers.check.common import (
     ALL_NAMESPACES_TARGET,
-    CORE_SERVICE_RUNTIME_RESOURCE,
+    CoreServiceResourceKinds,
     ResourceOutputDetailLevel
 )
 from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
@@ -35,7 +35,8 @@ from ...generators import generate_generic_id
 @pytest.mark.parametrize('ops_service', ['lnm'])
 def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        CORE_SERVICE_RUNTIME_RESOURCE: "azext_edge.edge.providers.check.lnm.evaluate_core_service_runtime",
+        CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
+            "azext_edge.edge.providers.check.lnm.evaluate_core_service_runtime",
         LnmResourceKinds.LNM.value: "azext_edge.edge.providers.check.lnm.evaluate_lnms",
     }
 
@@ -348,11 +349,11 @@ def test_evaluate_core_service_runtime(
     result = evaluate_core_service_runtime(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalCoreServiceRuntime"
-    assert result["targets"][CORE_SERVICE_RUNTIME_RESOURCE]
-    target = result["targets"][CORE_SERVICE_RUNTIME_RESOURCE]
+    assert result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
+    target = result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 
     for namespace in target:
-        assert namespace in result["targets"][CORE_SERVICE_RUNTIME_RESOURCE]
+        assert namespace in result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 
         target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)
