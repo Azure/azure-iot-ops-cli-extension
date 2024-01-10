@@ -10,7 +10,7 @@ from .base import (
     evaluate_pod_health,
     filter_by_namespace,
     filter_resources_by_name,
-    get_resource_name,
+    get_resource_metadata_property,
     resources_grouped_by_namespace,
 )
 
@@ -73,7 +73,7 @@ def process_cloud_connector(
 
         # remove topic maps that reference excluded connectors
         excluded_connector_names = [
-            get_resource_name(connector) for connector in excluded_connectors
+            get_resource_metadata_property(connector, prop_name="name") for connector in excluded_connectors
         ]
 
         all_topic_maps = [
@@ -126,7 +126,7 @@ def process_cloud_connector(
 
         connector_list = list(connectors)
         for connector in connector_list:
-            connector_name = get_resource_name(connector)
+            connector_name = get_resource_metadata_property(connector, prop_name="name")
             # display connector info
             connector_display_func(
                 check_manager=check_manager,
@@ -253,7 +253,7 @@ def _display_invalid_topic_maps(
     padding: tuple,
 ):
     for map in topic_maps:
-        name = get_resource_name(map)
+        name = get_resource_metadata_property(map, prop_name="name")
         ref = map.get("spec", {}).get(ref_key)
         check_manager.add_display(
             target_name=target,

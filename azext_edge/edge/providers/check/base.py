@@ -90,21 +90,19 @@ def filter_resources_by_name(
     resources: List[dict],
     resource_name: str,
 ) -> List[dict]:
-    # decide if to use resource["metadata"]["name"] or resource.metadata.name
-    def get_resource_name(resource: dict) -> str:
-        # get lowercase name from resource
-        if isinstance(resource, dict):
-            return resource.get("metadata", {}).get("name", "").lower()
-        return resource.metadata.name.lower()
 
     if resource_name:
         resource_name = resource_name.lower()
         # check resource for wildcarded name
         if "*" in resource_name:
             regex = re.compile(f"^{resource_name.replace('*', '.*')}$")
-            resources = [resource for resource in resources if regex.match(get_resource_name(resource))]
+            resources = [resource for resource in resources if regex.match(
+                get_resource_metadata_property(resource, prop_name="name").lower()
+            )]
         else:
-            resources = [resource for resource in resources if resource_name == get_resource_name(resource)]
+            resources = [resource for resource in resources if resource_name == get_resource_metadata_property(
+                resource, prop_name="name").lower()
+            ]
 
     return resources
 
@@ -737,30 +735,25 @@ def add_display_and_eval(
     )
 
 
-def get_resource_namespace(resource: dict) -> Union[str, None]:
-    return resource.get("metadata", {}).get("namespace")
-
-
-def get_resource_name(resource: dict) -> Union[str, None]:
-    return resource.get("metadata", {}).get("name")
-
-
-def get_pod_namespace(pod: V1Pod) -> Union[str, None]:
-    return pod.metadata.namespace
+# get either name or namespace from resource that might be a object or a dict
+def get_resource_metadata_property(resource: Union[dict, Any], prop_name: str) -> Union[str, None]:
+    if isinstance(resource, dict):
+        return resource.get("metadata", {}).get(prop_name)
+    return getattr(resource.metadata, prop_name, None)
 
 
 def resources_grouped_by_namespace(resources: List[dict]):
-    resources.sort(key=get_resource_namespace)
-    return groupby(resources, get_resource_namespace)
+    resources.sort(key=lambda resource: get_resource_metadata_property(resource, prop_name="namespace"))
+    return groupby(resources, lambda resource: get_resource_metadata_property(resource, prop_name="namespace"))
 
 
 def pods_grouped_by_namespace(pods: List[dict]):
-    pods.sort(key=get_pod_namespace)
-    return groupby(pods, get_pod_namespace)
+    pods.sort(key=lambda pod: get_resource_metadata_property(pod, prop_name="namespace"))
+    return groupby(pods, lambda pod: get_resource_metadata_property(pod, prop_name="namespace"))
 
 
 def filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
-    return [resource for resource in resources if get_resource_namespace(resource) == namespace]
+    return [resource for resource in resources if get_resource_metadata_property(resource, prop_name="namespace") == namespace]
 
 
 def process_dict_resource(

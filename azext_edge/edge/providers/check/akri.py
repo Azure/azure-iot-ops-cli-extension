@@ -132,11 +132,12 @@ def evaluate_configurations(
     )
 
     if not all_configurations:
+        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_configurations_error_text = "Unable to fetch Akri configurations in any namespaces."
         check_manager.add_target(target_name=target_configurations)
         check_manager.add_target_eval(
             target_name=target_configurations,
-            status=CheckTaskStatus.error.value,
+            status=status,
             value={"configurations": fetch_configurations_error_text}
         )
         check_manager.add_display(target_name=target_configurations, display=Padding(fetch_configurations_error_text, (0, 0, 0, 8)))

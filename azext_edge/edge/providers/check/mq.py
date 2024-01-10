@@ -13,7 +13,7 @@ from .base import (
     decorate_resource_status,
     check_post_deployment,
     evaluate_pod_health,
-    get_resource_name,
+    get_resource_metadata_property,
     get_resources_by_name,
     resources_grouped_by_namespace
 )
@@ -819,7 +819,7 @@ def evaluate_mqtt_bridge_connectors(
 
         # topic maps that reference this bridge
         for topic_map in topic_maps:
-            name = get_resource_name(topic_map)
+            name = get_resource_metadata_property(topic_map, prop_name="name")
 
             check_manager.add_display(
                 target_name=target,
@@ -1010,7 +1010,7 @@ def evaluate_datalake_connectors(
             return
 
         for topic_map in topic_maps:
-            topic_name = get_resource_name(topic_map)
+            topic_name = get_resource_metadata_property(topic_map, prop_name="name")
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
@@ -1062,7 +1062,7 @@ def evaluate_datalake_connectors(
         detail_level: str,
         padding: tuple,
     ) -> None:
-        connector_name = get_resource_name(connector)
+        connector_name = get_resource_metadata_property(connector, prop_name="name")
 
         # connector resource status
         connector_status = connector.get("status", {})
@@ -1152,7 +1152,7 @@ def evaluate_kafka_connectors(
     resource_name: str = None,
 ) -> Dict[str, Any]:
     def display_connector_info(check_manager: CheckManager, target: str, namespace: str, connector: Dict[str, Any], detail_level: str, padding: tuple):
-        connector_name = get_resource_name(connector)
+        connector_name = get_resource_metadata_property(connector, prop_name="name")
         connector_status = connector.get("status", {})
         connector_status_level = connector_status.get("configStatusLevel", "N/A")
         eval_status = _calculate_connector_status(connector_status_level)
@@ -1263,7 +1263,7 @@ def evaluate_kafka_connectors(
             )
             return
         for topic_map in topic_maps:
-            topic_name = get_resource_name(topic_map)
+            topic_name = get_resource_metadata_property(topic_map, prop_name="name")
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
