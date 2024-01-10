@@ -65,21 +65,18 @@ def check_post_deployment(
     resource_name: str = None,
     excluded_resources: Optional[List[str]] = None,
 ) -> None:
-    check_resources = {}
-    for resource in resource_kinds_enum:
-        check_resources[resource] = not resource_kinds or resource.value in resource_kinds
-
     resource_enumeration, api_resources = enumerate_ops_service_resources(api_info, check_name, check_desc, as_list, excluded_resources)
     result["postDeployment"].append(resource_enumeration)
     lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
     if lowercase_api_resources:
         for resource, evaluate_func in evaluate_funcs.items():
+            should_check_resource = not resource_kinds or resource.value in resource_kinds
             append_resource = False
             # only add core service evaluation if there is no resource filter
             if resource == CoreServiceResourceKinds.RUNTIME_RESOURCE and not resource_kinds:
                 append_resource = True
-            elif (resource and resource.value in lowercase_api_resources and check_resources[resource]):
+            elif (resource and resource.value in lowercase_api_resources and should_check_resource):
                 append_resource = True
 
             if append_resource:

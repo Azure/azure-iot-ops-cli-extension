@@ -71,16 +71,23 @@ def process_cloud_connector(
 
         all_connectors = filtered_connectors
 
-        # remove topic maps that reference excluded connectors
-        excluded_connector_names = [
-            get_resource_metadata_property(connector, prop_name="name") for connector in excluded_connectors
+        # get (name, namespace) tuples for excluded connectors
+        excluded_connector_properties = [
+            (
+                get_resource_metadata_property(connector, prop_name="name"), 
+                get_resource_metadata_property(connector, prop_name="namespace")
+            ) for connector in excluded_connectors
         ]
 
+        # filter out topic maps with both excluded connector name and namespace
         all_topic_maps = [
             map
             for map in all_topic_maps
-            if map.get("spec", {}).get(topic_map_reference_key)
-            not in excluded_connector_names
+            if (
+                map.get("spec", {}).get(topic_map_reference_key),
+                get_resource_metadata_property(map, prop_name="namespace"),
+            )
+            not in excluded_connector_properties
         ]
 
     # if we have no connectors of this type, mark as skipped

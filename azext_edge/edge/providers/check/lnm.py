@@ -328,8 +328,7 @@ def _process_lnm_pods(
         if not pods:
             check_manager.add_target(target_name=target)
             check_manager.add_display(target_name=target, display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)))
-
-            return pods
+            return
 
     for (namespace, pods) in pods_grouped_by_namespace(pods):
         check_manager.add_target(target_name=target, namespace=namespace, conditions=conditions)
@@ -351,8 +350,6 @@ def _process_lnm_pods(
                 namespace=namespace,
                 detail_level=detail_level,
             )
-
-    return pods
 
 
 def _evaluate_lnm_pod_health(
