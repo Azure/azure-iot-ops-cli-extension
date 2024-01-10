@@ -49,6 +49,7 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None, "test*", "test-configuration"])
 @pytest.mark.parametrize(
     "configurations, conditions, evaluations",
     [
@@ -458,6 +459,7 @@ def test_evaluate_configurations(
     conditions,
     evaluations,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -467,7 +469,7 @@ def test_evaluate_configurations(
     namespace = generate_generic_id()
     for configuration in configurations:
         configuration['metadata']['namespace'] = namespace
-    result = evaluate_configurations(detail_level=detail_level)
+    result = evaluate_configurations(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalConfigurations"
     assert result["targets"]["configurations.akri.sh"]
@@ -482,6 +484,7 @@ def test_evaluate_configurations(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None, "test*", "test-instance"])
 @pytest.mark.parametrize(
     "instances, conditions, evaluations",
     [
@@ -528,6 +531,7 @@ def test_evaluate_instances(
     conditions,
     evaluations,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -537,7 +541,7 @@ def test_evaluate_instances(
     namespace = generate_generic_id()
     for instance in instances:
         instance['metadata']['namespace'] = namespace
-    result = evaluate_instances(detail_level=detail_level)
+    result = evaluate_instances(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalInstances"
     assert result["targets"]["instances.akri.sh"]
@@ -552,6 +556,7 @@ def test_evaluate_instances(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None, "akri-*", "AKRI-*"])
 @pytest.mark.parametrize(
     "pods, namespace_conditions, namespace_evaluations",
     [
@@ -598,6 +603,7 @@ def test_evaluate_core_service_runtime(
     namespace_conditions,
     namespace_evaluations,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.check.akri.get_namespaced_pods_by_prefix",
@@ -607,7 +613,7 @@ def test_evaluate_core_service_runtime(
     namespace = generate_generic_id()
     for pod in pods:
         pod.metadata.namespace = namespace
-    result = evaluate_core_service_runtime(detail_level=detail_level)
+    result = evaluate_core_service_runtime(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalCoreServiceRuntime"
     assert result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
