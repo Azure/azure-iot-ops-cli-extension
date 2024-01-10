@@ -74,7 +74,7 @@ def process_cloud_connector(
         # get (name, namespace) tuples for excluded connectors
         excluded_connector_properties = [
             (
-                get_resource_metadata_property(connector, prop_name="name"), 
+                get_resource_metadata_property(connector, prop_name="name"),
                 get_resource_metadata_property(connector, prop_name="namespace")
             ) for connector in excluded_connectors
         ]

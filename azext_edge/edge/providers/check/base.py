@@ -15,7 +15,6 @@ from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import (
     V1APIResource,
     V1APIResourceList,
-    V1Pod
 )
 from rich.console import Console, NewLine
 from rich.padding import Padding

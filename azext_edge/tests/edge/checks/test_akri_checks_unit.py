@@ -49,7 +49,7 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("resource_name", [None, "test*", "test-configuration"])
+@pytest.mark.parametrize("resource_name", ["test*", "test-configuration", "*-configuration"])
 @pytest.mark.parametrize(
     "configurations, conditions, evaluations",
     [
@@ -446,7 +446,7 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
             # evaluations
             [
                 [
-                    ("status", "error"),
+                    ("status", "skipped"),
                     ("value/configurations", "Unable to fetch Akri configurations in any namespaces."),
                 ]
             ],
