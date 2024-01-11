@@ -35,12 +35,6 @@ jobs:
     uses: ./.github/workflows/azdev_linter.yml
     with:
       continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
-  # smoke tests are temporarily disabled until a suitable deployment replacement is built
-  # smoke_test:
-  #   needs: [build]
-  #   uses: ./.github/workflows/smoke_test.yml
-  #   with:
-  #     continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
   approval:
     needs: [security, build, test, azdev_linter]
     # only needed if (release || wheel)
