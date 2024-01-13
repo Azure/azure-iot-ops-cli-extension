@@ -63,14 +63,15 @@ else
 fi
 
 # Copy kubeconfig from codespace
+TRIES=0
+MAX_TRIES=5
+SLEEP=15s
 echo "Copying $REMOTE_KUBECONF from codespace $CODESPACE_NAME to local $LOCAL_KUBECONF"
-if gh codespace cp -e "remote:$REMOTE_KUBECONF" -e $LOCAL_KUBECONF -c $CODESPACE_NAME ; then
-    echo "Codespace kubeconfig copied successfully"
-else
-    echo "Failed to copy kubeconfig, retrying in 15 seconds"
-    sleep 15s
-    gh codespace cp -e "remote:$REMOTE_KUBECONF" -e $LOCAL_KUBECONF -c $CODESPACE_NAME
-fi
+until gh codespace cp -e "remote:$REMOTE_KUBECONF" -e $LOCAL_KUBECONF -c $CODESPACE_NAME || (( TRIES++ >= MAX_TRIES ))
+do
+    echo "Attempt $TRIES: Failed to copy kubeconfig, retrying in 15 seconds"
+    sleep $SLEEP
+done
 
 # Update local IP
 echo "Updating localhost endpoint in local config $LOCAL_KUBECONF"
