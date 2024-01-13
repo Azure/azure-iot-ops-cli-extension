@@ -64,14 +64,24 @@ fi
 
 # Copy kubeconfig from codespace
 TRIES=0
-MAX_TRIES=5
-SLEEP=15s
+MAX_TRIES=6
+SLEEP=10s
 echo "Copying $REMOTE_KUBECONF from codespace $CODESPACE_NAME to local $LOCAL_KUBECONF"
-until gh codespace cp -e "remote:$REMOTE_KUBECONF" -e $LOCAL_KUBECONF -c $CODESPACE_NAME || (( TRIES++ >= MAX_TRIES ))
+until gh codespace cp -e "remote:$REMOTE_KUBECONF" -e $LOCAL_KUBECONF -c $CODESPACE_NAME
 do
-    echo "Attempt $TRIES: Failed to copy kubeconfig, retrying in 15 seconds"
-    sleep $SLEEP
+    # exit gracefully if we tried too many times
+    if (( ++TRIES >= MAX_TRIES )); then
+        echo "Failed too many times copying kubeconfig, verify codespace has started and cluster is created"
+        echo "Try to connect again with:"
+        echo "codespace_connect.sh -c $CODESPACE_NAME"
+        read -n 1 -s -r -p "Press any key to continue"
+        exit 1
+    else
+        echo "Failed to copy kubeconfig, retrying again in $SLEEP (Attempt $TRIES)"
+        sleep $SLEEP
+    fi
 done
+
 
 # Update local IP
 echo "Updating localhost endpoint in local config $LOCAL_KUBECONF"
