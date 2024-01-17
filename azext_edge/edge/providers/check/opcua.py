@@ -4,8 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from itertools import groupby
-from kubernetes.client.models import V1Pod
 from rich.padding import Padding
 from typing import Any, Dict, List
 
@@ -15,6 +13,7 @@ from .base import (
     CheckManager,
     check_post_deployment,
     generate_target_resource_name,
+    pods_grouped_by_namespace,
     process_pods_status,
     resources_grouped_by_namespace,
 )
@@ -22,7 +21,8 @@ from .base import (
 from ...common import CheckTaskStatus
 
 from .common import (
-    CORE_SERVICE_RUNTIME_RESOURCE,
+    PADDING_SIZE,
+    CoreServiceResourceKinds,
     ResourceOutputDetailLevel,
 )
 
@@ -41,7 +41,7 @@ def check_opcua_deployment(
     resource_kinds: List[str] = None
 ) -> None:
     evaluate_funcs = {
-        CORE_SERVICE_RUNTIME_RESOURCE: evaluate_core_service_runtime,
+        CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
         OpcuaResourceKinds.ASSET_TYPE: evaluate_asset_types,
     }
 
@@ -74,29 +74,25 @@ def evaluate_core_service_runtime(
             )
         )
 
-    def get_namespace(pod: V1Pod) -> str:
-        return pod.metadata.namespace
-
-    opcua_runtime_resources.sort(key=get_namespace)
-
-    for (namespace, pods) in groupby(opcua_runtime_resources, get_namespace):
-        check_manager.add_target(target_name=CORE_SERVICE_RUNTIME_RESOURCE, namespace=namespace)
+    for (namespace, pods) in pods_grouped_by_namespace(opcua_runtime_resources):
+        padding = 6
+        check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
-            target_name=CORE_SERVICE_RUNTIME_RESOURCE,
+            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             namespace=namespace,
             display=Padding(
                 f"OPC UA broker runtime resources in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, 6)
+                (0, 0, 0, padding)
             )
         )
 
         process_pods_status(
             check_manager=check_manager,
             target_service_pod="",
-            target=CORE_SERVICE_RUNTIME_RESOURCE,
+            target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             pods=list(pods),
             namespace=namespace,
-            display_padding=10,
+            display_padding=padding + PADDING_SIZE,
         )
 
     return check_manager.as_dict(as_list)
@@ -140,6 +136,7 @@ def evaluate_asset_types(
         asset_types: List[dict] = list(asset_types)
         asset_types_count = len(asset_types)
         asset_types_count_text = "- Expecting [bright_blue]>=1[/bright_blue] asset type resource per namespace. {}."
+        padding = 10
 
         if asset_types_count >= 1:
             asset_types_count_text = asset_types_count_text.format(f"[green]Detected {asset_types_count}[/green]")
@@ -149,7 +146,7 @@ def evaluate_asset_types(
         check_manager.add_display(
             target_name=target_asset_types,
             namespace=namespace,
-            display=Padding(asset_types_count_text, (0, 0, 0, 10))
+            display=Padding(asset_types_count_text, (0, 0, 0, padding))
         )
 
         for asset_type in asset_types:
@@ -158,14 +155,17 @@ def evaluate_asset_types(
             asset_type_text = (
                 f"- Asset type {{[bright_blue]{asset_type_name}[/bright_blue]}} detected."
             )
+            asset_type_padding = padding + PADDING_SIZE
 
             check_manager.add_display(
                 target_name=target_asset_types,
                 namespace=namespace,
-                display=Padding(asset_type_text, (0, 0, 0, 12))
+                display=Padding(asset_type_text, (0, 0, 0, asset_type_padding))
             )
 
             spec = asset_type["spec"]
+            property_padding = asset_type_padding + PADDING_SIZE
+
             if detail_level >= ResourceOutputDetailLevel.detail.value:
                 # label summarize
                 labels = spec["labels"]
@@ -177,7 +177,7 @@ def evaluate_asset_types(
                     namespace=namespace,
                     display=Padding(
                         f"Detected [cyan]{len(non_repeated_labels)}[/cyan] unique labels",
-                        (0, 0, 0, 16),
+                        (0, 0, 0, property_padding),
                     ),
                 )
 
@@ -188,7 +188,7 @@ def evaluate_asset_types(
                             namespace=namespace,
                             display=Padding(
                                 f"[cyan]{', '.join(non_repeated_labels)}[/cyan]",
-                                (0, 0, 0, 20),
+                                (0, 0, 0, property_padding + PADDING_SIZE),
                             ),
                         )
 
@@ -199,7 +199,7 @@ def evaluate_asset_types(
                     target_asset_types=target_asset_types,
                     namespace=namespace,
                     schema=schema,
-                    padding=16,
+                    padding=property_padding,
                     detail_level=detail_level
                 )
 
@@ -233,7 +233,7 @@ def _process_schema(
             display=Padding(f"Schema {{[cyan]{schema_id}[/cyan]}} detected.", (0, 0, 0, padding)),
         )
 
-        padding += 4
+        padding += PADDING_SIZE
 
         for item_label, (schema_key, value_extractor) in schema_items.items():
             # Extract value using the defined lambda function
@@ -266,6 +266,6 @@ def _process_schema(
             namespace=namespace,
             display=Padding(
                 schema_json,
-                (0, 0, 0, padding + 4),
+                (0, 0, 0, padding + PADDING_SIZE),
             ),
         )

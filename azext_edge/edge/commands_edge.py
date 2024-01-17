@@ -115,6 +115,8 @@ def init(
     tls_ca_dir: Optional[str] = None,
     no_deploy: Optional[bool] = None,
     no_tls: Optional[bool] = None,
+    check_host: Optional[bool] = None,
+    confirm_yes: Optional[bool] = None,
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration import deploy
@@ -227,4 +229,6 @@ def init(
         tls_ca_path=tls_ca_path,
         tls_ca_key_path=tls_ca_key_path,
         tls_ca_dir=tls_ca_dir,
+        check_host=check_host,
+        confirm_yes=confirm_yes,
     )

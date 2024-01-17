@@ -13,10 +13,11 @@ from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_ty
 
 from .common import OpsServiceType
 from .providers.edge_api import (
+    AkriResourceKinds,
     DataProcessorResourceKinds,
     LnmResourceKinds,
     MqResourceKinds,
-    OpcuaResourceKinds
+    OpcuaResourceKinds,
 )
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
@@ -70,8 +71,7 @@ def load_iotops_arguments(self, _):
             "include_mq_traces",
             options_list=["--mq-traces"],
             arg_type=get_three_state_flag(),
-            help="Include mq traces in the support bundle. Usage may add considerable "
-            "size to the produced bundle.",
+            help="Include mq traces in the support bundle. Usage may add considerable size to the produced bundle.",
         )
 
     with self.argument_context("iot ops check") as context:
@@ -98,7 +98,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "ops_service",
             options_list=["--ops-service", "--svc"],
-            choices=CaseInsensitiveList(["mq", "dataprocessor", "lnm", "opcua"]),
+            choices=CaseInsensitiveList(["akri", "dataprocessor", "lnm", "mq", "opcua"]),
             help="The IoT Operations service deployment that will be evaluated.",
         )
         context.argument(
@@ -118,6 +118,8 @@ def load_iotops_arguments(self, _):
                     MqResourceKinds.DATALAKE_CONNECTOR.value,
                     MqResourceKinds.KAFKA_CONNECTOR.value,
                     OpcuaResourceKinds.ASSET_TYPE.value,
+                    AkriResourceKinds.CONFIGURATION.value,
+                    AkriResourceKinds.INSTANCE.value,
                 ]
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
@@ -202,6 +204,13 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops init") as context:
+        context.argument(
+            "check_host",
+            options_list=["--check-host"],
+            arg_type=get_three_state_flag(),
+            help="Runs a set of cluster host validations for deployment compatibility.",
+            arg_group="Host",
+        )
         context.argument(
             "cluster_name",
             options_list=["--cluster"],
@@ -491,6 +500,12 @@ def load_iotops_arguments(self, _):
             "--ca-file and --ca-key-file are provided.",
             arg_group="TLS",
         )
+        context.argument(
+            "confirm_yes",
+            options_list=["--yes", "-y"],
+            arg_type=get_three_state_flag(),
+            help="Confirm [y]es without a prompt. Useful for CI and automation scenarios.",
+        )
 
     with self.argument_context("iot ops asset") as context:
         context.argument(
@@ -776,7 +791,7 @@ def load_iotops_arguments(self, _):
             "auth_mode",
             options_list=["--authentication-mode", "--am"],
             help="Authentication Mode.",
-            arg_group="Authentication"
+            arg_group="Authentication",
         )
         context.argument(
             "certificate_reference",
@@ -789,49 +804,49 @@ def load_iotops_arguments(self, _):
             "password_reference",
             options_list=["--password-ref", "--pr"],
             help="Reference for the password used in authentication.",
-            arg_group="Authentication"
+            arg_group="Authentication",
         )
         context.argument(
             "username_reference",
             options_list=["--username-reference", "--ur"],
             help="Reference for the username used in authentication.",
-            arg_group="Authentication"
+            arg_group="Authentication",
         )
         context.argument(
             "custom_location_name",
             options_list=["--custom-location", "--cl"],
             help="Custom location used to associate asset endpoint with cluster.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "custom_location_resource_group",
             options_list=["--custom-location-resource-group", "--clrg"],
             help="Resource group for custom location.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "custom_location_subscription",
             options_list=["--custom-location-subscription", "--cls"],
             help="Subscription Id for custom location.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "cluster_name",
             options_list=["--cluster", "-c"],
             help="Cluster to associate the asset with.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "cluster_resource_group",
             options_list=["--cluster-resource-group", "--crg"],
             help="Resource group for cluster.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "cluster_subscription",
             options_list=["--cluster-subscription", "--cs"],
             help="Subscription Id for cluster.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "tags",
@@ -850,7 +865,7 @@ def load_iotops_arguments(self, _):
             "password_reference",
             options_list=["--password-ref", "--pr"],
             help="Reference for pem file that contains the certificate password.",
-            arg_group=None
+            arg_group=None,
         )
         context.argument(
             "secret_reference",
