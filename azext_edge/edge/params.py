@@ -205,13 +205,6 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops init") as context:
         context.argument(
-            "check_host",
-            options_list=["--check-host"],
-            arg_type=get_three_state_flag(),
-            help="Runs a set of cluster host validations for deployment compatibility.",
-            arg_group="Host",
-        )
-        context.argument(
             "cluster_name",
             options_list=["--cluster"],
             help="Target cluster name for IoT Operations deployment.",
@@ -500,11 +493,19 @@ def load_iotops_arguments(self, _):
             "--ca-file and --ca-key-file are provided.",
             arg_group="TLS",
         )
+
+    with self.argument_context("iot ops verify-host") as context:
         context.argument(
             "confirm_yes",
             options_list=["--yes", "-y"],
             arg_type=get_three_state_flag(),
             help="Confirm [y]es without a prompt. Useful for CI and automation scenarios.",
+        )
+        context.argument(
+            "no_progress",
+            options_list=["--no-progress"],
+            arg_type=get_three_state_flag(),
+            help="Disable visual representation of work.",
         )
 
     with self.argument_context("iot ops asset") as context:

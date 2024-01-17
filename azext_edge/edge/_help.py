@@ -37,7 +37,7 @@ def load_iotops_help():
         "iot ops support"
     ] = """
         type: group
-        short-summary: IoT Operations service support commands.
+        short-summary: IoT Operations support command space.
     """
 
     helps[
@@ -78,7 +78,7 @@ def load_iotops_help():
         "iot ops check"
     ] = f"""
         type: command
-        short-summary: Evaluate IoT Operations service deployment for health, configuration and usability.
+        short-summary: Evaluate cluster-side runtime health of deployed IoT Operations services.
         long-summary: |
             The command by default shows a human friendly _summary_ view of the selected service.
             More detail can be requested via `--detail-level`.
@@ -158,6 +158,17 @@ def load_iotops_help():
         - name: Produce a hash of the phrase 'mypassphrase' using the default number of hash iterations.
           text: >
             az iot ops mq get-password-hash -p mypassphrase
+    """
+
+    helps[
+        "iot ops verify-host"
+    ] = """
+        type: command
+        short-summary: Runs a set of cluster host verifications for IoT Operations deployment compatibility.
+        long-summary: The command may prompt to apply a set of privileged actions such as installing a dependency.
+          In this case the CLI must be run with elevated permissions. For example
+
+            `sudo AZURE_EXTENSION_DIR=/home/me/.azure/cliextensions az iot ops verify-host`.
     """
 
     helps[

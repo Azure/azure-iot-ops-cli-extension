@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 console = Console(width=88)
 
 
-def run_host_checks(render_progress: bool = True, confirm_yes: bool = False):
+def run_host_verify(render_progress: Optional[bool] = True, confirm_yes: Optional[bool] = False):
     if not render_progress:
         console.quiet = True
     connect_tuples = [(ARM_ENDPOINT, "HEAD"), (MCR_ENDPOINT, "GET")]

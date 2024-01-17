@@ -95,8 +95,6 @@ class WorkManager:
         self._no_block: bool = kwargs.get("no_block", False)
         self._no_deploy: bool = kwargs.get("no_deploy", False)
         self._no_tls: bool = kwargs.get("no_tls", False)
-        self._check_host: bool = kwargs.get("check_host", False)
-        self._confirm_yes = kwargs.get("confirm_yes", False)
         self._cmd = kwargs.get("cmd")
         self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
         if self._keyvault_resource_id:
@@ -185,13 +183,9 @@ class WorkManager:
             wait_for_terminal_state,
         )
         from .rp_namespace import register_providers
-        from .host import run_host_checks
         from ..edge_api.keyvault import KEYVAULT_API_V1
 
         work_kpis = {}
-
-        if self._check_host:
-            run_host_checks(self._render_progress, self._confirm_yes)
 
         try:
             # Pre-check segment
