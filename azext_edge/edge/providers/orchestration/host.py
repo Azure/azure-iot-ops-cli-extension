@@ -75,7 +75,7 @@ def run_host_verify(render_progress: Optional[bool] = True, confirm_yes: Optiona
     console.print()
 
 
-def check_connectivity(url: str, timeout: int = 10, http_verb: str = "GET"):
+def check_connectivity(url: str, timeout: int = 20, http_verb: str = "GET"):
     try:
         http_verb = http_verb.lower()
         if http_verb == "get":

@@ -190,7 +190,6 @@ class WorkManager:
         try:
             # Pre-check segment
             self.render_display(category=WorkCategoryKey.PRE_CHECK)
-
             verify_connect_mgmt_plane(self._cmd)
 
             # TODO: right time to evaluate this check

@@ -183,6 +183,6 @@ def run_host_command(command: str, shell_mode: bool = True):
     split_command = split(command)
 
     try:
-        return run(split_command, capture_output=True, shell=shell_mode)
+        return run(split_command, capture_output=True, check=False, shell=shell_mode)
     except FileNotFoundError:
         pass
