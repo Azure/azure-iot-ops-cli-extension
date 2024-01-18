@@ -187,7 +187,7 @@ class WorkManager:
         )
         from .rp_namespace import register_providers
         from ..edge_api.keyvault import KEYVAULT_API_V1
-        from .permissions import verify_write_role_assignment_against_rg
+        from .permissions import verify_write_permission_against_rg
 
         work_kpis = {}
 
@@ -213,7 +213,7 @@ class WorkManager:
                 self._completed_steps[WorkStepKey.REG_RP] = 1
                 self.render_display(category=WorkCategoryKey.PRE_CHECK)
 
-                verify_write_role_assignment_against_rg(
+                verify_write_permission_against_rg(
                     **self._kwargs,
                 )
                 # Use pre-flight deployment as a shortcut to evaluate permissions

@@ -15,7 +15,7 @@ VALID_PERM_FORMS = frozenset(["*", "microsoft.authorization/roleassignments/writ
 
 
 # TODO: one-off for time, make generic
-def verify_write_role_assignment_against_rg(subscription_id: str, resource_group_name: str, **kwargs) -> bool:
+def verify_write_permission_against_rg(subscription_id: str, resource_group_name: str, **kwargs) -> bool:
     action_result = False
     negate_action_result = False
     for permission in get_principal_permissions_for_group(
@@ -33,12 +33,13 @@ def verify_write_role_assignment_against_rg(subscription_id: str, resource_group
                 negate_action_result = True
                 break
 
-    result = action_result and not negate_action_result
-    if not result:
-        raise ValidationError(
-            "This IoT Operations deployment configuration requires "
-            "the permission to write role assignments against the resource group."
-        )
+        if action_result and not negate_action_result:
+            return
+
+    raise ValidationError(
+        "This IoT Operations deployment configuration requires "
+        "the permission to write role assignments against the resource group."
+    )
 
 
 def get_principal_permissions_for_group(subscription_id: str, resource_group_name: str):
