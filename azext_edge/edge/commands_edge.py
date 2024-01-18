@@ -126,13 +126,14 @@ def init(
     tls_ca_dir: Optional[str] = None,
     no_deploy: Optional[bool] = None,
     no_tls: Optional[bool] = None,
+    no_preflight: Optional[bool] = None,
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration import deploy
     from .util import url_safe_hash_phrase
     from .util.sp import LoggedInPrincipal
 
-    if all([no_tls, not keyvault_resource_id, no_deploy]):
+    if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
         logger.warning("Nothing to do :)")
         return
 
@@ -208,6 +209,7 @@ def init(
         no_block=no_block,
         no_progress=no_progress,
         no_tls=no_tls,
+        no_preflight=no_preflight,
         no_deploy=no_deploy,
         dp_instance_name=dp_instance_name,
         dp_reader_workers=int(dp_reader_workers),

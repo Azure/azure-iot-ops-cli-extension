@@ -95,6 +95,7 @@ class WorkManager:
         self._no_block: bool = kwargs.get("no_block", False)
         self._no_deploy: bool = kwargs.get("no_deploy", False)
         self._no_tls: bool = kwargs.get("no_tls", False)
+        self._no_preflight: bool = kwargs.get("no_preflight", False)
         self._cmd = kwargs.get("cmd")
         self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
         if self._keyvault_resource_id:
@@ -119,8 +120,10 @@ class WorkManager:
 
     def _build_display(self):
         pre_check_cat_desc = "Pre-Flight"
-        self.display.add_category(WorkCategoryKey.PRE_CHECK, pre_check_cat_desc)
-        self.display.add_step(WorkCategoryKey.PRE_CHECK, WorkStepKey.REG_RP, "Ensure registered resource providers")
+        self.display.add_category(WorkCategoryKey.PRE_CHECK, pre_check_cat_desc, skipped=self._no_preflight)
+        self.display.add_step(
+            WorkCategoryKey.PRE_CHECK, WorkStepKey.REG_RP, "Ensure registered IoT Ops resource providers"
+        )
         self.display.add_step(WorkCategoryKey.PRE_CHECK, WorkStepKey.EVAL_LOGIN_PERM, "Verify pre-flight deployment")
 
         kv_csi_cat_desc = "Key Vault CSI Driver"
@@ -184,37 +187,51 @@ class WorkManager:
         )
         from .rp_namespace import register_providers
         from ..edge_api.keyvault import KEYVAULT_API_V1
+        from .permissions import verify_write_role_assignment_against_rg
 
         work_kpis = {}
 
         try:
+            # Ensure connection to ARM if needed. Show remediation error message otherwise.
+            if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
+                verify_connect_mgmt_plane(self._cmd)
+
             # Pre-check segment
-            self.render_display(category=WorkCategoryKey.PRE_CHECK)
-            verify_connect_mgmt_plane(self._cmd)
+            if (
+                WorkCategoryKey.PRE_CHECK in self.display.categories
+                and not self.display.categories[WorkCategoryKey.PRE_CHECK][1]
+            ):
+                self.render_display(category=WorkCategoryKey.PRE_CHECK)
+                # TODO: right time to evaluate this check
+                if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
+                    raise ValidationError(
+                        error_msg="--kv-id is required when the Key Vault CSI driver is not installed."
+                    )
 
-            # TODO: right time to evaluate this check
-            if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
-                raise ValidationError(error_msg="--kv-id is required when the Key Vault CSI driver is not installed.")
+                register_providers(**self._kwargs)
 
-            register_providers(**self._kwargs)
+                self._completed_steps[WorkStepKey.REG_RP] = 1
+                self.render_display(category=WorkCategoryKey.PRE_CHECK)
 
-            self._completed_steps[WorkStepKey.REG_RP] = 1
-            self.render_display(category=WorkCategoryKey.PRE_CHECK)
+                verify_write_role_assignment_against_rg(
+                    **self._kwargs,
+                )
+                # Use pre-flight deployment as a shortcut to evaluate permissions
+                template, parameters = self.build_template(work_kpis=work_kpis)
+                deployment_result, deployment_poller = deploy_template(
+                    template=template.content,
+                    parameters=parameters,
+                    deployment_name=self._work_name,
+                    pre_flight=True,
+                    **self._kwargs,
+                )
+                terminal_deployment = wait_for_terminal_state(deployment_poller)
 
-            # Use pre-flight deployment as a shortcut to evaluate permissions
-            template, parameters = self.build_template(work_kpis=work_kpis)
-            deployment_result, deployment_poller = deploy_template(
-                template=template.content,
-                parameters=parameters,
-                deployment_name=self._work_name,
-                pre_flight=True,
-                **self._kwargs,
-            )
-            terminal_deployment = wait_for_terminal_state(deployment_poller)
-
-            self._completed_steps[WorkStepKey.EVAL_LOGIN_PERM] = 1
-            self.render_display(WorkCategoryKey.PRE_CHECK)
-            ###
+                self._completed_steps[WorkStepKey.EVAL_LOGIN_PERM] = 1
+                self.render_display(WorkCategoryKey.PRE_CHECK)
+            else:
+                if not self._render_progress:
+                    logger.warning("Skipped Pre-Flight as requested.")
 
             # CSI driver segment
             if self._keyvault_resource_id:

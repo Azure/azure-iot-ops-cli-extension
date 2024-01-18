@@ -5,7 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import Dict
+
+from knack.log import get_logger
+
 from ...util.az_client import get_resource_client
+
+logger = get_logger(__name__)
 
 
 RP_NAMESPACE_SET = frozenset(
@@ -25,5 +30,7 @@ def register_providers(subscription_id: str, **kwargs) -> Dict[str, bool]:
         provider_dict = provider.as_dict()
         if "namespace" in provider_dict and provider_dict["namespace"] in RP_NAMESPACE_SET:
             if provider_dict["registration_state"] == "Registered":
+                logger.debug("RP %s is already registered.", provider_dict["namespace"])
                 continue
+            logger.debug("Registering RP %s.", provider_dict["namespace"])
             resource_client.providers.register(provider_dict["namespace"])

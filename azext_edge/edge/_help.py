@@ -175,7 +175,7 @@ def load_iotops_help():
         "iot ops init"
     ] = """
         type: command
-        short-summary: Bootstrap, configure and deploy IoT Operations to the target cluster.
+        short-summary: Bootstrap, configure and deploy IoT Operations to the target arc-enabled cluster.
         long-summary: For additional resources including how to arc-enable a cluster see
                       https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
 

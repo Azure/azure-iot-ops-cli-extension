@@ -261,13 +261,19 @@ def load_iotops_arguments(self, _):
             "no_deploy",
             options_list=["--no-deploy"],
             arg_type=get_three_state_flag(),
-            help="The deployment of IoT Operations will be skipped.",
+            help="The IoT Operations deployment workflow will be skipped.",
         )
         context.argument(
             "no_tls",
             options_list=["--no-tls"],
             arg_type=get_three_state_flag(),
-            help="The configuration of TLS in the init workflow will be skipped.",
+            help="The TLS configuration workflow will be skipped.",
+        )
+        context.argument(
+            "no_preflight",
+            options_list=["--no-preflight"],
+            arg_type=get_three_state_flag(),
+            help="The pre-flight workflow will be skipped.",
         )
         # Akri
         context.argument(
