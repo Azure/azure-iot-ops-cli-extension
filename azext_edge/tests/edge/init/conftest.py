@@ -90,7 +90,10 @@ def mocked_validate_keyvault_permission_model(mocker):
 
     def handle_return(*args, **kwargs):
         return {
-            "id": "/subscriptions/ae128775-4f16-4fd2-8dff-0ceed6a6a1f3/resourceGroups/FakeRg/providers/Microsoft.KeyVault/vaults/myfakekeyvault",
+            "id": (
+                "/subscriptions/ae128775-4f16-4fd2-8dff-0ceed6a6a1f3/resourceGroups/FakeRg/"
+                "providers/Microsoft.KeyVault/vaults/myfakekeyvault"
+            ),
             "name": "myfakekeyvault",
             "type": "Microsoft.KeyVault/vaults",
             "location": "westus3",
@@ -124,7 +127,9 @@ def mocked_edge_api_keyvault_v1(mocker):
 
 @pytest.fixture
 def mocked_verify_write_permission_against_rg(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.permissions.verify_write_permission_against_rg", autospec=True)
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.permissions.verify_write_permission_against_rg", autospec=True
+    )
     yield patched
 
 

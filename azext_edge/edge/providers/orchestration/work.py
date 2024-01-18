@@ -171,7 +171,7 @@ class WorkManager:
         # TODO: add skip deployment
         self.display.add_category(WorkCategoryKey.DEPLOY_AIO, "Deploy IoT Operations", skipped=self._no_deploy)
 
-    def do_work(self):
+    def do_work(self):  # noqa: C901
         from .base import (
             configure_cluster_secrets,
             configure_cluster_tls,

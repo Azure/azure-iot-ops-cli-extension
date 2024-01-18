@@ -603,8 +603,8 @@ def test_work_order(
         mocked_configure_cluster_secrets.assert_not_called()
 
     if not no_tls:
-        assert result["tls"]["aioTrustConfigMap"]  ##
-        assert result["tls"]["aioTrustSecretName"]  ##
+        assert result["tls"]["aioTrustConfigMap"]  # TODO
+        assert result["tls"]["aioTrustSecretName"]  # TODO
         mocked_prepare_ca.assert_called_once()
         assert mocked_prepare_ca.call_args.kwargs["tls_ca_path"] == tls_ca_path
         assert mocked_prepare_ca.call_args.kwargs["tls_ca_key_path"] == tls_ca_key_path
@@ -662,4 +662,4 @@ def test_work_order(
             assert "deploymentLink" not in result
             assert "deploymentState" not in result
         # TODO
-        #mocked_deploy_template.assert_not_called()
+        # mocked_deploy_template.assert_not_called()
