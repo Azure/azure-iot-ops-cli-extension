@@ -123,6 +123,12 @@ def mocked_edge_api_keyvault_v1(mocker):
 
 
 @pytest.fixture
+def mocked_verify_write_permission_against_rg(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.permissions.verify_write_permission_against_rg", autospec=True)
+    yield patched
+
+
+@pytest.fixture
 def mocked_prepare_keyvault_access_policy(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.prepare_keyvault_access_policy", autospec=True)
 

@@ -479,6 +479,7 @@ def test_work_order(
     mocked_edge_api_keyvault_v1: Mock,
     mocked_wait_for_terminal_state: Mock,
     mocked_validate_keyvault_permission_model: Mock,
+    mocked_verify_write_permission_against_rg: Mock,
     mocked_file_exists,
     cluster_name,
     cluster_namespace,
