@@ -1,0 +1,70 @@
+# TODO - currently private index is not used.
+# TODO - Trigger PRs against public index using github release artifact URL
+name: "[auto] Update Private Extension index"
+
+on:
+  workflow_call:
+env:
+  extensions_folder: azure-cli-extensions
+  storage_container_url: ${{ secrets.storage_container_url }}
+  sas_token: ${{ secrets.sas_token }}
+jobs:
+  update_index:
+    # prompt for explicit approval as this will update the index for customers
+    environment: production
+    runs-on:
+      [
+        self-hosted,
+        1ES.Pool=iotupx-github-hosted-pool,
+        1ES.ImageOverride=MMSUbuntu20.04,
+      ]
+    steps:
+      - name: Download wheel
+        id: wheel
+        uses: actions/download-artifact@v3
+        with:
+          name: azure-iot-ops-cli-ext
+          path: ./
+      - name: Install azcopy
+        run: |
+          curl -so azcopy.tar.gz -L 'https://aka.ms/downloadazcopy-v10-linux'
+          tar -zxvf azcopy.tar.gz --strip 1
+      - name: Download private index file
+        run: |
+          azcopy copy "${{ env.storage_container_url }}/index.json" 'index.json'
+          mkdir ${{ env.extensions_folder }}
+          mv index.json ${{ env.extensions_folder }}
+      # If this version is already in the index, skip uploading and updating index
+      - name: Determine if version already exists
+        id: duplicate_check
+        run: |
+          wheel=$(find *.whl)
+          echo "wheel=$wheel" >> $GITHUB_ENV
+          cd ${{ env.extensions_folder }}
+          if grep -Fq $wheel index.json; then
+            echo "Wheel found in index, skipping update" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "CONTINUE=true" >> $GITHUB_OUTPUT
+          fi
+      # Setup and configure azdev to update local index file
+      - name: Setup azdev, update private index file
+        if: steps.duplicate_check.outputs.CONTINUE == 'true'
+        run: |
+          set -ev
+          pip install virtualenv
+          python -m virtualenv venv/
+          source ./venv/bin/activate
+          pip install azdev
+          azdev --version
+          git init
+          azdev extension repo add .
+          azdev extension update-index "${{ env.storage_container_url }}/${{ env.wheel }}"
+      # Upload index file to storage
+      - name: Push index
+        if: steps.duplicate_check.outputs.CONTINUE == 'true'
+        run: |
+          cd ${{ env.extensions_folder }}
+          url="${{ env.storage_container_url }}/index.json?${{ env.SAS_TOKEN }}"
+          azcopy copy 'index.json' $url
+        env:
+          SAS_TOKEN: ${{ secrets.SAS_TOKEN }}

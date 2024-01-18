@@ -1,0 +1,15 @@
+[pytest]
+log_cli = 1
+log_cli_level = WARNING
+
+addopts =
+    -v
+
+norecursedirs =
+    dist
+    build
+
+testpaths =
+    azext_edge/tests
+
+env =

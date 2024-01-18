@@ -1,0 +1,13 @@
+pytest
+pytest-mock
+pytest-cov
+pytest-env
+responses
+black
+wheel==0.30.0
+pre-commit
+pylint==3.0.3
+flake8
+pytest-xdist
+pytest-rerunfailures
+tox
