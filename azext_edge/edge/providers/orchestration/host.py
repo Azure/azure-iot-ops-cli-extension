@@ -6,15 +6,17 @@
 
 
 from platform import system
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 import requests
 from azure.cli.core.azclierror import ValidationError
+from azure.cli.core.extension import get_extension_path
 from knack.log import get_logger
 from rich.console import Console
-from rich.prompt import Confirm
 from rich.markdown import Markdown
+from rich.prompt import Confirm
 
+from ....constants import EXTENSION_NAME
 from ...util.common import run_host_command
 
 ARM_ENDPOINT = "https://management.azure.com/"
@@ -67,6 +69,16 @@ def run_host_verify(render_progress: Optional[bool] = True, confirm_yes: Optiona
                         execute_install = Confirm.ask("(sudo required)")
                         if not execute_install:
                             raise ValidationError("Dependency install cancelled!")
+
+                        from os import geteuid
+
+                        if geteuid() != 0:
+                            az_ext_dir = get_extension_path(EXTENSION_NAME)
+                            az_ext_dir = az_ext_dir[: az_ext_dir.index(EXTENSION_NAME)]
+                            raise ValidationError(
+                                "sudo user not detected.\n\nPlease run the command in the following form:\n"
+                                f"-> sudo AZURE_EXTENSION_DIR={az_ext_dir} az iot ops verify-host"
+                            )
 
                     install_nfs_common_result = install_package(NFS_COMMON_ALIAS)
                     if install_nfs_common_result:
