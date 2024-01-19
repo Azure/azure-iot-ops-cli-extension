@@ -120,7 +120,7 @@ def mocked_validate_keyvault_permission_model(mocker):
 
 
 @pytest.fixture
-def mocked_edge_api_keyvault_v1(mocker):
+def mocked_edge_api_keyvault_api_v1(mocker):
     patched = mocker.patch("azext_edge.edge.providers.edge_api.keyvault.KEYVAULT_API_V1", autospec=False)
     yield patched
 

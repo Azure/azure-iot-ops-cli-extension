@@ -196,18 +196,18 @@ class WorkManager:
             if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
                 verify_connect_mgmt_plane(self._cmd)
 
+            # Always run this check
+            if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
+                raise ValidationError(
+                    error_msg="--kv-id is required when the Key Vault CSI driver is not installed."
+                )
+
             # Pre-check segment
             if (
                 WorkCategoryKey.PRE_CHECK in self.display.categories
                 and not self.display.categories[WorkCategoryKey.PRE_CHECK][1]
             ):
                 self.render_display(category=WorkCategoryKey.PRE_CHECK)
-                # TODO: right time to evaluate this check
-                if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
-                    raise ValidationError(
-                        error_msg="--kv-id is required when the Key Vault CSI driver is not installed."
-                    )
-
                 register_providers(**self._kwargs)
 
                 self._completed_steps[WorkStepKey.REG_RP] = 1
