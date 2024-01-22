@@ -9,7 +9,7 @@ from time import sleep
 from typing import Dict, Tuple
 from uuid import uuid4
 
-from azure.cli.core.azclierror import AzureResponseError
+from azure.cli.core.azclierror import AzureResponseError, ValidationError
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
 from rich.console import NewLine
@@ -27,19 +27,24 @@ logger = get_logger(__name__)
 
 
 class WorkCategoryKey(IntEnum):
-    CSI_DRIVER = 1
-    TLS_CA = 2
-    DEPLOY_AIO = 3
+    PRE_CHECK = 1
+    CSI_DRIVER = 2
+    TLS_CA = 3
+    DEPLOY_AIO = 4
 
 
 class WorkStepKey(IntEnum):
     SP = 1
-    KV_CLOUD_AP = 2
-    KV_CLOUD_SEC = 3
-    KV_CSI_DEPLOY = 4
-    KV_CSI_CLUSTER = 5
-    TLS_CERT = 6
-    TLS_CLUSTER = 7
+    KV_CLOUD_PERM_MODEL = 2
+    KV_CLOUD_AP = 3
+    KV_CLOUD_SEC = 4
+    KV_CSI_DEPLOY = 5
+    KV_CSI_CLUSTER = 6
+    TLS_CERT = 7
+    TLS_CLUSTER = 8
+
+    REG_RP = 9
+    EVAL_LOGIN_PERM = 10
 
 
 class WorkRecord:
@@ -90,6 +95,7 @@ class WorkManager:
         self._no_block: bool = kwargs.get("no_block", False)
         self._no_deploy: bool = kwargs.get("no_deploy", False)
         self._no_tls: bool = kwargs.get("no_tls", False)
+        self._no_preflight: bool = kwargs.get("no_preflight", False)
         self._cmd = kwargs.get("cmd")
         self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
         if self._keyvault_resource_id:
@@ -113,8 +119,23 @@ class WorkManager:
         self._build_display()
 
     def _build_display(self):
-        kv_csi_cat_desc = "KeyVault CSI Driver"
+        pre_check_cat_desc = "Pre-Flight"
+        self.display.add_category(WorkCategoryKey.PRE_CHECK, pre_check_cat_desc, skipped=self._no_preflight)
+        self.display.add_step(
+            WorkCategoryKey.PRE_CHECK, WorkStepKey.REG_RP, "Ensure registered IoT Ops resource providers"
+        )
+        self.display.add_step(WorkCategoryKey.PRE_CHECK, WorkStepKey.EVAL_LOGIN_PERM, "Verify pre-flight deployment")
+
+        kv_csi_cat_desc = "Key Vault CSI Driver"
         self.display.add_category(WorkCategoryKey.CSI_DRIVER, kv_csi_cat_desc, skipped=not self._keyvault_resource_id)
+
+        kv_cloud_perm_model_desc = "Verify Key Vault{}permission model"
+        kv_cloud_perm_model_desc = kv_cloud_perm_model_desc.format(
+            f" '[green]{self._keyvault_name}[/green]' " if self._keyvault_resource_id else " "
+        )
+        self.display.add_step(
+            WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_PERM_MODEL, description=kv_cloud_perm_model_desc
+        )
 
         if self._sp_app_id:
             sp_desc = f"Use app '[green]{self._sp_app_id}[/green]'"
@@ -124,11 +145,9 @@ class WorkManager:
             sp_desc = "Created app"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.SP, description=sp_desc)
 
-        kv_cloud_ap_desc = "Ensure KeyVault{}access policy"
-        kv_cloud_ap_desc = kv_cloud_ap_desc.format(
-            f" '[green]{self._keyvault_name}[/green]' " if self._keyvault_resource_id else " "
+        self.display.add_step(
+            WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_AP, description="Configure access policy"
         )
-        self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_AP, description=kv_cloud_ap_desc)
 
         kv_cloud_sec_desc = f"Ensure secret name '[green]{self._keyvault_sat_secret_name}[/green]' for service account"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_SEC, description=kv_cloud_sec_desc)
@@ -152,7 +171,7 @@ class WorkManager:
         # TODO: add skip deployment
         self.display.add_category(WorkCategoryKey.DEPLOY_AIO, "Deploy IoT Operations", skipped=self._no_deploy)
 
-    def do_work(self):
+    def do_work(self):  # noqa: C901
         from .base import (
             configure_cluster_secrets,
             configure_cluster_tls,
@@ -162,12 +181,58 @@ class WorkManager:
             prepare_keyvault_secret,
             prepare_sp,
             provision_akv_csi_driver,
+            validate_keyvault_permission_model,
+            verify_connect_mgmt_plane,
             wait_for_terminal_state,
         )
+        from .rp_namespace import register_providers
+        from ..edge_api.keyvault import KEYVAULT_API_V1
+        from .permissions import verify_write_permission_against_rg
 
         work_kpis = {}
 
         try:
+            # Ensure connection to ARM if needed. Show remediation error message otherwise.
+            if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
+                verify_connect_mgmt_plane(self._cmd)
+
+            # Always run this check
+            if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
+                raise ValidationError(
+                    error_msg="--kv-id is required when the Key Vault CSI driver is not installed."
+                )
+
+            # Pre-check segment
+            if (
+                WorkCategoryKey.PRE_CHECK in self.display.categories
+                and not self.display.categories[WorkCategoryKey.PRE_CHECK][1]
+            ):
+                self.render_display(category=WorkCategoryKey.PRE_CHECK)
+                register_providers(**self._kwargs)
+
+                self._completed_steps[WorkStepKey.REG_RP] = 1
+                self.render_display(category=WorkCategoryKey.PRE_CHECK)
+
+                verify_write_permission_against_rg(
+                    **self._kwargs,
+                )
+                # Use pre-flight deployment as a shortcut to evaluate permissions
+                template, parameters = self.build_template(work_kpis=work_kpis)
+                deployment_result, deployment_poller = deploy_template(
+                    template=template.content,
+                    parameters=parameters,
+                    deployment_name=self._work_name,
+                    pre_flight=True,
+                    **self._kwargs,
+                )
+                terminal_deployment = wait_for_terminal_state(deployment_poller)
+
+                self._completed_steps[WorkStepKey.EVAL_LOGIN_PERM] = 1
+                self.render_display(WorkCategoryKey.PRE_CHECK)
+            else:
+                if not self._render_progress:
+                    logger.warning("Skipped Pre-Flight as requested.")
+
             # CSI driver segment
             if self._keyvault_resource_id:
                 work_kpis["csiDriver"] = {}
@@ -176,6 +241,10 @@ class WorkManager:
                     and not self.display.categories[WorkCategoryKey.CSI_DRIVER][1]
                 ):
                     self.render_display(category=WorkCategoryKey.CSI_DRIVER)
+                    keyvault_resource = validate_keyvault_permission_model(**self._kwargs)
+                    self._completed_steps[WorkStepKey.KV_CLOUD_PERM_MODEL] = 1
+                    self.render_display(category=WorkCategoryKey.CSI_DRIVER)
+
                     if WorkStepKey.SP in self.display.steps[WorkCategoryKey.CSI_DRIVER]:
                         sp_record = prepare_sp(deployment_name=self._work_name, **self._kwargs)
                         if sp_record.created_app:
@@ -192,10 +261,10 @@ class WorkManager:
 
                         if WorkStepKey.KV_CLOUD_AP in self.display.steps[WorkCategoryKey.CSI_DRIVER]:
                             vault_uri = prepare_keyvault_access_policy(
+                                keyvault_resource=keyvault_resource,
                                 sp_record=sp_record,
                                 **self._kwargs,
                             )
-
                             self._completed_steps[WorkStepKey.KV_CLOUD_AP] = 1
                             self.render_display(category=WorkCategoryKey.CSI_DRIVER)
 
@@ -260,6 +329,7 @@ class WorkManager:
                     cm_name=cm_name,
                     **self._kwargs,
                 )
+
                 self._completed_steps[WorkStepKey.TLS_CLUSTER] = 1
                 self.render_display(category=WorkCategoryKey.TLS_CA)
             else:

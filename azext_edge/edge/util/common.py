@@ -169,3 +169,20 @@ def ensure_azure_namespace_path():
 
     if sys.path and sys.path[0] != ext_path:
         sys.path.insert(0, ext_path)
+
+
+def run_host_command(command: str, shell_mode: bool = True):
+    from shlex import split, quote
+    from subprocess import run
+
+    if not command:
+        raise ValueError("command value is required.")
+
+    logger.debug("Running host command: %s", command)
+    command = quote(command)
+    split_command = split(command)
+
+    try:
+        return run(split_command, capture_output=True, check=False, shell=shell_mode)
+    except FileNotFoundError:
+        pass

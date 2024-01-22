@@ -8,7 +8,7 @@ import json
 from time import sleep
 from typing import List, NamedTuple, Optional, Tuple, TYPE_CHECKING
 
-from azure.cli.core.azclierror import HTTPError
+from azure.cli.core.azclierror import HTTPError, ValidationError
 from knack.log import get_logger
 
 from ...util import (
@@ -317,13 +317,24 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
     )
 
 
-def prepare_keyvault_access_policy(
-    subscription_id: str, keyvault_resource_id: str, sp_record: ServicePrincipal, **kwargs
-) -> str:
+def validate_keyvault_permission_model(subscription_id: str, keyvault_resource_id: str, **kwargs) -> dict:
     resource_client = get_resource_client(subscription_id=subscription_id)
     keyvault_resource: dict = resource_client.resources.get_by_id(
         resource_id=keyvault_resource_id, api_version=KEYVAULT_CLOUD_API_VERSION
     ).as_dict()
+    kv_properties = keyvault_resource["properties"]
+    if "enableRbacAuthorization" in kv_properties and kv_properties["enableRbacAuthorization"] is True:
+        raise ValidationError(
+            "Target Key Vault must be configured for access policy based permission model. "
+            "Rbac is not currently supported."
+        )
+    return keyvault_resource
+
+
+def prepare_keyvault_access_policy(
+    subscription_id: str, keyvault_resource: dict, keyvault_resource_id: str, sp_record: ServicePrincipal, **kwargs
+) -> str:
+    resource_client = get_resource_client(subscription_id=subscription_id)
     vault_uri = keyvault_resource["properties"]["vaultUri"]
     keyvault_access_policies: List[dict] = keyvault_resource["properties"].get("accessPolicies", [])
 
@@ -384,11 +395,6 @@ def prepare_keyvault_secret(
     return keyvault_sat_secret_name
 
 
-def get_resource_by_id(resource_id: str, subscription_id: str, api_version: str):
-    resource_client = get_resource_client(subscription_id=subscription_id)
-    return resource_client.resources.get_by_id(resource_id=resource_id, api_version=api_version)
-
-
 def get_tenant_id():
     from azure.cli.core._profile import Profile
 
@@ -405,11 +411,19 @@ def deploy_template(
     deployment_name: str,
     cluster_name: str,
     cluster_namespace: str,
+    pre_flight: bool = False,
     **kwargs,
 ) -> Tuple[dict, dict]:
     resource_client = get_resource_client(subscription_id=subscription_id)
 
     deployment_params = {"properties": {"mode": "Incremental", "template": template, "parameters": parameters}}
+    if pre_flight:
+        return {}, resource_client.deployments.begin_what_if(
+            resource_group_name=resource_group_name,
+            deployment_name=deployment_name,
+            parameters=deployment_params,
+        )
+
     deployment = resource_client.deployments.begin_create_or_update(
         resource_group_name=resource_group_name,
         deployment_name=deployment_name,
@@ -431,6 +445,20 @@ def deploy_template(
         "deploymentState": {"timestampUtc": {"started": get_timestamp_now_utc()}, "status": deployment.status()},
     }
     return result, deployment
+
+
+def verify_connect_mgmt_plane(cmd):
+    from .host import check_connectivity, get_connectivity_error, ARM_ENDPOINT
+
+    try_arm_endpoint = ARM_ENDPOINT
+    try:
+        try_arm_endpoint = cmd.cli_ctx.cloud.endpoints.resource_manager
+    except AttributeError:
+        pass
+
+    connect_result = check_connectivity(try_arm_endpoint, http_verb="HEAD")
+    if not connect_result:
+        raise ValidationError(get_connectivity_error(try_arm_endpoint, include_cluster=False))
 
 
 def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":

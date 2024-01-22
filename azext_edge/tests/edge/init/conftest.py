@@ -62,7 +62,74 @@ def mocked_deploy_template(mocker):
 @pytest.fixture
 def mocked_prepare_ca(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.prepare_ca", autospec=True)
-    patched.return_value = ("mock_ca", "mock_private_key", "mock_secret_name", "mock_configmap")
+
+    def handle_return(*args, **kwargs):
+        return ("mock_ca", "mock_private_key", "mock_secret_name", "mock_configmap")
+
+    patched.side_effect = handle_return
+    yield patched
+
+
+@pytest.fixture
+def mocked_verify_connect_mgmt_plane(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.verify_connect_mgmt_plane", autospec=True)
+    yield patched
+
+
+@pytest.fixture
+def mocked_register_providers(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.rp_namespace.register_providers", autospec=True)
+    yield patched
+
+
+@pytest.fixture
+def mocked_validate_keyvault_permission_model(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.base.validate_keyvault_permission_model", autospec=True
+    )
+
+    def handle_return(*args, **kwargs):
+        return {
+            "id": (
+                "/subscriptions/ae128775-4f16-4fd2-8dff-0ceed6a6a1f3/resourceGroups/FakeRg/"
+                "providers/Microsoft.KeyVault/vaults/myfakekeyvault"
+            ),
+            "name": "myfakekeyvault",
+            "type": "Microsoft.KeyVault/vaults",
+            "location": "westus3",
+            "tags": {},
+            "properties": {
+                "sku": {"family": "A", "name": "standard"},
+                "tenantId": "351f1fd9-7de2-4c5b-b730-14b54fddb737",
+                "accessPolicies": [
+                    {
+                        "tenantId": "351f1fd9-7de2-4c5b-b730-14b54fddb737",
+                        "objectId": "44e44a12-594e-464a-acbb-0038734403bf",
+                        "permissions": {"keys": [], "secrets": ["Get", "List"], "certificates": [], "storage": []},
+                    },
+                ],
+                "enableRbacAuthorization": False,
+                "vaultUri": "https://myfakekeyvault.vault.azure.net/",
+                "provisioningState": "Succeeded",
+                "publicNetworkAccess": "Enabled",
+            },
+        }
+
+    patched.side_effect = handle_return
+    yield patched
+
+
+@pytest.fixture
+def mocked_edge_api_keyvault_api_v1(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.edge_api.keyvault.KEYVAULT_API_V1", autospec=False)
+    yield patched
+
+
+@pytest.fixture
+def mocked_verify_write_permission_against_rg(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.permissions.verify_write_permission_against_rg", autospec=True
+    )
     yield patched
 
 

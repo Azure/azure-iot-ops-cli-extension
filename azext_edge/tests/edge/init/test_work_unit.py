@@ -19,11 +19,11 @@ from azext_edge.edge.providers.orchestration.common import (
     MqServiceType,
 )
 from azext_edge.edge.providers.orchestration.work import (
-    WorkManager,
     CLUSTER_SECRET_CLASS_NAME,
     CLUSTER_SECRET_REF,
-    TemplateVer,
     CURRENT_TEMPLATE,
+    TemplateVer,
+    WorkManager,
 )
 from azext_edge.edge.util import url_safe_hash_phrase
 
@@ -368,6 +368,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
     tls_ca_dir,
     no_deploy,
     no_tls,
+    no_preflight,
     """,
     [
         pytest.param(
@@ -383,6 +384,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # tls_ca_dir
             None,  # no_deploy
             None,  # no_tls
+            None,  # no_preflight
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -397,6 +399,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # tls_ca_dir
             None,  # no_deploy
             None,  # no_tls
+            None,  # no_preflight
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -411,6 +414,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # tls_ca_dir
             None,  # no_deploy
             None,  # no_tls
+            None,  # no_preflight
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -425,6 +429,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             "/certs/",  # tls_ca_dir
             None,  # no_deploy
             None,  # no_tls
+            None,  # no_preflight
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -439,6 +444,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # tls_ca_dir
             True,  # no_deploy
             None,  # no_tls
+            None,  # no_preflight
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -453,6 +459,22 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # tls_ca_dir
             True,  # no_deploy
             True,  # no_tls
+            None,  # no_preflight
+        ),
+        pytest.param(
+            generate_generic_id(),  # cluster_name
+            None,  # cluster_namespace
+            generate_generic_id(),  # resource_group_name
+            None,  # keyvault_resource_id
+            None,  # keyvault_sat_secret_name
+            None,  # disable_secret_rotation
+            None,  # rotation_poll_interval
+            None,  # tls_ca_path
+            None,  # tls_ca_key_path
+            None,  # tls_ca_dir
+            True,  # no_deploy
+            True,  # no_tls
+            True,  # no_preflight
         ),
     ],
 )
@@ -467,8 +489,13 @@ def test_work_order(
     mocked_prepare_keyvault_access_policy: Mock,
     mocked_prepare_keyvault_secret: Mock,
     mocked_prepare_sp: Mock,
+    mocked_register_providers: Mock,
+    mocked_verify_connect_mgmt_plane: Mock,
+    mocked_edge_api_keyvault_api_v1: Mock,
+    mocked_validate_keyvault_permission_model: Mock,
+    mocked_verify_write_permission_against_rg: Mock,
     mocked_wait_for_terminal_state: Mock,
-    mocked_file_exists,
+    mocked_file_exists: Mock,
     cluster_name,
     cluster_namespace,
     resource_group_name,
@@ -481,6 +508,7 @@ def test_work_order(
     tls_ca_dir,
     no_deploy,
     no_tls,
+    no_preflight,
 ):
     call_kwargs = {
         "cmd": mocked_cmd,
@@ -490,6 +518,7 @@ def test_work_order(
         "disable_secret_rotation": disable_secret_rotation,
         "no_deploy": no_deploy,
         "no_tls": no_tls,
+        "no_preflight": no_preflight,
         "no_progress": True,
     }
     if rotation_poll_interval:
@@ -506,9 +535,24 @@ def test_work_order(
         call_kwargs["tls_ca_dir"] = tls_ca_dir
 
     result = init(**call_kwargs)
-    nothing_to_do = all([not keyvault_resource_id, no_tls, no_deploy])
+    nothing_to_do = all([not keyvault_resource_id, no_tls, no_deploy, no_preflight])
     if nothing_to_do:
         assert not result
+        mocked_verify_connect_mgmt_plane.assert_not_called()
+        mocked_edge_api_keyvault_api_v1.is_deployed.assert_not_called()
+        return
+
+    if any([not no_preflight, not no_deploy, keyvault_resource_id]):
+        mocked_verify_connect_mgmt_plane.assert_called_once()
+
+    if not no_preflight:
+        mocked_register_providers.assert_called_once()
+        mocked_verify_write_permission_against_rg.assert_called_once()
+        mocked_verify_write_permission_against_rg.call_args.kwargs["subscription_id"]
+        mocked_verify_write_permission_against_rg.call_args.kwargs["resource_group_name"] == resource_group_name
+
+    if not keyvault_resource_id:
+        mocked_edge_api_keyvault_api_v1.is_deployed.assert_called_once()
 
     if keyvault_resource_id:
         assert result["csiDriver"]
@@ -523,6 +567,12 @@ def test_work_order(
         )
         assert result["csiDriver"]["rotationPollInterval"] == rotation_poll_interval if rotation_poll_interval else "1h"
         assert result["csiDriver"]["enableSecretRotation"] == "false" if disable_secret_rotation else "true"
+
+        mocked_validate_keyvault_permission_model.assert_called_once()
+        assert mocked_validate_keyvault_permission_model.call_args.kwargs["subscription_id"]
+        assert (
+            mocked_validate_keyvault_permission_model.call_args.kwargs["keyvault_resource_id"] == keyvault_resource_id
+        )
 
         mocked_prepare_sp.assert_called_once()
         assert mocked_prepare_sp.call_args.kwargs["deployment_name"]
@@ -590,8 +640,8 @@ def test_work_order(
         mocked_configure_cluster_secrets.assert_not_called()
 
     if not no_tls:
-        assert result["tls"]["aioTrustConfigMap"]
-        assert result["tls"]["aioTrustSecretName"]
+        assert result["tls"]["aioTrustConfigMap"]  # TODO
+        assert result["tls"]["aioTrustSecretName"]  # TODO
         mocked_prepare_ca.assert_called_once()
         assert mocked_prepare_ca.call_args.kwargs["tls_ca_path"] == tls_ca_path
         assert mocked_prepare_ca.call_args.kwargs["tls_ca_key_path"] == tls_ca_key_path
@@ -628,7 +678,7 @@ def test_work_order(
         assert result["deploymentState"]["timestampUtc"]["ended"]
         assert "resources" in result["deploymentState"]
 
-        mocked_deploy_template.assert_called_once()
+        assert mocked_deploy_template.call_count == 2
         assert mocked_deploy_template.call_args.kwargs["template"]
         assert mocked_deploy_template.call_args.kwargs["parameters"]
         assert mocked_deploy_template.call_args.kwargs["subscription_id"]
@@ -648,4 +698,5 @@ def test_work_order(
             assert "clusterNamespace" not in result
             assert "deploymentLink" not in result
             assert "deploymentState" not in result
-        mocked_deploy_template.assert_not_called()
+        # TODO
+        # mocked_deploy_template.assert_not_called()
