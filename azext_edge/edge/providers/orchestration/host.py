@@ -78,7 +78,8 @@ def run_host_verify(render_progress: Optional[bool] = True, confirm_yes: Optiona
                                 raise ValidationError(
                                     "Unable to determine extension directory. Please ensure extension installation."
                                 )
-                            az_ext_dir = az_ext_dir[: az_ext_dir.index(EXTENSION_NAME)]  # pylint: disable=unsubscriptable-object
+                            # pylint: disable-next=unsubscriptable-object
+                            az_ext_dir = az_ext_dir[: az_ext_dir.index(EXTENSION_NAME)]
                             raise ValidationError(
                                 "sudo user not detected.\n\nPlease run the command in the following form:\n"
                                 f"-> sudo AZURE_EXTENSION_DIR={az_ext_dir} az iot ops verify-host"
