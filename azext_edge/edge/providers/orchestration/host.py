@@ -70,11 +70,15 @@ def run_host_verify(render_progress: Optional[bool] = True, confirm_yes: Optiona
                         if not execute_install:
                             raise ValidationError("Dependency install cancelled!")
 
-                        from os import geteuid
+                        from os import geteuid  # pylint: disable=no-name-in-module
 
                         if geteuid() != 0:
                             az_ext_dir = get_extension_path(EXTENSION_NAME)
-                            az_ext_dir = az_ext_dir[: az_ext_dir.index(EXTENSION_NAME)]
+                            if not az_ext_dir:
+                                raise ValidationError(
+                                    "Unable to determine extension directory. Please ensure extension installation."
+                                )
+                            az_ext_dir = az_ext_dir[: az_ext_dir.index(EXTENSION_NAME)]  # pylint: disable=unsubscriptable-object
                             raise ValidationError(
                                 "sudo user not detected.\n\nPlease run the command in the following form:\n"
                                 f"-> sudo AZURE_EXTENSION_DIR={az_ext_dir} az iot ops verify-host"
