@@ -11,7 +11,11 @@ from azext_edge.edge.providers.orchestration.host import is_package_installed
 
 @pytest.mark.parametrize(
     "mocked_run_host_command",
-    [{"returncode": 0, "stdout": b"install ok installed", "stderr": b"", "expected_result": True}],
+    [
+        {"returncode": 0, "stdout": b"install ok installed", "stderr": b"", "expected_result": True},
+        {"returncode": 0, "stdout": b"not installed", "stderr": b"", "expected_result": False},
+        {"expected_result": None},
+    ],
     indirect=True,
 )
 def test_is_package_installed(mocked_run_host_command):

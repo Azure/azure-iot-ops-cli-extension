@@ -12,7 +12,8 @@ from subprocess import CompletedProcess
 def mocked_run_host_command(mocker, request):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.host.run_host_command", autospec=True)
 
-    if request.param:
+    patched.expected_result = request.param["expected_result"]
+    if patched.expected_result is not None:
         patched.return_value = CompletedProcess(
             args=None,
             returncode=request.param["returncode"],
@@ -21,6 +22,5 @@ def mocked_run_host_command(mocker, request):
         )
     else:
         patched.return_value = None
-    patched.expected_result = request.param["expected_result"]
 
-    yield
+    yield patched
