@@ -13,7 +13,13 @@ from knack.log import get_logger
 
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
+from .providers.orchestration.common import (
+    MqMemoryProfile,
+    MqMode,
+    MqServiceType,
+    DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
+    DEFAULT_X509_CA_VALID_DAYS,
+)
 from .providers.support.base import get_bundle_path
 from .common import OpsServiceType
 
@@ -120,12 +126,12 @@ def init(
     service_principal_app_id: Optional[str] = None,
     service_principal_object_id: Optional[str] = None,
     service_principal_secret: Optional[str] = None,
-    service_principal_secret_valid_days: int = 90,
+    service_principal_secret_valid_days: int = DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     keyvault_resource_id: Optional[str] = None,
     tls_ca_path: Optional[str] = None,
     tls_ca_key_path: Optional[str] = None,
     tls_ca_dir: Optional[str] = None,
-    tls_ca_valid_days: int = 90,
+    tls_ca_valid_days: int = DEFAULT_X509_CA_VALID_DAYS,
     no_deploy: Optional[bool] = None,
     no_tls: Optional[bool] = None,
     no_preflight: Optional[bool] = None,
