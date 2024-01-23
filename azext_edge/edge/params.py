@@ -478,6 +478,14 @@ def load_iotops_arguments(self, _):
             "!Required! if the logged in principal does not have permissions to query graph.",
             arg_group="Key Vault CSI Driver",
         )
+        context.argument(
+            "service_principal_secret_valid_days",
+            options_list=["--sp-secret-valid-days"],
+            help="Option to control the duration in days of the init generated service principal secret. "
+            "Applicable if --sp-secret is not provided.",
+            arg_group="Key Vault CSI Driver",
+            type=int,
+        )
         # TLS
         context.argument(
             "tls_ca_path",
@@ -498,6 +506,14 @@ def load_iotops_arguments(self, _):
             "If no directory is provided the current directory is used. Applicable when no "
             "--ca-file and --ca-key-file are provided.",
             arg_group="TLS",
+        )
+        context.argument(
+            "tls_ca_valid_days",
+            options_list=["--ca-valid-days"],
+            help="Option to control the duration in days of the init generated x509 CA. "
+            "Applicable if --ca-file and --ca-key-file are not provided.",
+            arg_group="TLS",
+            type=int,
         )
 
     with self.argument_context("iot ops verify-host") as context:

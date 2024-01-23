@@ -45,6 +45,8 @@ KEYVAULT_ARC_EXTENSION_VERSION = "1.5.1"
 DEFAULT_POLL_RETRIES = 240
 DEFAULT_POLL_WAIT_SEC = 15
 
+DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS = 90
+
 
 class ServicePrincipal(NamedTuple):
     client_id: str
@@ -142,7 +144,11 @@ def configure_cluster_secrets(
 
 
 def prepare_ca(
-    tls_ca_path: Optional[str] = None, tls_ca_key_path: Optional[str] = None, tls_ca_dir: Optional[str] = None, **kwargs
+    tls_ca_path: Optional[str] = None,
+    tls_ca_key_path: Optional[str] = None,
+    tls_ca_dir: Optional[str] = None,
+    tls_ca_valid_days: Optional[int] = None,
+    **kwargs,
 ) -> Tuple[bytes, bytes, str, str]:
     from ..support.base import normalize_dir
 
@@ -159,7 +165,7 @@ def prepare_ca(
         test_ca_path = normalized_path.joinpath("aio-test-ca.crt")
         test_pk_path = normalized_path.joinpath("aio-test-private.key")
 
-        public_cert, private_key = generate_self_signed_cert()
+        public_cert, private_key = generate_self_signed_cert(tls_ca_valid_days)
 
         with open(str(test_ca_path), "wb") as f:
             f.write(public_cert)
@@ -202,12 +208,14 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
 
     from azure.cli.core.util import send_raw_request
 
-    timestamp = datetime.now(timezone.utc) + timedelta(days=30.0)
-    timestamp_str = timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
-
     sp_app_id = kwargs.get("service_principal_app_id")
     sp_object_id = kwargs.get("service_principal_object_id")
     sp_secret = kwargs.get("service_principal_secret")
+    sp_secret_valid_days = kwargs.get("service_principal_secret_valid_days", DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS)
+
+    timestamp = datetime.now(timezone.utc) + timedelta(days=sp_secret_valid_days)
+    timestamp_str = timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+
     app_reg = {}
     app_created = False
 
