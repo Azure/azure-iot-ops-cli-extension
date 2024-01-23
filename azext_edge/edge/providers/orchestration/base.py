@@ -132,11 +132,10 @@ def configure_cluster_secrets(
             )
         )
 
-    KEYVAULT_API_V1.kinds  # TODO: clunky
     create_namespaced_custom_objects(
         group=KEYVAULT_API_V1.group,
         version=KEYVAULT_API_V1.version,
-        plural=KEYVAULT_API_V1._kinds[KeyVaultResourceKinds.SECRET_PROVIDER_CLASS.value],  # TODO: clunky
+        plural="secretproviderclasses",  # TODO
         namespace=cluster_namespace,
         yaml_objects=yaml_configs,
         delete_first=True,
