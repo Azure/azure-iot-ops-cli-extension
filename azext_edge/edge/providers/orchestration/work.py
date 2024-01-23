@@ -20,7 +20,7 @@ from rich.style import Style
 from rich.table import Table
 
 from ...util import get_timestamp_now_utc
-from ...util.x509 import DEFAULT_EC_ALGO
+from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
 from .template import CURRENT_TEMPLATE, TemplateVer
 
 logger = get_logger(__name__)
@@ -105,6 +105,7 @@ class WorkManager:
         self._sp_obj_id = kwargs.get("service_principal_object_id")
         self._tls_ca_path = kwargs.get("tls_ca_path")
         self._tls_ca_key_path = kwargs.get("tls_ca_key_path")
+        self._tls_ca_valid_days = kwargs.get("tls_ca_valid_days", DEFAULT_VALID_DAYS)
         self._tls_insecure = kwargs.get("tls_insecure", False)
         self._progress_shown = False
         self._render_progress = not self._no_progress
@@ -163,7 +164,10 @@ class WorkManager:
         if self._tls_ca_path:
             tls_ca_desc = f"User provided CA '[green]{self._tls_ca_path}[/green]'"
         else:
-            tls_ca_desc = f"Generate test CA using '[green]{DEFAULT_EC_ALGO.name}[/green]'"
+            tls_ca_desc = (
+                f"Generate test CA using '[green]{DEFAULT_EC_ALGO.name}[/green]' "
+                f"valid for '[green]{self._tls_ca_valid_days}[/green]' days"
+            )
 
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CERT, tls_ca_desc)
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CLUSTER, "Configure cluster for tls")
@@ -198,9 +202,7 @@ class WorkManager:
 
             # Always run this check
             if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
-                raise ValidationError(
-                    error_msg="--kv-id is required when the Key Vault CSI driver is not installed."
-                )
+                raise ValidationError(error_msg="--kv-id is required when the Key Vault CSI driver is not installed.")
 
             # Pre-check segment
             if (
