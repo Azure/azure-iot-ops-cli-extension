@@ -26,7 +26,7 @@ from ..base import (
     get_cluster_namespace,
 )
 from ...common import K8sSecretType
-from ..edge_api import KEYVAULT_API_V1, KeyVaultResourceKinds
+from ..edge_api import KEYVAULT_API_V1
 from .components import (
     get_kv_secret_store_yaml,
 )
