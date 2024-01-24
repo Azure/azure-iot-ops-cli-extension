@@ -99,6 +99,12 @@ def configure_cluster_secrets(
     sp_record: ServicePrincipal,
     **kwargs,
 ):
+    if not KEYVAULT_API_V1.is_deployed():
+        raise ValidationError(
+            f"The API {KEYVAULT_API_V1.as_str()} is not available on the cluster the local kubeconfig is configured for.\n"
+            "Please ensure the local kubeconfig matches the target cluster intended for deployment."
+        )
+
     if not get_cluster_namespace(namespace=cluster_namespace):
         create_cluster_namespace(namespace=cluster_namespace)
 
