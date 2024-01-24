@@ -6,8 +6,9 @@
 
 from enum import IntEnum
 from time import sleep
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 from uuid import uuid4
+from json import dumps
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
 from azure.core.exceptions import HttpResponseError
@@ -228,6 +229,9 @@ class WorkManager:
                     **self._kwargs,
                 )
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
+                pre_flight_result: Dict[str, Union[dict, str]] = terminal_deployment.as_dict()
+                if "status" in pre_flight_result and pre_flight_result["status"].lower() != "succeeded":
+                    raise AzureResponseError(dumps(pre_flight_result, indent=2))
 
                 self._completed_steps[WorkStepKey.EVAL_LOGIN_PERM] = 1
                 self.render_display(WorkCategoryKey.PRE_CHECK)
