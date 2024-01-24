@@ -55,6 +55,7 @@ class WorkRecord:
 
 CLUSTER_SECRET_REF = "aio-akv-sp"
 CLUSTER_SECRET_CLASS_NAME = "aio-default-spc"
+
 PRE_FLIGHT_SUCCESS_STATUS = "succeeded"
 
 
