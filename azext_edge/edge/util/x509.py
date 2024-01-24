@@ -19,7 +19,7 @@ from cryptography.x509.oid import NameOID
 
 # aka prime256v1
 DEFAULT_EC_ALGO = ec.SECP256R1
-DEFAULT_VALID_DAYS = 90
+DEFAULT_VALID_DAYS = 365
 
 
 def generate_self_signed_cert(valid_days: int = DEFAULT_VALID_DAYS) -> Tuple[bytes, bytes]:
