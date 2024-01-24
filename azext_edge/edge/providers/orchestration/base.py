@@ -101,7 +101,8 @@ def configure_cluster_secrets(
 ):
     if not KEYVAULT_API_V1.is_deployed():
         raise ValidationError(
-            f"The API {KEYVAULT_API_V1.as_str()} is not available on the cluster the local kubeconfig is configured for.\n"
+            f"The API {KEYVAULT_API_V1.as_str()} "
+            "is not available on the cluster the local kubeconfig is configured for.\n"
             "Please ensure the local kubeconfig matches the target cluster intended for deployment."
         )
 
