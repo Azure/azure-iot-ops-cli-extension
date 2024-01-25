@@ -62,6 +62,7 @@ from ...generators import generate_generic_id
     mq_authn_name,
     mq_insecure,
     target_name,
+    disable_rsync_rules,
     """,
     [
         pytest.param(
@@ -95,6 +96,7 @@ from ...generators import generate_generic_id
             None,  # mq_authn_name
             None,  # mq_insecure
             None,  # target_name
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -127,6 +129,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # mq_authn_name
             None,  # mq_insecure
             generate_generic_id(),  # target_name
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -159,6 +162,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # mq_authn_name
             True,  # mq_insecure
             generate_generic_id(),  # target_name
+            True,  # disable_rsync_rules
         ),
     ],
 )
@@ -196,6 +200,7 @@ def test_init_to_template_params(
     mq_authn_name,
     mq_insecure,
     target_name,
+    disable_rsync_rules,
 ):
     kwargs = {}
 
@@ -228,10 +233,11 @@ def test_init_to_template_params(
         (mq_authn_name, "mq_authn_name"),
         (mq_insecure, "mq_insecure"),
         (target_name, "target_name"),
+        (disable_rsync_rules, "disable_rsync_rules"),
     ]
 
     for param_tuple in param_tuples:
-        if param_tuple[0]:
+        if param_tuple[0] is not None:
             kwargs[param_tuple[1]] = param_tuple[0]
 
     init(cmd=mocked_cmd, cluster_name=cluster_name, resource_group_name=resource_group_name, **kwargs)
@@ -279,6 +285,9 @@ def test_init_to_template_params(
     if opcua_discovery_endpoint:
         assert "opcuaDiscoveryEndpoint" in parameters
         assert parameters["opcuaDiscoveryEndpoint"]["value"] == opcua_discovery_endpoint
+
+    assert "deployResourceSyncRules" in parameters
+    assert parameters["deployResourceSyncRules"] is not disable_rsync_rules
 
     passthrough_value_tuples = [
         (mq_listener_name, "mqListenerName", "listener"),
