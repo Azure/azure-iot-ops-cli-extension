@@ -5,13 +5,15 @@ on:
 jobs:
   build:
       runs-on: [self-hosted, 1ES.Pool=iotupx-github-hosted-pool, 1ES.ImageOverride=MMSUbuntu20.04]
+      permissions:
+        contents: read
       steps:
       - name: Setup python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
             python-version: "3.9"
       
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Build Wheel
         run: |
@@ -31,12 +33,12 @@ jobs:
           $RUNNER_TEMP/sbom-tool generate -b ./dist -bc . -pn "Azure IoT Operations CLI Extension" -pv "${{ env.version }}" -ps Microsoft
 
       - name: Upload Wheel Artifact
-        uses: actions/upload-artifact@v3.1.0
+        uses: actions/upload-artifact@v4
         with:
           path: ${{ env.wheel }}
           name: azure-iot-ops-cli-ext
       - name: Upload SBOM Artifact
-        uses: actions/upload-artifact@v3.1.0
+        uses: actions/upload-artifact@v4
         with:
           path: dist/_manifest/
           name: SBOM

@@ -47,6 +47,7 @@ env:
 jobs:
   integration_test:
     permissions:
+      # required for OpenID federation
       contents: 'read'
       id-token: 'write'
     name: Integration test
@@ -57,11 +58,11 @@ jobs:
       keyvault_name: ${{ env.KV_NAME }}
     steps:
       - name: "Setup python"
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
       - name: "Checkout extension source"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # ensure source checkout uses our repo instead of calling workflow
           repository: azure/azure-iot-ops-cli-extension

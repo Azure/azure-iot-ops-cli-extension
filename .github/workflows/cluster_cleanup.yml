@@ -40,6 +40,7 @@ env:
   KEYVAULT_PREFIX: ${{ inputs.keyvault_prefix || 'opstestkv' }}
 
 permissions:
+  # required for OpenID federation
   contents: 'read'
   id-token: 'write'
 
@@ -57,7 +58,7 @@ jobs:
         run: |
           cluster_type="Microsoft.Kubernetes/connectedClusters"
           for cluster in $(az resource list -g ${{ env.RESOURCE_GROUP }} --resource-type $cluster_type --query "[?starts_with(name, '${{ env.CLUSTER_PREFIX }}')].id" -o tsv); do
-            az resource delete --id $cluster --verbose
+            az resource delete -v --id $cluster --verbose
           done
   keyvault-cleanup:
     runs-on: ubuntu-latest
@@ -86,7 +87,7 @@ jobs:
       - name: Delete linked AIO resources
         run: |
           for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.CLUSTER_PREFIX }}')].id" -o tsv); do
-            az resource delete --id $resource --verbose
+            az resource delete -v --id $resource --verbose
           done
   mq-cleanup:
     runs-on: ubuntu-latest
@@ -103,7 +104,7 @@ jobs:
           in_cluster_ext_loc="contains(to_string(extendedLocation.name), '${{ env.CLUSTER_PREFIX }}')"
 
           for mq_resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?$in_cluster_ext_loc && $is_mq_child_resource].id" -o tsv); do
-            az resource delete --id $mq_resource --verbose
+            az resource delete -v --id $mq_resource --verbose
           done
       - name: Delete MQ instances
         run: |
@@ -114,5 +115,5 @@ jobs:
           sleep 15s
 
           for mq in $(az resource list -g ${{ env.RESOURCE_GROUP }} --resource-type $mq_type  --query "[?$in_cluster_ext_loc].id" -o tsv); do
-            az resource delete --id $mq --verbose
+            az resource delete -v --id $mq --verbose
           done

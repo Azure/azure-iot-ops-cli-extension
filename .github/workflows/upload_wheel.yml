@@ -12,6 +12,9 @@ env:
 jobs:
   # Upload wheel to storage account
   upload_wheel:
+    permissions:
+      # ensures this release job has no access to source
+      contents: none
     outputs:
       upload_success: ${{ steps.upload.outputs.upload_success }}
     runs-on:
@@ -23,7 +26,7 @@ jobs:
     steps:
       - name: Download wheel
         id: wheel
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: azure-iot-ops-cli-ext
           path: ./
