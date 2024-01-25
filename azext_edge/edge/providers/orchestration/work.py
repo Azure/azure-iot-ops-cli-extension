@@ -519,6 +519,9 @@ class WorkManager:
             "value": {"kind": "csi", "csiServicePrincipalSecretRef": self._cluster_secret_ref}
         }
 
+        deploy_rsync_rules = not self._kwargs["disable_rsync_rules"]
+        parameters["deployResourceSyncRules"] = {"value": deploy_rsync_rules}
+
         # Covers cluster_namespace
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
 

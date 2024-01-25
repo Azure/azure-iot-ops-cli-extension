@@ -275,6 +275,12 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="The pre-flight workflow will be skipped.",
         )
+        context.argument(
+            "disable_rsync_rules",
+            options_list=["--disable-rsync-rules"],
+            arg_type=get_three_state_flag(),
+            help="Resource sync rules will not be included in the deployment.",
+        )
         # Akri
         context.argument(
             "opcua_discovery_endpoint",
