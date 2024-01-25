@@ -378,6 +378,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
     no_deploy,
     no_tls,
     no_preflight,
+    disable_rsync_rules,
     """,
     [
         pytest.param(
@@ -394,6 +395,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # no_deploy
             None,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -409,6 +411,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # no_deploy
             None,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -424,6 +427,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # no_deploy
             None,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -439,6 +443,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # no_deploy
             None,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -454,6 +459,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             True,  # no_deploy
             None,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -469,6 +475,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             True,  # no_deploy
             True,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -484,6 +491,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             True,  # no_deploy
             True,  # no_tls
             True,  # no_preflight
+            True,  # disable_rsync_rules
         ),
     ],
 )
@@ -518,6 +526,7 @@ def test_work_order(
     no_deploy,
     no_tls,
     no_preflight,
+    disable_rsync_rules,
 ):
     call_kwargs = {
         "cmd": mocked_cmd,
@@ -529,6 +538,7 @@ def test_work_order(
         "no_tls": no_tls,
         "no_preflight": no_preflight,
         "no_progress": True,
+        "disable_rsync_rules": disable_rsync_rules,
     }
     if rotation_poll_interval:
         call_kwargs["rotation_poll_interval"] = rotation_poll_interval
@@ -556,9 +566,12 @@ def test_work_order(
 
     if not no_preflight:
         mocked_register_providers.assert_called_once()
-        mocked_verify_write_permission_against_rg.assert_called_once()
-        mocked_verify_write_permission_against_rg.call_args.kwargs["subscription_id"]
-        mocked_verify_write_permission_against_rg.call_args.kwargs["resource_group_name"] == resource_group_name
+        if not disable_rsync_rules:
+            mocked_verify_write_permission_against_rg.assert_called_once()
+            mocked_verify_write_permission_against_rg.call_args.kwargs["subscription_id"]
+            mocked_verify_write_permission_against_rg.call_args.kwargs["resource_group_name"] == resource_group_name
+        else:
+            mocked_verify_write_permission_against_rg.assert_not_called()
 
     if not keyvault_resource_id:
         mocked_edge_api_keyvault_api_v1.is_deployed.assert_called_once()

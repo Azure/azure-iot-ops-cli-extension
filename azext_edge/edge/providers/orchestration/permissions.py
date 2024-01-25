@@ -15,7 +15,7 @@ VALID_PERM_FORMS = frozenset(["*", "microsoft.authorization/roleassignments/writ
 
 
 # TODO: one-off for time, make generic
-def verify_write_permission_against_rg(subscription_id: str, resource_group_name: str, **kwargs) -> bool:
+def verify_write_permission_against_rg(subscription_id: str, resource_group_name: str, **kwargs):
     for permission in get_principal_permissions_for_group(
         subscription_id=subscription_id, resource_group_name=resource_group_name
     ):
