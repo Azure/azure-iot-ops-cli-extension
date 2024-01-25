@@ -25,12 +25,12 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="a7f4e67a0bcf3362e823790908f5a3aa14950045",
+    commit_id="cf6dad5305faae6867fc5f3e52655779d45145ac",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.23.1.45101", "templateHash": "7796954663627183826"},
+            "_generator": {"name": "bicep", "version": "0.24.24.22086", "templateHash": "8208899844976809115"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -38,10 +38,30 @@ V1_TEMPLATE = TemplateVer(
             "clusterLocation": {
                 "type": "string",
                 "defaultValue": "[parameters('location')]",
+                "allowedValues": [
+                    "eastus",
+                    "eastus2",
+                    "westus",
+                    "westus2",
+                    "westus3",
+                    "westeurope",
+                    "northeurope",
+                    "eastus2euap",
+                ],
             },
             "location": {
                 "type": "string",
                 "defaultValue": "[resourceGroup().location]",
+                "allowedValues": [
+                    "eastus",
+                    "eastus2",
+                    "westus",
+                    "westus2",
+                    "westus3",
+                    "westeurope",
+                    "northeurope",
+                    "eastus2euap",
+                ],
             },
             "customLocationName": {"type": "string", "defaultValue": "[format('{0}-cl', parameters('clusterName'))]"},
             "simulatePLC": {"type": "bool", "defaultValue": False},
@@ -59,11 +79,11 @@ V1_TEMPLATE = TemplateVer(
             "mqListenerName": {"type": "string", "defaultValue": "listener"},
             "mqBrokerName": {"type": "string", "defaultValue": "broker"},
             "mqAuthnName": {"type": "string", "defaultValue": "authn"},
-            "mqFrontendReplicas": {"type": "int", "defaultValue": 2},
-            "mqFrontendWorkers": {"type": "int", "defaultValue": 2},
-            "mqBackendRedundancyFactor": {"type": "int", "defaultValue": 2},
-            "mqBackendWorkers": {"type": "int", "defaultValue": 2},
-            "mqBackendPartitions": {"type": "int", "defaultValue": 2},
+            "mqFrontendReplicas": {"type": "int", "defaultValue": 2, "minValue": 1},
+            "mqFrontendWorkers": {"type": "int", "defaultValue": 2, "minValue": 1},
+            "mqBackendRedundancyFactor": {"type": "int", "defaultValue": 2, "minValue": 1},
+            "mqBackendWorkers": {"type": "int", "defaultValue": 2, "minValue": 1},
+            "mqBackendPartitions": {"type": "int", "defaultValue": 2, "minValue": 1},
             "mqMode": {"type": "string", "defaultValue": "distributed", "allowedValues": ["auto", "distributed"]},
             "mqMemoryProfile": {
                 "type": "string",
@@ -98,6 +118,7 @@ V1_TEMPLATE = TemplateVer(
                 "type": "object",
                 "defaultValue": {"readerWorker": 1, "runnerWorker": 1, "messageStore": 1},
             },
+            "deployResourceSyncRules": {"type": "bool", "defaultValue": True},
         },
         "variables": {
             "akri": {
@@ -122,15 +143,20 @@ V1_TEMPLATE = TemplateVer(
                 "name": "aio-mq-dmqtt-frontend",
                 "satAudience": "aio-mq",
             },
+            "DEFAULT_CONTAINER_REGISTRY": "mcr.microsoft.com/azureiotoperations",
+            "CONTAINER_REGISTRY_DOMAINS": {
+                "mq": "[variables('DEFAULT_CONTAINER_REGISTRY')]",
+                "opcUaBroker": "[variables('DEFAULT_CONTAINER_REGISTRY')]",
+            },
             "VERSIONS": {
                 "adr": "0.1.0-preview",
                 "opcUaBroker": "0.2.0-preview",
                 "observability": "0.1.0-preview",
                 "akri": "0.1.0-preview",
                 "mq": "0.2.0-preview",
-                "aio": "0.2.0-preview",
+                "aio": "0.3.0-preview",
                 "layeredNetworking": "0.1.0-preview",
-                "processor": "0.1.1-preview",
+                "processor": "0.1.2-preview",
             },
             "TRAINS": {
                 "mq": "preview",
@@ -157,7 +183,7 @@ V1_TEMPLATE = TemplateVer(
                 "type": "helm.v3",
                 "properties": {
                     "chart": {
-                        "repo": "azureiotoperations.azurecr.io/helm/opentelemetry-collector",
+                        "repo": "mcr.microsoft.com/azureiotoperations/helm/aio-opentelemetry-collector",
                         "version": "[variables('VERSIONS').observability]",
                     },
                     "values": {
@@ -221,7 +247,7 @@ V1_TEMPLATE = TemplateVer(
                                     "containers": [
                                         {
                                             "name": "aio-opc-asset-discovery",
-                                            "image": "[format('mcr.microsoft.com/azureiotoperations/opcuabroker/discovery-handler:{0}', variables('VERSIONS').opcUaBroker)]",
+                                            "image": "[format('{0}/opcuabroker/discovery-handler:{1}', variables('CONTAINER_REGISTRY_DOMAINS').opcUaBroker, variables('VERSIONS').opcUaBroker)]",
                                             "imagePullPolicy": "Always",
                                             "resources": {
                                                 "requests": {"memory": "64Mi", "cpu": "10m"},
@@ -271,7 +297,7 @@ V1_TEMPLATE = TemplateVer(
                 "name": "opc-ua-broker",
                 "properties": {
                     "chart": {
-                        "repo": "oci://mcr.microsoft.com/azureiotoperations/opcuabroker/helmchart/microsoft-iotoperations-opcuabroker",
+                        "repo": "[format('oci://{0}/opcuabroker/helmchart/microsoft-iotoperations-opcuabroker', variables('CONTAINER_REGISTRY_DOMAINS').opcUaBroker)]",
                         "version": "[variables('VERSIONS').opcUaBroker]",
                     },
                     "values": {
@@ -507,6 +533,7 @@ V1_TEMPLATE = TemplateVer(
                 ],
             },
             {
+                "condition": "[parameters('deployResourceSyncRules')]",
                 "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                 "apiVersion": "2021-08-31-preview",
                 "name": "[format('{0}/{1}', parameters('customLocationName'), format('{0}-aio-sync', parameters('customLocationName')))]",
@@ -523,6 +550,7 @@ V1_TEMPLATE = TemplateVer(
                 ],
             },
             {
+                "condition": "[parameters('deployResourceSyncRules')]",
                 "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                 "apiVersion": "2021-08-31-preview",
                 "name": "[format('{0}/{1}', parameters('customLocationName'), format('{0}-adr-sync', parameters('customLocationName')))]",
@@ -538,6 +566,7 @@ V1_TEMPLATE = TemplateVer(
                 ],
             },
             {
+                "condition": "[parameters('deployResourceSyncRules')]",
                 "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                 "apiVersion": "2021-08-31-preview",
                 "name": "[format('{0}/{1}', parameters('customLocationName'), format('{0}-dp-sync', parameters('customLocationName')))]",
@@ -555,6 +584,7 @@ V1_TEMPLATE = TemplateVer(
                 ],
             },
             {
+                "condition": "[parameters('deployResourceSyncRules')]",
                 "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                 "apiVersion": "2021-08-31-preview",
                 "name": "[format('{0}/{1}', parameters('customLocationName'), format('{0}-mq-sync', parameters('customLocationName')))]",
@@ -597,7 +627,7 @@ V1_TEMPLATE = TemplateVer(
                 "dependsOn": [
                     "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
                     "[resourceId('Microsoft.ExtendedLocation/customLocations/resourceSyncRules', parameters('customLocationName'), format('{0}-mq-sync', parameters('customLocationName')))]",
-                    "[resourceId('Microsoft.IoTOperationsOrchestrator/Targets', parameters('targetName'))]",
+                    "[resourceId('Microsoft.IoTOperationsOrchestrator/targets', parameters('targetName'))]",
                 ],
             },
             {
@@ -612,21 +642,21 @@ V1_TEMPLATE = TemplateVer(
                 "properties": {
                     "authImage": {
                         "pullPolicy": "Always",
-                        "repository": "mcr.microsoft.com/azureiotoperations/dmqtt-authentication",
+                        "repository": "[format('{0}/dmqtt-authentication', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
                         "tag": "[variables('VERSIONS').mq]",
                     },
                     "brokerImage": {
                         "pullPolicy": "Always",
-                        "repository": "mcr.microsoft.com/azureiotoperations/dmqtt-pod",
+                        "repository": "[format('{0}/dmqtt-pod', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
                         "tag": "[variables('VERSIONS').mq]",
                     },
                     "healthManagerImage": {
                         "pullPolicy": "Always",
-                        "repository": "mcr.microsoft.com/azureiotoperations/dmqtt-operator",
+                        "repository": "[format('{0}/dmqtt-operator', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
                         "tag": "[variables('VERSIONS').mq]",
                     },
                     "diagnostics": {
-                        "probeImage": "[format('mcr.microsoft.com/azureiotoperations/diagnostics-probe:{0}', variables('VERSIONS').mq)]",
+                        "probeImage": "[format('{0}/diagnostics-probe:{1}', variables('CONTAINER_REGISTRY_DOMAINS').mq, variables('VERSIONS').mq)]",
                         "enableSelfCheck": True,
                     },
                     "mode": "[parameters('mqMode')]",
@@ -659,7 +689,7 @@ V1_TEMPLATE = TemplateVer(
                 },
                 "properties": {
                     "image": {
-                        "repository": "mcr.microsoft.com/azureiotoperations/diagnostics-service",
+                        "repository": "[format('{0}/diagnostics-service', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
                         "tag": "[variables('VERSIONS').mq]",
                     },
                     "logLevel": "info",
@@ -720,7 +750,7 @@ V1_TEMPLATE = TemplateVer(
                 ],
             },
             {
-                "type": "Microsoft.IoTOperationsOrchestrator/Targets",
+                "type": "Microsoft.IoTOperationsOrchestrator/targets",
                 "apiVersion": "2023-10-04-preview",
                 "name": "[parameters('targetName')]",
                 "location": "[parameters('location')]",
