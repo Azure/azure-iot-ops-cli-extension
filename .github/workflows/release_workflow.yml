@@ -21,6 +21,10 @@ on:
         default: false
 jobs:
   security:
+    permissions:
+      # needed to write security info to repository
+      security-events: write
+      contents: read
     uses: ./.github/workflows/security_checks.yml
     with:
       continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
@@ -53,6 +57,9 @@ jobs:
           fi
   # github_release == 'true'
   draft_github_release:
+    permissions:
+      # needed to create draft release
+      contents: write
     needs: [approval]
     if: github.event.inputs.github_release == 'true'
     uses: ./.github/workflows/stage_release.yml
