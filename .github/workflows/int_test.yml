@@ -44,10 +44,10 @@ env:
   EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
   K3S_VERSION: "v1.28.5+k3s1"
 
-    permissions:
-      # required for OpenID federation
-      contents: 'read'
-      id-token: 'write'
+permissions:
+  # required for OpenID federation
+  contents: 'read'
+  id-token: 'write'
 
 jobs:
   integration_test:
