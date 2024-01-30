@@ -71,8 +71,8 @@ def mocked_prepare_ca(mocker):
 
 
 @pytest.fixture
-def mocked_verify_connect_mgmt_plane(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.verify_connect_mgmt_plane", autospec=True)
+def mocked_verify_cli_client_connections(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.host.verify_cli_client_connections", autospec=True)
     yield patched
 
 

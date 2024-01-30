@@ -189,6 +189,7 @@ class WorkManager:
             prepare_keyvault_access_policy,
             prepare_keyvault_secret,
             prepare_sp,
+            process_default_location,
             provision_akv_csi_driver,
             validate_keyvault_permission_model,
             wait_for_terminal_state,
@@ -207,6 +208,9 @@ class WorkManager:
             # Always run this check
             if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
                 raise ValidationError(error_msg="--kv-id is required when the Key Vault CSI driver is not installed.")
+
+            # If no cluster_location or location provided, default to actual connected cluster location.
+            process_default_location(self._kwargs)
 
             # Pre-check segment
             if (

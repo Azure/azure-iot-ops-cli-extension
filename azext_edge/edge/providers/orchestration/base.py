@@ -461,6 +461,28 @@ def deploy_template(
     return result, deployment
 
 
+def process_default_location(kwargs: dict):
+    # TODO: use intermediate object to store KPIs / refactor out of kwargs
+    cluster_location = kwargs["cluster_location"]
+    location = kwargs["location"]
+    cluster_name = kwargs["cluster_name"]
+    subscription_id = kwargs["subscription_id"]
+    resource_group_name = kwargs["resource_group_name"]
+
+    if not any([cluster_location, location]):
+        from .connected_cluster import ConnectedCluster
+
+        connected_cluster = ConnectedCluster(
+            subscription_id=subscription_id, cluster_name=cluster_name, resource_group_name=resource_group_name
+        )
+        connected_cluster_location = connected_cluster.location
+
+        if not cluster_location:
+            kwargs["cluster_location"] = connected_cluster_location
+        if not location:
+            kwargs["location"] = connected_cluster_location
+
+
 def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
     # resource client does not handle sigint well
     counter = 0

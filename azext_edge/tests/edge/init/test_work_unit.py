@@ -507,7 +507,7 @@ def test_work_order(
     mocked_prepare_keyvault_secret: Mock,
     mocked_prepare_sp: Mock,
     mocked_register_providers: Mock,
-    mocked_verify_connect_mgmt_plane: Mock,
+    mocked_verify_cli_client_connections: Mock,
     mocked_edge_api_keyvault_api_v1: Mock,
     mocked_validate_keyvault_permission_model: Mock,
     mocked_verify_write_permission_against_rg: Mock,
@@ -557,12 +557,12 @@ def test_work_order(
     nothing_to_do = all([not keyvault_resource_id, no_tls, no_deploy, no_preflight])
     if nothing_to_do:
         assert not result
-        mocked_verify_connect_mgmt_plane.assert_not_called()
+        mocked_verify_cli_client_connections.assert_not_called()
         mocked_edge_api_keyvault_api_v1.is_deployed.assert_not_called()
         return
 
     if any([not no_preflight, not no_deploy, keyvault_resource_id]):
-        mocked_verify_connect_mgmt_plane.assert_called_once()
+        mocked_verify_cli_client_connections.assert_called_once()
 
     if not no_preflight:
         mocked_register_providers.assert_called_once()
