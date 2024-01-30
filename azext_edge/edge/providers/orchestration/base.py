@@ -461,20 +461,6 @@ def deploy_template(
     return result, deployment
 
 
-def verify_connect_mgmt_plane(cmd):
-    from .host import check_connectivity, get_connectivity_error, ARM_ENDPOINT
-
-    try_arm_endpoint = ARM_ENDPOINT
-    try:
-        try_arm_endpoint = cmd.cli_ctx.cloud.endpoints.resource_manager
-    except AttributeError:
-        pass
-
-    connect_result = check_connectivity(try_arm_endpoint, http_verb="HEAD")
-    if not connect_result:
-        raise ValidationError(get_connectivity_error(try_arm_endpoint, include_cluster=False))
-
-
 def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
     # resource client does not handle sigint well
     counter = 0

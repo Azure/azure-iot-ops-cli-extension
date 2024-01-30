@@ -5,10 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import IntEnum
+from json import dumps
 from time import sleep
 from typing import Dict, Tuple, Union
 from uuid import uuid4
-from json import dumps
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
 from azure.core.exceptions import HttpResponseError
@@ -180,6 +180,7 @@ class WorkManager:
         self.display.add_category(WorkCategoryKey.DEPLOY_AIO, "Deploy IoT Operations", skipped=self._no_deploy)
 
     def do_work(self):  # noqa: C901
+        from ..edge_api.keyvault import KEYVAULT_API_V1
         from .base import (
             configure_cluster_secrets,
             configure_cluster_tls,
@@ -190,19 +191,18 @@ class WorkManager:
             prepare_sp,
             provision_akv_csi_driver,
             validate_keyvault_permission_model,
-            verify_connect_mgmt_plane,
             wait_for_terminal_state,
         )
-        from .rp_namespace import register_providers
-        from ..edge_api.keyvault import KEYVAULT_API_V1
+        from .host import verify_cli_client_connections
         from .permissions import verify_write_permission_against_rg
+        from .rp_namespace import register_providers
 
         work_kpis = {}
 
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
-                verify_connect_mgmt_plane(self._cmd)
+                verify_cli_client_connections(include_graph=bool(self._keyvault_resource_id))
 
             # Always run this check
             if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():

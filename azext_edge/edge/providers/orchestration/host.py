@@ -6,7 +6,7 @@
 
 
 from platform import system
-from typing import List, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 import requests
 from azure.cli.core.azclierror import ValidationError
@@ -20,7 +20,8 @@ from ....constants import EXTENSION_NAME
 from ...util.common import run_host_command
 
 ARM_ENDPOINT = "https://management.azure.com/"
-MCR_ENDPOINT = "https://mcr.microsoft.com/api/v1/"
+MCR_ENDPOINT = "https://mcr.microsoft.com/"
+GRAPH_ENDPOINT = "https://graph.microsoft.com/"
 
 NFS_COMMON_ALIAS = "nfs-common"
 
@@ -28,20 +29,35 @@ logger = get_logger(__name__)
 console = Console(width=88)
 
 
+class EndpointConnections(NamedTuple):
+    connect_map: Dict[str, bool]
+
+    @property
+    def failed_connections(self):
+        fc = []
+        for endpoint in self.connect_map:
+            if not self.connect_map[endpoint]:
+                fc.append(endpoint)
+        return fc
+
+    def throw_if_failure(self, include_cluster: bool = True):
+        failed_conns = self.failed_connections
+        if failed_conns:
+            raise ValidationError(get_connectivity_error(failed_conns, include_cluster=include_cluster))
+
+
 def run_host_verify(render_progress: Optional[bool] = True, confirm_yes: Optional[bool] = False):
     if not render_progress:
         console.quiet = True
-    connect_tuples = [(ARM_ENDPOINT, "HEAD"), (MCR_ENDPOINT, "GET")]
-    connect_result_map = {}
+    connect_endpoints = [ARM_ENDPOINT, MCR_ENDPOINT]
     console.print()
 
-    with console.status(status="Analyzing host...", refresh_per_second=12.5) as status_render:
+    with console.status(status="Analyzing host...") as status_render:
         console.print("[bold]Connectivity[/bold] to:")
-        for connect_tuple in connect_tuples:
-            connect_result_map[connect_tuple] = check_connectivity(url=connect_tuple[0], http_verb=connect_tuple[1])
-            console.print(f"- {connect_tuple[0]} ", "...", connect_result_map[connect_tuple])
-            if not connect_result_map[connect_tuple]:
-                raise ValidationError(get_connectivity_error(connect_tuple[0]))
+        endpoint_connections = preflight_http_connections(connect_endpoints)
+        for endpoint in endpoint_connections.connect_map:
+            console.print(f"- {endpoint} ", "...", endpoint_connections.connect_map[endpoint])
+        endpoint_connections.throw_if_failure()
 
         if not is_windows():
             if is_ubuntu_distro():
@@ -92,17 +108,13 @@ def run_host_verify(render_progress: Optional[bool] = True, confirm_yes: Optiona
     console.print()
 
 
-def check_connectivity(url: str, timeout: int = 20, http_verb: str = "GET"):
+def check_connectivity(url: str, timeout: int = 20):
     try:
-        http_verb = http_verb.lower()
-        if http_verb == "get":
-            req = requests.get(url, timeout=timeout)
-        if http_verb == "head":
-            req = requests.head(url, timeout=timeout)
-
+        req = requests.head(url=url, timeout=timeout)
         req.raise_for_status()
         return True
     except requests.HTTPError:
+        # HTTPError implies an http server response
         return True
     except requests.ConnectionError:
         return False
@@ -173,10 +185,19 @@ def _get_eval_result_display(eval_result: Optional[bool]) -> str:
 
 
 def get_connectivity_error(
-    endpoint: str, protocol: str = "https", direction: str = "outbound", include_cluster: bool = True
+    endpoints: List[str], protocol: str = "https", direction: str = "outbound", include_cluster: bool = True
 ):
+    todo_endpoints = []
+    if endpoints:
+        todo_endpoints.extend(endpoints)
+
+    endpoints_list_format = ""
+    for ep in todo_endpoints:
+        endpoints_list_format += f"* {ep}\n"
+
     connectivity_error = (
-        f"\nUnable to verify {direction} {protocol} connectivity to {endpoint}.\n"
+        f"\nUnable to verify {direction} {protocol} connectivity to:\n"
+        f"\n{endpoints_list_format}\n"
         "Ensure host, proxy and/or firewall config allows connection.\n"
         "\nThe 'HTTP_PROXY' and 'HTTPS_PROXY' environment variables can be used for the CLI client.\n"
     )
@@ -190,3 +211,25 @@ def get_connectivity_error(
     )
 
     return connectivity_error
+
+
+def preflight_http_connections(endpoints: List[str]) -> EndpointConnections:
+    """
+    Tests connectivity for each endpoint in the provided list.
+    """
+    todo_connect_endpoints = []
+    if endpoints:
+        todo_connect_endpoints.extend(endpoints)
+
+    endpoint_connect_map = {}
+    for endpoint in todo_connect_endpoints:
+        endpoint_connect_map[endpoint] = check_connectivity(url=endpoint)
+
+    return EndpointConnections(connect_map=endpoint_connect_map)
+
+
+def verify_cli_client_connections(include_graph: bool):
+    test_endpoints = [ARM_ENDPOINT]
+    if include_graph:
+        test_endpoints.append(GRAPH_ENDPOINT)
+    preflight_http_connections(test_endpoints).throw_if_failure(include_cluster=False)
