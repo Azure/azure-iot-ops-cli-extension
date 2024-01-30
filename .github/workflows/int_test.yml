@@ -44,11 +44,13 @@ env:
   EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
   K3S_VERSION: "v1.28.5+k3s1"
 
+permissions:
+  # required for OpenID federation
+  contents: 'read'
+  id-token: 'write'
+
 jobs:
   integration_test:
-    permissions:
-      contents: 'read'
-      id-token: 'write'
     name: Integration test
     runs-on: ubuntu-22.04
     outputs:
@@ -57,11 +59,11 @@ jobs:
       keyvault_name: ${{ env.KV_NAME }}
     steps:
       - name: "Setup python"
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
       - name: "Checkout extension source"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # ensure source checkout uses our repo instead of calling workflow
           repository: azure/azure-iot-ops-cli-extension

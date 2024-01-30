@@ -6,14 +6,17 @@ on:
 jobs:
   create_draft_release:
     runs-on: [self-hosted, 1ES.Pool=iotupx-github-hosted-pool, 1ES.ImageOverride=MMSUbuntu20.04]
+    permissions:
+      # needed to create a draft release
+      contents: write
     steps:
       - name: Download Wheel
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: azure-iot-ops-cli-ext
           path: ./release
       - name: Setup python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
             python-version: "3.9"
       - name: Install and determine version
@@ -25,7 +28,7 @@ jobs:
           echo "version=$version" >> $GITHUB_ENV
           echo "tag=v$version" >> $GITHUB_ENV
       - name: Download SBOM
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: SBOM
           path: ./release/SBOM
