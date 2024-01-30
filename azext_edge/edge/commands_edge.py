@@ -92,7 +92,6 @@ def init(
     cluster_name: str,
     resource_group_name: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
-    cluster_location: Optional[str] = None,
     keyvault_sat_secret_name: str = DEFAULT_NAMESPACE,
     custom_location_namespace: Optional[str] = None,
     custom_location_name: Optional[str] = None,
@@ -207,7 +206,7 @@ def init(
         cmd=cmd,
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
-        cluster_location=cluster_location,
+        cluster_location=None,  # Effectively always fetch connected cluster location
         custom_location_name=custom_location_name,
         custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,

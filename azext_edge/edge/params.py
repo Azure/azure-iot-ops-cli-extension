@@ -230,13 +230,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "location",
             options_list=["--location"],
-            help="The ARM location that will be used for provisioned ARM collateral. "
-            "If not provided the resource group location will be used.",
-        )
-        context.argument(
-            "cluster_location",
-            options_list=["--cluster-location"],
-            help="The cluster ARM location.",
+            help="The ARM location that will be used for provisioned RPSaaS collateral. "
+            "If not provided the connected cluster location will be used.",
         )
         context.argument(
             "show_template",

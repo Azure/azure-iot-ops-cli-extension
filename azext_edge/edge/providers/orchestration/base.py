@@ -469,7 +469,7 @@ def process_default_location(kwargs: dict):
     subscription_id = kwargs["subscription_id"]
     resource_group_name = kwargs["resource_group_name"]
 
-    if not any([cluster_location, location]):
+    if not cluster_location or not location:
         from .connected_cluster import ConnectedCluster
 
         connected_cluster = ConnectedCluster(
