@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from unittest.mock import MagicMock
 
 from azext_edge.edge.providers.orchestration.base import KEYVAULT_ARC_EXTENSION_VERSION
 from azext_edge.edge.util import get_timestamp_now_utc
