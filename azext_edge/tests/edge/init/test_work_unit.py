@@ -34,7 +34,6 @@ from ...generators import generate_generic_id
     """
     cluster_name,
     cluster_namespace,
-    cluster_location,
     resource_group_name,
     keyvault_sat_secret_name,
     keyvault_resource_id,
@@ -68,7 +67,6 @@ from ...generators import generate_generic_id
         pytest.param(
             generate_generic_id(),  # cluster_name
             None,  # cluster_namespace
-            None,  # cluster_location
             generate_generic_id(),  # resource_group_name
             None,  # keyvault_sat_secret_name
             None,  # keyvault_resource_id
@@ -101,7 +99,6 @@ from ...generators import generate_generic_id
         pytest.param(
             generate_generic_id(),  # cluster_name
             generate_generic_id(),  # cluster_namespace
-            generate_generic_id(),  # cluster_location
             generate_generic_id(),  # resource_group_name
             generate_generic_id(),  # keyvault_sat_secret_name
             generate_generic_id(),  # keyvault_resource_id
@@ -134,7 +131,6 @@ from ...generators import generate_generic_id
         pytest.param(
             generate_generic_id(),  # cluster_name
             generate_generic_id(),  # cluster_namespace
-            generate_generic_id(),  # cluster_location
             generate_generic_id(),  # resource_group_name
             generate_generic_id(),  # keyvault_sat_secret_name
             generate_generic_id(),  # keyvault_resource_id
@@ -172,7 +168,6 @@ def test_init_to_template_params(
     mocked_config: Mock,
     cluster_name,
     cluster_namespace,
-    cluster_location,
     resource_group_name,
     keyvault_sat_secret_name,
     keyvault_resource_id,
@@ -206,7 +201,6 @@ def test_init_to_template_params(
 
     param_tuples = [
         (cluster_namespace, "cluster_namespace"),
-        (cluster_location, "cluster_location"),
         (keyvault_sat_secret_name, "keyvault_sat_secret_name"),
         (keyvault_resource_id, "keyvault_resource_id"),
         (custom_location_name, "custom_location_name"),
@@ -242,16 +236,20 @@ def test_init_to_template_params(
 
     init(cmd=mocked_cmd, cluster_name=cluster_name, resource_group_name=resource_group_name, **kwargs)
     mocked_deploy.assert_called_once()
+    # There is no longer user input for cluster_location
+    assert mocked_deploy.call_args.kwargs["cluster_location"] is None
+
+    # emulate dynamic query of location
+    connected_cluster_location = generate_generic_id()
+    mocked_deploy.call_args.kwargs["cluster_location"] = connected_cluster_location
+
     work = WorkManager(**mocked_deploy.call_args.kwargs)
     template_ver, parameters = work.build_template({})
 
     assert "clusterName" in parameters
     assert parameters["clusterName"]["value"] == cluster_name
 
-    if cluster_location:
-        assert parameters["clusterLocation"]["value"] == cluster_location
-    else:
-        assert "clusterLocation" not in parameters
+    assert parameters["clusterLocation"]["value"] == connected_cluster_location
 
     assert "customLocationName" in parameters
     if custom_location_name:
@@ -513,6 +511,7 @@ def test_work_order(
     mocked_verify_write_permission_against_rg: Mock,
     mocked_wait_for_terminal_state: Mock,
     mocked_file_exists: Mock,
+    mocked_connected_cluster_location: Mock,
     cluster_name,
     cluster_namespace,
     resource_group_name,
@@ -563,6 +562,7 @@ def test_work_order(
 
     if any([not no_preflight, not no_deploy, keyvault_resource_id]):
         mocked_verify_cli_client_connections.assert_called_once()
+        mocked_connected_cluster_location.assert_called_once()
 
     if not no_preflight:
         mocked_register_providers.assert_called_once()

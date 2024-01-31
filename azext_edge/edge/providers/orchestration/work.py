@@ -204,13 +204,12 @@ class WorkManager:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
                 verify_cli_client_connections(include_graph=bool(self._keyvault_resource_id))
+                # If no cluster_location or location provided, default to actual connected cluster location.
+                process_default_location(self._kwargs)
 
             # Always run this check
             if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
                 raise ValidationError(error_msg="--kv-id is required when the Key Vault CSI driver is not installed.")
-
-            # If no cluster_location or location provided, default to actual connected cluster location.
-            process_default_location(self._kwargs)
 
             # Pre-check segment
             if (

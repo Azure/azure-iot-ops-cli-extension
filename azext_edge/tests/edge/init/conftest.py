@@ -5,8 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from azext_edge.edge.util import get_timestamp_now_utc
+from unittest.mock import MagicMock
+
 from azext_edge.edge.providers.orchestration.base import KEYVAULT_ARC_EXTENSION_VERSION
+from azext_edge.edge.util import get_timestamp_now_utc
 
 
 @pytest.fixture
@@ -171,4 +173,14 @@ def mocked_wait_for_terminal_state(mocker):
 def mocked_file_exists(mocker):
     patched = mocker.patch("azext_edge.edge.commands_edge.exists", autospec=True)
     patched.return_value = True
+    yield patched
+
+
+@pytest.fixture
+def mocked_connected_cluster_location(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.connected_cluster.ConnectedCluster.location",
+        return_value="mock_location",
+        new_callable=mocker.PropertyMock,
+    )
     yield patched
