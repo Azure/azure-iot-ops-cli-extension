@@ -92,7 +92,6 @@ def init(
     cluster_name: str,
     resource_group_name: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
-    cluster_location: Optional[str] = None,
     keyvault_sat_secret_name: str = DEFAULT_NAMESPACE,
     custom_location_namespace: Optional[str] = None,
     custom_location_name: Optional[str] = None,
@@ -135,6 +134,7 @@ def init(
     no_deploy: Optional[bool] = None,
     no_tls: Optional[bool] = None,
     no_preflight: Optional[bool] = None,
+    disable_rsync_rules: Optional[bool] = None,
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration import deploy
@@ -206,7 +206,7 @@ def init(
         cmd=cmd,
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
-        cluster_location=cluster_location,
+        cluster_location=None,  # Effectively always fetch connected cluster location
         custom_location_name=custom_location_name,
         custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
@@ -219,6 +219,7 @@ def init(
         no_tls=no_tls,
         no_preflight=no_preflight,
         no_deploy=no_deploy,
+        disable_rsync_rules=disable_rsync_rules,
         dp_instance_name=dp_instance_name,
         dp_reader_workers=int(dp_reader_workers),
         dp_runner_workers=int(dp_runner_workers),

@@ -461,18 +461,26 @@ def deploy_template(
     return result, deployment
 
 
-def verify_connect_mgmt_plane(cmd):
-    from .host import check_connectivity, get_connectivity_error, ARM_ENDPOINT
+def process_default_location(kwargs: dict):
+    # TODO: use intermediate object to store KPIs / refactor out of kwargs
+    cluster_location = kwargs["cluster_location"]
+    location = kwargs["location"]
+    cluster_name = kwargs["cluster_name"]
+    subscription_id = kwargs["subscription_id"]
+    resource_group_name = kwargs["resource_group_name"]
 
-    try_arm_endpoint = ARM_ENDPOINT
-    try:
-        try_arm_endpoint = cmd.cli_ctx.cloud.endpoints.resource_manager
-    except AttributeError:
-        pass
+    if not cluster_location or not location:
+        from .connected_cluster import ConnectedCluster
 
-    connect_result = check_connectivity(try_arm_endpoint, http_verb="HEAD")
-    if not connect_result:
-        raise ValidationError(get_connectivity_error(try_arm_endpoint, include_cluster=False))
+        connected_cluster = ConnectedCluster(
+            subscription_id=subscription_id, cluster_name=cluster_name, resource_group_name=resource_group_name
+        )
+        connected_cluster_location = connected_cluster.location
+
+        if not cluster_location:
+            kwargs["cluster_location"] = connected_cluster_location
+        if not location:
+            kwargs["location"] = connected_cluster_location
 
 
 def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":

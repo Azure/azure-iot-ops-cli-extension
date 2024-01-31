@@ -18,7 +18,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
 # aka prime256v1
-DEFAULT_EC_ALGO = ec.SECP256R1
+DEFAULT_EC_ALGO = ec.SECP256R1()
 DEFAULT_VALID_DAYS = 365
 
 

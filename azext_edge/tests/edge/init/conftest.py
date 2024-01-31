@@ -5,8 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from azext_edge.edge.util import get_timestamp_now_utc
+
 from azext_edge.edge.providers.orchestration.base import KEYVAULT_ARC_EXTENSION_VERSION
+from azext_edge.edge.util import get_timestamp_now_utc
 
 
 @pytest.fixture
@@ -71,8 +72,8 @@ def mocked_prepare_ca(mocker):
 
 
 @pytest.fixture
-def mocked_verify_connect_mgmt_plane(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.verify_connect_mgmt_plane", autospec=True)
+def mocked_verify_cli_client_connections(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.host.verify_cli_client_connections", autospec=True)
     yield patched
 
 
@@ -171,4 +172,14 @@ def mocked_wait_for_terminal_state(mocker):
 def mocked_file_exists(mocker):
     patched = mocker.patch("azext_edge.edge.commands_edge.exists", autospec=True)
     patched.return_value = True
+    yield patched
+
+
+@pytest.fixture
+def mocked_connected_cluster_location(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.connected_cluster.ConnectedCluster.location",
+        return_value="mock_location",
+        new_callable=mocker.PropertyMock,
+    )
     yield patched

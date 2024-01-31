@@ -34,7 +34,6 @@ from ...generators import generate_generic_id
     """
     cluster_name,
     cluster_namespace,
-    cluster_location,
     resource_group_name,
     keyvault_sat_secret_name,
     keyvault_resource_id,
@@ -62,12 +61,12 @@ from ...generators import generate_generic_id
     mq_authn_name,
     mq_insecure,
     target_name,
+    disable_rsync_rules,
     """,
     [
         pytest.param(
             generate_generic_id(),  # cluster_name
             None,  # cluster_namespace
-            None,  # cluster_location
             generate_generic_id(),  # resource_group_name
             None,  # keyvault_sat_secret_name
             None,  # keyvault_resource_id
@@ -95,11 +94,11 @@ from ...generators import generate_generic_id
             None,  # mq_authn_name
             None,  # mq_insecure
             None,  # target_name
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
             generate_generic_id(),  # cluster_namespace
-            generate_generic_id(),  # cluster_location
             generate_generic_id(),  # resource_group_name
             generate_generic_id(),  # keyvault_sat_secret_name
             generate_generic_id(),  # keyvault_resource_id
@@ -127,11 +126,11 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # mq_authn_name
             None,  # mq_insecure
             generate_generic_id(),  # target_name
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
             generate_generic_id(),  # cluster_namespace
-            generate_generic_id(),  # cluster_location
             generate_generic_id(),  # resource_group_name
             generate_generic_id(),  # keyvault_sat_secret_name
             generate_generic_id(),  # keyvault_resource_id
@@ -159,6 +158,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # mq_authn_name
             True,  # mq_insecure
             generate_generic_id(),  # target_name
+            True,  # disable_rsync_rules
         ),
     ],
 )
@@ -168,7 +168,6 @@ def test_init_to_template_params(
     mocked_config: Mock,
     cluster_name,
     cluster_namespace,
-    cluster_location,
     resource_group_name,
     keyvault_sat_secret_name,
     keyvault_resource_id,
@@ -196,12 +195,12 @@ def test_init_to_template_params(
     mq_authn_name,
     mq_insecure,
     target_name,
+    disable_rsync_rules,
 ):
     kwargs = {}
 
     param_tuples = [
         (cluster_namespace, "cluster_namespace"),
-        (cluster_location, "cluster_location"),
         (keyvault_sat_secret_name, "keyvault_sat_secret_name"),
         (keyvault_resource_id, "keyvault_resource_id"),
         (custom_location_name, "custom_location_name"),
@@ -228,24 +227,36 @@ def test_init_to_template_params(
         (mq_authn_name, "mq_authn_name"),
         (mq_insecure, "mq_insecure"),
         (target_name, "target_name"),
+        (disable_rsync_rules, "disable_rsync_rules"),
     ]
 
     for param_tuple in param_tuples:
-        if param_tuple[0]:
+        if param_tuple[0] is not None:
             kwargs[param_tuple[1]] = param_tuple[0]
 
     init(cmd=mocked_cmd, cluster_name=cluster_name, resource_group_name=resource_group_name, **kwargs)
     mocked_deploy.assert_called_once()
+    # There is no longer user input for cluster_location
+    assert mocked_deploy.call_args.kwargs["cluster_location"] is None
+
     work = WorkManager(**mocked_deploy.call_args.kwargs)
+    # emulate dynamic query of location
+    connected_cluster_location = generate_generic_id()
+    work._kwargs["cluster_location"] = connected_cluster_location
+    if not location:
+        assert mocked_deploy.call_args.kwargs["location"] is None
+        work._kwargs["location"] = connected_cluster_location
+
     template_ver, parameters = work.build_template({})
 
     assert "clusterName" in parameters
     assert parameters["clusterName"]["value"] == cluster_name
 
-    if cluster_location:
-        assert parameters["clusterLocation"]["value"] == cluster_location
+    assert parameters["clusterLocation"]["value"] == connected_cluster_location
+    if location:
+        assert parameters["location"]["value"] == location
     else:
-        assert "clusterLocation" not in parameters
+        assert parameters["location"]["value"] == connected_cluster_location
 
     assert "customLocationName" in parameters
     if custom_location_name:
@@ -279,6 +290,9 @@ def test_init_to_template_params(
     if opcua_discovery_endpoint:
         assert "opcuaDiscoveryEndpoint" in parameters
         assert parameters["opcuaDiscoveryEndpoint"]["value"] == opcua_discovery_endpoint
+
+    assert "deployResourceSyncRules" in parameters
+    assert parameters["deployResourceSyncRules"] is not disable_rsync_rules
 
     passthrough_value_tuples = [
         (mq_listener_name, "mqListenerName", "listener"),
@@ -369,6 +383,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
     no_deploy,
     no_tls,
     no_preflight,
+    disable_rsync_rules,
     """,
     [
         pytest.param(
@@ -385,6 +400,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # no_deploy
             None,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -400,6 +416,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # no_deploy
             None,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -415,6 +432,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # no_deploy
             None,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -430,6 +448,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # no_deploy
             None,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -445,6 +464,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             True,  # no_deploy
             None,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -460,6 +480,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             True,  # no_deploy
             True,  # no_tls
             None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -475,6 +496,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             True,  # no_deploy
             True,  # no_tls
             True,  # no_preflight
+            True,  # disable_rsync_rules
         ),
     ],
 )
@@ -490,12 +512,13 @@ def test_work_order(
     mocked_prepare_keyvault_secret: Mock,
     mocked_prepare_sp: Mock,
     mocked_register_providers: Mock,
-    mocked_verify_connect_mgmt_plane: Mock,
+    mocked_verify_cli_client_connections: Mock,
     mocked_edge_api_keyvault_api_v1: Mock,
     mocked_validate_keyvault_permission_model: Mock,
     mocked_verify_write_permission_against_rg: Mock,
     mocked_wait_for_terminal_state: Mock,
     mocked_file_exists: Mock,
+    mocked_connected_cluster_location: Mock,
     cluster_name,
     cluster_namespace,
     resource_group_name,
@@ -509,6 +532,7 @@ def test_work_order(
     no_deploy,
     no_tls,
     no_preflight,
+    disable_rsync_rules,
 ):
     call_kwargs = {
         "cmd": mocked_cmd,
@@ -520,6 +544,7 @@ def test_work_order(
         "no_tls": no_tls,
         "no_preflight": no_preflight,
         "no_progress": True,
+        "disable_rsync_rules": disable_rsync_rules,
     }
     if rotation_poll_interval:
         call_kwargs["rotation_poll_interval"] = rotation_poll_interval
@@ -538,18 +563,22 @@ def test_work_order(
     nothing_to_do = all([not keyvault_resource_id, no_tls, no_deploy, no_preflight])
     if nothing_to_do:
         assert not result
-        mocked_verify_connect_mgmt_plane.assert_not_called()
+        mocked_verify_cli_client_connections.assert_not_called()
         mocked_edge_api_keyvault_api_v1.is_deployed.assert_not_called()
         return
 
     if any([not no_preflight, not no_deploy, keyvault_resource_id]):
-        mocked_verify_connect_mgmt_plane.assert_called_once()
+        mocked_verify_cli_client_connections.assert_called_once()
+        mocked_connected_cluster_location.assert_called_once()
 
     if not no_preflight:
         mocked_register_providers.assert_called_once()
-        mocked_verify_write_permission_against_rg.assert_called_once()
-        mocked_verify_write_permission_against_rg.call_args.kwargs["subscription_id"]
-        mocked_verify_write_permission_against_rg.call_args.kwargs["resource_group_name"] == resource_group_name
+        if not disable_rsync_rules:
+            mocked_verify_write_permission_against_rg.assert_called_once()
+            mocked_verify_write_permission_against_rg.call_args.kwargs["subscription_id"]
+            mocked_verify_write_permission_against_rg.call_args.kwargs["resource_group_name"] == resource_group_name
+        else:
+            mocked_verify_write_permission_against_rg.assert_not_called()
 
     if not keyvault_resource_id:
         mocked_edge_api_keyvault_api_v1.is_deployed.assert_called_once()

@@ -230,13 +230,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "location",
             options_list=["--location"],
-            help="The ARM location that will be used for provisioned ARM collateral. "
-            "If not provided the resource group location will be used.",
-        )
-        context.argument(
-            "cluster_location",
-            options_list=["--cluster-location"],
-            help="The cluster ARM location.",
+            help="The ARM location that will be used for provisioned RPSaaS collateral. "
+            "If not provided the connected cluster location will be used.",
         )
         context.argument(
             "show_template",
@@ -274,6 +269,12 @@ def load_iotops_arguments(self, _):
             options_list=["--no-preflight"],
             arg_type=get_three_state_flag(),
             help="The pre-flight workflow will be skipped.",
+        )
+        context.argument(
+            "disable_rsync_rules",
+            options_list=["--disable-rsync-rules"],
+            arg_type=get_three_state_flag(),
+            help="Resource sync rules will not be included in the deployment.",
         )
         # Akri
         context.argument(

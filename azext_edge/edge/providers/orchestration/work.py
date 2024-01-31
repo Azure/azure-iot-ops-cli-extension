@@ -5,10 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import IntEnum
+from json import dumps
 from time import sleep
 from typing import Dict, Tuple, Union
 from uuid import uuid4
-from json import dumps
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
 from azure.core.exceptions import HttpResponseError
@@ -118,6 +118,7 @@ class WorkManager:
         kwargs["subscription_id"] = self._subscription_id  # TODO: temporary
         self._cluster_secret_ref = CLUSTER_SECRET_REF
         self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
+        self._deploy_rsync_rules = not kwargs.get("disable_rsync_rules", False)
         self._kwargs = kwargs
 
         self._build_display()
@@ -179,6 +180,7 @@ class WorkManager:
         self.display.add_category(WorkCategoryKey.DEPLOY_AIO, "Deploy IoT Operations", skipped=self._no_deploy)
 
     def do_work(self):  # noqa: C901
+        from ..edge_api.keyvault import KEYVAULT_API_V1
         from .base import (
             configure_cluster_secrets,
             configure_cluster_tls,
@@ -187,21 +189,23 @@ class WorkManager:
             prepare_keyvault_access_policy,
             prepare_keyvault_secret,
             prepare_sp,
+            process_default_location,
             provision_akv_csi_driver,
             validate_keyvault_permission_model,
-            verify_connect_mgmt_plane,
             wait_for_terminal_state,
         )
-        from .rp_namespace import register_providers
-        from ..edge_api.keyvault import KEYVAULT_API_V1
+        from .host import verify_cli_client_connections
         from .permissions import verify_write_permission_against_rg
+        from .rp_namespace import register_providers
 
         work_kpis = {}
 
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
-                verify_connect_mgmt_plane(self._cmd)
+                verify_cli_client_connections(include_graph=bool(self._keyvault_resource_id))
+                # If no cluster_location or location provided, default to actual connected cluster location.
+                process_default_location(self._kwargs)
 
             # Always run this check
             if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
@@ -218,9 +222,10 @@ class WorkManager:
                 self._completed_steps[WorkStepKey.REG_RP] = 1
                 self.render_display(category=WorkCategoryKey.PRE_CHECK)
 
-                verify_write_permission_against_rg(
-                    **self._kwargs,
-                )
+                if self._deploy_rsync_rules:
+                    verify_write_permission_against_rg(
+                        **self._kwargs,
+                    )
                 # Use pre-flight deployment as a shortcut to evaluate permissions
                 template, parameters = self.build_template(work_kpis=work_kpis)
                 deployment_result, deployment_poller = deploy_template(
@@ -518,6 +523,7 @@ class WorkManager:
         parameters["opcUaBrokerSecrets"] = {
             "value": {"kind": "csi", "csiServicePrincipalSecretRef": self._cluster_secret_ref}
         }
+        parameters["deployResourceSyncRules"] = {"value": self._deploy_rsync_rules}
 
         # Covers cluster_namespace
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
