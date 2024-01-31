@@ -239,11 +239,11 @@ def test_init_to_template_params(
     # There is no longer user input for cluster_location
     assert mocked_deploy.call_args.kwargs["cluster_location"] is None
 
+    work = WorkManager(**mocked_deploy.call_args.kwargs)
     # emulate dynamic query of location
     connected_cluster_location = generate_generic_id()
-    mocked_deploy.call_args.kwargs["cluster_location"] = connected_cluster_location
+    work._kwargs["cluster_location"] = connected_cluster_location
 
-    work = WorkManager(**mocked_deploy.call_args.kwargs)
     template_ver, parameters = work.build_template({})
 
     assert "clusterName" in parameters
