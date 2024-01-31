@@ -243,6 +243,9 @@ def test_init_to_template_params(
     # emulate dynamic query of location
     connected_cluster_location = generate_generic_id()
     work._kwargs["cluster_location"] = connected_cluster_location
+    if not location:
+        assert mocked_deploy.call_args.kwargs["location"] is None
+        work._kwargs["location"] = connected_cluster_location
 
     template_ver, parameters = work.build_template({})
 
@@ -250,6 +253,10 @@ def test_init_to_template_params(
     assert parameters["clusterName"]["value"] == cluster_name
 
     assert parameters["clusterLocation"]["value"] == connected_cluster_location
+    if location:
+        assert parameters["location"]["value"] == location
+    else:
+        assert parameters["location"]["value"] == connected_cluster_location
 
     assert "customLocationName" in parameters
     if custom_location_name:
