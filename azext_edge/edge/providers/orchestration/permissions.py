@@ -11,7 +11,9 @@ from ...util.az_client import get_authz_client
 
 logger = get_logger(__name__)
 
-VALID_PERM_FORMS = frozenset(["*", "microsoft.authorization/roleassignments/write", "microsoft.authorization/*/write"])
+VALID_PERM_FORMS = frozenset(
+    ["*", "*/write", "microsoft.authorization/roleassignments/write", "microsoft.authorization/*/write"]
+)
 
 
 # TODO: one-off for time, make generic
@@ -37,8 +39,10 @@ def verify_write_permission_against_rg(subscription_id: str, resource_group_name
             return
 
     raise ValidationError(
-        "This IoT Operations deployment configuration requires "
-        "the permission to write role assignments against the resource group."
+        "This IoT Operations deployment config includes resource sync rules which require the logged-in principal\n"
+        "to have permission to write role assignments against the resource group.\n\n"
+        "Use --disable-rsync-rules to not include resource sync rules in the deployment.\n"
+        "Use --no-preflight to skip pre-flight checks.\n"
     )
 
 
