@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from azure.core.polling import LROPoller
 
 
-# These should be in constants
+# TODO: pull out into keyvault file (with other related funcs)
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 KEYVAULT_ARC_EXTENSION_VERSION = "1.5.1"
 

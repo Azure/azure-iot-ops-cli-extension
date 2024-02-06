@@ -499,7 +499,7 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
         "mode": "Incremental", "template": template, "parameters": parameters
     }}
     if pre_flight:
-        assert result == {}
+        assert not result
         mocked_resource_management_client.deployments.begin_what_if.assert_called_once_with(
             resource_group_name=resource_group_name,
             deployment_name=deployment_name,
