@@ -18,10 +18,7 @@ from rich.prompt import Confirm
 
 from ....constants import EXTENSION_NAME
 from ...util.common import run_host_command
-
-ARM_ENDPOINT = "https://management.azure.com/"
-MCR_ENDPOINT = "https://mcr.microsoft.com/"
-GRAPH_ENDPOINT = "https://graph.microsoft.com/"
+from .common import ARM_ENDPOINT, MCR_ENDPOINT, GRAPH_ENDPOINT
 
 NFS_COMMON_ALIAS = "nfs-common"
 

@@ -7,6 +7,9 @@
 import json
 import pytest
 from azure.cli.core.azclierror import HTTPError, ValidationError
+from azext_edge.edge.providers.orchestration.common import (
+    GRAPH_V1_ENDPOINT, GRAPH_V1_SP_ENDPOINT, GRAPH_V1_APP_ENDPOINT
+)
 
 from ...generators import generate_generic_id
 
@@ -170,7 +173,7 @@ def test_configure_cluster_tls(mocker, get_cluster):
 def test_prepare_sp(mocker, mocked_cmd, mocked_send_raw_request, app_id, object_id, secret, secret_valid_days):
     tenant_patch = mocker.patch(f"{BASE_PATH}.get_tenant_id", return_value=generate_generic_id())
     access_patch = mocker.patch(f"{BASE_PATH}.ensure_correct_access")
-    from azext_edge.edge.providers.orchestration.base import prepare_sp, GRAPH_V1_SP_API, GRAPH_V1_APP_API
+    from azext_edge.edge.providers.orchestration.base import prepare_sp
     deployment_name = generate_generic_id()
     sp = prepare_sp(
         mocked_cmd,
@@ -193,15 +196,15 @@ def test_prepare_sp(mocker, mocked_cmd, mocked_send_raw_request, app_id, object_
         if object_id:
             get_sp_call = mocked_send_raw_request.call_args_list[call_count].kwargs
             assert get_sp_call["method"] == "GET"
-            assert get_sp_call["url"] == f"{GRAPH_V1_SP_API}/{sp.object_id}"
+            assert get_sp_call["url"] == f"{GRAPH_V1_SP_ENDPOINT}/{sp.object_id}"
             get_app_call = mocked_send_raw_request.call_args_list[call_count + 1].kwargs
             assert get_app_call["method"] == "GET"
-            assert get_app_call["url"] == f"{GRAPH_V1_APP_API}/{sp.client_id}"
+            assert get_app_call["url"] == f"{GRAPH_V1_APP_ENDPOINT}/{sp.client_id}"
             call_count += 2
         else:
             post_sp_call = mocked_send_raw_request.call_args_list[call_count].kwargs
             assert post_sp_call["method"] == "POST"
-            assert post_sp_call["url"] == f"{GRAPH_V1_APP_API}"
+            assert post_sp_call["url"] == f"{GRAPH_V1_APP_ENDPOINT}"
             assert post_sp_call["body"] == json.dumps(
                 {"displayName": deployment_name, "signInAudience": "AzureADMyOrg"}
             )
@@ -210,14 +213,14 @@ def test_prepare_sp(mocker, mocked_cmd, mocked_send_raw_request, app_id, object_
     if not object_id:
         get_sp_call = mocked_send_raw_request.call_args_list[call_count].kwargs
         assert get_sp_call["method"] == "GET"
-        assert get_sp_call["url"] == f"{GRAPH_V1_SP_API}(appId='{sp.client_id}')"
+        assert get_sp_call["url"] == f"{GRAPH_V1_SP_ENDPOINT}(appId='{sp.client_id}')"
         call_count += 1
         # exception case here
     if not secret:
         post_call = mocked_send_raw_request.call_args_list[call_count].kwargs
         assert post_call["method"] == "POST"
         assert post_call["url"] == (
-            f"https://graph.microsoft.com/v1.0/myorganization/applications(appId='{sp.client_id}')/addPassword"
+            f"{GRAPH_V1_ENDPOINT}/myorganization/applications(appId='{sp.client_id}')/addPassword"
         )
         body = json.loads(post_call["body"])
         assert body["passwordCredential"]["displayName"] == deployment_name
@@ -230,7 +233,7 @@ def test_prepare_sp(mocker, mocked_cmd, mocked_send_raw_request, app_id, object_
 @pytest.mark.parametrize("error_code", [401, 403])
 def test_prepare_sp_catches(mocker, mocked_cmd, mocked_send_raw_request, error_code):
     """Test that this function does not error even if there is an http error - there are 3 cases."""
-    from azext_edge.edge.providers.orchestration.base import prepare_sp, GRAPH_V1_APP_API, GRAPH_V1_SP_API
+    from azext_edge.edge.providers.orchestration.base import prepare_sp
     app_id = generate_generic_id()
     all_result = {
         "appId": app_id,
@@ -243,7 +246,7 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_send_raw_request, error_c
     }
 
     def custom_responses(**kwargs):
-        if kwargs["url"].startswith(f"{GRAPH_V1_APP_API}/"):
+        if kwargs["url"].startswith(f"{GRAPH_V1_APP_ENDPOINT}/"):
             raise HTTPError(error_msg=generate_generic_id(), response=mocker.Mock(status_code=error_code))
         request_mock = mocker.Mock()
         request_mock.json.return_value = all_result
@@ -262,7 +265,7 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_send_raw_request, error_c
     mocked_send_raw_request.reset_mock()
 
     def custom_responses2(**kwargs):
-        if kwargs["url"].startswith(f"{GRAPH_V1_SP_API}(appId='"):
+        if kwargs["url"].startswith(f"{GRAPH_V1_SP_ENDPOINT}(appId='"):
             raise HTTPError(error_msg=generate_generic_id(), response=mocker.Mock(status_code=404))
         request_mock = mocker.Mock()
         request_mock.json.return_value = all_result
@@ -277,7 +280,7 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_send_raw_request, error_c
     assert sp
     post_call = mocked_send_raw_request.call_args_list[2].kwargs
     assert post_call["method"] == "POST"
-    assert post_call["url"] == f"{GRAPH_V1_SP_API}"
+    assert post_call["url"] == f"{GRAPH_V1_SP_ENDPOINT}"
     assert post_call["body"] == json.dumps({"appId": app_id})
 
 
@@ -373,7 +376,6 @@ def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path):
         assert open_patch.called is True
         assert result[2] == "aio-ca-key-pair-test-only"
         assert result[3] == "aio-ca-trust-bundle-test-only"
-
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [{

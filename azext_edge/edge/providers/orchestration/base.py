@@ -30,6 +30,12 @@ from ..edge_api import KEYVAULT_API_V1
 from .components import (
     get_kv_secret_store_yaml,
 )
+from .common import (
+    DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
+    GRAPH_V1_ENDPOINT,
+    GRAPH_V1_SP_ENDPOINT,
+    GRAPH_V1_APP_ENDPOINT
+)
 
 logger = get_logger(__name__)
 
@@ -46,14 +52,7 @@ KEYVAULT_ARC_EXTENSION_VERSION = "1.5.1"
 DEFAULT_POLL_RETRIES = 240
 DEFAULT_POLL_WAIT_SEC = 15
 
-DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS = 365
-
 EXTENSION_API_VERSION = "2022-11-01"  # why is this different from the one used by adr
-
-GRAPH_API = "https://graph.microsoft.com"
-GRAPH_V1_API = f"{GRAPH_API}/v1.0"
-GRAPH_V1_SP_API = f"{GRAPH_V1_API}/servicePrincipals"
-GRAPH_V1_APP_API = f"{GRAPH_V1_API}/applications"
 
 
 class ServicePrincipal(NamedTuple):
@@ -244,14 +243,14 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
         existing_sp = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="GET",
-            url=f"{GRAPH_V1_SP_API}/{sp_object_id}",
+            url=f"{GRAPH_V1_SP_ENDPOINT}/{sp_object_id}",
         ).json()
         sp_app_id = existing_sp["appId"]
         try:
             app_reg = send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="GET",
-                url=f"{GRAPH_V1_APP_API}/{sp_app_id}",
+                url=f"{GRAPH_V1_APP_ENDPOINT}/{sp_app_id}",
             ).json()
         except HTTPError as http_error:
             if http_error.response.status_code not in [401, 403]:
@@ -261,7 +260,7 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
         app_reg = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="POST",
-            url=GRAPH_V1_APP_API,
+            url=GRAPH_V1_APP_ENDPOINT,
             body=json.dumps({"displayName": deployment_name, "signInAudience": "AzureADMyOrg"}),
         ).json()
         app_created = True
@@ -272,7 +271,7 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
             existing_sp = send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="GET",
-                url=f"{GRAPH_V1_SP_API}(appId='{sp_app_id}')",
+                url=f"{GRAPH_V1_SP_ENDPOINT}(appId='{sp_app_id}')",
             ).json()
             sp_object_id = existing_sp["id"]
         except HTTPError as http_error:
@@ -281,7 +280,7 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
             sp = send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="POST",
-                url=GRAPH_V1_SP_API,
+                url=GRAPH_V1_SP_ENDPOINT,
                 body=json.dumps({"appId": sp_app_id}),
             ).json()
             sp_object_id = sp["id"]
@@ -293,7 +292,7 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
         add_secret_op = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="POST",
-            url=f"{GRAPH_V1_API}/myorganization/applications(appId='{sp_app_id}')/addPassword",
+            url=f"{GRAPH_V1_ENDPOINT}/myorganization/applications(appId='{sp_app_id}')/addPassword",
             body=json.dumps({"passwordCredential": {"displayName": deployment_name, "endDateTime": timestamp_str}}),
         )
         sp_secret = add_secret_op.json()["secretText"]
@@ -309,61 +308,31 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
 
 def ensure_correct_access(cmd, sp_app_id: str, existing_resource_access: List[dict]):
     from azure.cli.core.util import send_raw_request
-    add_kv_access = True
-    add_basic_graph_access = True
+    permission_map = {
+        # keyvault to have full access to akv service
+        "cfa8b339-82a2-471a-a3c9-0fc0be7a4093": "f53da476-18e3-4152-8e01-aec403e6edc0",
+        # ms graph to Sign in and read user profile
+        "00000003-0000-0000-c000-000000000000": "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
+    }
     for resource_app in existing_resource_access:
-        if resource_app["resourceAppId"] == "cfa8b339-82a2-471a-a3c9-0fc0be7a4093":
-            add_kv_access = False
-        if resource_app["resourceAppId"] == "00000003-0000-0000-c000-000000000000":
-            add_basic_graph_access = False
+        if resource_app["resourceAppId"] in permission_map:
+            permission_map.pop(resource_app["resourceAppId"], None)
 
-    if add_kv_access:
+    for app, permission in permission_map.items():
         existing_resource_access.append(
             {
-                "resourceAppId": "cfa8b339-82a2-471a-a3c9-0fc0be7a4093",
-                "resourceAccess": [{"id": "f53da476-18e3-4152-8e01-aec403e6edc0", "type": "Scope"}],
-            },
-        )
-    if add_basic_graph_access:
-        existing_resource_access.append(
-            {
-                "resourceAppId": "00000003-0000-0000-c000-000000000000",
-                "resourceAccess": [{"id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d", "type": "Scope"}],
+                "resourceAppId": app,
+                "resourceAccess": [{"id": permission, "type": "Scope"}],
             },
         )
 
-    if add_kv_access or add_basic_graph_access:
+    if permission_map:
         send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="PATCH",
-            url=f"https://graph.microsoft.com/v1.0/myorganization/applications(appId='{sp_app_id}')",
+            url=f"{GRAPH_V1_ENDPOINT}/myorganization/applications(appId='{sp_app_id}')",
             body=json.dumps({"requiredResourceAccess": existing_resource_access}),
         )
-    # permission_map = {
-    #     # keyvault to have full access to akv service
-    #     "cfa8b339-82a2-471a-a3c9-0fc0be7a4093": "f53da476-18e3-4152-8e01-aec403e6edc0",
-    #     # ms graph to Sign in and read user profile
-    #     "00000003-0000-0000-c000-000000000000": "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
-    # }
-    # for resource_app in existing_resource_access:
-    #     if resource_app["resourceAppId"] in permission_map:
-    #         permission_map.pop(resource_app["resourceAppId"], None)
-
-    # for app, permission in permission_map.items():
-    #     existing_resource_access.append(
-    #         {
-    #             "resourceAppId": app,
-    #             "resourceAccess": [{"id": permission, "type": "Scope"}],
-    #         },
-    #     )
-
-    # if permission_map:
-    #     send_raw_request(
-    #         cli_ctx=cmd.cli_ctx,
-    #         method="PATCH",
-    #         url=f"{GRAPH_V1_API}/myorganization/applications(appId='{sp_app_id}')",
-    #         body=json.dumps({"requiredResourceAccess": existing_resource_access}),
-    #     )
 
 
 def validate_keyvault_permission_model(subscription_id: str, keyvault_resource_id: str, **kwargs) -> dict:
