@@ -22,7 +22,7 @@ from rich.table import Table
 
 from ...util import get_timestamp_now_utc
 from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
-from .template import CURRENT_TEMPLATE, TemplateVer
+from .template import get_current_template_copy, CURRENT_TEMPLATE, TemplateVer
 
 logger = get_logger(__name__)
 
@@ -466,7 +466,7 @@ class WorkManager:
 
     def build_template(self, work_kpis: dict) -> Tuple[TemplateVer, dict]:
         # TODO refactor, move out of work
-        template = CURRENT_TEMPLATE
+        template = get_current_template_copy()
         parameters = {}
 
         for template_pair in [

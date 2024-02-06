@@ -519,6 +519,7 @@ def test_work_order(
     mocked_wait_for_terminal_state: Mock,
     mocked_file_exists: Mock,
     mocked_connected_cluster_location: Mock,
+    spy_get_current_template_copy: Mock,
     cluster_name,
     cluster_namespace,
     resource_group_name,
@@ -560,6 +561,7 @@ def test_work_order(
         call_kwargs["tls_ca_dir"] = tls_ca_dir
 
     result = init(**call_kwargs)
+    expected_template_copies = 0
     nothing_to_do = all([not keyvault_resource_id, no_tls, no_deploy, no_preflight])
     if nothing_to_do:
         assert not result
@@ -572,6 +574,7 @@ def test_work_order(
         mocked_connected_cluster_location.assert_called_once()
 
     if not no_preflight:
+        expected_template_copies += 1
         mocked_register_providers.assert_called_once()
         if not disable_rsync_rules:
             mocked_verify_write_permission_against_rg.assert_called_once()
@@ -693,6 +696,7 @@ def test_work_order(
         mocked_cluster_tls.assert_not_called()
 
     if not no_deploy:
+        expected_template_copies += 1
         assert result["deploymentName"]
         assert result["resourceGroup"] == resource_group_name
         assert result["clusterName"] == cluster_name
@@ -729,3 +733,5 @@ def test_work_order(
             assert "deploymentState" not in result
         # TODO
         # mocked_deploy_template.assert_not_called()
+
+    assert spy_get_current_template_copy.call_count == expected_template_copies

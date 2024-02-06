@@ -183,3 +183,12 @@ def mocked_connected_cluster_location(mocker):
         new_callable=mocker.PropertyMock,
     )
     yield patched
+
+
+@pytest.fixture
+def spy_get_current_template_copy(mocker):
+    import azext_edge.edge.providers.orchestration.work as work
+
+    spy = mocker.spy(work, "get_current_template_copy")
+
+    yield spy
