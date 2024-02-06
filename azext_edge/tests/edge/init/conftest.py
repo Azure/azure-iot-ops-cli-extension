@@ -187,7 +187,7 @@ def mocked_connected_cluster_location(mocker):
 
 @pytest.fixture
 def spy_get_current_template_copy(mocker):
-    import azext_edge.edge.providers.orchestration.work as work
+    from azext_edge.edge.providers.orchestration import work
 
     spy = mocker.spy(work, "get_current_template_copy")
 
