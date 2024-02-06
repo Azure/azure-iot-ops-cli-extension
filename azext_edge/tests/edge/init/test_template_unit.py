@@ -6,6 +6,7 @@
 
 from unittest import TestCase
 
+
 def test_current_template():
     from azext_edge.edge.providers.orchestration.template import CURRENT_TEMPLATE, get_current_template_copy
 
