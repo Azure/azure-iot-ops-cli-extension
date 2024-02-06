@@ -169,7 +169,7 @@ def load_iotops_help():
           The command may prompt to apply a set of privileged actions such as installing a dependency.
           In this case the CLI must be run with elevated permissions. For example
 
-            `sudo AZURE_EXTENSION_DIR=/home/me/.azure/cliextensions az iot ops verify-host`.
+            `sudo AZURE_EXTENSION_DIR=~/.azure/cliextensions az iot ops verify-host`.
     """
 
     helps[

@@ -812,3 +812,9 @@ def get_insecure_mq_listener():
 
 
 CURRENT_TEMPLATE = V1_TEMPLATE
+
+
+def get_current_template_copy() -> TemplateVer:
+    from copy import deepcopy
+
+    return TemplateVer(commit_id=CURRENT_TEMPLATE.commit_id, content=deepcopy(CURRENT_TEMPLATE.content))
