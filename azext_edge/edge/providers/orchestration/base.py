@@ -52,7 +52,7 @@ KEYVAULT_ARC_EXTENSION_VERSION = "1.5.1"
 DEFAULT_POLL_RETRIES = 240
 DEFAULT_POLL_WAIT_SEC = 15
 
-EXTENSION_API_VERSION = "2022-11-01"  # why is this different from the one used by adr
+EXTENSION_API_VERSION = "2022-11-01"  # TODO: fun testing with newer api
 
 
 class ServicePrincipal(NamedTuple):
@@ -70,7 +70,7 @@ def provision_akv_csi_driver(
     enable_secret_rotation: str,
     rotation_poll_interval: str = "1h",
     extension_name: str = "akvsecretsprovider",
-    **kwargs,  # is this a lazy implementation to avoid passing in kwargs one by one?
+    **kwargs,  # TODO: someday remove all kwargs from the smaller funcs
 ) -> dict:
     resource_client = get_resource_client(subscription_id=subscription_id)
     return wait_for_terminal_state(
@@ -414,7 +414,7 @@ def prepare_keyvault_secret(
     return keyvault_sat_secret_name
 
 
-# should be in utils
+# TODO: should be in utils
 def get_tenant_id():
     from azure.cli.core._profile import Profile
 
@@ -489,10 +489,9 @@ def process_default_location(kwargs: dict):
             kwargs["location"] = connected_cluster_location
 
 
-# should be in utils
+# TODO: should be in utils
 def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
     # resource client does not handle sigint well
-    # why are we still doing this and not just erroring out?
     counter = 0
     while counter < DEFAULT_POLL_RETRIES:
         sleep(DEFAULT_POLL_WAIT_SEC)
