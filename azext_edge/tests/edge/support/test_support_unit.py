@@ -84,7 +84,7 @@ def test_create_bundle(
     mocked_list_daemonsets,
     mocked_list_services,
     mocked_list_nodes,
-    mocked_list_namespaced_events,
+    mocked_list_cluster_events,
     mocked_get_stats,
     mocked_root_logger,
     mocked_mq_active_api,
@@ -554,10 +554,10 @@ def assert_mq_stats(mocked_zipfile):
 def assert_shared_kpis(mocked_client, mocked_zipfile):
     mocked_client.CoreV1Api().list_node.assert_called_once()
     assert_zipfile_write(mocked_zipfile, zinfo="nodes.yaml", data="items:\n- metadata:\n    name: mock_node\n")
-    mocked_client.CoreV1Api().list_namespaced_event.assert_called_once()
+    mocked_client.CoreV1Api().list_event_for_all_namespaces.assert_called_once()
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo="mock_namespace/events.yaml",
+        zinfo="events.yaml",
         data="items:\n- action: mock_action\n  involvedObject: mock_object\n  metadata:\n    name: mock_event\n",
     )
 
@@ -623,7 +623,7 @@ def test_create_bundle_mq_traces(
     mocked_list_daemonsets,
     mocked_list_services,
     mocked_list_nodes,
-    mocked_list_namespaced_events,
+    mocked_list_cluster_events,
     mocked_get_stats,
     mocked_root_logger,
     mocked_mq_active_api,

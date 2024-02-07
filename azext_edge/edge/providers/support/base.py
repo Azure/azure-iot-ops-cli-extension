@@ -360,17 +360,14 @@ def get_mq_namespaces() -> List[str]:
 
 def process_events():
     event_content = []
-    namespaces = get_mq_namespaces()
 
-    for namespace in namespaces:
-        event_content.append(
-            {
-                "data": generic.sanitize_for_serialization(
-                    obj=client.CoreV1Api().list_namespaced_event(namespace=namespace)
-                ),
-                "zinfo": f"{namespace}/events.yaml",
-            }
-        )
+    core_v1_api = client.CoreV1Api()
+    event_content.append(
+        {
+            "data": generic.sanitize_for_serialization(obj=core_v1_api.list_event_for_all_namespaces()),
+            "zinfo": "events.yaml",
+        }
+    )
 
     return event_content
 
