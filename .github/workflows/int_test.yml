@@ -58,6 +58,8 @@ jobs:
           - feature: mq
             mq-insecure: true
             no-preflight: true
+          - feature: std
+            ca-valid-days: 3
     name: Integration test
     runs-on: ubuntu-22.04
     outputs:
@@ -121,6 +123,10 @@ jobs:
           --features custom-locations cluster-connect
           --custom-locations-oid ${{ env.CUSTOM_LOCATIONS_OID }}
       - name: "AIO Deployment"
+        env:
+          preflight: ${{ matrix.no-preflight && '--no-preflight'}}
+          mq-insecure: ${{ matrix.mq-insecure && '--mq-insecure'}}
+          ca-valid-days: ${{ matrix.ca-valid-days && format('--ca-valid-days {0}', matrix.ca-valid-days)}}
         run: >-
           az iot ops init
           -g ${{ env.CLUSTER_RG }}
@@ -129,8 +135,9 @@ jobs:
           --sp-app-id ${{ secrets.AZURE_CLIENT_ID }}
           --sp-object-id ${{ secrets.AZURE_OBJECT_ID }}
           --sp-secret ${{ secrets.AZURE_CLIENT_SECRET }}
-          ${{ matrix.no-preflight && '--no-preflight' || ''}}
-          ${{ matrix.mq-insecure && '--mq-insecure' || ''}}
+          ${{ env.preflight || '' }}
+          ${{ env.mq-insecure || '' }}
+          ${{ env.ca-valid-days || '' }}
           --no-progress
       - name: "Allow cluster to finish provisioning"
         run: |
