@@ -121,7 +121,7 @@ jobs:
           --features custom-locations cluster-connect
           --custom-locations-oid ${{ env.CUSTOM_LOCATIONS_OID }}
       - name: "AIO Deployment"
-        run: |-
+        run: >-
           az iot ops init
           -g ${{ env.CLUSTER_RG }}
           --cluster ${{ env.CLUSTER_NAME }}
