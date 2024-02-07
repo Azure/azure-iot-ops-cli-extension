@@ -62,10 +62,6 @@ jobs:
             ca-valid-days: 3
     name: Integration test
     runs-on: ubuntu-22.04
-    outputs:
-      cluster_name: ${{ env.CLUSTER_NAME }}
-      resource_group: ${{ env.CLUSTER_RG }}
-      keyvault_name: ${{ env.KV_NAME }}
     steps:
       - name: "Setup python"
         uses: actions/setup-python@v5
