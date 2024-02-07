@@ -129,8 +129,8 @@ jobs:
           --sp-app-id ${{ secrets.AZURE_CLIENT_ID }}
           --sp-object-id ${{ secrets.AZURE_OBJECT_ID }}
           --sp-secret ${{ secrets.AZURE_CLIENT_SECRET }}
-          ${{ matrix.no-preflight == 'true' && '--no-preflight' || ''}}
-          ${{ matrix.mq-insecure == 'true' && '--mq-insecure' || ''}}
+          ${{ matrix.no-preflight && '--no-preflight' || ''}}
+          ${{ matrix.mq-insecure && '--mq-insecure' || ''}}
           --no-progress
       - name: "Allow cluster to finish provisioning"
         run: |
