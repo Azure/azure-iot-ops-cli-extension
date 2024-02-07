@@ -161,7 +161,7 @@ jobs:
     if: ${{ github.event.inputs.cleanup == 'true' }}
     uses: './.github/workflows/cluster_cleanup.yml'
     with:
-      cluster_prefix: ${{ needs.integration_test.outputs.cluster_name }}
-      resource_group: ${{ needs.integration_test.outputs.resource_group }}
-      keyvault_prefix: ${{ needs.integration_test.outputs.keyvault_name }}
+      cluster_prefix: az-iot-ops-test-cluster${{ github.run_id }}
+      resource_group: ${{ inputs.resource_group }}
+      keyvault_prefix: opstestkv${{ github.run_id }}
     secrets: inherit
