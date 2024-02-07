@@ -16,16 +16,58 @@ from ...generators import generate_generic_id
 BASE_PATH = "azext_edge.edge.providers.orchestration.base"
 
 
+# TODO: move fixtues once functions are moved
+@pytest.fixture
+def mocked_wait_for_terminal_state(mocker):
+    terminal_result = mocker.Mock()
+    terminal_result.as_dict.return_value = generate_generic_id()
+    terminal_patch = mocker.patch(f"{BASE_PATH}.wait_for_terminal_state", autospec=True, return_value=terminal_result)
+    yield terminal_patch
+
+
+@pytest.fixture
+def mocked_get_tenant_id(mocker):
+    yield mocker.patch(f"{BASE_PATH}.get_tenant_id", return_value=generate_generic_id())
+
+
+@pytest.fixture
+def mocked_keyvault_api(mocker, request):
+    is_deployed = getattr(request, "param", True)
+    api_patch = mocker.patch(f"{BASE_PATH}.KEYVAULT_API_V1")
+    api_patch.is_deployed.return_value = is_deployed
+    api_patch.group = generate_generic_id()
+    api_patch.version = generate_generic_id()
+    yield api_patch
+
+
+@pytest.fixture
+def mocked_base_namespace_functions(mocker, request):
+    requests = getattr(request, "param", {})
+    path = requests.get("path", BASE_PATH)
+    get_cluster = requests.get("get_cluster_namespace")
+    get_cluster_patch = mocker.patch(f"{path}.get_cluster_namespace", return_value=get_cluster)
+    create_cluster_patch = mocker.patch(f"{path}.create_cluster_namespace")
+    create_secret_patch = mocker.patch(f"{path}.create_namespaced_secret")
+    create_configmap_patch = mocker.patch(f"{path}.create_namespaced_configmap")
+    create_object_patch = mocker.patch(f"{path}.create_namespaced_custom_objects")
+    yield {
+        "get_cluster_patch": get_cluster_patch,
+        "create_cluster_patch" : create_cluster_patch,
+        "create_secret_patch": create_secret_patch,
+        "create_configmap_patch": create_configmap_patch,
+        "create_object_patch": create_object_patch
+    }
+
+
 @pytest.mark.parametrize("mocked_resource_management_client", [{
     "client_path": BASE_PATH,
     "resources.begin_create_or_update_by_id": {"result": generate_generic_id()}
 }], indirect=True)
 @pytest.mark.parametrize("rotation_poll_interval", ["1h"])
 @pytest.mark.parametrize("extension_name", ["akvsecretsprovider"])
-def test_provision_akv_csi_driver(mocker, mocked_resource_management_client, rotation_poll_interval, extension_name):
-    terminal_result = mocker.Mock()
-    terminal_result.as_dict.return_value = generate_generic_id()
-    terminal_patch = mocker.patch(f"{BASE_PATH}.wait_for_terminal_state", autospec=True, return_value=terminal_result)
+def test_provision_akv_csi_driver(
+    mocked_resource_management_client, mocked_wait_for_terminal_state, rotation_poll_interval, extension_name
+):
     from azext_edge.edge.providers.orchestration.base import provision_akv_csi_driver, KEYVAULT_ARC_EXTENSION_VERSION
     subscription_id = generate_generic_id()
     cluster_name = generate_generic_id()
@@ -40,9 +82,9 @@ def test_provision_akv_csi_driver(mocker, mocked_resource_management_client, rot
         extension_name=extension_name
     )
 
-    assert result == terminal_result.as_dict.return_value
+    assert result == mocked_wait_for_terminal_state.return_value.as_dict.return_value
     poller = mocked_resource_management_client.resources.begin_create_or_update_by_id.return_value
-    terminal_patch.assert_called_once_with(poller)
+    mocked_wait_for_terminal_state.assert_called_once_with(poller)
 
     call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
     expected_id = f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"\
@@ -62,17 +104,12 @@ def test_provision_akv_csi_driver(mocker, mocked_resource_management_client, rot
     assert config_settings["secrets-store-csi-driver.syncSecret.enabled"] == "false"
 
 
-@pytest.mark.parametrize("get_cluster", [False, True])
-def test_configure_cluster_secrets(mocker, get_cluster):
-    api_patch = mocker.patch(f"{BASE_PATH}.KEYVAULT_API_V1")
-    api_patch.is_deployed.return_value = True
-    api_patch.group = generate_generic_id()
-    api_patch.version = generate_generic_id()
-    get_cluster_patch = mocker.patch(f"{BASE_PATH}.get_cluster_namespace", return_value=get_cluster)
-    create_cluster_patch = mocker.patch(f"{BASE_PATH}.create_cluster_namespace")
-    create_secret_patch = mocker.patch(f"{BASE_PATH}.create_namespaced_secret")
+@pytest.mark.parametrize("mocked_base_namespace_functions", [
+    {"get_cluster_namespace": False},
+    {"get_cluster_namespace": True}
+], indirect=True)
+def test_configure_cluster_secrets(mocker, mocked_base_namespace_functions, mocked_keyvault_api):
     get_store_patch = mocker.patch(f"{BASE_PATH}.get_kv_secret_store_yaml", return_value=generate_generic_id())
-    create_object_patch = mocker.patch(f"{BASE_PATH}.create_namespaced_custom_objects")
     from azext_edge.edge.providers.orchestration.base import configure_cluster_secrets
     cluster_namespace = generate_generic_id()
     cluster_secret_ref = generate_generic_id()
@@ -89,9 +126,10 @@ def test_configure_cluster_secrets(mocker, get_cluster):
         keyvault_resource_id=keyvault_resource_id,
         sp_record=sp_record
     )
-    get_cluster_patch.assert_called_once()
-    assert create_cluster_patch.call_count == int(not get_cluster)
-    create_secret_patch.assert_called_once_with(
+    mocked_base_namespace_functions["get_cluster_patch"].assert_called_once()
+    expected_call_count = int(not mocked_base_namespace_functions["get_cluster_patch"].return_value)
+    assert mocked_base_namespace_functions["create_cluster_patch"].call_count == expected_call_count
+    mocked_base_namespace_functions["create_secret_patch"].assert_called_once_with(
         secret_name=cluster_secret_ref,
         namespace=cluster_namespace,
         data={"clientid": sp_record.client_id, "clientsecret": sp_record.secret},
@@ -99,9 +137,9 @@ def test_configure_cluster_secrets(mocker, get_cluster):
         delete_first=True,
     )
     assert get_store_patch.call_count == 5
-    create_object_patch.assert_called_once_with(
-        group=api_patch.group,
-        version=api_patch.version,
+    mocked_base_namespace_functions["create_object_patch"].assert_called_once_with(
+        group=mocked_keyvault_api.group,
+        version=mocked_keyvault_api.version,
         plural="secretproviderclasses",
         namespace=cluster_namespace,
         yaml_objects=[get_store_patch.return_value] * 5,
@@ -109,9 +147,8 @@ def test_configure_cluster_secrets(mocker, get_cluster):
     )
 
 
-def test_configure_cluster_secrets_error(mocker):
-    api_patch = mocker.patch(f"{BASE_PATH}.KEYVAULT_API_V1")
-    api_patch.is_deployed.return_value = False
+@pytest.mark.parametrize("mocked_keyvault_api", [False], indirect=True)
+def test_configure_cluster_secrets_error(mocked_keyvault_api):
     from azext_edge.edge.providers.orchestration.base import configure_cluster_secrets
     with pytest.raises(ValidationError):
         configure_cluster_secrets(
@@ -124,12 +161,11 @@ def test_configure_cluster_secrets_error(mocker):
         )
 
 
-@pytest.mark.parametrize("get_cluster", [False, True])
-def test_configure_cluster_tls(mocker, get_cluster):
-    get_cluster_patch = mocker.patch(f"{BASE_PATH}.get_cluster_namespace", return_value=get_cluster)
-    create_cluster_patch = mocker.patch(f"{BASE_PATH}.create_cluster_namespace")
-    create_secret_patch = mocker.patch(f"{BASE_PATH}.create_namespaced_secret")
-    create_configmap_patch = mocker.patch(f"{BASE_PATH}.create_namespaced_configmap")
+@pytest.mark.parametrize("mocked_base_namespace_functions", [
+    {"get_cluster_namespace": False},
+    {"get_cluster_namespace": True}
+], indirect=True)
+def test_configure_cluster_tls(mocked_base_namespace_functions):
     from azext_edge.edge.providers.orchestration.base import configure_cluster_tls
     cluster_namespace = generate_generic_id()
     public_ca = bytes(generate_generic_id(), 'utf-8')
@@ -141,11 +177,12 @@ def test_configure_cluster_tls(mocker, get_cluster):
         secret_name=generate_generic_id(),
         cm_name=cm_name
     )
-    get_cluster_patch.assert_called_once()
-    assert create_cluster_patch.call_count == int(not get_cluster)
-    create_secret_patch.assert_called_once()
+    mocked_base_namespace_functions["get_cluster_patch"].assert_called_once()
+    expected_call_count = int(not mocked_base_namespace_functions["get_cluster_patch"].return_value)
+    assert mocked_base_namespace_functions["create_cluster_patch"].call_count == expected_call_count
+    mocked_base_namespace_functions["create_secret_patch"].assert_called_once()
 
-    create_configmap_patch.assert_called_once_with(
+    mocked_base_namespace_functions["create_configmap_patch"].assert_called_once_with(
         namespace=cluster_namespace,
         cm_name=cm_name,
         data={"ca.crt": public_ca.decode()},
@@ -170,8 +207,18 @@ def test_configure_cluster_tls(mocker, get_cluster):
 @pytest.mark.parametrize("object_id", [None, generate_generic_id()])
 @pytest.mark.parametrize("secret", [None, generate_generic_id()])
 @pytest.mark.parametrize("secret_valid_days", [365, 100])
-def test_prepare_sp(mocker, mocked_cmd, mocked_send_raw_request, app_id, object_id, secret, secret_valid_days):
-    tenant_patch = mocker.patch(f"{BASE_PATH}.get_tenant_id", return_value=generate_generic_id())
+def test_prepare_sp(
+    mocker,
+    mocked_cmd,
+    mocked_get_tenant_id,
+    mocked_send_raw_request,
+    app_id,
+    object_id,
+    secret,
+    secret_valid_days
+):
+    import datetime
+    timedelta_spy = mocker.spy(datetime, "timedelta")
     access_patch = mocker.patch(f"{BASE_PATH}.ensure_correct_access")
     from azext_edge.edge.providers.orchestration.base import prepare_sp
     deployment_name = generate_generic_id()
@@ -187,8 +234,9 @@ def test_prepare_sp(mocker, mocked_cmd, mocked_send_raw_request, app_id, object_
     assert sp.client_id == (app_id or raw_request_result["appId"])
     assert sp.object_id == (object_id or raw_request_result["id"])
     assert sp.secret == (secret or raw_request_result["secretText"])
-    assert sp.tenant_id == tenant_patch.return_value
+    assert sp.tenant_id == mocked_get_tenant_id.return_value
     assert sp.created_app is not (app_id or object_id)
+    timedelta_spy.assert_called_once_with(days=secret_valid_days)
 
     # check calls one by one
     call_count = 0
@@ -231,7 +279,7 @@ def test_prepare_sp(mocker, mocked_cmd, mocked_send_raw_request, app_id, object_
 
 
 @pytest.mark.parametrize("error_code", [401, 403])
-def test_prepare_sp_catches(mocker, mocked_cmd, mocked_send_raw_request, error_code):
+def test_prepare_sp_catches(mocker, mocked_cmd, mocked_get_tenant_id, mocked_send_raw_request, error_code):
     """Test that this function does not error even if there is an http error - there are 3 cases."""
     from azext_edge.edge.providers.orchestration.base import prepare_sp
     app_id = generate_generic_id()
@@ -253,7 +301,6 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_send_raw_request, error_c
         return request_mock
 
     mocked_send_raw_request.side_effect = custom_responses
-    mocker.patch(f"{BASE_PATH}.get_tenant_id", return_value=generate_generic_id())
     mocker.patch(f"{BASE_PATH}.ensure_correct_access")
     sp = prepare_sp(
         mocked_cmd,
@@ -287,12 +334,13 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_send_raw_request, error_c
 @pytest.mark.parametrize("app_id", [None, generate_generic_id()])
 @pytest.mark.parametrize("object_id", [None, generate_generic_id()])
 @pytest.mark.parametrize("secret", [None, generate_generic_id()])
-def test_prepare_sp_error(mocker, mocked_cmd, mocked_send_raw_request, app_id, object_id, secret):
+def test_prepare_sp_error(
+    mocker, mocked_cmd, mocked_get_tenant_id, mocked_send_raw_request, app_id, object_id, secret
+):
     response = mocker.Mock(status_code=400)
     mocked_send_raw_request.return_value.json.side_effect = HTTPError(
         error_msg=generate_generic_id(), response=response
     )
-    mocker.patch(f"{BASE_PATH}.get_tenant_id", return_value=generate_generic_id())
     mocker.patch(f"{BASE_PATH}.ensure_correct_access")
     from azext_edge.edge.providers.orchestration.base import prepare_sp
     if not all([app_id, object_id, secret]):
