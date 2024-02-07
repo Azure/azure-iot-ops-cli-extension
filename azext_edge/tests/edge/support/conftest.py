@@ -318,10 +318,10 @@ def mocked_list_nodes(mocked_client):
 
 
 @pytest.fixture
-def mocked_list_namespaced_events(mocked_client):
+def mocked_list_cluster_events(mocked_client):
     from kubernetes.client.models import CoreV1EventList, CoreV1Event, V1ObjectMeta
 
-    def _handle_list_namespaced_events(*args, **kwargs):
+    def _handle_list_cluster_events(*args, **kwargs):
         event = CoreV1Event(
             action="mock_action", involved_object="mock_object", metadata=V1ObjectMeta(name="mock_event")
         )
@@ -329,7 +329,7 @@ def mocked_list_namespaced_events(mocked_client):
 
         return event_list
 
-    mocked_client.CoreV1Api().list_namespaced_event.side_effect = _handle_list_namespaced_events
+    mocked_client.CoreV1Api().list_event_for_all_namespaces.side_effect = _handle_list_cluster_events
 
     yield mocked_client
 
@@ -343,9 +343,7 @@ def mocked_list_daemonsets(mocked_client):
         # @vilit - also akri
         daemonset_names = ["mock_daemonset"]
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            daemonset_names.extend(
-                ["aio-akri-agent-daemonset", "svclb-aio-lnm-operator"]
-            )
+            daemonset_names.extend(["aio-akri-agent-daemonset", "svclb-aio-lnm-operator"])
 
         daemonset_list = []
         for name in daemonset_names:
