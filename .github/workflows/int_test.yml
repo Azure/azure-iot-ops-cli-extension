@@ -36,14 +36,6 @@ on:
         required: false
         default: false
 
-env:
-  CLUSTER_NAME: "az-iot-ops-test-cluster-${{ github.run_id }}-${{ github.run_attempt }}"
-  KV_NAME: "opstestkv-${{ github.run_id }}-${{ github.run_attempt }}"
-  CLUSTER_RG: ${{ inputs.resource_group }}
-  CUSTOM_LOCATIONS_OID: "51dfe1e8-70c6-4de5-a08e-e18aff23d815"
-  EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
-  K3S_VERSION: "v1.28.5+k3s1"
-
 permissions:
   # required for OpenID federation
   contents: 'read'
@@ -51,6 +43,20 @@ permissions:
 
 jobs:
   integration_test:
+    env:
+      CLUSTER_NAME: "az-iot-ops-test-cluster-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.feature }}"
+      KV_NAME: "opstestkv-${{ github.run_id }}-${{ github.run_attempt }}"
+      CLUSTER_RG: ${{ inputs.resource_group }}
+      CUSTOM_LOCATIONS_OID: "51dfe1e8-70c6-4de5-a08e-e18aff23d815"
+      EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
+      K3S_VERSION: "v1.28.5+k3s1"
+    strategy:
+      matrix:
+        feature: [std, mq]
+        include:
+          - feature: mq
+            mq-insecure: true
+            no-preflight: true
     name: Integration test
     runs-on: ubuntu-22.04
     outputs:
@@ -114,7 +120,7 @@ jobs:
           --features custom-locations cluster-connect
           --custom-locations-oid ${{ env.CUSTOM_LOCATIONS_OID }}
       - name: "AIO Deployment"
-        run: >-
+        run: |-
           az iot ops init
           -g ${{ env.CLUSTER_RG }}
           --cluster ${{ env.CLUSTER_NAME }}
@@ -122,6 +128,8 @@ jobs:
           --sp-app-id ${{ secrets.AZURE_CLIENT_ID }}
           --sp-object-id ${{ secrets.AZURE_OBJECT_ID }}
           --sp-secret ${{ secrets.AZURE_CLIENT_SECRET }}
+          ${{ matrix.no-preflight == 'true' && '--no-preflight' || ''}}
+          ${{ matrix.mq-insecure == 'true' && '--mq-insecure' || ''}}
           --no-progress
       - name: "Allow cluster to finish provisioning"
         run: |
