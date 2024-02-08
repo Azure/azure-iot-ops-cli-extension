@@ -30,6 +30,12 @@ from ..edge_api import KEYVAULT_API_V1
 from .components import (
     get_kv_secret_store_yaml,
 )
+from .common import (
+    DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
+    GRAPH_V1_ENDPOINT,
+    GRAPH_V1_SP_ENDPOINT,
+    GRAPH_V1_APP_ENDPOINT
+)
 
 logger = get_logger(__name__)
 
@@ -39,13 +45,14 @@ if TYPE_CHECKING:
     from azure.core.polling import LROPoller
 
 
+# TODO: pull out into keyvault file (with other related funcs)
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 KEYVAULT_ARC_EXTENSION_VERSION = "1.5.1"
 
 DEFAULT_POLL_RETRIES = 240
 DEFAULT_POLL_WAIT_SEC = 15
 
-DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS = 365
+EXTENSION_API_VERSION = "2022-11-01"  # TODO: fun testing with newer api
 
 
 class ServicePrincipal(NamedTuple):
@@ -63,7 +70,7 @@ def provision_akv_csi_driver(
     enable_secret_rotation: str,
     rotation_poll_interval: str = "1h",
     extension_name: str = "akvsecretsprovider",
-    **kwargs,
+    **kwargs,  # TODO: someday remove all kwargs from the smaller funcs
 ) -> dict:
     resource_client = get_resource_client(subscription_id=subscription_id)
     return wait_for_terminal_state(
@@ -71,7 +78,7 @@ def provision_akv_csi_driver(
             resource_id=f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
             f"/providers/Microsoft.Kubernetes/connectedClusters/{cluster_name}/Providers"
             f"/Microsoft.KubernetesConfiguration/extensions/{extension_name}",
-            api_version="2022-11-01",
+            api_version=EXTENSION_API_VERSION,
             parameters={
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
@@ -109,9 +116,8 @@ def configure_cluster_secrets(
     if not get_cluster_namespace(namespace=cluster_namespace):
         create_cluster_namespace(namespace=cluster_namespace)
 
-    aio_akv_sp_secret_key = cluster_secret_ref
     create_namespaced_secret(
-        secret_name=aio_akv_sp_secret_key,
+        secret_name=cluster_secret_ref,
         namespace=cluster_namespace,
         data={"clientid": sp_record.client_id, "clientsecret": sp_record.secret},
         labels={"secrets-store.csi.k8s.io/used": "true"},
@@ -187,7 +193,7 @@ def prepare_ca(
 
 def configure_cluster_tls(
     cluster_namespace: str, public_ca: bytes, private_key: bytes, secret_name: str, cm_name: str, **kwargs
-) -> Tuple[str, str, str]:
+):
     from base64 import b64encode
 
     if not get_cluster_namespace(namespace=cluster_namespace):
@@ -204,8 +210,7 @@ def configure_cluster_tls(
         data=data,
         delete_first=True,
     )
-    cm_key = "ca.crt"
-    data = {cm_key: public_ca.decode()}
+    data = {"ca.crt": public_ca.decode()}
     create_namespaced_configmap(namespace=cluster_namespace, cm_name=cm_name, data=data, delete_first=True)
 
 
@@ -238,14 +243,14 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
         existing_sp = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="GET",
-            url=f"https://graph.microsoft.com/v1.0/servicePrincipals/{sp_object_id}",
+            url=f"{GRAPH_V1_SP_ENDPOINT}/{sp_object_id}",
         ).json()
         sp_app_id = existing_sp["appId"]
         try:
             app_reg = send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="GET",
-                url=f"https://graph.microsoft.com/v1.0/applications/{sp_app_id}",
+                url=f"{GRAPH_V1_APP_ENDPOINT}/{sp_app_id}",
             ).json()
         except HTTPError as http_error:
             if http_error.response.status_code not in [401, 403]:
@@ -255,7 +260,7 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
         app_reg = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="POST",
-            url="https://graph.microsoft.com/v1.0/applications",
+            url=GRAPH_V1_APP_ENDPOINT,
             body=json.dumps({"displayName": deployment_name, "signInAudience": "AzureADMyOrg"}),
         ).json()
         app_created = True
@@ -266,7 +271,7 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
             existing_sp = send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="GET",
-                url=f"https://graph.microsoft.com/v1.0/servicePrincipals(appId='{sp_app_id}')",
+                url=f"{GRAPH_V1_SP_ENDPOINT}(appId='{sp_app_id}')",
             ).json()
             sp_object_id = existing_sp["id"]
         except HTTPError as http_error:
@@ -275,49 +280,19 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
             sp = send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="POST",
-                url="https://graph.microsoft.com/v1.0/servicePrincipals",
+                url=GRAPH_V1_SP_ENDPOINT,
                 body=json.dumps({"appId": sp_app_id}),
             ).json()
             sp_object_id = sp["id"]
 
     if app_reg:
-        existing_resource_access: List[dict] = app_reg["requiredResourceAccess"]
-        add_kv_access = True
-        add_basic_graph_access = True
-        for resource_app in existing_resource_access:
-            if resource_app["resourceAppId"] == "cfa8b339-82a2-471a-a3c9-0fc0be7a4093":
-                add_kv_access = False
-            if resource_app["resourceAppId"] == "00000003-0000-0000-c000-000000000000":
-                add_basic_graph_access = False
-
-        if add_kv_access:
-            existing_resource_access.append(
-                {
-                    "resourceAppId": "cfa8b339-82a2-471a-a3c9-0fc0be7a4093",
-                    "resourceAccess": [{"id": "f53da476-18e3-4152-8e01-aec403e6edc0", "type": "Scope"}],
-                },
-            )
-        if add_basic_graph_access:
-            existing_resource_access.append(
-                {
-                    "resourceAppId": "00000003-0000-0000-c000-000000000000",
-                    "resourceAccess": [{"id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d", "type": "Scope"}],
-                },
-            )
-
-        if add_kv_access or add_basic_graph_access:
-            send_raw_request(
-                cli_ctx=cmd.cli_ctx,
-                method="PATCH",
-                url=f"https://graph.microsoft.com/v1.0/myorganization/applications(appId='{sp_app_id}')",
-                body=json.dumps({"requiredResourceAccess": existing_resource_access}),
-            )
+        ensure_correct_access(cmd, sp_app_id, app_reg["requiredResourceAccess"])
 
     if not sp_secret:
         add_secret_op = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="POST",
-            url=f"https://graph.microsoft.com/v1.0/myorganization/applications(appId='{sp_app_id}')/addPassword",
+            url=f"{GRAPH_V1_ENDPOINT}/myorganization/applications(appId='{sp_app_id}')/addPassword",
             body=json.dumps({"passwordCredential": {"displayName": deployment_name, "endDateTime": timestamp_str}}),
         )
         sp_secret = add_secret_op.json()["secretText"]
@@ -329,6 +304,35 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
         tenant_id=get_tenant_id(),
         created_app=app_created,
     )
+
+
+def ensure_correct_access(cmd, sp_app_id: str, existing_resource_access: List[dict]):
+    from azure.cli.core.util import send_raw_request
+    permission_map = {
+        # keyvault to have full access to akv service
+        "cfa8b339-82a2-471a-a3c9-0fc0be7a4093": "f53da476-18e3-4152-8e01-aec403e6edc0",
+        # ms graph to Sign in and read user profile
+        "00000003-0000-0000-c000-000000000000": "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
+    }
+    for resource_app in existing_resource_access:
+        if resource_app["resourceAppId"] in permission_map:
+            permission_map.pop(resource_app["resourceAppId"], None)
+
+    for app, permission in permission_map.items():
+        existing_resource_access.append(
+            {
+                "resourceAppId": app,
+                "resourceAccess": [{"id": permission, "type": "Scope"}],
+            },
+        )
+
+    if permission_map:
+        send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="PATCH",
+            url=f"{GRAPH_V1_ENDPOINT}/myorganization/applications(appId='{sp_app_id}')",
+            body=json.dumps({"requiredResourceAccess": existing_resource_access}),
+        )
 
 
 def validate_keyvault_permission_model(subscription_id: str, keyvault_resource_id: str, **kwargs) -> dict:
@@ -381,18 +385,19 @@ def prepare_keyvault_secret(
 ) -> str:
     from azure.cli.core.util import send_raw_request
 
+    url = vault_uri + "/secrets/{0}{1}?api-version=7.4"
     if keyvault_sat_secret_name:
         get_secretver: dict = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="GET",
-            url=f"{vault_uri}/secrets/{keyvault_sat_secret_name}/versions?api-version=7.4",
+            url=url.format(keyvault_sat_secret_name, "/versions"),
             resource="https://vault.azure.net",
         ).json()
         if not get_secretver.get("value"):
             send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="PUT",
-                url=f"{vault_uri}/secrets/{keyvault_sat_secret_name}?api-version=7.4",
+                url=url.format(keyvault_sat_secret_name, ""),
                 resource="https://vault.azure.net",
                 body=json.dumps({"value": generate_secret()}),
             ).json()
@@ -401,7 +406,7 @@ def prepare_keyvault_secret(
         send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="PUT",
-            url=f"{vault_uri}/secrets/{keyvault_sat_secret_name}?api-version=7.4",
+            url=url.format(keyvault_sat_secret_name, ""),
             resource="https://vault.azure.net",
             body=json.dumps({"value": generate_secret()}),
         ).json()
@@ -409,6 +414,7 @@ def prepare_keyvault_secret(
     return keyvault_sat_secret_name
 
 
+# TODO: should be in utils
 def get_tenant_id():
     from azure.cli.core._profile import Profile
 
@@ -483,6 +489,7 @@ def process_default_location(kwargs: dict):
             kwargs["location"] = connected_cluster_location
 
 
+# TODO: should be in utils
 def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
     # resource client does not handle sigint well
     counter = 0
