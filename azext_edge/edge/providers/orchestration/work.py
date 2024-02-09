@@ -192,6 +192,7 @@ class WorkManager:
             process_default_location,
             provision_akv_csi_driver,
             validate_keyvault_permission_model,
+            verify_custom_locations_enabled,
             wait_for_terminal_state,
         )
         from .host import verify_cli_client_connections
@@ -226,6 +227,9 @@ class WorkManager:
                     verify_write_permission_against_rg(
                         **self._kwargs,
                     )
+
+                verify_custom_locations_enabled()
+
                 # Use pre-flight deployment as a shortcut to evaluate permissions
                 template, parameters = self.build_template(work_kpis=work_kpis)
                 deployment_result, deployment_poller = deploy_template(
