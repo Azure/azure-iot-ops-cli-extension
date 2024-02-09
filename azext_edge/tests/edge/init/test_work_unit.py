@@ -519,6 +519,7 @@ def test_work_order(
     mocked_wait_for_terminal_state: Mock,
     mocked_file_exists: Mock,
     mocked_connected_cluster_location: Mock,
+    mocked_verify_custom_locations_enabled: Mock,
     spy_get_current_template_copy: Mock,
     cluster_name,
     cluster_namespace,
@@ -576,12 +577,17 @@ def test_work_order(
     if not no_preflight:
         expected_template_copies += 1
         mocked_register_providers.assert_called_once()
+        mocked_verify_custom_locations_enabled.assert_called_once()
+
         if not disable_rsync_rules:
             mocked_verify_write_permission_against_rg.assert_called_once()
             mocked_verify_write_permission_against_rg.call_args.kwargs["subscription_id"]
             mocked_verify_write_permission_against_rg.call_args.kwargs["resource_group_name"] == resource_group_name
         else:
             mocked_verify_write_permission_against_rg.assert_not_called()
+    else:
+        mocked_register_providers.assert_not_called()
+        mocked_verify_custom_locations_enabled.assert_not_called()
 
     if not keyvault_resource_id:
         mocked_edge_api_keyvault_api_v1.is_deployed.assert_called_once()

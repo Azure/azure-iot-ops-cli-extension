@@ -6,11 +6,12 @@
 
 import json
 from time import sleep
-from typing import List, NamedTuple, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple
 
 from azure.cli.core.azclierror import HTTPError, ValidationError
 from knack.log import get_logger
 
+from ...common import K8sSecretType
 from ...util import (
     generate_secret,
     generate_self_signed_cert,
@@ -25,24 +26,25 @@ from ..base import (
     create_namespaced_secret,
     get_cluster_namespace,
 )
-from ...common import K8sSecretType
 from ..edge_api import KEYVAULT_API_V1
-from .components import (
-    get_kv_secret_store_yaml,
-)
+from ..k8s.cluster_role_binding import get_binding
 from .common import (
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
+    EXTENDED_LOCATION_ROLE_BINDING,
+    GRAPH_V1_APP_ENDPOINT,
     GRAPH_V1_ENDPOINT,
     GRAPH_V1_SP_ENDPOINT,
-    GRAPH_V1_APP_ENDPOINT
+)
+from .components import (
+    get_kv_secret_store_yaml,
 )
 
 logger = get_logger(__name__)
 
 
 if TYPE_CHECKING:
-    from azure.mgmt.resource.resources.models import GenericResource
     from azure.core.polling import LROPoller
+    from azure.mgmt.resource.resources.models import GenericResource
 
 
 # TODO: pull out into keyvault file (with other related funcs)
@@ -308,11 +310,12 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
 
 def ensure_correct_access(cmd, sp_app_id: str, existing_resource_access: List[dict]):
     from azure.cli.core.util import send_raw_request
+
     permission_map = {
         # keyvault to have full access to akv service
         "cfa8b339-82a2-471a-a3c9-0fc0be7a4093": "f53da476-18e3-4152-8e01-aec403e6edc0",
         # ms graph to Sign in and read user profile
-        "00000003-0000-0000-c000-000000000000": "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
+        "00000003-0000-0000-c000-000000000000": "e1fe6dd8-ba31-4d61-89e7-88639da4683d",
     }
     for resource_app in existing_resource_access:
         if resource_app["resourceAppId"] in permission_map:
@@ -499,3 +502,12 @@ def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
         if poller.done():
             break
     return poller.result()
+
+
+def verify_custom_locations_enabled():
+    target_binding = get_binding(EXTENDED_LOCATION_ROLE_BINDING)
+    if not target_binding:
+        raise ValidationError(
+            "The custom-locations feature is required but not enabled on the cluster. For guidance refer to:\n"
+            "https://aka.ms/ArcK8sCustomLocationsDocsEnableFeature"
+        )
