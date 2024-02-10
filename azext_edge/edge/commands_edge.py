@@ -140,11 +140,14 @@ def init(
     from .providers.orchestration import deploy
     from .util import url_safe_hash_phrase
     from .util.sp import LoggedInPrincipal
+    from .notify import check_latest
 
+    check_latest()
     if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
         logger.warning("Nothing to do :)")
         return
 
+    return
     load_config_context(context_name=context_name)
 
     if keyvault_resource_id and not show_template:

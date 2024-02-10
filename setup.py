@@ -33,6 +33,7 @@ DEPENDENCIES = [
     "azure-identity>=1.14.1,<2.0",
     "protobuf~=4.25.0",
     "opentelemetry-proto~=1.20.0",
+    "packaging>=23.2",
 ]
 
 CLASSIFIERS = [
