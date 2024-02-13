@@ -44,3 +44,13 @@ def mocked_send_raw_request(request, mocker):
     patched = mocker.patch("azure.cli.core.util.send_raw_request", autospec=True)
     patched.return_value = request_mock
     yield patched
+
+
+# Int test fixtures
+@pytest.fixture(scope="module")
+def tracked_files():
+    from .helpers import remove_file_or_folder
+    result = []
+    yield result
+    for file in result:
+        remove_file_or_folder(file)

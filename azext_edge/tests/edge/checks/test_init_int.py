@@ -51,26 +51,3 @@ def test_check(init_setup, detail_level, services_map, post, pre):
     assert bool(result.get("preDeployment")) == pre
 
     # TODO: see how specific to get - for now keep it simple
-
-
-# @pytest.mark.parametrize("bundle_dir", [None, "support_bundles"])
-# @pytest.mark.parametrize("services_map", [
-#     ("akri", AkriResourceKinds.list()),
-#     ("dataprocessor", DataProcessorResourceKinds.list()),
-#     ("lnm", LnmResourceKinds.list()),
-#     ("mq", MqResourceKinds.list()),
-#     ("opcua", OpcuaResourceKinds.list())
-# ])
-# @pytest.mark.parametrize("mq_traces", [False, True])
-# def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
-
-#     command = f"az iot ops support create-bundle --mq-traces {mq_traces} --ops-service {ops_service}"
-#     if bundle_dir:
-#         command += f" --bundle-dir {bundle_dir}"
-#         run(f"mkdir {bundle_dir}")
-#     result = run(command)
-#     assert result["bundlePath"]
-#     tracked_files.append(result["bundlePath"])
-
-#     if bundle_dir:
-#         run(f"rm -r {bundle_dir}")
