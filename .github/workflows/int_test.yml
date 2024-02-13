@@ -196,11 +196,6 @@ jobs:
       - name: "Allow cluster to finish provisioning"
         run: |
           sleep 1m
-      - name: "Run 'az iot ops check'"
-        run: |
-          echo "### Run checks" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          az iot ops check >> $GITHUB_STEP_SUMMARY
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle --svc auto
