@@ -105,7 +105,7 @@ def load_iotops_arguments(self, _):
             "resource_kinds",
             nargs="*",
             options_list=["--resources"],
-            choices=CaseInsensitiveList(
+            choices=set(CaseInsensitiveList(
                 [
                     DataProcessorResourceKinds.DATASET.value,
                     DataProcessorResourceKinds.PIPELINE.value,
@@ -121,7 +121,7 @@ def load_iotops_arguments(self, _):
                     AkriResourceKinds.CONFIGURATION.value,
                     AkriResourceKinds.INSTANCE.value,
                 ]
-            ),
+            )),
             help="Only run checks on specific resource kinds. Use space-separated values.",
         ),
         context.argument(
