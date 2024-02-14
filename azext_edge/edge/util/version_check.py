@@ -27,12 +27,18 @@ SESSION_KEY_LATEST_VERSION = "latestVersion"
 SESSION_KEY_FORMAT_VERSION = "formatVersion"
 FORMAT_VERSION_V1_VALUE = "v1"
 FETCH_LATEST_AFTER_DAYS = 1
+CONFIG_ROOT_LABEL = "iotops"
+CONFIG_ACTION_LABEL = "check_latest"
 
 
 console = Console(width=88, stderr=True, highlight=False, safe_box=True)
 
 
 def check_latest(cmd):
+    should_check_latest = cmd.cli_ctx.config.getboolean(CONFIG_ROOT_LABEL, "check_latest", fallback=True)
+    if not should_check_latest:
+        return
+
     index = IndexManager(cmd)
     upgrade_semver = index.upgrade_available()
 
