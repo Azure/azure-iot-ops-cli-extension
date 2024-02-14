@@ -140,7 +140,7 @@ def init(
     from .providers.orchestration import deploy
     from .util import url_safe_hash_phrase
     from .util.sp import LoggedInPrincipal
-    from .util.notify import check_latest
+    from .util.version_check import check_latest
 
     check_latest(cmd)
     if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):

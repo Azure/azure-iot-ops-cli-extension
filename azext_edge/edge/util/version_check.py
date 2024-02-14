@@ -6,10 +6,10 @@
 
 import os
 import re
+from datetime import datetime, timedelta
+from typing import Optional
 
 import requests
-from datetime import datetime, timedelta
-from azure.cli.core._session import Session
 from knack.log import get_logger
 from rich.console import Console
 
@@ -24,45 +24,65 @@ GH_CLI_CONSTANTS_ENDPOINT = (
 SESSION_FILE_NAME = "iotOpsVersion.json"
 SESSION_KEY_LAST_FETCHED = "lastFetched"
 SESSION_KEY_LATEST_VERSION = "latestVersion"
+SESSION_KEY_FORMAT_VERSION = "formatVersion"
+FORMAT_VERSION_V1_VALUE = "v1"
+FETCH_LATEST_AFTER_DAYS = 1
+
 
 console = Console(width=88, stderr=True, highlight=False, safe_box=True)
 
 
-# TODO: --only-show-errors
 def check_latest(cmd):
-    # with console.status("Checking for updates..."):
-    #     sleep(0.5)
     index = IndexManager(cmd)
     upgrade_semver = index.upgrade_available()
+
     if upgrade_semver:
-        console.print(
-            "[dim italic]Update is available. Install with 'az extension --upgrade --name azure-iot-ops'.",
-        )
+        update_text = "Update available. Install with '{}az extension --upgrade --name azure-iot-ops{}'."
+        logger.debug(update_text.format("", ""))
+        only_show_errors = getattr(cmd.cli_ctx, "only_show_errors", False)
+        if not only_show_errors:
+            console.print(
+                f":dim_button: [dim italic]{update_text.format('[green]', '[/green]')}",
+            )
 
 
 class IndexManager:
-    def __init__(self, cmd, min_notify_hours: int = 2):
+    def __init__(self, cmd):
         self.cmd = cmd
         self.config_dir = self.cmd.cli_ctx.config.config_dir
-        self.iot_ops_session = Session()
-        self.iot_ops_session.load(os.path.join(self.config_dir, SESSION_FILE_NAME))
 
-    def upgrade_available(self) -> bool:
+    def upgrade_available(self) -> Optional[str]:
         from packaging import version
 
         try:
+            # Import here for exception safety
+            from azure.cli.core._session import Session
+
+            self.iot_ops_session = Session()
+            self.iot_ops_session.load(os.path.join(self.config_dir, SESSION_FILE_NAME))
+
             latest_cli_version = CURRENT_CLI_VERSION
             last_fetched = self.iot_ops_session.get(SESSION_KEY_LAST_FETCHED)
             if last_fetched:
                 last_fetched = datetime.strptime(last_fetched, "%Y-%m-%d %H:%M:%S.%f")
-            if not last_fetched or datetime.now() < last_fetched + timedelta(days=1):
+                latest_cli_version = self.iot_ops_session.get(SESSION_KEY_LATEST_VERSION)
+
+            if not last_fetched or datetime.now() > last_fetched + timedelta(days=FETCH_LATEST_AFTER_DAYS):
                 # Record attempted last fetch
                 self.iot_ops_session[SESSION_KEY_LAST_FETCHED] = str(datetime.now())
+                # Set format version though only v1 is supported now
+                self.iot_ops_session[SESSION_KEY_FORMAT_VERSION] = FORMAT_VERSION_V1_VALUE
                 if check_connectivity(url=GH_CLI_CONSTANTS_ENDPOINT):
-                    latest_cli_version = get_latest_from_github(url=GH_CLI_CONSTANTS_ENDPOINT)
-                    self.iot_ops_session[SESSION_KEY_LATEST_VERSION] = latest_cli_version
+                    _just_fetched_gh_version = get_latest_from_github(url=GH_CLI_CONSTANTS_ENDPOINT)
+                    if _just_fetched_gh_version:
+                        latest_cli_version = _just_fetched_gh_version
+                        self.iot_ops_session[SESSION_KEY_LATEST_VERSION] = latest_cli_version
 
-            return version.parse(latest_cli_version) > version.parse(CURRENT_CLI_VERSION)
+            is_upgrade = version.parse(latest_cli_version) > version.parse(CURRENT_CLI_VERSION)
+            if is_upgrade:
+                return latest_cli_version
+
+        # If anything goes wrong CLI should not crash
         except Exception as ae:
             logger.debug(ae)
 
@@ -88,14 +108,14 @@ def get_latest_from_github(url: str = GH_CLI_CONSTANTS_ENDPOINT) -> str:
                     return match.group(1)
     except Exception as ex:  # pylint: disable=broad-except
         logger.info("Failed to get the latest version from '%s'. %s", url, str(ex))
-        return None
 
 
 def check_connectivity(url, max_retries=3, timeout=10):
+    # TODO: Move this function as general util after more testing
     import timeit
 
     start = timeit.default_timer()
-    success = None
+    success = False
     try:
         with requests.Session() as s:
             s.mount(url, requests.adapters.HTTPAdapter(max_retries=max_retries))
@@ -104,7 +124,7 @@ def check_connectivity(url, max_retries=3, timeout=10):
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as ex:
         logger.info("Connectivity problem detected.")
         logger.debug(ex)
-        success = False
+
     stop = timeit.default_timer()
     logger.debug("Connectivity check: %s sec", stop - start)
     return success
