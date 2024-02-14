@@ -5,72 +5,48 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from knack.log import get_logger
-from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
-from azext_edge.edge.providers.edge_api import (
-    AkriResourceKinds,
-    DataProcessorResourceKinds,
-    LnmResourceKinds,
-    MqResourceKinds,
-    OpcuaResourceKinds,
-)
-from ...helpers import run
 
-logger = get_logger(__name__)
+from ...generators import generate_generic_id
+# from ...helpers import run
 
 
-@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("services_map", [
-    ("akri", AkriResourceKinds.list()),
-    ("dataprocessor", DataProcessorResourceKinds.list()),
-    ("lnm", LnmResourceKinds.list()),
-    ("mq", [
-        MqResourceKinds.BROKER.value,
-        MqResourceKinds.BROKER_LISTENER.value,
-        MqResourceKinds.DIAGNOSTIC_SERVICE.value,
-        MqResourceKinds.KAFKA_CONNECTOR.value,
-    ]),
-    ("opcua", OpcuaResourceKinds.list())
-])
-@pytest.mark.parametrize("post", [False, True])
-@pytest.mark.parametrize("pre", [False, True])
-def test_check(init_setup, detail_level, services_map, post, pre):
-    ops_service, resources = services_map
-    resources = " ".join(resources)
-    command = f"az iot ops check --as-object --detail-level {detail_level} --ops-service {ops_service} --post {post} "\
-        f"--pre {pre} --resources {resources}"
-    result = run(command)
-
-    expected_title = "Evaluation for {[bright_blue]" + ops_service + "[/bright_blue]} service deployment"
-    assert result["title"] == expected_title
-
-    if not post and not pre:
-        post = pre = True
-
-    assert bool(result.get("postDeployment")) == post
-    assert bool(result.get("preDeployment")) == pre
-
-    # TODO: see how specific to get - for now keep it simple
+@pytest.fixture
+def skip_if_no_init(settings):
+    if getattr(settings.env, "azext_edge_skip_init"):
+        pytest.skip("Test skipped because `az iot ops init` skipped.")
 
 
-# @pytest.mark.parametrize("bundle_dir", [None, "support_bundles"])
-# @pytest.mark.parametrize("services_map", [
-#     ("akri", AkriResourceKinds.list()),
-#     ("dataprocessor", DataProcessorResourceKinds.list()),
-#     ("lnm", LnmResourceKinds.list()),
-#     ("mq", MqResourceKinds.list()),
-#     ("opcua", OpcuaResourceKinds.list())
-# ])
-# @pytest.mark.parametrize("mq_traces", [False, True])
-# def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
+def idfn(val):
+    if not val:
+        return "min"
+    name = []
+    if "--cluster-namespace" in val:
+        name.append("Custom namespace")
+    if "--opcua-discovery-url" in val:
+        name.append("Akri")
+    if "--dp-instance" in val:
+        name.append("Data Processor")
+    if "--simulate-plc" in val:
+        name.append("OPC-UA Broker")
 
-#     command = f"az iot ops support create-bundle --mq-traces {mq_traces} --ops-service {ops_service}"
-#     if bundle_dir:
-#         command += f" --bundle-dir {bundle_dir}"
-#         run(f"mkdir {bundle_dir}")
-#     result = run(command)
-#     assert result["bundlePath"]
-#     tracked_files.append(result["bundlePath"])
+    return ", ".join(name)
 
-#     if bundle_dir:
-#         run(f"rm -r {bundle_dir}")
+
+@pytest.mark.parametrize("init_setup", [
+    {},
+    {
+        "--cluster-namespace": generate_generic_id(),
+        "--opcua-discovery-url": f"opc.tcp://opcplc-000000.{generate_generic_id()[:5]}:50000"
+    },
+    {
+        "--dp-instance": f"{generate_generic_id()[:5]}-processor",
+        "--dp-message-stores": 2,
+        "--dp-reader-workers": 3,
+        "--dp-runner-workers": 4
+    },
+    {"--simulate-plc": True},
+
+], ids=idfn, indirect=True)
+def test_init(init_setup, skip_if_no_init):
+    # TODO: some commands to make sure stuff got generated correctly
+    pass

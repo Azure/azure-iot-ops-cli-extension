@@ -139,6 +139,8 @@ def init_setup(request, tracked_resources, tracked_keyvault, settings):
     except CLIInternalError:
         raise CLIInternalError("Failed to access cluster. Required for testing.")
     if settings.env.azext_edge_skip_init:
+        if not settings.env.azext_edge_cluster:
+            raise CLIInternalError("Cluster name required if not running init.")
         yield {
             "clusterName": settings.env.azext_edge_cluster,
             "resourceGroup": settings.env.azext_edge_testrg
@@ -152,7 +154,8 @@ def init_setup(request, tracked_resources, tracked_keyvault, settings):
     run_id = request.node.callspec.id
     cluster_name = settings.env.azext_edge_cluster or f"az-iot-ops-test-cluster-{run_id}"
     try:
-        run(f"az connectedk8s connect --name {cluster_name} -g {settings.env.azext_edge_testrg}")
+        result = run(f"az connectedk8s connect --name {cluster_name} -g {settings.env.azext_edge_testrg}")
+        tracked_resources.append(result["id"])
     except CLIInternalError:
         raise CLIInternalError("Failed to connect cluster. Required for testing.")
 
@@ -162,8 +165,10 @@ def init_setup(request, tracked_resources, tracked_keyvault, settings):
         command += f" {arg} {scenario[arg]}"
 
     result = run(command)
+    # reverse the list so things can be deleted in the right order
+    tracked_resources.extend(result["resources"][::-1])
     assert result["clusterName"] == cluster_name
-    assert result["clusterNamespace"] == scenario.get()
+    assert result["clusterNamespace"] == scenario.get("--cluster-namespace", "azure-iot-operations")
     assert result["deploymentLink"]
     assert result["deploymentName"]
 
@@ -178,12 +183,9 @@ def init_setup(request, tracked_resources, tracked_keyvault, settings):
     assert dstate["opsVersion"]["opcUaBroker"] == "0.2.0-preview"
     assert dstate["opsVersion"]["processor"] == "0.1.2-preview"
 
-    # cresources = result["resources"]
-
     assert result["tls"]["aioTrustConfigMap"] == "aio-ca-trust-bundle-test-only"
     assert result["tls"]["aioTrustSecretName"] == "aio-ca-key-pair-test-only"
 
     # just incase
     run("az iot ops verify-host -y")
     yield result
-
