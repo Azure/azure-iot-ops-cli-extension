@@ -173,10 +173,10 @@ jobs:
           ca-file: ${{ matrix.ca-file && format('--ca-file {0}', matrix.ca-file) || '' }}
           ca-key-file: ${{ matrix.ca-key-file && format('--ca-key-file {0}', matrix.ca-key-file) || '' }}
           ca-valid-days: ${{ matrix.ca-valid-days && format('--ca-valid-days {0}', matrix.ca-valid-days) || '' }}
-          disable-rsync-rules: ${{ matrix.disable-rsync-rules == 'true' && '--disable-rsync-rules' || '' }}
+          disable-rsync-rules: ${{ matrix.disable-rsync-rules && '--disable-rsync-rules' || '' }}
           kv-sat-secret-name: ${{ matrix.kv-sat-secret-name && format('--kv-sat-secret-name {0}', matrix.kv-sat-secret-name) || '' }}
-          mq-insecure: ${{ matrix.mq-insecure == 'true' && '--mq-insecure' || '' }}
-          no-preflight: ${{ matrix.no-preflight == 'true' && '--no-preflight' || '' }}
+          mq-insecure: ${{ matrix.mq-insecure && '--mq-insecure' || '' }}
+          no-preflight: ${{ matrix.no-preflight && '--no-preflight' || '' }}
         run: >-
           az iot ops init
           -g ${{ env.RESOURCE_GROUP }}
