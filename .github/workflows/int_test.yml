@@ -7,16 +7,16 @@ on:
         type: string
         required: true
         default: ops-cli-int-test-rg
+      custom-locations-oid:
+        description: Custom Locations OID
+        type: string
+        required: false
+        default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
       cleanup:
         description: Attempt to cleanup resources after testing
         type: boolean
         required: false
         default: false
-      custom-locations-oid:
-        description: Object ID of Custom Locations RP
-        type: string
-        required: false
-        default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
     secrets:
       # required for az login
       AZURE_CLIENT_ID:
@@ -28,7 +28,7 @@ on:
       # optional --sp-* init params
       AIO_SP_APP_ID:
       AIO_SP_OBJECT_ID:
-      AIO_SP_APP_SECRET:
+      AIO_SP_SECRET:
   workflow_dispatch:
     inputs:
       resource_group:
@@ -36,16 +36,17 @@ on:
         type: string
         required: true
         default: ops-cli-int-test-rg
-      cleanup:
-        description: Attempt to cleanup resources after testing
-        type: boolean
-        required: false
-        default: false
       custom-locations-oid:
         description: Object ID of Custom Locations RP
         type: string
         required: false
         default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+      cleanup:
+        description: Attempt to cleanup resources after testing
+        type: boolean
+        required: false
+        default: false
+
 permissions:
   # required for OpenID federation
   contents: 'read'
@@ -77,18 +78,18 @@ jobs:
       K3S_VERSION: "v1.28.5+k3s1"
     strategy:
       matrix:
-        feature: [default, mq-ins, syncrules, ca-certs]
+        feature: [default, mq-insecure, no-syncrules, ca-certs]
         include:
           # default / limited options
           - feature: default
             ca-valid-days: 3
             kv-sat-secret-name: test-kv-secret
           # test --mq-insecure deployment
-          - feature: mq-ins
+          - feature: mq-insecure
             mq-insecure: true
             no-preflight: true
           # test disabling custom sync rules
-          - feature: syncrules
+          - feature: no-syncrules
             disable-rsync-rules: true
           # test custom ca files
           - feature: ca-certs
@@ -189,7 +190,7 @@ jobs:
           no-preflight: ${{ matrix.no-preflight && '--no-preflight' || '' }}
           SP_APP_ID: ${{ secrets.AIO_SP_APP_ID && format('--sp-app-id {0}', secrets.AIO_SP_APP_ID) || '' }}
           SP_OBJECT_ID: ${{ secrets.AIO_SP_OBJECT_ID && format('--sp-object-id {0}', secrets.AIO_SP_OBJECT_ID) || '' }}
-          SP_APP_SECRET: ${{ secrets.AIO_SP_APP_SECRET && format('--sp-secret {0}', secrets.AIO_SP_APP_SECRET) || '' }}
+          SP_APP_SECRET: ${{ secrets.AIO_SP_SECRET && format('--sp-secret {0}', secrets.AIO_SP_SECRET) || '' }}
         run: >-
           az iot ops init
           -g ${{ env.RESOURCE_GROUP }}
