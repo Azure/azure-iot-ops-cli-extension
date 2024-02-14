@@ -18,16 +18,17 @@ on:
         required: false
         default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
     secrets:
+      # required for az login
       AZURE_CLIENT_ID:
         required: true
       AZURE_TENANT_ID:
         required: true
       AZURE_SUBSCRIPTION_ID:
         required: true
-      AZURE_OBJECT_ID:
-        required: true
-      AZURE_CLIENT_SECRET:
-        required: true
+      # optional --sp-* init params
+      AIO_SP_APP_ID:
+      AIO_SP_OBJECT_ID:
+      AIO_SP_APP_SECRET:
   workflow_dispatch:
     inputs:
       resource_group:
@@ -186,14 +187,17 @@ jobs:
           kv-sat-secret-name: ${{ matrix.kv-sat-secret-name && format('--kv-sat-secret-name {0}', matrix.kv-sat-secret-name) || '' }}
           mq-insecure: ${{ matrix.mq-insecure && '--mq-insecure' || '' }}
           no-preflight: ${{ matrix.no-preflight && '--no-preflight' || '' }}
+          SP_APP_ID: ${{ secrets.AIO_SP_APP_ID && format('--sp-app-id {0}', secrets.AIO_SP_APP_ID) || '' }}
+          SP_OBJECT_ID: ${{ secrets.AIO_SP_OBJECT_ID && format('--sp-object-id {0}', secrets.AIO_SP_OBJECT_ID) || '' }}
+          SP_APP_SECRET: ${{ secrets.AIO_SP_APP_SECRET && format('--sp-secret {0}', secrets.AIO_SP_APP_SECRET) || '' }}
         run: >-
           az iot ops init
           -g ${{ env.RESOURCE_GROUP }}
           --cluster ${{ env.CLUSTER_NAME }}
           --kv-id ${{ env.KV_ID }}
-          --sp-app-id ${{ secrets.AZURE_CLIENT_ID }}
-          --sp-object-id ${{ secrets.AZURE_OBJECT_ID }}
-          --sp-secret ${{ secrets.AZURE_CLIENT_SECRET }}
+          ${{ env.SP_APP_ID }}
+          ${{ env.SP_OBJECT_ID }}
+          ${{ env.SP_APP_SECRET }}
           ${{ env.ca-file }}
           ${{ env.ca-key-file }}
           ${{ env.ca-valid-days }}
