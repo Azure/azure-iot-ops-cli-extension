@@ -136,18 +136,19 @@ def init(
     no_preflight: Optional[bool] = None,
     disable_rsync_rules: Optional[bool] = None,
     context_name: Optional[str] = None,
+    ensure_latest: Optional[bool] = None,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration import deploy
     from .util import url_safe_hash_phrase
     from .util.sp import LoggedInPrincipal
     from .util.version_check import check_latest
 
-    check_latest(cmd)
     if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
         logger.warning("Nothing to do :)")
         return
 
-    return
+    check_latest(cmd=cmd, force_refresh=ensure_latest, throw_if_upgrade=ensure_latest)
+
     load_config_context(context_name=context_name)
 
     if keyvault_resource_id and not show_template:

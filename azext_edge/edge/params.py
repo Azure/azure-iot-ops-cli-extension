@@ -276,6 +276,12 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Resource sync rules will not be included in the deployment.",
         )
+        context.argument(
+            "ensure_latest",
+            options_list=["--check-latest"],
+            arg_type=get_three_state_flag(),
+            help="Checks if the latest IoT Ops CLI is installed, raising an error if an upgrade is available.",
+        )
         # Akri
         context.argument(
             "opcua_discovery_endpoint",

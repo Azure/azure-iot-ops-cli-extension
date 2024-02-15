@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import requests
+from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
 from rich.console import Console
 
@@ -34,17 +35,20 @@ CONFIG_ACTION_LABEL = "check_latest"
 console = Console(width=88, stderr=True, highlight=False, safe_box=True)
 
 
-def check_latest(cmd):
-    should_check_latest = cmd.cli_ctx.config.getboolean(CONFIG_ROOT_LABEL, "check_latest", fallback=True)
-    if not should_check_latest:
+def check_latest(cmd, force_refresh: Optional[bool] = False, throw_if_upgrade: Optional[bool] = False):
+    should_check_latest = cmd.cli_ctx.config.getboolean(CONFIG_ROOT_LABEL, CONFIG_ACTION_LABEL, fallback=True)
+    if not should_check_latest and not force_refresh:
+        logger.debug("Check for updates is disabled.")
         return
 
     index = IndexManager(cmd)
-    upgrade_semver = index.upgrade_available()
+    upgrade_semver = index.upgrade_available(force_refresh=force_refresh)
 
     if upgrade_semver:
         update_text = "Update available. Install with '{}az extension --upgrade --name azure-iot-ops{}'."
         logger.debug(update_text.format("", ""))
+        if throw_if_upgrade:
+            raise ValidationError(update_text.format("", ""))
         only_show_errors = getattr(cmd.cli_ctx, "only_show_errors", False)
         if not only_show_errors:
             console.print(
@@ -57,7 +61,7 @@ class IndexManager:
         self.cmd = cmd
         self.config_dir = self.cmd.cli_ctx.config.config_dir
 
-    def upgrade_available(self) -> Optional[str]:
+    def upgrade_available(self, force_refresh: Optional[bool] = False) -> Optional[str]:
         from packaging import version
 
         try:
@@ -73,7 +77,11 @@ class IndexManager:
                 last_fetched = datetime.strptime(last_fetched, "%Y-%m-%d %H:%M:%S.%f")
                 latest_cli_version = self.iot_ops_session.get(SESSION_KEY_LATEST_VERSION)
 
-            if not last_fetched or datetime.now() > last_fetched + timedelta(days=FETCH_LATEST_AFTER_DAYS):
+            if (
+                not last_fetched
+                or force_refresh
+                or datetime.now() > last_fetched + timedelta(days=FETCH_LATEST_AFTER_DAYS)
+            ):
                 # Record attempted last fetch
                 self.iot_ops_session[SESSION_KEY_LAST_FETCHED] = str(datetime.now())
                 # Set format version though only v1 is supported now
