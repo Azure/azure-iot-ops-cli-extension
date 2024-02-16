@@ -35,7 +35,8 @@ class ConnectedCluster:
         # TODO: This is not the right approach.
         additional_properties: dict = self.resource_client.resources.get_by_id(
             resource_id=f"/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group_name}"
-            f"/providers/Microsoft.Kubernetes/connectedClusters/{self.cluster_name}/Providers/Microsoft.KubernetesConfiguration/extensions",
+            f"/providers/Microsoft.Kubernetes/connectedClusters/{self.cluster_name}"
+            "/providers/Microsoft.KubernetesConfiguration/extensions",
             api_version=KUBERNETES_CONFIG_API_VERSION,
         ).additional_properties
         return additional_properties.get("value", [])
