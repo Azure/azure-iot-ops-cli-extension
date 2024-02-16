@@ -189,7 +189,7 @@ class WorkManager:
             prepare_keyvault_access_policy,
             prepare_keyvault_secret,
             prepare_sp,
-            process_default_location,
+            verify_cluster_and_use_location,
             provision_akv_csi_driver,
             validate_keyvault_permission_model,
             verify_custom_locations_enabled,
@@ -205,8 +205,8 @@ class WorkManager:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
                 verify_cli_client_connections(include_graph=bool(self._keyvault_resource_id))
-                # If no cluster_location or location provided, default to actual connected cluster location.
-                process_default_location(self._kwargs)
+                # cluster_location uses actual connected cluster location. Same applies to location IF not provided.
+                verify_cluster_and_use_location(self._kwargs)
 
             # Always run this check
             if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():

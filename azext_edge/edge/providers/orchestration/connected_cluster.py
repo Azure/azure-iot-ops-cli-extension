@@ -5,8 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 from ...util.az_client import get_resource_client
+from typing import List
 
-CONNECTED_CLUSTER_API_VERSION = "2022-10-01-preview"
+CONNECTED_CLUSTER_API_VERSION = "2024-01-01"
+KUBERNETES_CONFIG_API_VERSION = "2022-11-01"
 
 
 class ConnectedCluster:
@@ -27,3 +29,13 @@ class ConnectedCluster:
     @property
     def location(self) -> str:
         return self.resource["location"]
+
+    @property
+    def extensions(self) -> List[dict]:
+        # TODO: This is not the right approach.
+        additional_properties: dict = self.resource_client.resources.get_by_id(
+            resource_id=f"/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group_name}"
+            f"/providers/Microsoft.Kubernetes/connectedClusters/{self.cluster_name}/Providers/Microsoft.KubernetesConfiguration/extensions",
+            api_version=KUBERNETES_CONFIG_API_VERSION,
+        ).additional_properties
+        return additional_properties.get("value", [])

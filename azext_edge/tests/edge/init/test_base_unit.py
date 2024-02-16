@@ -600,27 +600,58 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
         assert deployment == mocked_resource_management_client.deployments.begin_create_or_update.return_value
 
 
-@pytest.mark.parametrize("cluster_location", [None, generate_generic_id()])
+@pytest.mark.parametrize("mocked_connected_cluster_location", ["mock_location"], indirect=True)
+@pytest.mark.parametrize(
+    "mocked_connected_cluster_extensions",
+    [
+        [{"properties": {"extensionType": "microsoft.iotoperations"}}],
+        [
+            {"properties": {"extensionType": "microsoft.extension"}},
+            {"properties": {"extensionType": "Microsoft.IoTOperations.mq"}},
+        ],
+        [{"properties": {"extensionType": "microsoft.extension"}}],
+        [],
+    ],
+    indirect=True,
+)
 @pytest.mark.parametrize("location", [None, generate_generic_id()])
-def test_process_default_location(mocker, cluster_location, location):
-    cluster = mocker.patch("azext_edge.edge.providers.orchestration.connected_cluster.ConnectedCluster", autospec=True)
-    cluster.return_value.location = generate_generic_id()
+def test_verify_cluster_and_use_location(
+    mocker, mocked_connected_cluster_location, mocked_connected_cluster_extensions, location
+):
     kwargs = {
-        "cluster_location": cluster_location,
+        "cluster_location": None,
         "location": location,
         "cluster_name": generate_generic_id(),
         "subscription_id": generate_generic_id(),
         "resource_group_name": generate_generic_id(),
     }
-    from azext_edge.edge.providers.orchestration.base import process_default_location
+    from azext_edge.edge.providers.orchestration.base import (
+        verify_cluster_and_use_location,
+        IOT_OPERATIONS_EXTENSION_PREFIX,
+    )
 
-    process_default_location(kwargs)
-    if cluster_location and location:
-        cluster.assert_not_called()
+    assert IOT_OPERATIONS_EXTENSION_PREFIX == "microsoft.iotoperations"
+
+    expect_validation_error = False
+    for extension in mocked_connected_cluster_extensions.return_value:
+        if extension["properties"]["extensionType"].lower().startswith(IOT_OPERATIONS_EXTENSION_PREFIX):
+            expect_validation_error = True
+            break
+
+    if expect_validation_error:
+        with pytest.raises(ValidationError):
+            verify_cluster_and_use_location(kwargs)
+        mocked_connected_cluster_location.assert_called_once()
+        return
+
+    verify_cluster_and_use_location(kwargs)
+    mocked_connected_cluster_extensions.assert_called_once()
+    mocked_connected_cluster_location.assert_called_once()
+    assert kwargs["cluster_location"] == mocked_connected_cluster_location.return_value
+    if location:
+        assert kwargs["location"] == location
     else:
-        cluster.assert_called_once()
-        assert kwargs["cluster_location"] == (cluster_location or cluster.return_value.location)
-        assert kwargs["location"] == (location or cluster.return_value.location)
+        assert kwargs["location"] == mocked_connected_cluster_location.return_value
 
 
 def test_get_tenant_id(mocker):

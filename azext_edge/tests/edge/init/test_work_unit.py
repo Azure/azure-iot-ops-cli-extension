@@ -519,6 +519,7 @@ def test_work_order(
     mocked_wait_for_terminal_state: Mock,
     mocked_file_exists: Mock,
     mocked_connected_cluster_location: Mock,
+    mocked_connected_cluster_extensions: Mock,
     mocked_verify_custom_locations_enabled: Mock,
     spy_get_current_template_copy: Mock,
     cluster_name,
@@ -573,6 +574,7 @@ def test_work_order(
     if any([not no_preflight, not no_deploy, keyvault_resource_id]):
         mocked_verify_cli_client_connections.assert_called_once()
         mocked_connected_cluster_location.assert_called_once()
+        mocked_connected_cluster_extensions.assert_called_once()
 
     if not no_preflight:
         expected_template_copies += 1
