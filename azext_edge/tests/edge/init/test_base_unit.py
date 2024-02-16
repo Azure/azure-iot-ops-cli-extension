@@ -601,6 +601,28 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
 
 
 @pytest.mark.parametrize("mocked_connected_cluster_location", ["mock_location"], indirect=True)
+@pytest.mark.parametrize("location", [None, generate_generic_id()])
+def test_verify_cluster_and_use_location(mocked_connected_cluster_location, location):
+    kwargs = {
+        "cluster_location": None,
+        "location": location,
+        "cluster_name": generate_generic_id(),
+        "subscription_id": generate_generic_id(),
+        "resource_group_name": generate_generic_id(),
+    }
+    from azext_edge.edge.providers.orchestration.base import (
+        verify_cluster_and_use_location,
+    )
+
+    verify_cluster_and_use_location(kwargs)
+    mocked_connected_cluster_location.assert_called_once()
+    assert kwargs["cluster_location"] == mocked_connected_cluster_location.return_value
+    if location:
+        assert kwargs["location"] == location
+    else:
+        assert kwargs["location"] == mocked_connected_cluster_location.return_value
+
+
 @pytest.mark.parametrize(
     "mocked_connected_cluster_extensions",
     [
@@ -614,21 +636,18 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
     ],
     indirect=True,
 )
-@pytest.mark.parametrize("location", [None, generate_generic_id()])
-def test_verify_cluster_and_use_location(
-    mocker, mocked_connected_cluster_location, mocked_connected_cluster_extensions, location
-):
+def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions):
+    from azext_edge.edge.providers.orchestration.base import (
+        throw_if_iotops_deployed,
+        IOT_OPERATIONS_EXTENSION_PREFIX,
+        ConnectedCluster,
+    )
+
     kwargs = {
-        "cluster_location": None,
-        "location": location,
         "cluster_name": generate_generic_id(),
         "subscription_id": generate_generic_id(),
         "resource_group_name": generate_generic_id(),
     }
-    from azext_edge.edge.providers.orchestration.base import (
-        verify_cluster_and_use_location,
-        IOT_OPERATIONS_EXTENSION_PREFIX,
-    )
 
     assert IOT_OPERATIONS_EXTENSION_PREFIX == "microsoft.iotoperations"
 
@@ -640,18 +659,11 @@ def test_verify_cluster_and_use_location(
 
     if expect_validation_error:
         with pytest.raises(ValidationError):
-            verify_cluster_and_use_location(kwargs)
-        mocked_connected_cluster_location.assert_called_once()
+            throw_if_iotops_deployed(ConnectedCluster(**kwargs))
         return
 
-    verify_cluster_and_use_location(kwargs)
+    throw_if_iotops_deployed(ConnectedCluster(**kwargs))
     mocked_connected_cluster_extensions.assert_called_once()
-    mocked_connected_cluster_location.assert_called_once()
-    assert kwargs["cluster_location"] == mocked_connected_cluster_location.return_value
-    if location:
-        assert kwargs["location"] == location
-    else:
-        assert kwargs["location"] == mocked_connected_cluster_location.return_value
 
 
 def test_get_tenant_id(mocker):

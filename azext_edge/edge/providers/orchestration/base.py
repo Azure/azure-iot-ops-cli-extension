@@ -38,6 +38,7 @@ from .common import (
 from .components import (
     get_kv_secret_store_yaml,
 )
+from .connected_cluster import ConnectedCluster
 
 logger = get_logger(__name__)
 
@@ -472,7 +473,7 @@ def deploy_template(
     return result, deployment
 
 
-def verify_cluster_and_use_location(kwargs: dict):
+def verify_cluster_and_use_location(kwargs: dict) -> ConnectedCluster:
     # TODO: Note kwargs is not expanded to keep as mutable dict until next TODO resolved.
     # TODO: Use intermediate object to store KPIs / refactor out of kwargs.
     location = kwargs["location"]
@@ -491,6 +492,10 @@ def verify_cluster_and_use_location(kwargs: dict):
     if not location:
         kwargs["location"] = connected_cluster_location
 
+    return connected_cluster
+
+
+def throw_if_iotops_deployed(connected_cluster: ConnectedCluster):
     connected_cluster_extensions = connected_cluster.extensions
     for extension in connected_cluster_extensions:
         if "properties" in extension and "extensionType" in extension["properties"]:

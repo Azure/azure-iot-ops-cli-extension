@@ -574,12 +574,12 @@ def test_work_order(
     if any([not no_preflight, not no_deploy, keyvault_resource_id]):
         mocked_verify_cli_client_connections.assert_called_once()
         mocked_connected_cluster_location.assert_called_once()
-        mocked_connected_cluster_extensions.assert_called_once()
 
     if not no_preflight:
         expected_template_copies += 1
         mocked_register_providers.assert_called_once()
         mocked_verify_custom_locations_enabled.assert_called_once()
+        mocked_connected_cluster_extensions.assert_called_once()
 
         if not disable_rsync_rules:
             mocked_verify_write_permission_against_rg.assert_called_once()
@@ -590,6 +590,7 @@ def test_work_order(
     else:
         mocked_register_providers.assert_not_called()
         mocked_verify_custom_locations_enabled.assert_not_called()
+        mocked_connected_cluster_extensions.assert_not_called()
 
     if not keyvault_resource_id:
         mocked_edge_api_keyvault_api_v1.is_deployed.assert_called_once()

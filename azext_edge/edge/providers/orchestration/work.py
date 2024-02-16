@@ -22,7 +22,7 @@ from rich.table import Table
 
 from ...util import get_timestamp_now_utc
 from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
-from .template import get_current_template_copy, CURRENT_TEMPLATE, TemplateVer
+from .template import CURRENT_TEMPLATE, TemplateVer, get_current_template_copy
 
 logger = get_logger(__name__)
 
@@ -119,6 +119,7 @@ class WorkManager:
         self._cluster_secret_ref = CLUSTER_SECRET_REF
         self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
         self._deploy_rsync_rules = not kwargs.get("disable_rsync_rules", False)
+        self._connected_cluster = None
         self._kwargs = kwargs
 
         self._build_display()
@@ -189,9 +190,10 @@ class WorkManager:
             prepare_keyvault_access_policy,
             prepare_keyvault_secret,
             prepare_sp,
-            verify_cluster_and_use_location,
             provision_akv_csi_driver,
+            throw_if_iotops_deployed,
             validate_keyvault_permission_model,
+            verify_cluster_and_use_location,
             verify_custom_locations_enabled,
             wait_for_terminal_state,
         )
@@ -206,7 +208,7 @@ class WorkManager:
             if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
                 verify_cli_client_connections(include_graph=bool(self._keyvault_resource_id))
                 # cluster_location uses actual connected cluster location. Same applies to location IF not provided.
-                verify_cluster_and_use_location(self._kwargs)
+                self._connected_cluster = verify_cluster_and_use_location(self._kwargs)
 
             # Always run this check
             if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
@@ -222,6 +224,9 @@ class WorkManager:
 
                 self._completed_steps[WorkStepKey.REG_RP] = 1
                 self.render_display(category=WorkCategoryKey.PRE_CHECK)
+
+                if self._connected_cluster:
+                    throw_if_iotops_deployed(self._connected_cluster)
 
                 if self._deploy_rsync_rules:
                     verify_write_permission_against_rg(
