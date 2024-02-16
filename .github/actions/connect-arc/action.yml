@@ -1,0 +1,67 @@
+# Copyright (c) Microsoft. All rights reserved.
+# Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+# This workflow assumes your cluster can be reached by the agent this workflow runs on.
+
+name: 'Connect your cluster to Azure ARC'
+description: |
+  Action to connect your kubernetes cluster to Azure ARC using `az connectedk8s connect`. 
+  Will add the connectedk8s Azure CLI extension if not already installed.
+inputs:
+  cluster-name:
+    required: true
+    description: 'Cluster Name'
+  resource-group:
+    required: true
+    description: 'Resource Group'
+  config:
+    description: Contents of kubeconfig to connect to cluster. If not provided, `~/.kube/config` will be used.
+  custom-locations-oid:
+    description: |
+      Object ID of Custom Locations Application in your tenant. 
+      Find with: `az ad sp show --id bc313c14-388c-4e7d-a58e-70017303ee3b --query id -o tsv`.
+      
+      Please provide this value if the federated service principal lacks permission to make this call.
+
+runs:
+  using: 'composite'
+  steps:
+    - name: "Install connectedk8s extension"
+      run: az extension add -n connectedk8s -y
+      shell: bash
+    - name: "Write local kubeconfig"
+      if: inputs.config
+      run: |
+        CONFIGPATH=$HOME/.kube/config
+        mkdir -p $HOME/.kube
+        echo "${{ inputs.config }}" > $CONFIGPATH
+        chmod 644 $CONFIGPATH
+        echo "ARC_CLUSTER_CONFIG=$CONFIGPATH" >> $GITHUB_ENV
+      shell: bash
+    - name: "Determine custom locations OID"
+      if: ${{ ! inputs.custom-locations-oid }}
+      run: |
+        custom_locations_app_id="bc313c14-388c-4e7d-a58e-70017303ee3b"
+        if $(custom_locations_oid=$(az ad sp show --id $custom_locations_app_id --query id -o tsv)); then
+          echo "CUSTOM_LOCATIONS_OID=$custom_locations_oid" >> $GITHUB_ENV
+        else
+          echo "Cannot determind the object ID of custom locations application."
+          echo "Please provide this value for the parameter 'custom-locations-oid'"
+          exit 1
+        fi
+      shell: bash
+    - name: "Connect cluster to ARC and enable features"
+      if: inputs.custom-locations-oid || env.CUSTOM_LOCATIONS_OID
+      run: >-
+        az connectedk8s connect
+        -n ${{ inputs.cluster-name }}
+        -g ${{ inputs.resource-group }}
+        ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
+        
+        az connectedk8s enable-features
+        -n ${{ inputs.cluster-name }}
+        -g ${{ inputs.resource-group }}
+        --features custom-locations cluster-connect
+        ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
+        ${{ (inputs.custom-locations-oid || env.CUSTOM_LOCATIONS_OID) && format('--custom-locations-oid {0}', (inputs.custom-locations-oid || env.CUSTOM_LOCATIONS_OID)) || ''}}
+      shell: bash

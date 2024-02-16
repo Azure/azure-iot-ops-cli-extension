@@ -1,0 +1,117 @@
+# Copyright (c) Microsoft. All rights reserved.
+# Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+# This workflow assumes your cluster is already connected to ARC
+name: 'Deploy Azure IoT Operations to a connected cluster'
+description: |
+  Action to deploy Azure IoT Operations resources to an existing ARC-connected cluster using the `azure-iot-ops` CLI extension.
+  If `config` is provided, it will be written as a file to ~/.kube/config and used to connect to your cluster. 
+  Otherwise, your local `~/.kube/config` file will be used.
+inputs:
+  config:
+    description: |
+      Contents of kubeconfig to connect to cluster. If not provided, we will attempt 
+      to use your federated service principal to establish a proxy to your ARC cluster.
+  cluster:
+    description: 'Cluster Name'
+    required: true
+  resource-group:
+    description: 'Resource Group'
+    required: true
+  cluster-namespace:
+    description: The cluster namespace AIO infra will be deployed to.
+  custom-location:
+    description: The custom location namespace corresponding to the AIO deployment
+  disable-rsync-rules:
+    description: Resource sync rules will not be included in the deployment.
+  location:
+    description: The ARM location for RPSaaS collateral.
+  no-deploy:
+    description: The IoT Operations deployment workflow will be skipped.
+  no-preflight:
+    description: Disable preflight checks for deployment
+  no-tls:
+    description: Disable preflight checks for deployment
+  keyvault-id:
+    description: |
+      Keyvault ID to use for AIO deployment SPC.
+      Not required if the AKV CSI driver is already configured on this cluster.
+  mq-insecure:
+    description: Deploy with `--mq-insecure`
+  ca-valid-days:
+    description: Days for self-signed cert to be valid
+  ca-file:
+    description: CA Cert PEM path
+  ca-key-file:
+    description: CA Key PEM path
+  kv-sat-secret-name:
+    description: Key Vault Secure Access Token Secret Name
+  sp-app-id:
+    description: 'Optional Service Principal ID to use for cluster operations'
+  sp-object-id:
+    description: 'Optional Service Principal Object ID to use for cluster operations'
+  sp-secret:
+    description: 'Optional Service Principal Secret to use for cluster operations'
+  debug:
+    description: Run `az iot ops init` with debugging output
+
+runs:
+  using: 'composite'
+  steps:
+    - name: "Install azure-iot-ops extension"
+      run: az extension add -n azure-iot-ops -y
+      shell: bash
+    - name: "Write kubeconfig"
+      if: inputs.config
+      run: |
+        CONFIGPATH=$HOME/.kube/config
+        mkdir -p $HOME/.kube
+        echo "${{ inputs.config }}" > $CONFIGPATH
+        chmod 644 $CONFIGPATH
+        echo "AIO_CLUSTER_CONFIG=$CONFIGPATH" >> $GITHUB_ENV
+      shell: bash
+    - name: "Deploy Azure IoT Operations"
+      run: >-
+          echo "Checking for kubeconfig..."
+          
+          OLD_KUBECONFIG=$KUBECONFIG
+
+          if [ -z ${{ env.AIO_CLUSTER_CONFIG }} ]; then
+
+             echo "Using existing kubeconfig"
+             
+             export KUBECONFIG=$HOME/.kube/config
+          
+          else
+            
+            echo "Using provided kubeconfig"
+            
+            export KUBECONFIG=${{ env.AIO_CLUSTER_CONFIG }}
+          
+          fi
+
+          az iot ops init
+          --cluster ${{ inputs.cluster }}
+          --resource-group ${{ inputs.resource-group }}
+          ${{ inputs.cluster-namespace != '' && format('--cluster-namespace {0}', inputs.cluster-namespace) || '' }}
+          ${{ inputs.custom-location != '' && format('--custom-location {0}', inputs.custom-location) || '' }}
+          ${{ inputs.disable-rsync-rules == 'true' && '--disable-rsync-rules' || '' }}
+          ${{ inputs.location != '' && format('--location {0}', inputs.location) || '' }}
+          ${{ inputs.no-deploy == 'true' && '--no-deploy' || '' }}
+          ${{ inputs.no-preflight == 'true' && '--no-preflight' || '' }}
+          ${{ inputs.no-tls == 'true' && '--no-tls' || '' }}
+          ${{ inputs.keyvault-id != '' && format('--kv-id {0}', inputs.keyvault-id) || '' }}  
+          ${{ inputs.sp-app-id != '' && format('--sp-app-id {0}', inputs.sp-app-id) || '' }}
+          ${{ inputs.sp-object-id != '' && format('--sp-object-id {0}', inputs.sp-object-id) || '' }}
+          ${{ inputs.sp-secret != '' && format('--sp-secret {0}', inputs.sp-secret) || '' }}
+          ${{ inputs.mq-insecure == 'true' && '--mq-insecure' || '' }}
+          ${{ inputs.ca-valid-days != '' && format('--ca-valid-days {0}', inputs.ca-valid-days) || '' }}
+          ${{ inputs.disable-rsync-rules == 'true' && '--disable-rsync-rules' || '' }}
+          ${{ inputs.ca-file && format('--ca-file {0}', inputs.ca-file) || '' }}
+          ${{ inputs.ca-key-file && format('--ca-key-file {0}', inputs.ca-key-file) || '' }}
+          ${{ inputs.kv-sat-secret-name && format('--kv-sat-secret-name {0}', inputs.kv-sat-secret-name) || '' }}
+          ${{ inputs.debug == 'true' && '--debug' || '' }}
+          --no-progress
+
+          export KUBECONFIG=$OLD_KUBECONFIG
+      shell: bash
