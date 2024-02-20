@@ -143,12 +143,11 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        # temporary - run checkout a second time (for this dev branch) until actions are in default branch
+        # TODO: not needed when actions are in default branch
       - name: "Checkout source for actions"
         uses: actions/checkout@v4
+        # TODO: update action path to azure/azure-iot-ops/.github/actions/connect-arc
       - name: "ARC connect cluster"
-        # can update these next actions to use subdirectory path (env.EXTENSION_SOURCE_DIRECTORY)
-        # and remove secondary checkout after PR
         uses: ./.github/actions/connect-arc
         with:
           cluster-name: ${{ env.CLUSTER_NAME }}
@@ -179,6 +178,7 @@ jobs:
           openssl ecparam -name prime256v1 -genkey -noout -out ${{ matrix.ca-key-file }}
           openssl req -new -x509 -key ${{ matrix.ca-key-file }} -days 30 -config ca.conf -out ${{ matrix.ca-file }}
           rm ca.conf
+      # TODO: update action path to azure/azure-iot-ops/.github/actions/deploy-aio
       - name: "AIO Deployment"
         uses: ./.github/actions/deploy-aio
         with:
