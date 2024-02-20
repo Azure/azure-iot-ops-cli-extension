@@ -63,14 +63,34 @@ runs:
       shell: bash
     - name: "Write kubeconfig"
       if: inputs.config
+      env:
+        config: ${{ inputs.config  }}
       run: |
         CONFIGPATH=$HOME/.kube/config
         mkdir -p $HOME/.kube
-        echo "${{ inputs.config }}" > $CONFIGPATH
+        echo "${{ env.config }}" > $CONFIGPATH
         chmod 644 $CONFIGPATH
         echo "AIO_CLUSTER_CONFIG=$CONFIGPATH" >> $GITHUB_ENV
       shell: bash
     - name: "Deploy Azure IoT Operations"
+      env:
+        cluster-namespace: ${{ inputs.cluster-namespace != '' && format('--cluster-namespace {0}', inputs.cluster-namespace) || '' }}
+        custom-location: ${{ inputs.custom-location != '' && format('--custom-location {0}', inputs.custom-location) || '' }}
+        location: ${{ inputs.location != '' && format('--location {0}', inputs.location) || '' }}
+        no-deploy: ${{ inputs.no-deploy == 'true' && '--no-deploy' || '' }}
+        no-preflight: ${{ inputs.no-preflight == 'true' && '--no-preflight' || '' }}
+        no-tls: ${{ inputs.no-tls == 'true' && '--no-tls' || '' }}
+        keyvault-id: ${{ inputs.keyvault-id != '' && format('--kv-id {0}', inputs.keyvault-id) || '' }}  
+        sp-app-id: ${{ inputs.sp-app-id != '' && format('--sp-app-id {0}', inputs.sp-app-id) || '' }}
+        sp-object-id: ${{ inputs.sp-object-id != '' && format('--sp-object-id {0}', inputs.sp-object-id) || '' }}
+        sp-secret: ${{ inputs.sp-secret != '' && format('--sp-secret {0}', inputs.sp-secret) || '' }}
+        mq-insecure: ${{ inputs.mq-insecure == 'true' && '--mq-insecure' || '' }}
+        ca-valid-days: ${{ inputs.ca-valid-days != '' && format('--ca-valid-days {0}', inputs.ca-valid-days) || '' }}
+        disable-rsync-rules: ${{ inputs.disable-rsync-rules == 'true' && '--disable-rsync-rules' || '' }}
+        ca-file: ${{ inputs.ca-file && format('--ca-file {0}', inputs.ca-file) || '' }}
+        ca-key-file: ${{ inputs.ca-key-file && format('--ca-key-file {0}', inputs.ca-key-file) || '' }}
+        kv-sat-secret-name: ${{ inputs.kv-sat-secret-name && format('--kv-sat-secret-name {0}', inputs.kv-sat-secret-name) || '' }}
+        debug: ${{ inputs.debug == 'true' && '--debug' || '' }}
       run: >-
           echo "Checking for kubeconfig..."
           
@@ -93,24 +113,24 @@ runs:
           az iot ops init
           --cluster ${{ inputs.cluster }}
           --resource-group ${{ inputs.resource-group }}
-          ${{ inputs.cluster-namespace != '' && format('--cluster-namespace {0}', inputs.cluster-namespace) || '' }}
-          ${{ inputs.custom-location != '' && format('--custom-location {0}', inputs.custom-location) || '' }}
-          ${{ inputs.disable-rsync-rules == 'true' && '--disable-rsync-rules' || '' }}
-          ${{ inputs.location != '' && format('--location {0}', inputs.location) || '' }}
-          ${{ inputs.no-deploy == 'true' && '--no-deploy' || '' }}
-          ${{ inputs.no-preflight == 'true' && '--no-preflight' || '' }}
-          ${{ inputs.no-tls == 'true' && '--no-tls' || '' }}
-          ${{ inputs.keyvault-id != '' && format('--kv-id {0}', inputs.keyvault-id) || '' }}  
-          ${{ inputs.sp-app-id != '' && format('--sp-app-id {0}', inputs.sp-app-id) || '' }}
-          ${{ inputs.sp-object-id != '' && format('--sp-object-id {0}', inputs.sp-object-id) || '' }}
-          ${{ inputs.sp-secret != '' && format('--sp-secret {0}', inputs.sp-secret) || '' }}
-          ${{ inputs.mq-insecure == 'true' && '--mq-insecure' || '' }}
-          ${{ inputs.ca-valid-days != '' && format('--ca-valid-days {0}', inputs.ca-valid-days) || '' }}
-          ${{ inputs.disable-rsync-rules == 'true' && '--disable-rsync-rules' || '' }}
-          ${{ inputs.ca-file && format('--ca-file {0}', inputs.ca-file) || '' }}
-          ${{ inputs.ca-key-file && format('--ca-key-file {0}', inputs.ca-key-file) || '' }}
-          ${{ inputs.kv-sat-secret-name && format('--kv-sat-secret-name {0}', inputs.kv-sat-secret-name) || '' }}
-          ${{ inputs.debug == 'true' && '--debug' || '' }}
+          ${{ env.cluster-namespace }}
+          ${{ env.custom-location }}
+          ${{ env.disable-rsync-rules }}
+          ${{ env.location }}
+          ${{ env.no-deploy }}
+          ${{ env.no-preflight }}
+          ${{ env.no-tls }}
+          ${{ env.keyvault-id }}
+          ${{ env.sp-app-id }}
+          ${{ env.sp-object-id }}
+          ${{ env.sp-secret }}
+          ${{ env.mq-insecure }}
+          ${{ env.ca-valid-days }}
+          ${{ env.disable-rsync-rules }}
+          ${{ env.ca-file }}
+          ${{ env.ca-key-file }}
+          ${{ env.kv-sat-secret-name }}
+          ${{ env.debug }}
           --no-progress
 
           export KUBECONFIG=$OLD_KUBECONFIG
