@@ -11,7 +11,7 @@ inputs:
   config:
     description: |
       Contents of kubeconfig to connect to cluster. If not provided, we will attempt 
-      to use your federated service principal to establish a proxy to your ARC cluster.
+      to use your local `~/.kube/config` file
   cluster:
     description: 'Cluster Name'
     required: true
