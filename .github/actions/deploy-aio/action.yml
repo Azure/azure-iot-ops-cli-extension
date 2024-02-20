@@ -72,6 +72,17 @@ runs:
         chmod 644 $CONFIGPATH
         echo "AIO_CLUSTER_CONFIG=$CONFIGPATH" >> $GITHUB_ENV
       shell: bash
+    - name: "Set kubeconfig env"
+      run: |
+          export OLD_KUBECONFIG=$KUBECONFIG
+          if [ -z ${{ env.AIO_CLUSTER_CONFIG }} ]; then
+             echo "Using existing kubeconfig"
+             export KUBECONFIG=$HOME/.kube/config
+          else
+            echo "Using provided kubeconfig"
+            export KUBECONFIG=${{ env.AIO_CLUSTER_CONFIG }}
+          fi
+      shell: bash
     - name: "Deploy Azure IoT Operations"
       env:
         cluster-namespace: ${{ inputs.cluster-namespace != '' && format('--cluster-namespace {0}', inputs.cluster-namespace) || '' }}
@@ -92,24 +103,6 @@ runs:
         kv-sat-secret-name: ${{ inputs.kv-sat-secret-name && format('--kv-sat-secret-name {0}', inputs.kv-sat-secret-name) || '' }}
         debug: ${{ inputs.debug == 'true' && '--debug' || '' }}
       run: >-
-          echo "Checking for kubeconfig..."
-          
-          OLD_KUBECONFIG=$KUBECONFIG
-
-          if [ -z ${{ env.AIO_CLUSTER_CONFIG }} ]; then
-
-             echo "Using existing kubeconfig"
-             
-             export KUBECONFIG=$HOME/.kube/config
-          
-          else
-            
-            echo "Using provided kubeconfig"
-            
-            export KUBECONFIG=${{ env.AIO_CLUSTER_CONFIG }}
-          
-          fi
-
           az iot ops init
           --cluster ${{ inputs.cluster }}
           --resource-group ${{ inputs.resource-group }}
@@ -132,6 +125,8 @@ runs:
           ${{ env.kv-sat-secret-name }}
           ${{ env.debug }}
           --no-progress
-
+      shell: bash
+    - name: "Reset kubeconfig"
+      run: |
           export KUBECONFIG=$OLD_KUBECONFIG
       shell: bash
