@@ -76,7 +76,7 @@ class IndexManager:
             last_fetched = self.iot_ops_session.get(SESSION_KEY_LAST_FETCHED)
             if last_fetched:
                 last_fetched = datetime.strptime(last_fetched, "%Y-%m-%d %H:%M:%S.%f")
-                latest_cli_version = self.iot_ops_session.get(SESSION_KEY_LATEST_VERSION)
+                latest_cli_version = self.iot_ops_session.get(SESSION_KEY_LATEST_VERSION) or CURRENT_CLI_VERSION
 
             if (
                 not last_fetched
@@ -104,7 +104,7 @@ class IndexManager:
         return False
 
 
-def get_latest_from_github(url: str = GH_CLI_CONSTANTS_ENDPOINT, timeout: int = 10) -> str:
+def get_latest_from_github(url: str = GH_CLI_CONSTANTS_ENDPOINT, timeout: int = 10) -> Optional[str]:
     try:
         response = requests.get(url, timeout=timeout)
         if response.status_code != 200:
@@ -125,7 +125,7 @@ def get_latest_from_github(url: str = GH_CLI_CONSTANTS_ENDPOINT, timeout: int = 
         logger.info("Failed to get the latest version from '%s'. %s", url, str(ex))
 
 
-def check_connectivity(url: str = GH_CLI_CONSTANTS_ENDPOINT, max_retries: int = 3, timeout: int = 10):
+def check_connectivity(url: str = GH_CLI_CONSTANTS_ENDPOINT, max_retries: int = 3, timeout: int = 10) -> bool:
     # TODO: Move this function as general util after more testing
     import timeit
 

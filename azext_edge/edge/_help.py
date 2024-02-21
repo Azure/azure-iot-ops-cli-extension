@@ -32,7 +32,7 @@ def load_iotops_help():
             industrial-grade MQTT Broker, add edge compute and set up bi-directional data flow with
             a variety of services in the cloud.
 
-            By default IoT Operations CLI commands will check to see if a new extension version is available.
+            By default IoT Operations CLI commands will periodically check to see if a new extension version is available.
             This behavior can be disabled with `az config set iotops.check_latest=false`.
     """
 

@@ -7,11 +7,13 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from shlex import split
 from unittest.mock import Mock
-from azure.cli.core.azclierror import ValidationError
+from requests.models import Response
 
 import pytest
 from azure.cli.core import get_default_cli
+from azure.cli.core.azclierror import ValidationError
 
 from azext_edge.edge.util.version_check import (
     FORMAT_VERSION_V1_VALUE,
@@ -51,8 +53,7 @@ def reset_version_config():
     config_path.unlink(missing_ok=True)
 
 
-def test_check_latest_flow(mocker, spy_version_check_helpers):
-    reset_version_config()
+def test_check_latest_flow(mocker, spy_version_check_helpers, reset_state):
     from azext_edge.edge.util.version_check import check_latest
 
     check_latest(cli_ctx=cli_ctx)
@@ -91,15 +92,42 @@ def test_check_latest_flow(mocker, spy_version_check_helpers):
     assert last_fetched_refreshed > last_fetched_inital
 
     # When using the relevant option, ensure exception is thrown if upgrade available
-    mock_get_latest = mocker.patch("azext_edge.edge.util.version_check.get_latest_from_github")
-    mock_get_latest.return_value = "999.999.999"
+    mock_requests_get = mocker.patch("azext_edge.edge.util.version_check.requests.get")
+    mock_response = Response()
+    mock_response.status_code = 200
+    mock_response.raw = MockResponseRaw(b'VERSION = "999.999.999"')
+    mock_requests_get.return_value = mock_response
+
     with pytest.raises(
         ValidationError, match="Update available. Install with 'az extension --upgrade --name azure-iot-ops'."
     ):
         check_latest(cli_ctx=cli_ctx, force_refresh=True, throw_if_upgrade=True)
 
+    # When check_latest is disabled via config, ensure no fetching takes place.
+    spy_check_conn.reset_mock()
+    spy_get_latest.reset_mock()
+    config_set_result = cli_ctx.invoke(args=split("config set iotops.check_latest=false"))
+    assert config_set_result == 0
 
-# Test command init
+    check_latest(cli_ctx=cli_ctx)
+    spy_check_conn.assert_not_called()
+    spy_get_latest.assert_not_called()
+
+
+# TODO: Test command init
+
+
+class MockResponseRaw:
+    def __init__(self, content: bytes):
+        self.read_calls = 0
+        self.content = content
+
+    def read(self, chunk_size: int) -> bytes:
+        _ = chunk_size
+        if not self.read_calls:
+            self.read_calls += 1
+            return self.content
+        return b""
 
 
 @pytest.fixture
@@ -112,3 +140,10 @@ def spy_version_check_helpers(mocker):
     }
 
     yield spies
+
+
+@pytest.fixture
+def reset_state():
+    reset_version_config()
+    yield
+    cli_ctx.invoke(args=split("config unset iotops.check_latest"))
