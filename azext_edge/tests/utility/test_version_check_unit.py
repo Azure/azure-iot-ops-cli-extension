@@ -15,12 +15,14 @@ import pytest
 from azure.cli.core import get_default_cli
 from azure.cli.core.azclierror import ValidationError
 
+
 from azext_edge.edge.util.version_check import (
     FORMAT_VERSION_V1_VALUE,
     GH_CLI_CONSTANTS_ENDPOINT,
     SESSION_FILE_NAME,
     SESSION_KEY_FORMAT_VERSION,
     SESSION_KEY_LAST_FETCHED,
+    CURRENT_CLI_VERSION,
 )
 
 cli_ctx = get_default_cli()
@@ -56,10 +58,13 @@ def reset_version_config():
 def test_check_latest_flow(mocker, spy_version_check_helpers, reset_state):
     from azext_edge.edge.util.version_check import check_latest
 
-    check_latest(cli_ctx=cli_ctx)
-
     spy_check_conn: Mock = spy_version_check_helpers["check_connectivity"]
     spy_get_latest: Mock = spy_version_check_helpers["get_latest_from_github"]
+    spy_logger: Mock = spy_version_check_helpers["logger"]
+    spy_console: Mock = spy_version_check_helpers["console"]
+
+    _ = patch_requests_get(mocker, CURRENT_CLI_VERSION)
+    check_latest(cli_ctx=cli_ctx)
 
     spy_check_conn.assert_called_once()
     spy_get_latest.assert_called_once()
@@ -70,51 +75,85 @@ def test_check_latest_flow(mocker, spy_version_check_helpers, reset_state):
     assert spy_get_latest.call_args.kwargs["url"] == GH_CLI_CONSTANTS_ENDPOINT
     assert spy_get_latest.call_args.kwargs["timeout"] == 10
 
+    # console is used to indicate update availability
+    spy_console.print.assert_not_called()
     last_fetched_inital = get_version_config_datetime()
 
     # Ensure subsequent check_latest call does not refresh config
     spy_check_conn.reset_mock()
     spy_get_latest.reset_mock()
+    spy_console.reset_mock()
+
     check_latest(cli_ctx=cli_ctx)
 
     spy_check_conn.assert_not_called()
     spy_get_latest.assert_not_called()
+    spy_console.print.assert_not_called()
 
     last_fetched_next = get_version_config_datetime()
     assert last_fetched_inital == last_fetched_next
 
-    # Force refresh before 24h window
+    # Force refresh before 24h window and use older fetched semver
+    _ = patch_requests_get(mocker, "0.1.0b1")
     check_latest(cli_ctx=cli_ctx, force_refresh=True)
     spy_check_conn.assert_called_once()
     spy_get_latest.assert_called_once()
+    spy_console.print.assert_not_called()
 
     last_fetched_refreshed = get_version_config_datetime()
     assert last_fetched_refreshed > last_fetched_inital
 
-    # When using the relevant option, ensure exception is thrown if upgrade available
-    mock_requests_get = mocker.patch("azext_edge.edge.util.version_check.requests.get")
-    mock_response = Response()
-    mock_response.status_code = 200
-    mock_response.raw = MockResponseRaw(b'VERSION = "999.999.999"')
-    mock_requests_get.return_value = mock_response
+    # If upgrade is available, user is notified
+    spy_check_conn.reset_mock()
+    spy_get_latest.reset_mock()
+    _ = patch_requests_get(mocker, "999.999.999")
+    expected_base_text = "Update available. Install with 'az extension --upgrade --name azure-iot-ops'."
+    expected_decorated_text = (
+        ":dim_button: [italic][bright_yellow]Update available[/bright_yellow]. "
+        "Install with '[green]az extension --upgrade --name azure-iot-ops[/green]'."
+    )
+    reset_version_config()
+    check_latest(cli_ctx=cli_ctx)
+    spy_check_conn.assert_called_once()
+    spy_get_latest.assert_called_once()
+    spy_console.print.assert_called_once()
+    spy_console.print.call_args.args[0] == expected_decorated_text
 
-    with pytest.raises(
-        ValidationError, match="Update available. Install with 'az extension --upgrade --name azure-iot-ops'."
-    ):
+    # When using the relevant option, ensure exception is thrown if upgrade available
+    with pytest.raises(ValidationError, match=expected_base_text):
         check_latest(cli_ctx=cli_ctx, force_refresh=True, throw_if_upgrade=True)
+    assert spy_logger.debug.call_args.args[0] == expected_base_text
 
     # When check_latest is disabled via config, ensure no fetching takes place.
     spy_check_conn.reset_mock()
     spy_get_latest.reset_mock()
+    spy_logger.reset_mock()
+    spy_console.reset_mock()
+
+    reset_version_config()
     config_set_result = cli_ctx.invoke(args=split("config set iotops.check_latest=false"))
     assert config_set_result == 0
 
     check_latest(cli_ctx=cli_ctx)
     spy_check_conn.assert_not_called()
     spy_get_latest.assert_not_called()
+    spy_logger.assert_not_called()
+    spy_console.assert_not_called()
 
 
+# TODO: if not --only-show-errors
 # TODO: Test command init
+
+
+def patch_requests_get(mocker, version: str) -> Mock:
+    # When using the relevant option, ensure exception is thrown if upgrade available
+    mock_requests_get = mocker.patch("azext_edge.edge.util.version_check.requests.get")
+    mock_response = Response()
+    mock_response.status_code = 200
+    mock_response.raw = MockResponseRaw(f'VERSION = "{version}"'.encode("utf-8"))
+    mock_requests_get.return_value = mock_response
+
+    return mock_requests_get
 
 
 class MockResponseRaw:
@@ -137,6 +176,8 @@ def spy_version_check_helpers(mocker):
     spies = {
         "get_latest_from_github": mocker.spy(version_check, "get_latest_from_github"),
         "check_connectivity": mocker.spy(version_check, "check_connectivity"),
+        "logger": mocker.spy(version_check, "logger"),
+        "console": mocker.spy(version_check, "console"),
     }
 
     yield spies
