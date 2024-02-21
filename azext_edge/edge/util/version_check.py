@@ -53,7 +53,7 @@ def check_latest(cli_ctx, force_refresh: Optional[bool] = False, throw_if_upgrad
         only_show_errors = getattr(cli_ctx, "only_show_errors", False)
         if not only_show_errors:
             console.print(
-                f":dim_button: [italic]{update_text.format('[bright_yellow]','[/bright_yellow]','[green]', '[/green]')}",
+                f":dim_button: [italic]{update_text.format('[yellow]','[/yellow]','[green]', '[/green]')}",
             )
 
 
