@@ -205,7 +205,11 @@ def test_version_check_handler(mocker):
     mocked_check_latest.reset_mock()
     kwargs["command"] = "iot ops init"
     version_check_handler(cli_ctx, **kwargs)
-    assert mocked_check_latest.call_args.kwargs == {"cli_ctx": cli_ctx, "force_refresh": True, "throw_if_upgrade": True}
+    assert mocked_check_latest.call_args.kwargs == {
+        "cli_ctx": cli_ctx,
+        "force_refresh": True,
+        "throw_if_upgrade": True
+    }
 
     mocked_check_latest.reset_mock()
     kwargs["command"] = "iot ops init"
