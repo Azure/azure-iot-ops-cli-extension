@@ -35,31 +35,32 @@ CONFIG_ACTION_LABEL = "check_latest"
 console = Console(width=88, stderr=True, highlight=False, safe_box=True)
 
 
-def check_latest(cmd, force_refresh: Optional[bool] = False, throw_if_upgrade: Optional[bool] = False):
-    should_check_latest = cmd.cli_ctx.config.getboolean(CONFIG_ROOT_LABEL, CONFIG_ACTION_LABEL, fallback=True)
+def check_latest(cli_ctx, force_refresh: Optional[bool] = False, throw_if_upgrade: Optional[bool] = False):
+    should_check_latest = cli_ctx.config.getboolean(CONFIG_ROOT_LABEL, CONFIG_ACTION_LABEL, fallback=True)
     if not should_check_latest and not force_refresh:
         logger.debug("Check for updates is disabled.")
         return
 
-    index = IndexManager(cmd)
+    index = IndexManager(cli_ctx)
     upgrade_semver = index.upgrade_available(force_refresh=force_refresh)
 
     if upgrade_semver:
-        update_text = "Update available. Install with '{}az extension --upgrade --name azure-iot-ops{}'."
-        logger.debug(update_text.format("", ""))
+        update_text = "{}Update available{}. Install with '{}az extension --upgrade --name azure-iot-ops{}'."
+        update_text_no_markup = update_text.format("", "", "", "")
+        logger.debug(update_text_no_markup)
         if throw_if_upgrade:
-            raise ValidationError(update_text.format("", ""))
-        only_show_errors = getattr(cmd.cli_ctx, "only_show_errors", False)
+            raise ValidationError(update_text_no_markup)
+        only_show_errors = getattr(cli_ctx, "only_show_errors", False)
         if not only_show_errors:
             console.print(
-                f":dim_button: [dim italic]{update_text.format('[green]', '[/green]')}",
+                f":dim_button: [italic]{update_text.format('[bright_yellow]','[/bright_yellow]','[green]', '[/green]')}",
             )
 
 
 class IndexManager:
-    def __init__(self, cmd):
-        self.cmd = cmd
-        self.config_dir = self.cmd.cli_ctx.config.config_dir
+    def __init__(self, cli_ctx):
+        self.cli_ctx = cli_ctx
+        self.config_dir = self.cli_ctx.config.config_dir
 
     def upgrade_available(self, force_refresh: Optional[bool] = False) -> Optional[str]:
         from packaging import version
@@ -68,7 +69,7 @@ class IndexManager:
             # Import here for exception safety
             from azure.cli.core._session import Session
 
-            self.iot_ops_session = Session()
+            self.iot_ops_session = Session(encoding="utf8")
             self.iot_ops_session.load(os.path.join(self.config_dir, SESSION_FILE_NAME))
 
             latest_cli_version = CURRENT_CLI_VERSION
@@ -86,8 +87,8 @@ class IndexManager:
                 self.iot_ops_session[SESSION_KEY_LAST_FETCHED] = str(datetime.now())
                 # Set format version though only v1 is supported now
                 self.iot_ops_session[SESSION_KEY_FORMAT_VERSION] = FORMAT_VERSION_V1_VALUE
-                if check_connectivity(url=GH_CLI_CONSTANTS_ENDPOINT):
-                    _just_fetched_gh_version = get_latest_from_github(url=GH_CLI_CONSTANTS_ENDPOINT)
+                if check_connectivity(url=GH_CLI_CONSTANTS_ENDPOINT, max_retries=0):
+                    _just_fetched_gh_version = get_latest_from_github(url=GH_CLI_CONSTANTS_ENDPOINT, timeout=10)
                     if _just_fetched_gh_version:
                         latest_cli_version = _just_fetched_gh_version
                         self.iot_ops_session[SESSION_KEY_LATEST_VERSION] = latest_cli_version
@@ -103,9 +104,9 @@ class IndexManager:
         return False
 
 
-def get_latest_from_github(url: str = GH_CLI_CONSTANTS_ENDPOINT) -> str:
+def get_latest_from_github(url: str = GH_CLI_CONSTANTS_ENDPOINT, timeout: int = 10) -> str:
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=timeout)
         if response.status_code != 200:
             logger.debug(
                 "Failed to fetch the latest version from '%s' with status code '%s' and reason '%s'",
@@ -124,7 +125,7 @@ def get_latest_from_github(url: str = GH_CLI_CONSTANTS_ENDPOINT) -> str:
         logger.info("Failed to get the latest version from '%s'. %s", url, str(ex))
 
 
-def check_connectivity(url, max_retries=3, timeout=10):
+def check_connectivity(url: str = GH_CLI_CONSTANTS_ENDPOINT, max_retries: int = 3, timeout: int = 10):
     # TODO: Move this function as general util after more testing
     import timeit
 

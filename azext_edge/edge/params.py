@@ -105,23 +105,25 @@ def load_iotops_arguments(self, _):
             "resource_kinds",
             nargs="*",
             options_list=["--resources"],
-            choices=set(CaseInsensitiveList(
-                [
-                    DataProcessorResourceKinds.DATASET.value,
-                    DataProcessorResourceKinds.PIPELINE.value,
-                    DataProcessorResourceKinds.INSTANCE.value,
-                    LnmResourceKinds.LNM.value,
-                    MqResourceKinds.BROKER.value,
-                    MqResourceKinds.BROKER_LISTENER.value,
-                    MqResourceKinds.DIAGNOSTIC_SERVICE.value,
-                    MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
-                    MqResourceKinds.DATALAKE_CONNECTOR.value,
-                    MqResourceKinds.KAFKA_CONNECTOR.value,
-                    OpcuaResourceKinds.ASSET_TYPE.value,
-                    AkriResourceKinds.CONFIGURATION.value,
-                    AkriResourceKinds.INSTANCE.value,
-                ]
-            )),
+            choices=CaseInsensitiveList(
+                set(
+                    [
+                        DataProcessorResourceKinds.DATASET.value,
+                        DataProcessorResourceKinds.PIPELINE.value,
+                        DataProcessorResourceKinds.INSTANCE.value,
+                        LnmResourceKinds.LNM.value,
+                        MqResourceKinds.BROKER.value,
+                        MqResourceKinds.BROKER_LISTENER.value,
+                        MqResourceKinds.DIAGNOSTIC_SERVICE.value,
+                        MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+                        MqResourceKinds.DATALAKE_CONNECTOR.value,
+                        MqResourceKinds.KAFKA_CONNECTOR.value,
+                        OpcuaResourceKinds.ASSET_TYPE.value,
+                        AkriResourceKinds.CONFIGURATION.value,
+                        AkriResourceKinds.INSTANCE.value,
+                    ]
+                )
+            ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
         ),
         context.argument(
@@ -278,9 +280,9 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "ensure_latest",
-            options_list=["--check-latest"],
+            options_list=["--ensure-latest"],
             arg_type=get_three_state_flag(),
-            help="Checks if the latest IoT Ops CLI is installed, raising an error if an upgrade is available.",
+            help="Ensure the latest IoT Ops CLI is installed, raising an error if an upgrade is available.",
         )
         # Akri
         context.argument(

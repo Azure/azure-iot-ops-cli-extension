@@ -22,7 +22,6 @@ from .providers.orchestration.common import (
 )
 from .providers.support.base import get_bundle_path
 from .common import OpsServiceType
-from .util.version_check import check_latest
 
 logger = get_logger(__name__)
 
@@ -35,7 +34,6 @@ def support_bundle(
     include_mq_traces: Optional[bool] = None,
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
-    check_latest(cmd=cmd)
     load_config_context(context_name=context_name)
     from .providers.support_bundle import build_bundle
 
@@ -58,8 +56,6 @@ def check(
     ops_service: str = "mq",
     resource_kinds: List[str] = None,
 ) -> Union[Dict[str, Any], None]:
-    check_latest(cmd=cmd)
-
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
 
@@ -149,8 +145,6 @@ def init(
     if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
         logger.warning("Nothing to do :)")
         return
-
-    check_latest(cmd=cmd, force_refresh=ensure_latest, throw_if_upgrade=ensure_latest)
 
     load_config_context(context_name=context_name)
 
