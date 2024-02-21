@@ -188,3 +188,36 @@ def reset_state():
     reset_version_config()
     yield
     cli_ctx.invoke(args=split("config unset iotops.check_latest"))
+
+
+def test_version_check_handler(mocker):
+    from argparse import Namespace
+    from azext_edge import version_check_handler
+
+    mocked_check_latest: Mock = mocker.patch("azext_edge.edge.util.version_check.check_latest")
+
+    kwargs = {"command": "iot ops check", "args": Namespace(ensure_latest=True)}
+
+    cli_ctx = Namespace(cli_ctx="cli_ctx")
+    version_check_handler(cli_ctx, **kwargs)
+    assert mocked_check_latest.call_args.args[0] == cli_ctx
+
+    mocked_check_latest.reset_mock()
+    kwargs["command"] = "iot ops init"
+    version_check_handler(cli_ctx, **kwargs)
+    assert mocked_check_latest.call_args.kwargs == {"cli_ctx": cli_ctx, "force_refresh": True, "throw_if_upgrade": True}
+
+    mocked_check_latest.reset_mock()
+    kwargs["command"] = "iot ops init"
+    kwargs["args"] = Namespace(ensure_latest=None)
+    version_check_handler(cli_ctx, **kwargs)
+    assert mocked_check_latest.call_args.kwargs == {
+        "cli_ctx": cli_ctx,
+        "force_refresh": None,
+        "throw_if_upgrade": None,
+    }
+
+    mocked_check_latest.reset_mock()
+    kwargs["command"] = "storage create"
+    version_check_handler(cli_ctx, **kwargs)
+    mocked_check_latest.assert_not_called()
