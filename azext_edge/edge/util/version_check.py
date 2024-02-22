@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 
 GH_BASE_RAW_CONTENT_ENDPOINT = "https://raw.githubusercontent.com/"
 GH_CLI_CONSTANTS_ENDPOINT = (
-    f"{GH_BASE_RAW_CONTENT_ENDPOINT}digimaun/azure-iot-ops-cli-extension/dev/azext_edge/constants.py"
+    f"{GH_BASE_RAW_CONTENT_ENDPOINT}Azure/azure-iot-ops-cli-extension/main/azext_edge/constants.py"
 )
 SESSION_FILE_NAME = "iotOpsVersion.json"
 SESSION_KEY_LAST_FETCHED = "lastFetched"
