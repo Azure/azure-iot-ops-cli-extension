@@ -210,6 +210,12 @@ jobs:
       - name: "Allow cluster to finish provisioning"
         run: |
           sleep 1m
+      - name: "Az CLI login refresh"
+        uses: azure/login@v1.6.1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle --svc auto
