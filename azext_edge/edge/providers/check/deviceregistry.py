@@ -168,9 +168,8 @@ def evaluate_assets(
                     padding=(0, 0, 0, spec_padding)
                 )
 
-                for data_point in data_points:
+                for index, data_point in enumerate(data_points):
                     data_point_data_source = data_point.get("dataSource", "")
-                    index = data_points.index(data_point)
                     datapoint_padding = spec_padding + PADDING_SIZE
 
                     check_manager.add_target_conditions(
@@ -257,9 +256,8 @@ def evaluate_assets(
                     padding=(0, 0, 0, spec_padding)
                 )
 
-                for event in events:
+                for index, event in enumerate(events):
                     event_notifier = event.get("eventNotifier", "")
-                    index = events.index(event)
                     event_padding = spec_padding + PADDING_SIZE
 
                     check_manager.add_target_conditions(
