@@ -77,6 +77,7 @@ jobs:
       EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
       K3S_VERSION: "v1.28.5+k3s1"
     strategy:
+      fail-fast: false
       matrix:
         feature: [default, mq-insecure, no-syncrules, ca-certs]
         include:
@@ -97,7 +98,6 @@ jobs:
             ca-key-file: 'test-ca-key.pem'
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
-    continue-on-error: true
     steps:
       - name: "Setup python"
         uses: actions/setup-python@v5
@@ -223,7 +223,7 @@ jobs:
           az iot ops mq stats
           az iot ops mq stats --raw
           az iot ops mq get-password-hash -p test
-          az iot ops asset query -g ${{ env.RESOURCE_GROUP }}
+          az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
           az iot ops verify-host
 
   # Optional cleanup job
