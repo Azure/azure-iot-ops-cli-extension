@@ -8,6 +8,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from shlex import split
+from time import sleep
 from typing import Union
 from unittest.mock import Mock
 
@@ -96,6 +97,7 @@ def test_check_latest_flow(mocker, spy_version_check_helpers, reset_state):
     assert last_fetched_inital == last_fetched_next
 
     # Force refresh before 24h window and use older fetched semver
+    sleep(0.25)
     patch_requests_get(mocker, "0.1.0b1")
     check_latest(cli_ctx=cli_ctx, force_refresh=True)
     spy_check_conn.assert_called_once()
