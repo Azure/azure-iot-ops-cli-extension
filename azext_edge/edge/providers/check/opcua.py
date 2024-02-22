@@ -15,7 +15,6 @@ from .base import (
     filter_resources_by_name,
     generate_target_resource_name,
     get_resources_by_name,
-    pods_grouped_by_namespace,
     process_pods_status,
     resources_grouped_by_namespace,
 )
@@ -90,7 +89,7 @@ def evaluate_core_service_runtime(
             check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value)
             check_manager.add_display(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)))
 
-    for (namespace, pods) in pods_grouped_by_namespace(opcua_runtime_resources):
+    for (namespace, pods) in resources_grouped_by_namespace(opcua_runtime_resources):
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,

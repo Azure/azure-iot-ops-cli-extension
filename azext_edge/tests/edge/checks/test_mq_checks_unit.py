@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 
+from azext_edge.edge.providers.check.cloud_connectors import filter_connector_and_topic_map_resources
 import pytest
 from functools import partial
 from azext_edge.edge.common import (
@@ -738,3 +739,250 @@ def test_empty_connector_results(mocker, mock_evaluate_cloud_connector_pod_healt
             result["targets"][target][ALL_NAMESPACES_TARGET]["status"] == CheckTaskStatus.skipped.value,
         ]
     )
+
+
+@pytest.mark.parametrize(
+    """connector_resource_name, topic_map_reference_key, all_connectors,
+        all_topic_maps, filtered_connectors, filtered_topic_maps""",
+    [
+        # filter by connector name
+        (
+            "mock_connector",
+            "mqttBridgeConnectorRef",
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace"},
+                                       spec={"mqttBridgeConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"mqttBridgeConnectorRef": "mock_connector2"}),
+            ],
+            [generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"})],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace"},
+                                       spec={"mqttBridgeConnectorRef": "mock_connector"})
+            ],
+        ),
+        # filter by connector name with wildcard
+        (
+            "mock_connector*",
+            "dataLakeConnectorRef",
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace"},
+                                       spec={"dataLakeConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"dataLakeConnectorRef": "mock_connector2"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace"},
+                                       spec={"dataLakeConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"dataLakeConnectorRef": "mock_connector2"}),
+            ],
+        ),
+        # no name filter
+        (
+            None,
+            "kafkaConnectorRef",
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+            ],
+        ),
+        # filter with non-matching connector name
+        (
+            "test",
+            "kafkaConnectorRef",
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+            ],
+            [],
+            [],
+        ),
+        # topic map contains different namespace than connector
+        (
+            "mock_connector2",
+            "kafkaConnectorRef",
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace3"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+            ],
+        ),
+        # connector contains different namespace but same name
+        (
+            "mock_connector2",
+            "kafkaConnectorRef",
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace2"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace2"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map3", "namespace": "mock_namespace3"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map4", "namespace": "mock_namespace2"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace2"}),
+            ]
+            ,
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace2"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map4", "namespace": "mock_namespace2"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+            ],
+        ),
+        # combined 2 different scenarios above
+        (
+            "mock_connector",
+            "kafkaConnectorRef",
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace2"}),
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace3"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace2"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace3"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map3", "namespace": "mock_namespace3"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map4", "namespace": "mock_namespace2"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map5", "namespace": "mock_namespace2"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace2"}),
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace3"}),
+            ],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map3", "namespace": "mock_namespace3"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map4", "namespace": "mock_namespace2"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+            ],
+        ),
+        # no connector
+        (
+            "mock_connector",
+            "kafkaConnectorRef",
+            [],
+            [
+                generate_resource_stub(metadata={"name": "mock_topic_map", "namespace": "mock_namespace3"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map2", "namespace": "mock_namespace"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map3", "namespace": "mock_namespace3"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map4", "namespace": "mock_namespace2"},
+                                       spec={"kafkaConnectorRef": "mock_connector"}),
+                generate_resource_stub(metadata={"name": "mock_topic_map5", "namespace": "mock_namespace2"},
+                                       spec={"kafkaConnectorRef": "mock_connector2"}),
+            ],
+            [],
+            [],
+        ),
+        # no topic map
+        (
+            "mock_connector",
+            "kafkaConnectorRef",
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace2"}),
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace3"}),
+                generate_resource_stub(metadata={"name": "mock_connector2", "namespace": "mock_namespace2"}),
+            ],
+            [],
+            [
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace"}),
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace2"}),
+                generate_resource_stub(metadata={"name": "mock_connector", "namespace": "mock_namespace3"}),
+            ],
+            [],
+        ),
+        # no connector and no topic map
+        (
+            "mock_connector",
+            "kafkaConnectorRef",
+            [],
+            [],
+            [],
+            [],
+        ),
+    ],
+)
+def test_filtered_process_cloud_connector(
+    connector_resource_name,
+    topic_map_reference_key,
+    all_connectors,
+    all_topic_maps,
+    filtered_connectors,
+    filtered_topic_maps,
+):
+    connectors, topics = filter_connector_and_topic_map_resources(
+        connector_resource_name, topic_map_reference_key, all_connectors, all_topic_maps
+    )
+
+    assert connectors == filtered_connectors
+    assert topics == filtered_topic_maps

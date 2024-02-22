@@ -59,36 +59,12 @@ def process_cloud_connector(
     )
 
     if connector_resource_name:
-        filtered_connectors = filter_resources_by_name(
-            resources=all_connectors, resource_name=connector_resource_name
+        all_connectors, all_topic_maps = filter_connector_and_topic_map_resources(
+            connector_resource_name=connector_resource_name,
+            topic_map_reference_key=topic_map_reference_key,
+            all_connectors=all_connectors,
+            all_topic_maps=all_topic_maps,
         )
-
-        excluded_connectors = [
-            connector
-            for connector in all_connectors
-            if connector not in filtered_connectors
-        ]
-
-        all_connectors = filtered_connectors
-
-        # get (name, namespace) tuples for excluded connectors
-        excluded_connector_properties = [
-            (
-                get_resource_metadata_property(connector, prop_name="name"),
-                get_resource_metadata_property(connector, prop_name="namespace")
-            ) for connector in excluded_connectors
-        ]
-
-        # filter out topic maps with both excluded connector name and namespace
-        all_topic_maps = [
-            map
-            for map in all_topic_maps
-            if (
-                map.get("spec", {}).get(topic_map_reference_key),
-                get_resource_metadata_property(map, prop_name="namespace"),
-            )
-            not in excluded_connector_properties
-        ]
 
     # if we have no connectors of this type, mark as skipped
     if not all_connectors:
@@ -217,6 +193,40 @@ def process_cloud_connector(
             )
 
     return check_manager.as_dict(as_list)
+
+
+def filter_connector_and_topic_map_resources(
+    connector_resource_name: str,
+    topic_map_reference_key: str,
+    all_connectors: List[Dict[str, Any]],
+    all_topic_maps: List[Dict[str, Any]],
+):
+    filtered_connectors = filter_resources_by_name(
+        resources=all_connectors, resource_name=connector_resource_name
+    )
+
+    all_connectors = filtered_connectors
+
+    # get (name, namespace) tuples for filtered connectors
+    filtered_connectors_properties = [
+        (
+            get_resource_metadata_property(connector, prop_name="name"),
+            get_resource_metadata_property(connector, prop_name="namespace")
+        ) for connector in filtered_connectors
+    ]
+
+    # filter out topic maps with both connector name and namespace
+    all_topic_maps = [
+        map
+        for map in all_topic_maps
+        if (
+            map.get("spec", {}).get(topic_map_reference_key),
+            get_resource_metadata_property(map, prop_name="namespace"),
+        )
+        in filtered_connectors_properties
+    ]
+
+    return all_connectors, all_topic_maps
 
 
 def _display_connector_runtime_health(

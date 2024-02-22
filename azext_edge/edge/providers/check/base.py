@@ -735,21 +735,20 @@ def add_display_and_eval(
 def get_resource_metadata_property(resource: Union[dict, Any], prop_name: str) -> Union[str, None]:
     if isinstance(resource, dict):
         return resource.get("metadata", {}).get(prop_name)
-    return getattr(resource.metadata, prop_name, None)
+    return getattr(resource.metadata, prop_name, None) if hasattr(resource, "metadata") else None
+
+
+def key_func(resource):
+    return get_resource_metadata_property(resource, prop_name="namespace")
 
 
 def resources_grouped_by_namespace(resources: List[dict]):
-    resources.sort(key=lambda resource: get_resource_metadata_property(resource, prop_name="namespace"))
-    return groupby(resources, lambda resource: get_resource_metadata_property(resource, prop_name="namespace"))
-
-
-def pods_grouped_by_namespace(pods: List[dict]):
-    pods.sort(key=lambda pod: get_resource_metadata_property(pod, prop_name="namespace"))
-    return groupby(pods, lambda pod: get_resource_metadata_property(pod, prop_name="namespace"))
+    resources.sort(key=key_func)
+    return groupby(resources, key=key_func)
 
 
 def filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
-    return [resource for resource in resources if get_resource_metadata_property(resource, prop_name="namespace") == namespace]
+    return [resource for resource in resources if key_func(resource) == namespace]
 
 
 def process_dict_resource(
