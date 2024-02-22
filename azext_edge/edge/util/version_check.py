@@ -101,8 +101,6 @@ class IndexManager:
         except Exception as ae:
             logger.debug(ae)
 
-        return False
-
 
 def get_latest_from_github(url: str = GH_CLI_CONSTANTS_ENDPOINT, timeout: int = 10) -> Optional[str]:
     try:
@@ -121,12 +119,12 @@ def get_latest_from_github(url: str = GH_CLI_CONSTANTS_ENDPOINT, timeout: int = 
                 match = re.search(r"VERSION = \"(.*)\"$", txt)
                 if match:
                     return match.group(1)
-    except Exception as ex:  # pylint: disable=broad-except
+    except Exception as ex:
         logger.info("Failed to get the latest version from '%s'. %s", url, str(ex))
 
 
 def check_connectivity(url: str = GH_CLI_CONSTANTS_ENDPOINT, max_retries: int = 3, timeout: int = 10) -> bool:
-    # TODO: Move this function as general util after more testing
+    # TODO: Evaluate function as general util
     import timeit
 
     start = timeit.default_timer()

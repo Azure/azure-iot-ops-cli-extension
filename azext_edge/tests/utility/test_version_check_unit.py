@@ -8,21 +8,22 @@ import json
 from datetime import datetime
 from pathlib import Path
 from shlex import split
+from typing import Union
 from unittest.mock import Mock
-from requests.models import Response
 
 import pytest
 from azure.cli.core import get_default_cli
 from azure.cli.core.azclierror import ValidationError
-
+from requests.exceptions import ConnectionError, RequestException, Timeout
+from requests.models import Response
 
 from azext_edge.edge.util.version_check import (
+    CURRENT_CLI_VERSION,
     FORMAT_VERSION_V1_VALUE,
     GH_CLI_CONSTANTS_ENDPOINT,
     SESSION_FILE_NAME,
     SESSION_KEY_FORMAT_VERSION,
     SESSION_KEY_LAST_FETCHED,
-    CURRENT_CLI_VERSION,
 )
 
 cli_ctx = get_default_cli()
@@ -63,7 +64,8 @@ def test_check_latest_flow(mocker, spy_version_check_helpers, reset_state):
     spy_logger: Mock = spy_version_check_helpers["logger"]
     spy_console: Mock = spy_version_check_helpers["console"]
 
-    _ = patch_requests_get(mocker, CURRENT_CLI_VERSION)
+    patch_requests_session(mocker)
+    patch_requests_get(mocker, CURRENT_CLI_VERSION)
     check_latest(cli_ctx=cli_ctx)
 
     spy_check_conn.assert_called_once()
@@ -94,7 +96,7 @@ def test_check_latest_flow(mocker, spy_version_check_helpers, reset_state):
     assert last_fetched_inital == last_fetched_next
 
     # Force refresh before 24h window and use older fetched semver
-    _ = patch_requests_get(mocker, "0.1.0b1")
+    patch_requests_get(mocker, "0.1.0b1")
     check_latest(cli_ctx=cli_ctx, force_refresh=True)
     spy_check_conn.assert_called_once()
     spy_get_latest.assert_called_once()
@@ -106,7 +108,7 @@ def test_check_latest_flow(mocker, spy_version_check_helpers, reset_state):
     # If upgrade is available, user is notified
     spy_check_conn.reset_mock()
     spy_get_latest.reset_mock()
-    _ = patch_requests_get(mocker, "999.999.999")
+    patch_requests_get(mocker, "999.999.999")
     expected_base_text = "Update available. Install with 'az extension --upgrade --name azure-iot-ops'."
     expected_decorated_text = (
         ":dim_button: [italic][yellow]Update available[/yellow]. "
@@ -145,15 +147,31 @@ def test_check_latest_flow(mocker, spy_version_check_helpers, reset_state):
 # TODO: Test command init
 
 
-def patch_requests_get(mocker, version: str) -> Mock:
+def patch_requests_get(mocker, version: str, status_code: int = 200) -> Mock:
     # When using the relevant option, ensure exception is thrown if upgrade available
     mock_requests_get = mocker.patch("azext_edge.edge.util.version_check.requests.get")
     mock_response = Response()
-    mock_response.status_code = 200
+    mock_response.status_code = status_code
     mock_response.raw = MockResponseRaw(f'VERSION = "{version}"'.encode("utf-8"))
     mock_requests_get.return_value = mock_response
 
     return mock_requests_get
+
+
+def patch_requests_session(mocker, status_code: Union[int, RequestException] = 200) -> Mock:
+    # When using the relevant option, ensure exception is thrown if upgrade available
+    mock_requests_session = mocker.patch("azext_edge.edge.util.version_check.requests.Session.head")
+
+    if not isinstance(status_code, int):
+        if issubclass(status_code, RequestException):
+            mock_requests_session.side_effect = status_code
+            return mock_requests_session
+
+    mock_response = Response()
+    mock_response.status_code = status_code
+    mock_requests_session.return_value = mock_response
+
+    return mock_requests_session
 
 
 class MockResponseRaw:
@@ -192,6 +210,7 @@ def reset_state():
 
 def test_version_check_handler(mocker):
     from argparse import Namespace
+
     from azext_edge import version_check_handler
 
     mocked_check_latest: Mock = mocker.patch("azext_edge.edge.util.version_check.check_latest")
@@ -208,7 +227,7 @@ def test_version_check_handler(mocker):
     assert mocked_check_latest.call_args.kwargs == {
         "cli_ctx": cli_ctx,
         "force_refresh": True,
-        "throw_if_upgrade": True
+        "throw_if_upgrade": True,
     }
 
     mocked_check_latest.reset_mock()
@@ -225,3 +244,38 @@ def test_version_check_handler(mocker):
     kwargs["command"] = "storage create"
     version_check_handler(cli_ctx, **kwargs)
     mocked_check_latest.assert_not_called()
+
+
+@pytest.mark.parametrize("status_code", [401, 404, 500, ConnectionError, Timeout])
+def test_non_success_on_get(mocker, status_code, spy_version_check_helpers, reset_state):
+    from azext_edge.edge.util.version_check import check_latest
+
+    spy_check_conn: Mock = spy_version_check_helpers["check_connectivity"]
+    spy_get_latest: Mock = spy_version_check_helpers["get_latest_from_github"]
+    spy_logger: Mock = spy_version_check_helpers["logger"]
+    spy_console: Mock = spy_version_check_helpers["console"]
+
+    patch_requests_session(mocker, status_code=status_code)
+    patch_requests_get(mocker, CURRENT_CLI_VERSION, status_code=status_code)
+
+    check_latest(cli_ctx=cli_ctx)
+
+    spy_check_conn.assert_called_once()
+    spy_console.assert_not_called()
+
+    if not isinstance(status_code, int):
+        if issubclass(status_code, RequestException):
+            spy_get_latest.assert_not_called()
+            spy_logger.info.assert_called_with("Connectivity problem detected.")
+            assert spy_logger.debug.call_count > 0
+
+            return
+
+    spy_get_latest.assert_called_once()
+
+    assert spy_logger.debug.call_args.args == (
+        "Failed to fetch the latest version from '%s' with status code '%s' and reason '%s'",
+        GH_CLI_CONSTANTS_ENDPOINT,
+        status_code,
+        None,
+    )
