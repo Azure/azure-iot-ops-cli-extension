@@ -48,7 +48,7 @@ def process_v1_pods(
     label_selector=None,
     since_seconds: int = 60 * 60 * 24,
     include_metrics=False,
-    capture_previous_logs=False,
+    capture_previous_logs=True,
     prefix_names: List[str] = None,
 ) -> List[dict]:
     from kubernetes.client.models import V1Pod, V1PodList, V1PodSpec
@@ -370,6 +370,62 @@ def process_events():
     )
 
     return event_content
+
+
+def process_storage_classes():
+    storage_class_content = []
+
+    storage_v1_api = client.StorageV1Api()
+    storage_class_content.append(
+        {
+            "data": generic.sanitize_for_serialization(obj=storage_v1_api.list_storage_class()),
+            "zinfo": "storage_classes.yaml",
+        }
+    )
+
+    return storage_class_content
+
+
+def process_persistent_volume_claims(
+    resource_api: EdgeResourceApi,
+    label_selector: str = None,
+    field_selector: str = None,
+    prefix_names: List[str] = None,
+):
+    from kubernetes.client.models import V1PersistentVolumeClaim, V1PersistentVolumeClaimList
+
+    v1_apps = client.AppsV1Api()
+
+    processed = []
+    if not prefix_names:
+        prefix_names = []
+
+    pvcs: V1PersistentVolumeClaimList = v1_apps.list_persistent_volume_claim_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
+    logger.info(f"Detected {len(pvcs.items)} persistent volumn claims.")
+
+    for pvc in pvcs.items:
+        d: V1PersistentVolumeClaim = pvc
+        d.api_version = pvcs.api_version
+        d.kind = "PersistentVolumeClaim"
+        pvc_metadata: V1ObjectMeta = d.metadata
+        pvc_namespace: str = pvc_metadata.namespace
+        pvc_name: str = pvc_metadata.name
+
+        if prefix_names:
+            matched_prefix = [pvc_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
+
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=d),
+                "zinfo": f"{pvc_namespace}/{resource_api.moniker}/pvc.{pvc_name}.yaml",
+            }
+        )
+
+    return processed
 
 
 def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional[Dict[str, str]] = None):
