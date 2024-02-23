@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from typing import List
 import pytest
 from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
@@ -102,38 +103,38 @@ def settings():
 
 
 @pytest.fixture(scope="session")
-def tracked_resources():
+def tracked_resources() -> List[str]:
     resources = []
     yield resources
     for res in resources:
-        command = f"az resource delete --ids {res['id']}"
-        if res.get("api_version"):
-            command += f" --api-version {res['api_version']}"
         try:
-            run(command)
+            run(f"az resource delete --id {res} -v")
         except CLIInternalError:
-            logger.warning(f"failed to delete {res['id']}")
+            logger.warning(f"failed to delete {res}")
 
 
 @pytest.fixture(scope="session")
 def tracked_keyvault(request, tracked_resources, settings):
-    from ..settings import EnvironmentVariables
+    from ..settings import EnvironmentVariables, convert_flag
     settings.add_to_config(EnvironmentVariables.kv.value)
-    if settings.env.azext_edge_kv:
+    settings.add_to_config(EnvironmentVariables.skip_init.value, conversion=convert_flag)
+    if settings.env.azext_edge_skip_init:
+        # kv only needed for init for now
+        kv = None
+    elif settings.env.azext_edge_kv:
         kv = run(f"az keyvault show -n {settings.env.azext_edge_kv} -g {settings.env.azext_edge_testrg}")
     else:
-        run_id = request.node.callspec.id
+        run_id = id(request)
         kv_name = f"opstestkv-{run_id}"
         kv = run(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_testrg}")
-        tracked_resources.append(kv)
+        tracked_resources.append(kv["id"])
     yield kv
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def init_setup(request, tracked_resources, tracked_keyvault, settings):
     from ..settings import EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.cluster.value)
-    settings.add_to_config(EnvironmentVariables.skip_init.value)
     try:
         run("kubectl api-resources")
     except CLIInternalError:
@@ -151,18 +152,24 @@ def init_setup(request, tracked_resources, tracked_keyvault, settings):
     if request and hasattr(request, "param"):
         scenario = request.param
 
-    run_id = request.node.callspec.id
+    run_id = id(request)
     cluster_name = settings.env.azext_edge_cluster or f"az-iot-ops-test-cluster-{run_id}"
     try:
-        result = run(f"az connectedk8s connect --name {cluster_name} -g {settings.env.azext_edge_testrg}")
-        tracked_resources.append(result["id"])
+        run(f"az connectedk8s connect --name {cluster_name} -g {settings.env.azext_edge_testrg}")
     except CLIInternalError:
         raise CLIInternalError("Failed to connect cluster. Required for testing.")
+    run(
+        f"az connectedk8s enable-features --name {cluster_name} -g {settings.env.azext_edge_testrg}"
+        " --features custom-locations cluster-connect --custom-locations-oid 51dfe1e8-70c6-4de5-a08e-e18aff23d815"
+    )
+    result = run(f"az connectedk8s show --name {cluster_name} -g {settings.env.azext_edge_testrg}")
+    tracked_resources.append(result["id"])
 
     command = f"az iot ops init --cluster {cluster_name} -g {settings.env.azext_edge_testrg} "\
         f"--kv-id {tracked_keyvault['id']} --no-progress"
     for arg in scenario:
         command += f" {arg} {scenario[arg]}"
+    # import pdb; pdb.set_trace()
 
     result = run(command)
     # reverse the list so things can be deleted in the right order
