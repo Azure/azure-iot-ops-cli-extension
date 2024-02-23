@@ -13,10 +13,10 @@ inputs:
       Contents of kubeconfig to connect to cluster. If not provided, we will attempt 
       to use your local `~/.kube/config` file
   cluster:
-    description: 'Cluster Name'
+    description: Name of ARC connected cluster
     required: true
   resource-group:
-    description: 'Resource Group'
+    description: Resource Group
     required: true
   cluster-namespace:
     description: The cluster namespace AIO infra will be deployed to.
@@ -29,21 +29,24 @@ inputs:
   no-deploy:
     description: The IoT Operations deployment workflow will be skipped.
   no-preflight:
-    description: Disable preflight checks for deployment
+    description: Disable preflight checks for deployment.
   no-tls:
-    description: Disable preflight checks for deployment
+    description: The TLS configuration workflow will be skipped.
   keyvault-id:
     description: |
       Keyvault ID to use for AIO deployment SPC.
       Not required if the AKV CSI driver is already configured on this cluster.
   mq-insecure:
-    description: Deploy with `--mq-insecure`
+    description: |
+      Deploy with `--mq-insecure` which will include a listener bound to
+      port 1883 with no authN or authZ. The broker encryptInternalTraffic setting
+      will be set to false. For non-production workloads only.
   ca-valid-days:
-    description: Days for self-signed cert to be valid
+    description: Days for self-signed test certificate to be valid.
   ca-file:
-    description: CA Cert PEM path
+    description: User-provided CA certificate file path
   ca-key-file:
-    description: CA Key PEM path
+    description: User-provided CA key file path
   kv-sat-secret-name:
     description: Key Vault Secure Access Token Secret Name
   sp-app-id:
