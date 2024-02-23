@@ -14,7 +14,6 @@ from ...helpers import run
 logger = get_logger(__name__)
 
 
-@pytest.mark.parametrize("init_setup", [{"--simulate-plc": True}], ids=["simulate plc"], indirect=True)
 @pytest.mark.parametrize("bundle_dir", ["support_bundles"])
 @pytest.mark.parametrize("ops_service", OpsServiceType.list())
 @pytest.mark.parametrize("mq_traces", [False, True])
@@ -58,14 +57,27 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     level_1 = walk_result.pop(f"{extracted_path}\\{namespace}")
     expected_services = [ops_service]
     if ops_service == OpsServiceType.auto.value:
+        # these should always be generated
         expected_services = ["akri", "dataprocessor", "lnm", "mq", "opcua", "orc"]
+        # device registry folder will not be created if there are no device registry resources
+        if walk_result.get(f"{extracted_path}\\{namespace}\\deviceregistry"):
+            expected_services.insert(2, "deviceregistry")
     assert level_1["folders"] == expected_services
     assert not level_1["files"]
 
-    # Level 2 - bottom
+    # Check and take out mq traces:
+    if mq_traces and ops_service in [OpsServiceType.mq.value, OpsServiceType.auto.value]:
+        mq_level = walk_result.pop(f"{extracted_path}\\{namespace}\\mq\\traces")
+        assert not mq_level["folders"]
+        for name in mq_level["files"]:
+            assert name.split(".")[-1] in ["json", "pb"]
+        # make sure level 2 doesnt get messed up
+        assert walk_result[f"{extracted_path}\\{namespace}\\mq"]["folders"] == ["traces"]
+        walk_result[f"{extracted_path}\\{namespace}\\mq"]["folders"] = []
+
+    # Level 2 and 3 - bottom
     assert len(walk_result) == len(expected_services)
     for directory in walk_result:
         assert not walk_result[directory]["folders"]
-        files = walk_result[directory]["files"]
-        for name in files:
+        for name in walk_result[directory]["files"]:
             assert name.split(".")[-1] in ["log", "txt", "yaml"]

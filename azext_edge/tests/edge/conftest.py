@@ -158,9 +158,10 @@ def init_setup(request, tracked_resources, tracked_keyvault, settings):
         run(f"az connectedk8s connect --name {cluster_name} -g {settings.env.azext_edge_testrg}")
     except CLIInternalError:
         raise CLIInternalError("Failed to connect cluster. Required for testing.")
+    custom_locations_guid = run("az ad sp show --id bc313c14-388c-4e7d-a58e-70017303ee3b --query id -o tsv")
     run(
         f"az connectedk8s enable-features --name {cluster_name} -g {settings.env.azext_edge_testrg}"
-        " --features custom-locations cluster-connect --custom-locations-oid 51dfe1e8-70c6-4de5-a08e-e18aff23d815"
+        f" --features custom-locations cluster-connect --custom-locations-oid {custom_locations_guid}"
     )
     result = run(f"az connectedk8s show --name {cluster_name} -g {settings.env.azext_edge_testrg}")
     tracked_resources.append(result["id"])
