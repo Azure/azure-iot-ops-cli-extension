@@ -7,6 +7,7 @@ on:
         ready_for_review,
         reopened,
     ]
+    branches-ignore: [main]
 jobs:
   verify_title:
     runs-on: ubuntu-latest
