@@ -136,6 +136,7 @@ def init(
     no_preflight: Optional[bool] = None,
     disable_rsync_rules: Optional[bool] = None,
     context_name: Optional[str] = None,
+    ensure_latest: Optional[bool] = None,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration import deploy
     from .util import url_safe_hash_phrase

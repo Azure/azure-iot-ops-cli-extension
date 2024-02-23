@@ -38,6 +38,7 @@ from .common import (
 from .components import (
     get_kv_secret_store_yaml,
 )
+from .connected_cluster import ConnectedCluster
 
 logger = get_logger(__name__)
 
@@ -55,6 +56,8 @@ DEFAULT_POLL_RETRIES = 240
 DEFAULT_POLL_WAIT_SEC = 15
 
 EXTENSION_API_VERSION = "2022-11-01"  # TODO: fun testing with newer api
+
+IOT_OPERATIONS_EXTENSION_PREFIX = "microsoft.iotoperations"
 
 
 class ServicePrincipal(NamedTuple):
@@ -470,26 +473,37 @@ def deploy_template(
     return result, deployment
 
 
-def process_default_location(kwargs: dict):
-    # TODO: use intermediate object to store KPIs / refactor out of kwargs
-    cluster_location = kwargs["cluster_location"]
+def verify_cluster_and_use_location(kwargs: dict) -> ConnectedCluster:
+    # TODO: Note kwargs is not expanded to keep as mutable dict until next TODO resolved.
+    # TODO: Use intermediate object to store KPIs / refactor out of kwargs.
     location = kwargs["location"]
     cluster_name = kwargs["cluster_name"]
     subscription_id = kwargs["subscription_id"]
     resource_group_name = kwargs["resource_group_name"]
 
-    if not cluster_location or not location:
-        from .connected_cluster import ConnectedCluster
+    from .connected_cluster import ConnectedCluster
 
-        connected_cluster = ConnectedCluster(
-            subscription_id=subscription_id, cluster_name=cluster_name, resource_group_name=resource_group_name
-        )
-        connected_cluster_location = connected_cluster.location
+    connected_cluster = ConnectedCluster(
+        subscription_id=subscription_id, cluster_name=cluster_name, resource_group_name=resource_group_name
+    )
+    connected_cluster_location = connected_cluster.location
 
-        if not cluster_location:
-            kwargs["cluster_location"] = connected_cluster_location
-        if not location:
-            kwargs["location"] = connected_cluster_location
+    kwargs["cluster_location"] = connected_cluster_location
+    if not location:
+        kwargs["location"] = connected_cluster_location
+
+    return connected_cluster
+
+
+def throw_if_iotops_deployed(connected_cluster: ConnectedCluster):
+    connected_cluster_extensions = connected_cluster.extensions
+    for extension in connected_cluster_extensions:
+        if "properties" in extension and "extensionType" in extension["properties"]:
+            if extension["properties"]["extensionType"].lower().startswith(IOT_OPERATIONS_EXTENSION_PREFIX):
+                raise ValidationError(
+                    "Detected existing IoT Operations deployment. "
+                    "Remove IoT Operations or use a different connected cluster to continue.\n"
+                )
 
 
 # TODO: should be in utils

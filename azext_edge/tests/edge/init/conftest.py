@@ -176,10 +176,22 @@ def mocked_file_exists(mocker):
 
 
 @pytest.fixture
-def mocked_connected_cluster_location(mocker):
+def mocked_connected_cluster_location(mocker, request):
+    return_value = getattr(request, "param", None) or "mock_location"
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.connected_cluster.ConnectedCluster.location",
-        return_value="mock_location",
+        return_value=return_value,
+        new_callable=mocker.PropertyMock,
+    )
+    yield patched
+
+
+@pytest.fixture
+def mocked_connected_cluster_extensions(mocker, request):
+    return_value = getattr(request, "param", None) or []
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.connected_cluster.ConnectedCluster.extensions",
+        return_value=return_value,
         new_callable=mocker.PropertyMock,
     )
     yield patched
