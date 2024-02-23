@@ -143,17 +143,16 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        # TODO: not needed when actions are in default branch
+      - name: "Checkout source for actions"
+        uses: actions/checkout@v4
+        # TODO: update action path to azure/azure-iot-ops/.github/actions/connect-arc
       - name: "ARC connect cluster"
-        run: >-
-          az extension add --name connectedk8s -y
-
-          az connectedk8s connect -n ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }}
-
-          az connectedk8s enable-features
-          -n ${{ env.CLUSTER_NAME }}
-          -g ${{ env.RESOURCE_GROUP }}
-          --features custom-locations cluster-connect
-          --custom-locations-oid ${{ env.CUSTOM_LOCATIONS_OID }}
+        uses: ./.github/actions/connect-arc
+        with:
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
       - name: "Get Keyvault ID"
         run: |
           KV_ID=$(az keyvault show -n ${{env.KV_NAME}} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
@@ -179,37 +178,26 @@ jobs:
           openssl ecparam -name prime256v1 -genkey -noout -out ${{ matrix.ca-key-file }}
           openssl req -new -x509 -key ${{ matrix.ca-key-file }} -days 30 -config ca.conf -out ${{ matrix.ca-file }}
           rm ca.conf
+      # TODO: update action path to azure/azure-iot-ops/.github/actions/deploy-aio
       - name: "AIO Deployment"
-        env:
-          ca-file: ${{ matrix.ca-file && format('--ca-file {0}', matrix.ca-file) || '' }}
-          ca-key-file: ${{ matrix.ca-key-file && format('--ca-key-file {0}', matrix.ca-key-file) || '' }}
-          ca-valid-days: ${{ matrix.ca-valid-days && format('--ca-valid-days {0}', matrix.ca-valid-days) || '' }}
-          disable-rsync-rules: ${{ matrix.disable-rsync-rules && '--disable-rsync-rules' || '' }}
-          kv-sat-secret-name: ${{ matrix.kv-sat-secret-name && format('--kv-sat-secret-name {0}', matrix.kv-sat-secret-name) || '' }}
-          mq-insecure: ${{ matrix.mq-insecure && '--mq-insecure' || '' }}
-          no-preflight: ${{ matrix.no-preflight && '--no-preflight' || '' }}
-          SP_APP_ID: ${{ secrets.AIO_SP_APP_ID && format('--sp-app-id {0}', secrets.AIO_SP_APP_ID) || '' }}
-          SP_OBJECT_ID: ${{ secrets.AIO_SP_OBJECT_ID && format('--sp-object-id {0}', secrets.AIO_SP_OBJECT_ID) || '' }}
-          SP_APP_SECRET: ${{ secrets.AIO_SP_SECRET && format('--sp-secret {0}', secrets.AIO_SP_SECRET) || '' }}
-        run: >-
-          az iot ops init
-          -g ${{ env.RESOURCE_GROUP }}
-          --cluster ${{ env.CLUSTER_NAME }}
-          --kv-id ${{ env.KV_ID }}
-          ${{ env.SP_APP_ID }}
-          ${{ env.SP_OBJECT_ID }}
-          ${{ env.SP_APP_SECRET }}
-          ${{ env.ca-file }}
-          ${{ env.ca-key-file }}
-          ${{ env.ca-valid-days }}
-          ${{ env.disable-rsync-rules }}
-          ${{ env.kv-sat-secret-name }}
-          ${{ env.mq-insecure }}
-          ${{ env.no-preflight }}
-          --no-progress
+        uses: ./.github/actions/deploy-aio
+        with:
+          cluster: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          keyvault-id: ${{ env.KV_ID }}
+          sp-app-id: ${{ secrets.AIO_SP_APP_ID || '' }}
+          sp-object-id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
+          sp-secret: ${{ secrets.AIO_SP_SECRET || '' }}
+          no-preflight: ${{ matrix.no-preflight }}
+          mq-insecure: ${{ matrix.mq-insecure }}
+          disable-rsync-rules: ${{ matrix.disable-rsync-rules }}
+          ca-valid-days: ${{ matrix.ca-valid-days || '' }}
+          ca-file: ${{ matrix.ca-file || '' }}
+          ca-key-file: ${{ matrix.ca-key-file || '' }}
+          kv-sat-secret-name: ${{ matrix.kv-sat-secret-name || '' }}
       - name: "Allow cluster to finish provisioning"
         run: |
-          sleep 1m
+          sleep 2m
       - name: "Az CLI login refresh"
         uses: azure/login@v1.6.1
         with:
