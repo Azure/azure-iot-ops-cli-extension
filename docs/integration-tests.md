@@ -36,13 +36,14 @@ In order to run these tests, you must provide the following service principal va
 The following values are also required in order to run the `az iot ops init` command, using the same service principal in order to deploy AIO to a cluster:
 | Secret | Description |
 |---|---|
-**AZURE_OBJECT_ID** | *Entra Application Object ID*
-**AZURE_CLIENT_SECRET** | *Entra Application Client Secret*
+**AIO_SP_APP_ID** | *Entra Application client ID*
+**AIO_SP_OBJECT_ID** | *Entra Application Object ID*
+**AIO_SP_SECRET** | *Entra Application Client Secret*
 
 The final set of inputs are more traditional workflow inputs:
 | Input | Description |
 |---|---|
-**resource_group** | *The resource group to run tests in*
+**resource-group** | *The resource group to run tests in*
 **cleanup** | *An optional boolean switch that decides whether to attempt post-test cleanup rather than waiting for a scheduled cleanup job*
 
 ## Outputs

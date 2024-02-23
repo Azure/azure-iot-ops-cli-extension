@@ -2,7 +2,7 @@ name: Integration tests
 on:
   workflow_call:
     inputs:
-      resource_group:
+      resource-group:
         description: Resource group for cluster creation
         type: string
         required: true
@@ -31,7 +31,7 @@ on:
       AIO_SP_SECRET:
   workflow_dispatch:
     inputs:
-      resource_group:
+      resource-group:
         description: Resource group for cluster creation
         type: string
         required: true
@@ -54,7 +54,7 @@ permissions:
 
 env:
   KV_NAME: "opskv${{ github.run_number }}"
-  RESOURCE_GROUP: "${{ inputs.resource_group }}"
+  RESOURCE_GROUP: "${{ inputs.resource-group }}"
 
 jobs:
   create_kv:
@@ -222,6 +222,6 @@ jobs:
     uses: './.github/workflows/cluster_cleanup.yml'
     with:
       cluster_prefix: "az-iot-ops-test-cluster${{ github.run_number }}"
-      resource_group: "${{ inputs.resource_group }}"
+      resource_group: "${{ inputs.resource-group }}"
       keyvault_prefix: "opskv${{ github.run_number }}"
     secrets: inherit
