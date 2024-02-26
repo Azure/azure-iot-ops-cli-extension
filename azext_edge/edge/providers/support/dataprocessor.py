@@ -13,6 +13,7 @@ from ..edge_api import DATA_PROCESSOR_API_V1, EdgeResourceApi
 from .base import (
     assemble_crd_work,
     process_deployments,
+    process_persistent_volume_claims,
     process_replicasets,
     process_services,
     process_statefulset,
@@ -45,6 +46,8 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
         label_selector=DATA_PROCESSOR_LABEL,
         since_seconds=since_seconds,
         capture_previous_logs=True,
+        capture_init_container_logs=True,
+        include_metrics=True,
     )
     dataprocessor_pods.extend(
         process_v1_pods(
@@ -120,11 +123,25 @@ def fetch_services():
     return processed
 
 
+def fetch_persistent_volume_claims():
+    processed = []
+    processed.extend(process_persistent_volume_claims(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
+    processed.extend(
+        process_persistent_volume_claims(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL)
+    )
+    processed.extend(
+        process_persistent_volume_claims(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_INSTANCE_LABEL)
+    )
+
+    return processed
+
+
 support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "deployments": fetch_deployments,
+    "persistentvolumeclaims": fetch_persistent_volume_claims,
 }
 
 

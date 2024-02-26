@@ -50,6 +50,7 @@ def process_v1_pods(
     include_metrics=False,
     capture_previous_logs=True,
     prefix_names: List[str] = None,
+    capture_init_container_logs=False,
 ) -> List[dict]:
     from kubernetes.client.models import V1Pod, V1PodList, V1PodSpec
 
@@ -87,6 +88,31 @@ def process_v1_pods(
         )
         pod_spec: V1PodSpec = p.spec
         pod_containers: List[V1Container] = pod_spec.containers
+
+        if capture_init_container_logs:
+            pod_init_containers: List[V1Container] = pod_spec.init_containers or []
+            for init_container in pod_init_containers:
+                try:
+                    logger.debug(f"Reading init log from pod {pod_name} container {init_container.name}")
+                    log: str = v1_api.read_namespaced_pod_log(
+                        name=pod_name,
+                        namespace=pod_namespace,
+                        since_seconds=since_seconds,
+                        container=init_container.name,
+                        previous=False,
+                    )
+                    processed.append(
+                        {
+                            "data": log,
+                            "zinfo": (
+                                f"{pod_namespace}/{resource_api.moniker}"
+                                f"/pod.{pod_name}.{init_container.name}.init.log"
+                            ),
+                        }
+                    )
+                except ApiException as e:
+                    logger.debug(e.body)
+
         capture_previous_log_runs = [False]
         if capture_previous_logs:
             capture_previous_log_runs.append(True)
@@ -394,13 +420,13 @@ def process_persistent_volume_claims(
 ):
     from kubernetes.client.models import V1PersistentVolumeClaim, V1PersistentVolumeClaimList
 
-    v1_apps = client.AppsV1Api()
+    v1_api = client.CoreV1Api()
 
     processed = []
     if not prefix_names:
         prefix_names = []
 
-    pvcs: V1PersistentVolumeClaimList = v1_apps.list_persistent_volume_claim_for_all_namespaces(
+    pvcs: V1PersistentVolumeClaimList = v1_api.list_persistent_volume_claim_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
     )
     logger.info(f"Detected {len(pvcs.items)} persistent volumn claims.")
