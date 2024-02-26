@@ -2,7 +2,7 @@ name: Integration tests
 on:
   workflow_call:
     inputs:
-      resource_group:
+      resource-group:
         description: Resource group for cluster creation
         type: string
         required: true
@@ -31,7 +31,7 @@ on:
       AIO_SP_SECRET:
   workflow_dispatch:
     inputs:
-      resource_group:
+      resource-group:
         description: Resource group for cluster creation
         type: string
         required: true
@@ -54,7 +54,7 @@ permissions:
 
 env:
   KV_NAME: "opskv${{ github.run_number }}"
-  RESOURCE_GROUP: "${{ inputs.resource_group }}"
+  RESOURCE_GROUP: "${{ inputs.resource-group }}"
 
 jobs:
   create_kv:
@@ -143,12 +143,8 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        # TODO: not needed when actions are in default branch
-      - name: "Checkout source for actions"
-        uses: actions/checkout@v4
-        # TODO: update action path to azure/azure-iot-ops/.github/actions/connect-arc
       - name: "ARC connect cluster"
-        uses: ./.github/actions/connect-arc
+        uses: azure/azure-iot-ops-cli-extension/.github/actions/connect-arc@dev
         with:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
@@ -178,9 +174,8 @@ jobs:
           openssl ecparam -name prime256v1 -genkey -noout -out ${{ matrix.ca-key-file }}
           openssl req -new -x509 -key ${{ matrix.ca-key-file }} -days 30 -config ca.conf -out ${{ matrix.ca-file }}
           rm ca.conf
-      # TODO: update action path to azure/azure-iot-ops/.github/actions/deploy-aio
       - name: "AIO Deployment"
-        uses: ./.github/actions/deploy-aio
+        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
         with:
           cluster: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
@@ -227,6 +222,6 @@ jobs:
     uses: './.github/workflows/cluster_cleanup.yml'
     with:
       cluster_prefix: "az-iot-ops-test-cluster${{ github.run_number }}"
-      resource_group: "${{ inputs.resource_group }}"
+      resource_group: "${{ inputs.resource-group }}"
       keyvault_prefix: "opskv${{ github.run_number }}"
     secrets: inherit
