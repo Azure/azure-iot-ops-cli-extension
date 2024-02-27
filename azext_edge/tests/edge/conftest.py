@@ -150,13 +150,9 @@ def local_cluster_setup():
 
 
 @pytest.fixture()
-def init_setup(request, tracked_resources, tracked_keyvault, settings):
+def init_setup(request, tracked_resources, tracked_keyvault, local_cluster_setup, settings):
     from ..settings import EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.cluster.value)
-    try:
-        run("kubectl api-resources")
-    except CLIInternalError:
-        raise CLIInternalError("Failed to access cluster. Required for testing.")
     if settings.env.azext_edge_skip_init:
         if not settings.env.azext_edge_cluster:
             raise CLIInternalError("Cluster name required if not running init.")
@@ -166,67 +162,63 @@ def init_setup(request, tracked_resources, tracked_keyvault, settings):
         }
         return
 
-    cluster_resources = []
-    scenario = {}
-    if request and hasattr(request, "param"):
-        scenario = request.param
+    raise NotImplementedError(
+        "Please provide a valid cluster with AIO already deployed on it. The required parameters for "
+        "pytest.ini are: `azext_edge_testrg`, `azext_edge_cluster`, and `azext_edge_skip_init`"
+    )
 
-    run_id = id(request.session)
-    cluster_name = settings.env.azext_edge_cluster or f"az-iot-ops-test-cluster-{run_id}"
-    try:
-        run(f"az connectedk8s connect --name {cluster_name} -g {settings.env.azext_edge_testrg}")
-        custom_locations_guid = run("az ad sp show --id bc313c14-388c-4e7d-a58e-70017303ee3b --query id -o tsv")
-        run(
-            f"az connectedk8s enable-features --name {cluster_name} -g {settings.env.azext_edge_testrg}"
-            f" --features custom-locations cluster-connect --custom-locations-oid {custom_locations_guid}"
-        )
-    except CLIInternalError as e:
-        logger.warning(e.error_msg)
-        # if (
-        #     "The kubernetes cluster you are trying to onboard is already onboarded to the "
-        #     "resource group" not in e.error_msg
-        # ):
-        #     raise CLIInternalError("Failed to connect cluster to Azure. Required for testing.")
-        # cluster_name = e.error_msg.split("'")[-2]
-        # import pdb; pdb.set_trace()
-    result = run(f"az connectedk8s show --name {cluster_name} -g {settings.env.azext_edge_testrg}")
-    resource_id_prefix = result["id"].split("Microsoft.Kubernetes")[0]
-    tracked_resources.append(result["id"])
-    cluster_resources.append(result["id"])
+    # cluster_resources = []
+    # scenario = {}
+    # if request and hasattr(request, "param"):
+    #     scenario = request.param
 
-    command = f"az iot ops init --cluster {cluster_name} -g {settings.env.azext_edge_testrg} "\
-        f"--kv-id {tracked_keyvault['id']} --no-progress --no-preflight"
-    for arg in scenario:
-        command += f" {arg} {scenario[arg]}"
-    # import pdb; pdb.set_trace()
+    # run_id = id(request.session)
+    # cluster_name = settings.env.azext_edge_cluster or f"az-iot-ops-test-cluster-{run_id}"
+    # try:
+    #     run(f"az connectedk8s connect --name {cluster_name} -g {settings.env.azext_edge_testrg}")
+    #     custom_locations_guid = run("az ad sp show --id bc313c14-388c-4e7d-a58e-70017303ee3b --query id -o tsv")
+    #     run(
+    #         f"az connectedk8s enable-features --name {cluster_name} -g {settings.env.azext_edge_testrg}"
+    #         f" --features custom-locations cluster-connect --custom-locations-oid {custom_locations_guid}"
+    #     )
+    # except CLIInternalError as e:
+    #     logger.warning(e.error_msg)
+    # result = run(f"az connectedk8s show --name {cluster_name} -g {settings.env.azext_edge_testrg}")
+    # resource_id_prefix = result["id"].split("Microsoft.Kubernetes")[0]
+    # tracked_resources.append(result["id"])
+    # cluster_resources.append(result["id"])
 
-    result = run(command)
-    # reverse the list so things can be deleted in the right order
-    converted_resources = []
-    for res in result["deploymentState"]["resources"][::-1]:
-        if not res.startswith("Microsoft.Kubernetes"):
-            converted_resources.append(resource_id_prefix + res)
-    tracked_resources.extend(converted_resources)
-    cluster_resources.extend(converted_resources)
-    assert result["clusterName"] == cluster_name
-    assert result["clusterNamespace"] == scenario.get("--cluster-namespace", "azure-iot-operations")
-    assert result["deploymentLink"]
-    assert result["deploymentName"]
+    # command = f"az iot ops init --cluster {cluster_name} -g {settings.env.azext_edge_testrg} "\
+    #     f"--kv-id {tracked_keyvault['id']} --no-progress --no-preflight"
+    # for arg in scenario:
+    #     command += f" {arg} {scenario[arg]}"
+    # result = run(command)
+    # # reverse the list so things can be deleted in the right order
+    # converted_resources = []
+    # for res in result["deploymentState"]["resources"][::-1]:
+    #     if not res.startswith("Microsoft.Kubernetes"):
+    #         converted_resources.append(resource_id_prefix + res)
+    # tracked_resources.extend(converted_resources)
+    # cluster_resources.extend(converted_resources)
+    # assert result["clusterName"] == cluster_name
+    # assert result["clusterNamespace"] == scenario.get("--cluster-namespace", "azure-iot-operations")
+    # assert result["deploymentLink"]
+    # assert result["deploymentName"]
 
-    dstate = result["deploymentState"]
-    assert dstate["correlationId"]
-    assert dstate["opsVersion"]
+    # dstate = result["deploymentState"]
+    # assert dstate["correlationId"]
+    # assert dstate["opsVersion"]
 
-    assert result["tls"]["aioTrustConfigMap"] == "aio-ca-trust-bundle-test-only"
-    assert result["tls"]["aioTrustSecretName"] == "aio-ca-key-pair-test-only"
+    # assert result["tls"]["aioTrustConfigMap"] == "aio-ca-trust-bundle-test-only"
+    # assert result["tls"]["aioTrustSecretName"] == "aio-ca-key-pair-test-only"
 
-    # just incase
-    run("az iot ops verify-host -y")
-    yield result
+    # # just incase
+    # run("az iot ops verify-host -y")
+    # yield result
 
-    for res in cluster_resources:
-        try:
-            run(f"az resource delete --id {res} -v")
-            tracked_resources.remove(res)
-        except CLIInternalError:
-            logger.warning(f"failed to delete {res}")
+    # for res in cluster_resources:
+    #     try:
+    #         run(f"az resource delete --id {res} -v")
+    #         tracked_resources.remove(res)
+    #     except CLIInternalError:
+    #         logger.warning(f"failed to delete {res}")
