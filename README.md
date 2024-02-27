@@ -4,12 +4,11 @@
 ![Build](https://github.com/azure/azure-iot-ops-cli-extension/actions/workflows/release_workflow.yml/badge.svg)
 
 The **Azure IoT Operations extension for Azure CLI** aims to accelerate the development, management and automation of Azure IoT Operations solutions. It does this via addition of rich features and functionality to the official [Azure CLI](https://docs.microsoft.com/en-us/cli/azure).
-on.
 
 ## Pre-requisites
 
 - An Azure Arc-enabled CNCF K8s cluster.
-- Azure CLI `2.42.0` or higher. If you don't have az cli installed, follow [these instructions](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
+- Azure CLI `2.46.0` or higher. If you don't have az cli installed, follow [these instructions](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
 
 ## Install az iot ops extension
 
@@ -20,7 +19,7 @@ on.
 The IoT Ops CLI is part of the Azure CLI extension index. Installation is as simple as:
 
 ```
-az extension add --name azure-iot-ops
+az extension add --upgrade --name azure-iot-ops
 ```
 
 After install, the root command group `az iot ops` should be available and ready for use.

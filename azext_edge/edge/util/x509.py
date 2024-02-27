@@ -18,10 +18,14 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
 # aka prime256v1
-DEFAULT_EC_ALGO = ec.SECP256R1
+DEFAULT_EC_ALGO = ec.SECP256R1()
+DEFAULT_VALID_DAYS = 365
 
 
-def generate_self_signed_cert(valid_days: int = 30) -> Tuple[bytes, bytes]:
+def generate_self_signed_cert(valid_days: int = DEFAULT_VALID_DAYS) -> Tuple[bytes, bytes]:
+    if not valid_days or valid_days < 0:
+        valid_days = DEFAULT_VALID_DAYS
+
     key = ec.generate_private_key(curve=DEFAULT_EC_ALGO, backend=default_backend())
     key_bytes = key.private_bytes(
         encoding=serialization.Encoding.PEM,

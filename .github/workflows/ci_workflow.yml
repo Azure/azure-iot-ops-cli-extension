@@ -1,4 +1,6 @@
 name: CI Build and Test
+permissions:
+  contents: read
 on:
   pull_request:
     branches:
@@ -15,7 +17,3 @@ jobs:
   linter:
     needs: [build]
     uses: ./.github/workflows/azdev_linter.yml
-  # smoke tests are temporarily disabled until a suitable deployment replacement is built
-  # smoke_test:
-  #   needs: [build]
-  #   uses: ./.github/workflows/smoke_test.yml

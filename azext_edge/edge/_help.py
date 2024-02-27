@@ -31,13 +31,16 @@ def load_iotops_help():
             Kubernetes services that enable you to aggregate data from on-prem assets into an
             industrial-grade MQTT Broker, add edge compute and set up bi-directional data flow with
             a variety of services in the cloud.
+
+            By default IoT Operations CLI commands will periodically check to see if a new extension version is available.
+            This behavior can be disabled with `az config set iotops.check_latest=false`.
     """
 
     helps[
         "iot ops support"
     ] = """
         type: group
-        short-summary: IoT Operations service support commands.
+        short-summary: IoT Operations support command space.
     """
 
     helps[
@@ -78,7 +81,7 @@ def load_iotops_help():
         "iot ops check"
     ] = f"""
         type: command
-        short-summary: Evaluate IoT Operations service deployment for health, configuration and usability.
+        short-summary: Evaluate cluster-side runtime health of deployed IoT Operations services.
         long-summary: |
             The command by default shows a human friendly _summary_ view of the selected service.
             More detail can be requested via `--detail-level`.
@@ -162,10 +165,22 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops verify-host"
+    ] = """
+        type: command
+        short-summary: Runs a set of cluster host verifications for IoT Operations deployment compatibility.
+        long-summary: Intended to be run directly on a target cluster host.
+          The command may prompt to apply a set of privileged actions such as installing a dependency.
+          In this case the CLI must be run with elevated permissions. For example
+
+            `sudo AZURE_EXTENSION_DIR=~/.azure/cliextensions az iot ops verify-host`.
+    """
+
+    helps[
         "iot ops init"
     ] = """
         type: command
-        short-summary: Bootstrap, configure and deploy IoT Operations to the target cluster.
+        short-summary: Bootstrap, configure and deploy IoT Operations to the target arc-enabled cluster.
         long-summary: For additional resources including how to arc-enable a cluster see
                       https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
 

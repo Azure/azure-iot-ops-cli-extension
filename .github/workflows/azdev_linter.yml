@@ -9,22 +9,24 @@ on:
 
 jobs:
   linter:
+    permissions:
+      contents: read
     continue-on-error: ${{ inputs.continue-on-error }}
     name: Evaluate command table
     runs-on: ubuntu-latest
     steps:
     # checkout source (for linter_exclusions)
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     # download built wheel (from ./release_build.yml)
     - name: Download Wheel
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: azure-iot-ops-cli-ext
         path: ./extension
 
     # Install python
-    - uses: actions/setup-python@v3
+    - uses: actions/setup-python@v5
       name: Setup python
       with:
           python-version: "3.9"

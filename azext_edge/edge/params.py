@@ -18,7 +18,7 @@ from .providers.edge_api import (
     DataProcessorResourceKinds,
     LnmResourceKinds,
     MqResourceKinds,
-    OpcuaResourceKinds
+    OpcuaResourceKinds,
 )
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
@@ -72,8 +72,7 @@ def load_iotops_arguments(self, _):
             "include_mq_traces",
             options_list=["--mq-traces"],
             arg_type=get_three_state_flag(),
-            help="Include mq traces in the support bundle. Usage may add considerable "
-            "size to the produced bundle.",
+            help="Include mq traces in the support bundle. Usage may add considerable size to the produced bundle.",
         )
 
     with self.argument_context("iot ops check") as context:
@@ -108,23 +107,25 @@ def load_iotops_arguments(self, _):
             nargs="*",
             options_list=["--resources"],
             choices=CaseInsensitiveList(
-                [
-                    DataProcessorResourceKinds.DATASET.value,
-                    DataProcessorResourceKinds.PIPELINE.value,
-                    DataProcessorResourceKinds.INSTANCE.value,
-                    DeviceRegistryResourceKinds.ASSET.value,
-                    DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value,
-                    LnmResourceKinds.LNM.value,
-                    MqResourceKinds.BROKER.value,
-                    MqResourceKinds.BROKER_LISTENER.value,
-                    MqResourceKinds.DIAGNOSTIC_SERVICE.value,
-                    MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
-                    MqResourceKinds.DATALAKE_CONNECTOR.value,
-                    MqResourceKinds.KAFKA_CONNECTOR.value,
-                    OpcuaResourceKinds.ASSET_TYPE.value,
-                    AkriResourceKinds.CONFIGURATION.value,
-                    AkriResourceKinds.INSTANCE.value,
-                ]
+                set(
+                    [
+                        DataProcessorResourceKinds.DATASET.value,
+                        DataProcessorResourceKinds.PIPELINE.value,
+                        DataProcessorResourceKinds.INSTANCE.value,
+                        DeviceRegistryResourceKinds.ASSET.value,
+                        DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value,
+                        LnmResourceKinds.LNM.value,
+                        MqResourceKinds.BROKER.value,
+                        MqResourceKinds.BROKER_LISTENER.value,
+                        MqResourceKinds.DIAGNOSTIC_SERVICE.value,
+                        MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
+                        MqResourceKinds.DATALAKE_CONNECTOR.value,
+                        MqResourceKinds.KAFKA_CONNECTOR.value,
+                        OpcuaResourceKinds.ASSET_TYPE.value,
+                        AkriResourceKinds.CONFIGURATION.value,
+                        AkriResourceKinds.INSTANCE.value,
+                    ]
+                )
             ),
             help="Only run checks on specific resource kinds. Use space-separated values.",
         ),
@@ -234,13 +235,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "location",
             options_list=["--location"],
-            help="The ARM location that will be used for provisioned ARM collateral. "
-            "If not provided the resource group location will be used.",
-        )
-        context.argument(
-            "cluster_location",
-            options_list=["--cluster-location"],
-            help="The cluster ARM location.",
+            help="The ARM location that will be used for provisioned RPSaaS collateral. "
+            "If not provided the connected cluster location will be used.",
         )
         context.argument(
             "show_template",
@@ -265,13 +261,31 @@ def load_iotops_arguments(self, _):
             "no_deploy",
             options_list=["--no-deploy"],
             arg_type=get_three_state_flag(),
-            help="The deployment of IoT Operations will be skipped.",
+            help="The IoT Operations deployment workflow will be skipped.",
         )
         context.argument(
             "no_tls",
             options_list=["--no-tls"],
             arg_type=get_three_state_flag(),
-            help="The configuration of TLS in the init workflow will be skipped.",
+            help="The TLS configuration workflow will be skipped.",
+        )
+        context.argument(
+            "no_preflight",
+            options_list=["--no-preflight"],
+            arg_type=get_three_state_flag(),
+            help="The pre-flight workflow will be skipped.",
+        )
+        context.argument(
+            "disable_rsync_rules",
+            options_list=["--disable-rsync-rules"],
+            arg_type=get_three_state_flag(),
+            help="Resource sync rules will not be included in the deployment.",
+        )
+        context.argument(
+            "ensure_latest",
+            options_list=["--ensure-latest"],
+            arg_type=get_three_state_flag(),
+            help="Ensure the latest IoT Ops CLI is installed, raising an error if an upgrade is available.",
         )
         # Akri
         context.argument(
@@ -476,6 +490,14 @@ def load_iotops_arguments(self, _):
             "!Required! if the logged in principal does not have permissions to query graph.",
             arg_group="Key Vault CSI Driver",
         )
+        context.argument(
+            "service_principal_secret_valid_days",
+            options_list=["--sp-secret-valid-days"],
+            help="Option to control the duration in days of the init generated service principal secret. "
+            "Applicable if --sp-secret is not provided.",
+            arg_group="Key Vault CSI Driver",
+            type=int,
+        )
         # TLS
         context.argument(
             "tls_ca_path",
@@ -496,6 +518,28 @@ def load_iotops_arguments(self, _):
             "If no directory is provided the current directory is used. Applicable when no "
             "--ca-file and --ca-key-file are provided.",
             arg_group="TLS",
+        )
+        context.argument(
+            "tls_ca_valid_days",
+            options_list=["--ca-valid-days"],
+            help="Option to control the duration in days of the init generated x509 CA. "
+            "Applicable if --ca-file and --ca-key-file are not provided.",
+            arg_group="TLS",
+            type=int,
+        )
+
+    with self.argument_context("iot ops verify-host") as context:
+        context.argument(
+            "confirm_yes",
+            options_list=["--yes", "-y"],
+            arg_type=get_three_state_flag(),
+            help="Confirm [y]es without a prompt. Useful for CI and automation scenarios.",
+        )
+        context.argument(
+            "no_progress",
+            options_list=["--no-progress"],
+            arg_type=get_three_state_flag(),
+            help="Disable visual representation of work.",
         )
 
     with self.argument_context("iot ops asset") as context:
@@ -782,7 +826,7 @@ def load_iotops_arguments(self, _):
             "auth_mode",
             options_list=["--authentication-mode", "--am"],
             help="Authentication Mode.",
-            arg_group="Authentication"
+            arg_group="Authentication",
         )
         context.argument(
             "certificate_reference",
@@ -795,49 +839,49 @@ def load_iotops_arguments(self, _):
             "password_reference",
             options_list=["--password-ref", "--pr"],
             help="Reference for the password used in authentication.",
-            arg_group="Authentication"
+            arg_group="Authentication",
         )
         context.argument(
             "username_reference",
             options_list=["--username-reference", "--ur"],
             help="Reference for the username used in authentication.",
-            arg_group="Authentication"
+            arg_group="Authentication",
         )
         context.argument(
             "custom_location_name",
             options_list=["--custom-location", "--cl"],
             help="Custom location used to associate asset endpoint with cluster.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "custom_location_resource_group",
             options_list=["--custom-location-resource-group", "--clrg"],
             help="Resource group for custom location.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "custom_location_subscription",
             options_list=["--custom-location-subscription", "--cls"],
             help="Subscription Id for custom location.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "cluster_name",
             options_list=["--cluster", "-c"],
             help="Cluster to associate the asset with.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "cluster_resource_group",
             options_list=["--cluster-resource-group", "--crg"],
             help="Resource group for cluster.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "cluster_subscription",
             options_list=["--cluster-subscription", "--cs"],
             help="Subscription Id for cluster.",
-            arg_group="Associated Resources"
+            arg_group="Associated Resources",
         )
         context.argument(
             "tags",
@@ -856,7 +900,7 @@ def load_iotops_arguments(self, _):
             "password_reference",
             options_list=["--password-ref", "--pr"],
             help="Reference for pem file that contains the certificate password.",
-            arg_group=None
+            arg_group=None,
         )
         context.argument(
             "secret_reference",

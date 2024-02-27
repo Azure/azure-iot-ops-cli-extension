@@ -1,0 +1,227 @@
+name: Integration tests
+on:
+  workflow_call:
+    inputs:
+      resource-group:
+        description: Resource group for cluster creation
+        type: string
+        required: true
+        default: ops-cli-int-test-rg
+      custom-locations-oid:
+        description: Custom Locations OID
+        type: string
+        required: false
+        default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+      cleanup:
+        description: Attempt to cleanup resources after testing
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      # required for az login
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+      # optional --sp-* init params
+      AIO_SP_APP_ID:
+      AIO_SP_OBJECT_ID:
+      AIO_SP_SECRET:
+  workflow_dispatch:
+    inputs:
+      resource-group:
+        description: Resource group for cluster creation
+        type: string
+        required: true
+        default: ops-cli-int-test-rg
+      custom-locations-oid:
+        description: Object ID of Custom Locations RP
+        type: string
+        required: false
+        default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+      cleanup:
+        description: Attempt to cleanup resources after testing
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  # required for OpenID federation
+  contents: 'read'
+  id-token: 'write'
+
+env:
+  KV_NAME: "opskv${{ github.run_number }}"
+  RESOURCE_GROUP: "${{ inputs.resource-group }}"
+
+jobs:
+  create_kv:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: "Az CLI login"
+      uses: azure/login@v1.6.1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    - name: "Create Key Vault for clusters"
+      run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false
+    
+  test:
+    needs: [create_kv]
+    env:
+      CLUSTER_NAME: "az-iot-ops-test-cluster${{ github.run_number }}${{ matrix.feature }}"
+      CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
+      EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
+      K3S_VERSION: "v1.28.5+k3s1"
+    strategy:
+      fail-fast: false
+      matrix:
+        feature: [default, mq-insecure, no-syncrules, ca-certs]
+        include:
+          # default / limited options
+          - feature: default
+            ca-valid-days: 3
+            kv-sat-secret-name: test-kv-secret
+          # test --mq-insecure deployment
+          - feature: mq-insecure
+            mq-insecure: true
+            no-preflight: true
+          # test disabling custom sync rules
+          - feature: no-syncrules
+            disable-rsync-rules: true
+          # test custom ca files
+          - feature: ca-certs
+            ca-file: 'test-ca.pem'
+            ca-key-file: 'test-ca-key.pem'
+    name: "Run cluster tests"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Setup python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: "Create k3s cluster"
+        run: |
+          # vars
+          release_url="https://github.com/k3s-io/k3s/releases/download"
+          install_dir="/usr/local/bin/k3s"
+
+          # install
+          sudo apt install nfs-common
+          curl -Lo $install_dir "$release_url/${{ env.K3S_VERSION }}/k3s"
+          chmod a+x $install_dir
+
+          # config
+          K3S_KUBECONFIG_MODE="644"
+
+          # start cluster in background
+          sudo k3s server --cluster-init &
+      - name: "Copy config"
+        run: |
+          mkdir ~/.kube 2> /dev/null
+          sudo k3s kubectl config view --raw > ~/.kube/config
+          chmod 600 ~/.kube/config
+      - name: "Checkout extension source for build"
+        uses: actions/checkout@v4
+        with:
+          # ensure source checkout uses our repo instead of calling workflow
+          repository: azure/azure-iot-ops-cli-extension
+          path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+      - name: "Build and install local IoT Ops extension from source"
+        run: |
+          pip install wheel==0.30.0
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          python -m setup bdist_wheel -d dist
+          wheel=$(find ./dist/*.whl)
+          az extension add --source $wheel -y
+      - name: "Az CLI login"
+        uses: azure/login@v1.6.1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "ARC connect cluster"
+        uses: azure/azure-iot-ops-cli-extension/.github/actions/connect-arc@dev
+        with:
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
+      - name: "Get Keyvault ID"
+        run: |
+          KV_ID=$(az keyvault show -n ${{env.KV_NAME}} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
+          echo "KV_ID=$KV_ID" >> $GITHUB_ENV
+      - name: "Create CA certificates"
+        if: ${{matrix.feature == 'ca-certs'}}
+        run: |
+          >ca.conf cat <<-EOF
+          [ req ]
+          distinguished_name = req_distinguished_name
+          prompt = no
+          x509_extensions = v3_ca
+
+          [ req_distinguished_name ]
+          CN=Azure IoT Operations CLI IT non-prod
+
+          [ v3_ca ]
+          basicConstraints = critical, CA:TRUE
+          keyUsage = keyCertSign
+          subjectKeyIdentifier = hash
+          authorityKeyIdentifier = keyid
+          EOF
+          openssl ecparam -name prime256v1 -genkey -noout -out ${{ matrix.ca-key-file }}
+          openssl req -new -x509 -key ${{ matrix.ca-key-file }} -days 30 -config ca.conf -out ${{ matrix.ca-file }}
+          rm ca.conf
+      - name: "AIO Deployment"
+        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
+        with:
+          cluster: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          keyvault-id: ${{ env.KV_ID }}
+          sp-app-id: ${{ secrets.AIO_SP_APP_ID || '' }}
+          sp-object-id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
+          sp-secret: ${{ secrets.AIO_SP_SECRET || '' }}
+          no-preflight: ${{ matrix.no-preflight }}
+          mq-insecure: ${{ matrix.mq-insecure }}
+          disable-rsync-rules: ${{ matrix.disable-rsync-rules }}
+          ca-valid-days: ${{ matrix.ca-valid-days || '' }}
+          ca-file: ${{ matrix.ca-file || '' }}
+          ca-key-file: ${{ matrix.ca-key-file || '' }}
+          kv-sat-secret-name: ${{ matrix.kv-sat-secret-name || '' }}
+      - name: "Allow cluster to finish provisioning"
+        run: |
+          sleep 2m
+      - name: "Az CLI login refresh"
+        uses: azure/login@v1.6.1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Run smoke tests"
+        run: |
+          az iot ops support create-bundle --svc auto
+          az iot ops support create-bundle --svc mq --mq-traces
+          az iot ops check
+          az iot ops check --pre
+          az iot ops check --post
+          az iot ops check --as-object
+          az iot ops check --svc dataprocessor
+          az iot ops check --svc mq --resources broker brokerlistener diagnosticservice
+          az iot ops mq stats
+          az iot ops mq stats --raw
+          az iot ops mq get-password-hash -p test
+          az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
+          az iot ops verify-host
+
+  # Optional cleanup job
+  cleanup:
+    needs: [test]
+    if: ${{ github.event.inputs.cleanup == 'true' }}
+    uses: './.github/workflows/cluster_cleanup.yml'
+    with:
+      cluster_prefix: "az-iot-ops-test-cluster${{ github.run_number }}"
+      resource_group: "${{ inputs.resource-group }}"
+      keyvault_prefix: "opskv${{ github.run_number }}"
+    secrets: inherit

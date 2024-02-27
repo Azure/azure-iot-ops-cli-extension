@@ -5,8 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from azext_edge.edge.util import get_timestamp_now_utc
+
 from azext_edge.edge.providers.orchestration.base import KEYVAULT_ARC_EXTENSION_VERSION
+from azext_edge.edge.util import get_timestamp_now_utc
 
 
 @pytest.fixture
@@ -62,7 +63,74 @@ def mocked_deploy_template(mocker):
 @pytest.fixture
 def mocked_prepare_ca(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.prepare_ca", autospec=True)
-    patched.return_value = ("mock_ca", "mock_private_key", "mock_secret_name", "mock_configmap")
+
+    def handle_return(*args, **kwargs):
+        return ("mock_ca", "mock_private_key", "mock_secret_name", "mock_configmap")
+
+    patched.side_effect = handle_return
+    yield patched
+
+
+@pytest.fixture
+def mocked_verify_cli_client_connections(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.host.verify_cli_client_connections", autospec=True)
+    yield patched
+
+
+@pytest.fixture
+def mocked_register_providers(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.rp_namespace.register_providers", autospec=True)
+    yield patched
+
+
+@pytest.fixture
+def mocked_validate_keyvault_permission_model(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.base.validate_keyvault_permission_model", autospec=True
+    )
+
+    def handle_return(*args, **kwargs):
+        return {
+            "id": (
+                "/subscriptions/ae128775-4f16-4fd2-8dff-0ceed6a6a1f3/resourceGroups/FakeRg/"
+                "providers/Microsoft.KeyVault/vaults/myfakekeyvault"
+            ),
+            "name": "myfakekeyvault",
+            "type": "Microsoft.KeyVault/vaults",
+            "location": "westus3",
+            "tags": {},
+            "properties": {
+                "sku": {"family": "A", "name": "standard"},
+                "tenantId": "351f1fd9-7de2-4c5b-b730-14b54fddb737",
+                "accessPolicies": [
+                    {
+                        "tenantId": "351f1fd9-7de2-4c5b-b730-14b54fddb737",
+                        "objectId": "44e44a12-594e-464a-acbb-0038734403bf",
+                        "permissions": {"keys": [], "secrets": ["Get", "List"], "certificates": [], "storage": []},
+                    },
+                ],
+                "enableRbacAuthorization": False,
+                "vaultUri": "https://myfakekeyvault.vault.azure.net/",
+                "provisioningState": "Succeeded",
+                "publicNetworkAccess": "Enabled",
+            },
+        }
+
+    patched.side_effect = handle_return
+    yield patched
+
+
+@pytest.fixture
+def mocked_edge_api_keyvault_api_v1(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.edge_api.keyvault.KEYVAULT_API_V1", autospec=False)
+    yield patched
+
+
+@pytest.fixture
+def mocked_verify_write_permission_against_rg(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.permissions.verify_write_permission_against_rg", autospec=True
+    )
     yield patched
 
 
@@ -105,3 +173,42 @@ def mocked_file_exists(mocker):
     patched = mocker.patch("azext_edge.edge.commands_edge.exists", autospec=True)
     patched.return_value = True
     yield patched
+
+
+@pytest.fixture
+def mocked_connected_cluster_location(mocker, request):
+    return_value = getattr(request, "param", None) or "mock_location"
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.connected_cluster.ConnectedCluster.location",
+        return_value=return_value,
+        new_callable=mocker.PropertyMock,
+    )
+    yield patched
+
+
+@pytest.fixture
+def mocked_connected_cluster_extensions(mocker, request):
+    return_value = getattr(request, "param", None) or []
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.connected_cluster.ConnectedCluster.extensions",
+        return_value=return_value,
+        new_callable=mocker.PropertyMock,
+    )
+    yield patched
+
+
+@pytest.fixture
+def mocked_verify_custom_locations_enabled(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.base.verify_custom_locations_enabled", autospec=True
+    )
+    yield patched
+
+
+@pytest.fixture
+def spy_get_current_template_copy(mocker):
+    from azext_edge.edge.providers.orchestration import work
+
+    spy = mocker.spy(work, "get_current_template_copy")
+
+    yield spy

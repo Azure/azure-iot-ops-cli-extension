@@ -33,6 +33,14 @@ def mocked_resource_management_client(request, mocker):
 
     request_results = getattr(request, "param", {})
     resource_mgmt_client = mocker.Mock()
+    # deployments
+    deploy_what_if = mocker.Mock()
+    deploy_what_if.as_dict.return_value = request_results.get("deployments.begin_what_if")
+    resource_mgmt_client.deployments.begin_what_if.return_value = deploy_what_if
+    deploy_begin_create = mocker.Mock()
+    deploy_begin_create.as_dict.return_value = request_results.get("deployments.begin_create_or_update")
+    resource_mgmt_client.deployments.begin_create_or_update.return_value = deploy_begin_create
+
     # Resource group
     rg_get = mocker.Mock()
     rg_get.as_dict.return_value = request_results.get("resource_groups.get")
@@ -63,7 +71,8 @@ def mocked_resource_management_client(request, mocker):
 
     resource_mgmt_client.resources.begin_create_or_update_by_id.return_value = poller
 
-    patched = mocker.patch("azext_edge.edge.util.az_client.get_resource_client", autospec=True)
+    client_path = request_results.get("client_path", "azext_edge.edge.util.az_client")
+    patched = mocker.patch(f"{client_path}.get_resource_client", autospec=True)
     patched.return_value = resource_mgmt_client
 
     yield resource_mgmt_client
