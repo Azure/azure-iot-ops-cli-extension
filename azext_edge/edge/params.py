@@ -139,9 +139,9 @@ def load_iotops_arguments(self, _):
         context.argument(
             "resource_name",
             options_list=["--resource-name", "--rn"],
-            help="Filter checks to specific resource name. "
-            "Name can be wildcarded using the '*' character and case insensitive. "
-            "If not provided, all resources of the specified kind will be evaluated. ",
+            help="Only run checks for the specific resource name. "
+            "The name is case insensitive. "
+            "Wildcards using the '*' character can be used within the name.",
         ),
 
     with self.argument_context("iot ops mq get-password-hash") as context:

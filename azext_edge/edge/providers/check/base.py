@@ -738,17 +738,17 @@ def get_resource_metadata_property(resource: Union[dict, Any], prop_name: str) -
     return getattr(resource.metadata, prop_name, None) if hasattr(resource, "metadata") else None
 
 
-def key_func(resource):
+def get_namespace(resource):
     return get_resource_metadata_property(resource, prop_name="namespace")
 
 
 def resources_grouped_by_namespace(resources: List[dict]):
-    resources.sort(key=key_func)
-    return groupby(resources, key=key_func)
+    resources.sort(key=get_namespace)
+    return groupby(resources, key=get_namespace)
 
 
 def filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
-    return [resource for resource in resources if key_func(resource) == namespace]
+    return [resource for resource in resources if get_namespace(resource) == namespace]
 
 
 def process_dict_resource(
