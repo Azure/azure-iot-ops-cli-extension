@@ -16,6 +16,7 @@ class EnvironmentVariables(Enum):
     context_name = "azext_edge_context_name"
     kv = "azext_edge_kv"
     skip_init = "azext_edge_skip_init"
+    skip_cluster_check = "azext_edge_skip_cluster_check"
 
 
 class Setting(object):

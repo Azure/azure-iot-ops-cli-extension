@@ -134,6 +134,11 @@ def cluster_setup(settings):
     from kubernetes.client.rest import ApiException
     from ..settings import EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.context_name.value)
+    settings.add_to_config(EnvironmentVariables.skip_cluster_check.value)
+    if settings.env.azext_edge_skip_cluster_check:
+        yield
+        return
+
     try:
         from azext_edge.edge.providers.base import load_config_context
         from kubernetes import client
@@ -155,13 +160,17 @@ def cluster_setup(settings):
 def init_setup(request, cluster_setup, settings):
     from ..settings import convert_flag, EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.skip_init.value, conversion=convert_flag)
-    if settings.env.azext_edge_skip_init:
-        run("az iot ops verify-host -y")
-        yield {}
-        return
-
     settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.cluster.value)
+
+    if settings.env.azext_edge_skip_init:
+        run("az iot ops verify-host -y")
+        yield {
+            "clusterName": settings.env.azext_edge_cluster,
+            "resourceGroup": settings.env.azext_edge_rg
+        }
+        return
+
     raise NotImplementedError("Connecting the cluster to Azure and init setup not implemented yet.")
 
     # cluster_resources = []
