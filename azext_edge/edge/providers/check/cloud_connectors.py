@@ -200,7 +200,7 @@ def filter_connector_and_topic_map_resources(
     topic_map_reference_key: str,
     all_connectors: List[Dict[str, Any]],
     all_topic_maps: List[Dict[str, Any]],
-)-> Tuple[list, list]:
+) -> Tuple[list, list]:
     filtered_connectors = filter_resources_by_name(
         resources=all_connectors, resource_name=connector_resource_name
     )
