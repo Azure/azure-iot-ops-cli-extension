@@ -131,7 +131,7 @@ def tracked_keyvault(request, tracked_resources, settings):
 
 @pytest.fixture(scope="session")
 def cluster_setup(settings):
-    from urllib3.exceptions import MaxRetryError
+    from kubernetes.client.rest import ApiException
     from ..settings import EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.context_name.value)
     try:
@@ -140,9 +140,9 @@ def cluster_setup(settings):
         # Check for kube config file
         load_config_context(context_name=settings.env.azext_edge_context_name)
         # Check for cluster access
-        client.CoreV1Api().list_namespace()
+        client.VersionApi().get_code()
         yield
-    except MaxRetryError:
+    except ApiException:
         raise NotImplementedError("Local cluster creation for testing not fully implemented yet.")
         # import os
         # os.environ["K3D_FIX_MOUNTS"] = "1"
@@ -162,7 +162,7 @@ def init_setup(request, cluster_setup, settings):
 
     settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.cluster.value)
-    raise NotImplementedError("Init setup not implemented yet.")
+    raise NotImplementedError("Connecting the cluster to Azure and init setup not implemented yet.")
 
     # cluster_resources = []
     # scenario = {}
