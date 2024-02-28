@@ -56,51 +56,52 @@ def run_host_verify(render_progress: Optional[bool] = True, confirm_yes: Optiona
             console.print(f"- {endpoint} ", "...", endpoint_connections.connect_map[endpoint])
         endpoint_connections.throw_if_failure()
 
-        if not is_windows():
-            if is_ubuntu_distro():
-                logger.debug("Determined the OS is Ubuntu.")
-                console.print()
-                console.print("OS eval for [bold]Ubuntu[/bold]:")
-                is_nfs_common_installed = is_package_installed(NFS_COMMON_ALIAS)
-                console.print(
-                    f"- Is [cyan]{NFS_COMMON_ALIAS}[/cyan] installed?",
-                    "...",
-                    _get_eval_result_display(is_nfs_common_installed),
-                )
+        if False:  # TODO remove in next release.
+            if not is_windows():
+                if is_ubuntu_distro():
+                    logger.debug("Determined the OS is Ubuntu.")
+                    console.print()
+                    console.print("OS eval for [bold]Ubuntu[/bold]:")
+                    is_nfs_common_installed = is_package_installed(NFS_COMMON_ALIAS)
+                    console.print(
+                        f"- Is [cyan]{NFS_COMMON_ALIAS}[/cyan] installed?",
+                        "...",
+                        _get_eval_result_display(is_nfs_common_installed),
+                    )
 
-                if is_nfs_common_installed is None:
-                    status_render.stop()
-                    logger.warning("Unable to determine if nfs-common is installed!")
-
-                elif is_nfs_common_installed is False:
-                    if not confirm_yes:
+                    if is_nfs_common_installed is None:
                         status_render.stop()
-                        nfs_install_commands = get_package_install_commands(NFS_COMMON_ALIAS)
-                        usr_script = "\n".join(nfs_install_commands)
-                        console.print("\nInstall with the following commands?")
-                        console.print(Markdown(f"```\n{usr_script}\n```"))
-                        execute_install = Confirm.ask("(sudo required)")
-                        if not execute_install:
-                            raise ValidationError("Dependency install cancelled!")
+                        logger.warning("Unable to determine if nfs-common is installed!")
 
-                        from os import geteuid  # pylint: disable=no-name-in-module
+                    elif is_nfs_common_installed is False:
+                        if not confirm_yes:
+                            status_render.stop()
+                            nfs_install_commands = get_package_install_commands(NFS_COMMON_ALIAS)
+                            usr_script = "\n".join(nfs_install_commands)
+                            console.print("\nInstall with the following commands?")
+                            console.print(Markdown(f"```\n{usr_script}\n```"))
+                            execute_install = Confirm.ask("(sudo required)")
+                            if not execute_install:
+                                raise ValidationError("Dependency install cancelled!")
 
-                        if geteuid() != 0:
-                            az_ext_dir = get_extension_path(EXTENSION_NAME)
-                            if not az_ext_dir:
+                            from os import geteuid  # pylint: disable=no-name-in-module
+
+                            if geteuid() != 0:
+                                az_ext_dir = get_extension_path(EXTENSION_NAME)
+                                if not az_ext_dir:
+                                    raise ValidationError(
+                                        "Unable to determine extension directory. Please ensure extension installation."
+                                    )
+                                # pylint: disable-next=unsubscriptable-object
+                                az_ext_dir = az_ext_dir[: az_ext_dir.index(EXTENSION_NAME)]
                                 raise ValidationError(
-                                    "Unable to determine extension directory. Please ensure extension installation."
+                                    "sudo user not detected.\n\nPlease run the command in the following form:\n"
+                                    f"-> sudo AZURE_EXTENSION_DIR={az_ext_dir} az iot ops verify-host"
                                 )
-                            # pylint: disable-next=unsubscriptable-object
-                            az_ext_dir = az_ext_dir[: az_ext_dir.index(EXTENSION_NAME)]
-                            raise ValidationError(
-                                "sudo user not detected.\n\nPlease run the command in the following form:\n"
-                                f"-> sudo AZURE_EXTENSION_DIR={az_ext_dir} az iot ops verify-host"
-                            )
 
-                    install_nfs_common_result = install_package(NFS_COMMON_ALIAS)
-                    if install_nfs_common_result:
-                        console.print(f"[cyan]{NFS_COMMON_ALIAS}[/cyan] installed succesfully!")
+                        install_nfs_common_result = install_package(NFS_COMMON_ALIAS)
+                        if install_nfs_common_result:
+                            console.print(f"[cyan]{NFS_COMMON_ALIAS}[/cyan] installed succesfully!")
 
     console.print()
 
