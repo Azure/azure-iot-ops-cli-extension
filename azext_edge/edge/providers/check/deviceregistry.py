@@ -24,6 +24,8 @@ from .common import (
     ASSET_DATAPOINT_PROPERTIES,
     ASSET_EVENT_PROPERTIES,
     ASSET_PROPERTIES,
+    MAX_ASSET_DATAPOINTS,
+    MAX_ASSET_EVENTS,
     PADDING_SIZE,
     ResourceOutputDetailLevel,
 )
@@ -147,10 +149,9 @@ def evaluate_assets(
                 data_points_value = {"len(spec.dataPoints)": data_points_count}
                 data_points_status = CheckTaskStatus.success.value
 
-                if data_points_count > 1000:
+                if data_points_count > MAX_ASSET_DATAPOINTS:
                     data_points_text = (
-                        # expecting no more than 1000 data points per asset
-                        f"Data points [red]exceeding 1000[/red]. Detected {data_points_count}."
+                        f"Data points [red]exceeding {MAX_ASSET_DATAPOINTS}[/red]. Detected {data_points_count}."
                     )
                 else:
                     data_points_text = (
@@ -234,10 +235,9 @@ def evaluate_assets(
                 events_count_value = {"len(spec.events)": events_count}
                 events_count_status = CheckTaskStatus.success.value
 
-                if events_count > 1000:
+                if events_count > MAX_ASSET_EVENTS:
                     events_count_text = (
-                        # expecting no more than 1000 events per asset
-                        f"Events [red]exceeding 1000[/red]. Detected {events_count}."
+                        f"Events [red]exceeding {MAX_ASSET_EVENTS}[/red]. Detected {events_count}."
                     )
                     events_count_status = CheckTaskStatus.error.value
                 else:

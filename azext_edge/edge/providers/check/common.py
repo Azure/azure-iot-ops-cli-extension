@@ -197,6 +197,9 @@ ASSET_EVENT_PROPERTIES = [
     ("observabilityMode", "Observability Mode", False),
 ]
 
+MAX_ASSET_EVENTS = 1000
+MAX_ASSET_DATAPOINTS = 1000
+
 # Check constants
 ALL_NAMESPACES_TARGET = '_all_'
 
