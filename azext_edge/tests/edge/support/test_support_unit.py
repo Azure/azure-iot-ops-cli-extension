@@ -85,6 +85,7 @@ def test_create_bundle(
     mocked_list_services,
     mocked_list_nodes,
     mocked_list_cluster_events,
+    mocked_list_storage_classes,
     mocked_get_stats,
     mocked_root_logger,
     mocked_mq_active_api,
@@ -560,6 +561,12 @@ def assert_shared_kpis(mocked_client, mocked_zipfile):
         zinfo="events.yaml",
         data="items:\n- action: mock_action\n  involvedObject: mock_object\n  metadata:\n    name: mock_event\n",
     )
+    mocked_client.StorageV1Api().list_storage_class.assert_called_once()
+    assert_zipfile_write(
+        mocked_zipfile,
+        zinfo="storage_classes.yaml",
+        data="items:\n- metadata:\n    name: mock_storage_class\n",
+    )
 
 
 # TODO: base test class?
@@ -625,6 +632,7 @@ def test_create_bundle_mq_traces(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_get_stats,
+    mocked_list_storage_classes,
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_mq_get_traces,

@@ -22,13 +22,14 @@ from .base import (
 
 logger = get_logger(__name__)
 
+DATA_PROCESSOR_READER_WORKER_POD = "aio-dp-reader-worker-0"
+DATA_PROCESSOR_RUNNER_WORKER_POD = "aio-dp-runner-worker-0"
 DATA_PROCESSOR_APP_LABELS = [
     'aio-dp-reader-worker',
     'aio-dp-refdata-store',
     'nats',
     'aio-dp-runner-worker',
     'aio-dp-operator',
-    'nfs-server-provisioner'
 ]
 
 DATA_PROCESSOR_PREFIX = "aio-dp-"
@@ -46,8 +47,10 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
         label_selector=DATA_PROCESSOR_LABEL,
         since_seconds=since_seconds,
         capture_previous_logs=True,
-        capture_init_container_logs=True,
-        include_metrics=True,
+        init_container_for_logs=[
+            DATA_PROCESSOR_READER_WORKER_POD,
+            DATA_PROCESSOR_RUNNER_WORKER_POD,
+        ],
     )
     dataprocessor_pods.extend(
         process_v1_pods(

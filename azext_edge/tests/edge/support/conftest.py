@@ -335,6 +335,21 @@ def mocked_list_cluster_events(mocked_client):
 
 
 @pytest.fixture
+def mocked_list_storage_classes(mocked_client):
+    from kubernetes.client.models import V1StorageClassList, V1StorageClass, V1ObjectMeta
+
+    def _handle_list_storage_classes(*args, **kwargs):
+        storage_class = V1StorageClass(metadata=V1ObjectMeta(name="mock_storage_class"))
+        storage_class_list = V1StorageClassList(items=[storage_class])
+
+        return storage_class_list
+    
+    mocked_client.StorageV1Api().list_storage_class.side_effect = _handle_list_storage_classes
+
+    yield mocked_client
+
+
+@pytest.fixture
 def mocked_list_daemonsets(mocked_client):
     from kubernetes.client.models import V1DaemonSetList, V1DaemonSet, V1ObjectMeta
 
