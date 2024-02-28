@@ -11,8 +11,9 @@ from enum import Enum
 
 
 class EnvironmentVariables(Enum):
-    testrg = "azext_edge_testrg"
+    rg = "azext_edge_rg"
     cluster = "azext_edge_cluster"
+    context_name = "azext_edge_context_name"
     kv = "azext_edge_kv"
     skip_init = "azext_edge_skip_init"
 
@@ -29,7 +30,7 @@ def convert_flag(key: Optional[str] = None):
 class DynamoSettings(object):
     def __init__(self, req_env_set: Optional[List[str]] = None, opt_env_set: Optional[List[str]] = None):
         if not req_env_set:
-            req_env_set = [EnvironmentVariables.testrg.value]
+            req_env_set = []
 
         if not isinstance(req_env_set, list):
             raise TypeError("req_env_set must be a list")

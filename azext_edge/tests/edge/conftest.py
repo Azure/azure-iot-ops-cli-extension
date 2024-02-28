@@ -95,10 +95,7 @@ def mocked_build_query(mocker, request):
 @pytest.fixture(scope="session")
 def settings():
     from ..settings import DynamoSettings
-    try:
-        yield DynamoSettings()
-    except RuntimeError:
-        pytest.skip("Test requires resource group.")
+    yield DynamoSettings()
 
 
 @pytest.fixture(scope="session")
@@ -114,58 +111,58 @@ def tracked_resources():
 
 @pytest.fixture(scope="session")
 def tracked_keyvault(request, tracked_resources, settings):
-    from ..settings import EnvironmentVariables, convert_flag
+    # TODO: clean up env variables later
+    from ..settings import convert_flag, EnvironmentVariables
+    settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.kv.value)
     settings.add_to_config(EnvironmentVariables.skip_init.value, conversion=convert_flag)
     if settings.env.azext_edge_skip_init:
         # kv only needed for init for now
         kv = None
     elif settings.env.azext_edge_kv:
-        kv = run(f"az keyvault show -n {settings.env.azext_edge_kv} -g {settings.env.azext_edge_testrg}")
+        kv = run(f"az keyvault show -n {settings.env.azext_edge_kv} -g {settings.env.azext_edge_rg}")
     else:
-        run_id = id(request)
+        run_id = id(request.session)
         kv_name = f"opstestkv-{run_id}"
-        kv = run(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_testrg}")
+        kv = run(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_rg}")
         tracked_resources.append(kv["id"])
     yield kv
 
 
 @pytest.fixture(scope="session")
-def local_cluster_setup():
+def cluster_setup(settings):
+    from urllib3.exceptions import MaxRetryError
+    from ..settings import EnvironmentVariables
+    settings.add_to_config(EnvironmentVariables.context_name.value)
     try:
-        run("kubectl api-resources")
+        from azext_edge.edge.providers.base import load_config_context
+        from kubernetes import client
+        # Check for kube config file
+        load_config_context(context_name=settings.env.azext_edge_context_name)
+        # Check for cluster access
+        client.CoreV1Api().list_namespace()
         yield
-        return
-    except CLIInternalError:
-        logger.info("Failed to access cluster. Trying to set up local cluster.")
-
-    try:
-        import os
-        os.environ["K3D_FIX_MOUNTS"] = "1"
-        run("kubectl cluster create -i ghcr.io/jlian/k3d-nfs:v1.25.3-k3s1")
-    except CLIInternalError:
-        logger.info("Failed to create cluster. Required for testing.")
-    yield
-    run("kubectl cluster delete")
+    except MaxRetryError:
+        raise NotImplementedError("Local cluster creation for testing not fully implemented yet.")
+        # import os
+        # os.environ["K3D_FIX_MOUNTS"] = "1"
+        # run("kubectl cluster create -i ghcr.io/jlian/k3d-nfs:v1.25.3-k3s1")
+        # yield
+        # run("kubectl cluster delete")
 
 
 @pytest.fixture()
-def init_setup(request, tracked_resources, tracked_keyvault, local_cluster_setup, settings):
-    from ..settings import EnvironmentVariables
-    settings.add_to_config(EnvironmentVariables.cluster.value)
+def init_setup(request, cluster_setup, settings):
+    from ..settings import convert_flag, EnvironmentVariables
+    settings.add_to_config(EnvironmentVariables.skip_init.value, conversion=convert_flag)
     if settings.env.azext_edge_skip_init:
-        if not settings.env.azext_edge_cluster:
-            raise CLIInternalError("Cluster name required if not running init.")
-        yield {
-            "clusterName": settings.env.azext_edge_cluster,
-            "resourceGroup": settings.env.azext_edge_testrg
-        }
+        run("az iot ops verify-host -y")
+        yield {}
         return
 
-    raise NotImplementedError(
-        "Please provide a valid cluster with AIO already deployed on it. The required parameters for "
-        "pytest.ini are: `azext_edge_testrg`, `azext_edge_cluster`, and `azext_edge_skip_init`"
-    )
+    settings.add_to_config(EnvironmentVariables.rg.value)
+    settings.add_to_config(EnvironmentVariables.cluster.value)
+    raise NotImplementedError("Init setup not implemented yet.")
 
     # cluster_resources = []
     # scenario = {}
@@ -175,20 +172,20 @@ def init_setup(request, tracked_resources, tracked_keyvault, local_cluster_setup
     # run_id = id(request.session)
     # cluster_name = settings.env.azext_edge_cluster or f"az-iot-ops-test-cluster-{run_id}"
     # try:
-    #     run(f"az connectedk8s connect --name {cluster_name} -g {settings.env.azext_edge_testrg}")
+    #     run(f"az connectedk8s connect --name {cluster_name} -g {settings.env.azext_edge_rg}")
     #     custom_locations_guid = run("az ad sp show --id bc313c14-388c-4e7d-a58e-70017303ee3b --query id -o tsv")
     #     run(
-    #         f"az connectedk8s enable-features --name {cluster_name} -g {settings.env.azext_edge_testrg}"
+    #         f"az connectedk8s enable-features --name {cluster_name} -g {settings.env.azext_edge_rg}"
     #         f" --features custom-locations cluster-connect --custom-locations-oid {custom_locations_guid}"
     #     )
     # except CLIInternalError as e:
     #     logger.warning(e.error_msg)
-    # result = run(f"az connectedk8s show --name {cluster_name} -g {settings.env.azext_edge_testrg}")
+    # result = run(f"az connectedk8s show --name {cluster_name} -g {settings.env.azext_edge_rg}")
     # resource_id_prefix = result["id"].split("Microsoft.Kubernetes")[0]
     # tracked_resources.append(result["id"])
     # cluster_resources.append(result["id"])
 
-    # command = f"az iot ops init --cluster {cluster_name} -g {settings.env.azext_edge_testrg} "\
+    # command = f"az iot ops init --cluster {cluster_name} -g {settings.env.azext_edge_rg} "\
     #     f"--kv-id {tracked_keyvault['id']} --no-progress --no-preflight"
     # for arg in scenario:
     #     command += f" {arg} {scenario[arg]}"

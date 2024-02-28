@@ -13,7 +13,7 @@ testpaths =
     azext_edge/tests
 
 env =
-    azext_edge_testrg=
+    azext_edge_rg=
     azext_edge_cluster=
     azext_edge_skip_init=
     azext_edge_kv=
