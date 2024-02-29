@@ -100,11 +100,11 @@ def get_stats(
                     for s in stats:
                         table.add_row(
                             stats[s]["displayName"],
-                            "[green]Pass[/green]"
-                            if str(stats[s]["value"]) == "Pass"
-                            else "[red]Fail[/red]"
-                            if str(stats[s]["value"]) == "Fail"
-                            else str(stats[s]["value"]),
+                            (
+                                "[green]Pass[/green]"
+                                if str(stats[s]["value"]) == "Pass"
+                                else "[red]Fail[/red]" if str(stats[s]["value"]) == "Fail" else str(stats[s]["value"])
+                            ),
                             stats[s]["description"],
                         )
                     live.update(table)
@@ -156,6 +156,8 @@ def _clean_stats(raw_stats: str) -> dict:
                 result[key] = result[key] + value
             elif key == keys.publish_route_replication_correctness.value:
                 result[key] = result[key] * value
+            elif key == keys.total_subscriptions.value or key == keys.connected_sessions.value:
+                result[key] = result[key] + value
             else:
                 result[key] = value
     if result:
