@@ -89,13 +89,14 @@ def filter_resources_by_name(
 ) -> List[dict]:
     if not resource_name:
         return resources
-    
+
     # validate resource_name that should only contain alphanumeric characters, hyphens, ? and *
     if not re.fullmatch(r"[a-zA-Z0-9\-?*]+", resource_name):
         raise InvalidArgumentValueError("Invalid resource name. Only alphanumeric characters, hyphens, ? and * are allowed.")
 
-    resource_name = resource_name.lower()
     # if only alphanumeric characters and hyphens, check resource for exact name
+    resource_name = resource_name.lower()
+
     if "?" not in resource_name and "*" not in resource_name:
         resources = [resource for resource in resources if resource_name == get_resource_metadata_property(
             resource, prop_name="name").lower()
