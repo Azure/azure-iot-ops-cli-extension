@@ -28,12 +28,8 @@ from azext_edge.edge.providers.edge_api import (
 from azext_edge.edge.providers.support.akri import AKRI_APP_LABEL, AKRI_INSTANCE_LABEL, AKRI_SERVICE_LABEL
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.dataprocessor import (
-    DATA_PROCESSOR_INSTANCE_LABEL,
     DATA_PROCESSOR_LABEL,
     DATA_PROCESSOR_NAME_LABEL,
-    DATA_PROCESSOR_ONEOFF_LABEL,
-    DATA_PROCESSOR_PART_OF_LABEL,
-    DATA_PROCESSOR_RELEASE_LABEL,
 )
 from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
 from azext_edge.edge.providers.support.mq import MQ_LABEL
@@ -192,12 +188,6 @@ def test_create_bundle(
             assert_list_deployments(
                 mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_PART_OF_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-            )
 
             assert_list_pods(
                 mocked_client,
@@ -207,51 +197,15 @@ def test_create_bundle(
                 resource_api=DATA_PROCESSOR_API_V1,
                 since_seconds=since_seconds,
             )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=DATA_PROCESSOR_RELEASE_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-                since_seconds=since_seconds,
-            )
 
             assert_list_replica_sets(
                 mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-            )
 
             assert_list_stateful_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATA_PROCESSOR_RELEASE_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-            )
-            assert_list_stateful_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
+                label_selector=DATA_PROCESSOR_LABEL,
                 resource_api=DATA_PROCESSOR_API_V1,
             )
 

@@ -29,7 +29,6 @@ from .common import (
     DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES,
     DATA_PROCESSOR_NATS_PREFIX,
     DATA_PROCESSOR_OPERATOR,
-    DATA_PROCESSOR_NFS_SERVER_PROVISIONER,
     DATA_PROCESSOR_READER_WORKER_PREFIX,
     DATA_PROCESSOR_REFDATA_STORE_PREFIX,
     DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
@@ -193,7 +192,6 @@ def evaluate_instances(
                 DATA_PROCESSOR_REFDATA_STORE_PREFIX,
                 DATA_PROCESSOR_NATS_PREFIX,
                 DATA_PROCESSOR_OPERATOR,
-                DATA_PROCESSOR_NFS_SERVER_PROVISIONER,
             ]:
                 evaluate_pod_health(
                     check_manager=check_manager,

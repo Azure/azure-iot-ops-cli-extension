@@ -231,7 +231,6 @@ DATA_PROCESSOR_RUNNER_WORKER_PREFIX = "aio-dp-runner-worker"
 DATA_PROCESSOR_REFDATA_STORE_PREFIX = "aio-dp-refdata-store"
 DATA_PROCESSOR_NATS_PREFIX = "aio-dp-msg-store"
 DATA_PROCESSOR_OPERATOR = "aio-dp-operator"
-DATA_PROCESSOR_NFS_SERVER_PROVISIONER = "aio-dp-nfs-server-provisioner"
 
 # MQ runtime attributes
 
