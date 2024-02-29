@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, List
+from typing import Iterable
 
 from knack.log import get_logger
 
@@ -27,7 +27,6 @@ DATA_PROCESSOR_APP_LABELS = [
     'nats',
     'aio-dp-runner-worker',
     'aio-dp-operator',
-    'nfs-server-provisioner'
 ]
 
 DATA_PROCESSOR_PREFIX = "aio-dp-"
@@ -46,41 +45,12 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
         since_seconds=since_seconds,
         capture_previous_logs=True,
     )
-    dataprocessor_pods.extend(
-        process_v1_pods(
-            resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
-            since_seconds=since_seconds,
-            capture_previous_logs=True,
-        )
-    )
-    dataprocessor_pods.extend(
-        process_v1_pods(
-            resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_RELEASE_LABEL,
-            since_seconds=since_seconds,
-            capture_previous_logs=True,
-        )
-    )
-
-    # @digimaun - TODO, depends on consistent labels
-    temp_oneoffs = process_v1_pods(
-        resource_api=DATA_PROCESSOR_API_V1,
-        label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
-        since_seconds=since_seconds,
-        capture_previous_logs=True,
-    )
-
-    dataprocessor_pods.extend(_process_oneoff_label_entities(temp_oneoffs=temp_oneoffs))
 
     return dataprocessor_pods
 
 
 def fetch_deployments():
     processed = process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
-    processed.extend(
-        process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_PART_OF_LABEL)
-    )
 
     return processed
 
@@ -90,22 +60,13 @@ def fetch_statefulsets():
         resource_api=DATA_PROCESSOR_API_V1,
         label_selector=DATA_PROCESSOR_LABEL,
     )
-    processed.extend(
-        process_statefulset(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_RELEASE_LABEL)
-    )
-    processed.extend(
-        process_statefulset(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_INSTANCE_LABEL)
-    )
+
     return processed
 
 
 def fetch_replicasets():
     processed = []
     processed.extend(process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
-
-    # @digimaun - TODO, depends on consistent labels
-    temp_oneoffs = process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_ONEOFF_LABEL)
-    processed.extend(_process_oneoff_label_entities(temp_oneoffs=temp_oneoffs))
 
     return processed
 
@@ -136,13 +97,3 @@ def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 
     dataprocessor_to_run.update(support_runtime_elements)
 
     return dataprocessor_to_run
-
-
-def _process_oneoff_label_entities(temp_oneoffs: List[dict]):
-    processed = []
-    for oneoff in temp_oneoffs:
-        if "data" in oneoff and oneoff["data"] and isinstance(oneoff["data"], dict):
-            name: str = oneoff["data"].get("metadata", {}).get("name")
-            if name and name.startswith(DATA_PROCESSOR_PREFIX):
-                processed.append(oneoff)
-    return processed
