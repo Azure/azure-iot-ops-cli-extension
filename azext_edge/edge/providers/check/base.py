@@ -10,6 +10,7 @@ from itertools import groupby
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from enum import Enum
 
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import (
@@ -86,19 +87,24 @@ def filter_resources_by_name(
     resources: List[dict],
     resource_name: str,
 ) -> List[dict]:
+    if not resource_name:
+        return resources
+    
+    # validate resource_name that should only contain alphanumeric characters, hyphens, ? and *
+    if not re.fullmatch(r"[a-zA-Z0-9\-?*]+", resource_name):
+        raise InvalidArgumentValueError("Invalid resource name. Only alphanumeric characters, hyphens, ? and * are allowed.")
 
-    if resource_name:
-        resource_name = resource_name.lower()
-        # check resource for wildcarded name
-        if "*" in resource_name:
-            regex = re.compile(f"^{resource_name.replace('*', '.*')}$")
-            resources = [resource for resource in resources if regex.match(
-                get_resource_metadata_property(resource, prop_name="name").lower()
-            )]
-        else:
-            resources = [resource for resource in resources if resource_name == get_resource_metadata_property(
-                resource, prop_name="name").lower()
-            ]
+    resource_name = resource_name.lower()
+    # if only alphanumeric characters and hyphens, check resource for exact name
+    if "?" not in resource_name and "*" not in resource_name:
+        resources = [resource for resource in resources if resource_name == get_resource_metadata_property(
+            resource, prop_name="name").lower()
+        ]
+    else:
+        regex = re.compile(f"{resource_name.replace('*', '.*')}")
+        resources = [resource for resource in resources if regex.fullmatch(
+            get_resource_metadata_property(resource, prop_name="name").lower()
+        )]
 
     return resources
 

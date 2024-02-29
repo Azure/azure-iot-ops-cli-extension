@@ -425,9 +425,8 @@ def test_pipeline_checks(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("resource_name", ["test_instance", "test_instance2"])
 @pytest.mark.parametrize(
-    "datasets, namespace_conditions, namespace_evaluations",
+    "datasets, resource_name, namespace_conditions, namespace_evaluations",
     [
         (
             # datasets
@@ -437,6 +436,28 @@ def test_pipeline_checks(
                     status={"provisioningStatus": {"status": ProvisioningState.succeeded.value}}
                 )
             ],
+            # resource_name
+            "test-dataset",
+            # namespace conditions str
+            ["provisioningState"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/provisioningState", ProvisioningState.succeeded.value),
+                ],
+            ],
+        ),
+        (
+            # datasets
+            [
+                generate_resource_stub(
+                    metadata={"name": "test-dataset"},
+                    status={"provisioningStatus": {"status": ProvisioningState.succeeded.value}}
+                )
+            ],
+            # resource_name
+            "test-dataset-?*",
             # namespace conditions str
             ["provisioningState"],
             # namespace evaluations str
@@ -462,6 +483,8 @@ def test_pipeline_checks(
                     }
                 )
             ],
+            # resource_name
+            "test-dat*",
             # namespace conditions str
             ["provisioningState"],
             # namespace evaluations str

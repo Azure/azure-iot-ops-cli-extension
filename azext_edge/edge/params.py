@@ -141,7 +141,8 @@ def load_iotops_arguments(self, _):
             options_list=["--resource-name", "--rn"],
             help="Only run checks for the specific resource name. "
             "The name is case insensitive. "
-            "Wildcards using the '*' character can be used within the name.",
+            "Global patterns '*' and '?' are supported. "
+            "Note: Only alphanumeric characters, hyphens, '?' and '*' are allowed.",
         ),
 
     with self.argument_context("iot ops mq get-password-hash") as context:
