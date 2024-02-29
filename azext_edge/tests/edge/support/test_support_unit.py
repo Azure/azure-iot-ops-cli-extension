@@ -49,7 +49,6 @@ from azext_edge.edge.providers.support.orc import (
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
 from ...generators import generate_generic_id
-from .conftest import add_pod_to_mocked_pods
 
 a_bundle_dir = f"support_test_{generate_generic_id()}"
 
