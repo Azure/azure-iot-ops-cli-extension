@@ -25,12 +25,12 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="cf6dad5305faae6867fc5f3e52655779d45145ac",
+    commit_id="eac42bb5f3b13579b27adbcbbb71ef20e3d45df8",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.24.24.22086", "templateHash": "8208899844976809115"},
+            "_generator": {"name": "bicep", "version": "0.25.53.49325", "templateHash": "5277875297568178172"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -94,10 +94,8 @@ V1_TEMPLATE = TemplateVer(
                 "type": "object",
                 "defaultValue": {"kind": "csi", "csiServicePrincipalSecretRef": "aio-akv-sp"},
             },
-            "dataProcessorCardinality": {
-                "type": "object",
-                "defaultValue": {"readerWorker": 1, "runnerWorker": 1, "messageStore": 1},
-            },
+            "kubernetesDistro": {"type": "string", "defaultValue": "k8s", "allowedValues": ["k3s", "k8s", "microk8s"]},
+            "containerRuntimeSocket": {"type": "string", "defaultValue": ""},
             "deployResourceSyncRules": {"type": "bool", "defaultValue": True},
         },
         "variables": {
@@ -129,14 +127,14 @@ V1_TEMPLATE = TemplateVer(
                 "opcUaBroker": "[variables('DEFAULT_CONTAINER_REGISTRY')]",
             },
             "VERSIONS": {
-                "adr": "0.1.0-preview",
-                "opcUaBroker": "0.2.0-preview",
+                "mq": "0.3.0-preview",
                 "observability": "0.1.0-preview",
-                "akri": "0.1.0-preview",
-                "mq": "0.2.0-preview",
-                "aio": "0.3.0-preview",
+                "aio": "0.4.0-preview",
                 "layeredNetworking": "0.1.0-preview",
-                "processor": "0.1.2-preview",
+                "processor": "0.2.0-preview",
+                "opcUaBroker": "0.3.0-preview",
+                "adr": "0.1.0-preview",
+                "akri": "0.2.1-preview",
             },
             "TRAINS": {
                 "mq": "preview",
@@ -145,6 +143,7 @@ V1_TEMPLATE = TemplateVer(
                 "adr": "preview",
                 "akri": "preview",
                 "layeredNetworking": "preview",
+                "opcUaBroker": "preview",
             },
             "broker_fe_issuer_configuration": {
                 "name": "mq-fe-issuer-configuration",
@@ -202,7 +201,12 @@ V1_TEMPLATE = TemplateVer(
                         },
                         "resources": {"limits": {"cpu": "100m", "memory": "512Mi"}},
                         "ports": {
-                            "metrics": {"enabled": True, "containerPort": 8889, "servicePort": 8889, "protocol": "TCP"},
+                            "metrics": {
+                                "enabled": True,
+                                "containerPort": 8889,
+                                "servicePort": 8889,
+                                "protocol": "TCP",
+                            },
                             "jaeger-compact": {"enabled": False},
                             "jaeger-grpc": {"enabled": False},
                             "jaeger-thrift": {"enabled": False},
@@ -218,16 +222,21 @@ V1_TEMPLATE = TemplateVer(
                     "resource": {
                         "apiVersion": "apps/v1",
                         "kind": "DaemonSet",
-                        "metadata": {"name": "aio-opc-asset-discovery"},
+                        "metadata": {
+                            "name": "aio-opc-asset-discovery",
+                            "labels": {"app.kubernetes.io/part-of": "aio"},
+                        },
                         "spec": {
                             "selector": {"matchLabels": {"name": "aio-opc-asset-discovery"}},
                             "template": {
-                                "metadata": {"labels": {"name": "aio-opc-asset-discovery"}},
+                                "metadata": {
+                                    "labels": {"name": "aio-opc-asset-discovery", "app.kubernetes.io/part-of": "aio"}
+                                },
                                 "spec": {
                                     "containers": [
                                         {
                                             "name": "aio-opc-asset-discovery",
-                                            "image": "[format('{0}/opcuabroker/discovery-handler:{1}', variables('CONTAINER_REGISTRY_DOMAINS').opcUaBroker, variables('VERSIONS').opcUaBroker)]",
+                                            "image": "[format('{0}/opcuabroker/discovery-handler:{1}.4', variables('CONTAINER_REGISTRY_DOMAINS').opcUaBroker, variables('VERSIONS').opcUaBroker)]",
                                             "imagePullPolicy": "Always",
                                             "resources": {
                                                 "requests": {"memory": "64Mi", "cpu": "10m"},
@@ -235,11 +244,8 @@ V1_TEMPLATE = TemplateVer(
                                             },
                                             "ports": [{"name": "discovery", "containerPort": 80}],
                                             "env": [
-                                                {
-                                                    "name": "POD_IP",
-                                                    "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}},
-                                                },
                                                 {"name": "DISCOVERY_HANDLERS_DIRECTORY", "value": "/var/lib/akri"},
+                                                {"name": "AKRI_AGENT_REGISTRATION", "value": "true"},
                                             ],
                                             "volumeMounts": [
                                                 {"name": "discovery-handlers", "mountPath": "/var/lib/akri"}
@@ -270,52 +276,6 @@ V1_TEMPLATE = TemplateVer(
                             "capacity": 1,
                         },
                     }
-                },
-            },
-            "opc_ua_broker_helmChart": {
-                "type": "helm.v3",
-                "name": "opc-ua-broker",
-                "properties": {
-                    "chart": {
-                        "repo": "[format('oci://{0}/opcuabroker/helmchart/microsoft-iotoperations-opcuabroker', variables('CONTAINER_REGISTRY_DOMAINS').opcUaBroker)]",
-                        "version": "[variables('VERSIONS').opcUaBroker]",
-                    },
-                    "values": {
-                        "mqttBroker": {
-                            "authenticationMethod": "serviceAccountToken",
-                            "serviceAccountTokenAudience": "[variables('MQ_PROPERTIES').satAudience]",
-                            "address": "[variables('MQ_PROPERTIES').localUrl]",
-                            "caCertConfigMapRef": "[variables('AIO_TRUST_CONFIG_MAP')]",
-                            "caCertKey": "[variables('AIO_TRUST_CONFIG_MAP_KEY')]",
-                            "connectUserProperties": {"metriccategory": "aio-opc"},
-                        },
-                        "opcPlcSimulation": {"deploy": "[parameters('simulatePLC')]"},
-                        "openTelemetry": {
-                            "enabled": True,
-                            "endpoints": {
-                                "default": {
-                                    "uri": "[variables('OBSERVABILITY').otelCollectorAddress]",
-                                    "protocol": "grpc",
-                                    "emitLogs": False,
-                                    "emitMetrics": True,
-                                    "emitTraces": False,
-                                },
-                                "geneva": {
-                                    "uri": "[variables('OBSERVABILITY').genevaCollectorAddress]",
-                                    "protocol": "grpc",
-                                    "emitLogs": False,
-                                    "emitMetrics": True,
-                                    "emitTraces": False,
-                                    "temporalityPreference": "delta",
-                                },
-                            },
-                        },
-                        "secrets": {
-                            "kind": "[parameters('opcUaBrokerSecrets').kind]",
-                            "csiServicePrincipalSecretRef": "[parameters('opcUaBrokerSecrets').csiServicePrincipalSecretRef]",
-                            "csiDriver": "secrets-store.csi.k8s.io",
-                        },
-                    },
                 },
             },
         },
@@ -390,6 +350,7 @@ V1_TEMPLATE = TemplateVer(
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
                 "name": "processor",
+                "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "extensionType": "microsoft.iotoperations.dataprocessor",
                     "version": "[variables('VERSIONS').processor]",
@@ -400,9 +361,6 @@ V1_TEMPLATE = TemplateVer(
                         "Microsoft.CustomLocation.ServiceAccount": "default",
                         "otelCollectorAddress": "[variables('OBSERVABILITY').otelCollectorAddressNoProtocol]",
                         "genevaCollectorAddress": "[variables('OBSERVABILITY').genevaCollectorAddressNoProtocol]",
-                        "cardinality.readerWorker.replicas": "[parameters('dataProcessorCardinality').readerWorker]",
-                        "cardinality.runnerWorker.replicas": "[parameters('dataProcessorCardinality').runnerWorker]",
-                        "nats.config.cluster.replicas": "[parameters('dataProcessorCardinality').messageStore]",
                         "secrets.secretProviderClassName": "[parameters('dataProcessorSecrets').secretProviderClassName]",
                         "secrets.servicePrincipalSecretRef": "[parameters('dataProcessorSecrets').servicePrincipalSecretRef]",
                         "caTrust.enabled": "true",
@@ -425,14 +383,18 @@ V1_TEMPLATE = TemplateVer(
                     "releaseTrain": "[variables('TRAINS').akri]",
                     "autoUpgradeMinorVersion": False,
                     "scope": "[variables('AIO_EXTENSION_SCOPE')]",
-                    "configurationSettings": {"webhookConfiguration.enabled": "false"},
+                    "configurationSettings": {
+                        "webhookConfiguration.enabled": "true",
+                        "certManagerWebhookCertificate.enabled": "true",
+                        "agent.host.containerRuntimeSocket": "[parameters('containerRuntimeSocket')]",
+                        "kubernetesDistro": "[parameters('kubernetesDistro')]",
+                    },
                 },
                 "dependsOn": [
                     "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]"
                 ],
             },
             {
-                "condition": False,
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
@@ -440,13 +402,13 @@ V1_TEMPLATE = TemplateVer(
                 "properties": {
                     "extensionType": "microsoft.iotoperations.opcuabroker",
                     "version": "[variables('VERSIONS').opcUaBroker]",
-                    "releaseTrain": "private-preview",
+                    "releaseTrain": "[variables('TRAINS').opcUaBroker]",
                     "autoUpgradeMinorVersion": False,
                     "scope": "[variables('AIO_EXTENSION_SCOPE')]",
                     "configurationSettings": {
                         "mqttBroker.authenticationMethod": "serviceAccountToken",
                         "mqttBroker.serviceAccountTokenAudience": "[variables('MQ_PROPERTIES').satAudience]",
-                        "mqttBroker.caCertConfigMapRef ": "[variables('AIO_TRUST_CONFIG_MAP')]",
+                        "mqttBroker.caCertConfigMapRef": "[variables('AIO_TRUST_CONFIG_MAP')]",
                         "mqttBroker.caCertKey": "[variables('AIO_TRUST_CONFIG_MAP_KEY')]",
                         "mqttBroker.address": "[variables('MQ_PROPERTIES').localUrl]",
                         "mqttBroker.connectUserProperties.metriccategory": "aio-opc",
@@ -469,7 +431,9 @@ V1_TEMPLATE = TemplateVer(
                     },
                 },
                 "dependsOn": [
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]"
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]",
+                    "[resourceId('Microsoft.IoTOperationsMQ/mq', parameters('mqInstanceName'))]",
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'mq')]",
                 ],
             },
             {
@@ -623,20 +587,20 @@ V1_TEMPLATE = TemplateVer(
                     "authImage": {
                         "pullPolicy": "Always",
                         "repository": "[format('{0}/dmqtt-authentication', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[variables('VERSIONS').mq]",
+                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
                     },
                     "brokerImage": {
                         "pullPolicy": "Always",
                         "repository": "[format('{0}/dmqtt-pod', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[variables('VERSIONS').mq]",
+                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
                     },
                     "healthManagerImage": {
                         "pullPolicy": "Always",
                         "repository": "[format('{0}/dmqtt-operator', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[variables('VERSIONS').mq]",
+                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
                     },
                     "diagnostics": {
-                        "probeImage": "[format('{0}/diagnostics-probe:{1}', variables('CONTAINER_REGISTRY_DOMAINS').mq, variables('VERSIONS').mq)]",
+                        "probeImage": "[format('{0}/diagnostics-probe:{1}-rc3', variables('CONTAINER_REGISTRY_DOMAINS').mq, variables('VERSIONS').mq)]",
                         "enableSelfCheck": True,
                     },
                     "mode": "[parameters('mqMode')]",
@@ -670,7 +634,7 @@ V1_TEMPLATE = TemplateVer(
                 "properties": {
                     "image": {
                         "repository": "[format('{0}/diagnostics-service', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[variables('VERSIONS').mq]",
+                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
                     },
                     "logLevel": "info",
                     "logFormat": "text",
@@ -745,7 +709,6 @@ V1_TEMPLATE = TemplateVer(
                         "[variables('observability_helmChart')]",
                         "[variables('akri_daemonset')]",
                         "[variables('asset_configuration')]",
-                        "[variables('opc_ua_broker_helmChart')]",
                         "[variables('broker_fe_issuer_configuration')]",
                     ],
                     "topologies": [

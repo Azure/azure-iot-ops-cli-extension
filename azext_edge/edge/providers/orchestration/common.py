@@ -38,10 +38,17 @@ class MqServiceType(Enum):
     node_port = "nodePort"
 
 
+class KubernetesDistroType(Enum):
+    k3s = "k3s"
+    k8s = "k8s"
+    microk8s = "microk8s"
+
+
 __all__ = [
     "MqMode",
     "MqMemoryProfile",
     "MqServiceType",
+    "KubernetesDistroType",
     "DEFAULT_X509_CA_VALID_DAYS",
     "DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS",
 ]

@@ -17,6 +17,7 @@ from .providers.orchestration.common import (
     MqMemoryProfile,
     MqMode,
     MqServiceType,
+    KubernetesDistroType,
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     DEFAULT_X509_CA_VALID_DAYS,
 )
@@ -78,12 +79,11 @@ def check(
 
 def verify_host(
     cmd,
-    confirm_yes: Optional[bool] = None,
     no_progress: Optional[bool] = None,
 ):
     from .providers.orchestration import run_host_verify
 
-    run_host_verify(render_progress=not no_progress, confirm_yes=confirm_yes)
+    run_host_verify(render_progress=not no_progress)
     return
 
 
@@ -99,12 +99,11 @@ def init(
     show_template: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
+    container_runtime_socket: str = "",
+    kubernetes_distro: str = KubernetesDistroType.k8s.value,
     no_block: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     dp_instance_name: Optional[str] = None,
-    dp_reader_workers: int = 1,
-    dp_runner_workers: int = 1,
-    dp_message_stores: int = 1,
     mq_mode: str = MqMode.distributed.value,
     mq_memory_profile: str = MqMemoryProfile.medium.value,
     mq_service_type: str = MqServiceType.cluster_ip.value,
@@ -214,6 +213,8 @@ def init(
         location=location,
         show_template=show_template,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
+        container_runtime_socket=container_runtime_socket,
+        kubernetes_distro=kubernetes_distro,
         simulate_plc=simulate_plc,
         no_block=no_block,
         no_progress=no_progress,
@@ -222,9 +223,6 @@ def init(
         no_deploy=no_deploy,
         disable_rsync_rules=disable_rsync_rules,
         dp_instance_name=dp_instance_name,
-        dp_reader_workers=int(dp_reader_workers),
-        dp_runner_workers=int(dp_runner_workers),
-        dp_message_stores=int(dp_message_stores),
         mq_mode=str(mq_mode),
         mq_memory_profile=str(mq_memory_profile),
         mq_service_type=str(mq_service_type),

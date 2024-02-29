@@ -21,7 +21,7 @@ from .providers.edge_api import (
     OpcuaResourceKinds,
 )
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
+from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType, KubernetesDistroType
 
 from ._validators import validate_namespace
 
@@ -296,6 +296,21 @@ def load_iotops_arguments(self, _):
             "'opc.tcp://opcplc-000000.{cluster_namespace}:50000'.",
             arg_group="Akri",
         )
+        context.argument(
+            "container_runtime_socket",
+            options_list=["--runtime-socket"],
+            help="The default node path of the container runtime socket. If not provided (default), the "
+            "socket path is determined by --kubernetes-distro.",
+            arg_group="Akri",
+        )
+        context.argument(
+            "kubernetes_distro",
+            arg_type=get_enum_type(KubernetesDistroType),
+            options_list=["--kubernetes-distro"],
+            help="The Kubernetes distro to use for Akri configuration. The selected distro implies the "
+            "default container runtime socket path when no --runtime-socket value is provided.",
+            arg_group="Akri",
+        )
         # OPC-UA Broker
         context.argument(
             "simulate_plc",
@@ -309,27 +324,6 @@ def load_iotops_arguments(self, _):
             "dp_instance_name",
             options_list=["--dp-instance"],
             help="Instance name for data processor. The default is in the form '{cluster_name}-ops-init-processor'.",
-            arg_group="Data Processor",
-        )
-        context.argument(
-            "dp_reader_workers",
-            type=int,
-            options_list=["--dp-reader-workers"],
-            help="Number of reader worker replicas",
-            arg_group="Data Processor",
-        )
-        context.argument(
-            "dp_runner_workers",
-            type=int,
-            options_list=["--dp-runner-workers"],
-            help="Number of runner worker replicas",
-            arg_group="Data Processor",
-        )
-        context.argument(
-            "dp_message_stores",
-            type=int,
-            options_list=["--dp-message-stores"],
-            help="Number of message store replicas",
             arg_group="Data Processor",
         )
         # MQ

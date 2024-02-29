@@ -34,6 +34,7 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
         resource_api=OPCUA_API_V1,
         label_selector=OPC_APP_LABEL,
         since_seconds=since_seconds,
+        include_metrics=True,
         capture_previous_logs=True,
     )
     opcua_pods.extend(
@@ -50,6 +51,7 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
             resource_api=OPCUA_API_V1,
             label_selector=OPC_NAME_VAR_LABEL,
             since_seconds=since_seconds,
+            include_metrics=True,
             capture_previous_logs=True,
         )
     )
