@@ -161,6 +161,45 @@ LNM_EXCLUDED_SUBRESOURCE = [
     "lnmz/status",
 ]
 
+ASSET_DATAPOINT_PROPERTIES = [
+    ("name", "Name", False),
+    ("capabilityId", "Capability Id", True),
+    ("dataPointConfiguration", "Configuration", True),
+    ("observabilityMode", "Observability Mode", False),
+]
+
+ASSET_PROPERTIES = [
+    ("description", "Description", True),
+    ("assetType", "Asset Type", False),
+    ("attributes", "Attributes", True),
+    ("defaultDataPointsConfiguration", "Default Data Points Configuration", False),
+    ("defaultEventsConfiguration", "Default Events Configuration", False),
+    ("displayName", "Display Name", False),
+    ("documentationUri", "Documentation Uri", False),
+    ("enabled", "Enabled", False),
+    ("observabilityMode", "Observability Mode", False),
+    ("externalAssetId", "External Asset Id", False),
+    ("hardwareRevision", "Hardware Revision", False),
+    ("manufacturer", "Manufacturer", False),
+    ("manufacturerUri", "Manufacturer Uri", True),
+    ("model", "Model", False),
+    ("productCode", "Product Code", False),
+    ("serialNumber", "Serial Number", False),
+    ("softwareRevision", "Software Revision", False),
+    ("uuid", "Uuid", False),
+    ("version", "Version", False),
+]
+
+ASSET_EVENT_PROPERTIES = [
+    ("name", "Name", False),
+    ("capabilityId", "Capability Id", True),
+    ("eventConfiguration", "Configuration", False),
+    ("observabilityMode", "Observability Mode", False),
+]
+
+MAX_ASSET_EVENTS = 1000
+MAX_ASSET_DATAPOINTS = 1000
+
 # Check constants
 ALL_NAMESPACES_TARGET = '_all_'
 
