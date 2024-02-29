@@ -339,7 +339,7 @@ def mocked_list_storage_classes(mocked_client):
     from kubernetes.client.models import V1StorageClassList, V1StorageClass, V1ObjectMeta
 
     def _handle_list_storage_classes(*args, **kwargs):
-        storage_class = V1StorageClass(metadata=V1ObjectMeta(name="mock_storage_class"))
+        storage_class = V1StorageClass(provisioner="mock_provisioner", metadata=V1ObjectMeta(name="mock_storage_class"))
         storage_class_list = V1StorageClassList(items=[storage_class])
 
         return storage_class_list
@@ -368,6 +368,21 @@ def mocked_list_daemonsets(mocked_client):
         return daemonset_list
 
     mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.side_effect = _handle_list_daemonsets
+
+    yield mocked_client
+
+
+@pytest.fixture
+def mocked_list_persistent_volume_claims(mocked_client):
+    from kubernetes.client.models import V1PersistentVolumeClaimList, V1PersistentVolumeClaim, V1ObjectMeta
+
+    def _handle_list_persistent_volume_claims(*args, **kwargs):
+        pvc = V1PersistentVolumeClaim(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_pvc"))
+        pvc_list = V1PersistentVolumeClaimList(items=[pvc])
+
+        return pvc_list
+
+    mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.side_effect = _handle_list_persistent_volume_claims
 
     yield mocked_client
 

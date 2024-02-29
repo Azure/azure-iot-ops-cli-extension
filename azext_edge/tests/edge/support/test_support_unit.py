@@ -78,6 +78,7 @@ def test_create_bundle(
     mocked_zipfile,
     mocked_get_custom_objects,
     mocked_list_deployments,
+    mocked_list_persistent_volume_claims,
     mocked_list_pods,
     mocked_list_replicasets,
     mocked_list_statefulsets,
@@ -212,6 +213,7 @@ def test_create_bundle(
                 label_selector=DATA_PROCESSOR_LABEL,
                 resource_api=DATA_PROCESSOR_API_V1,
                 since_seconds=since_seconds,
+                init_container_for_logs=["aio-runner"],
             )
             assert_list_pods(
                 mocked_client,
@@ -265,6 +267,25 @@ def test_create_bundle(
                 mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
             assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_NAME_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
+            )
+
+            assert_list_persistent_volume_claims(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
+            )
+            assert_list_persistent_volume_claims(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
+            )
+            assert_list_persistent_volume_claims(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL,
@@ -496,6 +517,24 @@ def assert_list_replica_sets(
         )
 
 
+def assert_list_persistent_volume_claims(
+        mocked_client,
+        mocked_zipfile,
+        resource_api: EdgeResourceApi,
+        label_selector: str = None,
+        field_selector: str = None,
+):
+    mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    assert_zipfile_write(
+        mocked_zipfile,
+        zinfo=f"mock_namespace/{resource_api.moniker}/pvc.mock_pvc.yaml",
+        data="kind: PersistentVolumeClaim\nmetadata:\n  name: mock_pvc\n  namespace: mock_namespace\n",
+    )
+
+
 def assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
     mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
@@ -565,7 +604,7 @@ def assert_shared_kpis(mocked_client, mocked_zipfile):
     assert_zipfile_write(
         mocked_zipfile,
         zinfo="storage_classes.yaml",
-        data="items:\n- metadata:\n    name: mock_storage_class\n",
+        data="items:\n- metadata:\n    name: mock_storage_class\n  provisioner: mock_provisioner\n",
     )
 
 
