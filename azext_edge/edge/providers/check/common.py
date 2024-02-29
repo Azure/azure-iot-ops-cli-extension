@@ -23,6 +23,16 @@ class ResourceOutputDetailLevel(ListableEnum):
     verbose = "2"  # verbose
 
 
+class DataSourceStageType(ListableEnum):
+    """
+    Data source stage type.
+    """
+    http = "input/http"
+    influxdb = "input/influxdb"
+    mqtt = "input/mqtt"
+    sql = "input/sqlserver"
+
+
 class DataProcessorStageType(ListableEnum):
     """
     Data processor stage type.
@@ -50,6 +60,38 @@ class DataprocessorDestinationStageType(ListableEnum):
 
 
 ERROR_NO_DETAIL = "<No detail available>"
+
+DATA_PROCESSOR_SOURCE_STAGE_PROPERTIES = {
+    DataSourceStageType.http.value: [
+        ("url", "Request URL", False),
+        ("method", "Request method", True),
+        ("format", "Format", False),
+        ("request", "HTTP request", True),
+        ("interval", "Interval", False),
+    ],
+    DataSourceStageType.influxdb.value: [
+        ("query.expression", "Query Expression", False),
+        ("url", "InfluxDB URL", False),
+        ("interval", "Interval", False),
+        ("port", "Port", True),
+        ("organization", "Organization", False),
+        ("partitionCount", "Partition Count", False),
+        ("format", "Format", False),
+    ],
+    DataSourceStageType.mqtt.value: [
+        ("broker", "MQTT broker URL", False),
+        ("qos", "MQTT QoS", True),
+        ("cleanSession", "MQTT Clean Session", True),
+        ("format", "MQTT format", False),
+    ],
+    DataSourceStageType.sql.value: [
+        ("server", "Server", False),
+        ("database", "Database", False),
+        ("interval", "Interval", False),
+        ("port", "Port", True),
+        ("format", "Format", False),
+    ],
+}
 
 DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES = {
     DataProcessorStageType.aggregate.value: [
