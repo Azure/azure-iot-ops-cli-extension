@@ -25,12 +25,12 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="17db5f5ba470ee60f0c5bc3de59592ab72ccd9a3",
+    commit_id="eac42bb5f3b13579b27adbcbbb71ef20e3d45df8",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.25.53.49325", "templateHash": "8062802805469597213"},
+            "_generator": {"name": "bicep", "version": "0.25.53.49325", "templateHash": "5277875297568178172"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -121,29 +121,29 @@ V1_TEMPLATE = TemplateVer(
                 "name": "aio-mq-dmqtt-frontend",
                 "satAudience": "aio-mq",
             },
-            "DEFAULT_CONTAINER_REGISTRY": "azureiotoperations.azurecr.io",
+            "DEFAULT_CONTAINER_REGISTRY": "mcr.microsoft.com/azureiotoperations",
             "CONTAINER_REGISTRY_DOMAINS": {
                 "mq": "[variables('DEFAULT_CONTAINER_REGISTRY')]",
                 "opcUaBroker": "[variables('DEFAULT_CONTAINER_REGISTRY')]",
             },
             "VERSIONS": {
-                "mq": "0.3.0-preview-rc3",
+                "mq": "0.3.0-preview",
                 "observability": "0.1.0-preview",
-                "aio": "0.45.1-official-20240113.1",
+                "aio": "0.4.0-preview",
                 "layeredNetworking": "0.1.0-preview",
-                "processor": "0.2.0-preview.68",
-                "opcUaBroker": "0.3.0-preview.4",
+                "processor": "0.2.0-preview",
+                "opcUaBroker": "0.3.0-preview",
                 "adr": "0.1.0-preview",
                 "akri": "0.2.1-preview",
             },
             "TRAINS": {
-                "mq": "integration",
-                "aio": "integration",
-                "processor": "integration",
+                "mq": "preview",
+                "aio": "preview",
+                "processor": "preview",
                 "adr": "preview",
-                "akri": "integration",
+                "akri": "preview",
                 "layeredNetworking": "preview",
-                "opcUaBroker": "integration",
+                "opcUaBroker": "preview",
             },
             "broker_fe_issuer_configuration": {
                 "name": "mq-fe-issuer-configuration",
@@ -236,7 +236,7 @@ V1_TEMPLATE = TemplateVer(
                                     "containers": [
                                         {
                                             "name": "aio-opc-asset-discovery",
-                                            "image": "[format('{0}/opcuabroker/discovery-handler:{1}', variables('CONTAINER_REGISTRY_DOMAINS').opcUaBroker, variables('VERSIONS').opcUaBroker)]",
+                                            "image": "[format('{0}/opcuabroker/discovery-handler:{1}.4', variables('CONTAINER_REGISTRY_DOMAINS').opcUaBroker, variables('VERSIONS').opcUaBroker)]",
                                             "imagePullPolicy": "Always",
                                             "resources": {
                                                 "requests": {"memory": "64Mi", "cpu": "10m"},
@@ -587,20 +587,20 @@ V1_TEMPLATE = TemplateVer(
                     "authImage": {
                         "pullPolicy": "Always",
                         "repository": "[format('{0}/dmqtt-authentication', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[variables('VERSIONS').mq]",
+                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
                     },
                     "brokerImage": {
                         "pullPolicy": "Always",
                         "repository": "[format('{0}/dmqtt-pod', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[variables('VERSIONS').mq]",
+                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
                     },
                     "healthManagerImage": {
                         "pullPolicy": "Always",
                         "repository": "[format('{0}/dmqtt-operator', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[variables('VERSIONS').mq]",
+                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
                     },
                     "diagnostics": {
-                        "probeImage": "[format('{0}/diagnostics-probe:{1}', variables('CONTAINER_REGISTRY_DOMAINS').mq, variables('VERSIONS').mq)]",
+                        "probeImage": "[format('{0}/diagnostics-probe:{1}-rc3', variables('CONTAINER_REGISTRY_DOMAINS').mq, variables('VERSIONS').mq)]",
                         "enableSelfCheck": True,
                     },
                     "mode": "[parameters('mqMode')]",
@@ -634,7 +634,7 @@ V1_TEMPLATE = TemplateVer(
                 "properties": {
                     "image": {
                         "repository": "[format('{0}/diagnostics-service', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[variables('VERSIONS').mq]",
+                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
                     },
                     "logLevel": "info",
                     "logFormat": "text",
