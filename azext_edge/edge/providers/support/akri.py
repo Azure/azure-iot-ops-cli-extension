@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 AKRI_INSTANCE_LABEL = "app.kubernetes.io/instance in (akri)"
 AKRI_APP_LABEL = "app in (otel-collector)"
 AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
+AKRI_PREFIXES = ["aio-akri-"]
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
