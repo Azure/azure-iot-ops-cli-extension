@@ -224,6 +224,16 @@ class KafkaTopicMapRouteType(Enum):
     mqtt_to_kafka = "mqttToKafka"
 
 
+class DataLakeConnectorTargetType(ListableEnum):
+    """
+    Data Lake Connector Target type:
+    """
+
+    datalake = "datalakeStorage"
+    fabric = "fabricOneLake"
+    local = "localStorage"
+
+
 # Data processor runtime attributes
 
 DATA_PROCESSOR_READER_WORKER_PREFIX = "aio-dp-reader-worker"

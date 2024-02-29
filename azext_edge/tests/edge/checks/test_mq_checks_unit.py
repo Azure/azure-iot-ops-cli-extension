@@ -493,7 +493,31 @@ def test_mqtt_checks(
     "connector, topic_map, conditions, evaluations",
     [
         (
-            # datalake connector
+            # localstorage target
+            generate_resource_stub(
+                metadata={"name": "test_connector"},
+                spec={
+                    "instances": 2,
+                    "target": {"localStorage": {"volumeName": "sample_volume"}},
+                },
+                status={"configStatusLevel": ResourceState.running.value},
+            ),
+            # topic map
+            generate_resource_stub(spec={"dataLakeConnectorRef": "test_connector"}),
+            # conditions str
+            ["status", "valid(spec)"],
+            # evaluations
+            [
+                [("status", "success"), ("kind", "datalakeconnector")],
+                [
+                    ("status", "success"),
+                    ("value/spec/instances", 2),
+                    ("value/spec/target/localStorage/volumeName", "sample_volume"),
+                ],
+            ],
+        ),
+        (
+            # datalakestorage target
             generate_resource_stub(
                 metadata={"name": "test_connector"},
                 spec={
@@ -513,6 +537,30 @@ def test_mqtt_checks(
                     ("status", "success"),
                     ("value/spec/instances", 2),
                     ("value/spec/target/datalakeStorage/endpoint", "test_endpoint"),
+                ],
+            ],
+        ),
+        (
+            # fabriconelake target
+            generate_resource_stub(
+                metadata={"name": "test_connector"},
+                spec={
+                    "instances": 2,
+                    "target": {"fabricOneLake": {"endpoint": "test_endpoint"}},
+                },
+                status={"configStatusLevel": ResourceState.running.value},
+            ),
+            # topic map
+            generate_resource_stub(spec={"dataLakeConnectorRef": "test_connector"}),
+            # conditions str
+            ["status", "valid(spec)"],
+            # evaluations
+            [
+                [("status", "success"), ("kind", "datalakeconnector")],
+                [
+                    ("status", "success"),
+                    ("value/spec/instances", 2),
+                    ("value/spec/target/fabricOneLake/endpoint", "test_endpoint"),
                 ],
             ],
         ),
