@@ -79,12 +79,11 @@ def check(
 
 def verify_host(
     cmd,
-    confirm_yes: Optional[bool] = None,
     no_progress: Optional[bool] = None,
 ):
     from .providers.orchestration import run_host_verify
 
-    run_host_verify(render_progress=not no_progress, confirm_yes=confirm_yes)
+    run_host_verify(render_progress=not no_progress)
     return
 
 

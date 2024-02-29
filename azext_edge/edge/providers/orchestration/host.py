@@ -5,22 +5,14 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from platform import system
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional
 
 import requests
 from azure.cli.core.azclierror import ValidationError
-from azure.cli.core.extension import get_extension_path
 from knack.log import get_logger
 from rich.console import Console
-from rich.markdown import Markdown
-from rich.prompt import Confirm
 
-from ....constants import EXTENSION_NAME
-from ...util.common import run_host_command
-from .common import ARM_ENDPOINT, MCR_ENDPOINT, GRAPH_ENDPOINT
-
-NFS_COMMON_ALIAS = "nfs-common"
+from .common import ARM_ENDPOINT, GRAPH_ENDPOINT, MCR_ENDPOINT
 
 logger = get_logger(__name__)
 console = Console(width=88)
@@ -43,65 +35,18 @@ class EndpointConnections(NamedTuple):
             raise ValidationError(get_connectivity_error(failed_conns, include_cluster=include_cluster))
 
 
-def run_host_verify(render_progress: Optional[bool] = True, confirm_yes: Optional[bool] = False):
+def run_host_verify(render_progress: Optional[bool] = True):
     if not render_progress:
         console.quiet = True
     connect_endpoints = [ARM_ENDPOINT, MCR_ENDPOINT]
     console.print()
 
-    with console.status(status="Analyzing host...") as status_render:
+    with console.status(status="Analyzing host..."):
         console.print("[bold]Connectivity[/bold] to:")
         endpoint_connections = preflight_http_connections(connect_endpoints)
         for endpoint in endpoint_connections.connect_map:
             console.print(f"- {endpoint} ", "...", endpoint_connections.connect_map[endpoint])
         endpoint_connections.throw_if_failure()
-
-        if False:  # TODO remove in next release.
-            if not is_windows():
-                if is_ubuntu_distro():
-                    logger.debug("Determined the OS is Ubuntu.")
-                    console.print()
-                    console.print("OS eval for [bold]Ubuntu[/bold]:")
-                    is_nfs_common_installed = is_package_installed(NFS_COMMON_ALIAS)
-                    console.print(
-                        f"- Is [cyan]{NFS_COMMON_ALIAS}[/cyan] installed?",
-                        "...",
-                        _get_eval_result_display(is_nfs_common_installed),
-                    )
-
-                    if is_nfs_common_installed is None:
-                        status_render.stop()
-                        logger.warning("Unable to determine if nfs-common is installed!")
-
-                    elif is_nfs_common_installed is False:
-                        if not confirm_yes:
-                            status_render.stop()
-                            nfs_install_commands = get_package_install_commands(NFS_COMMON_ALIAS)
-                            usr_script = "\n".join(nfs_install_commands)
-                            console.print("\nInstall with the following commands?")
-                            console.print(Markdown(f"```\n{usr_script}\n```"))
-                            execute_install = Confirm.ask("(sudo required)")
-                            if not execute_install:
-                                raise ValidationError("Dependency install cancelled!")
-
-                            from os import geteuid  # pylint: disable=no-name-in-module
-
-                            if geteuid() != 0:
-                                az_ext_dir = get_extension_path(EXTENSION_NAME)
-                                if not az_ext_dir:
-                                    raise ValidationError(
-                                        "Unable to determine extension directory. Please ensure extension installation."
-                                    )
-                                # pylint: disable-next=unsubscriptable-object
-                                az_ext_dir = az_ext_dir[: az_ext_dir.index(EXTENSION_NAME)]
-                                raise ValidationError(
-                                    "sudo user not detected.\n\nPlease run the command in the following form:\n"
-                                    f"-> sudo AZURE_EXTENSION_DIR={az_ext_dir} az iot ops verify-host"
-                                )
-
-                        install_nfs_common_result = install_package(NFS_COMMON_ALIAS)
-                        if install_nfs_common_result:
-                            console.print(f"[cyan]{NFS_COMMON_ALIAS}[/cyan] installed succesfully!")
 
     console.print()
 
@@ -116,70 +61,6 @@ def check_connectivity(url: str, timeout: int = 20):
         return True
     except requests.ConnectionError:
         return False
-
-
-def is_ubuntu_distro() -> Optional[bool]:
-    result = run_host_command("lsb_release -a")
-    if not result or result.returncode != 0:
-        return None
-
-    kpis = result.stdout.decode(encoding="utf8").split("\n")
-    for kpi in kpis:
-        k = kpi.split("\t")
-        if "distributor" in k[0].lower():
-            if "ubuntu" in k[1].lower():
-                return True
-
-    return False
-
-
-def is_package_installed(package_name: str) -> Optional[bool]:
-    result = run_host_command(f"dpkg-query --show -f='${{Status}}' {package_name}")
-    if result is None:
-        return None
-
-    if result.returncode == 0:
-        kpis = result.stdout.decode(encoding="utf8").split("\n")
-        if kpis and kpis[0] == "install ok installed":
-            return True
-
-    return False
-
-
-def get_package_install_commands(package_name: str) -> List[str]:
-    return ["apt-get update", f"apt-get install {package_name} -y"]
-
-
-def install_package(package_name: str) -> bool:
-    for command in get_package_install_commands(package_name):
-        success, error = _run_command(command)
-        if success is None:
-            raise ValidationError("Unable to determine if package was installed.")
-        if success is False:
-            raise ValidationError(error)
-
-    return True
-
-
-def is_windows():
-    return system().lower() == "windows"
-
-
-def _run_command(command: str) -> Tuple[Optional[bool], Optional[str]]:
-    result = run_host_command(command)
-    if result is None:
-        return None, None
-
-    if result.returncode == 0:
-        return True, None
-
-    return False, result.stderr.decode("utf8")
-
-
-def _get_eval_result_display(eval_result: Optional[bool]) -> str:
-    if eval_result is None:
-        return "???"
-    return str(eval_result)
 
 
 def get_connectivity_error(
