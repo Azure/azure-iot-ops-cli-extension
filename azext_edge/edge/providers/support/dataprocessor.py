@@ -29,13 +29,8 @@ DATA_PROCESSOR_APP_LABELS = [
     'aio-dp-operator',
 ]
 
-DATA_PROCESSOR_PREFIX = "aio-dp-"
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
-DATA_PROCESSOR_RELEASE_LABEL = "release in (processor)"
-DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
-DATA_PROCESSOR_PART_OF_LABEL = "app.kubernetes.io/part-of in (aio-dp-operator)"
 DATA_PROCESSOR_NAME_LABEL = "app.kubernetes.io/name in (dataprocessor)"
-DATA_PROCESSOR_ONEOFF_LABEL = "control-plane in (controller-manager)"
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
