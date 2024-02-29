@@ -229,9 +229,9 @@ class DataLakeConnectorTargetType(ListableEnum):
     Data Lake Connector Target type:
     """
 
-    datalake = "datalakeStorage"
-    fabric = "fabricOneLake"
-    local = "localStorage"
+    data_lake_storage = "datalakeStorage"
+    fabric_onelake = "fabricOneLake"
+    local_storage = "localStorage"
 
 
 # Data processor runtime attributes

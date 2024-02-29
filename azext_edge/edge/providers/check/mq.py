@@ -1118,7 +1118,7 @@ def evaluate_datalake_connectors(
 
         target_endpoint_display = "Endpoint"
         datalake_endpoint = ""
-        if datalake_target_type == DataLakeConnectorTargetType.local.value:
+        if datalake_target_type == DataLakeConnectorTargetType.local_storage.value:
             datalake_endpoint = datalake_target.get("volumeName")
             target_endpoint_display = "Volume"
         else:
