@@ -63,33 +63,26 @@ ERROR_NO_DETAIL = "<No detail available>"
 
 DATA_PROCESSOR_SOURCE_STAGE_PROPERTIES = {
     DataSourceStageType.http.value: [
-        ("url", "Request URL", False),
         ("method", "Request method", True),
-        ("format", "Format", False),
         ("request", "HTTP request", True),
         ("interval", "Interval", False),
     ],
     DataSourceStageType.influxdb.value: [
-        ("query.expression", "Query Expression", False),
-        ("url", "InfluxDB URL", False),
         ("interval", "Interval", False),
         ("port", "Port", True),
         ("organization", "Organization", False),
         ("partitionCount", "Partition Count", False),
-        ("format", "Format", False),
     ],
     DataSourceStageType.mqtt.value: [
         ("broker", "MQTT broker URL", False),
         ("qos", "MQTT QoS", True),
         ("cleanSession", "MQTT Clean Session", True),
-        ("format", "MQTT format", False),
     ],
     DataSourceStageType.sql.value: [
         ("server", "Server", False),
         ("database", "Database", False),
         ("interval", "Interval", False),
         ("port", "Port", True),
-        ("format", "Format", False),
     ],
 }
 

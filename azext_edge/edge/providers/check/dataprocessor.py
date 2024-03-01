@@ -670,7 +670,6 @@ def _evaluate_source_node(
                     namespace=namespace,
                     display=Padding(topic_display_text, (0, 0, 0, property_padding + PADDING_SIZE))
                 )
-
     elif stage_type.startswith(DataSourceStageType.sql.value):
         # check query expression
         query_expression = pipeline_source_node.get("query", {}).get("expression", "")
@@ -693,6 +692,95 @@ def _evaluate_source_node(
             value={"query.expression": query_expression},
             resource_name=pipeline_name
         )
+    elif stage_type.startswith(DataSourceStageType.http.value):
+        # check url
+        pipeline_source_node_url = pipeline_source_node.get("url", "")
+        url_status = CheckTaskStatus.success.value
+        url_display_text = f"- URL: {pipeline_source_node_url} [green]detected[/green]."
+        if not pipeline_source_node_url:
+            url_status = CheckTaskStatus.error.value
+            url_display_text = "- URL [red]not detected[/red]."
+        
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(url_display_text, (0, 0, 0, property_padding))
+        )
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines,
+            namespace=namespace,
+            status=url_status,
+            value={"url": pipeline_source_node_url},
+            resource_name=pipeline_name
+        )
+    elif stage_type.startswith(DataSourceStageType.influxdb.value):
+        # check query expression
+        query_expression = pipeline_source_node.get("query", {}).get("expression", "")
+        query_expression_status = CheckTaskStatus.success.value
+        query_expression_display_text = f"- Query expression: {query_expression} [green]detected[/green]."
+        if not query_expression:
+            query_expression_display_text = "- Query expression [red]not detected[/red]."
+            query_expression_status = CheckTaskStatus.error.value
+        
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(query_expression_display_text, (0, 0, 0, property_padding))
+        )
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines,
+            namespace=namespace,
+            status=query_expression_status,
+            value={"query.expression": query_expression},
+            resource_name=pipeline_name
+        )
+
+        # check url
+        pipeline_source_node_url = pipeline_source_node.get("url", "")
+        url_status = CheckTaskStatus.success.value
+        url_display_text = f"- URL: {pipeline_source_node_url} [green]detected[/green]."
+        if not pipeline_source_node_url:
+            url_status = CheckTaskStatus.error.value
+            url_display_text = "- URL [red]not detected[/red]."
+        
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(url_display_text, (0, 0, 0, property_padding))
+        )
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines,
+            namespace=namespace,
+            status=url_status,
+            value={"url": pipeline_source_node_url},
+            resource_name=pipeline_name
+        )
+    
+    # check format
+    pipeline_source_node_format = pipeline_source_node.get("format", {})
+    format_type = pipeline_source_node_format.get("type", "")
+    format_type_status = CheckTaskStatus.success.value
+    format_type_display_text = f"- Format: {pipeline_source_node_format} [green]detected[/green]."
+    if not format_type:
+        format_type_status = CheckTaskStatus.error.value
+        format_type_display_text = "- Format: type [red]not detected[/red]."
+    
+    check_manager.add_display(
+        target_name=target_pipelines,
+        namespace=namespace,
+        display=Padding(format_type_display_text, (0, 0, 0, property_padding))
+    )
+
+    check_manager.add_target_eval(
+        target_name=target_pipelines,
+        namespace=namespace,
+        status=format_type_status,
+        value={"format.type": format_type},
+        resource_name=pipeline_name
+    )
     
     # check data source partition
     pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
