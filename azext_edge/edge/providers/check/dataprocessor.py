@@ -866,7 +866,7 @@ def _evaluate_authentication(
                 label: str = detail["label"]
                 if label.endswith("Password") or label.endswith("Secret"):
                     label += f" {DATA_PROCESSOR_AUTHENTICATION_SECRET_REF}"
-                    
+
                 check_manager.add_display(
                     target_name=target_pipelines,
                     namespace=namespace,

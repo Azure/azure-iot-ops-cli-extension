@@ -187,6 +187,8 @@ DATA_PROCESSOR_AUTHENTICATION_REQUIRED_PROPERTIES = {
     DataprocessorAuthenticationType.usernamePassword.value: ["username", "password"],
 }
 
+DATA_PROCESSOR_AUTHENTICATION_SECRET_REF = "(Secret reference)"
+
 LNM_ALLOWLIST_PROPERTIES = [
     ("domains", "[bright_blue]Domains[/bright_blue]", False),
     ("enableArcDomains", "[bright_blue]Enable Arc Domains[/bright_blue]", False),
