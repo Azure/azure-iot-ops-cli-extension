@@ -26,6 +26,7 @@ from ...common import (
 
 from .common import (
     DATA_PROCESSOR_AUTHENTICATION_REQUIRED_PROPERTIES,
+    DATA_PROCESSOR_AUTHENTICATION_SECRET_REF,
     DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES,
     DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES,
     DATA_PROCESSOR_NATS_PREFIX,
@@ -864,7 +865,7 @@ def _evaluate_authentication(
             if detail["value"]:
                 label: str = detail["label"]
                 if label.endswith("Password") or label.endswith("Secret"):
-                    label += " (secret reference)"
+                    label += f" {DATA_PROCESSOR_AUTHENTICATION_SECRET_REF}"
                     
                 check_manager.add_display(
                     target_name=target_pipelines,
