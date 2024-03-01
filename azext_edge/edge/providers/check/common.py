@@ -76,7 +76,14 @@ class DataprocessorAuthenticationType(ListableEnum):
 
 ERROR_NO_DETAIL = "<No detail available>"
 
-DATA_PROCESSOR_SOURCE_STAGE_PROPERTIES = {
+DATA_PROCESSOR_SOURCE_REQUIRED_PROPERTIES = {
+    DataSourceStageType.mqtt.value: ["broker", "topics"],
+    DataSourceStageType.sql.value: ["query", "server", "database", "interval"],
+    DataSourceStageType.influxdb.value: ["query", "url", "interval", "organization"],
+    DataSourceStageType.http.value: ["url", "interval"],
+}
+
+DATA_PROCESSOR_SOURCE_DISPLAY_PROPERTIES = {
     DataSourceStageType.http.value: [
         ("method", "Request method", True),
         ("request", "HTTP request", True),

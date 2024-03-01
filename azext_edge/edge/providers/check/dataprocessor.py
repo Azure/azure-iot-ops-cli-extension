@@ -33,7 +33,8 @@ from .common import (
     DATA_PROCESSOR_READER_WORKER_PREFIX,
     DATA_PROCESSOR_REFDATA_STORE_PREFIX,
     DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
-    DATA_PROCESSOR_SOURCE_STAGE_PROPERTIES,
+    DATA_PROCESSOR_SOURCE_REQUIRED_PROPERTIES,
+    DATA_PROCESSOR_SOURCE_DISPLAY_PROPERTIES,
     ERROR_NO_DETAIL,
     PADDING_SIZE,
     DataSourceStageType,
@@ -47,6 +48,7 @@ from ..edge_api import (
 )
 
 
+# TODO: @jiacju refactor this file since it's becoming too long
 def check_dataprocessor_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
@@ -602,12 +604,7 @@ def _evaluate_source_node(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
     # required properties
-    required_specific_properties = {
-        DataSourceStageType.mqtt.value: ["broker", "topics"],
-        DataSourceStageType.sql.value: ["query", "server", "database", "interval"],
-        DataSourceStageType.influxdb.value: ["query", "url", "interval", "organization"],
-        DataSourceStageType.http.value: ["url", "interval"],
-    }
+    required_specific_properties = DATA_PROCESSOR_SOURCE_REQUIRED_PROPERTIES
 
     # check data source node count
     pipeline_source_node_count = 1 if pipeline_source_node else 0
@@ -751,7 +748,7 @@ def _evaluate_source_node(
             detail_level,
             target_name=target_pipelines,
             stage=pipeline_source_node,
-            stage_properties=DATA_PROCESSOR_SOURCE_STAGE_PROPERTIES,
+            stage_properties=DATA_PROCESSOR_SOURCE_DISPLAY_PROPERTIES,
             padding=(0, 0, 0, property_padding),
             namespace=namespace
         )
