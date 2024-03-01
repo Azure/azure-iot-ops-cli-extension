@@ -30,7 +30,7 @@ class DataSourceStageType(ListableEnum):
     http = "input/http"
     influxdb = "input/influxdb"
     mqtt = "input/mqtt"
-    sql = "input/sqlserver"
+    sql = "input/mssql"
 
 
 class DataProcessorStageType(ListableEnum):

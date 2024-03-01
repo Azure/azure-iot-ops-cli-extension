@@ -222,6 +222,8 @@ def evaluate_pipelines(
         "sourceNodeCount == 1",
         "len(spec.input.topics)>=1",
         "spec.input.partitionCount>=1",
+        "format.type",
+        "authentication.type",
         "destinationNodeCount==1"
     ]
 
@@ -598,6 +600,67 @@ def _evaluate_source_node(
     padding: int,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
+    def check_url(
+        check_manager: CheckManager,
+        namespace: str,
+        pipeline_source_node: dict,
+    ):
+        check_manager.add_target_conditions(
+            target_name=target_pipelines,
+            namespace=namespace,
+            conditions=["spec.input.url"]
+        )
+        pipeline_source_node_url = pipeline_source_node.get("url", "")
+        url_status = CheckTaskStatus.success.value
+        url_display_text = f"URL: {pipeline_source_node_url} [green]detected[/green]."
+        if not pipeline_source_node_url:
+            url_status = CheckTaskStatus.error.value
+            url_display_text = "URL [red]not detected[/red]."
+
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(url_display_text, (0, 0, 0, property_padding))
+        )
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines,
+            namespace=namespace,
+            status=url_status,
+            value={"url": pipeline_source_node_url},
+            resource_name=pipeline_name
+        )
+
+    def check_query_expression(
+        check_manager: CheckManager,
+        namespace: str,
+        pipeline_source_node: dict,
+    ):
+        check_manager.add_target_conditions(
+            target_name=target_pipelines,
+            namespace=namespace,
+            conditions=["spec.input.query.expression"]
+        )
+        query_expression = pipeline_source_node.get("query", {}).get("expression", "")
+        query_expression_status = CheckTaskStatus.success.value
+        query_expression_display_text = f"Query expression: {query_expression} [green]detected[/green]."
+        if not query_expression:
+            query_expression_display_text = "Query expression [red]not detected[/red]."
+            query_expression_status = CheckTaskStatus.error.value
+
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(query_expression_display_text, (0, 0, 0, property_padding))
+        )
+
+        check_manager.add_target_eval(
+            target_name=target_pipelines,
+            namespace=namespace,
+            status=query_expression_status,
+            value={"query.expression": query_expression},
+            resource_name=pipeline_name
+        )
 
     # check data source node count
     pipeline_source_node_count = 1 if pipeline_source_node else 0
@@ -631,7 +694,6 @@ def _evaluate_source_node(
         namespace=namespace,
         display=Padding(stage_display_text, (0, 0, 0, property_padding))
     )
-
 
     if stage_type.startswith(DataSourceStageType.mqtt.value):
         # check data source topics
@@ -669,117 +731,30 @@ def _evaluate_source_node(
                     display=Padding(topic_display_text, (0, 0, 0, property_padding + PADDING_SIZE))
                 )
     elif stage_type.startswith(DataSourceStageType.sql.value):
-        # check query expression
-        query_expression = pipeline_source_node.get("query", {}).get("expression", "")
-        query_expression_status = CheckTaskStatus.success.value
-        query_expression_display_text = f"- Query expression: {query_expression} [green]detected[/green]."
-        if not query_expression:
-            query_expression_display_text = "- Query expression [red]not detected[/red]."
-            query_expression_status = CheckTaskStatus.error.value
-        
-        check_manager.add_display(
-            target_name=target_pipelines,
+        check_query_expression(
+            pipeline_source_node=pipeline_source_node,
             namespace=namespace,
-            display=Padding(query_expression_display_text, (0, 0, 0, property_padding))
-        )
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines,
-            namespace=namespace,
-            status=query_expression_status,
-            value={"query.expression": query_expression},
-            resource_name=pipeline_name
+            check_manager=check_manager
         )
     elif stage_type.startswith(DataSourceStageType.http.value):
-        # check url
-        pipeline_source_node_url = pipeline_source_node.get("url", "")
-        url_status = CheckTaskStatus.success.value
-        url_display_text = f"- URL: {pipeline_source_node_url} [green]detected[/green]."
-        if not pipeline_source_node_url:
-            url_status = CheckTaskStatus.error.value
-            url_display_text = "- URL [red]not detected[/red]."
-        
-        check_manager.add_display(
-            target_name=target_pipelines,
+        check_url(
+            pipeline_source_node=pipeline_source_node,
             namespace=namespace,
-            display=Padding(url_display_text, (0, 0, 0, property_padding))
-        )
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines,
-            namespace=namespace,
-            status=url_status,
-            value={"url": pipeline_source_node_url},
-            resource_name=pipeline_name
+            check_manager=check_manager
         )
     elif stage_type.startswith(DataSourceStageType.influxdb.value):
-        # check query expression
-        query_expression = pipeline_source_node.get("query", {}).get("expression", "")
-        query_expression_status = CheckTaskStatus.success.value
-        query_expression_display_text = f"- Query expression: {query_expression} [green]detected[/green]."
-        if not query_expression:
-            query_expression_display_text = "- Query expression [red]not detected[/red]."
-            query_expression_status = CheckTaskStatus.error.value
-        
-        check_manager.add_display(
-            target_name=target_pipelines,
+        check_query_expression(
+            pipeline_source_node=pipeline_source_node,
             namespace=namespace,
-            display=Padding(query_expression_display_text, (0, 0, 0, property_padding))
+            check_manager=check_manager
         )
 
-        check_manager.add_target_eval(
-            target_name=target_pipelines,
+        check_url(
+            pipeline_source_node=pipeline_source_node,
             namespace=namespace,
-            status=query_expression_status,
-            value={"query.expression": query_expression},
-            resource_name=pipeline_name
+            check_manager=check_manager
         )
 
-        # check url
-        pipeline_source_node_url = pipeline_source_node.get("url", "")
-        url_status = CheckTaskStatus.success.value
-        url_display_text = f"- URL: {pipeline_source_node_url} [green]detected[/green]."
-        if not pipeline_source_node_url:
-            url_status = CheckTaskStatus.error.value
-            url_display_text = "- URL [red]not detected[/red]."
-        
-        check_manager.add_display(
-            target_name=target_pipelines,
-            namespace=namespace,
-            display=Padding(url_display_text, (0, 0, 0, property_padding))
-        )
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines,
-            namespace=namespace,
-            status=url_status,
-            value={"url": pipeline_source_node_url},
-            resource_name=pipeline_name
-        )
-    
-    # check format
-    pipeline_source_node_format = pipeline_source_node.get("format", {})
-    format_type = pipeline_source_node_format.get("type", "")
-    format_type_status = CheckTaskStatus.success.value
-    format_type_display_text = f"- Format: {pipeline_source_node_format} [green]detected[/green]."
-    if not format_type:
-        format_type_status = CheckTaskStatus.error.value
-        format_type_display_text = "- Format: type [red]not detected[/red]."
-    
-    check_manager.add_display(
-        target_name=target_pipelines,
-        namespace=namespace,
-        display=Padding(format_type_display_text, (0, 0, 0, property_padding))
-    )
-
-    check_manager.add_target_eval(
-        target_name=target_pipelines,
-        namespace=namespace,
-        status=format_type_status,
-        value={"format.type": format_type},
-        resource_name=pipeline_name
-    )
-    
     # check data source partition
     pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
     source_partition_count_display_text = "- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. {}."
@@ -800,11 +775,11 @@ def _evaluate_source_node(
 
     if detail_level != ResourceOutputDetailLevel.summary.value:
         pipeline_source_node_partition_strategy = pipeline_source_node["partitionStrategy"]["type"]
-        source_partition_strategy_display_text = f"The type of partitioning strategy is {{[bright_blue]{pipeline_source_node_partition_strategy}[/bright_blue]}}."
+        source_partition_strategy_display_text = f"Partitioning strategy type: {{[bright_blue]{pipeline_source_node_partition_strategy}[/bright_blue]}}."
         check_manager.add_display(
             target_name=target_pipelines,
             namespace=namespace,
-            display=Padding(source_partition_strategy_display_text, (0, 0, 0, property_padding + PADDING_SIZE))
+            display=Padding(source_partition_strategy_display_text, (0, 0, 0, property_padding))
         )
 
     check_manager.add_target_eval(
@@ -812,6 +787,29 @@ def _evaluate_source_node(
         namespace=namespace,
         status=pipeline_source_partition_eval_status,
         value=pipeline_source_partition_eval_value,
+        resource_name=pipeline_name
+    )
+
+    # check format
+    pipeline_source_node_format = pipeline_source_node.get("format", {})
+    format_type = pipeline_source_node_format.get("type", "")
+    format_type_status = CheckTaskStatus.success.value
+    format_type_display_text = f"Format: {pipeline_source_node_format} [green]detected[/green]."
+    if not format_type:
+        format_type_status = CheckTaskStatus.error.value
+        format_type_display_text = "Format: type [red]not detected[/red]."
+
+    check_manager.add_display(
+        target_name=target_pipelines,
+        namespace=namespace,
+        display=Padding(format_type_display_text, (0, 0, 0, property_padding))
+    )
+
+    check_manager.add_target_eval(
+        target_name=target_pipelines,
+        namespace=namespace,
+        status=format_type_status,
+        value={"format.type": format_type},
         resource_name=pipeline_name
     )
 
@@ -936,7 +934,7 @@ def _evaluate_authentication(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
     pipeline_source_node_authentication = pipeline_source_node["authentication"]["type"]
-    authentication_display_text = f"- Authentication type: [bright_blue]{pipeline_source_node_authentication}[/bright_blue]"
+    authentication_display_text = f"Authentication type: [bright_blue]{pipeline_source_node_authentication}[/bright_blue]"
     check_manager.add_display(
         target_name=target_pipelines,
         namespace=namespace,
@@ -944,6 +942,7 @@ def _evaluate_authentication(
     )
 
     authentication_status = CheckTaskStatus.success.value
+    authentication_error_text = ""
 
     if pipeline_source_node_authentication == "usernamePassword":
         authentication_username = pipeline_source_node["authentication"]["username"]
@@ -951,9 +950,9 @@ def _evaluate_authentication(
 
         # evaluate authentication username and password
         if not authentication_username or not authentication_password:
-            authentication_display_text = f"Username and password [red]not detected[/red]."
+            authentication_error_text = "Username and password [red]not detected[/red]."
             authentication_status = CheckTaskStatus.error.value
-        
+
         if detail_level == ResourceOutputDetailLevel.verbose.value:
             check_manager.add_display(
                 target_name=target_pipelines,
@@ -963,19 +962,18 @@ def _evaluate_authentication(
             check_manager.add_display(
                 target_name=target_pipelines,
                 namespace=namespace,
-                display=Padding(f"Secret: [cyan]{authentication_password}[/cyan]", (0, 0, 0, padding + PADDING_SIZE))
+                display=Padding(f"Secret Reference: [cyan]{authentication_password}[/cyan]", (0, 0, 0, padding + PADDING_SIZE))
             )
     elif pipeline_source_node_authentication == "servicePrincipal":
         authentication_tenant_id = pipeline_source_node["authentication"]["tenantId"]
         authentication_client_id = pipeline_source_node["authentication"]["clientId"]
         authentication_client_secret = pipeline_source_node["authentication"]["clientSecret"]
-        masked_client_secret = '*' * len(authentication_client_secret)
 
         # evaluate authentication client id and client secret
         if not authentication_tenant_id or not authentication_client_id or not authentication_client_secret:
-            authentication_display_text = "Tenant ID, client ID or client secret [red]not detected[/red]."
+            authentication_error_text = "Tenant ID, client ID or client secret [red]not detected[/red]."
             authentication_status = CheckTaskStatus.error.value
-        
+
         if detail_level == ResourceOutputDetailLevel.verbose.value:
             check_manager.add_display(
                 target_name=target_pipelines,
@@ -990,7 +988,7 @@ def _evaluate_authentication(
             check_manager.add_display(
                 target_name=target_pipelines,
                 namespace=namespace,
-                display=Padding(f"Client Secret: [cyan]{masked_client_secret}[/cyan]", (0, 0, 0, padding + PADDING_SIZE))
+                display=Padding(f"Client Secret: [cyan]{authentication_client_secret}[/cyan]", (0, 0, 0, padding + PADDING_SIZE))
             )
     elif pipeline_source_node_authentication == "header":
         key = pipeline_source_node["authentication"]["key"]
@@ -998,9 +996,9 @@ def _evaluate_authentication(
 
         # evaluate authentication key and value
         if not key or not value:
-            authentication_display_text = "Key or value [red]not detected[/red]."
+            authentication_error_text = "Key or value [red]not detected[/red]."
             authentication_status = CheckTaskStatus.error.value
-        
+
         if detail_level == ResourceOutputDetailLevel.verbose.value:
             check_manager.add_display(
                 target_name=target_pipelines,
@@ -1017,7 +1015,7 @@ def _evaluate_authentication(
 
         # evaluate authentication access token
         if not accessToken:
-            authentication_display_text = "Access token [red]not detected[/red]."
+            authentication_error_text = "Access token [red]not detected[/red]."
             authentication_status = CheckTaskStatus.error.value
 
         if detail_level == ResourceOutputDetailLevel.verbose.value:
@@ -1026,12 +1024,13 @@ def _evaluate_authentication(
                 namespace=namespace,
                 display=Padding(f"Access Token: [cyan]{accessToken}[/cyan]", (0, 0, 0, padding + PADDING_SIZE))
             )
-    
-    check_manager.add_display(
-        target_name=target_pipelines,
-        namespace=namespace,
-        display=Padding(authentication_display_text, (0, 0, 0, padding))
-    )
+
+    if authentication_error_text:
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(authentication_error_text, (0, 0, 0, padding + PADDING_SIZE))
+        )
 
     check_manager.add_target_eval(
         target_name=target_pipelines,
