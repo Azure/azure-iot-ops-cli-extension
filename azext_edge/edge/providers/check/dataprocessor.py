@@ -870,12 +870,14 @@ def _evaluate_authentication(
 
     auth_info = pipeline_source_node.get("authentication", {})
     auth_type = auth_info.get("type", "")
-    authentication_display_text = f"Authentication type: [cyan]{auth_type}[/cyan]"
-    check_manager.add_display(
-        target_name=target_pipelines,
-        namespace=namespace,
-        display=Padding(authentication_display_text, (0, 0, 0, padding))
-    )
+
+    if detail_level > ResourceOutputDetailLevel.summary.value:
+        authentication_display_text = f"Authentication type: [cyan]{auth_type}[/cyan]"
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(authentication_display_text, (0, 0, 0, padding))
+        )
 
     authentication_status = CheckTaskStatus.success.value
     authentication_error_text = ""
