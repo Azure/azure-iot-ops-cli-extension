@@ -793,7 +793,14 @@ def process_dict_resource(
                     namespace=namespace,
                     display=Padding(display_text, (0, 0, 0, padding))
                 )
-                display_text = f"[cyan]{value}[/cyan]"
+                if "error" in key.lower():
+                    display_text = f"[red]{value}[/red]"
+                    check_manager.set_target_status(
+                        target_name=target_name,
+                        status=CheckTaskStatus.error.value
+                    )
+                else:
+                    display_text = f"[cyan]{value}[/cyan]"
                 check_manager.add_display(
                     target_name=target_name,
                     namespace=namespace,
@@ -802,7 +809,14 @@ def process_dict_resource(
             else:
                 # replace empty string with N/A
                 value = value if value else "N/A"
-                display_text = f"{key}: [cyan]{value}[/cyan]"
+                if "error" in key.lower() and value.lower() not in ["null", "n/a", "none"]:
+                    display_text = f"{key}: [red]{value}[/red]"
+                    check_manager.set_target_status(
+                        target_name=target_name,
+                        status=CheckTaskStatus.error.value
+                    )
+                else:
+                    display_text = f"{key}: [cyan]{value}[/cyan]"
                 check_manager.add_display(
                     target_name=target_name,
                     namespace=namespace,
