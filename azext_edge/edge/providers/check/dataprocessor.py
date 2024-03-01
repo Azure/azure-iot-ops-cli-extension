@@ -862,10 +862,14 @@ def _evaluate_authentication(
     ):
         for detail in details:
             if detail["value"]:
+                label: str = detail["label"]
+                if label.endswith("Password") or label.endswith("Secret"):
+                    label += " (secret reference)"
+                    
                 check_manager.add_display(
                     target_name=target_pipelines,
                     namespace=namespace,
-                    display=Padding(f"{detail['label']}: [cyan]{detail['value']}[/cyan]", (0, 0, 0, padding + PADDING_SIZE))
+                    display=Padding(f"{label}: [cyan]{detail['value']}[/cyan]", (0, 0, 0, padding + PADDING_SIZE))
                 )
 
     auth_info = pipeline_source_node.get("authentication", {})
