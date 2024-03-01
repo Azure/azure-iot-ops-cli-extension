@@ -659,11 +659,12 @@ def _evaluate_source_node(
             prop_status = CheckTaskStatus.error.value
             prop_display_text = f"{prop} [red]not detected[/red]."
 
-        check_manager.add_display(
-            target_name=target_pipelines,
-            namespace=namespace,
-            display=Padding(prop_display_text, (0, 0, 0, property_padding))
-        )
+        if detail_level != ResourceOutputDetailLevel.summary.value:
+            check_manager.add_display(
+                target_name=target_pipelines,
+                namespace=namespace,
+                display=Padding(prop_display_text, (0, 0, 0, property_padding))
+            )
 
         check_manager.add_target_eval(
             target_name=target_pipelines,
