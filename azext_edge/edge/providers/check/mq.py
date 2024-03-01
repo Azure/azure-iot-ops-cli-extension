@@ -32,6 +32,7 @@ from .common import (
     AIO_MQ_BACKEND_PREFIX,
     AIO_MQ_AUTH_PREFIX,
     PADDING_SIZE,
+    DataLakeConnectorTargetType,
     KafkaTopicMapRouteType,
     ResourceOutputDetailLevel,
 )
@@ -1070,11 +1071,19 @@ def evaluate_datalake_connectors(
         )
         detail_padding = (0, 0, 0, padding[3] + PADDING_SIZE)
         spec = connector.get("spec", {})
+        datalake_target = spec.get("target", {})
+        datalake_target_type = None
+        for _target, target_type in [(datalake_target.get(target_type), target_type) for target_type in DataLakeConnectorTargetType.list()]:
+            if _target:
+                datalake_target = _target
+                datalake_target_type = target_type
+
         connector_eval_status = connector_eval_status = (
             CheckTaskStatus.error.value
             if not all(
                 [
-                    spec.get("target", {}).get("datalakeStorage", {}).get("endpoint"),
+                    datalake_target_type is not None,
+                    datalake_target is not None,
                     spec.get("instances"),
                 ]
             )
@@ -1088,10 +1097,8 @@ def evaluate_datalake_connectors(
             resource_name=connector_name,
             resource_kind=MqResourceKinds.DATALAKE_CONNECTOR.value,
         )
-        connector_instances = spec.get("instances")
 
-        datalake_target = spec.get("target", {}).get("datalakeStorage", {})
-        datalake_endpoint = datalake_target.get("endpoint")
+        connector_instances = spec.get("instances")
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -1104,7 +1111,24 @@ def evaluate_datalake_connectors(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"Target endpoint: [bright_blue]{datalake_endpoint}[/bright_blue]",
+                f"Target: [bright_blue]{datalake_target_type}[/bright_blue]",
+                detail_padding,
+            ),
+        )
+
+        target_endpoint_display = "Endpoint"
+        datalake_endpoint = ""
+        if datalake_target_type == DataLakeConnectorTargetType.local_storage.value:
+            datalake_endpoint = datalake_target.get("volumeName")
+            target_endpoint_display = "Volume"
+        else:
+            datalake_endpoint = datalake_target.get("endpoint")
+
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"{target_endpoint_display}: [bright_blue]{datalake_endpoint}[/bright_blue]",
                 detail_padding,
             ),
         )
