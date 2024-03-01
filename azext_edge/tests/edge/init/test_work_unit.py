@@ -17,6 +17,7 @@ from azext_edge.edge.providers.orchestration.common import (
     MqMemoryProfile,
     MqMode,
     MqServiceType,
+    KubernetesDistroType,
 )
 from azext_edge.edge.providers.orchestration.work import (
     CLUSTER_SECRET_CLASS_NAME,
@@ -42,10 +43,9 @@ from ...generators import generate_generic_id
     location,
     simulate_plc,
     opcua_discovery_endpoint,
+    container_runtime_socket,
+    kubernetes_distro,
     dp_instance_name,
-    dp_reader_workers,
-    dp_runner_workers,
-    dp_message_stores,
     mq_instance_name,
     mq_frontend_server_name,
     mq_mode,
@@ -75,10 +75,9 @@ from ...generators import generate_generic_id
             None,  # location
             None,  # simulate_plc
             None,  # opcua_discovery_endpoint
+            None,  # container_runtime_socket
+            None,  # kubernetes_distro,
             None,  # dp_instance_name
-            None,  # dp_reader_workers
-            None,  # dp_runner_workers
-            None,  # dp_message_stores
             None,  # mq_instance_name
             None,  # mq_frontend_server_name
             None,  # mq_mode
@@ -107,10 +106,9 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # location
             True,  # simulate_plc
             None,  # opcua_discovery_endpoint
+            None,  # container_runtime_socket
+            KubernetesDistroType.k3s.value,  # kubernetes_distro,
             generate_generic_id(),  # dp_instance_name
-            randint(1, 5),  # dp_reader_workers
-            randint(1, 5),  # dp_runner_workers
-            randint(1, 5),  # dp_message_stores
             generate_generic_id(),  # mq_instance_name
             generate_generic_id(),  # mq_frontend_server_name
             MqMode.auto.value,  # mq_mode
@@ -139,10 +137,9 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # location
             True,  # simulate_plc
             generate_generic_id(),  # opcua_discovery_endpoint
+            generate_generic_id(),  # container_runtime_socket
+            KubernetesDistroType.microk8s.value,  # kubernetes_distro,
             generate_generic_id(),  # dp_instance_name
-            randint(1, 5),  # dp_reader_workers
-            randint(1, 5),  # dp_runner_workers
-            randint(1, 5),  # dp_message_stores
             generate_generic_id(),  # mq_instance_name
             generate_generic_id(),  # mq_frontend_server_name
             MqMode.auto.value,  # mq_mode
@@ -176,10 +173,9 @@ def test_init_to_template_params(
     location,
     simulate_plc,
     opcua_discovery_endpoint,
+    container_runtime_socket,
+    kubernetes_distro,
     dp_instance_name,
-    dp_reader_workers,
-    dp_runner_workers,
-    dp_message_stores,
     mq_instance_name,
     mq_frontend_server_name,
     mq_mode,
@@ -208,10 +204,9 @@ def test_init_to_template_params(
         (location, "location"),
         (simulate_plc, "simulate_plc"),
         (opcua_discovery_endpoint, "opcua_discovery_endpoint"),
+        (container_runtime_socket, "container_runtime_socket"),
+        (kubernetes_distro, "kubernetes_distro"),
         (dp_instance_name, "dp_instance_name"),
-        (dp_reader_workers, "dp_reader_workers"),
-        (dp_runner_workers, "dp_runner_workers"),
-        (dp_message_stores, "dp_message_stores"),
         (mq_instance_name, "mq_instance_name"),
         (mq_frontend_server_name, "mq_frontend_server_name"),
         (mq_mode, "mq_mode"),
@@ -285,7 +280,9 @@ def test_init_to_template_params(
     if simulate_plc:
         assert "simulatePLC" in parameters and parameters["simulatePLC"]["value"] is True
         if not opcua_discovery_endpoint:
-            assert parameters["opcuaDiscoveryEndpoint"]["value"] == f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
+            assert (
+                parameters["opcuaDiscoveryEndpoint"]["value"] == f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
+            )
 
     if opcua_discovery_endpoint:
         assert "opcuaDiscoveryEndpoint" in parameters
@@ -295,6 +292,8 @@ def test_init_to_template_params(
     assert parameters["deployResourceSyncRules"] is not disable_rsync_rules
 
     passthrough_value_tuples = [
+        (container_runtime_socket, "containerRuntimeSocket", ""),
+        (kubernetes_distro, "kubernetesDistro", KubernetesDistroType.k8s.value),
         (mq_listener_name, "mqListenerName", "listener"),
         (mq_frontend_server_name, "mqFrontendServer", "mq-dmqtt-frontend"),
         (mq_broker_name, "mqBrokerName", "broker"),
@@ -308,13 +307,6 @@ def test_init_to_template_params(
         (mq_memory_profile, "mqMemoryProfile", MqMemoryProfile.medium.value),
         (mq_service_type, "mqServiceType", MqServiceType.cluster_ip.value),
     ]
-
-    dp_cardinality = {
-        "readerWorker": dp_reader_workers or 1,
-        "runnerWorker": dp_runner_workers or 1,
-        "messageStore": dp_message_stores or 1,
-    }
-    passthrough_value_tuples.append((False, "dataProcessorCardinality", dp_cardinality))
 
     for passthrough_value_tuple in passthrough_value_tuples:
         if passthrough_value_tuple[0]:
@@ -339,7 +331,10 @@ def test_init_to_template_params(
     for set_value_tuple in set_value_tuples:
         assert parameters[set_value_tuple[0]]["value"] == set_value_tuple[1]
 
-    assert template_ver.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] == cluster_namespace or DEFAULT_NAMESPACE
+    if cluster_namespace:
+        assert template_ver.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] == cluster_namespace
+    else:
+        assert template_ver.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] == DEFAULT_NAMESPACE
 
     # TODO
     assert template_ver.content["variables"]["AIO_TRUST_CONFIG_MAP"]
@@ -606,7 +601,9 @@ def test_work_order(
             if keyvault_sat_secret_name
             else DEFAULT_NAMESPACE
         )
-        assert result["csiDriver"]["rotationPollInterval"] == rotation_poll_interval if rotation_poll_interval else "1h"
+        assert (
+            result["csiDriver"]["rotationPollInterval"] == rotation_poll_interval if rotation_poll_interval else "1h"
+        )
         assert result["csiDriver"]["enableSecretRotation"] == "false" if disable_secret_rotation else "true"
 
         mocked_validate_keyvault_permission_model.assert_called_once()

@@ -22,47 +22,62 @@ from .base import (
 logger = get_logger(__name__)
 
 
-AKRI_NAME_LABEL = "name in (aio-akri-agent)"
+AKRI_INSTANCE_LABEL = "app.kubernetes.io/instance in (akri)"
+AKRI_APP_LABEL = "app in (otel-collector)"
 AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
-AKRI_PREFIXES = ["aio-akri-", "akri-"]
+AKRI_PREFIX = "aio-akri-"
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     processed = process_v1_pods(
         resource_api=AKRI_API_V0,
-        prefix_names=AKRI_PREFIXES,
+        label_selector=AKRI_INSTANCE_LABEL,
         since_seconds=since_seconds,
         capture_previous_logs=True,
     )
     processed.extend(
         process_v1_pods(
             resource_api=AKRI_API_V0,
-            label_selector=AKRI_NAME_LABEL,
+            label_selector=AKRI_APP_LABEL,
             since_seconds=since_seconds,
             capture_previous_logs=True,
         )
     )
-
     return processed
 
 
 def fetch_deployments():
-    return process_deployments(
+    processed = process_deployments(
         resource_api=AKRI_API_V0,
-        prefix_names=AKRI_PREFIXES,
+        label_selector=AKRI_INSTANCE_LABEL,
     )
+    processed.extend(
+        process_deployments(
+            resource_api=AKRI_API_V0,
+            label_selector=AKRI_APP_LABEL,
+        )
+    )
+    return processed
 
 
 def fetch_daemonsets():
-    return process_daemonsets(resource_api=AKRI_API_V0, prefix_names=AKRI_PREFIXES)
+    return process_daemonsets(resource_api=AKRI_API_V0, label_selector=AKRI_INSTANCE_LABEL)
 
 
 def fetch_services():
-    return process_services(resource_api=AKRI_API_V0, label_selector=AKRI_SERVICE_LABEL)
+    processed = process_services(resource_api=AKRI_API_V0, label_selector=AKRI_SERVICE_LABEL)
+    processed.extend(
+        process_services(resource_api=AKRI_API_V0, label_selector=AKRI_INSTANCE_LABEL)
+    )
+    return processed
 
 
 def fetch_replicasets():
-    return process_replicasets(resource_api=AKRI_API_V0, prefix_names=AKRI_PREFIXES)
+    processed = process_replicasets(resource_api=AKRI_API_V0, label_selector=AKRI_INSTANCE_LABEL)
+    processed.extend(
+        process_replicasets(resource_api=AKRI_API_V0, label_selector=AKRI_APP_LABEL)
+    )
+    return processed
 
 
 support_runtime_elements = {

@@ -162,7 +162,9 @@ class WorkManager:
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_DEPLOY, description=kv_csi_deploy_desc)
 
         kv_csi_configure_desc = "Configure driver"
-        self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_CLUSTER, description=kv_csi_configure_desc)
+        self.display.add_step(
+            WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_CLUSTER, description=kv_csi_configure_desc
+        )
 
         # TODO @digimaun - MQ insecure mode
         self.display.add_category(WorkCategoryKey.TLS_CA, "TLS", self._no_tls)
@@ -481,10 +483,12 @@ class WorkManager:
         for template_pair in [
             ("cluster_name", "clusterName"),
             ("location", "location"),
-            ("cluster_location", "clusterLocation"),  # TODO
+            ("cluster_location", "clusterLocation"),
             ("custom_location_name", "customLocationName"),
             ("simulate_plc", "simulatePLC"),
             ("opcua_discovery_endpoint", "opcuaDiscoveryEndpoint"),
+            ("container_runtime_socket", "containerRuntimeSocket"),
+            ("kubernetes_distro", "kubernetesDistro"),
             ("target_name", "targetName"),
             ("dp_instance_name", "dataProcessorInstanceName"),
             ("mq_instance_name", "mqInstanceName"),
@@ -503,17 +507,6 @@ class WorkManager:
         ]:
             if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
-
-        parameters["dataProcessorCardinality"] = {
-            "value": template.parameters["dataProcessorCardinality"]["defaultValue"]
-        }
-        for template_pair in [
-            ("dp_reader_workers", "readerWorker"),
-            ("dp_runner_workers", "runnerWorker"),
-            ("dp_message_stores", "messageStore"),
-        ]:
-            if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
-                parameters["dataProcessorCardinality"]["value"][template_pair[1]] = self._kwargs[template_pair[0]]
 
         parameters["dataProcessorSecrets"] = {
             "value": {
