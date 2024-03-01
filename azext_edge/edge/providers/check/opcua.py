@@ -31,7 +31,7 @@ from ..edge_api import (
     OpcuaResourceKinds,
 )
 
-from ..support.opcua import OPC_APP_LABEL, OPC_NAME_LABEL
+from ..support.opcua import OPC_APP_LABEL, OPC_NAME_LABEL, OPC_NAME_VAR_LABEL
 
 
 def check_opcua_deployment(
@@ -65,7 +65,7 @@ def evaluate_core_service_runtime(
     check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate OPC UA broker core service")
 
     opcua_runtime_resources: List[dict] = []
-    for label_selector in [OPC_APP_LABEL, OPC_NAME_LABEL]:
+    for label_selector in [OPC_APP_LABEL, OPC_NAME_LABEL, OPC_NAME_VAR_LABEL]:
         opcua_runtime_resources.extend(
             get_namespaced_pods_by_prefix(
                 prefix="",
