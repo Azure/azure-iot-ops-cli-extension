@@ -207,8 +207,8 @@ def test_instance_checks(
                 "mode.enabled",
                 "provisioningStatus",
                 "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
+                "spec.input.broker",
+                "spec.input.topics",
                 "format.type",
                 "authentication.type",
                 "destinationNodeCount==1"
@@ -231,11 +231,15 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
-                    ("value/len(spec.input.topics)", 2),
+                    ("value/spec.input.broker", "test-broker"),
                 ],
                 [
                     ("status", "success"),
-                    ("value/spec.input.partitionCount", 1),
+                    ("value/spec.input.topics", ["topic1", "topic2"]),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.partitionCount", 1)
                 ],
                 [
                     ("status", "success"),
@@ -321,12 +325,13 @@ def test_instance_checks(
                 "mode.enabled",
                 "provisioningStatus",
                 "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
                 "format.type",
                 "authentication.type",
                 "destinationNodeCount==1",
-                "spec.input.query.expression"
+                "spec.input.query",
+                "spec.input.server",
+                "spec.input.database",
+                "spec.input.interval"
             ],
             # all namespace conditions str
             ["pipelines"],
@@ -346,11 +351,23 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
-                    ("value/query.expression", "SELECT * FROM table"),
+                    ("value/spec.input.query", {"expression": "SELECT * FROM table"}),
                 ],
                 [
                     ("status", "success"),
-                    ("value/spec.input.partitionCount", 1),
+                    ("value/spec.input.server", "test-server"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.database", "test-database"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.interval", "1m"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.partitionCount", 1)
                 ],
                 [
                     ("status", "success"),
@@ -448,12 +465,11 @@ def test_instance_checks(
                 "mode.enabled",
                 "provisioningStatus",
                 "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
                 "format.type",
                 "authentication.type",
                 "destinationNodeCount==1",
-                "spec.input.url"
+                "spec.input.url",
+                "spec.input.interval"
             ],
             # all namespace conditions str
             ["pipelines"],
@@ -473,7 +489,11 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
-                    ("value/url", "https://contoso.com/some/url/path"),
+                    ("value/spec.input.url", "https://contoso.com/some/url/path"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.interval", "10s"),
                 ],
                 [
                     ("status", "success"),
@@ -561,13 +581,13 @@ def test_instance_checks(
                 "mode.enabled",
                 "provisioningStatus",
                 "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
                 "format.type",
                 "authentication.type",
                 "destinationNodeCount==1",
-                "spec.input.query.expression",
-                "spec.input.url"
+                "spec.input.query",
+                "spec.input.url",
+                "spec.input.interval",
+                "spec.input.organization"
             ],
             # all namespace conditions str
             ["pipelines"],
@@ -587,15 +607,23 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
-                    ("value/query.expression", "from(bucket:\"test-bucket\")"),
+                    ("value/spec.input.query", {"expression": "from(bucket:\"test-bucket\")"}),
                 ],
                 [
                     ("status", "success"),
-                    ("value/url", "https://contoso.com/some/url/path"),
+                    ("value/spec.input.url", "https://contoso.com/some/url/path"),
                 ],
                 [
                     ("status", "success"),
-                    ("value/spec.input.partitionCount", 1),
+                    ("value/spec.input.interval", "5s"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.organization", "test-org"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.partitionCount", 1)
                 ],
                 [
                     ("status", "success"),
@@ -608,6 +636,128 @@ def test_instance_checks(
                 [
                     ("status", "success"),
                     ("value/destinationNodeCount", 1),
+                ]
+            ],
+            # all namespace evaluation str
+            [
+                [
+                    ("status", "success"),
+                    ("value/pipelines", 1),
+                ]
+            ],
+        ),
+        # authentication error
+        (
+            # pipelines
+            [
+                generate_resource_stub(
+                    metadata={"name": "test-pipeline"},
+                    spec={
+                        "enabled": True,
+                        "input": {
+                            "type": DataSourceStageType.influxdb.value,
+                            "query": {
+                                "expression": "from(bucket:\"test-bucket\")"
+                            },
+                            "interval": "5s",
+                            "url": "https://contoso.com/some/url/path",
+                            "organization": "test-org",
+                            "partitionCount": 1,
+                            "partitionStrategy": {
+                                "type": "id",
+                                "expression": "0"
+                            },
+                            "format": {
+                                "type": "json"
+                            },
+                            "authentication": {
+                                "type": "accessToken",
+                            }
+                        },
+                        "stages": {
+                            "stage1": {
+                                "type": "intermediate",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            },
+                            "stage2": {
+                                "type": "output",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            }
+                        }
+                    },
+                    status={
+                        "provisioningStatus": {
+                            "status": "Succeeded",
+                            "error": {
+                                "message": "No error"
+                            }
+                        }
+                    }
+                )
+            ],
+            # namespace conditions str
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "format.type",
+                "authentication.type",
+                "destinationNodeCount==1",
+                "spec.input.query",
+                "spec.input.url",
+                "spec.input.interval",
+                "spec.input.organization"
+            ],
+            # all namespace conditions str
+            ["pipelines"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/mode.enabled", "running"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/provisioningStatus", ProvisioningState.succeeded.value),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/sourceNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.query", {"expression": "from(bucket:\"test-bucket\")"}),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.url", "https://contoso.com/some/url/path"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.interval", "5s"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.organization", "test-org"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.partitionCount", 1)
+                ],
+                [
+                    ("status", "success"),
+                    ("value/format.type", "json"),
+                ],
+                [
+                    ("status", "error"),
+                    ("value/authentication.type", "accessToken"),
                 ]
             ],
             # all namespace evaluation str
@@ -729,8 +879,6 @@ def test_instance_checks(
                 "mode.enabled",
                 "provisioningStatus",
                 "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
                 "format.type",
                 "authentication.type",
                 "destinationNodeCount==1"
@@ -780,8 +928,6 @@ def test_instance_checks(
                 "mode.enabled",
                 "provisioningStatus",
                 "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
                 "destinationNodeCount==1"
             ],
             # all namespace conditions str
@@ -810,8 +956,6 @@ def test_instance_checks(
                 "mode.enabled",
                 "provisioningStatus",
                 "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
                 "destinationNodeCount==1"
             ],
             # all namespace conditions str

@@ -141,12 +141,15 @@ def assert_dict_props(path: str, expected: str, obj: Dict[str, str]):
     val = obj
     for key in path.split("/"):
         val = val[key]
+
+    if val == expected:
+        assert val == expected
+        return
+
     if isinstance(val, list):
         assert expected in val
     elif isinstance(val, dict):
-        assert expected in val.values() or expected == val
-    else:
-        assert val == expected
+        assert expected in val.values()
 
 
 def assert_conditions(target: Dict[str, Any], conditions: List[str]):

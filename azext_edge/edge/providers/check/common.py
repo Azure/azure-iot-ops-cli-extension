@@ -59,29 +59,36 @@ class DataprocessorDestinationStageType(ListableEnum):
     reference_data = "output/refdata"
 
 
+class DataprocessorAuthenticationType(ListableEnum):
+    """
+    Data processor authentication type.
+    """
+    accessKey = "accessKey"
+    accessToken = "accessToken"
+    header = "header"
+    metadata = "metadata"
+    none = "none"
+    serviceAccountToken = "serviceAccountToken"
+    servicePrincipal = "servicePrincipal"
+    systemAssignedManagedIdentity = "systemAssignedManagedIdentity"
+    usernamePassword = "usernamePassword"
+
+
 ERROR_NO_DETAIL = "<No detail available>"
 
 DATA_PROCESSOR_SOURCE_STAGE_PROPERTIES = {
     DataSourceStageType.http.value: [
         ("method", "Request method", True),
         ("request", "HTTP request", True),
-        ("interval", "Interval", False),
     ],
     DataSourceStageType.influxdb.value: [
-        ("interval", "Interval", False),
         ("port", "Port", True),
-        ("organization", "Organization", False),
-        ("partitionCount", "Partition Count", False),
     ],
     DataSourceStageType.mqtt.value: [
-        ("broker", "MQTT broker URL", False),
         ("qos", "MQTT QoS", True),
         ("cleanSession", "MQTT Clean Session", True),
     ],
     DataSourceStageType.sql.value: [
-        ("server", "Server", False),
-        ("database", "Database", False),
-        ("interval", "Interval", False),
         ("port", "Port", True),
     ],
 }
@@ -159,6 +166,18 @@ DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES = {
         ("retry", "MQTT retry mechanism", True)
     ],
     DataprocessorDestinationStageType.reference_data.value: [("dataset", "Dataset ID", False)]
+}
+
+DATA_PROCESSOR_AUTHENTICATION_REQUIRED_PROPERTIES = {
+    DataprocessorAuthenticationType.accessToken.value: ["accessToken"],
+    DataprocessorAuthenticationType.accessKey.value: ["accessKey"],
+    DataprocessorAuthenticationType.header.value: ["key", "value"],
+    DataprocessorAuthenticationType.metadata.value: ["key", "value"],
+    DataprocessorAuthenticationType.none.value: [],
+    DataprocessorAuthenticationType.serviceAccountToken.value: [],
+    DataprocessorAuthenticationType.servicePrincipal.value: ["tenantId", "clientId", "clientSecret"],
+    DataprocessorAuthenticationType.systemAssignedManagedIdentity.value: [],
+    DataprocessorAuthenticationType.usernamePassword.value: ["username", "password"],
 }
 
 LNM_ALLOWLIST_PROPERTIES = [
