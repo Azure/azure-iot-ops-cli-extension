@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, List
+from typing import Iterable
 
 from knack.log import get_logger
 
@@ -32,13 +32,9 @@ DATA_PROCESSOR_APP_LABELS = [
     'aio-dp-operator',
 ]
 
-DATA_PROCESSOR_PREFIX = "aio-dp-"
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
-DATA_PROCESSOR_RELEASE_LABEL = "release in (processor)"
-DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
-DATA_PROCESSOR_PART_OF_LABEL = "app.kubernetes.io/part-of in (aio-dp-operator)"
 DATA_PROCESSOR_NAME_LABEL = "app.kubernetes.io/name in (dataprocessor)"
-DATA_PROCESSOR_ONEOFF_LABEL = "control-plane in (controller-manager)"
+DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
@@ -52,41 +48,12 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
             DATA_PROCESSOR_RUNNER_WORKER_POD,
         ],
     )
-    dataprocessor_pods.extend(
-        process_v1_pods(
-            resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
-            since_seconds=since_seconds,
-            capture_previous_logs=True,
-        )
-    )
-    dataprocessor_pods.extend(
-        process_v1_pods(
-            resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_RELEASE_LABEL,
-            since_seconds=since_seconds,
-            capture_previous_logs=True,
-        )
-    )
-
-    # @digimaun - TODO, depends on consistent labels
-    temp_oneoffs = process_v1_pods(
-        resource_api=DATA_PROCESSOR_API_V1,
-        label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
-        since_seconds=since_seconds,
-        capture_previous_logs=True,
-    )
-
-    dataprocessor_pods.extend(_process_oneoff_label_entities(temp_oneoffs=temp_oneoffs))
 
     return dataprocessor_pods
 
 
 def fetch_deployments():
     processed = process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
-    processed.extend(
-        process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_PART_OF_LABEL)
-    )
 
     return processed
 
@@ -96,22 +63,13 @@ def fetch_statefulsets():
         resource_api=DATA_PROCESSOR_API_V1,
         label_selector=DATA_PROCESSOR_LABEL,
     )
-    processed.extend(
-        process_statefulset(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_RELEASE_LABEL)
-    )
-    processed.extend(
-        process_statefulset(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_INSTANCE_LABEL)
-    )
+
     return processed
 
 
 def fetch_replicasets():
     processed = []
     processed.extend(process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
-
-    # @digimaun - TODO, depends on consistent labels
-    temp_oneoffs = process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_ONEOFF_LABEL)
-    processed.extend(_process_oneoff_label_entities(temp_oneoffs=temp_oneoffs))
 
     return processed
 
@@ -167,13 +125,3 @@ def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 
     dataprocessor_to_run.update(support_runtime_elements)
 
     return dataprocessor_to_run
-
-
-def _process_oneoff_label_entities(temp_oneoffs: List[dict]):
-    processed = []
-    for oneoff in temp_oneoffs:
-        if "data" in oneoff and oneoff["data"] and isinstance(oneoff["data"], dict):
-            name: str = oneoff["data"].get("metadata", {}).get("name")
-            if name and name.startswith(DATA_PROCESSOR_PREFIX):
-                processed.append(oneoff)
-    return processed

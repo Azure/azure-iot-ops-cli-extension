@@ -31,6 +31,9 @@ def load_iotops_help():
             Kubernetes services that enable you to aggregate data from on-prem assets into an
             industrial-grade MQTT Broker, add edge compute and set up bi-directional data flow with
             a variety of services in the cloud.
+
+            By default IoT Operations CLI commands will periodically check to see if a new extension version is available.
+            This behavior can be disabled with `az config set iotops.check_latest=false`.
     """
 
     helps[
@@ -84,11 +87,12 @@ def load_iotops_help():
             More detail can be requested via `--detail-level`.
 
             {{Supported service APIs}}
-            - {COMPAT_MQ_APIS.as_str()}
-            - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
-            - {COMPAT_LNM_APIS.as_str()}
-            - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_AKRI_APIS.as_str()}
+            - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
+            - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
+            - {COMPAT_LNM_APIS.as_str()}
+            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_OPCUA_APIS.as_str()}
 
         examples:
         - name: Basic usage. Checks `mq` health with summary output.

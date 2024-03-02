@@ -9,6 +9,8 @@ from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
 from zipfile import ZipInfo
 
+from .conftest import add_pod_to_mocked_pods
+
 import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
@@ -25,15 +27,12 @@ from azext_edge.edge.providers.edge_api import (
     ORC_API_V1,
     EdgeResourceApi,
 )
-from azext_edge.edge.providers.support.akri import AKRI_NAME_LABEL, AKRI_SERVICE_LABEL
+from azext_edge.edge.providers.support.akri import AKRI_APP_LABEL, AKRI_INSTANCE_LABEL, AKRI_SERVICE_LABEL
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_INSTANCE_LABEL,
     DATA_PROCESSOR_LABEL,
     DATA_PROCESSOR_NAME_LABEL,
-    DATA_PROCESSOR_ONEOFF_LABEL,
-    DATA_PROCESSOR_PART_OF_LABEL,
-    DATA_PROCESSOR_RELEASE_LABEL,
 )
 from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
 from azext_edge.edge.providers.support.mq import MQ_LABEL
@@ -49,7 +48,6 @@ from azext_edge.edge.providers.support.orc import (
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
 from ...generators import generate_generic_id
-from .conftest import add_pod_to_mocked_pods
 
 a_bundle_dir = f"support_test_{generate_generic_id()}"
 
@@ -98,10 +96,6 @@ def test_create_bundle(
         mocked_root_logger.warning.assert_called_once_with("No known IoT Operations services discovered on cluster.")
         assert auto_result_no_resources is None
         return
-
-    # @vilit - AKRI pod with ambigious label
-    if AKRI_API_V0 in mocked_cluster_resources["param"]:
-        add_pod_to_mocked_pods(mocked_client, mocked_list_pods, ["aio-akri-otel-collector"])
 
     if DATA_PROCESSOR_API_V1 in mocked_cluster_resources["param"]:
         add_pod_to_mocked_pods(
@@ -207,12 +201,6 @@ def test_create_bundle(
             assert_list_deployments(
                 mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_PART_OF_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-            )
 
             assert_list_pods(
                 mocked_client,
@@ -223,51 +211,15 @@ def test_create_bundle(
                 since_seconds=since_seconds,
                 init_container_for_logs=["aio-runner"],
             )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=DATA_PROCESSOR_RELEASE_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-                since_seconds=since_seconds,
-            )
 
             assert_list_replica_sets(
                 mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-            )
 
             assert_list_stateful_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATA_PROCESSOR_RELEASE_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1,
-            )
-            assert_list_stateful_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
+                label_selector=DATA_PROCESSOR_LABEL,
                 resource_api=DATA_PROCESSOR_API_V1,
             )
 
@@ -323,7 +275,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=AKRI_NAME_LABEL,
+                label_selector=AKRI_INSTANCE_LABEL,
                 resource_api=AKRI_API_V0,
                 since_seconds=since_seconds,
             )
@@ -331,34 +283,45 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=None,
+                label_selector=AKRI_APP_LABEL,
                 resource_api=AKRI_API_V0,
                 since_seconds=since_seconds,
-                mock_names=["aio-akri-otel-collector"],
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=None,
+                label_selector=AKRI_INSTANCE_LABEL,
                 resource_api=AKRI_API_V0,
-                mock_names=["aio-akri-otel-collector"],
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_APP_LABEL,
+                resource_api=AKRI_API_V0,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=None,
+                label_selector=AKRI_INSTANCE_LABEL,
                 resource_api=AKRI_API_V0,
-                mock_names=["aio-akri-otel-collector"],
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_APP_LABEL,
+                resource_api=AKRI_API_V0,
             )
             assert_list_services(
                 mocked_client, mocked_zipfile, label_selector=AKRI_SERVICE_LABEL, resource_api=AKRI_API_V0
             )
+            assert_list_services(
+                mocked_client, mocked_zipfile, label_selector=AKRI_INSTANCE_LABEL, resource_api=AKRI_API_V0
+            )
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=None,
+                label_selector=AKRI_INSTANCE_LABEL,
                 resource_api=AKRI_API_V0,
-                mock_names=["aio-akri-agent-daemonset"],
             )
 
         if api in [LNM_API_V1B1]:
