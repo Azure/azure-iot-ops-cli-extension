@@ -132,7 +132,7 @@ def process_v1_pods(
                     )
             except ApiException as e:
                 logger.debug(e.body)
-        
+
         if init_container_for_logs and (pod_name in init_container_for_logs):
             processed.extend(
                 _capture_init_container_logs(
@@ -519,5 +519,5 @@ def _capture_init_container_logs(
             )
         except ApiException as e:
             logger.debug(e.body)
-    
+
     return processed

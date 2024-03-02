@@ -103,6 +103,14 @@ def test_create_bundle(
     if AKRI_API_V0 in mocked_cluster_resources["param"]:
         add_pod_to_mocked_pods(mocked_client, mocked_list_pods, ["aio-akri-otel-collector"])
 
+    if DATA_PROCESSOR_API_V1 in mocked_cluster_resources["param"]:
+        add_pod_to_mocked_pods(
+            mocked_client=mocked_client,
+            expected_pod_map=mocked_list_pods,
+            mock_names=["aio-runner"],
+            mock_init_containers=True
+        )
+
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(None, bundle_dir=a_bundle_dir, log_age_seconds=since_seconds)
 
@@ -497,6 +505,14 @@ def assert_list_pods(
                             f"pod.{pod_name}.{container_name}{previous_segment}.log",
                             data=mocked_list_pods[namespace][pod_name][container_name],
                         )
+
+            if "init_container_for_logs" in kwargs:
+                if pod_name in kwargs["init_container_for_logs"]:
+                    assert_zipfile_write(
+                        mocked_zipfile,
+                        zinfo=f"{namespace}/{resource_api.moniker}/pod.{pod_name}.mock-init-container.init.log",
+                        data=mocked_list_pods[namespace][pod_name]["mock-init-container"],
+                    )
 
 
 def assert_list_replica_sets(

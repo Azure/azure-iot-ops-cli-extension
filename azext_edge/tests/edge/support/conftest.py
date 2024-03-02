@@ -11,7 +11,12 @@ from ...generators import generate_generic_id
 import pytest
 
 
-def add_pod_to_mocked_pods(mocked_client, expected_pod_map, mock_names: List[str] = None):
+def add_pod_to_mocked_pods(
+    mocked_client,
+    expected_pod_map,
+    mock_names: List[str] = None,
+    mock_init_containers: bool = False
+):
     from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
 
     current_pods = mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value
@@ -25,6 +30,10 @@ def add_pod_to_mocked_pods(mocked_client, expected_pod_map, mock_names: List[str
         container_name = generate_generic_id()
         spec = V1PodSpec(containers=[V1Container(name=container_name)])
         pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
+
+        if mock_init_containers:
+            pod.spec.init_containers = [V1Container(name="mock-init-container")]
+            expected_pod_map[namespace][pod_name]["mock-init-container"] = mock_log
         pod_list.append(pod)
         expected_pod_map[namespace][pod_name] = {container_name: mock_log}
 
@@ -343,7 +352,7 @@ def mocked_list_storage_classes(mocked_client):
         storage_class_list = V1StorageClassList(items=[storage_class])
 
         return storage_class_list
-    
+
     mocked_client.StorageV1Api().list_storage_class.side_effect = _handle_list_storage_classes
 
     yield mocked_client
@@ -382,7 +391,8 @@ def mocked_list_persistent_volume_claims(mocked_client):
 
         return pvc_list
 
-    mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.side_effect = _handle_list_persistent_volume_claims
+    mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.side_effect =\
+        _handle_list_persistent_volume_claims
 
     yield mocked_client
 

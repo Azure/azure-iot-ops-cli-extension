@@ -128,12 +128,23 @@ def fetch_services():
 
 def fetch_persistent_volume_claims():
     processed = []
-    processed.extend(process_persistent_volume_claims(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
     processed.extend(
-        process_persistent_volume_claims(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL)
+        process_persistent_volume_claims(
+            resource_api=DATA_PROCESSOR_API_V1,
+            label_selector=DATA_PROCESSOR_LABEL
+        )
     )
     processed.extend(
-        process_persistent_volume_claims(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_INSTANCE_LABEL)
+        process_persistent_volume_claims(
+            resource_api=DATA_PROCESSOR_API_V1,
+            label_selector=DATA_PROCESSOR_NAME_LABEL
+        )
+    )
+    processed.extend(
+        process_persistent_volume_claims(
+            resource_api=DATA_PROCESSOR_API_V1,
+            label_selector=DATA_PROCESSOR_INSTANCE_LABEL
+        )
     )
 
     return processed
