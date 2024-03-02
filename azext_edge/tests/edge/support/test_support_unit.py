@@ -25,7 +25,11 @@ from azext_edge.edge.providers.edge_api import (
     ORC_API_V1,
     EdgeResourceApi,
 )
-from azext_edge.edge.providers.support.akri import AKRI_APP_LABEL, AKRI_INSTANCE_LABEL, AKRI_SERVICE_LABEL
+from azext_edge.edge.providers.support.akri import (
+    AKRI_APP_LABEL,
+    AKRI_INSTANCE_LABEL,
+    AKRI_SERVICE_LABEL,
+)
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_LABEL,
@@ -42,6 +46,7 @@ from azext_edge.edge.providers.support.orc import (
     ORC_CONTROLLER_LABEL,
     ORC_INSTANCE_LABEL,
 )
+from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
 from ...generators import generate_generic_id
@@ -174,7 +179,9 @@ def test_create_bundle(
                 resource_api=OPCUA_API_V1,
                 mock_names=["opcplc-0000000"],
             )
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, resource_api=OPCUA_API_V1)
+            assert_list_services(
+                mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, resource_api=OPCUA_API_V1
+            )
             # TODO: one-off field selector remove after label
             assert_list_daemon_sets(
                 mocked_client,
@@ -320,7 +327,9 @@ def test_create_bundle(
             assert_list_replica_sets(
                 mocked_client, mocked_zipfile, label_selector=lnm_app_label, resource_api=LNM_API_V1B1
             )
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=lnm_app_label, resource_api=LNM_API_V1B1)
+            assert_list_services(
+                mocked_client, mocked_zipfile, label_selector=lnm_app_label, resource_api=LNM_API_V1B1
+            )
             # TODO: test both without or with lnm instance
             assert_list_daemon_sets(
                 mocked_client,
@@ -329,6 +338,10 @@ def test_create_bundle(
                 resource_api=LNM_API_V1B1,
                 mock_names=["svclb-aio-lnm-operator"],
             )
+
+    if expected_resources:
+        assert_otel_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
+
         # assert shared KPIs regardless of service
         assert_shared_kpis(mocked_client, mocked_zipfile)
 
@@ -509,6 +522,24 @@ def assert_list_daemon_sets(
 
 def assert_mq_stats(mocked_zipfile):
     assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/mq/diagnostic_metrics.txt", data="metrics")
+
+
+def assert_otel_kpis(
+    mocked_client,
+    mocked_zipfile,
+    mocked_list_pods,
+):
+    for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_replica_sets]:
+        kwargs = {
+            "mocked_client": mocked_client,
+            "mocked_zipfile": mocked_zipfile,
+            "label_selector": OTEL_NAME_LABEL,
+            "resource_api": OTEL_API,
+        }
+        if assert_func == assert_list_pods:
+            kwargs["mocked_list_pods"] = mocked_list_pods
+
+        assert_func(**kwargs)
 
 
 def assert_shared_kpis(mocked_client, mocked_zipfile):
