@@ -13,16 +13,14 @@ jobs:
     name: SDL Compliance Checks
     runs-on: windows-latest
     permissions:
-      # required for all workflows
+      # needed to write security info to repository
       security-events: write
-      # only required for workflows in private repositories
-      actions: read
       contents: read
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
       # Install dotnet, used by MSDO
-    - uses: actions/setup-dotnet@v3
+    - uses: actions/setup-dotnet@v4
       with:
         dotnet-version: |
           5.0.x
@@ -30,7 +28,7 @@ jobs:
 
       # Run analyzers
     - name: Run Microsoft Security DevOps Analysis
-      uses: microsoft/security-devops-action@preview
+      uses: microsoft/security-devops-action@v1
       id: msdo
       env:
         # file path to analyze
@@ -39,13 +37,13 @@ jobs:
 
       # Upload alerts to the Security tab
     - name: Upload alerts to Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: ${{ steps.msdo.outputs.sarifFile }}
 
       # Upload alerts file as a workflow artifact
     - name: Upload alerts artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:  
         name: alerts
         path: ${{ steps.msdo.outputs.sarifFile }}

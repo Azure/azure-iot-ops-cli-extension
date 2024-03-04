@@ -5,11 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import IntEnum
+from json import dumps
 from time import sleep
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 from uuid import uuid4
 
-from azure.cli.core.azclierror import AzureResponseError
+from azure.cli.core.azclierror import AzureResponseError, ValidationError
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
 from rich.console import NewLine
@@ -20,26 +21,31 @@ from rich.style import Style
 from rich.table import Table
 
 from ...util import get_timestamp_now_utc
-from ...util.x509 import DEFAULT_EC_ALGO
-from .template import CURRENT_TEMPLATE, TemplateVer
+from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
+from .template import CURRENT_TEMPLATE, TemplateVer, get_current_template_copy
 
 logger = get_logger(__name__)
 
 
 class WorkCategoryKey(IntEnum):
-    CSI_DRIVER = 1
-    TLS_CA = 2
-    DEPLOY_AIO = 3
+    PRE_CHECK = 1
+    CSI_DRIVER = 2
+    TLS_CA = 3
+    DEPLOY_AIO = 4
 
 
 class WorkStepKey(IntEnum):
     SP = 1
-    KV_CLOUD_AP = 2
-    KV_CLOUD_SEC = 3
-    KV_CSI_DEPLOY = 4
-    KV_CSI_CLUSTER = 5
-    TLS_CERT = 6
-    TLS_CLUSTER = 7
+    KV_CLOUD_PERM_MODEL = 2
+    KV_CLOUD_AP = 3
+    KV_CLOUD_SEC = 4
+    KV_CSI_DEPLOY = 5
+    KV_CSI_CLUSTER = 6
+    TLS_CERT = 7
+    TLS_CLUSTER = 8
+
+    REG_RP = 9
+    EVAL_LOGIN_PERM = 10
 
 
 class WorkRecord:
@@ -49,6 +55,8 @@ class WorkRecord:
 
 CLUSTER_SECRET_REF = "aio-akv-sp"
 CLUSTER_SECRET_CLASS_NAME = "aio-default-spc"
+
+PRE_FLIGHT_SUCCESS_STATUS = "succeeded"
 
 
 class WorkDisplay:
@@ -90,6 +98,7 @@ class WorkManager:
         self._no_block: bool = kwargs.get("no_block", False)
         self._no_deploy: bool = kwargs.get("no_deploy", False)
         self._no_tls: bool = kwargs.get("no_tls", False)
+        self._no_preflight: bool = kwargs.get("no_preflight", False)
         self._cmd = kwargs.get("cmd")
         self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
         if self._keyvault_resource_id:
@@ -99,6 +108,7 @@ class WorkManager:
         self._sp_obj_id = kwargs.get("service_principal_object_id")
         self._tls_ca_path = kwargs.get("tls_ca_path")
         self._tls_ca_key_path = kwargs.get("tls_ca_key_path")
+        self._tls_ca_valid_days = kwargs.get("tls_ca_valid_days", DEFAULT_VALID_DAYS)
         self._tls_insecure = kwargs.get("tls_insecure", False)
         self._progress_shown = False
         self._render_progress = not self._no_progress
@@ -108,13 +118,30 @@ class WorkManager:
         kwargs["subscription_id"] = self._subscription_id  # TODO: temporary
         self._cluster_secret_ref = CLUSTER_SECRET_REF
         self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
+        self._deploy_rsync_rules = not kwargs.get("disable_rsync_rules", False)
+        self._connected_cluster = None
         self._kwargs = kwargs
 
         self._build_display()
 
     def _build_display(self):
-        kv_csi_cat_desc = "KeyVault CSI Driver"
+        pre_check_cat_desc = "Pre-Flight"
+        self.display.add_category(WorkCategoryKey.PRE_CHECK, pre_check_cat_desc, skipped=self._no_preflight)
+        self.display.add_step(
+            WorkCategoryKey.PRE_CHECK, WorkStepKey.REG_RP, "Ensure registered IoT Ops resource providers"
+        )
+        self.display.add_step(WorkCategoryKey.PRE_CHECK, WorkStepKey.EVAL_LOGIN_PERM, "Verify pre-flight deployment")
+
+        kv_csi_cat_desc = "Key Vault CSI Driver"
         self.display.add_category(WorkCategoryKey.CSI_DRIVER, kv_csi_cat_desc, skipped=not self._keyvault_resource_id)
+
+        kv_cloud_perm_model_desc = "Verify Key Vault{}permission model"
+        kv_cloud_perm_model_desc = kv_cloud_perm_model_desc.format(
+            f" '[green]{self._keyvault_name}[/green]' " if self._keyvault_resource_id else " "
+        )
+        self.display.add_step(
+            WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_PERM_MODEL, description=kv_cloud_perm_model_desc
+        )
 
         if self._sp_app_id:
             sp_desc = f"Use app '[green]{self._sp_app_id}[/green]'"
@@ -124,11 +151,9 @@ class WorkManager:
             sp_desc = "Created app"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.SP, description=sp_desc)
 
-        kv_cloud_ap_desc = "Ensure KeyVault{}access policy"
-        kv_cloud_ap_desc = kv_cloud_ap_desc.format(
-            f" '[green]{self._keyvault_name}[/green]' " if self._keyvault_resource_id else " "
+        self.display.add_step(
+            WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_AP, description="Configure access policy"
         )
-        self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_AP, description=kv_cloud_ap_desc)
 
         kv_cloud_sec_desc = f"Ensure secret name '[green]{self._keyvault_sat_secret_name}[/green]' for service account"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_SEC, description=kv_cloud_sec_desc)
@@ -137,14 +162,19 @@ class WorkManager:
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_DEPLOY, description=kv_csi_deploy_desc)
 
         kv_csi_configure_desc = "Configure driver"
-        self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_CLUSTER, description=kv_csi_configure_desc)
+        self.display.add_step(
+            WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_CLUSTER, description=kv_csi_configure_desc
+        )
 
         # TODO @digimaun - MQ insecure mode
         self.display.add_category(WorkCategoryKey.TLS_CA, "TLS", self._no_tls)
         if self._tls_ca_path:
             tls_ca_desc = f"User provided CA '[green]{self._tls_ca_path}[/green]'"
         else:
-            tls_ca_desc = f"Generate test CA using '[green]{DEFAULT_EC_ALGO.name}[/green]'"
+            tls_ca_desc = (
+                f"Generate test CA using '[green]{DEFAULT_EC_ALGO.name}[/green]' "
+                f"valid for '[green]{self._tls_ca_valid_days}[/green]' days"
+            )
 
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CERT, tls_ca_desc)
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CLUSTER, "Configure cluster for tls")
@@ -152,7 +182,8 @@ class WorkManager:
         # TODO: add skip deployment
         self.display.add_category(WorkCategoryKey.DEPLOY_AIO, "Deploy IoT Operations", skipped=self._no_deploy)
 
-    def do_work(self):
+    def do_work(self):  # noqa: C901
+        from ..edge_api.keyvault import KEYVAULT_API_V1
         from .base import (
             configure_cluster_secrets,
             configure_cluster_tls,
@@ -162,12 +193,70 @@ class WorkManager:
             prepare_keyvault_secret,
             prepare_sp,
             provision_akv_csi_driver,
+            throw_if_iotops_deployed,
+            validate_keyvault_permission_model,
+            verify_cluster_and_use_location,
+            verify_custom_locations_enabled,
             wait_for_terminal_state,
         )
+        from .host import verify_cli_client_connections
+        from .permissions import verify_write_permission_against_rg
+        from .rp_namespace import register_providers
 
         work_kpis = {}
 
         try:
+            # Ensure connection to ARM if needed. Show remediation error message otherwise.
+            if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
+                verify_cli_client_connections(include_graph=bool(self._keyvault_resource_id))
+                # cluster_location uses actual connected cluster location. Same applies to location IF not provided.
+                self._connected_cluster = verify_cluster_and_use_location(self._kwargs)
+
+            # Always run this check
+            if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
+                raise ValidationError(error_msg="--kv-id is required when the Key Vault CSI driver is not installed.")
+
+            # Pre-check segment
+            if (
+                WorkCategoryKey.PRE_CHECK in self.display.categories
+                and not self.display.categories[WorkCategoryKey.PRE_CHECK][1]
+            ):
+                self.render_display(category=WorkCategoryKey.PRE_CHECK)
+                register_providers(**self._kwargs)
+
+                self._completed_steps[WorkStepKey.REG_RP] = 1
+                self.render_display(category=WorkCategoryKey.PRE_CHECK)
+
+                if self._connected_cluster:
+                    throw_if_iotops_deployed(self._connected_cluster)
+
+                if self._deploy_rsync_rules:
+                    verify_write_permission_against_rg(
+                        **self._kwargs,
+                    )
+
+                verify_custom_locations_enabled()
+
+                # Use pre-flight deployment as a shortcut to evaluate permissions
+                template, parameters = self.build_template(work_kpis=work_kpis)
+                deployment_result, deployment_poller = deploy_template(
+                    template=template.content,
+                    parameters=parameters,
+                    deployment_name=self._work_name,
+                    pre_flight=True,
+                    **self._kwargs,
+                )
+                terminal_deployment = wait_for_terminal_state(deployment_poller)
+                pre_flight_result: Dict[str, Union[dict, str]] = terminal_deployment.as_dict()
+                if "status" in pre_flight_result and pre_flight_result["status"].lower() != PRE_FLIGHT_SUCCESS_STATUS:
+                    raise AzureResponseError(dumps(pre_flight_result, indent=2))
+
+                self._completed_steps[WorkStepKey.EVAL_LOGIN_PERM] = 1
+                self.render_display(WorkCategoryKey.PRE_CHECK)
+            else:
+                if not self._render_progress:
+                    logger.warning("Skipped Pre-Flight as requested.")
+
             # CSI driver segment
             if self._keyvault_resource_id:
                 work_kpis["csiDriver"] = {}
@@ -176,6 +265,10 @@ class WorkManager:
                     and not self.display.categories[WorkCategoryKey.CSI_DRIVER][1]
                 ):
                     self.render_display(category=WorkCategoryKey.CSI_DRIVER)
+                    keyvault_resource = validate_keyvault_permission_model(**self._kwargs)
+                    self._completed_steps[WorkStepKey.KV_CLOUD_PERM_MODEL] = 1
+                    self.render_display(category=WorkCategoryKey.CSI_DRIVER)
+
                     if WorkStepKey.SP in self.display.steps[WorkCategoryKey.CSI_DRIVER]:
                         sp_record = prepare_sp(deployment_name=self._work_name, **self._kwargs)
                         if sp_record.created_app:
@@ -192,10 +285,10 @@ class WorkManager:
 
                         if WorkStepKey.KV_CLOUD_AP in self.display.steps[WorkCategoryKey.CSI_DRIVER]:
                             vault_uri = prepare_keyvault_access_policy(
+                                keyvault_resource=keyvault_resource,
                                 sp_record=sp_record,
                                 **self._kwargs,
                             )
-
                             self._completed_steps[WorkStepKey.KV_CLOUD_AP] = 1
                             self.render_display(category=WorkCategoryKey.CSI_DRIVER)
 
@@ -260,6 +353,7 @@ class WorkManager:
                     cm_name=cm_name,
                     **self._kwargs,
                 )
+
                 self._completed_steps[WorkStepKey.TLS_CLUSTER] = 1
                 self.render_display(category=WorkCategoryKey.TLS_CA)
             else:
@@ -383,16 +477,18 @@ class WorkManager:
 
     def build_template(self, work_kpis: dict) -> Tuple[TemplateVer, dict]:
         # TODO refactor, move out of work
-        template = CURRENT_TEMPLATE
+        template = get_current_template_copy()
         parameters = {}
 
         for template_pair in [
             ("cluster_name", "clusterName"),
             ("location", "location"),
-            ("cluster_location", "clusterLocation"),  # TODO
+            ("cluster_location", "clusterLocation"),
             ("custom_location_name", "customLocationName"),
             ("simulate_plc", "simulatePLC"),
             ("opcua_discovery_endpoint", "opcuaDiscoveryEndpoint"),
+            ("container_runtime_socket", "containerRuntimeSocket"),
+            ("kubernetes_distro", "kubernetesDistro"),
             ("target_name", "targetName"),
             ("dp_instance_name", "dataProcessorInstanceName"),
             ("mq_instance_name", "mqInstanceName"),
@@ -412,17 +508,6 @@ class WorkManager:
             if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
 
-        parameters["dataProcessorCardinality"] = {
-            "value": template.parameters["dataProcessorCardinality"]["defaultValue"]
-        }
-        for template_pair in [
-            ("dp_reader_workers", "readerWorker"),
-            ("dp_runner_workers", "runnerWorker"),
-            ("dp_message_stores", "messageStore"),
-        ]:
-            if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
-                parameters["dataProcessorCardinality"]["value"][template_pair[1]] = self._kwargs[template_pair[0]]
-
         parameters["dataProcessorSecrets"] = {
             "value": {
                 "enabled": True,
@@ -440,6 +525,7 @@ class WorkManager:
         parameters["opcUaBrokerSecrets"] = {
             "value": {"kind": "csi", "csiServicePrincipalSecretRef": self._cluster_secret_ref}
         }
+        parameters["deployResourceSyncRules"] = {"value": self._deploy_rsync_rules}
 
         # Covers cluster_namespace
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]

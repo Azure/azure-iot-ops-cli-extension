@@ -5,7 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 from .work import deploy
+from .host import run_host_verify
 
 __all__ = [
     "deploy",
+    "run_host_verify"
 ]

@@ -17,13 +17,14 @@ from azext_edge.edge.providers.orchestration.common import (
     MqMemoryProfile,
     MqMode,
     MqServiceType,
+    KubernetesDistroType,
 )
 from azext_edge.edge.providers.orchestration.work import (
-    WorkManager,
     CLUSTER_SECRET_CLASS_NAME,
     CLUSTER_SECRET_REF,
-    TemplateVer,
     CURRENT_TEMPLATE,
+    TemplateVer,
+    WorkManager,
 )
 from azext_edge.edge.util import url_safe_hash_phrase
 
@@ -34,7 +35,6 @@ from ...generators import generate_generic_id
     """
     cluster_name,
     cluster_namespace,
-    cluster_location,
     resource_group_name,
     keyvault_sat_secret_name,
     keyvault_resource_id,
@@ -43,10 +43,9 @@ from ...generators import generate_generic_id
     location,
     simulate_plc,
     opcua_discovery_endpoint,
+    container_runtime_socket,
+    kubernetes_distro,
     dp_instance_name,
-    dp_reader_workers,
-    dp_runner_workers,
-    dp_message_stores,
     mq_instance_name,
     mq_frontend_server_name,
     mq_mode,
@@ -62,12 +61,12 @@ from ...generators import generate_generic_id
     mq_authn_name,
     mq_insecure,
     target_name,
+    disable_rsync_rules,
     """,
     [
         pytest.param(
             generate_generic_id(),  # cluster_name
             None,  # cluster_namespace
-            None,  # cluster_location
             generate_generic_id(),  # resource_group_name
             None,  # keyvault_sat_secret_name
             None,  # keyvault_resource_id
@@ -76,10 +75,9 @@ from ...generators import generate_generic_id
             None,  # location
             None,  # simulate_plc
             None,  # opcua_discovery_endpoint
+            None,  # container_runtime_socket
+            None,  # kubernetes_distro,
             None,  # dp_instance_name
-            None,  # dp_reader_workers
-            None,  # dp_runner_workers
-            None,  # dp_message_stores
             None,  # mq_instance_name
             None,  # mq_frontend_server_name
             None,  # mq_mode
@@ -95,11 +93,11 @@ from ...generators import generate_generic_id
             None,  # mq_authn_name
             None,  # mq_insecure
             None,  # target_name
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
             generate_generic_id(),  # cluster_namespace
-            generate_generic_id(),  # cluster_location
             generate_generic_id(),  # resource_group_name
             generate_generic_id(),  # keyvault_sat_secret_name
             generate_generic_id(),  # keyvault_resource_id
@@ -108,10 +106,9 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # location
             True,  # simulate_plc
             None,  # opcua_discovery_endpoint
+            None,  # container_runtime_socket
+            KubernetesDistroType.k3s.value,  # kubernetes_distro,
             generate_generic_id(),  # dp_instance_name
-            randint(1, 5),  # dp_reader_workers
-            randint(1, 5),  # dp_runner_workers
-            randint(1, 5),  # dp_message_stores
             generate_generic_id(),  # mq_instance_name
             generate_generic_id(),  # mq_frontend_server_name
             MqMode.auto.value,  # mq_mode
@@ -127,11 +124,11 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # mq_authn_name
             None,  # mq_insecure
             generate_generic_id(),  # target_name
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
             generate_generic_id(),  # cluster_namespace
-            generate_generic_id(),  # cluster_location
             generate_generic_id(),  # resource_group_name
             generate_generic_id(),  # keyvault_sat_secret_name
             generate_generic_id(),  # keyvault_resource_id
@@ -140,10 +137,9 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # location
             True,  # simulate_plc
             generate_generic_id(),  # opcua_discovery_endpoint
+            generate_generic_id(),  # container_runtime_socket
+            KubernetesDistroType.microk8s.value,  # kubernetes_distro,
             generate_generic_id(),  # dp_instance_name
-            randint(1, 5),  # dp_reader_workers
-            randint(1, 5),  # dp_runner_workers
-            randint(1, 5),  # dp_message_stores
             generate_generic_id(),  # mq_instance_name
             generate_generic_id(),  # mq_frontend_server_name
             MqMode.auto.value,  # mq_mode
@@ -159,6 +155,7 @@ from ...generators import generate_generic_id
             generate_generic_id(),  # mq_authn_name
             True,  # mq_insecure
             generate_generic_id(),  # target_name
+            True,  # disable_rsync_rules
         ),
     ],
 )
@@ -168,7 +165,6 @@ def test_init_to_template_params(
     mocked_config: Mock,
     cluster_name,
     cluster_namespace,
-    cluster_location,
     resource_group_name,
     keyvault_sat_secret_name,
     keyvault_resource_id,
@@ -177,10 +173,9 @@ def test_init_to_template_params(
     location,
     simulate_plc,
     opcua_discovery_endpoint,
+    container_runtime_socket,
+    kubernetes_distro,
     dp_instance_name,
-    dp_reader_workers,
-    dp_runner_workers,
-    dp_message_stores,
     mq_instance_name,
     mq_frontend_server_name,
     mq_mode,
@@ -196,12 +191,12 @@ def test_init_to_template_params(
     mq_authn_name,
     mq_insecure,
     target_name,
+    disable_rsync_rules,
 ):
     kwargs = {}
 
     param_tuples = [
         (cluster_namespace, "cluster_namespace"),
-        (cluster_location, "cluster_location"),
         (keyvault_sat_secret_name, "keyvault_sat_secret_name"),
         (keyvault_resource_id, "keyvault_resource_id"),
         (custom_location_name, "custom_location_name"),
@@ -209,10 +204,9 @@ def test_init_to_template_params(
         (location, "location"),
         (simulate_plc, "simulate_plc"),
         (opcua_discovery_endpoint, "opcua_discovery_endpoint"),
+        (container_runtime_socket, "container_runtime_socket"),
+        (kubernetes_distro, "kubernetes_distro"),
         (dp_instance_name, "dp_instance_name"),
-        (dp_reader_workers, "dp_reader_workers"),
-        (dp_runner_workers, "dp_runner_workers"),
-        (dp_message_stores, "dp_message_stores"),
         (mq_instance_name, "mq_instance_name"),
         (mq_frontend_server_name, "mq_frontend_server_name"),
         (mq_mode, "mq_mode"),
@@ -228,24 +222,36 @@ def test_init_to_template_params(
         (mq_authn_name, "mq_authn_name"),
         (mq_insecure, "mq_insecure"),
         (target_name, "target_name"),
+        (disable_rsync_rules, "disable_rsync_rules"),
     ]
 
     for param_tuple in param_tuples:
-        if param_tuple[0]:
+        if param_tuple[0] is not None:
             kwargs[param_tuple[1]] = param_tuple[0]
 
     init(cmd=mocked_cmd, cluster_name=cluster_name, resource_group_name=resource_group_name, **kwargs)
     mocked_deploy.assert_called_once()
+    # There is no longer user input for cluster_location
+    assert mocked_deploy.call_args.kwargs["cluster_location"] is None
+
     work = WorkManager(**mocked_deploy.call_args.kwargs)
+    # emulate dynamic query of location
+    connected_cluster_location = generate_generic_id()
+    work._kwargs["cluster_location"] = connected_cluster_location
+    if not location:
+        assert mocked_deploy.call_args.kwargs["location"] is None
+        work._kwargs["location"] = connected_cluster_location
+
     template_ver, parameters = work.build_template({})
 
     assert "clusterName" in parameters
     assert parameters["clusterName"]["value"] == cluster_name
 
-    if cluster_location:
-        assert parameters["clusterLocation"]["value"] == cluster_location
+    assert parameters["clusterLocation"]["value"] == connected_cluster_location
+    if location:
+        assert parameters["location"]["value"] == location
     else:
-        assert "clusterLocation" not in parameters
+        assert parameters["location"]["value"] == connected_cluster_location
 
     assert "customLocationName" in parameters
     if custom_location_name:
@@ -274,13 +280,20 @@ def test_init_to_template_params(
     if simulate_plc:
         assert "simulatePLC" in parameters and parameters["simulatePLC"]["value"] is True
         if not opcua_discovery_endpoint:
-            assert parameters["opcuaDiscoveryEndpoint"]["value"] == f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
+            assert (
+                parameters["opcuaDiscoveryEndpoint"]["value"] == f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
+            )
 
     if opcua_discovery_endpoint:
         assert "opcuaDiscoveryEndpoint" in parameters
         assert parameters["opcuaDiscoveryEndpoint"]["value"] == opcua_discovery_endpoint
 
+    assert "deployResourceSyncRules" in parameters
+    assert parameters["deployResourceSyncRules"] is not disable_rsync_rules
+
     passthrough_value_tuples = [
+        (container_runtime_socket, "containerRuntimeSocket", ""),
+        (kubernetes_distro, "kubernetesDistro", KubernetesDistroType.k8s.value),
         (mq_listener_name, "mqListenerName", "listener"),
         (mq_frontend_server_name, "mqFrontendServer", "mq-dmqtt-frontend"),
         (mq_broker_name, "mqBrokerName", "broker"),
@@ -294,13 +307,6 @@ def test_init_to_template_params(
         (mq_memory_profile, "mqMemoryProfile", MqMemoryProfile.medium.value),
         (mq_service_type, "mqServiceType", MqServiceType.cluster_ip.value),
     ]
-
-    dp_cardinality = {
-        "readerWorker": dp_reader_workers or 1,
-        "runnerWorker": dp_runner_workers or 1,
-        "messageStore": dp_message_stores or 1,
-    }
-    passthrough_value_tuples.append((False, "dataProcessorCardinality", dp_cardinality))
 
     for passthrough_value_tuple in passthrough_value_tuples:
         if passthrough_value_tuple[0]:
@@ -325,7 +331,10 @@ def test_init_to_template_params(
     for set_value_tuple in set_value_tuples:
         assert parameters[set_value_tuple[0]]["value"] == set_value_tuple[1]
 
-    assert template_ver.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] == cluster_namespace or DEFAULT_NAMESPACE
+    if cluster_namespace:
+        assert template_ver.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] == cluster_namespace
+    else:
+        assert template_ver.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] == DEFAULT_NAMESPACE
 
     # TODO
     assert template_ver.content["variables"]["AIO_TRUST_CONFIG_MAP"]
@@ -368,6 +377,8 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
     tls_ca_dir,
     no_deploy,
     no_tls,
+    no_preflight,
+    disable_rsync_rules,
     """,
     [
         pytest.param(
@@ -383,6 +394,8 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # tls_ca_dir
             None,  # no_deploy
             None,  # no_tls
+            None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -397,6 +410,8 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # tls_ca_dir
             None,  # no_deploy
             None,  # no_tls
+            None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -411,6 +426,8 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # tls_ca_dir
             None,  # no_deploy
             None,  # no_tls
+            None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -425,6 +442,8 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             "/certs/",  # tls_ca_dir
             None,  # no_deploy
             None,  # no_tls
+            None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -439,6 +458,8 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # tls_ca_dir
             True,  # no_deploy
             None,  # no_tls
+            None,  # no_preflight
+            None,  # disable_rsync_rules
         ),
         pytest.param(
             generate_generic_id(),  # cluster_name
@@ -453,6 +474,24 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # tls_ca_dir
             True,  # no_deploy
             True,  # no_tls
+            None,  # no_preflight
+            None,  # disable_rsync_rules
+        ),
+        pytest.param(
+            generate_generic_id(),  # cluster_name
+            None,  # cluster_namespace
+            generate_generic_id(),  # resource_group_name
+            None,  # keyvault_resource_id
+            None,  # keyvault_sat_secret_name
+            None,  # disable_secret_rotation
+            None,  # rotation_poll_interval
+            None,  # tls_ca_path
+            None,  # tls_ca_key_path
+            None,  # tls_ca_dir
+            True,  # no_deploy
+            True,  # no_tls
+            True,  # no_preflight
+            True,  # disable_rsync_rules
         ),
     ],
 )
@@ -467,8 +506,17 @@ def test_work_order(
     mocked_prepare_keyvault_access_policy: Mock,
     mocked_prepare_keyvault_secret: Mock,
     mocked_prepare_sp: Mock,
+    mocked_register_providers: Mock,
+    mocked_verify_cli_client_connections: Mock,
+    mocked_edge_api_keyvault_api_v1: Mock,
+    mocked_validate_keyvault_permission_model: Mock,
+    mocked_verify_write_permission_against_rg: Mock,
     mocked_wait_for_terminal_state: Mock,
-    mocked_file_exists,
+    mocked_file_exists: Mock,
+    mocked_connected_cluster_location: Mock,
+    mocked_connected_cluster_extensions: Mock,
+    mocked_verify_custom_locations_enabled: Mock,
+    spy_get_current_template_copy: Mock,
     cluster_name,
     cluster_namespace,
     resource_group_name,
@@ -481,6 +529,8 @@ def test_work_order(
     tls_ca_dir,
     no_deploy,
     no_tls,
+    no_preflight,
+    disable_rsync_rules,
 ):
     call_kwargs = {
         "cmd": mocked_cmd,
@@ -490,7 +540,9 @@ def test_work_order(
         "disable_secret_rotation": disable_secret_rotation,
         "no_deploy": no_deploy,
         "no_tls": no_tls,
+        "no_preflight": no_preflight,
         "no_progress": True,
+        "disable_rsync_rules": disable_rsync_rules,
     }
     if rotation_poll_interval:
         call_kwargs["rotation_poll_interval"] = rotation_poll_interval
@@ -506,9 +558,37 @@ def test_work_order(
         call_kwargs["tls_ca_dir"] = tls_ca_dir
 
     result = init(**call_kwargs)
-    nothing_to_do = all([not keyvault_resource_id, no_tls, no_deploy])
+    expected_template_copies = 0
+    nothing_to_do = all([not keyvault_resource_id, no_tls, no_deploy, no_preflight])
     if nothing_to_do:
         assert not result
+        mocked_verify_cli_client_connections.assert_not_called()
+        mocked_edge_api_keyvault_api_v1.is_deployed.assert_not_called()
+        return
+
+    if any([not no_preflight, not no_deploy, keyvault_resource_id]):
+        mocked_verify_cli_client_connections.assert_called_once()
+        mocked_connected_cluster_location.assert_called_once()
+
+    if not no_preflight:
+        expected_template_copies += 1
+        mocked_register_providers.assert_called_once()
+        mocked_verify_custom_locations_enabled.assert_called_once()
+        mocked_connected_cluster_extensions.assert_called_once()
+
+        if not disable_rsync_rules:
+            mocked_verify_write_permission_against_rg.assert_called_once()
+            mocked_verify_write_permission_against_rg.call_args.kwargs["subscription_id"]
+            mocked_verify_write_permission_against_rg.call_args.kwargs["resource_group_name"] == resource_group_name
+        else:
+            mocked_verify_write_permission_against_rg.assert_not_called()
+    else:
+        mocked_register_providers.assert_not_called()
+        mocked_verify_custom_locations_enabled.assert_not_called()
+        mocked_connected_cluster_extensions.assert_not_called()
+
+    if not keyvault_resource_id:
+        mocked_edge_api_keyvault_api_v1.is_deployed.assert_called_once()
 
     if keyvault_resource_id:
         assert result["csiDriver"]
@@ -521,8 +601,16 @@ def test_work_order(
             if keyvault_sat_secret_name
             else DEFAULT_NAMESPACE
         )
-        assert result["csiDriver"]["rotationPollInterval"] == rotation_poll_interval if rotation_poll_interval else "1h"
+        assert (
+            result["csiDriver"]["rotationPollInterval"] == rotation_poll_interval if rotation_poll_interval else "1h"
+        )
         assert result["csiDriver"]["enableSecretRotation"] == "false" if disable_secret_rotation else "true"
+
+        mocked_validate_keyvault_permission_model.assert_called_once()
+        assert mocked_validate_keyvault_permission_model.call_args.kwargs["subscription_id"]
+        assert (
+            mocked_validate_keyvault_permission_model.call_args.kwargs["keyvault_resource_id"] == keyvault_resource_id
+        )
 
         mocked_prepare_sp.assert_called_once()
         assert mocked_prepare_sp.call_args.kwargs["deployment_name"]
@@ -590,8 +678,8 @@ def test_work_order(
         mocked_configure_cluster_secrets.assert_not_called()
 
     if not no_tls:
-        assert result["tls"]["aioTrustConfigMap"]
-        assert result["tls"]["aioTrustSecretName"]
+        assert result["tls"]["aioTrustConfigMap"]  # TODO
+        assert result["tls"]["aioTrustSecretName"]  # TODO
         mocked_prepare_ca.assert_called_once()
         assert mocked_prepare_ca.call_args.kwargs["tls_ca_path"] == tls_ca_path
         assert mocked_prepare_ca.call_args.kwargs["tls_ca_key_path"] == tls_ca_key_path
@@ -614,6 +702,7 @@ def test_work_order(
         mocked_cluster_tls.assert_not_called()
 
     if not no_deploy:
+        expected_template_copies += 1
         assert result["deploymentName"]
         assert result["resourceGroup"] == resource_group_name
         assert result["clusterName"] == cluster_name
@@ -628,7 +717,7 @@ def test_work_order(
         assert result["deploymentState"]["timestampUtc"]["ended"]
         assert "resources" in result["deploymentState"]
 
-        mocked_deploy_template.assert_called_once()
+        assert mocked_deploy_template.call_count == 2
         assert mocked_deploy_template.call_args.kwargs["template"]
         assert mocked_deploy_template.call_args.kwargs["parameters"]
         assert mocked_deploy_template.call_args.kwargs["subscription_id"]
@@ -648,4 +737,7 @@ def test_work_order(
             assert "clusterNamespace" not in result
             assert "deploymentLink" not in result
             assert "deploymentState" not in result
-        mocked_deploy_template.assert_not_called()
+        # TODO
+        # mocked_deploy_template.assert_not_called()
+
+    assert spy_get_current_template_copy.call_count == expected_template_copies

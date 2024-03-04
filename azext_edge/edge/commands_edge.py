@@ -13,7 +13,14 @@ from knack.log import get_logger
 
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
+from .providers.orchestration.common import (
+    MqMemoryProfile,
+    MqMode,
+    MqServiceType,
+    KubernetesDistroType,
+    DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
+    DEFAULT_X509_CA_VALID_DAYS,
+)
 from .providers.support.base import get_bundle_path
 from .common import OpsServiceType
 
@@ -72,12 +79,21 @@ def check(
     )
 
 
+def verify_host(
+    cmd,
+    no_progress: Optional[bool] = None,
+):
+    from .providers.orchestration import run_host_verify
+
+    run_host_verify(render_progress=not no_progress)
+    return
+
+
 def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
-    cluster_location: Optional[str] = None,
     keyvault_sat_secret_name: str = DEFAULT_NAMESPACE,
     custom_location_namespace: Optional[str] = None,
     custom_location_name: Optional[str] = None,
@@ -85,12 +101,11 @@ def init(
     show_template: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
     opcua_discovery_endpoint: Optional[str] = None,
+    container_runtime_socket: str = "",
+    kubernetes_distro: str = KubernetesDistroType.k8s.value,
     no_block: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     dp_instance_name: Optional[str] = None,
-    dp_reader_workers: int = 1,
-    dp_runner_workers: int = 1,
-    dp_message_stores: int = 1,
     mq_mode: str = MqMode.distributed.value,
     mq_memory_profile: str = MqMemoryProfile.medium.value,
     mq_service_type: str = MqServiceType.cluster_ip.value,
@@ -111,19 +126,24 @@ def init(
     service_principal_app_id: Optional[str] = None,
     service_principal_object_id: Optional[str] = None,
     service_principal_secret: Optional[str] = None,
+    service_principal_secret_valid_days: int = DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     keyvault_resource_id: Optional[str] = None,
     tls_ca_path: Optional[str] = None,
     tls_ca_key_path: Optional[str] = None,
     tls_ca_dir: Optional[str] = None,
+    tls_ca_valid_days: int = DEFAULT_X509_CA_VALID_DAYS,
     no_deploy: Optional[bool] = None,
     no_tls: Optional[bool] = None,
+    no_preflight: Optional[bool] = None,
+    disable_rsync_rules: Optional[bool] = None,
     context_name: Optional[str] = None,
+    ensure_latest: Optional[bool] = None,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration import deploy
     from .util import url_safe_hash_phrase
     from .util.sp import LoggedInPrincipal
 
-    if all([no_tls, not keyvault_resource_id, no_deploy]):
+    if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
         logger.warning("Nothing to do :)")
         return
 
@@ -188,22 +208,23 @@ def init(
         cmd=cmd,
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
-        cluster_location=cluster_location,
+        cluster_location=None,  # Effectively always fetch connected cluster location
         custom_location_name=custom_location_name,
         custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
         location=location,
         show_template=show_template,
         opcua_discovery_endpoint=opcua_discovery_endpoint,
+        container_runtime_socket=container_runtime_socket,
+        kubernetes_distro=kubernetes_distro,
         simulate_plc=simulate_plc,
         no_block=no_block,
         no_progress=no_progress,
         no_tls=no_tls,
+        no_preflight=no_preflight,
         no_deploy=no_deploy,
+        disable_rsync_rules=disable_rsync_rules,
         dp_instance_name=dp_instance_name,
-        dp_reader_workers=int(dp_reader_workers),
-        dp_runner_workers=int(dp_runner_workers),
-        dp_message_stores=int(dp_message_stores),
         mq_mode=str(mq_mode),
         mq_memory_profile=str(mq_memory_profile),
         mq_service_type=str(mq_service_type),
@@ -226,7 +247,9 @@ def init(
         service_principal_app_id=service_principal_app_id,
         service_principal_object_id=service_principal_object_id,
         service_principal_secret=service_principal_secret,
+        service_principal_secret_valid_days=service_principal_secret_valid_days,
         tls_ca_path=tls_ca_path,
         tls_ca_key_path=tls_ca_key_path,
         tls_ca_dir=tls_ca_dir,
+        tls_ca_valid_days=tls_ca_valid_days,
     )

@@ -215,12 +215,10 @@ def mocked_list_deployments(mocked_client):
     def _handle_list_deployments(*args, **kwargs):
         names = ["mock_deployment"]
         # @jiacju - currently no unique label for lnm
-        # @vilit - also akri
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
             names.extend(
                 [
                     "aio-lnm-operator",
-                    "aio-akri-otel-collector",
                     "aio-opc-admission-controller",
                     "aio-opc-supervisor",
                     "aio-opc-opc",
@@ -246,10 +244,6 @@ def mocked_list_replicasets(mocked_client):
 
     def _handle_list_replicasets(*args, **kwargs):
         names = ["mock_replicaset"]
-        # @vilit - also akri
-        if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            names.extend(["aio-akri-otel-collector"])
-
         replicaset_list = []
         for name in names:
             replicaset_list.append(V1ReplicaSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
@@ -318,10 +312,10 @@ def mocked_list_nodes(mocked_client):
 
 
 @pytest.fixture
-def mocked_list_namespaced_events(mocked_client):
+def mocked_list_cluster_events(mocked_client):
     from kubernetes.client.models import CoreV1EventList, CoreV1Event, V1ObjectMeta
 
-    def _handle_list_namespaced_events(*args, **kwargs):
+    def _handle_list_cluster_events(*args, **kwargs):
         event = CoreV1Event(
             action="mock_action", involved_object="mock_object", metadata=V1ObjectMeta(name="mock_event")
         )
@@ -329,7 +323,7 @@ def mocked_list_namespaced_events(mocked_client):
 
         return event_list
 
-    mocked_client.CoreV1Api().list_namespaced_event.side_effect = _handle_list_namespaced_events
+    mocked_client.CoreV1Api().list_event_for_all_namespaces.side_effect = _handle_list_cluster_events
 
     yield mocked_client
 
@@ -340,12 +334,9 @@ def mocked_list_daemonsets(mocked_client):
 
     def _handle_list_daemonsets(*args, **kwargs):
         # @jiacju - currently no unique label for lnm
-        # @vilit - also akri
         daemonset_names = ["mock_daemonset"]
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            daemonset_names.extend(
-                ["aio-akri-agent-daemonset", "svclb-aio-lnm-operator"]
-            )
+            daemonset_names.extend(["svclb-aio-lnm-operator"])
 
         daemonset_list = []
         for name in daemonset_names:

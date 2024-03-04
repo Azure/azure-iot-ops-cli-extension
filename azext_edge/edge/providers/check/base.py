@@ -682,7 +682,17 @@ def process_property_by_type(
                 )
     elif isinstance(properties, str) or isinstance(properties, bool) or isinstance(properties, int):
         properties = str(properties) if properties else "undefined"
-        display_text = f"{display_name}: [cyan]{properties}[/cyan]"
+        if len(properties) < 50:
+            display_text = f"{display_name}: [cyan]{properties}[/cyan]"
+        else:
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(f"{display_name}:", padding)
+            )
+            display_text = f"[cyan]{properties}[/cyan]"
+            padding = (0, 0, 0, padding_left + 4)
+
         check_manager.add_display(
             target_name=target_name,
             namespace=namespace,
