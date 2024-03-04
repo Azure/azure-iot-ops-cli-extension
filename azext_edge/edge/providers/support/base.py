@@ -186,7 +186,8 @@ def process_deployments(
 
 def process_statefulset(
     resource_api: EdgeResourceApi,
-    label_selector: str,
+    label_selector: str = None,
+    field_selector: str = None,
 ):
     from kubernetes.client.models import V1StatefulSet, V1StatefulSetList
 
@@ -194,7 +195,9 @@ def process_statefulset(
 
     processed = []
 
-    statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(label_selector=label_selector)
+    statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
     logger.info(f"Detected {len(statefulsets.items)} statefulsets.")
 
     for statefulset in statefulsets.items:

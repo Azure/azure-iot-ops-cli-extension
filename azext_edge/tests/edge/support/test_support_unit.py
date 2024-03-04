@@ -126,7 +126,9 @@ def test_create_bundle(
                 since_seconds=since_seconds,
             )
             assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
-            assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
+            assert_list_stateful_sets(
+                mocked_client, mocked_zipfile, label_selector=MQ_LABEL, field_selector=None, resource_api=MQ_API_V1B1
+            )
             assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
             assert_mq_stats(mocked_zipfile)
 
@@ -455,9 +457,16 @@ def assert_list_replica_sets(
         )
 
 
-def assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
-    mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
-
+def assert_list_stateful_sets(
+    mocked_client,
+    mocked_zipfile,
+    resource_api: EdgeResourceApi,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+):
+    mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
     assert_zipfile_write(
         mocked_zipfile,
         zinfo=f"mock_namespace/{resource_api.moniker}/statefulset.mock_statefulset.yaml",
@@ -560,6 +569,59 @@ def test_get_bundle_path(mocked_os_makedirs):
     path = get_bundle_path()
     expected = f"{join(abspath('.'), 'support_bundle_')}"
     assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
+
+
+# TODO - test zipfile write for specific resources
+# MQ connector stateful sets need labels based on connector names
+@pytest.mark.parametrize(
+    "mocked_cluster_resources",
+    [[MQ_API_V1B1]],
+    indirect=True,
+)
+@pytest.mark.parametrize(
+    "custom_objects",
+    [
+        {
+            "items": [
+                {
+                    "metadata": {"name": "mock-connector", "namespace": "mock-namespace"},
+                },
+                {
+                    "metadata": {"name": "mock-connector2", "namespace": "mock-namespace2"},
+                },
+            ]
+        }
+    ],
+)
+def test_mq_list_stateful_sets(
+    mocker,
+    mocked_client,
+    mocked_cluster_resources,
+    custom_objects,
+):
+
+    # mock MQ support bundle to return connectors
+    mocked_mq_support_active_api = mocker.patch("azext_edge.edge.providers.support.mq.MQ_ACTIVE_API")
+    mocked_mq_support_active_api.get_resources.return_value = custom_objects
+    result = support_bundle(None, bundle_dir=a_bundle_dir, ops_service="mq")
+    assert result
+
+    # assert initial call to list stateful sets
+    mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
+        label_selector=MQ_LABEL, field_selector=None
+    )
+
+    # TODO - assert zipfile write of generic statefulset
+
+    # assert secondary connector calls to list stateful sets
+    for item in custom_objects["items"]:
+        item_name = item["metadata"]["name"]
+        statefulset_name = f"aio-mq-{item_name}"
+        selector = f"metadata.name={statefulset_name}"
+        mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
+            label_selector=None, field_selector=selector
+        )
+        # TODO - assert zipfile write of individual connector statefulset
 
 
 @pytest.mark.parametrize(
