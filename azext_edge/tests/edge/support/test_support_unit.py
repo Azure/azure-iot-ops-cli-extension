@@ -342,8 +342,8 @@ def test_create_bundle(
     if expected_resources:
         assert_otel_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
 
-        # assert shared KPIs regardless of service
-        assert_shared_kpis(mocked_client, mocked_zipfile)
+    # assert shared KPIs regardless of service
+    assert_shared_kpis(mocked_client, mocked_zipfile)
 
 
 def asset_raises_not_found_error(mocked_cluster_resources):
