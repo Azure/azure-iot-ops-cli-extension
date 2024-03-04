@@ -13,7 +13,7 @@ import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
 from azext_edge.edge.commands_edge import support_bundle
-from azext_edge.edge.common import AIO_MQ_OPERATOR
+from azext_edge.edge.common import AIO_MQ_OPERATOR, AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api import (
     AKRI_API_V0,
     DATA_PROCESSOR_API_V1,
@@ -622,7 +622,7 @@ def test_mq_list_stateful_sets(
     # assert secondary connector calls to list stateful sets
     for item in custom_objects["items"]:
         item_name = item["metadata"]["name"]
-        statefulset_name = f"aio-mq-{item_name}"
+        statefulset_name = f"{AIO_MQ_RESOURCE_PREFIX}{item_name}"
         selector = f"metadata.name={statefulset_name}"
         mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
             label_selector=None, field_selector=selector

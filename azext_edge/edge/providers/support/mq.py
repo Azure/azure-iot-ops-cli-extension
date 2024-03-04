@@ -10,19 +10,19 @@ from zipfile import ZipInfo
 
 from knack.log import get_logger
 
-from azext_edge.edge.common import AIO_MQ_OPERATOR
+from azext_edge.edge.common import AIO_MQ_OPERATOR, AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api.mq import MqResourceKinds
 
 from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
 from ..stats import get_stats, get_traces
 from .base import (
     assemble_crd_work,
+    get_mq_namespaces,
     process_deployments,
     process_replicasets,
     process_services,
     process_statefulset,
     process_v1_pods,
-    get_mq_namespaces,
 )
 
 logger = get_logger(__name__)
@@ -129,7 +129,7 @@ def fetch_statefulsets():
         connector_name = connector.get("metadata", {}).get("name")
         stateful_set = process_statefulset(
             resource_api=MQ_ACTIVE_API,
-            field_selector=f"metadata.name=aio-mq-{connector_name}",
+            field_selector=f"metadata.name={AIO_MQ_RESOURCE_PREFIX}{connector_name}",
         )
         processed.extend(stateful_set)
 
