@@ -785,29 +785,43 @@ def process_dict_resource(
                 padding=padding + PADDING_SIZE
             )
         else:
-            display_text = ""
+            display_text = f"{key}: "
+            value_padding = padding
             if isinstance(value, str) and len(value) > 50:
-                display_text = f"{key}:"
                 check_manager.add_display(
                     target_name=target_name,
                     namespace=namespace,
                     display=Padding(display_text, (0, 0, 0, padding))
                 )
-                display_text = f"[cyan]{value}[/cyan]"
-                check_manager.add_display(
-                    target_name=target_name,
-                    namespace=namespace,
-                    display=Padding(display_text, (0, 0, 0, padding + PADDING_SIZE))
-                )
-            else:
-                # replace empty string with N/A
-                value = value if value else "N/A"
-                display_text = f"{key}: [cyan]{value}[/cyan]"
-                check_manager.add_display(
-                    target_name=target_name,
-                    namespace=namespace,
-                    display=Padding(display_text, (0, 0, 0, padding))
-                )
+                value_padding += PADDING_SIZE
+                display_text = ""
+            display_text += process_value_color(
+                check_manager=check_manager,
+                target_name=target_name,
+                key=key,
+                value=value
+            )
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(display_text, (0, 0, 0, value_padding))
+            )
+
+
+def process_value_color(
+    check_manager: CheckManager,
+    target_name: str,
+    key: Any,
+    value: Any,
+) -> str:
+    value = value if value else "N/A"
+    if "error" in str(key).lower() and str(value).lower() not in ["null", "n/a", "none", "noerror"]:
+        check_manager.set_target_status(
+            target_name=target_name,
+            status=CheckTaskStatus.error.value
+        )
+        return f"[red]{value}[/red]"
+    return f"[cyan]{value}[/cyan]"
 
 
 def process_list_resource(
