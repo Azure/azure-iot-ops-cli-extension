@@ -581,6 +581,7 @@ def test_get_bundle_path(mocked_os_makedirs):
 @pytest.mark.parametrize(
     "custom_objects",
     [
+        # connectors present
         {
             "items": [
                 {
@@ -590,7 +591,9 @@ def test_get_bundle_path(mocked_os_makedirs):
                     "metadata": {"name": "mock-connector2", "namespace": "mock-namespace2"},
                 },
             ]
-        }
+        },
+        # no connectors
+        {"items": []},
     ],
 )
 def test_mq_list_stateful_sets(
@@ -612,6 +615,8 @@ def test_mq_list_stateful_sets(
     )
 
     # TODO - assert zipfile write of generic statefulset
+    if not custom_objects["items"]:
+        mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_called_once()
 
     # assert secondary connector calls to list stateful sets
     for item in custom_objects["items"]:
