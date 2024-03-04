@@ -11,6 +11,7 @@ from .base import (
     add_display_and_eval,
     check_post_deployment,
     generate_target_resource_name,
+    get_resources_by_name,
     process_list_resource,
     process_properties,
     resources_grouped_by_namespace,
@@ -41,6 +42,7 @@ def check_deviceregistry_deployment(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
+    resource_name: str = None,
 ) -> None:
     evaluate_funcs = {
         DeviceRegistryResourceKinds.ASSET: evaluate_assets,
@@ -53,6 +55,7 @@ def check_deviceregistry_deployment(
         check_desc="Enumerate Device Registry API resources",
         result=result,
         resource_kinds_enum=DeviceRegistryResourceKinds,
+        resource_name=resource_name,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
@@ -63,13 +66,19 @@ def check_deviceregistry_deployment(
 def evaluate_assets(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalAssets", check_desc="Evaluate Device Registry instances")
 
     asset_namespace_conditions = ["spec.assetEndpointProfileUri"]
 
-    all_assets: dict = DEVICEREGISTRY_API_V1.get_resources(DeviceRegistryResourceKinds.ASSET).get("items", [])
     target_assets = generate_target_resource_name(api_info=DEVICEREGISTRY_API_V1, resource_kind=DeviceRegistryResourceKinds.ASSET.value)
+
+    all_assets = get_resources_by_name(
+        api_info=DEVICEREGISTRY_API_V1,
+        kind=DeviceRegistryResourceKinds.ASSET,
+        resource_name=resource_name
+    )
 
     if not all_assets:
         fetch_assets_warning_text = "Unable to fetch assets in any namespaces."
@@ -351,12 +360,17 @@ def evaluate_assets(
 def evaluate_asset_endpoint_profiles(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalAssetEndpointProfiles", check_desc="Evaluate Asset Endpoint Profiles")
 
     lnm_namespace_conditions = ["spec.uuid"]
 
-    all_asset_endpoint_profiles: dict = DEVICEREGISTRY_API_V1.get_resources(DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE).get("items", [])
+    all_asset_endpoint_profiles = get_resources_by_name(
+        api_info=DEVICEREGISTRY_API_V1,
+        kind=DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE,
+        resource_name=resource_name
+    )
     target_asset_endpoint_profiles = generate_target_resource_name(api_info=DEVICEREGISTRY_API_V1, resource_kind=DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value)
 
     if not all_asset_endpoint_profiles:
