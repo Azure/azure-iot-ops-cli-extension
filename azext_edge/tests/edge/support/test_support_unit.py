@@ -598,6 +598,7 @@ def test_get_bundle_path(mocked_os_makedirs):
 )
 def test_mq_list_stateful_sets(
     mocker,
+    mocked_config,
     mocked_client,
     mocked_cluster_resources,
     custom_objects,
