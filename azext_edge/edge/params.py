@@ -22,7 +22,7 @@ from .providers.edge_api import (
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType
 
-from ._validators import validate_namespace
+from ._validators import validate_namespace, validate_resource_name
 
 
 def load_iotops_arguments(self, _):
@@ -141,8 +141,9 @@ def load_iotops_arguments(self, _):
             options_list=["--resource-name", "--rn"],
             help="Only run checks for the specific resource name. "
             "The name is case insensitive. "
-            "Global patterns '*' and '?' are supported. "
+            "Glob patterns '*' and '?' are supported. "
             "Note: Only alphanumeric characters, hyphens, '?' and '*' are allowed.",
+            validator=validate_resource_name,
         ),
 
     with self.argument_context("iot ops mq get-password-hash") as context:

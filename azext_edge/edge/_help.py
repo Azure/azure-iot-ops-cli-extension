@@ -115,7 +115,7 @@ def load_iotops_help():
           text: >
             az iot ops check --svc dataprocessor --detail-level 1 --resource-name pipeline-name*
 
-        - name: Use '?' to match preceding character zero or one times. This will match `pipeline` and `pipelin` resource names.
+        - name: Use '?' glob pattern to constrain results to resource names that contain `pipeline` and end with a single character.
           text: >
             az iot ops check --svc dataprocessor --detail-level 1 --resource-name pipeline?
     """

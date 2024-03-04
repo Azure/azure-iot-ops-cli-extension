@@ -4,13 +4,11 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import re
 from functools import partial
 from itertools import groupby
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from enum import Enum
 
-from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import (
@@ -87,25 +85,17 @@ def filter_resources_by_name(
     resources: List[dict],
     resource_name: str,
 ) -> List[dict]:
+    from fnmatch import fnmatch
+
     if not resource_name:
         return resources
 
-    # validate resource_name that should only contain alphanumeric characters, hyphens, ? and *
-    if not re.fullmatch(r"[a-zA-Z0-9\-?*]+", resource_name):
-        raise InvalidArgumentValueError("Invalid resource name. Only alphanumeric characters, hyphens, ? and * are allowed.")
-
-    # if only alphanumeric characters and hyphens, check resource for exact name
     resource_name = resource_name.lower()
-
-    if "?" not in resource_name and "*" not in resource_name:
-        resources = [resource for resource in resources if resource_name == get_resource_metadata_property(
-            resource, prop_name="name").lower()
-        ]
-    else:
-        regex = re.compile(f"{resource_name.replace('*', '.*')}")
-        resources = [resource for resource in resources if regex.fullmatch(
-            get_resource_metadata_property(resource, prop_name="name").lower()
-        )]
+    resources = [
+        resource
+        for resource in resources
+        if fnmatch(get_resource_metadata_property(resource, prop_name="name"), resource_name)
+    ]
 
     return resources
 
