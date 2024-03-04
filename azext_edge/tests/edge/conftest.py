@@ -164,7 +164,7 @@ def init_setup(request, cluster_setup, settings):
     settings.add_to_config(EnvironmentVariables.cluster.value)
 
     if settings.env.azext_edge_skip_init:
-        run("az iot ops verify-host -y")
+        run("az iot ops verify-host")
         yield {
             "clusterName": settings.env.azext_edge_cluster,
             "resourceGroup": settings.env.azext_edge_rg
