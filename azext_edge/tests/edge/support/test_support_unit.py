@@ -209,7 +209,7 @@ def test_create_bundle(
                 label_selector=DATA_PROCESSOR_LABEL,
                 resource_api=DATA_PROCESSOR_API_V1,
                 since_seconds=since_seconds,
-                init_container_for_logs=["aio-runner"],
+                init_container_for_logs=["aio-"],
             )
 
             assert_list_replica_sets(
@@ -470,6 +470,7 @@ def assert_list_pods(
                         )
 
             if "init_container_for_logs" in kwargs:
+                # TODO: also test the case where capturue previous logs is True
                 if pod_name in kwargs["init_container_for_logs"]:
                     assert_zipfile_write(
                         mocked_zipfile,

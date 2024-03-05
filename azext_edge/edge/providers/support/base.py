@@ -138,6 +138,7 @@ def process_v1_pods(
             if any(pod_name.startswith(prefix) for prefix in init_container_for_logs):
                 processed.extend(
                     _capture_init_container_logs(
+                        capture_previous_logs=capture_previous_logs,
                         pod_name=pod_name,
                         pod_namespace=pod_namespace,
                         pod_spec=pod_spec,
@@ -494,8 +495,9 @@ def _capture_init_container_logs(
     pod_namespace: str,
     pod_spec: V1PodSpec,
     resource_api: EdgeResourceApi,
+    v1_api: client.CoreV1Api,
+    capture_previous_logs: bool = True,
     since_seconds: int = 60 * 60 * 24,
-    v1_api: client.CoreV1Api = None,
 ) -> List[dict]:
 
     processed = []

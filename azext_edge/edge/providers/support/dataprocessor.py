@@ -22,8 +22,8 @@ from .base import (
 
 logger = get_logger(__name__)
 
-DATA_PROCESSOR_READER_WORKER_PREFIX = "aio-dp-reader-worker"
-DATA_PROCESSOR_RUNNER_WORKER_PREFIX = "aio-dp-runner-worker"
+DATA_PROCESSOR_READER_WORKER_PREFIX = "aio-dp-reader-worker-"
+DATA_PROCESSOR_RUNNER_WORKER_PREFIX = "aio-dp-runner-worker-"
 DATA_PROCESSOR_APP_LABELS = [
     'aio-dp-reader-worker',
     'aio-dp-refdata-store',
