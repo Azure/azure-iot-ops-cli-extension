@@ -485,7 +485,6 @@ def assert_list_pods(
                         )
 
             if "init_container_for_logs" in kwargs:
-                # TODO: also test the case where capturue previous logs is True
                 if pod_name in kwargs["init_container_for_logs"]:
                     assert_zipfile_write(
                         mocked_zipfile,
