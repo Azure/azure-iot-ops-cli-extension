@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import pytest
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
-from azext_edge.edge._validators import validate_namespace
+from azext_edge.edge._validators import validate_namespace, validate_resource_name
 
 
 @pytest.mark.parametrize(
@@ -39,3 +39,33 @@ def test_namespace_validator(namespace):
 def test_namespace_validator_errors(namespace):
     with pytest.raises(InvalidArgumentValueError):
         validate_namespace(SimpleNamespace(namespace=namespace))
+
+
+@pytest.mark.parametrize(
+    "resource_name",
+    [
+        "valid-resource-name-1",
+        "an0th3r-val1d-r3s0urc3-n4m3",
+        "valid-resource-name-*",
+        "valid-resource-name-?",
+        "Valid-Resource-Name",
+        "1234455666333",
+    ],
+)
+def test_resource_name_validator_none(resource_name):
+    validate_resource_name(SimpleNamespace(resource_name=resource_name))
+
+
+@pytest.mark.parametrize(
+    "resource_name",
+    [
+        "invalid*resource*name[]",
+        "invalid?resource?name@#$%^^",
+        "invalid-resource-name-!",
+        "invalid-resource-name-.",
+        "invalid-resource-name-/",
+    ],
+)
+def test_resource_name_validator_errors(resource_name):
+    with pytest.raises(InvalidArgumentValueError):
+        validate_resource_name(SimpleNamespace(resource_name=resource_name))

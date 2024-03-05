@@ -172,7 +172,7 @@ def generate_resource_stub(
     resource = {}
 
     # fill metadata
-    resource["metadata"] = {"namespace": "mock_namespace", "name": "mock_name"}
+    resource["metadata"] = {"namespace": "mock_namespace", "name": "mock-name"}
     resource["spec"] = {}
     resource["status"] = {}
 

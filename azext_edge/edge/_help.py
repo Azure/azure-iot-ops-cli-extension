@@ -110,6 +110,18 @@ def load_iotops_help():
         - name: Same as prior example, except constraining results to the `pipeline` resource.
           text: >
             az iot ops check --svc dataprocessor --detail-level 1 --resources pipeline
+
+        - name: Use resource name to constrain results to `pipeline` resource exactly matching name `pipeline`.
+          text: >
+            az iot ops check --svc dataprocessor  --resources pipeline --resource-name pipeline
+
+        - name: Use resource name to constrain results to resource names that start with `pipeline-name`.
+          text: >
+            az iot ops check --svc dataprocessor --detail-level 1 --resource-name pipeline-name*
+
+        - name: Use '?' glob pattern to constrain results to resource names that contain `pipeline` and end with a single character.
+          text: >
+            az iot ops check --svc dataprocessor --detail-level 1 --resource-name pipeline?
     """
 
     helps[

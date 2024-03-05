@@ -14,7 +14,6 @@ from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import (
     V1APIResource,
     V1APIResourceList,
-    V1Pod
 )
 from rich.console import Console, NewLine
 from rich.padding import Padding
@@ -61,27 +60,55 @@ def check_post_deployment(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: Optional[List[str]] = None,
+    resource_name: str = None,
     excluded_resources: Optional[List[str]] = None,
 ) -> None:
-    check_resources = {}
-    for resource in resource_kinds_enum:
-        check_resources[resource] = not resource_kinds or resource.value in resource_kinds
-
     resource_enumeration, api_resources = enumerate_ops_service_resources(api_info, check_name, check_desc, as_list, excluded_resources)
     result["postDeployment"].append(resource_enumeration)
     lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
     if lowercase_api_resources:
         for resource, evaluate_func in evaluate_funcs.items():
+            should_check_resource = not resource_kinds or resource.value in resource_kinds
             append_resource = False
             # only add core service evaluation if there is no resource filter
             if resource == CoreServiceResourceKinds.RUNTIME_RESOURCE and not resource_kinds:
                 append_resource = True
-            elif (resource and resource.value in lowercase_api_resources and check_resources[resource]):
+            elif (resource and resource.value in lowercase_api_resources and should_check_resource):
                 append_resource = True
 
             if append_resource:
-                result["postDeployment"].append(evaluate_func(detail_level=detail_level, as_list=as_list))
+                result["postDeployment"].append(evaluate_func(detail_level=detail_level, as_list=as_list, resource_name=resource_name))
+
+
+def filter_resources_by_name(
+    resources: List[dict],
+    resource_name: str,
+) -> List[dict]:
+    from fnmatch import fnmatch
+
+    if not resource_name:
+        return resources
+
+    resource_name = resource_name.lower()
+    resources = [
+        resource
+        for resource in resources
+        if fnmatch(get_resource_metadata_property(resource, prop_name="name"), resource_name)
+    ]
+
+    return resources
+
+
+def get_resources_by_name(
+    api_info: EdgeResourceApi,
+    kind: Union[str, Enum],
+    resource_name: str,
+    namespace: str = None,
+) -> List[dict]:
+    resources: list = api_info.get_resources(kind=kind, namespace=namespace).get("items", [])
+    resources = filter_resources_by_name(resources, resource_name)
+    return resources
 
 
 def process_as_list(console: Console, result: Dict[str, Any]) -> None:
@@ -711,30 +738,24 @@ def add_display_and_eval(
     )
 
 
-def get_resource_namespace(resource: dict) -> Union[str, None]:
-    return resource.get("metadata", {}).get("namespace")
+# get either name or namespace from resource that might be a object or a dict
+def get_resource_metadata_property(resource: Union[dict, Any], prop_name: str) -> Union[str, None]:
+    if isinstance(resource, dict):
+        return resource.get("metadata", {}).get(prop_name)
+    return getattr(resource.metadata, prop_name, None) if hasattr(resource, "metadata") else None
 
 
-def get_resource_name(resource: dict) -> Union[str, None]:
-    return resource.get("metadata", {}).get("name")
-
-
-def get_pod_namespace(pod: V1Pod) -> Union[str, None]:
-    return pod.metadata.namespace
+def get_namespace(resource):
+    return get_resource_metadata_property(resource, prop_name="namespace")
 
 
 def resources_grouped_by_namespace(resources: List[dict]):
-    resources.sort(key=get_resource_namespace)
-    return groupby(resources, get_resource_namespace)
-
-
-def pods_grouped_by_namespace(pods: List[dict]):
-    pods.sort(key=get_pod_namespace)
-    return groupby(pods, get_pod_namespace)
+    resources.sort(key=get_namespace)
+    return groupby(resources, key=get_namespace)
 
 
 def filter_by_namespace(resources: List[dict], namespace: str) -> List[dict]:
-    return [resource for resource in resources if get_resource_namespace(resource) == namespace]
+    return [resource for resource in resources if get_namespace(resource) == namespace]
 
 
 def process_dict_resource(

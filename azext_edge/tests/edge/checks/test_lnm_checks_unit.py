@@ -6,7 +6,11 @@
 
 
 import pytest
-from azext_edge.edge.providers.check.common import CoreServiceResourceKinds, ResourceOutputDetailLevel
+from azext_edge.edge.providers.check.common import (
+    ALL_NAMESPACES_TARGET,
+    CoreServiceResourceKinds,
+    ResourceOutputDetailLevel
+)
 from azext_edge.edge.providers.edge_api.lnm import LnmResourceKinds
 from azext_edge.edge.providers.check.lnm import evaluate_core_service_runtime, evaluate_lnms
 
@@ -40,6 +44,7 @@ def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, r
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", ["test-lnm2"])
 @pytest.mark.parametrize(
     "lnms, namespace_conditions, namespace_evaluations",
     [
@@ -210,30 +215,34 @@ def test_lnm_checks(
     namespace_conditions,
     namespace_evaluations,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
-        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": lnms}],
+        "azext_edge.edge.providers.check.lnm.get_resources_by_name",
+        side_effect=[lnms],
     )
 
     namespace = generate_generic_id()
     for lnm in lnms:
         lnm['metadata']['namespace'] = namespace
-    result = evaluate_lnms(detail_level=detail_level)
+    result = evaluate_lnms(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalLnms"
     assert result["targets"]["lnmz.layerednetworkmgmt.iotoperations.azure.com"]
-    target = result["targets"]["lnmz.layerednetworkmgmt.iotoperations.azure.com"]
 
-    for namespace in target:
+    if lnms:
         assert namespace in result["targets"]["lnmz.layerednetworkmgmt.iotoperations.azure.com"]
+    else:
+        namespace = ALL_NAMESPACES_TARGET
+        assert namespace in result["targets"]["lnmz.layerednetworkmgmt.iotoperations.azure.com"]
+    target = result["targets"]["lnmz.layerednetworkmgmt.iotoperations.azure.com"][namespace]
 
-        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
-        assert_conditions(target[namespace], namespace_conditions)
-        assert_evaluations(target[namespace], namespace_evaluations)
+    assert_conditions(target, namespace_conditions)
+    assert_evaluations(target, namespace_evaluations)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", ["lnm-operator*", "lnm-operator-1"])
 @pytest.mark.parametrize(
     "pods, namespace_conditions, namespace_evaluations",
     [
@@ -327,6 +336,7 @@ def test_evaluate_core_service_runtime(
     namespace_evaluations,
     mock_get_namespaced_pods_by_prefix,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.check.lnm.get_namespaced_pods_by_prefix",
@@ -336,7 +346,7 @@ def test_evaluate_core_service_runtime(
     namespace = generate_generic_id()
     for pod in pods:
         pod.metadata.namespace = namespace
-    result = evaluate_core_service_runtime(detail_level=detail_level)
+    result = evaluate_core_service_runtime(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalCoreServiceRuntime"
     assert result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
