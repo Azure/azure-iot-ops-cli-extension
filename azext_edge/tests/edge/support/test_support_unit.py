@@ -218,7 +218,7 @@ def test_create_bundle(
                 label_selector=DATA_PROCESSOR_LABEL,
                 resource_api=DATA_PROCESSOR_API_V1,
                 since_seconds=since_seconds,
-                init_container_for_logs=["aio-"],
+                pod_prefix_for_init_container_logs=["aio-"],
             )
 
             assert_list_replica_sets(
@@ -484,8 +484,8 @@ def assert_list_pods(
                             data=mocked_list_pods[namespace][pod_name][container_name],
                         )
 
-            if "init_container_for_logs" in kwargs:
-                if pod_name in kwargs["init_container_for_logs"]:
+            if "pod_prefix_for_init_container_logs" in kwargs:
+                if pod_name in kwargs["pod_prefix_for_init_container_logs"]:
                     assert_zipfile_write(
                         mocked_zipfile,
                         zinfo=f"{namespace}/{resource_api.moniker}/pod.{pod_name}.mock-init-container.init.log",

@@ -43,7 +43,7 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
         label_selector=DATA_PROCESSOR_LABEL,
         since_seconds=since_seconds,
         capture_previous_logs=True,
-        init_container_for_logs=[
+        pod_prefix_for_init_container_logs=[
             DATA_PROCESSOR_READER_WORKER_PREFIX,
             DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
         ],
