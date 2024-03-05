@@ -15,16 +15,11 @@ class EnvironmentVariables(Enum):
     cluster = "azext_edge_cluster"
     context_name = "azext_edge_context_name"
     kv = "azext_edge_kv"
-    skip_init = "azext_edge_skip_init"
     skip_cluster_check = "azext_edge_skip_cluster_check"
 
 
 class Setting(object):
     pass
-
-
-def convert_flag(key: Optional[str] = None):
-    return key and key.lower() in ["true", "t", "yes", "y"]
 
 
 # Example of a dynamic class
