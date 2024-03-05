@@ -142,7 +142,10 @@ def assert_dict_props(path: str, expected: str, obj: Dict[str, str]):
     for key in path.split("/"):
         val = val[key]
 
-    if val != expected:
+    try:
+        assert val == expected
+    except AssertionError:
+        # check if val is list/dict
         if isinstance(val, dict):
             val = val.values()
         assert expected in val

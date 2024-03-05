@@ -642,7 +642,7 @@ def _evaluate_source_node(
 
     # check specific required properties
     # fine the matching enum for stage_type, which should start with the enum value
-    stage_type_value = next((e.value for e in DataSourceStageType if stage_type.startswith(e.value)), None)
+    stage_type_value = next((e for e in DataSourceStageType.list() if stage_type.startswith(e)), None)
     stage_required_properties = required_specific_properties.get(stage_type_value, [])
     for prop in stage_required_properties:
         prop_value = pipeline_source_node.get(prop, "")
@@ -888,7 +888,7 @@ def _evaluate_authentication(
     authentication_error_text = ""
     details_to_display = []
 
-    if auth_type in [auth_type.value for auth_type in DataprocessorAuthenticationType]:
+    if auth_type in DataprocessorAuthenticationType.list():
         required_fields = DATA_PROCESSOR_AUTHENTICATION_REQUIRED_PROPERTIES[auth_type]
 
         missing_fields = [field for field in required_fields if not auth_info.get(field)]
