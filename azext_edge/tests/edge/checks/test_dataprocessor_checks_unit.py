@@ -129,7 +129,7 @@ def test_instance_checks(
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("resource_name", ["test_instance", "test_instance2"])
 @pytest.mark.parametrize(
-    "pipelines, namespace_conditions, namespace_evaluations",
+    "pipelines, conditions, evaluations",
     [
         (
             # pipelines
@@ -183,7 +183,7 @@ def test_instance_checks(
                     }
                 )
             ],
-            # namespace conditions str
+            # conditions str
             [
                 "len(pipelines)>=1",
                 "mode.enabled",
@@ -195,7 +195,7 @@ def test_instance_checks(
                 "authentication.type",
                 "destinationNodeCount==1"
             ],
-            # namespace evaluations str
+            # evaluations str
             [
                 [
                     ("status", "success"),
@@ -232,13 +232,6 @@ def test_instance_checks(
                 [
                     ("status", "success"),
                     ("value/destinationNodeCount", 1),
-                ]
-            ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/pipelines", 1),
                 ]
             ],
         ),
@@ -299,7 +292,7 @@ def test_instance_checks(
                     }
                 )
             ],
-            # namespace conditions str
+            # conditions str
             [
                 "len(pipelines)>=1",
                 "mode.enabled",
@@ -313,9 +306,7 @@ def test_instance_checks(
                 "spec.input.database",
                 "spec.input.interval"
             ],
-            # all namespace conditions str
-            ["pipelines"],
-            # namespace evaluations str
+            # evaluations str
             [
                 [
                     ("status", "success"),
@@ -360,13 +351,6 @@ def test_instance_checks(
                 [
                     ("status", "success"),
                     ("value/destinationNodeCount", 1),
-                ]
-            ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/pipelines", 1),
                 ]
             ],
         ),
@@ -439,7 +423,7 @@ def test_instance_checks(
                     }
                 )
             ],
-            # namespace conditions str
+            # conditions str
             [
                 "len(pipelines)>=1",
                 "mode.enabled",
@@ -451,9 +435,7 @@ def test_instance_checks(
                 "spec.input.url",
                 "spec.input.interval"
             ],
-            # all namespace conditions str
-            ["pipelines"],
-            # namespace evaluations str
+            # evaluations str
             [
                 [
                     ("status", "success"),
@@ -548,7 +530,7 @@ def test_instance_checks(
                     }
                 )
             ],
-            # namespace conditions str
+            # conditions str
             [
                 "len(pipelines)>=1",
                 "mode.enabled",
@@ -562,9 +544,7 @@ def test_instance_checks(
                 "spec.input.interval",
                 "spec.input.organization"
             ],
-            # all namespace conditions str
-            ["pipelines"],
-            # namespace evaluations str
+            # evaluations str
             [
                 [
                     ("status", "success"),
@@ -609,13 +589,6 @@ def test_instance_checks(
                 [
                     ("status", "success"),
                     ("value/destinationNodeCount", 1),
-                ]
-            ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/pipelines", 1),
                 ]
             ],
         ),
@@ -674,7 +647,7 @@ def test_instance_checks(
                     }
                 )
             ],
-            # namespace conditions str
+            # conditions str
             [
                 "len(pipelines)>=1",
                 "mode.enabled",
@@ -688,9 +661,7 @@ def test_instance_checks(
                 "spec.input.interval",
                 "spec.input.organization"
             ],
-            # all namespace conditions str
-            ["pipelines"],
-            # namespace evaluations str
+            # evaluations str
             [
                 [
                     ("status", "success"),
@@ -731,13 +702,6 @@ def test_instance_checks(
                 [
                     ("status", "error"),
                     ("value/authentication.type", "accessToken"),
-                ]
-            ],
-            # all namespace evaluation str
-            [
-                [
-                    ("status", "success"),
-                    ("value/pipelines", 1),
                 ]
             ],
         ),
@@ -846,7 +810,7 @@ def test_instance_checks(
                     }
                 )
             ],
-            # namespace conditions str
+            # conditions str
             [
                 "len(pipelines)>=1",
                 "mode.enabled",
@@ -856,7 +820,7 @@ def test_instance_checks(
                 "authentication.type",
                 "destinationNodeCount==1"
             ],
-            # namespace evaluations str
+            # evaluations str
             [
                 [
                     ("status", "success"),
@@ -886,7 +850,7 @@ def test_instance_checks(
                     }
                 )
             ],
-            # namespace conditions str
+            # conditions str
             [
                 "len(pipelines)>=1",
                 "mode.enabled",
@@ -894,7 +858,7 @@ def test_instance_checks(
                 "sourceNodeCount == 1",
                 "destinationNodeCount==1"
             ],
-            # namespace evaluations str
+            # evaluations str
             [
                 [
                     ("status", "skipped"),
@@ -905,19 +869,9 @@ def test_instance_checks(
         (
             # pipelines
             [],
-            # namespace conditions str
-            [
-                "len(pipelines)>=1",
-                "mode.enabled",
-                "provisioningStatus",
-                "sourceNodeCount == 1",
-                "destinationNodeCount==1"
-            ],
-            # all namespace conditions str
-            ["pipelines"],
-            # namespace evaluations str
+            # conditions str
             [],
-            # namespace evaluations str
+            # evaluations str
             [
                 [
                     ("status", "skipped"),
@@ -931,8 +885,8 @@ def test_pipeline_checks(
     mocker,
     mock_evaluate_dataprocessor_pod_health,
     pipelines,
-    namespace_conditions,
-    namespace_evaluations,
+    conditions,
+    evaluations,
     detail_level,
     resource_name
 ):
@@ -956,8 +910,8 @@ def test_pipeline_checks(
         assert namespace in result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"]
     target = result["targets"]["pipelines.dataprocessor.iotoperations.azure.com"][namespace]
 
-    assert_conditions(target, namespace_conditions)
-    assert_evaluations(target, namespace_evaluations)
+    assert_conditions(target, conditions)
+    assert_evaluations(target, evaluations)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
