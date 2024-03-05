@@ -5,6 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from rich.padding import Padding
+
+from ...common import AIO_MQ_RESOURCE_PREFIX, CheckTaskStatus
+from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
+from ..support.mq import MQ_LABEL
 from .base import (
     CheckManager,
     evaluate_pod_health,
@@ -12,15 +18,7 @@ from .base import (
     get_resource_name,
     resources_grouped_by_namespace,
 )
-
-from rich.padding import Padding
-
-from ...common import CheckTaskStatus
-
 from .common import PADDING_SIZE, ResourceOutputDetailLevel
-
-from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
-from ..support.mq import MQ_LABEL
 
 
 def process_cloud_connector(
@@ -190,7 +188,7 @@ def _display_connector_runtime_health(
     namespace: str,
     target: str,
     connectors: Optional[List[Dict[str, Any]]] = None,
-    prefix: str = "aio-mq-",
+    prefix: str = AIO_MQ_RESOURCE_PREFIX,
     padding: int = 8,
 ):
     if connectors:
