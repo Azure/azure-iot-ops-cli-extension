@@ -23,18 +23,25 @@ from .base import (
 logger = get_logger(__name__)
 
 DATA_PROCESSOR_READER_WORKER_PREFIX = "aio-dp-reader-worker-"
-DATA_PROCESSOR_RUNNER_WORKER_PREFIX = "aio-dp-runner-worker-"
+DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL = "aio-dp-runner-worker"
+DATA_PROCESSOR_DEFDATA_STORE_APP_LABEL = "aio-dp-refdata-store"
+DATA_PROCESSOR_RUNNER_WORKER_PREFIX = f"{DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL}-"
 DATA_PROCESSOR_APP_LABELS = [
+    DATA_PROCESSOR_DEFDATA_STORE_APP_LABEL,
+    DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL,
     'aio-dp-reader-worker',
-    'aio-dp-refdata-store',
     'nats',
-    'aio-dp-runner-worker',
     'aio-dp-operator',
+]
+DATA_PROCESSOR_PVC_APP_LABELS = [
+    DATA_PROCESSOR_DEFDATA_STORE_APP_LABEL,
+    DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL,
 ]
 
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
 DATA_PROCESSOR_NAME_LABEL = "app.kubernetes.io/name in (dataprocessor)"
 DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
+DATA_PROCESSOR_PVC_APP_LABEL = f"app in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
@@ -89,7 +96,7 @@ def fetch_persistent_volume_claims():
     processed.extend(
         process_persistent_volume_claims(
             resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_LABEL
+            label_selector=DATA_PROCESSOR_PVC_APP_LABEL
         )
     )
     processed.extend(

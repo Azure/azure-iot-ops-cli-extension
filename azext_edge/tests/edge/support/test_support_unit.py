@@ -37,6 +37,7 @@ from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_INSTANCE_LABEL,
     DATA_PROCESSOR_LABEL,
     DATA_PROCESSOR_NAME_LABEL,
+    DATA_PROCESSOR_PVC_APP_LABEL,
 )
 from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
 from azext_edge.edge.providers.support.mq import MQ_LABEL
@@ -251,7 +252,7 @@ def test_create_bundle(
             assert_list_persistent_volume_claims(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATA_PROCESSOR_LABEL,
+                label_selector=DATA_PROCESSOR_PVC_APP_LABEL,
                 resource_api=DATA_PROCESSOR_API_V1,
             )
             assert_list_persistent_volume_claims(
