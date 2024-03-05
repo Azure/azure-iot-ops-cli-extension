@@ -20,7 +20,7 @@ from .conftest import (
     generate_resource_stub,
 )
 from ...generators import generate_generic_id
-from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
+from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel, DataSourceStageType
 
 
 @pytest.mark.parametrize(
@@ -139,6 +139,7 @@ def test_instance_checks(
                     spec={
                         "enabled": True,
                         "input": {
+                            "type": DataSourceStageType.mqtt.value,
                             "broker": "test-broker",
                             "topics": ["topic1", "topic2"],
                             "format": {
@@ -188,8 +189,10 @@ def test_instance_checks(
                 "mode.enabled",
                 "provisioningStatus",
                 "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
+                "spec.input.broker",
+                "spec.input.topics",
+                "format.type",
+                "authentication.type",
                 "destinationNodeCount==1"
             ],
             # namespace evaluations str
@@ -208,11 +211,281 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
-                    ("value/len(spec.input.topics)", 2),
+                    ("value/spec.input.broker", "test-broker"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.topics", ["topic1", "topic2"]),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.partitionCount", 1)
+                ],
+                [
+                    ("status", "success"),
+                    ("value/format.type", "json"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/authentication.type", "usernamePassword"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/destinationNodeCount", 1),
+                ]
+            ],
+            # all namespace evaluation str
+            [
+                [
+                    ("status", "success"),
+                    ("value/pipelines", 1),
+                ]
+            ],
+        ),
+        (
+            # pipelines
+            [
+                generate_resource_stub(
+                    metadata={"name": "test-pipeline"},
+                    spec={
+                        "enabled": True,
+                        "input": {
+                            "type": DataSourceStageType.sql.value,
+                            "query": {
+                                "expression": "SELECT * FROM table"
+                            },
+                            "server": "test-server",
+                            "database": "test-database",
+                            "interval": "1m",
+                            "format": {
+                                "type": "json"
+                            },
+                            "partitionCount": 1,
+                            "partitionStrategy": {
+                                "type": "id",
+                                "expression": "0"
+                            },
+                            "authentication": {
+                                "type": "servicePrincipal",
+                                "clientId": "test-client-id",
+                                "clientSecret": "test-client-secret",
+                                "tenantId": "test-tenant-id"
+                            }
+                        },
+                        "stages": {
+                            "stage1": {
+                                "type": "intermediate",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            },
+                            "stage2": {
+                                "type": "output",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            }
+                        }
+                    },
+                    status={
+                        "provisioningStatus": {
+                            "status": "Succeeded",
+                            "error": {
+                                "message": "No error"
+                            }
+                        }
+                    }
+                )
+            ],
+            # namespace conditions str
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "format.type",
+                "authentication.type",
+                "destinationNodeCount==1",
+                "spec.input.query",
+                "spec.input.server",
+                "spec.input.database",
+                "spec.input.interval"
+            ],
+            # all namespace conditions str
+            ["pipelines"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/mode.enabled", "running"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/provisioningStatus", ProvisioningState.succeeded.value),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/sourceNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.query", {"expression": "SELECT * FROM table"}),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.server", "test-server"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.database", "test-database"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.interval", "1m"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.partitionCount", 1)
+                ],
+                [
+                    ("status", "success"),
+                    ("value/format.type", "json"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/authentication.type", "servicePrincipal"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/destinationNodeCount", 1),
+                ]
+            ],
+            # all namespace evaluation str
+            [
+                [
+                    ("status", "success"),
+                    ("value/pipelines", 1),
+                ]
+            ],
+        ),
+        (
+            # pipelines
+            [
+                generate_resource_stub(
+                    metadata={"name": "test-pipeline"},
+                    spec={
+                        "enabled": True,
+                        "input": {
+                            "type": DataSourceStageType.http.value,
+                            "url": "https://contoso.com/some/url/path",
+                            "method": "GET",
+                            "format": {
+                                "type": "json"
+                            },
+                            "request": {
+                                "headers": [
+                                    {
+                                        "key": {
+                                            "value": "foo",
+                                            "type": "static"
+                                        },
+                                    },
+                                    {
+                                        "key": {
+                                            "value": "baz",
+                                            "type": "static"
+                                        },
+                                    }
+                                ],
+                            },
+                            "authentication": {
+                                "type": "header",
+                                "key" : "Authorization",
+                                "value": "token"
+                            },
+                            "interval": "10s",
+                            "partitionCount": 1,
+                            "partitionStrategy": {
+                                "type": "id",
+                                "expression": "0"
+                            },
+                        },
+                        "stages": {
+                            "stage1": {
+                                "type": "intermediate",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            },
+                            "stage2": {
+                                "type": "output",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            }
+                        }
+                    },
+                    status={
+                        "provisioningStatus": {
+                            "status": "Succeeded",
+                            "error": {
+                                "message": "No error"
+                            }
+                        }
+                    }
+                )
+            ],
+            # namespace conditions str
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "format.type",
+                "authentication.type",
+                "destinationNodeCount==1",
+                "spec.input.url",
+                "spec.input.interval"
+            ],
+            # all namespace conditions str
+            ["pipelines"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/mode.enabled", "running"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/provisioningStatus", ProvisioningState.succeeded.value),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/sourceNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.url", "https://contoso.com/some/url/path"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.interval", "10s"),
                 ],
                 [
                     ("status", "success"),
                     ("value/spec.input.partitionCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/format.type", "json"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/authentication.type", "header"),
                 ],
                 [
                     ("status", "success"),
@@ -228,20 +501,274 @@ def test_instance_checks(
                     spec={
                         "enabled": True,
                         "input": {
-                            "broker": "test-broker",
-                            "topics": ["topic1", "topic2"],
+                            "type": DataSourceStageType.influxdb.value,
+                            "query": {
+                                "expression": "from(bucket:\"test-bucket\")"
+                            },
+                            "interval": "5s",
+                            "url": "https://contoso.com/some/url/path",
+                            "organization": "test-org",
+                            "partitionCount": 1,
+                            "partitionStrategy": {
+                                "type": "id",
+                                "expression": "0"
+                            },
                             "format": {
                                 "type": "json"
                             },
-                            "qos": 1,
+                            "authentication": {
+                                "type": "accessToken",
+                                "accessToken": "AKV_ACCESS_TOKEN"
+                            }
+                        },
+                        "stages": {
+                            "stage1": {
+                                "type": "intermediate",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            },
+                            "stage2": {
+                                "type": "output",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            }
+                        }
+                    },
+                    status={
+                        "provisioningStatus": {
+                            "status": "Succeeded",
+                            "error": {
+                                "message": "No error"
+                            }
+                        }
+                    }
+                )
+            ],
+            # namespace conditions str
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "format.type",
+                "authentication.type",
+                "destinationNodeCount==1",
+                "spec.input.query",
+                "spec.input.url",
+                "spec.input.interval",
+                "spec.input.organization"
+            ],
+            # all namespace conditions str
+            ["pipelines"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/mode.enabled", "running"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/provisioningStatus", ProvisioningState.succeeded.value),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/sourceNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.query", {"expression": "from(bucket:\"test-bucket\")"}),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.url", "https://contoso.com/some/url/path"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.interval", "5s"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.organization", "test-org"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.partitionCount", 1)
+                ],
+                [
+                    ("status", "success"),
+                    ("value/format.type", "json"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/authentication.type", "accessToken"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/destinationNodeCount", 1),
+                ]
+            ],
+            # all namespace evaluation str
+            [
+                [
+                    ("status", "success"),
+                    ("value/pipelines", 1),
+                ]
+            ],
+        ),
+        # authentication error
+        (
+            # pipelines
+            [
+                generate_resource_stub(
+                    metadata={"name": "test-pipeline"},
+                    spec={
+                        "enabled": True,
+                        "input": {
+                            "type": DataSourceStageType.influxdb.value,
+                            "query": {
+                                "expression": "from(bucket:\"test-bucket\")"
+                            },
+                            "interval": "5s",
+                            "url": "https://contoso.com/some/url/path",
+                            "organization": "test-org",
                             "partitionCount": 1,
                             "partitionStrategy": {
-                                "type": "roundRobin"
+                                "type": "id",
+                                "expression": "0"
+                            },
+                            "format": {
+                                "type": "json"
                             },
                             "authentication": {
-                                "type": "usernamePassword",
-                                "username": "test-user",
-                                "password": "test-password"
+                                "type": "accessToken",
+                            }
+                        },
+                        "stages": {
+                            "stage1": {
+                                "type": "intermediate",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            },
+                            "stage2": {
+                                "type": "output",
+                                "properties": {
+                                    "property1": "value1",
+                                    "property2": "value2"
+                                }
+                            }
+                        }
+                    },
+                    status={
+                        "provisioningStatus": {
+                            "status": "Succeeded",
+                            "error": {
+                                "message": "No error"
+                            }
+                        }
+                    }
+                )
+            ],
+            # namespace conditions str
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "format.type",
+                "authentication.type",
+                "destinationNodeCount==1",
+                "spec.input.query",
+                "spec.input.url",
+                "spec.input.interval",
+                "spec.input.organization"
+            ],
+            # all namespace conditions str
+            ["pipelines"],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/mode.enabled", "running"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/provisioningStatus", ProvisioningState.succeeded.value),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/sourceNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.query", {"expression": "from(bucket:\"test-bucket\")"}),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.url", "https://contoso.com/some/url/path"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.interval", "5s"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.organization", "test-org"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.input.partitionCount", 1)
+                ],
+                [
+                    ("status", "success"),
+                    ("value/format.type", "json"),
+                ],
+                [
+                    ("status", "error"),
+                    ("value/authentication.type", "accessToken"),
+                ]
+            ],
+            # all namespace evaluation str
+            [
+                [
+                    ("status", "success"),
+                    ("value/pipelines", 1),
+                ]
+            ],
+        ),
+        (
+            # pipelines
+            [
+                generate_resource_stub(
+                    metadata={"name": "test-pipeline"},
+                    spec={
+                        "enabled": True,
+                        "input": {
+                            "type": DataSourceStageType.sql.value,
+                            "query": {
+                                "expression": "SELECT * FROM table"
+                            },
+                            "server": "test-server",
+                            "database": "test-database",
+                            "interval": "1m",
+                            "format": {
+                                "type": "json"
+                            },
+                            "partitionCount": 1,
+                            "partitionStrategy": {
+                                "type": "id",
+                                "expression": "0"
+                            },
+                            "authentication": {
+                                "type": "servicePrincipal",
+                                "clientId": "test-client-id",
+                                "clientSecret": "test-client-secret",
+                                "tenantId": "test-tenant-id"
                             }
                         },
                         "stages": {
@@ -275,6 +802,7 @@ def test_instance_checks(
                     spec={
                         "enabled": True,
                         "input": {
+                            "type": DataSourceStageType.mqtt.value,
                             "broker": "test-broker",
                             "topics": ["topic1", "topic2"],
                             "format": {
@@ -324,8 +852,8 @@ def test_instance_checks(
                 "mode.enabled",
                 "provisioningStatus",
                 "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
+                "format.type",
+                "authentication.type",
                 "destinationNodeCount==1"
             ],
             # namespace evaluations str
@@ -364,8 +892,6 @@ def test_instance_checks(
                 "mode.enabled",
                 "provisioningStatus",
                 "sourceNodeCount == 1",
-                "len(spec.input.topics)>=1",
-                "spec.input.partitionCount>=1",
                 "destinationNodeCount==1"
             ],
             # namespace evaluations str
@@ -380,6 +906,16 @@ def test_instance_checks(
             # pipelines
             [],
             # namespace conditions str
+            [
+                "len(pipelines)>=1",
+                "mode.enabled",
+                "provisioningStatus",
+                "sourceNodeCount == 1",
+                "destinationNodeCount==1"
+            ],
+            # all namespace conditions str
+            ["pipelines"],
+            # namespace evaluations str
             [],
             # namespace evaluations str
             [

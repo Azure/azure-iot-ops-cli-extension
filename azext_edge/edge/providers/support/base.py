@@ -21,6 +21,8 @@ from ...util import get_timestamp_now_utc
 logger = get_logger(__name__)
 generic = client.ApiClient()
 
+DAY_IN_SECONDS: int = 60 * 60 * 24  # TODO: Use constant across services.
+
 
 def process_crd(group: str, version: str, kind: str, plural: str, api_moniker: str, file_prefix: Optional[str] = None):
     result: dict = get_custom_objects(

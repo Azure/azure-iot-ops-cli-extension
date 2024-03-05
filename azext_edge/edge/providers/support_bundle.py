@@ -51,8 +51,9 @@ def build_bundle(
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
+    from .support.otel import prepare_bundle as prepare_otel_bundle
 
-    pending_work = {k: {} for k in OpsServiceType.list() + ["common"]}
+    pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
@@ -103,7 +104,12 @@ def build_bundle(
         logger.warning("No known IoT Operations services discovered on cluster.")
         return
 
-    pending_work["common"].update(prepare_shared_bundle())
+    if ops_service == OpsServiceType.auto.value:
+        # Only attempt to collect otel resources if any AIO service is deployed AND auto is used.
+        pending_work["otel"] = prepare_otel_bundle()
+
+    # Collect common resources if any AIO service is deployed with any service selected.
+    pending_work["common"] = prepare_shared_bundle()
 
     total_work_count = 0
     for service in pending_work:
