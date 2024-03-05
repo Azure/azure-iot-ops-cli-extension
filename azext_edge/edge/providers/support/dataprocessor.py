@@ -22,8 +22,8 @@ from .base import (
 
 logger = get_logger(__name__)
 
-DATA_PROCESSOR_READER_WORKER_POD = "aio-dp-reader-worker-0"
-DATA_PROCESSOR_RUNNER_WORKER_POD = "aio-dp-runner-worker-0"
+DATA_PROCESSOR_READER_WORKER_PREFIX = "aio-dp-reader-worker"
+DATA_PROCESSOR_RUNNER_WORKER_PREFIX = "aio-dp-runner-worker"
 DATA_PROCESSOR_APP_LABELS = [
     'aio-dp-reader-worker',
     'aio-dp-refdata-store',
@@ -44,8 +44,8 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
         since_seconds=since_seconds,
         capture_previous_logs=True,
         init_container_for_logs=[
-            DATA_PROCESSOR_READER_WORKER_POD,
-            DATA_PROCESSOR_RUNNER_WORKER_POD,
+            DATA_PROCESSOR_READER_WORKER_PREFIX,
+            DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
         ],
     )
 

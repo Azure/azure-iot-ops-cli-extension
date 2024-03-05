@@ -7,7 +7,7 @@
 from os import makedirs
 from os.path import abspath, expanduser, isdir
 from pathlib import PurePath
-from typing import List, Dict, Optional, Iterable
+from typing import List, Dict, Optional, Iterable, Set
 from functools import partial
 
 from knack.log import get_logger
@@ -50,7 +50,7 @@ def process_v1_pods(
     include_metrics=False,
     capture_previous_logs=True,
     prefix_names: List[str] = None,
-    init_container_for_logs: List[str] = None,
+    init_container_for_logs: Set[str] = None,
 ) -> List[dict]:
     from kubernetes.client.models import V1Pod, V1PodList
 
@@ -133,17 +133,19 @@ def process_v1_pods(
             except ApiException as e:
                 logger.debug(e.body)
 
-        if init_container_for_logs and (pod_name in init_container_for_logs):
-            processed.extend(
-                _capture_init_container_logs(
-                    pod_name=pod_name,
-                    pod_namespace=pod_namespace,
-                    pod_spec=pod_spec,
-                    resource_api=resource_api,
-                    since_seconds=since_seconds,
-                    v1_api=v1_api,
+        if init_container_for_logs:
+            # check if pod name start with any prefix in init_container_for_logs
+            if any(pod_name.startswith(prefix) for prefix in init_container_for_logs):
+                processed.extend(
+                    _capture_init_container_logs(
+                        pod_name=pod_name,
+                        pod_namespace=pod_namespace,
+                        pod_spec=pod_spec,
+                        resource_api=resource_api,
+                        since_seconds=since_seconds,
+                        v1_api=v1_api,
+                    )
                 )
-            )
 
     return processed
 
