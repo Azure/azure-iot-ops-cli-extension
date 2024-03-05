@@ -12,7 +12,7 @@ from functools import partial
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
-from kubernetes.client.models import V1Container, V1ObjectMeta
+from kubernetes.client.models import V1Container, V1ObjectMeta, V1PodSpec
 
 from ..edge_api import EdgeResourceApi
 from ..base import client, get_custom_objects
@@ -50,10 +50,11 @@ def process_v1_pods(
     label_selector=None,
     since_seconds: int = 60 * 60 * 24,
     include_metrics=False,
-    capture_previous_logs=False,
-    prefix_names: List[str] = None,
+    capture_previous_logs=True,
+    prefix_names: Optional[List[str]] = None,
+    pod_prefix_for_init_container_logs: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1Pod, V1PodList, V1PodSpec
+    from kubernetes.client.models import V1Pod, V1PodList
 
     v1_api = client.CoreV1Api()
     custom_api = client.CustomObjectsApi()
@@ -89,6 +90,7 @@ def process_v1_pods(
         )
         pod_spec: V1PodSpec = p.spec
         pod_containers: List[V1Container] = pod_spec.containers
+
         capture_previous_log_runs = [False]
         if capture_previous_logs:
             capture_previous_log_runs.append(True)
@@ -132,6 +134,20 @@ def process_v1_pods(
                     )
             except ApiException as e:
                 logger.debug(e.body)
+
+        if pod_prefix_for_init_container_logs:
+            # check if pod name start with any prefix in pod_prefix_for_init_container_logs
+            if any(pod_name.startswith(prefix) for prefix in pod_prefix_for_init_container_logs):
+                processed.extend(
+                    _capture_init_container_logs(
+                        pod_name=pod_name,
+                        pod_namespace=pod_namespace,
+                        pod_spec=pod_spec,
+                        resource_api=resource_api,
+                        since_seconds=since_seconds,
+                        v1_api=v1_api,
+                    )
+                )
 
     return processed
 
@@ -377,6 +393,62 @@ def process_events():
     return event_content
 
 
+def process_storage_classes():
+    storage_class_content = []
+
+    storage_v1_api = client.StorageV1Api()
+    storage_class_content.append(
+        {
+            "data": generic.sanitize_for_serialization(obj=storage_v1_api.list_storage_class()),
+            "zinfo": "storage_classes.yaml",
+        }
+    )
+
+    return storage_class_content
+
+
+def process_persistent_volume_claims(
+    resource_api: EdgeResourceApi,
+    label_selector: str = None,
+    field_selector: str = None,
+    prefix_names: List[str] = None,
+):
+    from kubernetes.client.models import V1PersistentVolumeClaim, V1PersistentVolumeClaimList
+
+    v1_api = client.CoreV1Api()
+
+    processed = []
+    if not prefix_names:
+        prefix_names = []
+
+    pvcs: V1PersistentVolumeClaimList = v1_api.list_persistent_volume_claim_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
+    logger.info(f"Detected {len(pvcs.items)} persistent volumn claims.")
+
+    for pvc in pvcs.items:
+        d: V1PersistentVolumeClaim = pvc
+        d.api_version = pvcs.api_version
+        d.kind = "PersistentVolumeClaim"
+        pvc_metadata: V1ObjectMeta = d.metadata
+        pvc_namespace: str = pvc_metadata.namespace
+        pvc_name: str = pvc_metadata.name
+
+        if prefix_names:
+            matched_prefix = [pvc_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
+
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=d),
+                "zinfo": f"{pvc_namespace}/{resource_api.moniker}/pvc.{pvc_name}.yaml",
+            }
+        )
+
+    return processed
+
+
 def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional[Dict[str, str]] = None):
     if not file_prefix_map:
         file_prefix_map = {}
@@ -420,3 +492,39 @@ def normalize_dir(dir_path: Optional[str] = None) -> PurePath:
 def default_bundle_name(system_name: str) -> str:
     timestamp = get_timestamp_now_utc(format="%Y%m%dT%H%M%S")
     return f"support_bundle_{timestamp}_{system_name}.zip"
+
+
+def _capture_init_container_logs(
+    pod_name: str,
+    pod_namespace: str,
+    pod_spec: V1PodSpec,
+    resource_api: EdgeResourceApi,
+    v1_api: client.CoreV1Api,
+    since_seconds: int = 60 * 60 * 24,
+) -> List[dict]:
+
+    processed = []
+    pod_init_containers: List[V1Container] = pod_spec.init_containers or []
+
+    for init_container in pod_init_containers:
+        try:
+            logger.debug(f"Reading init log from pod {pod_name} init container {init_container.name}")
+            log: str = v1_api.read_namespaced_pod_log(
+                name=pod_name,
+                namespace=pod_namespace,
+                since_seconds=since_seconds,
+                container=init_container.name,
+                previous=False,
+            )
+            processed.append(
+                {
+                    "data": log,
+                    "zinfo": (
+                        f"{pod_namespace}/{resource_api.moniker}/pod.{pod_name}.{init_container.name}.init.log"
+                    ),
+                }
+            )
+        except ApiException as e:
+            logger.debug(e.body)
+
+    return processed

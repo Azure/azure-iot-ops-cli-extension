@@ -13,6 +13,7 @@ from ..edge_api import DATA_PROCESSOR_API_V1, EdgeResourceApi
 from .base import (
     assemble_crd_work,
     process_deployments,
+    process_persistent_volume_claims,
     process_replicasets,
     process_services,
     process_statefulset,
@@ -21,16 +22,26 @@ from .base import (
 
 logger = get_logger(__name__)
 
+DATA_PROCESSOR_READER_WORKER_PREFIX = "aio-dp-reader-worker-"
+DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL = "aio-dp-runner-worker"
+DATA_PROCESSOR_REFDATA_STORE_APP_LABEL = "aio-dp-refdata-store"
+DATA_PROCESSOR_RUNNER_WORKER_PREFIX = f"{DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL}-"
 DATA_PROCESSOR_APP_LABELS = [
+    DATA_PROCESSOR_REFDATA_STORE_APP_LABEL,
+    DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL,
     'aio-dp-reader-worker',
-    'aio-dp-refdata-store',
     'nats',
-    'aio-dp-runner-worker',
     'aio-dp-operator',
+]
+DATA_PROCESSOR_PVC_APP_LABELS = [
+    DATA_PROCESSOR_REFDATA_STORE_APP_LABEL,
+    DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL,
 ]
 
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
 DATA_PROCESSOR_NAME_LABEL = "app.kubernetes.io/name in (dataprocessor)"
+DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
+DATA_PROCESSOR_PVC_APP_LABEL = f"app in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
 
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
@@ -39,6 +50,10 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
         label_selector=DATA_PROCESSOR_LABEL,
         since_seconds=since_seconds,
         capture_previous_logs=True,
+        pod_prefix_for_init_container_logs=[
+            DATA_PROCESSOR_READER_WORKER_PREFIX,
+            DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
+        ],
     )
 
     return dataprocessor_pods
@@ -76,11 +91,36 @@ def fetch_services():
     return processed
 
 
+def fetch_persistent_volume_claims():
+    processed = []
+    processed.extend(
+        process_persistent_volume_claims(
+            resource_api=DATA_PROCESSOR_API_V1,
+            label_selector=DATA_PROCESSOR_PVC_APP_LABEL
+        )
+    )
+    processed.extend(
+        process_persistent_volume_claims(
+            resource_api=DATA_PROCESSOR_API_V1,
+            label_selector=DATA_PROCESSOR_NAME_LABEL
+        )
+    )
+    processed.extend(
+        process_persistent_volume_claims(
+            resource_api=DATA_PROCESSOR_API_V1,
+            label_selector=DATA_PROCESSOR_INSTANCE_LABEL
+        )
+    )
+
+    return processed
+
+
 support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "deployments": fetch_deployments,
+    "persistentvolumeclaims": fetch_persistent_volume_claims,
 }
 
 

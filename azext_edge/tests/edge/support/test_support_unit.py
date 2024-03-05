@@ -9,6 +9,8 @@ from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
 from zipfile import ZipInfo
 
+from .conftest import add_pod_to_mocked_pods
+
 import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
@@ -32,8 +34,10 @@ from azext_edge.edge.providers.support.akri import (
 )
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.dataprocessor import (
+    DATA_PROCESSOR_INSTANCE_LABEL,
     DATA_PROCESSOR_LABEL,
     DATA_PROCESSOR_NAME_LABEL,
+    DATA_PROCESSOR_PVC_APP_LABEL,
 )
 from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
 from azext_edge.edge.providers.support.mq import MQ_LABEL
@@ -78,6 +82,7 @@ def test_create_bundle(
     mocked_zipfile,
     mocked_get_custom_objects,
     mocked_list_deployments,
+    mocked_list_persistent_volume_claims,
     mocked_list_pods,
     mocked_list_replicasets,
     mocked_list_statefulsets,
@@ -85,6 +90,7 @@ def test_create_bundle(
     mocked_list_services,
     mocked_list_nodes,
     mocked_list_cluster_events,
+    mocked_list_storage_classes,
     mocked_get_stats,
     mocked_root_logger,
     mocked_mq_active_api,
@@ -96,6 +102,14 @@ def test_create_bundle(
         mocked_root_logger.warning.assert_called_once_with("No known IoT Operations services discovered on cluster.")
         assert auto_result_no_resources is None
         return
+
+    if DATA_PROCESSOR_API_V1 in mocked_cluster_resources["param"]:
+        add_pod_to_mocked_pods(
+            mocked_client=mocked_client,
+            expected_pod_map=mocked_list_pods,
+            mock_names=["aio-runner"],
+            mock_init_containers=True
+        )
 
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(None, bundle_dir=a_bundle_dir, log_age_seconds=since_seconds)
@@ -205,6 +219,7 @@ def test_create_bundle(
                 label_selector=DATA_PROCESSOR_LABEL,
                 resource_api=DATA_PROCESSOR_API_V1,
                 since_seconds=since_seconds,
+                pod_prefix_for_init_container_logs=["aio-"],
             )
 
             assert_list_replica_sets(
@@ -222,6 +237,25 @@ def test_create_bundle(
                 mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
             assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_NAME_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
+            )
+
+            assert_list_persistent_volume_claims(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
+            )
+            assert_list_persistent_volume_claims(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_PVC_APP_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
+            )
+            assert_list_persistent_volume_claims(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL,
@@ -451,6 +485,14 @@ def assert_list_pods(
                             data=mocked_list_pods[namespace][pod_name][container_name],
                         )
 
+            if "pod_prefix_for_init_container_logs" in kwargs:
+                if pod_name in kwargs["pod_prefix_for_init_container_logs"]:
+                    assert_zipfile_write(
+                        mocked_zipfile,
+                        zinfo=f"{namespace}/{resource_api.moniker}/pod.{pod_name}.mock-init-container.init.log",
+                        data=mocked_list_pods[namespace][pod_name]["mock-init-container"],
+                    )
+
 
 def assert_list_replica_sets(
     mocked_client,
@@ -470,6 +512,24 @@ def assert_list_replica_sets(
         )
 
 
+def assert_list_persistent_volume_claims(
+        mocked_client,
+        mocked_zipfile,
+        resource_api: EdgeResourceApi,
+        label_selector: str = None,
+        field_selector: str = None,
+):
+    mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    assert_zipfile_write(
+        mocked_zipfile,
+        zinfo=f"mock_namespace/{resource_api.moniker}/pvc.mock_pvc.yaml",
+        data="kind: PersistentVolumeClaim\nmetadata:\n  name: mock_pvc\n  namespace: mock_namespace\n",
+    )
+
+
 def assert_list_stateful_sets(
     mocked_client,
     mocked_zipfile,
@@ -480,6 +540,7 @@ def assert_list_stateful_sets(
     mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
         label_selector=label_selector, field_selector=field_selector
     )
+
     assert_zipfile_write(
         mocked_zipfile,
         zinfo=f"mock_namespace/{resource_api.moniker}/statefulset.mock_statefulset.yaml",
@@ -559,6 +620,12 @@ def assert_shared_kpis(mocked_client, mocked_zipfile):
         mocked_zipfile,
         zinfo="events.yaml",
         data="items:\n- action: mock_action\n  involvedObject: mock_object\n  metadata:\n    name: mock_event\n",
+    )
+    mocked_client.StorageV1Api().list_storage_class.assert_called_once()
+    assert_zipfile_write(
+        mocked_zipfile,
+        zinfo="storage_classes.yaml",
+        data="items:\n- metadata:\n    name: mock_storage_class\n  provisioner: mock_provisioner\n",
     )
 
 
@@ -684,6 +751,7 @@ def test_create_bundle_mq_traces(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_get_stats,
+    mocked_list_storage_classes,
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_mq_get_traces,

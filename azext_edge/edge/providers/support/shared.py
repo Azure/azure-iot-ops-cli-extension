@@ -5,11 +5,11 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from .base import process_nodes, process_events
+from .base import process_nodes, process_events, process_storage_classes
 
 logger = get_logger(__name__)
 
-support_shared_elements = {"nodes": process_nodes, "events": process_events}
+support_shared_elements = {"nodes": process_nodes, "events": process_events, "storageclasses": process_storage_classes}
 
 
 def prepare_bundle() -> dict:
