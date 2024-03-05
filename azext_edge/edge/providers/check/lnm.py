@@ -13,8 +13,9 @@ from .base import (
     add_display_and_eval,
     check_post_deployment,
     decorate_pod_phase,
+    filter_resources_by_name,
     generate_target_resource_name,
-    pods_grouped_by_namespace,
+    get_resources_by_name,
     process_properties,
     resources_grouped_by_namespace,
 )
@@ -48,7 +49,8 @@ def check_lnm_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    resource_kinds: List[str] = None
+    resource_kinds: List[str] = None,
+    resource_name: str = None,
 ) -> None:
     evaluate_funcs = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
@@ -65,6 +67,7 @@ def check_lnm_deployment(
         as_list=as_list,
         detail_level=detail_level,
         resource_kinds=resource_kinds,
+        resource_name=resource_name,
         excluded_resources=LNM_EXCLUDED_SUBRESOURCE,
     )
 
@@ -72,6 +75,7 @@ def check_lnm_deployment(
 def evaluate_core_service_runtime(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate LNM core service")
 
@@ -84,6 +88,7 @@ def evaluate_core_service_runtime(
         label_selector=lnm_operator_label,
         padding=6,
         detail_level=detail_level,
+        resource_name=resource_name,
     )
 
     return check_manager.as_dict(as_list)
@@ -92,12 +97,17 @@ def evaluate_core_service_runtime(
 def evaluate_lnms(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalLnms", check_desc="Evaluate LNM instances")
 
     lnm_namespace_conditions = ["len(lnms)>=1", "status.configStatusLevel", "spec.allowList", "spec.image"]
 
-    all_lnms: dict = LNM_API_V1B1.get_resources(LnmResourceKinds.LNM).get("items", [])
+    all_lnms: dict = get_resources_by_name(
+        api_info=LNM_API_V1B1,
+        kind=LnmResourceKinds.LNM,
+        resource_name=resource_name,
+    )
     target_lnms = generate_target_resource_name(api_info=LNM_API_V1B1, resource_kind=LnmResourceKinds.LNM.value)
 
     if not all_lnms:
@@ -107,7 +117,7 @@ def evaluate_lnms(
         check_manager.add_target_eval(
             target_name=target_lnms,
             status=CheckTaskStatus.skipped.value,
-            value={"lnms": None}
+            value=fetch_lnms_error_text
         )
         return check_manager.as_dict(as_list)
 
@@ -291,6 +301,7 @@ def evaluate_lnms(
         conditions=lnm_namespace_conditions,
         padding=6,
         detail_level=detail_level,
+        resource_name=resource_name,
     )
 
     return check_manager.as_dict(as_list)
@@ -306,10 +317,19 @@ def _process_lnm_pods(
     conditions: Optional[List[str]] = None,
     namespace: Optional[str] = None,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> None:
     pods = get_namespaced_pods_by_prefix(prefix=prefix, namespace=namespace, label_selector=label_selector)
 
-    for (namespace, pods) in pods_grouped_by_namespace(pods):
+    if resource_name:
+        pods = filter_resources_by_name(resources=pods, resource_name=resource_name)
+
+        if not pods:
+            check_manager.add_target(target_name=target)
+            check_manager.add_display(target_name=target, display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)))
+            return
+
+    for (namespace, pods) in resources_grouped_by_namespace(pods):
         check_manager.add_target(target_name=target, namespace=namespace, conditions=conditions)
         check_manager.add_display(
             target_name=target,
@@ -329,8 +349,6 @@ def _process_lnm_pods(
                 namespace=namespace,
                 detail_level=detail_level,
             )
-
-    return pods
 
 
 def _evaluate_lnm_pod_health(

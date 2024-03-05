@@ -15,14 +15,15 @@ from ..edge_api import (
     AkriResourceKinds,
 )
 
-from ..support.akri import AKRI_PREFIX
+from ..support.akri import AKRI_PREFIX, AKRI_INSTANCE_LABEL, AKRI_APP_LABEL
 
 from .base import (
     CheckManager,
     check_post_deployment,
+    filter_resources_by_name,
     generate_target_resource_name,
     get_namespaced_pods_by_prefix,
-    pods_grouped_by_namespace,
+    get_resources_by_name,
     process_dict_resource,
     process_pods_status,
     resources_grouped_by_namespace,
@@ -39,7 +40,8 @@ def check_akri_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    resource_kinds: List[str] = None
+    resource_kinds: List[str] = None,
+    resource_name: str = None,
 ) -> None:
     evaluate_funcs = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
@@ -57,23 +59,40 @@ def check_akri_deployment(
         as_list=as_list,
         detail_level=detail_level,
         resource_kinds=resource_kinds,
+        resource_name=resource_name,
     )
 
 
 def evaluate_core_service_runtime(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate Akri core service")
 
     padding = 6
-    akri_runtime_resources = get_namespaced_pods_by_prefix(
-        prefix=AKRI_PREFIX,
-        namespace="",
-        label_selector="",
-    )
+    akri_runtime_resources: List[dict] = []
 
-    for (namespace, pods) in pods_grouped_by_namespace(akri_runtime_resources):
+    for label in [AKRI_INSTANCE_LABEL, AKRI_APP_LABEL]:
+        akri_runtime_resources.extend(
+            get_namespaced_pods_by_prefix(
+                prefix=AKRI_PREFIX,
+                namespace="",
+                label_selector=label,
+            )
+        )
+
+    if resource_name:
+        akri_runtime_resources = filter_resources_by_name(
+            resources=akri_runtime_resources,
+            resource_name=resource_name,
+        )
+
+        if not akri_runtime_resources:
+            check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value)
+            check_manager.add_display(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)))
+
+    for (namespace, pods) in resources_grouped_by_namespace(akri_runtime_resources):
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
@@ -99,20 +118,26 @@ def evaluate_core_service_runtime(
 def evaluate_configurations(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalConfigurations", check_desc="Evaluate Akri configurations")
 
     target_configurations = generate_target_resource_name(api_info=AKRI_API_V0, resource_kind=AkriResourceKinds.CONFIGURATION.value)
     configuration_conditions = []
 
-    all_configurations: dict = AKRI_API_V0.get_resources(AkriResourceKinds.CONFIGURATION).get("items", [])
+    all_configurations: dict = get_resources_by_name(
+        api_info=AKRI_API_V0,
+        kind=AkriResourceKinds.CONFIGURATION,
+        resource_name=resource_name,
+    )
 
     if not all_configurations:
+        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_configurations_error_text = "Unable to fetch Akri configurations in any namespaces."
         check_manager.add_target(target_name=target_configurations)
         check_manager.add_target_eval(
             target_name=target_configurations,
-            status=CheckTaskStatus.error.value,
+            status=status,
             value={"configurations": fetch_configurations_error_text}
         )
         check_manager.add_display(target_name=target_configurations, display=Padding(fetch_configurations_error_text, (0, 0, 0, 8)))
@@ -221,6 +246,7 @@ def evaluate_configurations(
 def evaluate_instances(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Akri instances")
 
@@ -228,7 +254,11 @@ def evaluate_instances(
     instance_conditions = []
     check_manager.add_target(target_name=target_instances, conditions=instance_conditions)
 
-    all_instances: dict = AKRI_API_V0.get_resources(AkriResourceKinds.INSTANCE).get("items", [])
+    all_instances: dict = get_resources_by_name(
+        api_info=AKRI_API_V0,
+        kind=AkriResourceKinds.INSTANCE,
+        resource_name=resource_name,
+    )
 
     if not all_instances:
         fetch_instances_skip_text = "Unable to fetch Akri instances in any namespaces."

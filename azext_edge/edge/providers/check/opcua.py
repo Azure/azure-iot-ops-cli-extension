@@ -12,8 +12,9 @@ from ..base import get_namespaced_pods_by_prefix
 from .base import (
     CheckManager,
     check_post_deployment,
+    filter_resources_by_name,
     generate_target_resource_name,
-    pods_grouped_by_namespace,
+    get_resources_by_name,
     process_pods_status,
     resources_grouped_by_namespace,
 )
@@ -31,14 +32,15 @@ from ..edge_api import (
     OpcuaResourceKinds,
 )
 
-from ..support.opcua import OPC_APP_LABEL, OPC_NAME_LABEL
+from ..support.opcua import OPC_APP_LABEL, OPC_NAME_LABEL, OPC_NAME_VAR_LABEL
 
 
 def check_opcua_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    resource_kinds: List[str] = None
+    resource_kinds: List[str] = None,
+    resource_name: str = None,
 ) -> None:
     evaluate_funcs = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
@@ -55,17 +57,20 @@ def check_opcua_deployment(
         as_list=as_list,
         detail_level=detail_level,
         resource_kinds=resource_kinds,
+        resource_name=resource_name,
     )
 
 
 def evaluate_core_service_runtime(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate OPC UA broker core service")
 
+    padding = 6
     opcua_runtime_resources: List[dict] = []
-    for label_selector in [OPC_APP_LABEL, OPC_NAME_LABEL]:
+    for label_selector in [OPC_APP_LABEL, OPC_NAME_LABEL, OPC_NAME_VAR_LABEL]:
         opcua_runtime_resources.extend(
             get_namespaced_pods_by_prefix(
                 prefix="",
@@ -74,8 +79,17 @@ def evaluate_core_service_runtime(
             )
         )
 
-    for (namespace, pods) in pods_grouped_by_namespace(opcua_runtime_resources):
-        padding = 6
+    if resource_name:
+        opcua_runtime_resources = filter_resources_by_name(
+            resources=opcua_runtime_resources,
+            resource_name=resource_name,
+        )
+
+        if not opcua_runtime_resources:
+            check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value)
+            check_manager.add_display(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)))
+
+    for (namespace, pods) in resources_grouped_by_namespace(opcua_runtime_resources):
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
@@ -101,11 +115,16 @@ def evaluate_core_service_runtime(
 def evaluate_asset_types(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalAssetTypes", check_desc="Evaluate OPC UA broker asset types")
     asset_type_conditions = ["len(asset_types)>=0"]
 
-    all_asset_types: dict = OPCUA_API_V1.get_resources(OpcuaResourceKinds.ASSET_TYPE).get("items", [])
+    all_asset_types: dict = get_resources_by_name(
+        api_info=OPCUA_API_V1,
+        kind=OpcuaResourceKinds.ASSET_TYPE,
+        resource_name=resource_name,
+    )
     target_asset_types = generate_target_resource_name(api_info=OPCUA_API_V1, resource_kind=OpcuaResourceKinds.ASSET_TYPE.value)
 
     if not all_asset_types:

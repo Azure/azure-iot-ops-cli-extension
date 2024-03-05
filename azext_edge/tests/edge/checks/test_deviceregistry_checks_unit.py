@@ -44,6 +44,13 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize(
+    "resource_name",
+    [
+        "asset-1",
+        "asset*",
+    ]
+)
+@pytest.mark.parametrize(
     "assets, namespace_conditions, namespace_evaluations",
     [
         (
@@ -221,6 +228,7 @@ def test_assets_checks(
     namespace_evaluations,
     mock_generate_deviceregistry_asset_target_resources,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -230,7 +238,7 @@ def test_assets_checks(
     namespace = generate_generic_id()
     for asset in assets:
         asset['metadata']['namespace'] = namespace
-    result = evaluate_assets(detail_level=detail_level)
+    result = evaluate_assets(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalAssets"
     assert result["targets"]["deviceregistry.microsoft.com"]
@@ -245,6 +253,13 @@ def test_assets_checks(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize(
+    "resource_name",
+    [
+        "assetendpointprofile-1",
+        "assetendpointprofile*",
+    ]
+)
 @pytest.mark.parametrize(
     "asset_endpoint_profiles, namespace_conditions, namespace_evaluations",
     [
@@ -406,6 +421,7 @@ def test_asset_endpoint_profiles_checks(
     namespace_evaluations,
     mock_generate_deviceregistry_asset_target_resources,
     detail_level,
+    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -415,7 +431,7 @@ def test_asset_endpoint_profiles_checks(
     namespace = generate_generic_id()
     for asset_endpoint_profile in asset_endpoint_profiles:
         asset_endpoint_profile['metadata']['namespace'] = namespace
-    result = evaluate_asset_endpoint_profiles(detail_level=detail_level)
+    result = evaluate_asset_endpoint_profiles(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalAssetEndpointProfiles"
     assert result["targets"]["deviceregistry.microsoft.com"]

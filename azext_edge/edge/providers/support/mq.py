@@ -10,18 +10,19 @@ from zipfile import ZipInfo
 
 from knack.log import get_logger
 
-from azext_edge.edge.common import AIO_MQ_OPERATOR
+from azext_edge.edge.common import AIO_MQ_OPERATOR, AIO_MQ_RESOURCE_PREFIX
+from azext_edge.edge.providers.edge_api.mq import MqResourceKinds
 
 from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
 from ..stats import get_stats, get_traces
 from .base import (
     assemble_crd_work,
+    get_mq_namespaces,
     process_deployments,
     process_replicasets,
     process_services,
     process_statefulset,
     process_v1_pods,
-    get_mq_namespaces,
 )
 
 logger = get_logger(__name__)
@@ -110,10 +111,29 @@ def fetch_deployments():
 
 
 def fetch_statefulsets():
-    return process_statefulset(
+    processed = process_statefulset(
         resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
     )
+
+    # bridge connector stateful sets have no labels
+    connectors = []
+    for kind in [
+        MqResourceKinds.DATALAKE_CONNECTOR,
+        MqResourceKinds.KAFKA_CONNECTOR,
+        MqResourceKinds.MQTT_BRIDGE_CONNECTOR,
+    ]:
+        connectors.extend(MQ_ACTIVE_API.get_resources(kind=kind).get("items", []))
+
+    for connector in connectors:
+        connector_name = connector.get("metadata", {}).get("name")
+        stateful_set = process_statefulset(
+            resource_api=MQ_ACTIVE_API,
+            field_selector=f"metadata.name={AIO_MQ_RESOURCE_PREFIX}{connector_name}",
+        )
+        processed.extend(stateful_set)
+
+    return processed
 
 
 def fetch_services():

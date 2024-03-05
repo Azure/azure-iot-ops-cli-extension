@@ -15,7 +15,7 @@ import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
 from azext_edge.edge.commands_edge import support_bundle
-from azext_edge.edge.common import AIO_MQ_OPERATOR
+from azext_edge.edge.common import AIO_MQ_OPERATOR, AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api import (
     AKRI_API_V0,
     DATA_PROCESSOR_API_V1,
@@ -27,7 +27,11 @@ from azext_edge.edge.providers.edge_api import (
     ORC_API_V1,
     EdgeResourceApi,
 )
-from azext_edge.edge.providers.support.akri import AKRI_APP_LABEL, AKRI_INSTANCE_LABEL, AKRI_SERVICE_LABEL
+from azext_edge.edge.providers.support.akri import (
+    AKRI_APP_LABEL,
+    AKRI_INSTANCE_LABEL,
+    AKRI_SERVICE_LABEL,
+)
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_INSTANCE_LABEL,
@@ -45,6 +49,7 @@ from azext_edge.edge.providers.support.orc import (
     ORC_CONTROLLER_LABEL,
     ORC_INSTANCE_LABEL,
 )
+from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
 from ...generators import generate_generic_id
@@ -139,7 +144,9 @@ def test_create_bundle(
                 since_seconds=since_seconds,
             )
             assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
-            assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
+            assert_list_stateful_sets(
+                mocked_client, mocked_zipfile, label_selector=MQ_LABEL, field_selector=None, resource_api=MQ_API_V1B1
+            )
             assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
             assert_mq_stats(mocked_zipfile)
 
@@ -187,7 +194,9 @@ def test_create_bundle(
                 resource_api=OPCUA_API_V1,
                 mock_names=["opcplc-0000000"],
             )
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, resource_api=OPCUA_API_V1)
+            assert_list_services(
+                mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, resource_api=OPCUA_API_V1
+            )
             # TODO: one-off field selector remove after label
             assert_list_daemon_sets(
                 mocked_client,
@@ -353,7 +362,9 @@ def test_create_bundle(
             assert_list_replica_sets(
                 mocked_client, mocked_zipfile, label_selector=lnm_app_label, resource_api=LNM_API_V1B1
             )
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=lnm_app_label, resource_api=LNM_API_V1B1)
+            assert_list_services(
+                mocked_client, mocked_zipfile, label_selector=lnm_app_label, resource_api=LNM_API_V1B1
+            )
             # TODO: test both without or with lnm instance
             assert_list_daemon_sets(
                 mocked_client,
@@ -362,8 +373,12 @@ def test_create_bundle(
                 resource_api=LNM_API_V1B1,
                 mock_names=["svclb-aio-lnm-operator"],
             )
-        # assert shared KPIs regardless of service
-        assert_shared_kpis(mocked_client, mocked_zipfile)
+
+    if expected_resources:
+        assert_otel_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
+
+    # assert shared KPIs regardless of service
+    assert_shared_kpis(mocked_client, mocked_zipfile)
 
 
 def asset_raises_not_found_error(mocked_cluster_resources):
@@ -515,8 +530,16 @@ def assert_list_persistent_volume_claims(
     )
 
 
-def assert_list_stateful_sets(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
-    mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
+def assert_list_stateful_sets(
+    mocked_client,
+    mocked_zipfile,
+    resource_api: EdgeResourceApi,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+):
+    mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
 
     assert_zipfile_write(
         mocked_zipfile,
@@ -569,6 +592,24 @@ def assert_list_daemon_sets(
 
 def assert_mq_stats(mocked_zipfile):
     assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/mq/diagnostic_metrics.txt", data="metrics")
+
+
+def assert_otel_kpis(
+    mocked_client,
+    mocked_zipfile,
+    mocked_list_pods,
+):
+    for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_replica_sets]:
+        kwargs = {
+            "mocked_client": mocked_client,
+            "mocked_zipfile": mocked_zipfile,
+            "label_selector": OTEL_NAME_LABEL,
+            "resource_api": OTEL_API,
+        }
+        if assert_func == assert_list_pods:
+            kwargs["mocked_list_pods"] = mocked_list_pods
+
+        assert_func(**kwargs)
 
 
 def assert_shared_kpis(mocked_client, mocked_zipfile):
@@ -626,6 +667,65 @@ def test_get_bundle_path(mocked_os_makedirs):
     path = get_bundle_path()
     expected = f"{join(abspath('.'), 'support_bundle_')}"
     assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
+
+
+# TODO - test zipfile write for specific resources
+# MQ connector stateful sets need labels based on connector names
+@pytest.mark.parametrize(
+    "mocked_cluster_resources",
+    [[MQ_API_V1B1]],
+    indirect=True,
+)
+@pytest.mark.parametrize(
+    "custom_objects",
+    [
+        # connectors present
+        {
+            "items": [
+                {
+                    "metadata": {"name": "mock-connector", "namespace": "mock-namespace"},
+                },
+                {
+                    "metadata": {"name": "mock-connector2", "namespace": "mock-namespace2"},
+                },
+            ]
+        },
+        # no connectors
+        {"items": []},
+    ],
+)
+def test_mq_list_stateful_sets(
+    mocker,
+    mocked_config,
+    mocked_client,
+    mocked_cluster_resources,
+    custom_objects,
+):
+
+    # mock MQ support bundle to return connectors
+    mocked_mq_support_active_api = mocker.patch("azext_edge.edge.providers.support.mq.MQ_ACTIVE_API")
+    mocked_mq_support_active_api.get_resources.return_value = custom_objects
+    result = support_bundle(None, bundle_dir=a_bundle_dir, ops_service="mq")
+    assert result
+
+    # assert initial call to list stateful sets
+    mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
+        label_selector=MQ_LABEL, field_selector=None
+    )
+
+    # TODO - assert zipfile write of generic statefulset
+    if not custom_objects["items"]:
+        mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_called_once()
+
+    # assert secondary connector calls to list stateful sets
+    for item in custom_objects["items"]:
+        item_name = item["metadata"]["name"]
+        statefulset_name = f"{AIO_MQ_RESOURCE_PREFIX}{item_name}"
+        selector = f"metadata.name={statefulset_name}"
+        mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
+            label_selector=None, field_selector=selector
+        )
+        # TODO - assert zipfile write of individual connector statefulset
 
 
 @pytest.mark.parametrize(

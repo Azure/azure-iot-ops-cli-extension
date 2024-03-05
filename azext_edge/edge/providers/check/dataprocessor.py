@@ -12,6 +12,7 @@ from .base import (
     check_post_deployment,
     evaluate_pod_health,
     generate_target_resource_name,
+    get_resources_by_name,
     process_properties,
     process_property_by_type,
     resources_grouped_by_namespace,
@@ -25,6 +26,8 @@ from ...common import (
 )
 
 from .common import (
+    DATA_PROCESSOR_AUTHENTICATION_REQUIRED_PROPERTIES,
+    DATA_PROCESSOR_AUTHENTICATION_SECRET_REF,
     DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES,
     DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES,
     DATA_PROCESSOR_NATS_PREFIX,
@@ -32,8 +35,12 @@ from .common import (
     DATA_PROCESSOR_READER_WORKER_PREFIX,
     DATA_PROCESSOR_REFDATA_STORE_PREFIX,
     DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
+    DATA_PROCESSOR_SOURCE_REQUIRED_PROPERTIES,
+    DATA_PROCESSOR_SOURCE_DISPLAY_PROPERTIES,
     ERROR_NO_DETAIL,
     PADDING_SIZE,
+    DataSourceStageType,
+    DataprocessorAuthenticationType,
     ResourceOutputDetailLevel,
 )
 
@@ -43,11 +50,13 @@ from ..edge_api import (
 )
 
 
+# TODO: @jiacju refactor this file since it's becoming too long
 def check_dataprocessor_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    resource_kinds: List[str] = None
+    resource_kinds: List[str] = None,
+    resource_name: str = None,
 ) -> None:
     evaluate_funcs = {
         DataProcessorResourceKinds.INSTANCE: evaluate_instances,
@@ -61,6 +70,7 @@ def check_dataprocessor_deployment(
         check_desc="Enumerate Data Processor API resources",
         result=result,
         resource_kinds_enum=DataProcessorResourceKinds,
+        resource_name=resource_name,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
@@ -71,35 +81,34 @@ def check_dataprocessor_deployment(
 def evaluate_instances(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Data processor instance")
 
     instance_namespace_conditions = ["len(instances)==1", "provisioningStatus"]
-    instance_all_conditions = ["instances"]
 
-    instance_resources: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.INSTANCE)
     target_instances = generate_target_resource_name(api_info=DATA_PROCESSOR_API_V1, resource_kind=DataProcessorResourceKinds.INSTANCE.value)
-    check_manager.add_target(target_name=target_instances, conditions=instance_all_conditions)
-    all_instances: list = instance_resources.get("items", []) if instance_resources else []
+
+    all_instances = get_resources_by_name(
+        api_info=DATA_PROCESSOR_API_V1,
+        kind=DataProcessorResourceKinds.INSTANCE,
+        resource_name=resource_name
+    )
 
     if not all_instances:
+        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_instances_error_text = f"Unable to fetch {DataProcessorResourceKinds.INSTANCE.value}s in any namespaces."
+        check_manager.add_target(target_name=target_instances)
         check_manager.add_target_eval(
             target_name=target_instances,
-            status=CheckTaskStatus.error.value,
-            value={"instances": None}
+            status=status,
+            value=fetch_instances_error_text
         )
         check_manager.add_display(
             target_name=target_instances,
             display=Padding(fetch_instances_error_text, (0, 0, 0, 8))
         )
         return check_manager.as_dict(as_list)
-
-    check_manager.add_target_eval(
-        target_name=target_instances,
-        status=CheckTaskStatus.success.value,
-        value={"instances": len(all_instances)}
-    )
 
     for (namespace, instances) in resources_grouped_by_namespace(all_instances):
         check_manager.add_target(target_name=target_instances, namespace=namespace, conditions=instance_namespace_conditions)
@@ -208,43 +217,42 @@ def evaluate_instances(
 def evaluate_pipelines(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalPipelines", check_desc="Evaluate Data processor pipeline")
 
     target_pipelines = generate_target_resource_name(api_info=DATA_PROCESSOR_API_V1, resource_kind=DataProcessorResourceKinds.PIPELINE.value)
-    pipeline_all_conditions = ["pipelines"]
     pipeline_namespace_conditions = [
         "len(pipelines)>=1",
         "mode.enabled",
         "provisioningStatus",
         "sourceNodeCount == 1",
-        "len(spec.input.topics)>=1",
         "spec.input.partitionCount>=1",
+        "format.type",
+        "authentication.type",
         "destinationNodeCount==1"
     ]
 
-    check_manager.add_target(target_name=target_pipelines, conditions=pipeline_all_conditions)
-    all_pipelines: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.PIPELINE).get("items", [])
+    all_pipelines = get_resources_by_name(
+        api_info=DATA_PROCESSOR_API_V1,
+        kind=DataProcessorResourceKinds.PIPELINE,
+        resource_name=resource_name
+    )
     padding = 8
 
     if not all_pipelines:
+        check_manager.add_target(target_name=target_pipelines)
         fetch_pipelines_error_text = f"Unable to fetch {DataProcessorResourceKinds.PIPELINE.value}s in any namespaces."
         check_manager.add_target_eval(
             target_name=target_pipelines,
             status=CheckTaskStatus.skipped.value,
-            value={"pipelines": None}
+            value=fetch_pipelines_error_text
         )
         check_manager.add_display(
             target_name=target_pipelines,
             display=Padding(fetch_pipelines_error_text, (0, 0, 0, padding))
         )
         return check_manager.as_dict(as_list)
-
-    check_manager.add_target_eval(
-        target_name=target_pipelines,
-        status=CheckTaskStatus.success.value,
-        value={"pipelines": len(all_pipelines)}
-    )
 
     for (namespace, pipelines) in resources_grouped_by_namespace(all_pipelines):
         check_manager.add_target(target_name=target_pipelines, namespace=namespace, conditions=pipeline_namespace_conditions)
@@ -397,33 +405,31 @@ def evaluate_pipelines(
 def evaluate_datasets(
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalDatasets", check_desc="Evaluate Data processor dataset")
 
     target_datasets = generate_target_resource_name(api_info=DATA_PROCESSOR_API_V1, resource_kind=DataProcessorResourceKinds.DATASET.value)
-    dataset_all_conditions = ["datasets"]
     dataset_namespace_conditions = ["provisioningState"]
-    check_manager.add_target(target_name=target_datasets, conditions=dataset_all_conditions)
     padding = 8
 
-    all_datasets: dict = DATA_PROCESSOR_API_V1.get_resources(DataProcessorResourceKinds.DATASET).get("items", [])
+    all_datasets = get_resources_by_name(
+        api_info=DATA_PROCESSOR_API_V1,
+        kind=DataProcessorResourceKinds.DATASET,
+        resource_name=resource_name
+    )
 
     if not all_datasets:
+        check_manager.add_target(target_name=target_datasets)
         fetch_datasets_warn_text = f"Unable to fetch {DataProcessorResourceKinds.DATASET.value}s in any namespaces."
         add_display_and_eval(
             check_manager=check_manager,
             target_name=target_datasets,
             display_text=fetch_datasets_warn_text,
             eval_status=CheckTaskStatus.skipped.value,
-            eval_value={"datasets": None}
+            eval_value=fetch_datasets_warn_text
         )
         return check_manager.as_dict(as_list)
-
-    check_manager.add_target_eval(
-        target_name=target_datasets,
-        status=CheckTaskStatus.success.value,
-        value={"datasets": len(all_datasets)}
-    )
 
     for (namespace, datasets) in resources_grouped_by_namespace(all_datasets):
         check_manager.add_target(target_name=target_datasets, namespace=namespace, conditions=dataset_namespace_conditions)
@@ -596,17 +602,19 @@ def _evaluate_source_node(
     padding: int,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
+    # required properties
+    required_specific_properties = DATA_PROCESSOR_SOURCE_REQUIRED_PROPERTIES
 
     # check data source node count
     pipeline_source_node_count = 1 if pipeline_source_node else 0
-    source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] MQTT data source node. [green]Detected {pipeline_source_node_count}[/green]."
+    source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] data source node. [green]Detected {pipeline_source_node_count}[/green]."
 
     pipeline_source_count_eval_value = {"sourceNodeCount": pipeline_source_node_count}
     pipeline_source_count_eval_status = CheckTaskStatus.success.value
 
     if pipeline_source_node_count != 1:
         pipeline_source_count_eval_status = CheckTaskStatus.error.value
-        source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] MQTT data source node. {{[red]Detected {pipeline_source_node_count}[/red]}}."
+        source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] data source node. {{[red]Detected {pipeline_source_node_count}[/red]}}."
     add_display_and_eval(
         check_manager=check_manager,
         target_name=target_pipelines,
@@ -618,72 +626,57 @@ def _evaluate_source_node(
         namespace=namespace
     )
 
-    # check data source topics
-    pipeline_source_node_topics = pipeline_source_node["topics"]
-    pipeline_source_node_topics_count = len(pipeline_source_node_topics)
-    source_topics_display_text = f"- Expecting [bright_blue]>=1[/bright_blue] and [bright_blue]<=50[/bright_blue] topics. [green]Detected {pipeline_source_node_topics_count}[/green]."
-
-    pipeline_source_topics_eval_value = {"len(spec.input.topics)": pipeline_source_node_topics_count}
-    pipeline_source_topics_eval_status = CheckTaskStatus.success.value
-
-    if pipeline_source_node_topics_count < 1 or pipeline_source_node_topics_count > 50:
-        pipeline_source_topics_eval_status = CheckTaskStatus.error.value
-
     property_padding = padding + PADDING_SIZE
+
+    # get data source type
+    stage_type = pipeline_source_node["type"]
+
+    stage_display_text = f"Stage type: {{[cyan]{stage_type}[/cyan]}}"
     check_manager.add_display(
         target_name=target_pipelines,
         namespace=namespace,
-        display=Padding(source_topics_display_text, (0, 0, 0, property_padding))
+        display=Padding(stage_display_text, (0, 0, 0, property_padding))
     )
 
-    check_manager.add_target_eval(
-        target_name=target_pipelines,
-        status=pipeline_source_topics_eval_status,
-        value=pipeline_source_topics_eval_value,
-        resource_name=pipeline_name,
-        namespace=namespace
-    )
+    # check specific required properties
+    # fine the matching enum for stage_type, which should start with the enum value
+    stage_type_value = next((e for e in DataSourceStageType.list() if stage_type.startswith(e)), None)
+    stage_required_properties = required_specific_properties.get(stage_type_value, [])
+    for prop in stage_required_properties:
+        prop_value = pipeline_source_node.get(prop, "")
+        prop_status = CheckTaskStatus.success.value
+        # capitalize the first letter of the property
+        prop_label = prop.capitalize()
+        prop_display_text = f"{prop_label}: [cyan]{prop_value}[/cyan] [green]detected[/green]."
+        check_manager.add_target_conditions(
+            target_name=target_pipelines,
+            namespace=namespace,
+            conditions=[f"spec.input.{prop}"]
+        )
 
-    if detail_level != ResourceOutputDetailLevel.summary.value:
-        # data source topics detail
-        for topic in pipeline_source_node_topics:
-            topic_display_text = f"Topic {{[bright_blue]{topic}[/bright_blue]}} detected."
+        if not prop_value:
+            prop_status = CheckTaskStatus.error.value
+            prop_display_text = f"{prop} [red]not detected[/red]."
+
+        if detail_level != ResourceOutputDetailLevel.summary.value:
             check_manager.add_display(
                 target_name=target_pipelines,
                 namespace=namespace,
-                display=Padding(topic_display_text, (0, 0, 0, property_padding + PADDING_SIZE))
+                display=Padding(prop_display_text, (0, 0, 0, property_padding))
             )
 
-        # data source broker URL
-        pipeline_source_node_broker = pipeline_source_node["broker"]
-        source_broker_display_text = f"- Broker URL: [bright_blue]{pipeline_source_node_broker}[/bright_blue]"
-
-        check_manager.add_display(
+        check_manager.add_target_eval(
             target_name=target_pipelines,
             namespace=namespace,
-            display=Padding(source_broker_display_text, (0, 0, 0, property_padding)))
-
-        # data source message format type
-        pipeline_source_node_format_type = pipeline_source_node["format"]["type"]
-        source_format_type_display_text = f"- Source message type: [bright_blue]{pipeline_source_node_format_type}[/bright_blue]"
-        check_manager.add_display(
-            target_name=target_pipelines,
-            namespace=namespace,
-            display=Padding(source_format_type_display_text, (0, 0, 0, property_padding))
+            status=prop_status,
+            value={f"spec.input.{prop}": prop_value},
+            resource_name=pipeline_name
         )
 
-        # data source qos
-        pipeline_source_node_qos = pipeline_source_node["qos"]
-        source_qos_display_text = f"- QoS: [bright_blue]{pipeline_source_node_qos}[/bright_blue]"
-        check_manager.add_display(
-            target_name=target_pipelines,
-            namespace=namespace,
-            display=Padding(source_qos_display_text, (0, 0, 0, property_padding))
-        )
-
+    # check common properties
     # check data source partition
     pipeline_source_node_partition_count = pipeline_source_node["partitionCount"]
-    source_partition_count_display_text = "- Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. {}."
+    source_partition_count_display_text = "Expecting the number of partition [bright_blue]>=1[/bright_blue] and [bright_blue]<=100[/bright_blue]. {}."
 
     pipeline_source_partition_eval_value = {"spec.input.partitionCount": pipeline_source_node_partition_count}
     pipeline_source_partition_eval_status = CheckTaskStatus.success.value
@@ -701,11 +694,11 @@ def _evaluate_source_node(
 
     if detail_level != ResourceOutputDetailLevel.summary.value:
         pipeline_source_node_partition_strategy = pipeline_source_node["partitionStrategy"]["type"]
-        source_partition_strategy_display_text = f"The type of partitioning strategy is {{[bright_blue]{pipeline_source_node_partition_strategy}[/bright_blue]}}."
+        source_partition_strategy_display_text = f"Partitioning strategy type: [cyan]{pipeline_source_node_partition_strategy}[/cyan]."
         check_manager.add_display(
             target_name=target_pipelines,
             namespace=namespace,
-            display=Padding(source_partition_strategy_display_text, (0, 0, 0, property_padding + PADDING_SIZE))
+            display=Padding(source_partition_strategy_display_text, (0, 0, 0, property_padding))
         )
 
     check_manager.add_target_eval(
@@ -716,30 +709,49 @@ def _evaluate_source_node(
         resource_name=pipeline_name
     )
 
-    # data source authentication
-    pipeline_source_node_authentication = pipeline_source_node["authentication"]["type"]
-    if pipeline_source_node_authentication == "usernamePassword":
-        source_authentication_display_text = f"- Authentication type: [bright_blue]{pipeline_source_node_authentication}[/bright_blue]"
-        check_manager.add_display(
-            target_name=target_pipelines,
-            namespace=namespace,
-            display=Padding(source_authentication_display_text, (0, 0, 0, property_padding))
-        )
+    # check format
+    pipeline_source_node_format = pipeline_source_node.get("format", {})
+    format_type = pipeline_source_node_format.get("type", "")
+    format_type_status = CheckTaskStatus.success.value
+    format_type_display_text = f"Format: [cyan]{pipeline_source_node_format}[/cyan] [green]detected[/green]."
+    if not format_type:
+        format_type_status = CheckTaskStatus.error.value
+        format_type_display_text = "Format: type [red]not detected[/red]."
 
-        if detail_level != ResourceOutputDetailLevel.summary.value:
-            authentication_username = pipeline_source_node["authentication"]["username"]
-            authentication_password = pipeline_source_node["authentication"]["password"]
-            masked_password = '*' * len(authentication_password)
-            check_manager.add_display(
-                target_name=target_pipelines,
-                namespace=namespace,
-                display=Padding(f"Username: [cyan]{authentication_username}[/cyan]", (0, 0, 0, property_padding + PADDING_SIZE))
-            )
-            check_manager.add_display(
-                target_name=target_pipelines,
-                namespace=namespace,
-                display=Padding(f"Password: [cyan]{masked_password}[/cyan]", (0, 0, 0, property_padding + PADDING_SIZE))
-            )
+    check_manager.add_display(
+        target_name=target_pipelines,
+        namespace=namespace,
+        display=Padding(format_type_display_text, (0, 0, 0, property_padding))
+    )
+
+    check_manager.add_target_eval(
+        target_name=target_pipelines,
+        namespace=namespace,
+        status=format_type_status,
+        value={"format.type": format_type},
+        resource_name=pipeline_name
+    )
+
+    _evaluate_authentication(
+        pipeline_source_node=pipeline_source_node,
+        target_pipelines=target_pipelines,
+        pipeline_name=pipeline_name,
+        check_manager=check_manager,
+        namespace=namespace,
+        padding=property_padding,
+        detail_level=detail_level
+    )
+
+    if detail_level != ResourceOutputDetailLevel.summary.value:
+        _process_stage_properties(
+            check_manager,
+            detail_level,
+            target_name=target_pipelines,
+            stage=pipeline_source_node,
+            stage_properties=DATA_PROCESSOR_SOURCE_DISPLAY_PROPERTIES,
+            padding=(0, 0, 0, property_padding),
+            namespace=namespace
+        )
 
 
 def _evaluate_intermediate_nodes(
@@ -829,3 +841,75 @@ def _evaluate_destination_node(
                 padding=(0, 0, 0, property_padding),
                 namespace=namespace
             )
+
+
+def _evaluate_authentication(
+    pipeline_source_node: Dict[str, Any],
+    target_pipelines: str,
+    pipeline_name: str,
+    check_manager: CheckManager,
+    namespace: str,
+    padding: int,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> None:
+    def add_verbose_display(
+        check_manager: CheckManager,
+        target_pipelines: str,
+        namespace: str,
+        padding: int,
+        details: int = ResourceOutputDetailLevel.summary.value,
+    ):
+        for detail in details:
+            if detail["value"]:
+                label: str = detail["label"]
+                if label.endswith("Password") or label.endswith("Secret"):
+                    label += f" {DATA_PROCESSOR_AUTHENTICATION_SECRET_REF}"
+
+                check_manager.add_display(
+                    target_name=target_pipelines,
+                    namespace=namespace,
+                    display=Padding(f"{label}: [cyan]{detail['value']}[/cyan]", (0, 0, 0, padding + PADDING_SIZE))
+                )
+
+    auth_info = pipeline_source_node.get("authentication", {})
+    auth_type = auth_info.get("type", "")
+
+    if detail_level > ResourceOutputDetailLevel.summary.value:
+        authentication_display_text = f"Authentication type: [cyan]{auth_type}[/cyan]"
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(authentication_display_text, (0, 0, 0, padding))
+        )
+
+    authentication_status = CheckTaskStatus.success.value
+    authentication_error_text = ""
+    details_to_display = []
+
+    if auth_type in DataprocessorAuthenticationType.list():
+        required_fields = DATA_PROCESSOR_AUTHENTICATION_REQUIRED_PROPERTIES[auth_type]
+
+        missing_fields = [field for field in required_fields if not auth_info.get(field)]
+        if missing_fields:
+            authentication_error_text = ", ".join(missing_fields) + " [red]not detected[/red]."
+            authentication_status = CheckTaskStatus.error.value
+
+        if detail_level == ResourceOutputDetailLevel.verbose.value:
+            details_to_display = [{"label": field.capitalize(), "value": auth_info.get(field)} for field in required_fields]
+
+    add_verbose_display(check_manager, target_pipelines, namespace, padding, details_to_display)
+
+    if authentication_error_text:
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(authentication_error_text, (0, 0, 0, padding + PADDING_SIZE))
+        )
+
+    check_manager.add_target_eval(
+        target_name=target_pipelines,
+        namespace=namespace,
+        status=authentication_status,
+        value={"authentication.type": auth_type},
+        resource_name=pipeline_name
+    )

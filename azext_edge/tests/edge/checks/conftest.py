@@ -141,12 +141,14 @@ def assert_dict_props(path: str, expected: str, obj: Dict[str, str]):
     val = obj
     for key in path.split("/"):
         val = val[key]
-    if isinstance(val, list):
-        assert expected in val
-    elif isinstance(val, dict):
-        assert expected in val.values() or expected == val
-    else:
+
+    try:
         assert val == expected
+    except AssertionError:
+        # check if val is list/dict
+        if isinstance(val, dict):
+            val = val.values()
+        assert expected in val
 
 
 def assert_conditions(target: Dict[str, Any], conditions: List[str]):
@@ -170,7 +172,7 @@ def generate_resource_stub(
     resource = {}
 
     # fill metadata
-    resource["metadata"] = {"namespace": "mock_namespace", "name": "mock_name"}
+    resource["metadata"] = {"namespace": "mock_namespace", "name": "mock-name"}
     resource["spec"] = {}
     resource["status"] = {}
 

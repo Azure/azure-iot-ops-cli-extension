@@ -23,6 +23,16 @@ class ResourceOutputDetailLevel(ListableEnum):
     verbose = "2"  # verbose
 
 
+class DataSourceStageType(ListableEnum):
+    """
+    Data source stage type.
+    """
+    http = "input/http"
+    influxdb = "input/influxdb"
+    mqtt = "input/mqtt"
+    sql = "input/mssql"
+
+
 class DataProcessorStageType(ListableEnum):
     """
     Data processor stage type.
@@ -49,7 +59,46 @@ class DataprocessorDestinationStageType(ListableEnum):
     reference_data = "output/refdata"
 
 
+class DataprocessorAuthenticationType(ListableEnum):
+    """
+    Data processor authentication type.
+    """
+    accessKey = "accessKey"
+    accessToken = "accessToken"
+    header = "header"
+    metadata = "metadata"
+    none = "none"
+    serviceAccountToken = "serviceAccountToken"
+    servicePrincipal = "servicePrincipal"
+    systemAssignedManagedIdentity = "systemAssignedManagedIdentity"
+    usernamePassword = "usernamePassword"
+
+
 ERROR_NO_DETAIL = "<No detail available>"
+
+DATA_PROCESSOR_SOURCE_REQUIRED_PROPERTIES = {
+    DataSourceStageType.mqtt.value: ["broker", "topics"],
+    DataSourceStageType.sql.value: ["query", "server", "database", "interval"],
+    DataSourceStageType.influxdb.value: ["query", "url", "interval", "organization"],
+    DataSourceStageType.http.value: ["url", "interval"],
+}
+
+DATA_PROCESSOR_SOURCE_DISPLAY_PROPERTIES = {
+    DataSourceStageType.http.value: [
+        ("method", "Request method", True),
+        ("request", "HTTP request", True),
+    ],
+    DataSourceStageType.influxdb.value: [
+        ("port", "Port", True),
+    ],
+    DataSourceStageType.mqtt.value: [
+        ("qos", "MQTT QoS", True),
+        ("cleanSession", "MQTT Clean Session", True),
+    ],
+    DataSourceStageType.sql.value: [
+        ("port", "Port", True),
+    ],
+}
 
 DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES = {
     DataProcessorStageType.aggregate.value: [
@@ -125,6 +174,20 @@ DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES = {
     ],
     DataprocessorDestinationStageType.reference_data.value: [("dataset", "Dataset ID", False)]
 }
+
+DATA_PROCESSOR_AUTHENTICATION_REQUIRED_PROPERTIES = {
+    DataprocessorAuthenticationType.accessToken.value: ["accessToken"],
+    DataprocessorAuthenticationType.accessKey.value: ["accessKey"],
+    DataprocessorAuthenticationType.header.value: ["key", "value"],
+    DataprocessorAuthenticationType.metadata.value: ["key", "value"],
+    DataprocessorAuthenticationType.none.value: [],
+    DataprocessorAuthenticationType.serviceAccountToken.value: [],
+    DataprocessorAuthenticationType.servicePrincipal.value: ["tenantId", "clientId", "clientSecret"],
+    DataprocessorAuthenticationType.systemAssignedManagedIdentity.value: [],
+    DataprocessorAuthenticationType.usernamePassword.value: ["username", "password"],
+}
+
+DATA_PROCESSOR_AUTHENTICATION_SECRET_REF = "(Secret reference)"
 
 LNM_ALLOWLIST_PROPERTIES = [
     ("domains", "[bright_blue]Domains[/bright_blue]", False),

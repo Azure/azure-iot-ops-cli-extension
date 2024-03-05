@@ -56,6 +56,7 @@ def check(
     context_name=None,
     ops_service: str = "mq",
     resource_kinds: List[str] = None,
+    resource_name: str = None,
 ) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
@@ -71,6 +72,7 @@ def check(
         ops_service=ops_service,
         detail_level=detail_level,
         as_list=not as_object,
+        resource_name=resource_name,
         pre_deployment=run_pre,
         post_deployment=run_post,
         resource_kinds=resource_kinds,

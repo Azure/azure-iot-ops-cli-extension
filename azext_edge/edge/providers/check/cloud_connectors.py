@@ -5,22 +5,21 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from rich.padding import Padding
+
+from ...common import AIO_MQ_RESOURCE_PREFIX, CheckTaskStatus
+from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
+from ..support.mq import MQ_LABEL
 from .base import (
     CheckManager,
     evaluate_pod_health,
     filter_by_namespace,
-    get_resource_name,
+    filter_resources_by_name,
+    get_resource_metadata_property,
     resources_grouped_by_namespace,
 )
-
-from rich.padding import Padding
-
-from ...common import CheckTaskStatus
-
 from .common import PADDING_SIZE, ResourceOutputDetailLevel
-
-from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
-from ..support.mq import MQ_LABEL
 
 
 def process_cloud_connector(
@@ -39,6 +38,7 @@ def process_cloud_connector(
     ],
     detail_level: str = ResourceOutputDetailLevel.summary.value,
     as_list: bool = False,
+    connector_resource_name: str = None,
 ):
     # Create check manager
     check_manager = CheckManager(
@@ -56,6 +56,14 @@ def process_cloud_connector(
         "items", []
     )
 
+    if connector_resource_name:
+        all_connectors, all_topic_maps = filter_connector_and_topic_map_resources(
+            connector_resource_name=connector_resource_name,
+            topic_map_reference_key=topic_map_reference_key,
+            all_connectors=all_connectors,
+            all_topic_maps=all_topic_maps,
+        )
+
     # if we have no connectors of this type, mark as skipped
     if not all_connectors:
         _mark_connector_target_as_skipped(
@@ -64,7 +72,7 @@ def process_cloud_connector(
             message=f"No {connector_display_name} resources detected",
             padding=connector_padding,
         )
-        if detail_level != ResourceOutputDetailLevel.summary.value:
+        if detail_level != ResourceOutputDetailLevel.summary.value and not connector_resource_name:
             for topic_maps, namespace in resources_grouped_by_namespace(
                 all_topic_maps
             ):
@@ -99,7 +107,7 @@ def process_cloud_connector(
 
         connector_list = list(connectors)
         for connector in connector_list:
-            connector_name = get_resource_name(connector)
+            connector_name = get_resource_metadata_property(connector, prop_name="name")
             # display connector info
             connector_display_func(
                 check_manager=check_manager,
@@ -185,12 +193,46 @@ def process_cloud_connector(
     return check_manager.as_dict(as_list)
 
 
+def filter_connector_and_topic_map_resources(
+    connector_resource_name: str,
+    topic_map_reference_key: str,
+    all_connectors: List[Dict[str, Any]],
+    all_topic_maps: List[Dict[str, Any]],
+) -> Tuple[list, list]:
+    filtered_connectors = filter_resources_by_name(
+        resources=all_connectors, resource_name=connector_resource_name
+    )
+
+    all_connectors = filtered_connectors
+
+    # get (name, namespace) tuples for filtered connectors
+    filtered_connectors_properties = [
+        (
+            get_resource_metadata_property(connector, prop_name="name"),
+            get_resource_metadata_property(connector, prop_name="namespace")
+        ) for connector in filtered_connectors
+    ]
+
+    # filter out topic maps with both connector name and namespace
+    all_topic_maps = [
+        map
+        for map in all_topic_maps
+        if (
+            map.get("spec", {}).get(topic_map_reference_key),
+            get_resource_metadata_property(map, prop_name="namespace"),
+        )
+        in filtered_connectors_properties
+    ]
+
+    return all_connectors, all_topic_maps
+
+
 def _display_connector_runtime_health(
     check_manager: CheckManager,
     namespace: str,
     target: str,
     connectors: Optional[List[Dict[str, Any]]] = None,
-    prefix: str = "aio-mq-",
+    prefix: str = AIO_MQ_RESOURCE_PREFIX,
     padding: int = 8,
 ):
     if connectors:
@@ -226,7 +268,7 @@ def _display_invalid_topic_maps(
     padding: tuple,
 ):
     for map in topic_maps:
-        name = get_resource_name(map)
+        name = get_resource_metadata_property(map, prop_name="name")
         ref = map.get("spec", {}).get(ref_key)
         check_manager.add_display(
             target_name=target,
