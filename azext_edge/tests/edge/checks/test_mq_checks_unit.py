@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.providers.check.cloud_connectors import filter_connector_and_topic_map_resources
 import pytest
 from functools import partial
