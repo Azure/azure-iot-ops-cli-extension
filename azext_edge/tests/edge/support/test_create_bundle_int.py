@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from os import mkdir, walk
+from os import mkdir, path, walk
 from shutil import unpack_archive, rmtree
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
@@ -54,26 +54,26 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     namespace = level_0["folders"][0]
 
     # Level 1
-    level_1 = walk_result.pop(f"{extracted_path}\\{namespace}")
+    level_1 = walk_result.pop(path.join(extracted_path, namespace))
     expected_services = [ops_service]
     if ops_service == OpsServiceType.auto.value:
         # these should always be generated
         expected_services = ["akri", "dataprocessor", "lnm", "mq", "opcua", "orc"]
         # device registry folder will not be created if there are no device registry resources
-        if walk_result.get(f"{extracted_path}\\{namespace}\\deviceregistry"):
+        if walk_result.get(path.join(extracted_path, namespace, "deviceregistry")):
             expected_services.insert(2, "deviceregistry")
     assert level_1["folders"] == expected_services
     assert not level_1["files"]
 
     # Check and take out mq traces:
     if mq_traces and ops_service in [OpsServiceType.mq.value, OpsServiceType.auto.value]:
-        mq_level = walk_result.pop(f"{extracted_path}\\{namespace}\\mq\\traces")
+        mq_level = walk_result.pop(path.join(extracted_path, namespace, "mq", "traces"))
         assert not mq_level["folders"]
         for name in mq_level["files"]:
             assert name.split(".")[-1] in ["json", "pb"]
         # make sure level 2 doesnt get messed up
-        assert walk_result[f"{extracted_path}\\{namespace}\\mq"]["folders"] == ["traces"]
-        walk_result[f"{extracted_path}\\{namespace}\\mq"]["folders"] = []
+        assert walk_result[path.join(extracted_path, namespace, "mq")]["folders"] == ["traces"]
+        walk_result[path.join(extracted_path, namespace, "mq")]["folders"] = []
 
     # Level 2 and 3 - bottom
     assert len(walk_result) == len(expected_services)
