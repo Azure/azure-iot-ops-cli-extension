@@ -20,7 +20,11 @@ from .conftest import (
     generate_resource_stub,
 )
 from ...generators import generate_generic_id
-from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel, DataSourceStageType
+from azext_edge.edge.providers.check.common import (
+    ALL_NAMESPACES_TARGET,
+    ResourceOutputDetailLevel,
+    DataSourceStageType,
+)
 
 
 @pytest.mark.parametrize(
@@ -158,17 +162,26 @@ def test_instance_checks(
                         },
                         "stages": {
                             "stage1": {
-                                "type": "intermediate",
-                                "properties": {
-                                    "property1": "value1",
-                                    "property2": "value2"
-                                }
+                                "type": "processor/enrich@v1",
+                                "dataset": "vendorData",
+                                "outputPath": ".payload.vendor",
+                                "conditions": [
+                                    {
+                                        "type": "pastNearest",
+                                        "inputPath": ".payload.ts"
+                                    }
+                                ],
                             },
                             "stage2": {
-                                "type": "output",
-                                "properties": {
-                                    "property1": "value1",
-                                    "property2": "value2"
+                                "displayName": "HTTP Output Example",
+                                "description": "Sample HTTP output stage",
+                                "type": "output/http@v1",
+                                "url": "https://contoso.com/some/url/path",
+                                "method": "POST",
+                                "authentication": {
+                                    "type": "usernamePassword",
+                                    "username": "test-user",
+                                    "password": "test-password"
                                 }
                             }
                         }
@@ -223,15 +236,19 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
-                    ("value/format.type", "json"),
+                    ("value/input.format.type", "json"),
                 ],
                 [
                     ("status", "success"),
-                    ("value/authentication.type", "usernamePassword"),
+                    ("value/input.authentication.type", "usernamePassword"),
                 ],
                 [
                     ("status", "success"),
                     ("value/destinationNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/stage2.authentication.type", "usernamePassword"),
                 ]
             ],
         ),
@@ -267,17 +284,30 @@ def test_instance_checks(
                         },
                         "stages": {
                             "stage1": {
-                                "type": "intermediate",
-                                "properties": {
-                                    "property1": "value1",
-                                    "property2": "value2"
-                                }
+                                "displayName": "Filter Example",
+                                "description": "Sample filter stage",
+                                "type": "processor/filter@v1",
+                                "expression": ".payload.temperature > 50 and .payload.humidity < 20",
                             },
                             "stage2": {
-                                "type": "output",
-                                "properties": {
-                                    "property1": "value1",
-                                    "property2": "value2"
+                                "displayName": "Sample blobstorage output",
+                                "description": "An example blobstorage output stage",
+                                "type": "output/blobstorage@v1",
+                                "accountName": "myStorageAccount",
+                                "containerName": "mycontainer",
+                                "blobPath": "path",
+                                "authentication": {
+                                    "type": "systemAssignedManagedIdentity"
+                                },
+                                "format": {
+                                    "type": "json"
+                                },
+                                "batch": {
+                                    "time": "60s",
+                                    "path": ".payload"
+                                },
+                                "retry": {
+                                    "type": "fixed"
                                 }
                             }
                         }
@@ -342,15 +372,23 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
-                    ("value/format.type", "json"),
+                    ("value/input.format.type", "json"),
                 ],
                 [
                     ("status", "success"),
-                    ("value/authentication.type", "servicePrincipal"),
+                    ("value/input.authentication.type", "servicePrincipal"),
                 ],
                 [
                     ("status", "success"),
                     ("value/destinationNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/stage2.format.type", "json"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/stage2.authentication.type", "systemAssignedManagedIdentity"),
                 ]
             ],
         ),
@@ -398,18 +436,43 @@ def test_instance_checks(
                         },
                         "stages": {
                             "stage1": {
-                                "type": "intermediate",
-                                "properties": {
-                                    "property1": "value1",
-                                    "property2": "value2"
+                                "displayName": "gRPC Callout Example",
+                                "description": "Sample gRPC callout stage",
+                                "type": "processor/grpc@v1",
+                                "serverAddress": "my-grpc-server.default.svc.cluster.local:80",
+                                "rpcName": "mypackage.SampleService/ExampleMethod",
+                                "descriptor": "Zm9v...",
+                                "response": {
+                                    "body": ".payload",
+                                    "metadata": ".metadata",
+                                    "status": ".status"
+                                },
+                                "authentication": {
+                                    "type": "metadata",
+                                    "key": "authorization",
+                                    "value": "token"
                                 }
                             },
                             "stage2": {
-                                "type": "output",
-                                "properties": {
-                                    "property1": "value1",
-                                    "property2": "value2"
-                                }
+                                "displayName": "Sample Data Explorer output",
+                                "type": "output/dataexplorer@v1",
+                                "clusterUrl": "https://contoso.eastus.kusto.windows.net",
+                                "database": "TestDatabase",
+                                "table": "AssetData",
+                                "authentication": {
+                                    "type": "systemAssignedManagedIdentity"
+                                },
+                                "columns": [
+                                    {
+                                        "name": "assetId",
+                                    },
+                                    {
+                                        "name": "timestamp",
+                                    },
+                                    {
+                                        "name": "temperature",
+                                    }
+                                ]
                             }
                         }
                     },
@@ -463,11 +526,15 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
-                    ("value/format.type", "json"),
+                    ("value/input.format.type", "json"),
                 ],
                 [
                     ("status", "success"),
-                    ("value/authentication.type", "header"),
+                    ("value/input.authentication.type", "header"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/stage1.authentication.type", "metadata"),
                 ],
                 [
                     ("status", "success"),
@@ -580,11 +647,11 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
-                    ("value/format.type", "json"),
+                    ("value/input.format.type", "json"),
                 ],
                 [
                     ("status", "success"),
-                    ("value/authentication.type", "accessToken"),
+                    ("value/input.authentication.type", "accessToken"),
                 ],
                 [
                     ("status", "success"),
@@ -697,11 +764,11 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
-                    ("value/format.type", "json"),
+                    ("value/input.format.type", "json"),
                 ],
                 [
                     ("status", "error"),
-                    ("value/authentication.type", "accessToken"),
+                    ("value/input.authentication.type", "accessToken"),
                 ]
             ],
         ),
