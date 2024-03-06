@@ -244,7 +244,23 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
+                    ("value/spec.stage1.dataset", "vendorData"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.stage1.outputPath", ".payload.vendor"),
+                ],
+                [
+                    ("status", "success"),
                     ("value/destinationNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.stage2.url", "https://contoso.com/some/url/path"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.stage2.method", "POST"),
                 ],
                 [
                     ("status", "success"),
@@ -380,7 +396,19 @@ def test_instance_checks(
                 ],
                 [
                     ("status", "success"),
+                    ("value/spec.stage1.expression", ".payload.temperature > 50 and .payload.humidity < 20"),
+                ],
+                [
+                    ("status", "success"),
                     ("value/destinationNodeCount", 1),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.stage2.accountName", "myStorageAccount"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.stage2.containerName", "mycontainer"),
                 ],
                 [
                     ("status", "success"),
@@ -531,6 +559,18 @@ def test_instance_checks(
                 [
                     ("status", "success"),
                     ("value/input.authentication.type", "header"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.stage1.serverAddress", "my-grpc-server.default.svc.cluster.local:80"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.stage1.rpcName", "mypackage.SampleService/ExampleMethod"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.stage1.descriptor", "Zm9v..."),
                 ],
                 [
                     ("status", "success"),
