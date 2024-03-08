@@ -440,10 +440,10 @@ def load_iotops_help():
         examples:
         - name: Import all data points from a file. These data points will be appended to the asset's current data points.
           text: >
-            az iot ops asset data-point import --asset {asset} -g {resource_group} --file-path {file_path}
+            az iot ops asset data-point import --asset {asset} -g {resource_group} --input-file {input_file}
         - name: Import all data points from a file. These data points will replace the asset's current data points.
           text: >
-            az iot ops asset data-point import --asset {asset} -g {resource_group} --file-path {file_path} --replace
+            az iot ops asset data-point import --asset {asset} -g {resource_group} --input-file {input_file} --replace
     """
 
     helps[
@@ -530,10 +530,10 @@ def load_iotops_help():
         examples:
         - name: Import all events from a file. These events will be appended to the asset's current events.
           text: >
-            az iot ops asset event import --asset {asset} -g {resource_group} --file-path {file_path}
+            az iot ops asset event import --asset {asset} -g {resource_group} --input-file {input_file}
         - name: Import all events from a file. These events will replace the asset's current events.
           text: >
-            az iot ops asset event import --asset {asset} -g {resource_group} --file-path {file_path} --replace
+            az iot ops asset event import --asset {asset} -g {resource_group} --input-file {input_file} --replace
     """
 
     helps[

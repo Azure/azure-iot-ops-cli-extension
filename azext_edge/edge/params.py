@@ -808,7 +808,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "file_path",
-            options_list=["--file-path", "--fp"],
+            options_list=["--input-file", "--if"],
             help="File path for the file containing the data points. The following file types are supported: "
             f"{', '.join(FileType.list())}.",
         )
@@ -852,7 +852,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "file_path",
-            options_list=["--file-path", "--fp"],
+            options_list=["--input-file", "--if"],
             help="File path for the file containing the events. The following file types are supported: "
             f"{', '.join(FileType.list())}.",
         )
