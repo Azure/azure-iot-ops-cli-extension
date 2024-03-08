@@ -136,6 +136,15 @@ class K8sSecretType(Enum):
     tls = "kubernetes.io/tls"
 
 
+class FileType(ListableEnum):
+    """
+    Supported file types/extensions.
+    """
+    csv = "csv"
+    json = "json"
+    yaml = "yaml"
+
+
 # MQ runtime attributes
 
 AIO_MQ_RESOURCE_PREFIX = "aio-mq-"

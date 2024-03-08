@@ -11,7 +11,7 @@ CLI parameter definitions.
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
-from .common import OpsServiceType
+from .common import OpsServiceType, FileType
 from .providers.edge_api import (
     AkriResourceKinds,
     DataProcessorResourceKinds,
@@ -746,6 +746,18 @@ def load_iotops_arguments(self, _):
             options_list=["--sampling-interval", "--si"],
             help="Custom sampling interval (in milliseconds).",
         )
+        context.argument(
+            "extension",
+            options_list=["--file-type", "--ft"],
+            help="File type.",
+            choices=FileType.list(),
+            arg_type=get_enum_type(FileType),
+        )
+        context.argument(
+            "output_dir",
+            options_list=["--output-dir", "--od"],
+            help="Output directory for exported file.",
+        )
 
     with self.argument_context("iot ops asset query") as context:
         context.argument(
@@ -778,6 +790,29 @@ def load_iotops_arguments(self, _):
             help="Data source.",
         )
 
+    with self.argument_context("iot ops asset data-point export") as context:
+        context.argument(
+            "replace",
+            options_list=["--replace"],
+            help="Replace the local file if present.",
+            arg_type=get_three_state_flag(),
+        )
+
+    with self.argument_context("iot ops asset data-point import") as context:
+        context.argument(
+            "replace",
+            options_list=["--replace"],
+            help="Replace all asset data points with those from the file. If false, the file data points "
+            "will be appended.",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "file_path",
+            options_list=["--file-path", "--fp"],
+            help="File path for the file containing the data points. The following file types are supported: "
+            f"{', '.join(FileType.list())}.",
+        )
+
     with self.argument_context("iot ops asset event") as context:
         context.argument(
             "asset_name",
@@ -798,6 +833,28 @@ def load_iotops_arguments(self, _):
             "event_notifier",
             options_list=["--event-notifier", "--en"],
             help="Event notifier.",
+        )
+
+    with self.argument_context("iot ops asset event export") as context:
+        context.argument(
+            "replace",
+            options_list=["--replace"],
+            help="Replace the local file if present.",
+            arg_type=get_three_state_flag(),
+        )
+
+    with self.argument_context("iot ops asset event import") as context:
+        context.argument(
+            "replace",
+            options_list=["--replace"],
+            help="Replace all asset events with those from the file. If false, the file events will be appended.",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "file_path",
+            options_list=["--file-path", "--fp"],
+            help="File path for the file containing the events. The following file types are supported: "
+            f"{', '.join(FileType.list())}.",
         )
 
     with self.argument_context("iot ops asset endpoint") as context:

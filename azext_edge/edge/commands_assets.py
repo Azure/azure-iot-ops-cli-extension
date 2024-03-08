@@ -228,6 +228,42 @@ def add_asset_data_point(
     )
 
 
+def export_asset_data_points(
+    cmd,
+    asset_name: str,
+    resource_group_name: str,
+    extension: str = "json",
+    output_dir: Optional[str] = None,
+    replace: bool = False,
+):
+    asset_provider = AssetProvider(cmd)
+    return asset_provider.export_sub_points(
+        asset_name=asset_name,
+        extension=extension,
+        output_dir=output_dir,
+        sub_point_type="dataPoints",
+        replace=replace,
+        resource_group_name=resource_group_name
+    )
+
+
+def import_asset_data_points(
+    cmd,
+    asset_name: str,
+    file_path: str,
+    resource_group_name: str,
+    replace: bool = False,
+):
+    asset_provider = AssetProvider(cmd)
+    return asset_provider.import_sub_points(
+        asset_name=asset_name,
+        file_path=file_path,
+        sub_point_type="dataPoints",
+        replace=replace,
+        resource_group_name=resource_group_name
+    )
+
+
 def list_asset_data_points(
     cmd,
     asset_name: str,
@@ -284,6 +320,42 @@ def add_asset_event(
         observability_mode=observability_mode,
         queue_size=queue_size,
         sampling_interval=sampling_interval,
+        resource_group_name=resource_group_name
+    )
+
+
+def export_asset_events(
+    cmd,
+    asset_name: str,
+    resource_group_name: str,
+    extension: str = "json",
+    output_dir: Optional[str] = None,
+    replace: bool = False,
+):
+    asset_provider = AssetProvider(cmd)
+    return asset_provider.export_sub_points(
+        asset_name=asset_name,
+        extension=extension,
+        output_dir=output_dir,
+        sub_point_type="events",
+        replace=replace,
+        resource_group_name=resource_group_name
+    )
+
+
+def import_asset_events(
+    cmd,
+    asset_name: str,
+    file_path: str,
+    resource_group_name: str,
+    replace: bool = False,
+):
+    asset_provider = AssetProvider(cmd)
+    return asset_provider.import_sub_points(
+        asset_name=asset_name,
+        file_path=file_path,
+        sub_point_type="events",
+        replace=replace,
         resource_group_name=resource_group_name
     )
 
