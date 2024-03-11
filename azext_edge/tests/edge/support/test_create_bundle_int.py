@@ -61,8 +61,9 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         expected_services = ["akri", "dataprocessor", "lnm", "mq", "opcua", "orc"]
         # device registry folder will not be created if there are no device registry resources
         if walk_result.get(path.join(extracted_path, namespace, "deviceregistry")):
-            expected_services.insert(2, "deviceregistry")
-    assert level_1["folders"] == expected_services
+            expected_services.append("deviceregistry")
+        expected_services.sort()
+    assert sorted(level_1["folders"]) == expected_services
     assert not level_1["files"]
 
     # Check and take out mq traces:
