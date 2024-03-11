@@ -348,12 +348,14 @@ class AssetProvider(ADRBaseProvider):
             sub_point_type=sub_point_type,
             resource_group_name=resource_group_name,
         )
+        fieldnames = None
         if extension == "csv":
-            _convert_sub_points_to_csv(sub_points, sub_point_type)
+            fieldnames = _convert_sub_points_to_csv(sub_points, sub_point_type)
         dump_content_to_file(
             content=sub_points,
             file_name=f"{asset_name}_{sub_point_type}",
             extension=extension,
+            fieldnames=fieldnames,
             output_dir=output_dir,
             replace=replace
         )
@@ -507,7 +509,7 @@ def _convert_sub_points_from_csv(sub_points: List[Dict[str, str]]):
     csv_conversion_map = {
         "EventName": "name",
         "EventNotifier": "eventNotifier",
-        "NodeId": "dataSource",
+        "NodeID": "dataSource",
         "ObservabilityMode": "observabilityMode",
         "TagName" : "name",
     }
@@ -517,24 +519,26 @@ def _convert_sub_points_from_csv(sub_points: List[Dict[str, str]]):
                 point[value] = point.pop(key)
         configuration = {}
         if "Sampling Interval Milliseconds" in point:
-            configuration["samplingInterval"] = int(point["Sampling Interval Milliseconds"])
+            configuration["samplingInterval"] = int(point.pop("Sampling Interval Milliseconds"))
         if "QueueSize" in point:
-            configuration["queueSize"] = int(point["QueueSize"])
+            configuration["queueSize"] = int(point.pop("QueueSize"))
         if configuration:
             config_key = "dataPointConfiguration" if "dataSource" in point else "eventConfiguration"
             point[config_key] = json.dumps(configuration)
 
 
-def _convert_sub_points_to_csv(sub_points: List[Dict[str, str]], sub_point_type: str):
+def _convert_sub_points_to_csv(sub_points: List[Dict[str, str]], sub_point_type: str) -> List[str]:
     csv_conversion_map = {
         "capabilityId": "CapabilityId",
         "name": "TagName" if sub_point_type == "dataPoints" else "EventName",
         "observabilityMode": "ObservabilityMode",
     }
     if sub_point_type == "dataPoints":
-        csv_conversion_map["dataSource"] = "NodeId"
+        csv_conversion_map["dataSource"] = "NodeID"
+        fieldnames = [csv_conversion_map["dataSource"]]
     else:
         csv_conversion_map["eventNotifier"] = "EventNotifier"
+        fieldnames = [csv_conversion_map["eventNotifier"]]
     for point in sub_points:
         for key, value in csv_conversion_map.items():
             point[value] = point.pop(key, None)
@@ -542,6 +546,15 @@ def _convert_sub_points_to_csv(sub_points: List[Dict[str, str]], sub_point_type:
         configuration = json.loads(configuration)
         point["Sampling Interval Milliseconds"] = configuration.get("samplingInterval")
         point["QueueSize"] = configuration.get("queueSize")
+
+    fieldnames.extend([
+        csv_conversion_map["name"],
+        "QueueSize",
+        csv_conversion_map["observabilityMode"],
+        "Sampling Interval Milliseconds",
+        csv_conversion_map["capabilityId"]
+    ])
+    return fieldnames
 
 
 def _process_asset_sub_points(required_arg: str, sub_points: Optional[List[str]]) -> Dict[str, str]:

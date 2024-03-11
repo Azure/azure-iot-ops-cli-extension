@@ -748,8 +748,8 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "extension",
-            options_list=["--file-type", "--ft"],
-            help="File type.",
+            options_list=["--format", "-f"],
+            help="File format.",
             choices=FileType.list(),
             arg_type=get_enum_type(FileType),
         )

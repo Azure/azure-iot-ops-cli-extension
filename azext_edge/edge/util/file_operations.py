@@ -42,6 +42,7 @@ def dump_content_to_file(
     content: List[dict],
     file_name: str,
     extension: str,
+    fieldnames: Optional[List[str]] = None,
     output_dir: Optional[str] = None,
     replace: bool = False
 ):
@@ -52,7 +53,9 @@ def dump_content_to_file(
         logger.warning(f"The file {file_path} will be overwritten.")
     if extension == "csv":
         with open(file_path, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=content[0].keys())
+            if not fieldnames:
+                fieldnames = content[0].keys()
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(content)
         return
