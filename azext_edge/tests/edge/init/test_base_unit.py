@@ -255,7 +255,7 @@ def test_prepare_sp(
             assert get_sp_call["url"] == f"{GRAPH_V1_SP_ENDPOINT}/{sp.object_id}"
             get_app_call = mocked_send_raw_request.call_args_list[call_count + 1].kwargs
             assert get_app_call["method"] == "GET"
-            assert get_app_call["url"] == f"{GRAPH_V1_APP_ENDPOINT}/{sp.client_id}"
+            assert get_app_call["url"] == f"{GRAPH_V1_APP_ENDPOINT}(appId='{sp.client_id}')"
             call_count += 2
         else:
             post_sp_call = mocked_send_raw_request.call_args_list[call_count].kwargs

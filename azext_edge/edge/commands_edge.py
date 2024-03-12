@@ -141,25 +141,12 @@ def init(
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration import deploy
     from .util import url_safe_hash_phrase
-    from .util.sp import LoggedInPrincipal
 
     if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
         logger.warning("Nothing to do :)")
         return
 
     load_config_context(context_name=context_name)
-
-    if keyvault_resource_id and not show_template:
-        logged_in_principal = LoggedInPrincipal(cmd=cmd)
-        if logged_in_principal.is_app():
-            app_principal = logged_in_principal.fetch_self_if_app()
-            if not app_principal and not all(
-                [service_principal_app_id, service_principal_object_id, service_principal_secret]
-            ):
-                logger.warning(
-                    "When logged in with a service principal, either ensure it's permissions "
-                    "to MS graph or provide values for --sp-app-id, --sp-object-id and --sp-secret."
-                )
 
     # cluster namespace must be lowercase
     cluster_namespace = str(cluster_namespace).lower()
