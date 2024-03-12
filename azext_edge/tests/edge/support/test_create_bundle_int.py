@@ -48,6 +48,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     level_0 = walk_result.pop(extracted_path)
     assert "events.yaml" in level_0["files"]
     assert "nodes.yaml" in level_0["files"]
+    assert "storage_classes.yaml" in level_0["files"]
     if not level_0["folders"]:
         logger.warning(f"No bundles created for {ops_service}.")
         return
@@ -58,10 +59,12 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     expected_services = [ops_service]
     if ops_service == OpsServiceType.auto.value:
         # these should always be generated
-        expected_services = ["akri", "dataprocessor", "lnm", "mq", "opcua", "orc"]
+        expected_services = OpsServiceType.list()
+        expected_services.remove(OpsServiceType.auto.value)
+        expected_services.append("otel")
         # device registry folder will not be created if there are no device registry resources
-        if walk_result.get(path.join(extracted_path, namespace, "deviceregistry")):
-            expected_services.append("deviceregistry")
+        if not walk_result.get(path.join(extracted_path, namespace, "deviceregistry")):
+            expected_services.remove(OpsServiceType.deviceregistry.value)
         expected_services.sort()
     assert sorted(level_1["folders"]) == expected_services
     assert not level_1["files"]
