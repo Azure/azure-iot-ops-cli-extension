@@ -13,10 +13,10 @@ logger = get_logger(__name__)
 generic = client.ApiClient()
 
 
-def get_binding(name: str) -> Optional[dict]:
+def get_bindings(field_selector: str) -> Optional[dict]:
     try:
         v1_auth_client = client.RbacAuthorizationV1Api()
-        result = v1_auth_client.read_cluster_role_binding(name=name)
+        result = v1_auth_client.list_cluster_role_binding(field_selector=field_selector)
     except ApiException as ae:
         logger.debug(msg=str(ae))
         if int(ae.status) == 404:

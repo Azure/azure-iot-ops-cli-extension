@@ -27,7 +27,7 @@ from ..base import (
     get_cluster_namespace,
 )
 from ..edge_api import KEYVAULT_API_V1
-from ..k8s.cluster_role_binding import get_binding
+from ..k8s.cluster_role_binding import get_bindings
 from .common import (
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     EXTENDED_LOCATION_ROLE_BINDING,
@@ -519,8 +519,8 @@ def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
 
 
 def verify_custom_locations_enabled():
-    target_binding = get_binding(EXTENDED_LOCATION_ROLE_BINDING)
-    if not target_binding:
+    target_bindings = get_bindings(field_selector=f"metadata.name=={EXTENDED_LOCATION_ROLE_BINDING}")
+    if not target_bindings or (target_bindings and not target_bindings.get("items")):
         raise ValidationError(
             "The custom-locations feature is required but not enabled on the cluster. For guidance refer to:\n"
             "https://aka.ms/ArcK8sCustomLocationsDocsEnableFeature"
