@@ -255,7 +255,7 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
             app_reg = send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="GET",
-                url=f"{GRAPH_V1_APP_ENDPOINT}/{sp_app_id}",
+                url=f"{GRAPH_V1_APP_ENDPOINT}(appId='{sp_app_id}')",
             ).json()
         except HTTPError as http_error:
             if http_error.response.status_code not in [401, 403]:
