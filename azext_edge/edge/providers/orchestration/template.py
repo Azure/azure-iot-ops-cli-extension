@@ -4,7 +4,11 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import NamedTuple
+import json
+from copy import deepcopy
+from typing import NamedTuple, Optional
+
+from ...util import read_file_content
 
 
 class TemplateVer(NamedTuple):
@@ -777,7 +781,9 @@ def get_insecure_mq_listener():
 CURRENT_TEMPLATE = V1_TEMPLATE
 
 
-def get_current_template_copy() -> TemplateVer:
-    from copy import deepcopy
+def get_current_template_copy(custom_template_path: Optional[str] = None) -> TemplateVer:
+    if custom_template_path:
+        content = json.loads(read_file_content(custom_template_path))
+        return TemplateVer(commit_id="custom", content=content)
 
     return TemplateVer(commit_id=CURRENT_TEMPLATE.commit_id, content=deepcopy(CURRENT_TEMPLATE.content))

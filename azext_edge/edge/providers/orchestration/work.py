@@ -110,6 +110,7 @@ class WorkManager:
         self._tls_ca_key_path = kwargs.get("tls_ca_key_path")
         self._tls_ca_valid_days = kwargs.get("tls_ca_valid_days", DEFAULT_VALID_DAYS)
         self._tls_insecure = kwargs.get("tls_insecure", False)
+        self._template_path = kwargs.get("template_path")
         self._progress_shown = False
         self._render_progress = not self._no_progress
         self._live = Live(None, transient=False, refresh_per_second=8, auto_refresh=self._render_progress)
@@ -477,7 +478,7 @@ class WorkManager:
 
     def build_template(self, work_kpis: dict) -> Tuple[TemplateVer, dict]:
         # TODO refactor, move out of work
-        template = get_current_template_copy()
+        template = get_current_template_copy(self._template_path)
         parameters = {}
 
         for template_pair in [
