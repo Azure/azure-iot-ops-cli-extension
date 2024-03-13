@@ -255,7 +255,7 @@ def test_prepare_sp(
             assert get_sp_call["url"] == f"{GRAPH_V1_SP_ENDPOINT}/{sp.object_id}"
             get_app_call = mocked_send_raw_request.call_args_list[call_count + 1].kwargs
             assert get_app_call["method"] == "GET"
-            assert get_app_call["url"] == f"{GRAPH_V1_APP_ENDPOINT}/{sp.client_id}"
+            assert get_app_call["url"] == f"{GRAPH_V1_APP_ENDPOINT}(appId='{sp.client_id}')"
             call_count += 2
         else:
             post_sp_call = mocked_send_raw_request.call_args_list[call_count].kwargs
@@ -343,7 +343,9 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_get_tenant_id, mocked_sen
 @pytest.mark.parametrize("app_id", [None, generate_generic_id()])
 @pytest.mark.parametrize("object_id", [None, generate_generic_id()])
 @pytest.mark.parametrize("secret", [None, generate_generic_id()])
-def test_prepare_sp_error(mocker, mocked_cmd, mocked_get_tenant_id, mocked_send_raw_request, app_id, object_id, secret):
+def test_prepare_sp_error(
+    mocker, mocked_cmd, mocked_get_tenant_id, mocked_send_raw_request, app_id, object_id, secret
+):
     response = mocker.Mock(status_code=400)
     mocked_send_raw_request.return_value.json.side_effect = HTTPError(
         error_msg=generate_generic_id(), response=response
@@ -694,12 +696,29 @@ def test_wait_for_terminal_state(mocker, done):
     assert sleep_patch.call_count == (1 if done else poll_num)
 
 
-@pytest.mark.parametrize("role_binding", [None, {"truthy": "value"}])
-def test_verify_custom_locations_enabled(mocker, role_binding):
-    get_binding_patch = mocker.patch(f"{BASE_PATH}.get_binding", return_value=role_binding)
+@pytest.mark.parametrize(
+    "role_bindings",
+    [
+        None,
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "items": [],
+            "kind": "ClusterRoleBindingList",
+            "metadata": {"resourceVersion": "1"},
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "items": [{"metadata": {"name": "AzureArc-Microsoft.ExtendedLocation-RP-RoleBinding", "namespace": "az"}}],
+            "kind": "ClusterRoleBindingList",
+            "metadata": {"resourceVersion": "2"},
+        },
+    ],
+)
+def test_verify_custom_locations_enabled(mocker, role_bindings):
+    get_binding_patch = mocker.patch(f"{BASE_PATH}.get_bindings", return_value=role_bindings)
     from azext_edge.edge.providers.orchestration.base import verify_custom_locations_enabled
 
-    if not role_binding:
+    if not role_bindings or (role_bindings and not role_bindings["items"]):
         with pytest.raises(ValidationError):
             verify_custom_locations_enabled()
             get_binding_patch.assert_called_once()

@@ -22,13 +22,16 @@ from rich.padding import Padding
 
 from ...common import (
     CheckTaskStatus,
+    ListableEnum,
     ProvisioningState,
 )
 
 from .common import (
     DATA_PROCESSOR_AUTHENTICATION_REQUIRED_PROPERTIES,
     DATA_PROCESSOR_AUTHENTICATION_SECRET_REF,
+    DATA_PROCESSOR_DESTINATION_REQUIRED_PROPERTIES,
     DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES,
+    DATA_PROCESSOR_INTERMEDIATE_REQUIRED_PROPERTIES,
     DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES,
     DATA_PROCESSOR_NATS_PREFIX,
     DATA_PROCESSOR_OPERATOR,
@@ -39,8 +42,10 @@ from .common import (
     DATA_PROCESSOR_SOURCE_DISPLAY_PROPERTIES,
     ERROR_NO_DETAIL,
     PADDING_SIZE,
+    DataProcessorStageType,
     DataSourceStageType,
     DataprocessorAuthenticationType,
+    DataprocessorDestinationStageType,
     ResourceOutputDetailLevel,
 )
 
@@ -602,9 +607,6 @@ def _evaluate_source_node(
     padding: int,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
-    # required properties
-    required_specific_properties = DATA_PROCESSOR_SOURCE_REQUIRED_PROPERTIES
-
     # check data source node count
     pipeline_source_node_count = 1 if pipeline_source_node else 0
     source_count_display_text = f"- Expecting [bright_blue]1[/bright_blue] data source node. [green]Detected {pipeline_source_node_count}[/green]."
@@ -639,39 +641,19 @@ def _evaluate_source_node(
     )
 
     # check specific required properties
-    # fine the matching enum for stage_type, which should start with the enum value
-    stage_type_value = next((e for e in DataSourceStageType.list() if stage_type.startswith(e)), None)
-    stage_required_properties = required_specific_properties.get(stage_type_value, [])
-    for prop in stage_required_properties:
-        prop_value = pipeline_source_node.get(prop, "")
-        prop_status = CheckTaskStatus.success.value
-        # capitalize the first letter of the property
-        prop_label = prop.capitalize()
-        prop_display_text = f"{prop_label}: [cyan]{prop_value}[/cyan] [green]detected[/green]."
-        check_manager.add_target_conditions(
-            target_name=target_pipelines,
-            namespace=namespace,
-            conditions=[f"spec.input.{prop}"]
-        )
-
-        if not prop_value:
-            prop_status = CheckTaskStatus.error.value
-            prop_display_text = f"{prop} [red]not detected[/red]."
-
-        if detail_level != ResourceOutputDetailLevel.summary.value:
-            check_manager.add_display(
-                target_name=target_pipelines,
-                namespace=namespace,
-                display=Padding(prop_display_text, (0, 0, 0, property_padding))
-            )
-
-        check_manager.add_target_eval(
-            target_name=target_pipelines,
-            namespace=namespace,
-            status=prop_status,
-            value={f"spec.input.{prop}": prop_value},
-            resource_name=pipeline_name
-        )
+    _evaluate_required_properties(
+        pipeline_node=pipeline_source_node,
+        stage_name="input",
+        stage_type=stage_type,
+        stage_type_enums=DataSourceStageType,
+        target_name=target_pipelines,
+        resource_name=pipeline_name,
+        required_properties=DATA_PROCESSOR_SOURCE_REQUIRED_PROPERTIES,
+        check_manager=check_manager,
+        namespace=namespace,
+        detail_level=detail_level,
+        padding=property_padding
+    )
 
     # check common properties
     # check data source partition
@@ -709,37 +691,16 @@ def _evaluate_source_node(
         resource_name=pipeline_name
     )
 
-    # check format
-    pipeline_source_node_format = pipeline_source_node.get("format", {})
-    format_type = pipeline_source_node_format.get("type", "")
-    format_type_status = CheckTaskStatus.success.value
-    format_type_display_text = f"Format: [cyan]{pipeline_source_node_format}[/cyan] [green]detected[/green]."
-    if not format_type:
-        format_type_status = CheckTaskStatus.error.value
-        format_type_display_text = "Format: type [red]not detected[/red]."
-
-    check_manager.add_display(
-        target_name=target_pipelines,
-        namespace=namespace,
-        display=Padding(format_type_display_text, (0, 0, 0, property_padding))
-    )
-
-    check_manager.add_target_eval(
-        target_name=target_pipelines,
-        namespace=namespace,
-        status=format_type_status,
-        value={"format.type": format_type},
-        resource_name=pipeline_name
-    )
-
-    _evaluate_authentication(
-        pipeline_source_node=pipeline_source_node,
-        target_pipelines=target_pipelines,
-        pipeline_name=pipeline_name,
+    _evaluate_common_stage_properties(
         check_manager=check_manager,
-        namespace=namespace,
+        detail_level=detail_level,
+        stage_name="input",
+        stage_type=stage_type,
+        stage_type_enums=DataSourceStageType,
+        target_name=target_pipelines,
+        pipeline_node=pipeline_source_node,
         padding=property_padding,
-        detail_level=detail_level
+        namespace=namespace
     )
 
     if detail_level != ResourceOutputDetailLevel.summary.value:
@@ -780,16 +741,47 @@ def _evaluate_intermediate_nodes(
 
     property_padding = padding + PADDING_SIZE
 
-    if detail_level != ResourceOutputDetailLevel.summary.value:
-        for stage_name in pipeline_intermediate_stages_node:
-            stage_type = pipeline_intermediate_stages_node[stage_name]["type"]
-            stage_display_text = f"- Stage resource {{[bright_blue]{stage_name}[/bright_blue]}} of type {{[bright_blue]{stage_type}[/bright_blue]}}"
-            check_manager.add_display(
-                target_name=target_pipelines,
+    for stage_name in pipeline_intermediate_stages_node:
+        stage_type = pipeline_intermediate_stages_node[stage_name]["type"]
+        stage_display_text = f"- Stage resource {{[bright_blue]{stage_name}[/bright_blue]}} of type {{[bright_blue]{stage_type}[/bright_blue]}}"
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(stage_display_text, (0, 0, 0, property_padding))
+        )
+
+        stage_enum = _get_stage_enum(stage_type=stage_type, stage_type_enums=DataProcessorStageType)
+
+        _evaluate_required_properties(
+            pipeline_node=pipeline_intermediate_stages_node[stage_name],
+            stage_name=stage_name,
+            stage_type=stage_type,
+            stage_type_enums=DataProcessorStageType,
+            target_name=target_pipelines,
+            resource_name=stage_name,
+            required_properties=DATA_PROCESSOR_INTERMEDIATE_REQUIRED_PROPERTIES,
+            check_manager=check_manager,
+            namespace=namespace,
+            detail_level=detail_level,
+            padding=property_padding + PADDING_SIZE
+        )
+
+        if stage_enum in [
+            DataProcessorStageType.grpc.value,
+            DataProcessorStageType.http.value,
+        ]:
+            _evaluate_authentication(
+                pipeline_node=pipeline_intermediate_stages_node[stage_name],
+                target_pipelines=target_pipelines,
+                pipeline_name=stage_name,
+                check_manager=check_manager,
                 namespace=namespace,
-                display=Padding(stage_display_text, (0, 0, 0, property_padding))
+                stage_name=stage_name,
+                padding=property_padding + PADDING_SIZE,
+                detail_level=detail_level
             )
 
+        if detail_level != ResourceOutputDetailLevel.summary.value:
             _process_stage_properties(
                 check_manager,
                 detail_level,
@@ -830,26 +822,124 @@ def _evaluate_destination_node(
     )
 
     if output_node:
+        (name, node_properties) = output_node
+        property_padding = padding + PADDING_SIZE
+
+        # get data source type
+        stage_type = node_properties["type"]
+
+        stage_display_text = f"Stage type: {{[cyan]{stage_type}[/cyan]}}"
+        check_manager.add_display(
+            target_name=target_pipelines,
+            namespace=namespace,
+            display=Padding(stage_display_text, (0, 0, 0, property_padding))
+        )
+
+        _evaluate_required_properties(
+            pipeline_node=node_properties,
+            stage_name=name,
+            stage_type=stage_type,
+            stage_type_enums=DataprocessorDestinationStageType,
+            target_name=target_pipelines,
+            resource_name=pipeline_name,
+            required_properties=DATA_PROCESSOR_DESTINATION_REQUIRED_PROPERTIES,
+            check_manager=check_manager,
+            namespace=namespace,
+            detail_level=detail_level,
+            padding=property_padding
+        )
+
+        _evaluate_common_stage_properties(
+            check_manager=check_manager,
+            detail_level=detail_level,
+            stage_name=name,
+            stage_type=stage_type,
+            stage_type_enums=DataprocessorDestinationStageType,
+            target_name=target_pipelines,
+            pipeline_node=node_properties,
+            padding=property_padding,
+            namespace=namespace
+        )
+
         if detail_level != ResourceOutputDetailLevel.summary.value:
-            property_padding = padding + PADDING_SIZE
             _process_stage_properties(
                 check_manager,
                 detail_level,
                 target_name=target_pipelines,
-                stage=output_node[1],
+                stage=node_properties,
                 stage_properties=DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES,
                 padding=(0, 0, 0, property_padding),
                 namespace=namespace
             )
 
 
+def _evaluate_common_stage_properties(
+    check_manager: CheckManager,
+    detail_level: int,
+    stage_name: str,
+    stage_type: str,
+    stage_type_enums: ListableEnum,
+    target_name: str,
+    pipeline_node: Dict[str, Any],
+    padding: int,
+    namespace: str
+) -> None:
+    stage_enum = _get_stage_enum(stage_type=stage_type, stage_type_enums=stage_type_enums)
+    # check format
+
+    if stage_enum not in [
+        DataprocessorDestinationStageType.data_explorer.value,
+        DataprocessorDestinationStageType.fabric.value,
+        DataprocessorDestinationStageType.grpc.value,
+        DataprocessorDestinationStageType.http.value,
+        DataprocessorDestinationStageType.reference_data.value,
+    ]:
+        pipeline_node_format = pipeline_node.get("format", {})
+        format_type = pipeline_node_format.get("type", "")
+        format_type_status = CheckTaskStatus.success.value
+        format_type_display_text = f"Format: [cyan]{pipeline_node_format}[/cyan] [green]detected[/green]."
+        if not format_type:
+            format_type_status = CheckTaskStatus.error.value
+            format_type_display_text = "Format: type [red]not detected[/red]."
+
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(format_type_display_text, (0, 0, 0, padding))
+        )
+
+        check_manager.add_target_eval(
+            target_name=target_name,
+            namespace=namespace,
+            status=format_type_status,
+            value={f"{stage_name}.format.type": format_type},
+            resource_name=target_name
+        )
+
+    if stage_enum not in [
+        DataprocessorDestinationStageType.file.value,
+        DataprocessorDestinationStageType.reference_data.value,
+    ]:
+        _evaluate_authentication(
+            pipeline_node=pipeline_node,
+            target_pipelines=target_name,
+            pipeline_name=target_name,
+            check_manager=check_manager,
+            namespace=namespace,
+            padding=padding,
+            stage_name=stage_name,
+            detail_level=detail_level
+        )
+
+
 def _evaluate_authentication(
-    pipeline_source_node: Dict[str, Any],
+    pipeline_node: Dict[str, Any],
     target_pipelines: str,
     pipeline_name: str,
     check_manager: CheckManager,
     namespace: str,
     padding: int,
+    stage_name: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
     def add_verbose_display(
@@ -871,7 +961,7 @@ def _evaluate_authentication(
                     display=Padding(f"{label}: [cyan]{detail['value']}[/cyan]", (0, 0, 0, padding + PADDING_SIZE))
                 )
 
-    auth_info = pipeline_source_node.get("authentication", {})
+    auth_info = pipeline_node.get("authentication", {})
     auth_type = auth_info.get("type", "")
 
     if detail_level > ResourceOutputDetailLevel.summary.value:
@@ -910,6 +1000,58 @@ def _evaluate_authentication(
         target_name=target_pipelines,
         namespace=namespace,
         status=authentication_status,
-        value={"authentication.type": auth_type},
+        value={f"{stage_name}.authentication.type": auth_type},
         resource_name=pipeline_name
     )
+
+
+def _evaluate_required_properties(
+    check_manager: CheckManager,
+    target_name: str,
+    namespace: str,
+    stage_name: str,
+    stage_type: str,
+    stage_type_enums: ListableEnum,
+    required_properties: List[str],
+    pipeline_node: Dict[str, Any],
+    resource_name: str,
+    padding: int,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+):
+    # find the matching enum for stage_type, which should start with the enum value
+    stage_type_value = _get_stage_enum(stage_type=stage_type, stage_type_enums=stage_type_enums)
+    stage_required_properties = required_properties.get(stage_type_value, [])
+    for prop in stage_required_properties:
+        prop_value = pipeline_node.get(prop, "")
+        prop_status = CheckTaskStatus.success.value
+        # capitalize the first letter of the property
+        prop_label = prop.capitalize()
+        prop_display_text = f"{prop_label}: [cyan]{prop_value}[/cyan] [green]detected[/green]."
+        check_manager.add_target_conditions(
+            target_name=target_name,
+            namespace=namespace,
+            conditions=[f"spec.{stage_name}.{prop}"]
+        )
+
+        if not prop_value:
+            prop_status = CheckTaskStatus.error.value
+            prop_display_text = f"{prop} [red]not detected[/red]."
+
+        if detail_level != ResourceOutputDetailLevel.summary.value:
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(prop_display_text, (0, 0, 0, padding))
+            )
+
+        check_manager.add_target_eval(
+            target_name=target_name,
+            namespace=namespace,
+            status=prop_status,
+            value={f"spec.{stage_name}.{prop}": prop_value},
+            resource_name=resource_name
+        )
+
+
+def _get_stage_enum(stage_type: str, stage_type_enums: ListableEnum) -> str:
+    return next((e for e in stage_type_enums.list() if stage_type.startswith(e)), None)

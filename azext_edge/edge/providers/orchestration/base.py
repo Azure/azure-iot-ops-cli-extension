@@ -27,7 +27,7 @@ from ..base import (
     get_cluster_namespace,
 )
 from ..edge_api import KEYVAULT_API_V1
-from ..k8s.cluster_role_binding import get_binding
+from ..k8s.cluster_role_binding import get_bindings
 from .common import (
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     EXTENDED_LOCATION_ROLE_BINDING,
@@ -251,15 +251,11 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
             url=f"{GRAPH_V1_SP_ENDPOINT}/{sp_object_id}",
         ).json()
         sp_app_id = existing_sp["appId"]
-        try:
-            app_reg = send_raw_request(
-                cli_ctx=cmd.cli_ctx,
-                method="GET",
-                url=f"{GRAPH_V1_APP_ENDPOINT}/{sp_app_id}",
-            ).json()
-        except HTTPError as http_error:
-            if http_error.response.status_code not in [401, 403]:
-                raise http_error
+        app_reg = send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="GET",
+            url=f"{GRAPH_V1_APP_ENDPOINT}(appId='{sp_app_id}')",
+        ).json()
 
     if not sp_app_id:
         app_reg = send_raw_request(
@@ -519,8 +515,8 @@ def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
 
 
 def verify_custom_locations_enabled():
-    target_binding = get_binding(EXTENDED_LOCATION_ROLE_BINDING)
-    if not target_binding:
+    target_bindings = get_bindings(field_selector=f"metadata.name=={EXTENDED_LOCATION_ROLE_BINDING}")
+    if not target_bindings or (target_bindings and not target_bindings.get("items")):
         raise ValidationError(
             "The custom-locations feature is required but not enabled on the cluster. For guidance refer to:\n"
             "https://aka.ms/ArcK8sCustomLocationsDocsEnableFeature"

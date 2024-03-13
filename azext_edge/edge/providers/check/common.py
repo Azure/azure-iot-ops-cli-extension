@@ -50,6 +50,7 @@ class DataprocessorDestinationStageType(ListableEnum):
     """
     Data processor destination stage type.
     """
+    blob_storage = "output/blobstorage"
     data_explorer = "output/dataexplorer"
     fabric = "output/fabric"
     file = "output/file"
@@ -100,79 +101,85 @@ DATA_PROCESSOR_SOURCE_DISPLAY_PROPERTIES = {
     ],
 }
 
+DATA_PROCESSOR_INTERMEDIATE_REQUIRED_PROPERTIES = {
+    DataProcessorStageType.aggregate.value: ["window", "properties"],
+    DataProcessorStageType.enrich.value: ["dataset", "outputPath"],
+    DataProcessorStageType.filter.value: ["expression"],
+    DataProcessorStageType.grpc.value: ["serverAddress", "rpcName", "descriptor"],
+    DataProcessorStageType.http.value: ["url", "method"],
+    DataProcessorStageType.lkv.value: ["properties"],
+    DataProcessorStageType.transform.value: ["expression"],
+}
+
 DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES = {
-    DataProcessorStageType.aggregate.value: [
-        ("window.type", "Aggregate window type", False),
-        ("window.size", "Aggregate window duration", False),
-        ("properties", "Aggregate property", True)
-    ],
+    DataProcessorStageType.aggregate.value: [],
     DataProcessorStageType.enrich.value: [
-        ("dataset", "Enrich dataset ID", False),
-        ("conditions", "Enrich condition", True)
+        ("conditions", "Enrich condition", True),
+        ("alwaysArray", "Enrich always array", True),
+        ("limit", "Enrich limit", True)
     ],
-    DataProcessorStageType.filter.value: [("expression", "Filter expression", True)],
+    DataProcessorStageType.filter.value: [],
     DataProcessorStageType.grpc.value: [
-        ("serverAddress", "gRPC server address", False),
-        ("rpcName", "gRPC RPC name", False),
-        ("descriptor", "gRPC descriptor", False),
         ("request", "gRPC request", True),
         ("response", "gRPC response", True),
-        ("retry", "gRPC retry mechanism", True)
+        ("retry", "gRPC retry mechanism", True),
+        ("tls", "gRPC TLS", True),
     ],
     DataProcessorStageType.http.value: [
-        ("url", "Request URL", False),
-        ("method", "Request method", False),
         ("request", "gRPC request", True),
         ("response", "gRPC response", True),
         ("retry", "gRPC retry mechanism", True)
     ],
-    DataProcessorStageType.lkv.value: [("properties", "LKV property", True)],
-    DataProcessorStageType.transform.value: [("expression", "Transform expression", True)]
+    DataProcessorStageType.transform.value: []
+}
+
+DATA_PROCESSOR_DESTINATION_REQUIRED_PROPERTIES = {
+    DataprocessorDestinationStageType.blob_storage.value: ["accountName", "containerName"],
+    DataprocessorDestinationStageType.data_explorer.value: ["clusterUrl", "database", "table"],
+    DataprocessorDestinationStageType.fabric.value: ["workspace", "lakehouse", "table"],
+    DataprocessorDestinationStageType.file.value: ["rootDirectory"],
+    DataprocessorDestinationStageType.grpc.value: ["serverAddress", "rpcName", "descriptor"],
+    DataprocessorDestinationStageType.http.value: ["url", "method"],
+    DataprocessorDestinationStageType.mqtt.value: ["broker", "topic"],
+    DataprocessorDestinationStageType.reference_data.value: ["dataset"]
 }
 
 DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES = {
+    DataprocessorDestinationStageType.blob_storage.value: [
+        ("blobPath", "Blob path", True),
+        ("batch", "Batch method", True),
+        ("retry", "Retry mechanism", True),
+    ],
     DataprocessorDestinationStageType.fabric.value: [
-        ("url", "Fabric Endpoint", False),
-        ("workspace", "Fabric workspace ID", False),
-        ("lakehouse", "Fabric lakehouse ID", False),
-        ("table", "Fabric lakehouse table", False),
-        ("authentication.type", "Data Explorer authentication type", False),
-        ("authentication.tenantId", "Tenant ID", False),
-        ("authentication.clientId", "Client ID", False),
-        ("authentication.clientSecret", "Client secret", False),
-        ("filePath", "Fabric template file path", True),
-        ("batch", "Fabric batch method", True),
-        ("columns", "Fabric table column", True),
-        ("retry", "Fabric retry mechanism", True)
+        ("filePath", "Template file path", True),
+        ("batch", "Batch method", True),
+        ("columns", "Table column", True),
+        ("retry", "Retry mechanism", True)
+    ],
+    DataprocessorDestinationStageType.file.value: [
+        ("filePath", "File path", False),
+        ("batch", "Batch method", True),
+        ("filePermissions", "File permissions", True),
     ],
     DataprocessorDestinationStageType.grpc.value: [
-        ("serverAddress", "gRPC server address", False),
-        ("rpcName", "gRPC RPC name", False),
-        ("descriptor", "gRPC descriptor", False),
         ("request", "gRPC request", True),
-        ("retry", "gRPC retry mechanism", True)
+        ("retry", "Retry mechanism", True),
+    ],
+    DataprocessorDestinationStageType.http.value: [
+        ("request", "HTTP request", True),
+        ("retry", "Retry mechanism", True),
     ],
     DataprocessorDestinationStageType.data_explorer.value: [
-        ("clusterUrl", "Data Explorer cluster URL", False),
-        ("database", "Data Explorer database", False),
-        ("table", "Data Explorer table", False),
-        ("authentication.type", "Data Explorer authentication type", False),
-        ("authentication.tenantId", "Tenant ID", False),
-        ("authentication.clientId", "Client ID", False),
-        ("authentication.clientSecret", "Client secret", False),
-        ("batch", "Data Explorer batch method", True),
-        ("columns", "Data Explorer table column", True),
-        ("retry", "Data Explorer retry mechanism", True)
+        ("batch", "Batch method", True),
+        ("columns", "Table column", True),
+        ("retry", "Retry mechanism", True)
     ],
     DataprocessorDestinationStageType.mqtt.value: [
-        ("broker", "MQTT broker URL", False), ("qos", "MQTT QoS", False),
-        ("topic", "MQTT topic", False),
-        ("format", "MQTT format", True),
-        ("authentication", "MQTT authentication", True),
+        ("qos", "QoS", False),
         ("userProperties", "MQTT user property", True),
         ("retry", "MQTT retry mechanism", True)
     ],
-    DataprocessorDestinationStageType.reference_data.value: [("dataset", "Dataset ID", False)]
+    DataprocessorDestinationStageType.reference_data.value: []
 }
 
 DATA_PROCESSOR_AUTHENTICATION_REQUIRED_PROPERTIES = {
