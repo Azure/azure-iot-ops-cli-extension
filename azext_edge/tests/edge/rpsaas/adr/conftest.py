@@ -4,12 +4,13 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 import pytest
 from ....helpers import run
 
 
 @pytest.fixture()
-def require_init(init_setup):
+def require_init(init_setup, tracked_files):
     # get the custom location used for tests.
     if not all([init_setup.get("clusterName"), init_setup.get("resourceGroup")]):
         pytest.skip("Cannot run this test without knowing the cluster information.")
@@ -19,6 +20,21 @@ def require_init(init_setup):
         "--resource-type Microsoft.Kubernetes/connectedClusters"
     )
     cluster_id = cluster_result["id"]
+
+    # create a file to avoid shell parsing issues with dictionaries.
+    file_name = "cluster_query.json"
+    with open(file_name, "w") as f:
+        body = {
+            "query": "where type =~ 'Microsoft.ExtendedLocation/customLocations' | where properties.hostResourceId "
+            f"=~ '{cluster_id}' | project name"
+        }
+        json.dump(body, f)
+    tracked_files.append(file_name)
+
+    custom_location_result = run(
+        "az rest --method POST --url https://management.azure.com/providers/Microsoft.ResourceGraph"
+        f"/resources?api-version=2022-10-01 --body @{file_name}"
+    )["data"]
     custom_location_result = run(
         "az graph query -q \"where type =~ 'Microsoft.ExtendedLocation/customLocations' | "
         f"where properties.hostResourceId =~ '{cluster_id}' | project name\""
