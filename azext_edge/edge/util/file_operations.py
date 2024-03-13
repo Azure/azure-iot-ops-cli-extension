@@ -32,7 +32,8 @@ def convert_file_content_to_json(file_path: str):
         try:
             with open(file_path, "r") as f:
                 reader = csv.DictReader(f)
-            return [row for row in reader]
+                result = [row for row in reader]
+            return result
         except csv.Error as e:
             raise FileOperationError(f"Invalid CSV syntax: {e}")
     raise FileOperationError(f"Detected {extension} extension is not supported.")

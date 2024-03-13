@@ -178,7 +178,7 @@ def test_convert_sub_points_from_csv(sub_points):
     ],
     [
         {
-            "configuration": "{\"samplingInterval\": \"10\", \"queueSize\": \"2\"}",
+            "configuration": "{\"queueSize\": \"2\"}",
             "capabilityId": generate_generic_id(),
             "name": generate_generic_id(),
             "observabilityMode": generate_generic_id(),
@@ -217,24 +217,28 @@ def test_convert_sub_points_to_csv(sub_points, sub_point_type):
         if sub_point_type == "dataPoints":
             assert sub_points[i].get("TagName") == original_copy[i].get("name")
             assert sub_points[i].get("NodeID") == original_copy[i].get("dataSource")
+            assert sub_points[i].get("CapabilityId") == original_copy[i].get("capabilityId")
         else:
             assert sub_points[i].get("EventName") == original_copy[i].get("name")
             assert sub_points[i].get("EventNotifier") == original_copy[i].get("eventNotifier")
 
         configuration = json.loads(original_copy[i].get(f"{sub_point_type[:-1]}Configuration", "{}"))
-        assert sub_points[i].get("Sampling Interval Milliseconds") == configuration.get("samplingInterval")
         assert sub_points[i].get("QueueSize") == configuration.get("queueSize")
-
-        assert sub_points[i].get("CapabilityId") == original_copy[i].get("capabilityId")
+        if sub_point_type == "dataPoints":
+            assert sub_points[i].get("Sampling Interval Milliseconds") == configuration.get("samplingInterval")
         assert sub_points[i].get("ObservabilityMode") == original_copy[i].get("observabilityMode")
 
     if sub_point_type == "dataPoints":
         assert fieldnames[0] == "NodeID"
         assert fieldnames[1] == "TagName"
+        assert fieldnames[-2] == "Sampling Interval Milliseconds"
+        assert fieldnames[-1] == "CapabilityId"
     else:
         assert fieldnames[0] == "EventNotifier"
         assert fieldnames[1] == "EventName"
-    assert fieldnames[2:] == ["QueueSize", "ObservabilityMode", "Sampling Interval Milliseconds", "CapabilityId"]
+
+    assert fieldnames[2] == "QueueSize"
+    assert fieldnames[3] == "ObservabilityMode"
 
 
 @pytest.mark.parametrize("required_arg", ["data_source", "event_notifier"])

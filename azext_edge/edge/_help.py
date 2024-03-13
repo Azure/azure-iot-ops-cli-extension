@@ -438,10 +438,10 @@ def load_iotops_help():
         type: command
         short-summary: Import data points in an asset.
         examples:
-        - name: Import all data points from a file. These data points will be appended to the asset's current data points.
+        - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be ignored.
           text: >
             az iot ops asset data-point import --asset {asset} -g {resource_group} --input-file {input_file}
-        - name: Import all data points from a file. These data points will replace the asset's current data points.
+        - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be replaced.
           text: >
             az iot ops asset data-point import --asset {asset} -g {resource_group} --input-file {input_file} --replace
     """

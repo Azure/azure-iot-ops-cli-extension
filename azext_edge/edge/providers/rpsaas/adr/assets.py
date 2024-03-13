@@ -379,10 +379,20 @@ class AssetProvider(ADRBaseProvider):
 
         sub_points = convert_file_content_to_json(file_path=file_path)
         _convert_sub_points_from_csv(sub_points)
-        if replace:
-            asset["properties"][sub_point_type] = sub_points
-        else:
-            asset["properties"][sub_point_type].extend(sub_points)
+
+        key = "dataSource" if sub_point_type == "dataPoints" else "eventNotifier"
+
+        # Restructure points in an easier way to compare
+        original_points = {point[key]: point for point in asset["properties"][sub_point_type]}
+        file_points = {point[key]: point for point in sub_points}
+        for point in file_points:
+            if any([
+                point not in original_points,
+                point in original_points and replace
+            ]):
+                original_points[point] = file_points[point]
+
+        asset["properties"][sub_point_type] = list(original_points.values())
 
         poller = self.resource_client.resources.begin_create_or_update_by_id(
             resource_id=asset["id"],
@@ -512,16 +522,19 @@ def _convert_sub_points_from_csv(sub_points: List[Dict[str, str]]):
         "NodeID": "dataSource",
         "ObservabilityMode": "observabilityMode",
         "TagName" : "name",
+        "CapabilityId": "capabilityId",
     }
     for point in sub_points:
         for key, value in csv_conversion_map.items():
             if key in point:
                 point[value] = point.pop(key)
         configuration = {}
-        if "Sampling Interval Milliseconds" in point:
-            configuration["samplingInterval"] = int(point.pop("Sampling Interval Milliseconds"))
-        if "QueueSize" in point:
-            configuration["queueSize"] = int(point.pop("QueueSize"))
+        if point.get("Sampling Interval Milliseconds"):
+            configuration["samplingInterval"] = int(point.get("Sampling Interval Milliseconds"))
+        if point.get("QueueSize"):
+            configuration["queueSize"] = int(point.get("QueueSize"))
+        point.pop("Sampling Interval Milliseconds", None)
+        point.pop("QueueSize", None)
         if configuration:
             config_key = "dataPointConfiguration" if "dataSource" in point else "eventConfiguration"
             point[config_key] = json.dumps(configuration)
@@ -529,12 +542,13 @@ def _convert_sub_points_from_csv(sub_points: List[Dict[str, str]]):
 
 def _convert_sub_points_to_csv(sub_points: List[Dict[str, str]], sub_point_type: str) -> List[str]:
     csv_conversion_map = {
-        "capabilityId": "CapabilityId",
         "name": "TagName" if sub_point_type == "dataPoints" else "EventName",
         "observabilityMode": "ObservabilityMode",
     }
     if sub_point_type == "dataPoints":
         csv_conversion_map["dataSource"] = "NodeID"
+        # limit capability id to just data points
+        csv_conversion_map["capabilityId"] = "CapabilityId"
         fieldnames = [csv_conversion_map["dataSource"]]
     else:
         csv_conversion_map["eventNotifier"] = "EventNotifier"
@@ -544,16 +558,22 @@ def _convert_sub_points_to_csv(sub_points: List[Dict[str, str]], sub_point_type:
             point[value] = point.pop(key, None)
         configuration = point.pop(f"{sub_point_type[:-1]}Configuration", "{}")
         configuration = json.loads(configuration)
-        point["Sampling Interval Milliseconds"] = configuration.get("samplingInterval")
+        point.pop("capabilityId", None)
+        # events should not have sampling internval milliseconds
+        if sub_point_type == "dataPoints":
+            point["Sampling Interval Milliseconds"] = configuration.get("samplingInterval")
         point["QueueSize"] = configuration.get("queueSize")
 
     fieldnames.extend([
         csv_conversion_map["name"],
         "QueueSize",
         csv_conversion_map["observabilityMode"],
-        "Sampling Interval Milliseconds",
-        csv_conversion_map["capabilityId"]
     ])
+    if sub_point_type == "dataPoints":
+        fieldnames.extend([
+            "Sampling Interval Milliseconds",
+            csv_conversion_map["capabilityId"]
+        ])
     return fieldnames
 
 
