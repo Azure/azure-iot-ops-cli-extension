@@ -23,7 +23,7 @@ def require_init(init_setup, tracked_files):
 
     # create a file to avoid shell parsing issues with dictionaries.
     file_name = "cluster_query.json"
-    with open(file_name, "w") as f:
+    with open(file_name, "w", encoding="utf-8") as f:
         body = {
             "query": "where type =~ 'Microsoft.ExtendedLocation/customLocations' | where properties.hostResourceId "
             f"=~ '{cluster_id}' | project name"
