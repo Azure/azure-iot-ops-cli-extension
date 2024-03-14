@@ -1,0 +1,27 @@
+name: "[auto] PR to main on release"
+run-name: Create Release PR for ${{github.event.release.name}}
+on:
+  release:
+    types: [published]
+permissions:
+  pull-requests: write
+
+jobs:
+  create-pr:
+    env:
+      tag: ${{ github.event.release.tag_name }}
+      body: ${{ github.event.release.body }}
+      branch: ${{ github.event.release.target_commitish }}
+      reviewer: ${{ github.event.sender.login }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: "Create pull Request to main"
+        continue-on-error: true
+        env:
+            GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_URL=$(gh pr create --base main --head $branch --title "Release $tag" --body "$body" --reviewer $reviewer)
+          echo "Created pull request to main: $PR_URL" >> $GITHUB_STEP_SUMMARY
