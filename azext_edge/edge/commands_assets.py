@@ -305,21 +305,17 @@ def add_asset_event(
     asset_name: str,
     event_notifier: str,
     resource_group_name: str,
-    capability_id: Optional[str] = None,
     name: Optional[str] = None,
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
-    sampling_interval: Optional[int] = None,
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.add_sub_point(
         asset_name=asset_name,
         event_notifier=event_notifier,
-        capability_id=capability_id,
         name=name,
         observability_mode=observability_mode,
         queue_size=queue_size,
-        sampling_interval=sampling_interval,
         resource_group_name=resource_group_name
     )
 

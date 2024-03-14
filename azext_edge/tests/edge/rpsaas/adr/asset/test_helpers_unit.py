@@ -43,7 +43,9 @@ def test_build_asset_sub_point(
         sampling_interval=sampling_interval
     )
 
-    assert result["capabilityId"] == (capability_id or name)
+    if not capability_id and data_source:
+        capability_id = name
+    assert result["capabilityId"] == capability_id
     assert result["name"] == name
     assert result["observabilityMode"] == observability_mode
 
@@ -286,6 +288,13 @@ def test_convert_sub_points_to_csv(sub_points, sub_point_type):
 ])
 def test_process_asset_sub_points(required_arg, sub_points):
     sub_points_copy = sub_points
+    if required_arg == "event_notifier" and sub_points_copy:
+        for i in range(len(sub_points_copy)):
+            processed_point = []
+            for arg in sub_points_copy[i]:
+                if not (arg.startswith("capability_id") or arg.startswith("sampling_interval")):
+                    processed_point.append(arg)
+            sub_points_copy[i] = processed_point
     if sub_points_copy:
         # Make a copy to avoid tests from conflicting
         sub_points_copy = sub_points_copy[:]
