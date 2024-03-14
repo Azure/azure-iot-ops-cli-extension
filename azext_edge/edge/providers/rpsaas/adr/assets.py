@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+import os
 from typing import Dict, List, Optional, Union
 
 from knack.log import get_logger
@@ -123,38 +124,6 @@ class AssetProvider(ADRBaseProvider):
             parameters=asset_body
         )
         return poller
-
-    def export(
-        self,
-        file_name: str,
-        extension: str = "json",
-        cluster_name: Optional[str] = None,
-        cluster_resource_group: Optional[str] = None,
-        cluster_subscription: Optional[str] = None,
-        custom_location_name: Optional[str] = None,
-        custom_location_resource_group: Optional[str] = None,
-        custom_location_subscription: Optional[str] = None,
-        output_dir: Optional[str] = None,
-        replace: bool = False
-    ):
-        from ....util.file_operations import dump_content_to_file
-        extended_location = self.check_cluster_and_custom_location(
-            custom_location_name=custom_location_name,
-            custom_location_resource_group=custom_location_resource_group,
-            custom_location_subscription=custom_location_subscription,
-            cluster_name=cluster_name,
-            cluster_resource_group=cluster_resource_group,
-            cluster_subscription=cluster_subscription
-        )
-        # TODO: what if there are too many assets?
-        assets = self.query(custom_location_name=extended_location)
-        dump_content_to_file(
-            content=assets,
-            file_name=file_name,
-            extension=extension,
-            output_dir=output_dir,
-            replace=replace
-        )
 
     def query(
         self,
@@ -359,6 +328,7 @@ class AssetProvider(ADRBaseProvider):
             output_dir=output_dir,
             replace=replace
         )
+        return {"file_path": os.path.join(output_dir or ".", f"{asset_name}_{sub_point_type}.{extension}")}
 
     def import_sub_points(
         self,
@@ -477,7 +447,7 @@ def _build_asset_sub_point(
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
 ) -> Dict[str, str]:
-    if capability_id is None:
+    if capability_id is None and data_source:
         capability_id = name
     custom_configuration = {}
     if sampling_interval:

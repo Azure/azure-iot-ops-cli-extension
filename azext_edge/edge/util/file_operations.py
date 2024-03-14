@@ -47,6 +47,8 @@ def dump_content_to_file(
     output_dir: Optional[str] = None,
     replace: bool = False
 ):
+    if not output_dir:
+        output_dir = "."
     file_path = os.path.join(output_dir, f"{file_name}.{extension}")
     if os.path.exists(file_path):
         if not replace:
