@@ -98,16 +98,38 @@ class OpsServiceType(ListableEnum):
     deviceregistry = "deviceregistry"
 
 
+class ResourceProviderMapping(ListableEnum):
+    """
+    Resource Provider mappings for graph queries.
+    """
+
+    adr = "Microsoft.DeviceRegistry"
+    ext_loc = "Microsoft.ExtendedLocation"
+    kube = "Microsoft.Kubernetes"
+    kube_config = "Microsoft.KubernetesConfiguration"
+
+
 class ResourceTypeMapping(Enum):
     """
     Resource type mappings for graph queries.
     """
 
-    asset = "Microsoft.DeviceRegistry/assets"
-    asset_endpoint_profile = "Microsoft.DeviceRegistry/assetEndpointProfiles"
-    custom_location = "Microsoft.ExtendedLocation/customLocations"
-    connected_cluster = "Microsoft.Kubernetes/connectedClusters"
-    cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
+    asset = "assets"
+    asset_endpoint_profile = "assetEndpointProfiles"
+    custom_location = "customLocations"
+    connected_cluster = "connectedClusters"
+    cluster_extensions = "extensions"
+
+    @classmethod
+    def map_to_provider(cls, resource_type: str):
+        mapping = {
+            cls.asset.value: ResourceProviderMapping.adr.value,
+            cls.asset_endpoint_profile.value: ResourceProviderMapping.adr.value,
+            cls.custom_location.value: ResourceProviderMapping.ext_loc.value,
+            cls.connected_cluster.value: ResourceProviderMapping.kube.value,
+            cls.cluster_extensions.value: ResourceProviderMapping.kube_config.value,
+        }
+        return mapping[resource_type]
 
 
 class ClusterExtensionsMapping(Enum):
