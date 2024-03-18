@@ -25,14 +25,12 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
         resource_api=ORC_API_V1,
         label_selector=ORC_INSTANCE_LABEL,
         since_seconds=since_seconds,
-        capture_previous_logs=True,
     )
     processed.extend(
         process_v1_pods(
             resource_api=ORC_API_V1,
             label_selector=ORC_APP_LABEL,
             since_seconds=since_seconds,
-            capture_previous_logs=True,
         )
     )
     processed.extend(
@@ -40,7 +38,6 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
             resource_api=ORC_API_V1,
             label_selector=ORC_CONTROLLER_LABEL,
             since_seconds=since_seconds,
-            capture_previous_logs=True,
         )
     )
 

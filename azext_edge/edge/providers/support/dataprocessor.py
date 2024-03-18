@@ -49,7 +49,6 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
         resource_api=DATA_PROCESSOR_API_V1,
         label_selector=DATA_PROCESSOR_LABEL,
         since_seconds=since_seconds,
-        capture_previous_logs=True,
         pod_prefix_for_init_container_logs=[
             DATA_PROCESSOR_READER_WORKER_PREFIX,
             DATA_PROCESSOR_RUNNER_WORKER_PREFIX,

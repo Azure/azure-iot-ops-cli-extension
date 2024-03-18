@@ -33,14 +33,12 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
         resource_api=AKRI_API_V0,
         label_selector=AKRI_INSTANCE_LABEL,
         since_seconds=since_seconds,
-        capture_previous_logs=True,
     )
     processed.extend(
         process_v1_pods(
             resource_api=AKRI_API_V0,
             label_selector=AKRI_APP_LABEL,
             since_seconds=since_seconds,
-            capture_previous_logs=True,
         )
     )
     return processed

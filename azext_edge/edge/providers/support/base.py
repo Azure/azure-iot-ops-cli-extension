@@ -49,8 +49,8 @@ def process_v1_pods(
     resource_api: EdgeResourceApi,
     label_selector=None,
     since_seconds: int = 60 * 60 * 24,
-    include_metrics=False,
-    capture_previous_logs=True,
+    include_metrics: bool = False,
+    capture_previous_logs: bool = True,
     prefix_names: Optional[List[str]] = None,
     pod_prefix_for_init_container_logs: Optional[List[str]] = None,
 ) -> List[dict]:
@@ -91,33 +91,23 @@ def process_v1_pods(
         pod_spec: V1PodSpec = p.spec
         pod_containers: List[V1Container] = pod_spec.containers
 
-        capture_previous_log_runs = [False]
-        if capture_previous_logs:
-            capture_previous_log_runs.append(True)
-        for container in pod_containers:
-            for capture_previous in capture_previous_log_runs:
-                try:
-                    logger_debug_previous = "previous run " if capture_previous else ""
-                    logger.debug(f"Reading {logger_debug_previous}log from pod {pod_name} container {container.name}")
-                    log: str = v1_api.read_namespaced_pod_log(
-                        name=pod_name,
-                        namespace=pod_namespace,
-                        since_seconds=since_seconds,
-                        container=container.name,
-                        previous=capture_previous,
-                    )
-                    zinfo_previous_segment = "previous." if capture_previous else ""
-                    processed.append(
-                        {
-                            "data": log,
-                            "zinfo": (
-                                f"{pod_namespace}/{resource_api.moniker}"
-                                f"/pod.{pod_name}.{container.name}.{zinfo_previous_segment}log"
-                            ),
-                        }
-                    )
-                except ApiException as e:
-                    logger.debug(e.body)
+        if pod_prefix_for_init_container_logs:
+            # check if pod name starts with any prefix in pod_prefix_for_init_container_logs
+            if any(pod_name.startswith(prefix) for prefix in pod_prefix_for_init_container_logs):
+                init_pod_containers: List[V1Container] = pod_spec.init_containers
+                pod_containers.extend(init_pod_containers)
+
+        processed.extend(
+            _capture_pod_container_logs(
+                pod_containers=pod_containers,
+                pod_name=pod_name,
+                pod_namespace=pod_namespace,
+                resource_api=resource_api,
+                v1_api=v1_api,
+                since_seconds=since_seconds,
+                capture_previous_logs=capture_previous_logs,
+            )
+        )
 
         if include_metrics:
             try:
@@ -134,20 +124,6 @@ def process_v1_pods(
                     )
             except ApiException as e:
                 logger.debug(e.body)
-
-        if pod_prefix_for_init_container_logs:
-            # check if pod name start with any prefix in pod_prefix_for_init_container_logs
-            if any(pod_name.startswith(prefix) for prefix in pod_prefix_for_init_container_logs):
-                processed.extend(
-                    _capture_init_container_logs(
-                        pod_name=pod_name,
-                        pod_namespace=pod_namespace,
-                        pod_spec=pod_spec,
-                        resource_api=resource_api,
-                        since_seconds=since_seconds,
-                        v1_api=v1_api,
-                    )
-                )
 
     return processed
 
@@ -494,37 +470,45 @@ def default_bundle_name(system_name: str) -> str:
     return f"support_bundle_{timestamp}_{system_name}.zip"
 
 
-def _capture_init_container_logs(
+def _capture_pod_container_logs(
+    pod_containers: List[V1Container],
     pod_name: str,
     pod_namespace: str,
-    pod_spec: V1PodSpec,
     resource_api: EdgeResourceApi,
     v1_api: client.CoreV1Api,
+    capture_previous_logs: bool = True,
     since_seconds: int = 60 * 60 * 24,
 ) -> List[dict]:
 
     processed = []
-    pod_init_containers: List[V1Container] = pod_spec.init_containers or []
+    capture_previous_log_runs = [False]
 
-    for init_container in pod_init_containers:
-        try:
-            logger.debug(f"Reading init log from pod {pod_name} init container {init_container.name}")
-            log: str = v1_api.read_namespaced_pod_log(
-                name=pod_name,
-                namespace=pod_namespace,
-                since_seconds=since_seconds,
-                container=init_container.name,
-                previous=False,
-            )
-            processed.append(
-                {
-                    "data": log,
-                    "zinfo": (
-                        f"{pod_namespace}/{resource_api.moniker}/pod.{pod_name}.{init_container.name}.init.log"
-                    ),
-                }
-            )
-        except ApiException as e:
-            logger.debug(e.body)
+    if capture_previous_logs:
+        capture_previous_log_runs.append(True)
+
+    for container in pod_containers:
+        for capture_previous in capture_previous_log_runs:
+            try:
+                logger_debug_previous = "previous run " if capture_previous else ""
+                logger.debug(f"Reading {logger_debug_previous} log from pod {pod_name} container {container.name}")
+                log: str = v1_api.read_namespaced_pod_log(
+                    name=pod_name,
+                    namespace=pod_namespace,
+                    since_seconds=since_seconds,
+                    container=container.name,
+                    previous=capture_previous,
+                )
+                zinfo_previous_segment = "previous." if capture_previous else ""
+                processed.append(
+                    {
+                        "data": log,
+                        "zinfo": (
+                            f"{pod_namespace}/{resource_api.moniker}"
+                            f"/pod.{pod_name}.{container.name}.{zinfo_previous_segment}log"
+                        ),
+                    }
+                )
+            except ApiException as e:
+                logger.debug(e.body)
 
     return processed

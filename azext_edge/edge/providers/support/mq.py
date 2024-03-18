@@ -152,7 +152,9 @@ def fetch_replicasets():
 
 def fetch_pods(since_seconds: int = 60 * 60 * 24):
     return process_v1_pods(
-        resource_api=MQ_ACTIVE_API, label_selector=MQ_LABEL, since_seconds=since_seconds, capture_previous_logs=True
+        resource_api=MQ_ACTIVE_API,
+        label_selector=MQ_LABEL,
+        since_seconds=since_seconds,
     )
 
 
