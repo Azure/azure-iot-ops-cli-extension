@@ -498,15 +498,6 @@ def assert_list_pods(
                             data=pods_with_container[namespace][pod_name][container_name],
                         )
 
-            # if "pod_prefix_for_init_container_logs" in kwargs:
-            #     import pdb; pdb.set_trace()
-            #     if pod_name in kwargs["pod_prefix_for_init_container_logs"]:
-            #         assert_zipfile_write(
-            #             mocked_zipfile,
-            #             zinfo=f"{namespace}/{resource_api.moniker}/pod.{pod_name}.mock-init-container.log",
-            #             data=mocked_list_pods[namespace][pod_name]["mock-init-container"],
-            #         )
-
 
 def assert_list_replica_sets(
     mocked_client,
