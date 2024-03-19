@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from copy import deepcopy
 import json
 import pytest
 
@@ -13,6 +14,8 @@ from azext_edge.edge.util.common import assemble_nargs_to_dict
 from azext_edge.edge.providers.rpsaas.adr.assets import (
     _build_asset_sub_point,
     _build_default_configuration,
+    _convert_sub_points_from_csv,
+    _convert_sub_points_to_csv,
     _process_asset_sub_points,
     _update_properties
 )
@@ -40,7 +43,9 @@ def test_build_asset_sub_point(
         sampling_interval=sampling_interval
     )
 
-    assert result["capabilityId"] == (capability_id or name)
+    if not capability_id and data_source:
+        capability_id = name
+    assert result["capabilityId"] == capability_id
     assert result["name"] == name
     assert result["observabilityMode"] == observability_mode
 
@@ -88,6 +93,156 @@ def test_build_default_configuration(original_configuration, publishing_interval
     assert new_config == old_config
 
 
+@pytest.mark.parametrize("sub_points", [
+    [{}, {}],
+    [
+        {
+            "Sampling Interval Milliseconds": "10",
+            "QueueSize": "1000",
+            "EventName": generate_generic_id(),
+            "EventNotifier": generate_generic_id(),
+        }
+    ],
+    [
+        {
+            "TagName": generate_generic_id(),
+            "NodeID": generate_generic_id(),
+        }
+    ],
+    [
+        {
+            "Sampling Interval Milliseconds": "10",
+            "TagName": generate_generic_id(),
+            "NodeID": generate_generic_id(),
+            "ObservabilityMode": generate_generic_id(),
+        },
+        {
+            "Sampling Interval Milliseconds": "10",
+            "QueueSize": "1000",
+            "EventName": generate_generic_id(),
+            "EventNotifier": generate_generic_id(),
+            "ObservabilityMode": generate_generic_id(),
+        },
+        {
+            "Sampling Interval Milliseconds": "10",
+            "TagName": generate_generic_id(),
+            "NodeID": generate_generic_id(),
+            "ObservabilityMode": generate_generic_id(),
+        }
+    ],
+    [
+        {
+            "NodeID": generate_generic_id(),
+        },
+        {
+            "EventNotifier": generate_generic_id(),
+        },
+    ],
+])
+def test_convert_sub_points_from_csv(sub_points):
+    original_copy = deepcopy(sub_points)
+    _convert_sub_points_from_csv(sub_points)
+
+    for i in range(len(original_copy)):
+        for key in original_copy[i]:
+            assert key not in sub_points[i]
+
+        original_name = original_copy[i].get("TagName", original_copy[i].get("EventName"))
+        assert sub_points[i].get("name") == original_name
+        assert sub_points[i].get("eventNotifier") == original_copy[i].get("EventNotifier")
+        assert sub_points[i].get("dataSource") == original_copy[i].get("NodeID")
+        assert sub_points[i].get("observabilityMode") == original_copy[i].get("ObservabilityMode")
+
+        if "Sampling Interval Milliseconds" in original_copy[i] or "QueueSize" in original_copy[i]:
+            config_key = "eventConfiguration" if original_copy[i].get("EventNotifier") else "dataPointConfiguration"
+            configuration = json.loads(sub_points[i].get(config_key))
+            orig_sample = original_copy[i].get("Sampling Interval Milliseconds")
+            assert configuration.get("samplingInterval") == (int(orig_sample) if orig_sample else None)
+            orig_queue = original_copy[i].get("QueueSize")
+            assert configuration.get("queueSize") == (int(orig_queue) if orig_queue else None)
+
+
+@pytest.mark.parametrize("sub_points", [
+    [{}],
+    [
+        {
+            "configuration": "{\"samplingInterval\": \"100\", \"queueSize\": \"2\"}",
+            "capabilityId": generate_generic_id(),
+            "name": generate_generic_id(),
+            "observabilityMode": generate_generic_id(),
+        }
+    ],
+    [
+        {
+            "name": generate_generic_id(),
+            "observabilityMode": generate_generic_id(),
+        }
+    ],
+    [
+        {
+            "configuration": "{\"queueSize\": \"2\"}",
+            "capabilityId": generate_generic_id(),
+            "name": generate_generic_id(),
+            "observabilityMode": generate_generic_id(),
+        },
+        {
+            "configuration": "{\"samplingInterval\": \"100\", \"queueSize\": \"5\"}",
+            "capabilityId": generate_generic_id(),
+            "name": generate_generic_id(),
+            "observabilityMode": generate_generic_id(),
+        },
+        {
+            "configuration": "{\"samplingInterval\": \"100\", \"queueSize\": \"4\"}",
+            "capabilityId": generate_generic_id(),
+            "name": generate_generic_id(),
+            "observabilityMode": generate_generic_id(),
+        }
+    ],
+])
+@pytest.mark.parametrize("sub_point_type", ["dataPoints", "events"])
+def test_convert_sub_points_to_csv(sub_points, sub_point_type):
+    # make sure tests dont collide
+    sub_points = deepcopy(sub_points)
+    key = "dataSource" if sub_point_type == "dataPoints" else "eventNotifier"
+    for i in range(len(sub_points)):
+        config = sub_points[i].pop("configuration", None)
+        if config:
+            sub_points[i][f"{sub_point_type[:-1]}Configuration"] = config
+        sub_points[i][key] = generate_generic_id()
+
+    original_copy = deepcopy(sub_points)
+    fieldnames = _convert_sub_points_to_csv(sub_points, sub_point_type)
+    for i in range(len(sub_points)):
+        for key in original_copy[i]:
+            assert key not in sub_points[i]
+
+        if sub_point_type == "dataPoints":
+            assert sub_points[i].get("TagName") == original_copy[i].get("name")
+            assert sub_points[i].get("NodeID") == original_copy[i].get("dataSource")
+            assert sub_points[i].get("CapabilityId") == original_copy[i].get("capabilityId")
+        else:
+            assert sub_points[i].get("EventName") == original_copy[i].get("name")
+            assert sub_points[i].get("EventNotifier") == original_copy[i].get("eventNotifier")
+
+        configuration = json.loads(original_copy[i].get(f"{sub_point_type[:-1]}Configuration", "{}"))
+        assert sub_points[i].get("QueueSize") == configuration.get("queueSize")
+        if sub_point_type == "dataPoints":
+            assert sub_points[i].get("Sampling Interval Milliseconds") == configuration.get("samplingInterval")
+        assert sub_points[i].get("ObservabilityMode") == original_copy[i].get("observabilityMode")
+
+    if sub_point_type == "dataPoints":
+        assert fieldnames[0] == "NodeID"
+        assert fieldnames[1] == "TagName"
+        assert fieldnames[-2] == "Sampling Interval Milliseconds"
+        assert fieldnames[-1] == "CapabilityId"
+    else:
+        assert fieldnames[0] == "EventNotifier"
+        assert fieldnames[1] == "EventName"
+
+    assert fieldnames[2] == "QueueSize"
+    assert fieldnames[3] == "ObservabilityMode"
+
+
 @pytest.mark.parametrize("required_arg", ["data_source", "event_notifier"])
 @pytest.mark.parametrize("sub_points", [
     None,
@@ -133,6 +288,13 @@ def test_build_default_configuration(original_configuration, publishing_interval
 ])
 def test_process_asset_sub_points(required_arg, sub_points):
     sub_points_copy = sub_points
+    if required_arg == "event_notifier" and sub_points_copy:
+        for i in range(len(sub_points_copy)):
+            processed_point = []
+            for arg in sub_points_copy[i]:
+                if not (arg.startswith("capability_id") or arg.startswith("sampling_interval")):
+                    processed_point.append(arg)
+            sub_points_copy[i] = processed_point
     if sub_points_copy:
         # Make a copy to avoid tests from conflicting
         sub_points_copy = sub_points_copy[:]

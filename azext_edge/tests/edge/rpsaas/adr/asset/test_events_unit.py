@@ -39,20 +39,16 @@ FULL_EVENT = FULL_ASSET["properties"]["events"][0]
         }
     },
 ], ids=["minimal", "full"], indirect=True)
-@pytest.mark.parametrize("capability_id", [None, generate_generic_id()])
 @pytest.mark.parametrize("name", [None, generate_generic_id()])
 @pytest.mark.parametrize("observability_mode", [None, generate_generic_id()])
 @pytest.mark.parametrize("queue_size", [None, 20])
-@pytest.mark.parametrize("sampling_interval", [None, 33])
 def test_add_asset_event(
     mocked_cmd,
     mock_check_cluster_connectivity,
     mocked_resource_management_client,
-    capability_id,
     name,
     observability_mode,
     queue_size,
-    sampling_interval,
 ):
     asset_name = generate_generic_id()
     resource_group_name = generate_generic_id()
@@ -61,11 +57,9 @@ def test_add_asset_event(
         cmd=mocked_cmd,
         asset_name=asset_name,
         event_notifier=event_notifier,
-        capability_id=capability_id,
         name=name,
         observability_mode=observability_mode,
         queue_size=queue_size,
-        sampling_interval=sampling_interval,
         resource_group_name=resource_group_name
     )
     mocked_resource_management_client.resources.get.assert_called_once()
@@ -85,7 +79,6 @@ def test_add_asset_event(
 
     assert request_events[:-1] == original_asset["properties"].get("events", [])
     added_event = request_events[-1]
-    assert added_event["capabilityId"] == (capability_id or name)
     assert added_event["name"] == name
     assert added_event["observabilityMode"] == observability_mode
 
@@ -93,9 +86,6 @@ def test_add_asset_event(
     assert added_event["eventConfiguration"]
     assert "dataSource" not in added_event
     custom_configuration = json.loads(added_event["eventConfiguration"])
-    assert custom_configuration.get("samplingInterval") == (
-        sampling_interval if event_notifier else None
-    )
     assert custom_configuration.get("queueSize") == (queue_size if event_notifier else None)
 
 

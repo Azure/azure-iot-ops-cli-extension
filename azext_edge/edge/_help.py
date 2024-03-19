@@ -288,8 +288,8 @@ def load_iotops_help():
         - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number.
           text: >
             az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --event capability_id={capability_id} event_notifier={event_notifier}
-            name={name} observability_mode={observability_mode} sampling_interval={sampling_interval} queue_size={queue_size}
+            --endpoint {endpoint} --event event_notifier={event_notifier}
+            name={name} observability_mode={observability_mode} queue_size={queue_size}
             --event event_notifier={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
             --serial-number {serial_number}
 
@@ -303,9 +303,9 @@ def load_iotops_help():
         - name: Create an asset with the given pre-filled values.
           text: >
             az iot ops asset create --name MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
-            --data capability_id=myTagId data_source=nodeId1 name=myTagName1
+            --data capability_id=myTagId data_source=NodeID1 name=myTagName1
             observability_mode=counter sampling_interval=10 queue_size=2 --data
-            data_source=nodeId2 --data-publish-int 1000 --data-queue-size 1 --data-sample-int 30
+            data_source=NodeID2 --data-publish-int 1000 --data-queue-size 1 --data-sample-int 30
             --asset-type customAsset --description 'Description for a test asset.'
             --documentation-uri www.help.com --external-asset-id 000-000-0000 --hardware-revision 10.0
             --product-code XXX100 --software-revision 0.1 --manufacturer Contoso
@@ -410,8 +410,40 @@ def load_iotops_help():
 
         - name: Add a data point to an asset with the given pre-filled values.
           text: >
-            az iot ops asset data-point add --asset MyAsset -g MyRG --data-source nodeId1 --name tagName1
+            az iot ops asset data-point add --asset MyAsset -g MyRG --data-source NodeID1 --name tagName1
             --capability-id tagId1 --observability-mode log --queue-size 5 --sampling-interval 200
+    """
+
+    helps[
+        "iot ops asset data-point export"
+    ] = """
+        type: command
+        short-summary: Export data points in an asset.
+        long-summary: The file name will be {asset_name}_dataPoints.{file_type}.
+        examples:
+        - name: Export all data points in an asset in JSON format.
+          text: >
+            az iot ops asset data-point export --asset {asset} -g {resource_group}
+        - name: Export all data points in an asset in CSV format in a specific output directory.
+          text: >
+            az iot ops asset data point export --asset {asset} -g {resource_group} --format csv --output-dir {output_directory}
+        - name: Export all data points in an asset in YAML format. Replace the file if one is present already.
+          text: >
+            az iot ops asset data-point export --asset {asset} -g {resource_group} --format yaml --replace
+    """
+
+    helps[
+        "iot ops asset data-point import"
+    ] = """
+        type: command
+        short-summary: Import data points in an asset.
+        examples:
+        - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be ignored.
+          text: >
+            az iot ops asset data-point import --asset {asset} -g {resource_group} --input-file {input_file}
+        - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be replaced.
+          text: >
+            az iot ops asset data-point import --asset {asset} -g {resource_group} --input-file {input_file} --replace
     """
 
     helps[
@@ -459,17 +491,47 @@ def load_iotops_help():
           text: >
             az iot ops asset event add --asset {asset} -g {resource_group} --event-notifier {event_notifier}
 
-        - name: Add an event to an asset with capability id, event name, observability mode, custom queue size,
-                and custom sampling interval.
+        - name: Add an event to an asset with event name, observability mode, and custom queue size.
           text: >
             az iot ops asset event add --asset {asset} -g {resource_group} --event-notifier {event_notifier}
-            --name {name} --capability-id {capability_id} --observability-mode
-            {observability_mode} --queue-size {queue_size} --sampling-interval {sampling_interval}
+            --name {name} --observability-mode {observability_mode} --queue-size {queue_size}
 
         - name: Add an event to an asset with the given pre-filled values.
           text: >
-            az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId --name eventName
-            --capability-id tagId1 --observability-mode histogram --queue-size 2 --sampling-interval 500
+            az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId1 --name eventName
+            --observability-mode log --queue-size 2
+    """
+
+    helps[
+        "iot ops asset event export"
+    ] = """
+        type: command
+        short-summary: Export events in an asset.
+        long-summary: The file name will be {asset_name}_dataPoints.{file_type}.
+        examples:
+        - name: Export all events in an asset in JSON format.
+          text: >
+            az iot ops asset event export --asset {asset} -g {resource_group}
+        - name: Export all events in an asset in CSV format in a specific output directory.
+          text: >
+            az iot ops asset event export --asset {asset} -g {resource_group} --format csv --output-dir {output_directory}
+        - name: Export all events in an asset in YAML format. Replace the file if one is present already.
+          text: >
+            az iot ops asset event export --asset {asset} -g {resource_group} --format yaml --replace
+    """
+
+    helps[
+        "iot ops asset event import"
+    ] = """
+        type: command
+        short-summary: Import events in an asset.
+        examples:
+        - name: Import all events from a file. These events will be appended to the asset's current events.
+          text: >
+            az iot ops asset event import --asset {asset} -g {resource_group} --input-file {input_file}
+        - name: Import all events from a file. These events will replace the asset's current events.
+          text: >
+            az iot ops asset event import --asset {asset} -g {resource_group} --input-file {input_file} --replace
     """
 
     helps[
