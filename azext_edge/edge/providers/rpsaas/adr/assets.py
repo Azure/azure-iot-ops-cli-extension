@@ -180,14 +180,13 @@ class AssetProvider(ADRBaseProvider):
             query += f"| where properties.serialNumber =~ \"{serial_number}\""
         if software_revision:
             query += f"| where properties.softwareRevision =~ \"{software_revision}\""
-
         return build_query(
             self.cmd,
             subscription_id=self.subscription,
             custom_query=query,
             location=location,
             resource_group=resource_group_name,
-            type=self.resource_type,
+            type=ResourceTypeMapping.asset.with_provider,
             additional_project="extendedLocation"
         )
 

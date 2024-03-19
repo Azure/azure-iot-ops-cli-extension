@@ -120,16 +120,16 @@ class ResourceTypeMapping(Enum):
     connected_cluster = "connectedClusters"
     cluster_extensions = "extensions"
 
-    @classmethod
-    def map_to_provider(cls, resource_type: str):
+    @property
+    def with_provider(self):
         mapping = {
-            cls.asset.value: ResourceProviderMapping.adr.value,
-            cls.asset_endpoint_profile.value: ResourceProviderMapping.adr.value,
-            cls.custom_location.value: ResourceProviderMapping.ext_loc.value,
-            cls.connected_cluster.value: ResourceProviderMapping.kube.value,
-            cls.cluster_extensions.value: ResourceProviderMapping.kube_config.value,
+            ResourceTypeMapping.asset.value: ResourceProviderMapping.adr.value,
+            ResourceTypeMapping.asset_endpoint_profile.value: ResourceProviderMapping.adr.value,
+            ResourceTypeMapping.custom_location.value: ResourceProviderMapping.ext_loc.value,
+            ResourceTypeMapping.connected_cluster.value: ResourceProviderMapping.kube.value,
+            ResourceTypeMapping.cluster_extensions.value: ResourceProviderMapping.kube_config.value,
         }
-        return mapping[resource_type]
+        return f"{mapping[self.value]}/{self.value}"
 
 
 class ClusterExtensionsMapping(Enum):

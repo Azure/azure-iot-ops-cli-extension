@@ -131,7 +131,7 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
             custom_query=query,
             location=location,
             resource_group=resource_group_name,
-            type=self.resource_type,
+            type=ResourceTypeMapping.asset_endpoint_profile.with_provider,
             additional_project="extendedLocation"
         )
 

@@ -35,9 +35,5 @@ def require_init(init_setup, tracked_files):
         "az rest --method POST --url https://management.azure.com/providers/Microsoft.ResourceGraph"
         f"/resources?api-version=2022-10-01 --body @{file_name}"
     )["data"]
-    custom_location_result = run(
-        "az graph query -q \"where type =~ 'Microsoft.ExtendedLocation/customLocations' | "
-        f"where properties.hostResourceId =~ '{cluster_id}' | project name\""
-    )["data"]
     init_setup["customLocation"] = custom_location_result[0]["name"]
     yield init_setup
