@@ -1,6 +1,6 @@
 We have built our [integration test workflow](#running-our-integration-test-workflow-from-an-external-repo) to be reused by external repositories.
 
-For customers wanting to run their own cluster configuration tests and checks, we have also created [github actions](#using-github-actions-to-independently-connect-a-cluster-to-arc-and-deploy-aio) to both connect your cluster to ARC, and deploy AIO resources to the cluster.
+For customers wanting to run their own cluster configuration tests and checks, we have also created [github actions](#using-github-actions-to-independently-connect-a-cluster-to-arc-andor-deploy-aio) to both connect your cluster to ARC, and deploy AIO resources to the cluster.
 
 ## Running our integration test workflow from an external repo
 
