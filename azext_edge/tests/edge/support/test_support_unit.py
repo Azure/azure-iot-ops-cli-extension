@@ -108,7 +108,7 @@ def test_create_bundle(
             mocked_client=mocked_client,
             expected_pod_map=mocked_list_pods,
             mock_names=["aio-runner"],
-            mock_init_containers=True
+            mock_init_container=True
         )
 
     since_seconds = random.randint(86400, 172800)
@@ -468,7 +468,7 @@ def assert_list_pods(
             # find if pod has init containers
             if "mock-init-container" in mocked_list_pods[namespace][pod_name]:
                 init_data = "  initContainers:\n  - name: mock-init-container\n"
-                # remove init container from pod and then do following container checks
+                # remove init container from pod, then do following container checks
                 pods_with_container[namespace][pod_name].pop("mock-init-container")
             for container_name in pods_with_container[namespace][pod_name]:
                 data = f"kind: Pod\nmetadata:\n  name: {pod_name}\n  namespace: {namespace}\nspec:\n  " +\

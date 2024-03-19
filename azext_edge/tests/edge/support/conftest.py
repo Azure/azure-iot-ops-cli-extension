@@ -15,7 +15,7 @@ def add_pod_to_mocked_pods(
     mocked_client,
     expected_pod_map,
     mock_names: List[str] = None,
-    mock_init_containers: bool = False
+    mock_init_container: bool = False
 ):
     from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
 
@@ -31,7 +31,7 @@ def add_pod_to_mocked_pods(
         spec = V1PodSpec(containers=[V1Container(name=container_name)])
         pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
 
-        if mock_init_containers:
+        if mock_init_container:
             pod.spec.init_containers = [V1Container(name="mock-init-container")]
             expected_pod_map[namespace][pod_name] = {"mock-init-container": mock_log}
         pod_list.append(pod)

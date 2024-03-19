@@ -47,10 +47,10 @@ def process_crd(group: str, version: str, kind: str, plural: str, api_moniker: s
 
 def process_v1_pods(
     resource_api: EdgeResourceApi,
-    label_selector=None,
-    since_seconds: int = 60 * 60 * 24,
-    include_metrics: bool = False,
     capture_previous_logs: bool = True,
+    include_metrics: bool = False,
+    since_seconds: int = 60 * 60 * 24,
+    label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
     pod_prefix_for_init_container_logs: Optional[List[str]] = None,
 ) -> List[dict]:
