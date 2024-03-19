@@ -202,6 +202,11 @@ jobs:
       - name: "Allow cluster to finish provisioning"
         run: |
           sleep 2m
+      - name: "Tox test environment setup"
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          python -m pip install tox
+          tox r -vv -e python-int --notest
       - name: "Az CLI login refresh"
         uses: azure/login@v2
         with:
@@ -215,8 +220,7 @@ jobs:
           azext_edge_skip_init: True
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-          python -m pip install tox
-          tox -e python-int
+          tox r -e python-int --skip-pkg-install
       - name: "Az CLI login refresh"
         uses: azure/login@v2
         with:
