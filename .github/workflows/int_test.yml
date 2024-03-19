@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: "Az CLI login"
-      uses: azure/login@v1.6.1
+      uses: azure/login@v2
       with:
         client-id: ${{ secrets.AZURE_CLIENT_ID }}
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -71,6 +71,10 @@ jobs:
     
   test:
     needs: [create_kv]
+    outputs:
+      CLUSTER_PREFIX: "az-iot-ops-test-cluster${{ github.run_number }}"
+      RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
+      KV_NAME: ${{ env.KV_NAME }}
     env:
       CLUSTER_NAME: "az-iot-ops-test-cluster${{ github.run_number }}${{ matrix.feature }}"
       CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
@@ -99,6 +103,11 @@ jobs:
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
+      - name: "Output variables for future steps"
+        id: "env_out"
+        run: |
+          echo "RESOURCE_GROUP=${{env.RESOURCE_GROUP}}" >> $GITHUB_OUTPUT
+          echo "CLUSTER_NAME=${{env.CLUSTER_NAME}}" >> $GITHUB_OUTPUT
       - name: "Setup python"
         uses: actions/setup-python@v5
         with:
@@ -138,7 +147,7 @@ jobs:
           wheel=$(find ./dist/*.whl)
           az extension add --source $wheel -y
       - name: "Az CLI login"
-        uses: azure/login@v1.6.1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -194,7 +203,22 @@ jobs:
         run: |
           sleep 2m
       - name: "Az CLI login refresh"
-        uses: azure/login@v1.6.1
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Tox Integration Tests"
+        env:
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_skip_init: True
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          python -m pip install tox
+          tox -e python-int
+      - name: "Az CLI login refresh"
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -221,7 +245,7 @@ jobs:
     if: ${{ github.event.inputs.cleanup == 'true' }}
     uses: './.github/workflows/cluster_cleanup.yml'
     with:
-      cluster_prefix: "az-iot-ops-test-cluster${{ github.run_number }}"
-      resource_group: "${{ inputs.resource-group }}"
-      keyvault_prefix: "opskv${{ github.run_number }}"
+      cluster_prefix: ${{ needs.test.outputs.CLUSTER_PREFIX }}
+      resource_group: ${{ needs.test.outputs.RESOURCE_GROUP }}
+      keyvault_prefix: ${{ needs.test.outputs.KV_NAME }}
     secrets: inherit
