@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import copy
 import random
 from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
@@ -462,7 +463,6 @@ def assert_list_pods(
     for namespace in mocked_list_pods:
         for pod_name in mocked_list_pods[namespace]:
             init_data = ""
-            import copy
             pods_with_container = copy.deepcopy(mocked_list_pods)
 
             # find if pod has init containers

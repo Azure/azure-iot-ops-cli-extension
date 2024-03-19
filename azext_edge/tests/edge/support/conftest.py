@@ -37,15 +37,13 @@ def add_pod_to_mocked_pods(
         pod_list.append(pod)
 
         if pod_name in expected_pod_map[namespace]:
-            expected_pod_map[namespace][pod_name].update({container_name: mock_log})
+            expected_pod_map[namespace][pod_name][container_name] = mock_log
         else:
             expected_pod_map[namespace][pod_name] = {container_name: mock_log}
 
     pods_list = V1PodList(items=pod_list)
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
     mocked_client.CoreV1Api().read_namespaced_pod_log.return_value = mock_log
-
-    return expected_pod_map
 
 
 @pytest.fixture
