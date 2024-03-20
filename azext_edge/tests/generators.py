@@ -4,6 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import secrets
+import string
 from typing import List, Union
 from uuid import uuid4
 
@@ -23,3 +25,8 @@ def generate_names(prefix: str = "", count: int = 1, max_length: int = 48) -> Un
 
 def get_zeroed_subscription() -> str:
     return "00000000-0000-0000-0000-000000000000"
+
+
+def generate_random_string(size: int):
+    valid_sequence = string.ascii_lowercase + string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(valid_sequence) for _ in range(size))
