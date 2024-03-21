@@ -10,36 +10,36 @@ from azext_edge.edge.commands_asset_endpoint_profiles import update_asset_endpoi
 from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
 from .conftest import MINIMUM_AEP, FULL_AEP
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [
     {
         "resources.get": MINIMUM_AEP,
-        "resources.begin_create_or_update_by_id": {"result": generate_generic_id()}
+        "resources.begin_create_or_update_by_id": {"result": generate_random_string()}
     },
     {
         "resources.get": FULL_AEP,
-        "resources.begin_create_or_update_by_id": {"result": generate_generic_id()}
+        "resources.begin_create_or_update_by_id": {"result": generate_random_string()}
     },
 ], ids=["minimal", "full"], indirect=True)
 @pytest.mark.parametrize("aep_helpers_fixture", [{
-    "update_properties": generate_generic_id(),
+    "update_properties": generate_random_string(),
 }], ids=["update helpers"], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
     {
-        "target_address": generate_generic_id(),
-        "additional_configuration": generate_generic_id(),
-        "auth_mode": generate_generic_id(),
-        "username_reference": generate_generic_id(),
-        "password_reference": generate_generic_id(),
-        "certificate_reference": generate_generic_id(),
-        "tags": generate_generic_id(),
+        "target_address": generate_random_string(),
+        "additional_configuration": generate_random_string(),
+        "auth_mode": generate_random_string(),
+        "username_reference": generate_random_string(),
+        "password_reference": generate_random_string(),
+        "certificate_reference": generate_random_string(),
+        "tags": generate_random_string(),
     },
     {
-        "additional_configuration": generate_generic_id(),
-        "auth_mode": generate_generic_id(),
+        "additional_configuration": generate_random_string(),
+        "auth_mode": generate_random_string(),
     },
 ])
 def test_update_asset_endpoint_profile(
@@ -50,8 +50,8 @@ def test_update_asset_endpoint_profile(
     req
 ):
     # Required params
-    asset_endpoint_profile_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
+    asset_endpoint_profile_name = generate_random_string()
+    resource_group_name = generate_random_string()
     result = update_asset_endpoint_profile(
         cmd=mocked_cmd,
         asset_endpoint_profile_name=asset_endpoint_profile_name,

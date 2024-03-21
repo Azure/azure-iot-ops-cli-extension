@@ -6,7 +6,7 @@
 
 from time import sleep
 from knack.log import get_logger
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 from .....helpers import run
 
 logger = get_logger(__name__)
@@ -18,8 +18,8 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
     cluster_name = require_init["clusterName"]
 
     # Create an endpoint profile
-    anon_name = "test-endpoint-" + generate_generic_id()[:4]
-    address = f"tcp://{generate_generic_id()}:5000"
+    anon_name = "test-endpoint-" + generate_random_string()[:4]
+    address = f"tcp://{generate_random_string()}:5000"
     anon_endpoint = run(
         f"az iot ops asset endpoint create -n {anon_name} -g {rg} -c {cluster_name} "
         f"--ta {address}"
@@ -42,7 +42,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
         target_address=address
     )
 
-    additional_configuration = generate_generic_id()
+    additional_configuration = generate_random_string()
     update_endpoint = run(
         f"az iot ops asset endpoint update -n {anon_name} -g {rg} --ac {additional_configuration}"
     )
@@ -54,10 +54,10 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
         additional_configuration=additional_configuration
     )
 
-    userpass_name = "test-endpoint-" + generate_generic_id()[:4]
-    username = generate_generic_id()
-    password = generate_generic_id()
-    address = f"tcp://{generate_generic_id()}:5000"
+    userpass_name = "test-endpoint-" + generate_random_string()[:4]
+    username = generate_random_string()
+    password = generate_random_string()
+    address = f"tcp://{generate_random_string()}:5000"
     userpass_endpoint = run(
         f"az iot ops asset endpoint create -n {userpass_name} -g {rg} -c {cluster_name} "
         f"--ta {address} --username-ref {username} --password-ref {password}"
@@ -73,10 +73,10 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
     )
 
     # Certificate reference not supported yet
-    # cert_name = "test-endpoint-" + generate_generic_id()[:4]
-    # cert = generate_generic_id()
-    # address = f"tcp://{generate_generic_id()}:5000"
-    # additional_configuration = generate_generic_id()
+    # cert_name = "test-endpoint-" + generate_random_string()[:4]
+    # cert = generate_random_string()
+    # address = f"tcp://{generate_random_string()}:5000"
+    # additional_configuration = generate_random_string()
     # cert_endpoint = run(
     #     f"az iot ops asset endpoint create -n {cert_name} -g {rg} -c {cluster_name} "
     #     f"--ta {address} --certificate-ref {cert} --ac {additional_configuration}"

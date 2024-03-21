@@ -9,10 +9,10 @@ import pytest
 from azext_edge.edge.providers.orchestration.permissions import verify_write_permission_against_rg
 from azure.cli.core.azclierror import ValidationError
 
-from ...generators import get_zeroed_subscription, generate_generic_id
+from ...generators import get_zeroed_subscription, generate_random_string
 
 MOCK_SUBSCRIPTION_ID = get_zeroed_subscription()
-MOCK_RG = f"rg_{generate_generic_id()}"
+MOCK_RG = f"rg_{generate_random_string()}"
 
 
 class IntermObj:

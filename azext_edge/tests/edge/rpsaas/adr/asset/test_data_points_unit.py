@@ -19,7 +19,7 @@ from .conftest import (
     MINIMUM_ASSET,
     FULL_ASSET
 )
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 FULL_EVENT = FULL_ASSET["properties"]["dataPoints"][0]
@@ -29,19 +29,19 @@ FULL_EVENT = FULL_ASSET["properties"]["dataPoints"][0]
     {
         "resources.get": MINIMUM_ASSET,
         "resources.begin_create_or_update_by_id": {
-            "properties": {"dataPoints": {"result": generate_generic_id()}}
+            "properties": {"dataPoints": {"result": generate_random_string()}}
         }
     },
     {
         "resources.get": FULL_ASSET,
         "resources.begin_create_or_update_by_id": {
-            "properties": {"dataPoints": {"result": generate_generic_id()}}
+            "properties": {"dataPoints": {"result": generate_random_string()}}
         }
     },
 ], ids=["minimal", "full"], indirect=True)
-@pytest.mark.parametrize("capability_id", [None, generate_generic_id()])
-@pytest.mark.parametrize("name", [None, generate_generic_id()])
-@pytest.mark.parametrize("observability_mode", [None, generate_generic_id()])
+@pytest.mark.parametrize("capability_id", [None, generate_random_string()])
+@pytest.mark.parametrize("name", [None, generate_random_string()])
+@pytest.mark.parametrize("observability_mode", [None, generate_random_string()])
 @pytest.mark.parametrize("queue_size", [None, 20])
 @pytest.mark.parametrize("sampling_interval", [None, 33])
 def test_add_asset_data_point(
@@ -54,9 +54,9 @@ def test_add_asset_data_point(
     queue_size,
     sampling_interval,
 ):
-    asset_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
-    data_source = generate_generic_id()
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    data_source = generate_random_string()
     result_events = add_asset_data_point(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -104,8 +104,8 @@ def test_add_asset_data_point(
     {"resources.get": FULL_ASSET},
 ], ids=["minimal", "full"], indirect=True)
 def test_list_asset_data_points(mocked_cmd, mocked_resource_management_client):
-    asset_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
     result_events = list_asset_data_points(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -120,7 +120,7 @@ def test_list_asset_data_points(mocked_cmd, mocked_resource_management_client):
     {
         "resources.get": FULL_ASSET,
         "resources.begin_create_or_update_by_id": {
-            "properties": {"dataPoints": {"result": generate_generic_id()}}
+            "properties": {"dataPoints": {"result": generate_random_string()}}
         }
     },
 ], ids=["full"], indirect=True)
@@ -128,9 +128,9 @@ def test_list_asset_data_points(mocked_cmd, mocked_resource_management_client):
     (FULL_EVENT["dataSource"], FULL_EVENT["name"]),
     (FULL_EVENT["dataSource"], None),
     (None, FULL_EVENT["name"]),
-    (generate_generic_id(), generate_generic_id()),
-    (generate_generic_id(), None),
-    (None, generate_generic_id()),
+    (generate_random_string(), generate_random_string()),
+    (generate_random_string(), None),
+    (None, generate_random_string()),
 ])
 def test_remove_asset_data_point(
     mocked_cmd,
@@ -139,8 +139,8 @@ def test_remove_asset_data_point(
     data_source,
     name
 ):
-    asset_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
     result_events = remove_asset_data_point(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -175,8 +175,8 @@ def test_remove_asset_data_point_error(mocked_cmd):
     with pytest.raises(RequiredArgumentMissingError) as e:
         remove_asset_data_point(
             cmd=mocked_cmd,
-            asset_name=generate_generic_id(),
-            resource_group_name=generate_generic_id()
+            asset_name=generate_random_string(),
+            resource_group_name=generate_random_string()
         )
     assert e.value.error_msg == "Provide either the data source via --data-source or name via "\
         "--data-point-name to identify the data point to remove."

@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.fixture()
@@ -27,54 +27,54 @@ AEP_PATH = "azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles"
 # Generic objects
 MINIMUM_AEP = {
     "extendedLocation": {
-        "name": generate_generic_id(),
-        "type": generate_generic_id(),
+        "name": generate_random_string(),
+        "type": generate_random_string(),
     },
-    "id": generate_generic_id(),
+    "id": generate_random_string(),
     "location": "westus3",
     "name": "aep-min",
     "properties": {
-        "targetAddress": generate_generic_id(),
+        "targetAddress": generate_random_string(),
         "userAuthentication": {
             "mode": "Anonymous"
         },
     },
-    "resourceGroup": generate_generic_id(),
+    "resourceGroup": generate_random_string(),
     "type": "microsoft.deviceregistry/assetendpointprofiles"
 }
 FULL_AEP = {
     "extendedLocation": {
-        "name": generate_generic_id(),
-        "type": generate_generic_id(),
+        "name": generate_random_string(),
+        "type": generate_random_string(),
     },
-    "id": generate_generic_id(),
+    "id": generate_random_string(),
     "location": "westus3",
     "name": "aep-full",
     "properties": {
-        "additionalConfiguration": generate_generic_id(),
-        "targetAddress": generate_generic_id(),
+        "additionalConfiguration": generate_random_string(),
+        "targetAddress": generate_random_string(),
         "transportAuthentication": {
             "ownCertificates": [
                 {
-                    "certThumbprint": generate_generic_id(),
-                    "certSecretReference": generate_generic_id(),
-                    "certPasswordReference": generate_generic_id(),
+                    "certThumbprint": generate_random_string(),
+                    "certSecretReference": generate_random_string(),
+                    "certPasswordReference": generate_random_string(),
                 },
                 {
-                    "certThumbprint": generate_generic_id(),
-                    "certSecretReference": generate_generic_id(),
-                    "certPasswordReference": generate_generic_id(),
+                    "certThumbprint": generate_random_string(),
+                    "certSecretReference": generate_random_string(),
+                    "certPasswordReference": generate_random_string(),
                 }
             ]
         },
         "userAuthentication": {
             "mode": "UsernamePassword",
             "usernamePasswordCredentials": {
-                "passwordReference": generate_generic_id(),
-                "usernameReference": generate_generic_id()
+                "passwordReference": generate_random_string(),
+                "usernameReference": generate_random_string()
             }
         },
     },
-    "resourceGroup": generate_generic_id(),
+    "resourceGroup": generate_random_string(),
     "type": "microsoft.deviceregistry/assetendpointprofiles"
 }

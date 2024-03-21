@@ -5,15 +5,15 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
-context_name = generate_generic_id()
+context_name = generate_random_string()
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [
-    {"resources.get": {"extended_location": {"name": generate_generic_id()}}},
-    {"resources.get": {"extendedLocation": {"name": generate_generic_id()}}},
-    {"resources.get": {"result": generate_generic_id()}},
+    {"resources.get": {"extended_location": {"name": generate_random_string()}}},
+    {"resources.get": {"extendedLocation": {"name": generate_random_string()}}},
+    {"resources.get": {"result": generate_random_string()}},
 ], ids=["extended_location", "extendedLocation", "result"], indirect=True)
 @pytest.mark.parametrize("check_cluster_connectivity", [True, False])
 def test_show(
@@ -23,15 +23,15 @@ def test_show(
     check_cluster_connectivity
 ):
     from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
-    api_version = generate_generic_id()
-    resource_type = generate_generic_id()
-    resource_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
+    api_version = generate_random_string()
+    resource_type = generate_random_string()
+    resource_name = generate_random_string()
+    resource_group_name = generate_random_string()
     provider = RPSaaSBaseProvider(
         mocked_cmd,
         api_version,
         resource_type,
-        generate_generic_id()
+        generate_random_string()
     )
     result = provider.show(resource_name, resource_group_name, check_cluster_connectivity)
 
