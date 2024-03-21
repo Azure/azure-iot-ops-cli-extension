@@ -16,6 +16,7 @@ from azext_edge.edge.providers.orchestration.template import (
 
 def test_current_template():
     assert CURRENT_TEMPLATE.commit_id
+    assert CURRENT_TEMPLATE.moniker
     assert CURRENT_TEMPLATE.content_vers
     assert CURRENT_TEMPLATE.content
     assert CURRENT_TEMPLATE.parameters
@@ -23,6 +24,7 @@ def test_current_template():
     deep_copy_template = get_current_template_copy()
 
     assert deep_copy_template.commit_id == CURRENT_TEMPLATE.commit_id
+    assert deep_copy_template.moniker == CURRENT_TEMPLATE.moniker
     assert deep_copy_template.content_vers == CURRENT_TEMPLATE.content_vers
     assert deep_copy_template.parameters == CURRENT_TEMPLATE.parameters
     assert deep_copy_template.content == CURRENT_TEMPLATE.content
@@ -37,6 +39,7 @@ def test_custom_template():
 
     custom_template = get_current_template_copy(str(custom_template_path))
     custom_template.commit_id == "custom"
+    custom_template.moniker == "custom"
     custom_template.content == expected_custom_template_content
     custom_template.parameters == expected_custom_template_content["parameters"]
     custom_template.content_vers == expected_custom_template_content["variables"]["VERSIONS"]

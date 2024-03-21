@@ -46,6 +46,7 @@ class WorkStepKey(IntEnum):
 
     REG_RP = 9
     EVAL_LOGIN_PERM = 10
+    DEPLOY_AIO_MONIKER = 11
 
 
 class WorkRecord:
@@ -180,8 +181,13 @@ class WorkManager:
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CERT, tls_ca_desc)
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CLUSTER, "Configure cluster for tls")
 
-        # TODO: add skip deployment
         self.display.add_category(WorkCategoryKey.DEPLOY_AIO, "Deploy IoT Operations", skipped=self._no_deploy)
+        deployment_moniker = "Custom template" if self._template_path else CURRENT_TEMPLATE.moniker
+        self.display.add_step(
+            WorkCategoryKey.DEPLOY_AIO,
+            WorkStepKey.DEPLOY_AIO_MONIKER,
+            f"[green]{deployment_moniker}[/green]",
+        )
 
     def do_work(self):  # noqa: C901
         from ..edge_api.keyvault import KEYVAULT_API_V1
@@ -403,6 +409,10 @@ class WorkManager:
                 ]
 
                 work_kpis.update(deployment_result)
+
+                self._completed_steps[WorkStepKey.DEPLOY_AIO_MONIKER] = 1
+                self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
+
                 return work_kpis
 
         except HttpResponseError as e:
