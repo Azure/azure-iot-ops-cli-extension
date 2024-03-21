@@ -186,7 +186,7 @@ class AssetProvider(ADRBaseProvider):
             custom_query=query,
             location=location,
             resource_group=resource_group_name,
-            type=ResourceTypeMapping.asset.with_provider,
+            type=ResourceTypeMapping.asset.full_value,
             additional_project="extendedLocation"
         )
 

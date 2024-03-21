@@ -95,14 +95,14 @@ def test_check_cluster_and_custom_location(
     if cluster_name:
         cluster_query_kwargs = mocked_build_query.call_args_list[call].kwargs
         assert cluster_query_kwargs["subscription_id"] == cluster_subscription
-        assert cluster_query_kwargs["type"] == ResourceTypeMapping.connected_cluster.with_provider
+        assert cluster_query_kwargs["type"] == ResourceTypeMapping.connected_cluster.full_value
         assert cluster_query_kwargs["name"] == cluster_name
         assert cluster_query_kwargs["resource_group"] == cluster_resource_group
         call += 1
 
     location_query_kwargs = mocked_build_query.call_args_list[call].kwargs
     assert location_query_kwargs["subscription_id"] == custom_location_subscription
-    assert location_query_kwargs["type"] == ResourceTypeMapping.custom_location.with_provider
+    assert location_query_kwargs["type"] == ResourceTypeMapping.custom_location.full_value
     assert location_query_kwargs["name"] == custom_location_name
     assert location_query_kwargs["resource_group"] == custom_location_resource_group
     custom_query = f"| where properties.hostResourceId =~ \"{cluster_query_result['id']}\" " if cluster_name else ""
@@ -112,7 +112,7 @@ def test_check_cluster_and_custom_location(
     if not cluster_name:
         cluster_query_kwargs = mocked_build_query.call_args_list[call].kwargs
         assert cluster_query_kwargs["subscription_id"] == cluster_subscription
-        assert cluster_query_kwargs["type"] == ResourceTypeMapping.connected_cluster.with_provider
+        assert cluster_query_kwargs["type"] == ResourceTypeMapping.connected_cluster.full_value
         custom_query = f'| where id =~ "{location_query_result["properties"]["hostResourceId"]}"'
         assert cluster_query_kwargs["custom_query"] == custom_query
 

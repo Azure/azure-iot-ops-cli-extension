@@ -159,7 +159,7 @@ class RPSaaSBaseProvider:
         custom_location_query_result = build_query(
             self.cmd,
             custom_query=query,
-            type=ResourceTypeMapping.custom_location.with_provider
+            type=ResourceTypeMapping.custom_location.full_value
         )
         if not custom_location_query_result:
             logger.warning(CUSTOM_LOCATION_NOT_FOUND_MSG.format(custom_location_id))
@@ -168,7 +168,7 @@ class RPSaaSBaseProvider:
         cluster_query_result = build_query(
             self.cmd,
             custom_query=query,
-            type=ResourceTypeMapping.connected_cluster.with_provider
+            type=ResourceTypeMapping.connected_cluster.full_value
         )
         # TODO: add option to fail on these
         if not cluster_query_result:
@@ -197,7 +197,7 @@ class RPSaaSBaseProvider:
             cluster_query_result = build_query(
                 self.cmd,
                 subscription_id=cluster_subscription,
-                type=ResourceTypeMapping.connected_cluster.with_provider,
+                type=ResourceTypeMapping.connected_cluster.full_value,
                 name=cluster_name,
                 resource_group=cluster_resource_group
             )
@@ -218,7 +218,7 @@ class RPSaaSBaseProvider:
             self.cmd,
             subscription_id=custom_location_subscription,
             custom_query=query,
-            type=ResourceTypeMapping.custom_location.with_provider,
+            type=ResourceTypeMapping.custom_location.full_value,
             name=custom_location_name,
             resource_group=custom_location_resource_group
         )
@@ -249,7 +249,7 @@ class RPSaaSBaseProvider:
                 self.cmd,
                 subscription_id=cluster_subscription,
                 custom_query=query,
-                type=ResourceTypeMapping.connected_cluster.with_provider
+                type=ResourceTypeMapping.connected_cluster.full_value
             )
             if len(cluster_query_result) == 0:
                 raise ValidationError(CUSTOM_LOCATION_DOES_NOT_EXIST_ERROR.format(custom_location_name))
