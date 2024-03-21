@@ -21,7 +21,7 @@ from ...util import get_timestamp_now_utc
 logger = get_logger(__name__)
 generic = client.ApiClient()
 
-DAY_IN_SECONDS: int = 60 * 60 * 24  # TODO: Use constant across services.
+DAY_IN_SECONDS: int = 60 * 60 * 24
 
 
 def process_crd(group: str, version: str, kind: str, plural: str, api_moniker: str, file_prefix: Optional[str] = None):
@@ -49,7 +49,7 @@ def process_v1_pods(
     resource_api: EdgeResourceApi,
     capture_previous_logs: bool = True,
     include_metrics: bool = False,
-    since_seconds: int = 60 * 60 * 24,
+    since_seconds: int = DAY_IN_SECONDS,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
     pod_prefix_for_init_container_logs: Optional[List[str]] = None,
@@ -477,7 +477,7 @@ def _capture_pod_container_logs(
     resource_api: EdgeResourceApi,
     v1_api: client.CoreV1Api,
     capture_previous_logs: bool = True,
-    since_seconds: int = 60 * 60 * 24,
+    since_seconds: int = DAY_IN_SECONDS,
 ) -> List[dict]:
 
     processed = []
@@ -490,7 +490,7 @@ def _capture_pod_container_logs(
         for capture_previous in capture_previous_log_runs:
             try:
                 logger_debug_previous = "previous run " if capture_previous else ""
-                logger.debug(f"Reading {logger_debug_previous} log from pod {pod_name} container {container.name}")
+                logger.debug(f"Reading {logger_debug_previous}log from pod {pod_name} container {container.name}")
                 log: str = v1_api.read_namespaced_pod_log(
                     name=pod_name,
                     namespace=pod_namespace,

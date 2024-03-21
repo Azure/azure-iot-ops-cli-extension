@@ -16,6 +16,7 @@ from azext_edge.edge.providers.edge_api.mq import MqResourceKinds
 from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
 from ..stats import get_stats, get_traces
 from .base import (
+    DAY_IN_SECONDS,
     assemble_crd_work,
     get_mq_namespaces,
     process_deployments,
@@ -150,7 +151,7 @@ def fetch_replicasets():
     )
 
 
-def fetch_pods(since_seconds: int = 60 * 60 * 24):
+def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     return process_v1_pods(
         resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
@@ -167,7 +168,7 @@ support_runtime_elements = {
 
 
 def prepare_bundle(
-    apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24, include_mq_traces: Optional[bool] = None
+    apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS, include_mq_traces: Optional[bool] = None
 ) -> dict:
     mq_to_run = {}
     mq_to_run.update(assemble_crd_work(apis))

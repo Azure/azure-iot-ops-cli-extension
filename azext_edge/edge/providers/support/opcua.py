@@ -11,6 +11,7 @@ from knack.log import get_logger
 
 from ..edge_api import OPCUA_API_V1, EdgeResourceApi
 from .base import (
+    DAY_IN_SECONDS,
     assemble_crd_work,
     process_deployments,
     process_services,
@@ -29,7 +30,7 @@ OPC_NAME_LABEL = "app.kubernetes.io/name in (aio-opc-opcua-connector, opcplc)"
 OPC_NAME_VAR_LABEL = "name in (aio-opc-asset-discovery)"
 
 
-def fetch_pods(since_seconds: int = 60 * 60 * 24):
+def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     opcua_pods = process_v1_pods(
         resource_api=OPCUA_API_V1,
         label_selector=OPC_APP_LABEL,
@@ -88,7 +89,7 @@ support_runtime_elements = {
 }
 
 
-def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
+def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS) -> dict:
     opcua_to_run = {}
     opcua_to_run.update(assemble_crd_work(apis))
 

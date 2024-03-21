@@ -9,6 +9,7 @@ from typing import Iterable, List
 from functools import partial
 from ..edge_api import LNM_API_V1B1, EdgeResourceApi, LnmResourceKinds
 from .base import (
+    DAY_IN_SECONDS,
     assemble_crd_work,
     process_deployments,
     process_replicasets,
@@ -33,7 +34,7 @@ def fetch_replicasets():
     )
 
 
-def fetch_pods(since_seconds: int = 60 * 60 * 24):
+def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_APP_LABEL_TYPE)
 
     processed = process_v1_pods(
@@ -80,7 +81,7 @@ support_runtime_elements = {
 }
 
 
-def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
+def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS) -> dict:
     lnm_to_run = {}
     lnm_to_run.update(assemble_crd_work(apis))
 

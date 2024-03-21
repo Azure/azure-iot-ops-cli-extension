@@ -11,6 +11,7 @@ from knack.log import get_logger
 
 from ..edge_api import DATA_PROCESSOR_API_V1, EdgeResourceApi
 from .base import (
+    DAY_IN_SECONDS,
     assemble_crd_work,
     process_deployments,
     process_persistent_volume_claims,
@@ -44,7 +45,7 @@ DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
 DATA_PROCESSOR_PVC_APP_LABEL = f"app in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
 
 
-def fetch_pods(since_seconds: int = 60 * 60 * 24):
+def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     dataprocessor_pods = process_v1_pods(
         resource_api=DATA_PROCESSOR_API_V1,
         label_selector=DATA_PROCESSOR_LABEL,
@@ -123,7 +124,7 @@ support_runtime_elements = {
 }
 
 
-def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
+def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS) -> dict:
     dataprocessor_to_run = {}
     dataprocessor_to_run.update(assemble_crd_work(apis))
 
