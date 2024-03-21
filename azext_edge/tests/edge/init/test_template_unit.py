@@ -35,7 +35,7 @@ def test_current_template():
 
 def test_custom_template():
     custom_template_path = Path(__file__).parent.joinpath("custom_template.json")
-    expected_custom_template_content = json.loads(custom_template_path.read_text())
+    expected_custom_template_content = json.loads(custom_template_path.read_text(encoding="utf-8"))
 
     custom_template = get_current_template_copy(str(custom_template_path))
     custom_template.commit_id == "custom"

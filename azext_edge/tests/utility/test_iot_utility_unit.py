@@ -93,6 +93,7 @@ def test_read_file_content():
             else:
                 random_data = generate_random_string(self.file_size)
 
+            # pylint: disable-next=unspecified-encoding
             with open(self.file_name, mode=mode, encoding=self.encoding) as file:
                 file.write(random_data)
             return random_data
