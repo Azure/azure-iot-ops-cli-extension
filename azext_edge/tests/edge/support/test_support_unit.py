@@ -701,6 +701,7 @@ def test_mq_list_stateful_sets(
     mocked_cluster_resources,
     custom_objects,
     mocked_zipfile,
+    mocked_os_makedirs,
 ):
 
     # mock MQ support bundle to return connectors
