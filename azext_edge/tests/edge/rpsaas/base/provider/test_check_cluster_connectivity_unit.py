@@ -8,7 +8,7 @@ import pytest
 
 from azext_edge.edge.common import ResourceTypeMapping
 from ...conftest import BP_PATH
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_build_query", [{
@@ -17,8 +17,8 @@ from .....generators import generate_generic_id
 }], indirect=True)
 def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
     from azext_edge.edge.providers.rpsaas.adr.base import ADRBaseProvider
-    provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
-    custom_location_id = generate_generic_id()
+    provider = ADRBaseProvider(mocked_cmd, generate_random_string())
+    custom_location_id = generate_random_string()
     provider.check_cluster_connectivity(custom_location_id)
     assert mocked_build_query.call_count == 1
 
@@ -32,9 +32,9 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
         "path": BP_PATH,
         "side_effect": [
             [{
-                "name": generate_generic_id(),
+                "name": generate_random_string(),
                 "properties": {
-                    "hostResourceId": generate_generic_id()
+                    "hostResourceId": generate_random_string()
                 }
             }],
             []
@@ -44,13 +44,13 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
         "path": BP_PATH,
         "side_effect": [
             [{
-                "name": generate_generic_id(),
+                "name": generate_random_string(),
                 "properties": {
-                    "hostResourceId": generate_generic_id()
+                    "hostResourceId": generate_random_string()
                 }
             }],
             [{
-                "name": generate_generic_id(),
+                "name": generate_random_string(),
                 "properties": {
                     "connectivityStatus": "Connected"
                 }
@@ -61,13 +61,13 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
         "path": BP_PATH,
         "side_effect": [
             [{
-                "name": generate_generic_id(),
+                "name": generate_random_string(),
                 "properties": {
-                    "hostResourceId": generate_generic_id()
+                    "hostResourceId": generate_random_string()
                 }
             }],
             [{
-                "name": generate_generic_id(),
+                "name": generate_random_string(),
                 "properties": {
                     "connectivityStatus": "Offline"
                 }
@@ -81,8 +81,8 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
 ], indirect=True)
 def test_check_cluster_connectivity(mocked_cmd, mocked_build_query):
     from azext_edge.edge.providers.rpsaas.adr.base import ADRBaseProvider
-    provider = ADRBaseProvider(mocked_cmd, generate_generic_id())
-    custom_location_id = generate_generic_id()
+    provider = ADRBaseProvider(mocked_cmd, generate_random_string())
+    custom_location_id = generate_random_string()
     provider.check_cluster_connectivity(custom_location_id)
     assert mocked_build_query.call_count == 2
 

@@ -136,7 +136,9 @@ def mocked_verify_write_permission_against_rg(mocker):
 
 @pytest.fixture
 def mocked_prepare_keyvault_access_policy(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.prepare_keyvault_access_policy", autospec=True)
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.base.prepare_keyvault_access_policy", autospec=True
+    )
 
     def handle_return(*args, **kwargs):
         return f"https://localhost/{kwargs['keyvault_resource_id']}/vault"

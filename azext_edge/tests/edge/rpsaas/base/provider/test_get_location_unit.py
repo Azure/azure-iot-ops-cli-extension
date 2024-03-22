@@ -5,22 +5,22 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
-context_name = generate_generic_id()
+context_name = generate_random_string()
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [
-    {"resource_groups.get": {"location": generate_generic_id()}},
+    {"resource_groups.get": {"location": generate_random_string()}},
 ], ids=["extended_location"], indirect=True)
 def test_get_location(mocked_cmd, mocked_resource_management_client):
     from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
-    resource_group_name = generate_generic_id()
+    resource_group_name = generate_random_string()
     provider = RPSaaSBaseProvider(
         mocked_cmd,
-        generate_generic_id(),
-        generate_generic_id(),
-        generate_generic_id()
+        generate_random_string(),
+        generate_random_string(),
+        generate_random_string()
     )
     result = provider.get_location(resource_group_name)
 

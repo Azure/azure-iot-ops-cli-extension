@@ -5,13 +5,13 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from pathlib import PurePath
-from io import BufferedReader
+from pathlib import Path
+from typing import Generator
 
 
 @pytest.fixture
-def stub_raw_stats() -> BufferedReader:
-    with open(PurePath(PurePath(__file__).parent, "raw_stats.txt"), mode="rb", encoding=None) as f:
+def stub_raw_stats() -> Generator:
+    with open(Path(__file__).parent.joinpath("raw_stats.txt"), mode="rb", encoding=None) as f:
         yield f
 
 

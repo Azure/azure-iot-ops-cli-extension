@@ -23,7 +23,7 @@ from .conftest import (
     assert_evaluations,
     generate_pod_stub,
 )
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 
 @pytest.mark.parametrize(
@@ -466,7 +466,7 @@ def test_evaluate_configurations(
         side_effect=[{"items": configurations}],
     )
 
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for configuration in configurations:
         configuration['metadata']['namespace'] = namespace
     result = evaluate_configurations(detail_level=detail_level, resource_name=resource_name)
@@ -538,7 +538,7 @@ def test_evaluate_instances(
         side_effect=[{"items": instances}],
     )
 
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for instance in instances:
         instance['metadata']['namespace'] = namespace
     result = evaluate_instances(detail_level=detail_level, resource_name=resource_name)
@@ -610,7 +610,7 @@ def test_evaluate_core_service_runtime(
         return_value=pods,
     )
 
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for pod in pods:
         pod.metadata.namespace = namespace
     result = evaluate_core_service_runtime(detail_level=detail_level, resource_name=resource_name)

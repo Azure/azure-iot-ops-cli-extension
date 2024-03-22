@@ -6,7 +6,7 @@
 
 from time import sleep
 from knack.log import get_logger
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 from .....helpers import run
 
 logger = get_logger(__name__)
@@ -18,15 +18,15 @@ def test_asset_lifecycle(require_init, tracked_resources):
     cluster_name = require_init["clusterName"]
 
     # Create an endpoint profile
-    endpoint_name = "test-endpoint-" + generate_generic_id()[:4]
+    endpoint_name = "test-endpoint-" + generate_random_string()[:4]
     asset_endpoint = run(
         f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} "
         "--ta opc.tcp://opcplc-000000:50000"
     )
     tracked_resources.append(asset_endpoint["id"])
 
-    min_asset_name = "test-asset-" + generate_generic_id()[:4]
-    data_source = generate_generic_id()
+    min_asset_name = "test-asset-" + generate_random_string()[:4]
+    data_source = generate_random_string()
     min_asset = run(
         f"az iot ops asset create -n {min_asset_name} -g {rg} -c {cluster_name} --endpoint {endpoint_name} "
         f"--data data_source={data_source}"
@@ -69,20 +69,20 @@ def test_asset_lifecycle(require_init, tracked_resources):
         }]
     )
 
-    max_asset_name = "test-asset-" + generate_generic_id()[:4]
+    max_asset_name = "test-asset-" + generate_random_string()[:4]
     asset_props = {
-        "asset_type": generate_generic_id(),
-        "description": generate_generic_id(),
-        "display_name": generate_generic_id(),
-        "documentation_uri": generate_generic_id(),
-        "external_asset_id": generate_generic_id(),
-        "hardware_revision": generate_generic_id(),
-        "manufacturer": generate_generic_id(),
-        "manufacturer_uri": generate_generic_id(),
-        "model": generate_generic_id(),
-        "product_code": generate_generic_id(),
-        "serial_number": generate_generic_id(),
-        "software_revision": generate_generic_id(),
+        "asset_type": generate_random_string(),
+        "description": generate_random_string(),
+        "display_name": generate_random_string(),
+        "documentation_uri": generate_random_string(),
+        "external_asset_id": generate_random_string(),
+        "hardware_revision": generate_random_string(),
+        "manufacturer": generate_random_string(),
+        "manufacturer_uri": generate_random_string(),
+        "model": generate_random_string(),
+        "product_code": generate_random_string(),
+        "serial_number": generate_random_string(),
+        "software_revision": generate_random_string(),
         "data_publish_int": 800,
         "data_queue_size": 2,
         "data_sample_int": 600,
@@ -90,7 +90,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
         "event_queue_size": 3,
         "event_sample_int": 200,
     }
-    event_notifier = generate_generic_id()
+    event_notifier = generate_random_string()
     command = f"az iot ops asset create -n {max_asset_name} -g {rg} --cl {custom_location} "\
         f"--endpoint {endpoint_name} --event event_notifier={event_notifier} sampling_interval 10"
     for prop in asset_props:

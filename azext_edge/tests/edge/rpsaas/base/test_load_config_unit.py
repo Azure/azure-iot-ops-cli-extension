@@ -6,9 +6,9 @@
 
 import pytest
 from azext_edge.edge.providers.base import load_config_context
-from ....generators import generate_generic_id
+from ....generators import generate_random_string
 
-context_name = generate_generic_id()
+context_name = generate_random_string()
 
 
 @pytest.mark.parametrize("mocked_config", [{"namespace": context_name}, {}], indirect=True)
