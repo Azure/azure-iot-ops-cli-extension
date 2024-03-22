@@ -6,33 +6,33 @@
 
 import pytest
 
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_send_raw_request", [
     {
         "return_value": {
             "value": [
-                {"name": generate_generic_id(), "result": generate_generic_id()},
-                {"name": generate_generic_id(), "result": generate_generic_id()}
+                {"name": generate_random_string(), "result": generate_random_string()},
+                {"name": generate_random_string(), "result": generate_random_string()}
             ]
         }
     }
 ], ids=["value"], indirect=True)
-@pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
+@pytest.mark.parametrize("resource_group", [None, generate_random_string()])
 def test_list_assets(
     mocked_cmd,
     mocked_send_raw_request,
     resource_group
 ):
     from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
-    api_version = generate_generic_id()
-    resource_type = generate_generic_id()
+    api_version = generate_random_string()
+    resource_type = generate_random_string()
     provider = RPSaaSBaseProvider(
         mocked_cmd,
         api_version,
         resource_type,
-        generate_generic_id()
+        generate_random_string()
     )
     result = provider.list(resource_group)
 

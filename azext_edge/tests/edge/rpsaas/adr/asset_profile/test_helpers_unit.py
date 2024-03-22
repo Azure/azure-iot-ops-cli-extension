@@ -22,17 +22,17 @@ from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
     _update_properties
 )
 
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("original_props", [
     None,
     {
-        "mode": generate_generic_id(),
-        "x509Credentials": {"certificateReference": generate_generic_id()},
+        "mode": generate_random_string(),
+        "x509Credentials": {"certificateReference": generate_random_string()},
         "usernamePasswordCredentials": {
-            "usernameReference": generate_generic_id(),
-            "passwordReference": generate_generic_id(),
+            "usernameReference": generate_random_string(),
+            "passwordReference": generate_random_string(),
         },
     }
 ])
@@ -43,19 +43,19 @@ from .....generators import generate_generic_id
     },
     {
         "auth_mode": AEPAuthModes.certificate.value,
-        "certificate_reference": generate_generic_id()
+        "certificate_reference": generate_random_string()
     },
     {
-        "certificate_reference": generate_generic_id()
+        "certificate_reference": generate_random_string()
     },
     {
         "auth_mode": AEPAuthModes.userpass.value,
-        "password_reference": generate_generic_id(),
-        "username_reference": generate_generic_id()
+        "password_reference": generate_random_string(),
+        "username_reference": generate_random_string()
     },
     {
-        "password_reference": generate_generic_id(),
-        "username_reference": generate_generic_id()
+        "password_reference": generate_random_string(),
+        "username_reference": generate_random_string()
     },
 ])
 def test_process_authentication(
@@ -92,47 +92,47 @@ def test_process_authentication(
 @pytest.mark.parametrize("req", [
     {
         "auth_mode": AEPAuthModes.anonymous.value,
-        "certificate_reference": generate_generic_id()
+        "certificate_reference": generate_random_string()
     },
     {
         "auth_mode": AEPAuthModes.anonymous.value,
-        "password_reference": generate_generic_id(),
+        "password_reference": generate_random_string(),
     },
     {
         "auth_mode": AEPAuthModes.anonymous.value,
-        "username_reference": generate_generic_id()
+        "username_reference": generate_random_string()
     },
     {
         "auth_mode": AEPAuthModes.certificate.value,
     },
     {
         "auth_mode": AEPAuthModes.certificate.value,
-        "password_reference": generate_generic_id(),
+        "password_reference": generate_random_string(),
     },
     {
         "auth_mode": AEPAuthModes.certificate.value,
-        "username_reference": generate_generic_id()
+        "username_reference": generate_random_string()
     },
     {
         "auth_mode": AEPAuthModes.userpass.value,
     },
     {
         "auth_mode": AEPAuthModes.userpass.value,
-        "certificate_reference": generate_generic_id()
+        "certificate_reference": generate_random_string()
     },
     {
         "auth_mode": AEPAuthModes.userpass.value,
-        "password_reference": generate_generic_id(),
+        "password_reference": generate_random_string(),
     },
     {
         "auth_mode": AEPAuthModes.userpass.value,
-        "username_reference": generate_generic_id(),
+        "username_reference": generate_random_string(),
     },
     {
-        "password_reference": generate_generic_id(),
+        "password_reference": generate_random_string(),
     },
     {
-        "username_reference": generate_generic_id(),
+        "username_reference": generate_random_string(),
     },
 ])
 def test_process_authentication_error(
@@ -164,26 +164,26 @@ def test_process_authentication_error(
     None,
     [
         [
-            f"thumbprint={generate_generic_id()}",
-            f"secret={generate_generic_id()}",
+            f"thumbprint={generate_random_string()}",
+            f"secret={generate_random_string()}",
         ],
     ],
     [
         [
-            f"password={generate_generic_id()}",
-            f"thumbprint={generate_generic_id()}",
-            f"secret={generate_generic_id()}",
+            f"password={generate_random_string()}",
+            f"thumbprint={generate_random_string()}",
+            f"secret={generate_random_string()}",
         ],
     ],
     [
         [
-            f"password={generate_generic_id()}",
-            f"thumbprint={generate_generic_id()}",
-            f"secret={generate_generic_id()}",
+            f"password={generate_random_string()}",
+            f"thumbprint={generate_random_string()}",
+            f"secret={generate_random_string()}",
         ],
         [
-            f"thumbprint={generate_generic_id()}",
-            f"secret={generate_generic_id()}",
+            f"thumbprint={generate_random_string()}",
+            f"secret={generate_random_string()}",
         ],
     ],
 ])
@@ -202,7 +202,7 @@ def test_process_certificates(cert_list):
 @pytest.mark.parametrize("missing_arg", ["thumbprint", "secert"])
 def test_process_certificates_missing_error(missing_arg):
     cert = [
-        f"{arg}={generate_generic_id()}" for arg in ["password", "thumbprint", "secert"] if arg != missing_arg
+        f"{arg}={generate_random_string()}" for arg in ["password", "thumbprint", "secert"] if arg != missing_arg
     ]
     with pytest.raises(RequiredArgumentMissingError) as e:
         _process_certificates(
@@ -212,17 +212,17 @@ def test_process_certificates_missing_error(missing_arg):
 
     with pytest.raises(RequiredArgumentMissingError) as e:
         _process_certificates(
-            [[f"{missing_arg}={generate_generic_id()}"]]
+            [[f"{missing_arg}={generate_random_string()}"]]
         )
     assert e.value.error_msg.startswith("Transport authentication")
 
 
-@pytest.mark.parametrize("password", [None, generate_generic_id()])
+@pytest.mark.parametrize("password", [None, generate_random_string()])
 def test_process_certificates_unrecognized_error(password):
     cert = [
-        f"thumbprint={generate_generic_id()}",
-        f"secret={generate_generic_id()}",
-        f"{generate_generic_id()}={generate_generic_id()}",
+        f"thumbprint={generate_random_string()}",
+        f"secret={generate_random_string()}",
+        f"{generate_random_string()}={generate_random_string()}",
     ]
     if password:
         cert.append(f"password={password}")
@@ -236,17 +236,17 @@ def test_process_certificates_unrecognized_error(password):
 @pytest.mark.parametrize("properties", [
     {},
     {
-        "additionalConfiguration": generate_generic_id(),
-        "targetAddress": generate_generic_id(),
+        "additionalConfiguration": generate_random_string(),
+        "targetAddress": generate_random_string(),
         "transportAuthentication": {
-            "ownCertificates": [generate_generic_id()]
+            "ownCertificates": [generate_random_string()]
         },
         "userAuthentication": {
-            "mode": generate_generic_id(),
-            "x509Credentials": {"certificateReference": generate_generic_id()},
+            "mode": generate_random_string(),
+            "x509Credentials": {"certificateReference": generate_random_string()},
             "usernamePasswordCredentials": {
-                "usernameReference": generate_generic_id(),
-                "passwordReference": generate_generic_id(),
+                "usernameReference": generate_random_string(),
+                "passwordReference": generate_random_string(),
             },
         }
     }
@@ -254,43 +254,43 @@ def test_process_certificates_unrecognized_error(password):
 @pytest.mark.parametrize("req", [
     {},
     {
-        "target_address": generate_generic_id(),
-        "additional_configuration": generate_generic_id(),
+        "target_address": generate_random_string(),
+        "additional_configuration": generate_random_string(),
     },
     {
-        "target_address": generate_generic_id(),
-        "additional_configuration": generate_generic_id(),
+        "target_address": generate_random_string(),
+        "additional_configuration": generate_random_string(),
         "auth_mode": AEPAuthModes.anonymous.value,
         "transport_authentication": [
             [
-                f"password={generate_generic_id()}",
-                f"thumbprint={generate_generic_id()}",
-                f"secret={generate_generic_id()}",
+                f"password={generate_random_string()}",
+                f"thumbprint={generate_random_string()}",
+                f"secret={generate_random_string()}",
             ],
         ],
     },
     {
-        "target_address": generate_generic_id(),
+        "target_address": generate_random_string(),
         "auth_mode": AEPAuthModes.userpass.value,
-        "username_reference": generate_generic_id(),
-        "password_reference": generate_generic_id(),
+        "username_reference": generate_random_string(),
+        "password_reference": generate_random_string(),
         "transport_authentication": [
             [
-                f"password={generate_generic_id()}",
-                f"thumbprint={generate_generic_id()}",
-                f"secret={generate_generic_id()}",
+                f"password={generate_random_string()}",
+                f"thumbprint={generate_random_string()}",
+                f"secret={generate_random_string()}",
             ],
             [
-                f"password={generate_generic_id()}",
-                f"thumbprint={generate_generic_id()}",
-                f"secret={generate_generic_id()}"
+                f"password={generate_random_string()}",
+                f"thumbprint={generate_random_string()}",
+                f"secret={generate_random_string()}"
             ]
         ],
     },
     {
-        "additional_configuration": generate_generic_id(),
+        "additional_configuration": generate_random_string(),
         "auth_mode": AEPAuthModes.certificate.value,
-        "certificate_reference": generate_generic_id(),
+        "certificate_reference": generate_random_string(),
     }
 ])
 def test_update_properties(properties, req):

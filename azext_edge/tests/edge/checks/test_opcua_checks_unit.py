@@ -15,7 +15,7 @@ from .conftest import (
     assert_evaluations,
     generate_pod_stub
 )
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 
 @pytest.mark.parametrize(
@@ -106,7 +106,7 @@ def test_asset_types_checks(
         side_effect=[{"items": asset_types}],
     )
 
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for asset_type in asset_types:
         asset_type['metadata']['namespace'] = namespace
     result = evaluate_asset_types(detail_level=detail_level, resource_name=resource_name)
@@ -179,7 +179,7 @@ def test_evaluate_core_service_runtime(
         return_value=pods,
     )
 
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for pod in pods:
         pod.metadata.namespace = namespace
     result = evaluate_core_service_runtime(detail_level=detail_level, resource_name=resource_name)

@@ -54,9 +54,9 @@ from azext_edge.edge.providers.support.orc import (
 from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
-a_bundle_dir = f"support_test_{generate_generic_id()}"
+a_bundle_dir = f"support_test_{generate_random_string()}"
 
 
 @pytest.mark.parametrize(
@@ -705,6 +705,8 @@ def test_mq_list_stateful_sets(
     mocked_client,
     mocked_cluster_resources,
     custom_objects,
+    mocked_zipfile,
+    mocked_os_makedirs,
 ):
 
     # mock MQ support bundle to return connectors

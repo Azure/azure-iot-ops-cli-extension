@@ -33,7 +33,7 @@ from .conftest import (
     assert_evaluations,
     generate_resource_stub,
 )
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 
 @pytest.mark.parametrize(
@@ -166,7 +166,7 @@ def test_broker_checks(
     detail_level,
     resource_name
 ):
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     broker["metadata"]["namespace"] = namespace
     mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -279,7 +279,7 @@ def test_broker_listener_checks(
     resource_name,
 ):
     # mock listener values
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     listener["metadata"]["namespace"] = namespace
     service["metadata"]["namespace"] = namespace
     mocker.patch(
@@ -362,7 +362,7 @@ def test_diagnostic_service_checks(
     resource_name,
 ):
     # mock service values
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     resource["metadata"]["namespace"] = namespace
     service["metadata"]["namespace"] = namespace
     mocker.patch(
@@ -489,7 +489,7 @@ def test_mqtt_checks(
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
     )
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     bridge["metadata"]["namespace"] = namespace
     topic_map["metadata"]["namespace"] = namespace
     mocker.side_effect = [{"items": [bridge]}, {"items": [topic_map]}]
@@ -596,7 +596,7 @@ def test_datalake_checks(
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
     )
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     connector["metadata"]["namespace"] = namespace
     topic_map["metadata"]["namespace"] = namespace
     mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]
@@ -734,7 +734,7 @@ def test_kafka_checks(
     resource_name,
 ):
     mocker = mocker.patch("azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources")
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     connector["metadata"]["namespace"] = namespace
     topic_map["metadata"]["namespace"] = namespace
     mocker.side_effect = [{"items": [connector]}, {"items": [topic_map]}]

@@ -13,7 +13,7 @@ from azext_edge.edge.providers.orchestration.common import (
     GRAPH_V1_APP_ENDPOINT,
 )
 
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 BASE_PATH = "azext_edge.edge.providers.orchestration.base"
 
@@ -22,14 +22,14 @@ BASE_PATH = "azext_edge.edge.providers.orchestration.base"
 @pytest.fixture
 def mocked_wait_for_terminal_state(mocker):
     terminal_result = mocker.Mock()
-    terminal_result.as_dict.return_value = generate_generic_id()
+    terminal_result.as_dict.return_value = generate_random_string()
     terminal_patch = mocker.patch(f"{BASE_PATH}.wait_for_terminal_state", autospec=True, return_value=terminal_result)
     yield terminal_patch
 
 
 @pytest.fixture
 def mocked_get_tenant_id(mocker):
-    yield mocker.patch(f"{BASE_PATH}.get_tenant_id", return_value=generate_generic_id())
+    yield mocker.patch(f"{BASE_PATH}.get_tenant_id", return_value=generate_random_string())
 
 
 @pytest.fixture
@@ -37,8 +37,8 @@ def mocked_keyvault_api(mocker, request):
     is_deployed = getattr(request, "param", True)
     api_patch = mocker.patch(f"{BASE_PATH}.KEYVAULT_API_V1")
     api_patch.is_deployed.return_value = is_deployed
-    api_patch.group = generate_generic_id()
-    api_patch.version = generate_generic_id()
+    api_patch.group = generate_random_string()
+    api_patch.version = generate_random_string()
     yield api_patch
 
 
@@ -63,7 +63,7 @@ def mocked_base_namespace_functions(mocker, request):
 
 @pytest.mark.parametrize(
     "mocked_resource_management_client",
-    [{"client_path": BASE_PATH, "resources.begin_create_or_update_by_id": {"result": generate_generic_id()}}],
+    [{"client_path": BASE_PATH, "resources.begin_create_or_update_by_id": {"result": generate_random_string()}}],
     indirect=True,
 )
 @pytest.mark.parametrize("rotation_poll_interval", ["1h"])
@@ -73,10 +73,10 @@ def test_provision_akv_csi_driver(
 ):
     from azext_edge.edge.providers.orchestration.base import provision_akv_csi_driver, KEYVAULT_ARC_EXTENSION_VERSION
 
-    subscription_id = generate_generic_id()
-    cluster_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
-    enable_secret_rotation = generate_generic_id()
+    subscription_id = generate_random_string()
+    cluster_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    enable_secret_rotation = generate_random_string()
     result = provision_akv_csi_driver(
         subscription_id=subscription_id,
         cluster_name=cluster_name,
@@ -116,20 +116,20 @@ def test_provision_akv_csi_driver(
     indirect=True,
 )
 def test_configure_cluster_secrets(mocker, mocked_base_namespace_functions, mocked_keyvault_api):
-    get_store_patch = mocker.patch(f"{BASE_PATH}.get_kv_secret_store_yaml", return_value=generate_generic_id())
+    get_store_patch = mocker.patch(f"{BASE_PATH}.get_kv_secret_store_yaml", return_value=generate_random_string())
     from azext_edge.edge.providers.orchestration.base import configure_cluster_secrets
 
-    cluster_namespace = generate_generic_id()
-    cluster_secret_ref = generate_generic_id()
-    keyvault_sat_secret_name = generate_generic_id()
-    keyvault_resource_id = generate_generic_id()
+    cluster_namespace = generate_random_string()
+    cluster_secret_ref = generate_random_string()
+    keyvault_sat_secret_name = generate_random_string()
+    keyvault_resource_id = generate_random_string()
     sp_record = mocker.Mock(
-        client_id=generate_generic_id(), secret=generate_generic_id(), tenant_id=generate_generic_id()
+        client_id=generate_random_string(), secret=generate_random_string(), tenant_id=generate_random_string()
     )
     configure_cluster_secrets(
         cluster_namespace=cluster_namespace,
         cluster_secret_ref=cluster_secret_ref,
-        cluster_akv_secret_class_name=generate_generic_id(),
+        cluster_akv_secret_class_name=generate_random_string(),
         keyvault_sat_secret_name=keyvault_sat_secret_name,
         keyvault_resource_id=keyvault_resource_id,
         sp_record=sp_record,
@@ -161,12 +161,12 @@ def test_configure_cluster_secrets_error(mocked_keyvault_api):
 
     with pytest.raises(ValidationError):
         configure_cluster_secrets(
-            cluster_namespace=generate_generic_id(),
-            cluster_secret_ref=generate_generic_id(),
-            cluster_akv_secret_class_name=generate_generic_id(),
-            keyvault_sat_secret_name=generate_generic_id(),
-            keyvault_resource_id=generate_generic_id(),
-            sp_record=generate_generic_id(),
+            cluster_namespace=generate_random_string(),
+            cluster_secret_ref=generate_random_string(),
+            cluster_akv_secret_class_name=generate_random_string(),
+            keyvault_sat_secret_name=generate_random_string(),
+            keyvault_resource_id=generate_random_string(),
+            sp_record=generate_random_string(),
         )
 
 
@@ -178,14 +178,14 @@ def test_configure_cluster_secrets_error(mocked_keyvault_api):
 def test_configure_cluster_tls(mocked_base_namespace_functions):
     from azext_edge.edge.providers.orchestration.base import configure_cluster_tls
 
-    cluster_namespace = generate_generic_id()
-    public_ca = bytes(generate_generic_id(), "utf-8")
-    cm_name = generate_generic_id()
+    cluster_namespace = generate_random_string()
+    public_ca = bytes(generate_random_string(), "utf-8")
+    cm_name = generate_random_string()
     configure_cluster_tls(
         cluster_namespace=cluster_namespace,
         public_ca=public_ca,
-        private_key=bytes(generate_generic_id(), "utf-8"),
-        secret_name=generate_generic_id(),
+        private_key=bytes(generate_random_string(), "utf-8"),
+        secret_name=generate_random_string(),
         cm_name=cm_name,
     )
     mocked_base_namespace_functions["get_cluster_patch"].assert_called_once()
@@ -203,9 +203,9 @@ def test_configure_cluster_tls(mocked_base_namespace_functions):
     [
         {
             "return_value": {
-                "appId": generate_generic_id(),
-                "id": generate_generic_id(),
-                "secretText": generate_generic_id(),
+                "appId": generate_random_string(),
+                "id": generate_random_string(),
+                "secretText": generate_random_string(),
                 "requiredResourceAccess": [
                     {"resourceAppId": "cfa8b339-82a2-471a-a3c9-0fc0be7a4093"},
                     {"resourceAppId": "00000003-0000-0000-c000-000000000000"},
@@ -216,9 +216,9 @@ def test_configure_cluster_tls(mocked_base_namespace_functions):
     ids=["pass everything"],
     indirect=True,
 )
-@pytest.mark.parametrize("app_id", [None, generate_generic_id()])
-@pytest.mark.parametrize("object_id", [None, generate_generic_id()])
-@pytest.mark.parametrize("secret", [None, generate_generic_id()])
+@pytest.mark.parametrize("app_id", [None, generate_random_string()])
+@pytest.mark.parametrize("object_id", [None, generate_random_string()])
+@pytest.mark.parametrize("secret", [None, generate_random_string()])
 @pytest.mark.parametrize("secret_valid_days", [365, 100])
 def test_prepare_sp(
     mocker, mocked_cmd, mocked_get_tenant_id, mocked_send_raw_request, app_id, object_id, secret, secret_valid_days
@@ -229,7 +229,7 @@ def test_prepare_sp(
     access_patch = mocker.patch(f"{BASE_PATH}.ensure_correct_access")
     from azext_edge.edge.providers.orchestration.base import prepare_sp
 
-    deployment_name = generate_generic_id()
+    deployment_name = generate_random_string()
     sp = prepare_sp(
         mocked_cmd,
         deployment_name,
@@ -255,7 +255,7 @@ def test_prepare_sp(
             assert get_sp_call["url"] == f"{GRAPH_V1_SP_ENDPOINT}/{sp.object_id}"
             get_app_call = mocked_send_raw_request.call_args_list[call_count + 1].kwargs
             assert get_app_call["method"] == "GET"
-            assert get_app_call["url"] == f"{GRAPH_V1_APP_ENDPOINT}/{sp.client_id}"
+            assert get_app_call["url"] == f"{GRAPH_V1_APP_ENDPOINT}(appId='{sp.client_id}')"
             call_count += 2
         else:
             post_sp_call = mocked_send_raw_request.call_args_list[call_count].kwargs
@@ -291,11 +291,11 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_get_tenant_id, mocked_sen
     """Test that this function does not error even if there is an http error - there are 3 cases."""
     from azext_edge.edge.providers.orchestration.base import prepare_sp
 
-    app_id = generate_generic_id()
+    app_id = generate_random_string()
     all_result = {
         "appId": app_id,
-        "id": generate_generic_id(),
-        "secretText": generate_generic_id(),
+        "id": generate_random_string(),
+        "secretText": generate_random_string(),
         "requiredResourceAccess": [
             {"resourceAppId": "cfa8b339-82a2-471a-a3c9-0fc0be7a4093"},
             {"resourceAppId": "00000003-0000-0000-c000-000000000000"},
@@ -304,7 +304,7 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_get_tenant_id, mocked_sen
 
     def custom_responses(**kwargs):
         if kwargs["url"].startswith(f"{GRAPH_V1_APP_ENDPOINT}/"):
-            raise HTTPError(error_msg=generate_generic_id(), response=mocker.Mock(status_code=error_code))
+            raise HTTPError(error_msg=generate_random_string(), response=mocker.Mock(status_code=error_code))
         request_mock = mocker.Mock()
         request_mock.json.return_value = all_result
         return request_mock
@@ -313,16 +313,16 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_get_tenant_id, mocked_sen
     mocker.patch(f"{BASE_PATH}.ensure_correct_access")
     sp = prepare_sp(
         mocked_cmd,
-        generate_generic_id(),
-        service_principal_object_id=generate_generic_id(),
-        service_principal_secret=generate_generic_id(),
+        generate_random_string(),
+        service_principal_object_id=generate_random_string(),
+        service_principal_secret=generate_random_string(),
     )
     assert sp
     mocked_send_raw_request.reset_mock()
 
     def custom_responses2(**kwargs):
         if kwargs["url"].startswith(f"{GRAPH_V1_SP_ENDPOINT}(appId='"):
-            raise HTTPError(error_msg=generate_generic_id(), response=mocker.Mock(status_code=404))
+            raise HTTPError(error_msg=generate_random_string(), response=mocker.Mock(status_code=404))
         request_mock = mocker.Mock()
         request_mock.json.return_value = all_result
         return request_mock
@@ -330,8 +330,8 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_get_tenant_id, mocked_sen
     mocked_send_raw_request.side_effect = custom_responses2
     sp = prepare_sp(
         mocked_cmd,
-        generate_generic_id(),
-        service_principal_secret=generate_generic_id(),
+        generate_random_string(),
+        service_principal_secret=generate_random_string(),
     )
     assert sp
     post_call = mocked_send_raw_request.call_args_list[2].kwargs
@@ -340,13 +340,15 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_get_tenant_id, mocked_sen
     assert post_call["body"] == json.dumps({"appId": app_id})
 
 
-@pytest.mark.parametrize("app_id", [None, generate_generic_id()])
-@pytest.mark.parametrize("object_id", [None, generate_generic_id()])
-@pytest.mark.parametrize("secret", [None, generate_generic_id()])
-def test_prepare_sp_error(mocker, mocked_cmd, mocked_get_tenant_id, mocked_send_raw_request, app_id, object_id, secret):
+@pytest.mark.parametrize("app_id", [None, generate_random_string()])
+@pytest.mark.parametrize("object_id", [None, generate_random_string()])
+@pytest.mark.parametrize("secret", [None, generate_random_string()])
+def test_prepare_sp_error(
+    mocker, mocked_cmd, mocked_get_tenant_id, mocked_send_raw_request, app_id, object_id, secret
+):
     response = mocker.Mock(status_code=400)
     mocked_send_raw_request.return_value.json.side_effect = HTTPError(
-        error_msg=generate_generic_id(), response=response
+        error_msg=generate_random_string(), response=response
     )
     mocker.patch(f"{BASE_PATH}.ensure_correct_access")
     from azext_edge.edge.providers.orchestration.base import prepare_sp
@@ -355,7 +357,7 @@ def test_prepare_sp_error(mocker, mocked_cmd, mocked_get_tenant_id, mocked_send_
         with pytest.raises(HTTPError):
             prepare_sp(
                 mocked_cmd,
-                generate_generic_id(),
+                generate_random_string(),
                 service_principal_app_id=app_id,
                 service_principal_object_id=object_id,
                 service_principal_secret=secret,
@@ -367,7 +369,7 @@ def test_prepare_sp_error(mocker, mocked_cmd, mocked_get_tenant_id, mocked_send_
 def test_ensure_correct_access(mocked_cmd, mocked_send_raw_request, key_vault, ms_graph):
     from azext_edge.edge.providers.orchestration.base import ensure_correct_access
 
-    app_id = generate_generic_id()
+    app_id = generate_random_string()
     resource_access = []
     if key_vault:
         resource_access.append({"resourceAppId": "cfa8b339-82a2-471a-a3c9-0fc0be7a4093"})
@@ -396,21 +398,21 @@ def test_ensure_correct_access(mocked_cmd, mocked_send_raw_request, key_vault, m
             assert scope["id"] == "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
 
 
-@pytest.mark.parametrize("tls_ca_path", [None, generate_generic_id()])
-@pytest.mark.parametrize("tls_ca_key_path", [None, generate_generic_id()])
+@pytest.mark.parametrize("tls_ca_path", [None, generate_random_string()])
+@pytest.mark.parametrize("tls_ca_key_path", [None, generate_random_string()])
 def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path):
-    file_patch = mocker.patch(f"{BASE_PATH}.read_file_content", return_value=generate_generic_id())
+    file_patch = mocker.patch(f"{BASE_PATH}.read_file_content", return_value=generate_random_string())
     path_mock = mocker.Mock()
-    path_mock.joinpath.return_value = generate_generic_id()
+    path_mock.joinpath.return_value = generate_random_string()
     normalize_patch = mocker.patch("azext_edge.edge.providers.support.base.normalize_dir", return_value=path_mock)
     cert_patch = mocker.patch(
-        f"{BASE_PATH}.generate_self_signed_cert", return_value=(generate_generic_id(), generate_generic_id())
+        f"{BASE_PATH}.generate_self_signed_cert", return_value=(generate_random_string(), generate_random_string())
     )
     open_patch = mocker.patch("builtins.open", autospec=True)
 
     from azext_edge.edge.providers.orchestration.base import prepare_ca
 
-    tls_ca_dir = generate_generic_id()
+    tls_ca_dir = generate_random_string()
     tls_ca_valid_days = 100
     result = prepare_ca(
         tls_ca_path=tls_ca_path,
@@ -437,7 +439,7 @@ def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path):
     [
         {
             "client_path": BASE_PATH,
-            "resources.get_by_id": {"properties": {"result": generate_generic_id()}},
+            "resources.get_by_id": {"properties": {"result": generate_random_string()}},
         }
     ],
     indirect=True,
@@ -446,8 +448,8 @@ def test_validate_keyvault_permission_model(mocked_resource_management_client):
     from azext_edge.edge.providers.orchestration.base import validate_keyvault_permission_model
 
     result = validate_keyvault_permission_model(
-        subscription_id=generate_generic_id(),
-        keyvault_resource_id=generate_generic_id(),
+        subscription_id=generate_random_string(),
+        keyvault_resource_id=generate_random_string(),
     )
     assert result == mocked_resource_management_client.resources.get_by_id.return_value.as_dict.return_value
 
@@ -467,8 +469,8 @@ def test_validate_keyvault_permission_model_error(mocked_resource_management_cli
 
     with pytest.raises(ValidationError):
         validate_keyvault_permission_model(
-            subscription_id=generate_generic_id(),
-            keyvault_resource_id=generate_generic_id(),
+            subscription_id=generate_random_string(),
+            keyvault_resource_id=generate_random_string(),
         )
 
 
@@ -477,7 +479,7 @@ def test_validate_keyvault_permission_model_error(mocked_resource_management_cli
     [
         {
             "client_path": BASE_PATH,
-            "resources.begin_create_or_update_by_id": {"result": generate_generic_id()},
+            "resources.begin_create_or_update_by_id": {"result": generate_random_string()},
         }
     ],
     indirect=True,
@@ -486,15 +488,15 @@ def test_validate_keyvault_permission_model_error(mocked_resource_management_cli
 def test_prepare_keyvault_access_policy(mocker, mocked_resource_management_client, access_policy):
     from azext_edge.edge.providers.orchestration.base import prepare_keyvault_access_policy
 
-    sp_record = mocker.Mock(object_id=generate_generic_id(), tenant_id=generate_generic_id())
-    keyvault_resource = {"properties": {"vaultUri": generate_generic_id()}}
+    sp_record = mocker.Mock(object_id=generate_random_string(), tenant_id=generate_random_string())
+    keyvault_resource = {"properties": {"vaultUri": generate_random_string()}}
     if access_policy:
         keyvault_resource["accessPolicies"] = [{"objectId": sp_record.object_id}]
-    sp_record = mocker.Mock(object_id=generate_generic_id(), tenant_id=generate_generic_id())
+    sp_record = mocker.Mock(object_id=generate_random_string(), tenant_id=generate_random_string())
     result = prepare_keyvault_access_policy(
-        subscription_id=generate_generic_id(),
+        subscription_id=generate_random_string(),
         keyvault_resource=keyvault_resource,
-        keyvault_resource_id=generate_generic_id(),
+        keyvault_resource_id=generate_random_string(),
         sp_record=sp_record,
     )
     assert result == keyvault_resource["properties"]["vaultUri"]
@@ -509,18 +511,18 @@ def test_prepare_keyvault_access_policy(mocker, mocked_resource_management_clien
 @pytest.mark.parametrize(
     "mocked_send_raw_request",
     [
-        {"return_value": {"value": [{"name": generate_generic_id(), "result": generate_generic_id()}]}},
-        {"return_value": {"name": generate_generic_id(), "result": generate_generic_id()}},
+        {"return_value": {"value": [{"name": generate_random_string(), "result": generate_random_string()}]}},
+        {"return_value": {"name": generate_random_string(), "result": generate_random_string()}},
     ],
     ids=["value", "no value"],
     indirect=True,
 )
-@pytest.mark.parametrize("secret_name", [None, generate_generic_id()])
+@pytest.mark.parametrize("secret_name", [None, generate_random_string()])
 def test_prepare_keyvault_secret(mocked_cmd, mocked_send_raw_request, secret_name):
     from azext_edge.edge.providers.orchestration.base import prepare_keyvault_secret
 
-    deployment_name = ".".join(generate_generic_id())
-    vault_uri = generate_generic_id()
+    deployment_name = ".".join(generate_random_string())
+    vault_uri = generate_random_string()
     result = prepare_keyvault_secret(
         cmd=mocked_cmd, deployment_name=deployment_name, vault_uri=vault_uri, keyvault_sat_secret_name=secret_name
     )
@@ -545,8 +547,8 @@ def test_prepare_keyvault_secret(mocked_cmd, mocked_send_raw_request, secret_nam
     [
         {
             "client_path": BASE_PATH,
-            "deployments.begin_create_or_update": {"result": generate_generic_id()},
-            "deployments.begin_what_if": {"result": generate_generic_id()},
+            "deployments.begin_create_or_update": {"result": generate_random_string()},
+            "deployments.begin_what_if": {"result": generate_random_string()},
         }
     ],
     indirect=True,
@@ -555,13 +557,13 @@ def test_prepare_keyvault_secret(mocked_cmd, mocked_send_raw_request, secret_nam
 def test_deploy_template(mocked_resource_management_client, pre_flight):
     from azext_edge.edge.providers.orchestration.base import deploy_template
 
-    template = {generate_generic_id(): generate_generic_id()}
-    parameters = {generate_generic_id(): generate_generic_id()}
-    subscription_id = generate_generic_id()
-    resource_group_name = generate_generic_id()
-    deployment_name = generate_generic_id()
-    cluster_name = generate_generic_id()
-    cluster_namespace = generate_generic_id()
+    template = {generate_random_string(): generate_random_string()}
+    parameters = {generate_random_string(): generate_random_string()}
+    subscription_id = generate_random_string()
+    resource_group_name = generate_random_string()
+    deployment_name = generate_random_string()
+    cluster_name = generate_random_string()
+    cluster_namespace = generate_random_string()
     result, deployment = deploy_template(
         template=template,
         parameters=parameters,
@@ -601,14 +603,14 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
 
 
 @pytest.mark.parametrize("mocked_connected_cluster_location", ["mock_location"], indirect=True)
-@pytest.mark.parametrize("location", [None, generate_generic_id()])
+@pytest.mark.parametrize("location", [None, generate_random_string()])
 def test_verify_cluster_and_use_location(mocked_connected_cluster_location, location):
     kwargs = {
         "cluster_location": None,
         "location": location,
-        "cluster_name": generate_generic_id(),
-        "subscription_id": generate_generic_id(),
-        "resource_group_name": generate_generic_id(),
+        "cluster_name": generate_random_string(),
+        "subscription_id": generate_random_string(),
+        "resource_group_name": generate_random_string(),
     }
     from azext_edge.edge.providers.orchestration.base import (
         verify_cluster_and_use_location,
@@ -644,9 +646,9 @@ def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions):
     )
 
     kwargs = {
-        "cluster_name": generate_generic_id(),
-        "subscription_id": generate_generic_id(),
-        "resource_group_name": generate_generic_id(),
+        "cluster_name": generate_random_string(),
+        "subscription_id": generate_random_string(),
+        "resource_group_name": generate_random_string(),
     }
 
     assert IOT_OPERATIONS_EXTENSION_PREFIX == "microsoft.iotoperations"
@@ -667,7 +669,7 @@ def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions):
 
 
 def test_get_tenant_id(mocker):
-    tenant_id = generate_generic_id()
+    tenant_id = generate_random_string()
     profile_patch = mocker.patch("azure.cli.core._profile.Profile", autospec=True)
     profile_patch.return_value.get_subscription.return_value = {"tenantId": tenant_id}
     from azext_edge.edge.providers.orchestration.base import get_tenant_id
@@ -685,7 +687,7 @@ def test_wait_for_terminal_state(mocker, done):
 
     poller = mocker.Mock()
     poller.done.return_value = done
-    poller.result.return_value = generate_generic_id()
+    poller.result.return_value = generate_random_string()
 
     from azext_edge.edge.providers.orchestration.base import wait_for_terminal_state
 
@@ -694,12 +696,29 @@ def test_wait_for_terminal_state(mocker, done):
     assert sleep_patch.call_count == (1 if done else poll_num)
 
 
-@pytest.mark.parametrize("role_binding", [None, {"truthy": "value"}])
-def test_verify_custom_locations_enabled(mocker, role_binding):
-    get_binding_patch = mocker.patch(f"{BASE_PATH}.get_binding", return_value=role_binding)
+@pytest.mark.parametrize(
+    "role_bindings",
+    [
+        None,
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "items": [],
+            "kind": "ClusterRoleBindingList",
+            "metadata": {"resourceVersion": "1"},
+        },
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "items": [{"metadata": {"name": "AzureArc-Microsoft.ExtendedLocation-RP-RoleBinding", "namespace": "az"}}],
+            "kind": "ClusterRoleBindingList",
+            "metadata": {"resourceVersion": "2"},
+        },
+    ],
+)
+def test_verify_custom_locations_enabled(mocker, role_bindings):
+    get_binding_patch = mocker.patch(f"{BASE_PATH}.get_bindings", return_value=role_bindings)
     from azext_edge.edge.providers.orchestration.base import verify_custom_locations_enabled
 
-    if not role_binding:
+    if not role_bindings or (role_bindings and not role_bindings["items"]):
         with pytest.raises(ValidationError):
             verify_custom_locations_enabled()
             get_binding_patch.assert_called_once()
