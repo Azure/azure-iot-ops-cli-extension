@@ -109,16 +109,18 @@ class AssetProvider(ADRBaseProvider):
             ev_queue_size=ev_queue_size,
         )
 
-        resource_path = f"/subscriptions/{self.subscription}/resourceGroups/{resource_group_name}/providers/"\
-            f"{self.resource_type}/{asset_name}"
         asset_body = {
             "extendedLocation": extended_location,
             "location": location,
             "properties": properties,
             "tags": tags,
         }
-        poller = self.resource_client.resources.begin_create_or_update_by_id(
-            resource_id=resource_path,
+        poller = self.resource_client.resources.begin_create_or_update(
+            resource_group_name=resource_group_name,
+            resource_provider_namespace=self.provider_namespace,
+            parent_resource_path="",
+            resource_type=self.resource_type,
+            resource_name=asset_name,
             api_version=self.api_version,
             parameters=asset_body
         )
@@ -178,14 +180,13 @@ class AssetProvider(ADRBaseProvider):
             query += f"| where properties.serialNumber =~ \"{serial_number}\""
         if software_revision:
             query += f"| where properties.softwareRevision =~ \"{software_revision}\""
-
         return build_query(
             self.cmd,
             subscription_id=self.subscription,
             custom_query=query,
             location=location,
             resource_group=resource_group_name,
-            type=self.resource_type,
+            type=ResourceTypeMapping.asset.full_resource_path,
             additional_project="extendedLocation"
         )
 

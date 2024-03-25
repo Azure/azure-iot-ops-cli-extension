@@ -18,14 +18,14 @@ def test_asset_lifecycle(require_init, tracked_resources):
     cluster_name = require_init["clusterName"]
 
     # Create an endpoint profile
-    endpoint_name = "test-endpoint-" + generate_random_string()[:4]
+    endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     asset_endpoint = run(
         f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} "
         "--ta opc.tcp://opcplc-000000:50000"
     )
     tracked_resources.append(asset_endpoint["id"])
 
-    min_asset_name = "test-asset-" + generate_random_string()[:4]
+    min_asset_name = "test-asset-" + generate_random_string(force_lower=True)[:4]
     data_source = generate_random_string()
     min_asset = run(
         f"az iot ops asset create -n {min_asset_name} -g {rg} -c {cluster_name} --endpoint {endpoint_name} "
@@ -69,7 +69,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
         }]
     )
 
-    max_asset_name = "test-asset-" + generate_random_string()[:4]
+    max_asset_name = "test-asset-" + generate_random_string(force_lower=True)[:4]
     asset_props = {
         "asset_type": generate_random_string(),
         "description": generate_random_string(),

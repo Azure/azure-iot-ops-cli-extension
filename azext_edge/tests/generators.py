@@ -22,6 +22,8 @@ def get_zeroed_subscription() -> str:
     return "00000000-0000-0000-0000-000000000000"
 
 
-def generate_random_string(size: int = 36):
-    valid_sequence = string.ascii_lowercase + string.ascii_uppercase + string.digits
+def generate_random_string(size: int = 36, force_lower: bool = False):
+    valid_sequence = string.ascii_lowercase + string.digits
+    if not force_lower:
+        valid_sequence += string.ascii_uppercase
     return "".join(secrets.choice(valid_sequence) for _ in range(size))
