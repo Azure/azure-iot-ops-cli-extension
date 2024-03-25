@@ -64,11 +64,10 @@ def process_v1_pods(
     processed = []
     if not prefix_names:
         prefix_names = []
-    
 
     pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
 
-    if pod_states:
+    if pod_states != PodState.list():
         pods = V1PodList(items=[p for p in pods.items if p.status.phase.lower() in pod_states])
 
     pod_logger_info = f"Detected {len(pods.items)} pods"
@@ -490,6 +489,48 @@ def process_jobs(
             {
                 "data": generic.sanitize_for_serialization(obj=j),
                 "zinfo": f"{job_namespace}/{resource_api.moniker}/job.{job_name}.yaml",
+            }
+        )
+
+    return processed
+
+
+def process_cron_jobs(
+    resource_api: EdgeResourceApi,
+    label_selector: str = None,
+    field_selector: str = None,
+    prefix_names: List[str] = None,
+):
+    from kubernetes.client.models import V1CronJob, V1CronJobList
+
+    batch_v1_api = client.BatchV1Api()
+
+    processed = []
+    if not prefix_names:
+        prefix_names = []
+
+    cron_jobs: V1CronJobList = batch_v1_api.list_cron_job_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
+    logger.info(f"Detected {len(cron_jobs.items)} cron jobs.")
+
+    for cron_job in cron_jobs.items:
+        cj: V1CronJob = cron_job
+        cj.api_version = cron_jobs.api_version
+        cj.kind = "CronJob"
+        cron_job_metadata: V1ObjectMeta = cj.metadata
+        cron_job_namespace: str = cron_job_metadata.namespace
+        cron_job_name: str = cron_job_metadata.name
+
+        if prefix_names:
+            matched_prefix = [cron_job_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
+
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=cj),
+                "zinfo": f"{cron_job_namespace}/{resource_api.moniker}/cronjob.{cron_job_name}.yaml",
             }
         )
 
