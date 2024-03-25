@@ -106,7 +106,7 @@ def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, ass
     mocked_resource_management_client.resources.begin_create_or_update.assert_called_once()
     call_kwargs = mocked_resource_management_client.resources.begin_create_or_update.call_args.kwargs
     assert call_kwargs["resource_group_name"] == resource_group_name
-    assert call_kwargs["resource_provider_namespace"] == ResourceProviderMapping.adr.value
+    assert call_kwargs["resource_provider_namespace"] == ResourceProviderMapping.deviceregistry.value
     assert call_kwargs["parent_resource_path"] == ""
     assert call_kwargs["resource_type"] == ResourceTypeMapping.asset.value
     assert call_kwargs["resource_name"] == asset_name

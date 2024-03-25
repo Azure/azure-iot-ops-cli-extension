@@ -20,7 +20,7 @@ class ADRBaseProvider(RPSaaSBaseProvider):
         super(ADRBaseProvider, self).__init__(
             cmd=cmd,
             api_version=ADR_API_VERSION,
-            provider_namespace=ResourceProviderMapping.adr.value,
+            provider_namespace=ResourceProviderMapping.deviceregistry.value,
             resource_type=resource_type,
             required_extension=ClusterExtensionsMapping.asset.value
         )

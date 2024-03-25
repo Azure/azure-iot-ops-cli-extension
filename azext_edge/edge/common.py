@@ -103,10 +103,10 @@ class ResourceProviderMapping(ListableEnum):
     Resource Provider mappings for graph queries.
     """
 
-    adr = "Microsoft.DeviceRegistry"
-    ext_loc = "Microsoft.ExtendedLocation"
-    kube = "Microsoft.Kubernetes"
-    kube_config = "Microsoft.KubernetesConfiguration"
+    deviceregistry = "Microsoft.DeviceRegistry"
+    extended_location = "Microsoft.ExtendedLocation"
+    kubernetes = "Microsoft.Kubernetes"
+    kubernetes_configuration = "Microsoft.KubernetesConfiguration"
 
 
 class ResourceTypeMapping(Enum):
@@ -121,17 +121,17 @@ class ResourceTypeMapping(Enum):
     cluster_extensions = "extensions"
 
     @property
-    def full_value(self):
+    def full_resource_path(self):
         return f"{self.provider}/{self.value}"
 
     @property
     def provider(self):
         mapping = {
-            ResourceTypeMapping.asset: ResourceProviderMapping.adr.value,
-            ResourceTypeMapping.asset_endpoint_profile: ResourceProviderMapping.adr.value,
-            ResourceTypeMapping.custom_location: ResourceProviderMapping.ext_loc.value,
-            ResourceTypeMapping.connected_cluster: ResourceProviderMapping.kube.value,
-            ResourceTypeMapping.cluster_extensions: ResourceProviderMapping.kube_config.value,
+            ResourceTypeMapping.asset: ResourceProviderMapping.deviceregistry.value,
+            ResourceTypeMapping.asset_endpoint_profile: ResourceProviderMapping.deviceregistry.value,
+            ResourceTypeMapping.custom_location: ResourceProviderMapping.extended_location.value,
+            ResourceTypeMapping.connected_cluster: ResourceProviderMapping.kubernetes.value,
+            ResourceTypeMapping.cluster_extensions: ResourceProviderMapping.kubernetes_configuration.value,
         }
         return mapping[self]
 

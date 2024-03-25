@@ -37,6 +37,6 @@ def test_delete_asset(
     assert call_kwargs["resource_group_name"] == resource_group
     assert call_kwargs["resource_type"] == ResourceTypeMapping.asset_endpoint_profile.value
     assert call_kwargs["parent_resource_path"] == ""
-    assert call_kwargs["resource_provider_namespace"] == ResourceProviderMapping.adr.value
+    assert call_kwargs["resource_provider_namespace"] == ResourceProviderMapping.deviceregistry.value
     assert call_kwargs["resource_name"] == asset_endpoint_profile_name
     assert call_kwargs["api_version"] == ADR_API_VERSION

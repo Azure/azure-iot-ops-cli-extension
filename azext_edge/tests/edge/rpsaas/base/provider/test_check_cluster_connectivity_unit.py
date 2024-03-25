@@ -23,7 +23,7 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
     assert mocked_build_query.call_count == 1
 
     cluster_query_kwargs = mocked_build_query.call_args.kwargs
-    assert cluster_query_kwargs["type"] == ResourceTypeMapping.custom_location.full_value
+    assert cluster_query_kwargs["type"] == ResourceTypeMapping.custom_location.full_resource_path
     assert cluster_query_kwargs["custom_query"] == f'| where id =~ "{custom_location_id}"'
 
 
@@ -87,11 +87,11 @@ def test_check_cluster_connectivity(mocked_cmd, mocked_build_query):
     assert mocked_build_query.call_count == 2
 
     cluster_query_kwargs = mocked_build_query.call_args_list[0].kwargs
-    assert cluster_query_kwargs["type"] == ResourceTypeMapping.custom_location.full_value
+    assert cluster_query_kwargs["type"] == ResourceTypeMapping.custom_location.full_resource_path
     assert cluster_query_kwargs["custom_query"] == f'| where id =~ "{custom_location_id}"'
 
     cluster_id = mocked_build_query.side_effect_values[0][0]["properties"]["hostResourceId"]
 
     cluster_query_kwargs = mocked_build_query.call_args_list[1].kwargs
-    assert cluster_query_kwargs["type"] == ResourceTypeMapping.connected_cluster.full_value
+    assert cluster_query_kwargs["type"] == ResourceTypeMapping.connected_cluster.full_resource_path
     assert cluster_query_kwargs["custom_query"] == f'| where id =~ "{cluster_id}"'
