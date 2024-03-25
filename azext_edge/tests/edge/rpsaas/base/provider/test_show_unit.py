@@ -13,7 +13,7 @@ from .....generators import generate_random_string
     {"resources.get": {"extendedLocation": {"name": generate_random_string()}}},
     {"resources.get": {"result": generate_random_string()}},
 ], ids=["extended_location", "extendedLocation", "result"], indirect=True)
-@pytest.mark.parametrize("parent_resource_path", ["", generate_generic_id()])
+@pytest.mark.parametrize("parent_resource_path", ["", generate_random_string()])
 @pytest.mark.parametrize("check_cluster_connectivity", [True, False])
 def test_show(
     mocked_cmd,

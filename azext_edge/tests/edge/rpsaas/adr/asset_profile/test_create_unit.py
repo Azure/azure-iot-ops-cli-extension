@@ -15,7 +15,7 @@ from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [{
-    "resource_groups.get": {"location": generate_generic_id()},
+    "resource_groups.get": {"location": generate_random_string()},
     "resources.begin_create_or_update": {"result": generate_random_string()}
 }], ids=["create"], indirect=True)
 @pytest.mark.parametrize("aep_helpers_fixture", [{

@@ -15,7 +15,7 @@ from .....generators import generate_random_string
     },
 ], ids=["result"], indirect=True)
 @pytest.mark.parametrize("check_cluster_connectivity", [True, False])
-@pytest.mark.parametrize("parent_resource_path", ["", generate_generic_id()])
+@pytest.mark.parametrize("parent_resource_path", ["", generate_random_string()])
 def test_delete(
     mocked_cmd,
     mock_check_cluster_connectivity,
