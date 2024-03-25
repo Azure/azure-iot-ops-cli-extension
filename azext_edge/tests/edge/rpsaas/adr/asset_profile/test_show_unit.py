@@ -10,20 +10,20 @@ from azext_edge.edge.commands_asset_endpoint_profiles import show_asset_endpoint
 from azext_edge.edge.common import ResourceProviderMapping, ResourceTypeMapping
 from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [
-    {"resources.get": {"result": generate_generic_id()}}
+    {"resources.get": {"result": generate_random_string()}}
 ], ids=["resources.get"], indirect=True)
-@pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
+@pytest.mark.parametrize("resource_group", [None, generate_random_string()])
 def test_show_asset(
     mocked_cmd,
     mocked_resource_management_client,
     resource_group
 ):
-    asset_endpoint_profile_name = generate_generic_id()
-    resource_group = generate_generic_id()
+    asset_endpoint_profile_name = generate_random_string()
+    resource_group = generate_random_string()
 
     result = show_asset_endpoint_profile(
         cmd=mocked_cmd,

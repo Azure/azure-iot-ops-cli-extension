@@ -10,38 +10,38 @@ from azext_edge.edge.common import ResourceTypeMapping
 from azext_edge.edge.commands_assets import query_assets
 
 from .conftest import ASSETS_PATH
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_build_query", [{
     "path": ASSETS_PATH,
-    "result": [{"result": generate_generic_id()}]
+    "result": [{"result": generate_random_string()}]
 }], ids=["query"], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
     {
-        "asset_type": generate_generic_id(),
-        "custom_location_name": generate_generic_id(),
-        "description": generate_generic_id(),
+        "asset_type": generate_random_string(),
+        "custom_location_name": generate_random_string(),
+        "description": generate_random_string(),
         "disabled": True,
-        "display_name": generate_generic_id(),
-        "documentation_uri": generate_generic_id(),
-        "endpoint": generate_generic_id(),
-        "external_asset_id": generate_generic_id(),
-        "hardware_revision": generate_generic_id(),
-        "location": generate_generic_id(),
-        "manufacturer": generate_generic_id(),
-        "manufacturer_uri": generate_generic_id(),
-        "model": generate_generic_id(),
-        "product_code": generate_generic_id(),
-        "serial_number": generate_generic_id(),
-        "software_revision": generate_generic_id(),
-        "resource_group_name": generate_generic_id(),
+        "display_name": generate_random_string(),
+        "documentation_uri": generate_random_string(),
+        "endpoint": generate_random_string(),
+        "external_asset_id": generate_random_string(),
+        "hardware_revision": generate_random_string(),
+        "location": generate_random_string(),
+        "manufacturer": generate_random_string(),
+        "manufacturer_uri": generate_random_string(),
+        "model": generate_random_string(),
+        "product_code": generate_random_string(),
+        "serial_number": generate_random_string(),
+        "software_revision": generate_random_string(),
+        "resource_group_name": generate_random_string(),
     },
     {
-        "asset_type": generate_generic_id(),
+        "asset_type": generate_random_string(),
         "disabled": False,
-        "resource_group_name": generate_generic_id(),
+        "resource_group_name": generate_random_string(),
     },
 ])
 def test_query_assets(mocked_cmd, mocked_get_subscription_id, mocked_build_query, req):

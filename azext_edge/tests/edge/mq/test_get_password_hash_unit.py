@@ -8,15 +8,15 @@ import re
 
 from azext_edge.edge.commands_mq import get_password_hash
 
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 
 def test_get_password_hash():
-    passphrase = generate_generic_id()
+    passphrase = generate_random_string()
     hash_result = get_password_hash(cmd=None, passphrase=passphrase)
     assert_hash_map(hash_map=hash_result)
 
-    passphrase = generate_generic_id()
+    passphrase = generate_random_string()
     iterations = 500000
     hash_result = get_password_hash(cmd=None, passphrase=passphrase, iterations=iterations)
     assert_hash_map(hash_map=hash_result, iterations=iterations)

@@ -15,7 +15,7 @@ from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
 from .conftest import MINIMUM_AEP, FULL_AEP
 from ...conftest import BP_PATH
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 FULL_CERT = FULL_AEP["properties"]["transportAuthentication"]["ownCertificates"][0]
@@ -29,27 +29,27 @@ FULL_CERT = FULL_AEP["properties"]["transportAuthentication"]["ownCertificates"]
     {
         "resources.get": MINIMUM_AEP,
         "resources.begin_create_or_update_by_id": {
-            "properties": {"transportAuthentication": {"result": generate_generic_id()}}
+            "properties": {"transportAuthentication": {"result": generate_random_string()}}
         }
     },
     {
         "resources.get": FULL_AEP,
         "resources.begin_create_or_update_by_id": {
-            "properties": {"transportAuthentication": {"result": generate_generic_id()}}
+            "properties": {"transportAuthentication": {"result": generate_random_string()}}
         }
     },
 ], ids=["minimal", "full"], indirect=True)
-@pytest.mark.parametrize("password_reference", [None, generate_generic_id()])
+@pytest.mark.parametrize("password_reference", [None, generate_random_string()])
 def test_add_asset_endpoint_profile_transport_auth(
     mocked_cmd,
     mocked_resource_management_client,
     mocked_build_query,
     password_reference
 ):
-    asset_endpoint_profile_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
-    secret_reference = generate_generic_id()
-    thumbprint = generate_generic_id()
+    asset_endpoint_profile_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    secret_reference = generate_random_string()
+    thumbprint = generate_random_string()
     result = add_asset_endpoint_profile_transport_auth(
         cmd=mocked_cmd,
         asset_endpoint_profile_name=asset_endpoint_profile_name,
@@ -86,8 +86,8 @@ def test_add_asset_endpoint_profile_transport_auth(
     {"resources.get": FULL_AEP},
 ], ids=["minimal", "full"], indirect=True)
 def test_list_asset_endpoint_profile_transport_auths(mocked_cmd, mocked_resource_management_client):
-    asset_endpoint_profile_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
+    asset_endpoint_profile_name = generate_random_string()
+    resource_group_name = generate_random_string()
     result = list_asset_endpoint_profile_transport_auth(
         cmd=mocked_cmd,
         asset_endpoint_profile_name=asset_endpoint_profile_name,
@@ -107,16 +107,16 @@ def test_list_asset_endpoint_profile_transport_auths(mocked_cmd, mocked_resource
     {
         "resources.get": FULL_AEP,
         "resources.begin_create_or_update_by_id": {
-            "properties": {"transportAuthentication": {"result": generate_generic_id()}}
+            "properties": {"transportAuthentication": {"result": generate_random_string()}}
         }
     },
 ], ids=["full"], indirect=True)
-@pytest.mark.parametrize("thumbprint", [generate_generic_id(), FULL_CERT["certThumbprint"]])
+@pytest.mark.parametrize("thumbprint", [generate_random_string(), FULL_CERT["certThumbprint"]])
 def test_remove_asset_endpoint_profile_transport_auth(
     mocked_cmd, mocked_resource_management_client, mocked_build_query, thumbprint
 ):
-    asset_endpoint_profile_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
+    asset_endpoint_profile_name = generate_random_string()
+    resource_group_name = generate_random_string()
     result = remove_asset_endpoint_profile_transport_auth(
         cmd=mocked_cmd,
         asset_endpoint_profile_name=asset_endpoint_profile_name,

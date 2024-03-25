@@ -8,16 +8,16 @@
 import json
 import pytest
 from azext_edge.edge.util import build_query
-from ..generators import generate_generic_id
+from ..generators import generate_random_string
 
 
-@pytest.mark.parametrize("subscription_id", [None, generate_generic_id()])
-@pytest.mark.parametrize("custom_query", [None, generate_generic_id()])
-@pytest.mark.parametrize("name", [None, generate_generic_id()])
-@pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
-@pytest.mark.parametrize("location", [None, generate_generic_id()])
-@pytest.mark.parametrize("type", [None, generate_generic_id()])
-@pytest.mark.parametrize("additional_project", [None, generate_generic_id()])
+@pytest.mark.parametrize("subscription_id", [None, generate_random_string()])
+@pytest.mark.parametrize("custom_query", [None, generate_random_string()])
+@pytest.mark.parametrize("name", [None, generate_random_string()])
+@pytest.mark.parametrize("resource_group", [None, generate_random_string()])
+@pytest.mark.parametrize("location", [None, generate_random_string()])
+@pytest.mark.parametrize("type", [None, generate_random_string()])
+@pytest.mark.parametrize("additional_project", [None, generate_random_string()])
 def test_build_query(
     mocker,
     subscription_id,
@@ -28,7 +28,7 @@ def test_build_query(
     type,
     additional_project
 ):
-    expected_result = generate_generic_id()
+    expected_result = generate_random_string()
     mocked_process_query = mocker.patch("azext_edge.edge.util.common._process_raw_request")
     mocked_process_query.return_value = expected_result
 
@@ -68,29 +68,29 @@ def test_build_query(
     {
         "return_value": {
             "data": [
-                {"name": generate_generic_id(), "result": generate_generic_id()},
-                {"name": generate_generic_id(), "result": generate_generic_id()}
+                {"name": generate_random_string(), "result": generate_random_string()},
+                {"name": generate_random_string(), "result": generate_random_string()}
             ]
         }
     },
     {
         "return_value": {
             "value": [
-                {"name": generate_generic_id(), "result": generate_generic_id()},
-                {"name": generate_generic_id(), "result": generate_generic_id()}
+                {"name": generate_random_string(), "result": generate_random_string()},
+                {"name": generate_random_string(), "result": generate_random_string()}
             ]
         }
     }
 ], ids=["data", "value"], indirect=True)
 @pytest.mark.parametrize("url", [
     '/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01',
-    generate_generic_id()
+    generate_random_string()
 ])
-@pytest.mark.parametrize("method", ["POST", generate_generic_id()])
+@pytest.mark.parametrize("method", ["POST", generate_random_string()])
 @pytest.mark.parametrize("payload", [
     None,
     {},
-    {generate_generic_id(): generate_generic_id()}
+    {generate_random_string(): generate_random_string()}
 ])
 def test_process_raw_request(mocked_cmd, mocked_send_raw_request, url, method, payload):
     from azext_edge.edge.util.common import _process_raw_request
@@ -116,31 +116,31 @@ def test_process_raw_request(mocked_cmd, mocked_send_raw_request, url, method, p
     {
         "side_effect": [{
             "data": [
-                {"result": generate_generic_id()},
-                {"result": generate_generic_id()}
+                {"result": generate_random_string()},
+                {"result": generate_random_string()}
             ]
         }]
     },
     {
         "side_effect": [
             {
-                "$skipToken": generate_generic_id(),
+                "$skipToken": generate_random_string(),
                 "data": [
-                    {"result": generate_generic_id()},
-                    {"result": generate_generic_id()}
+                    {"result": generate_random_string()},
+                    {"result": generate_random_string()}
                 ]
             },
             {
-                "$skipToken": generate_generic_id(),
+                "$skipToken": generate_random_string(),
                 "data": [
-                    {"result": generate_generic_id()},
-                    {"result": generate_generic_id()}
+                    {"result": generate_random_string()},
+                    {"result": generate_random_string()}
                 ]
             },
             {
                 "data": [
-                    {"result": generate_generic_id()},
-                    {"result": generate_generic_id()}
+                    {"result": generate_random_string()},
+                    {"result": generate_random_string()}
                 ]
             }
         ]
@@ -149,13 +149,13 @@ def test_process_raw_request(mocked_cmd, mocked_send_raw_request, url, method, p
 @pytest.mark.parametrize("payload", [
     None,
     {},
-    {generate_generic_id(): generate_generic_id()}
+    {generate_random_string(): generate_random_string()}
 ])
 def test_process_raw_request_paging(mocked_cmd, mocked_send_raw_request, payload):
     from azext_edge.edge.util.common import _process_raw_request
     keyword = "data"
-    url = generate_generic_id()
-    method = generate_generic_id()
+    url = generate_random_string()
+    method = generate_random_string()
     expected_result = []
     side_effects = mocked_send_raw_request.return_value.json.side_effect_values
     for effect in side_effects:

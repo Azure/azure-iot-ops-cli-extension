@@ -46,6 +46,7 @@ class WorkStepKey(IntEnum):
 
     REG_RP = 9
     EVAL_LOGIN_PERM = 10
+    DEPLOY_AIO_MONIKER = 11
 
 
 class WorkRecord:
@@ -110,6 +111,7 @@ class WorkManager:
         self._tls_ca_key_path = kwargs.get("tls_ca_key_path")
         self._tls_ca_valid_days = kwargs.get("tls_ca_valid_days", DEFAULT_VALID_DAYS)
         self._tls_insecure = kwargs.get("tls_insecure", False)
+        self._template_path = kwargs.get("template_path")
         self._progress_shown = False
         self._render_progress = not self._no_progress
         self._live = Live(None, transient=False, refresh_per_second=8, auto_refresh=self._render_progress)
@@ -179,8 +181,13 @@ class WorkManager:
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CERT, tls_ca_desc)
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CLUSTER, "Configure cluster for tls")
 
-        # TODO: add skip deployment
         self.display.add_category(WorkCategoryKey.DEPLOY_AIO, "Deploy IoT Operations", skipped=self._no_deploy)
+        deployment_moniker = "Custom template" if self._template_path else CURRENT_TEMPLATE.moniker
+        self.display.add_step(
+            WorkCategoryKey.DEPLOY_AIO,
+            WorkStepKey.DEPLOY_AIO_MONIKER,
+            f"[green]{deployment_moniker}[/green]",
+        )
 
     def do_work(self):  # noqa: C901
         from ..edge_api.keyvault import KEYVAULT_API_V1
@@ -402,6 +409,10 @@ class WorkManager:
                 ]
 
                 work_kpis.update(deployment_result)
+
+                self._completed_steps[WorkStepKey.DEPLOY_AIO_MONIKER] = 1
+                self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
+
                 return work_kpis
 
         except HttpResponseError as e:
@@ -477,7 +488,7 @@ class WorkManager:
 
     def build_template(self, work_kpis: dict) -> Tuple[TemplateVer, dict]:
         # TODO refactor, move out of work
-        template = get_current_template_copy()
+        template = get_current_template_copy(self._template_path)
         parameters = {}
 
         for template_pair in [

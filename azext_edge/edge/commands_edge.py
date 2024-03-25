@@ -132,6 +132,7 @@ def init(
     tls_ca_key_path: Optional[str] = None,
     tls_ca_dir: Optional[str] = None,
     tls_ca_valid_days: int = DEFAULT_X509_CA_VALID_DAYS,
+    template_path: Optional[str] = None,
     no_deploy: Optional[bool] = None,
     no_tls: Optional[bool] = None,
     no_preflight: Optional[bool] = None,
@@ -239,4 +240,5 @@ def init(
         tls_ca_key_path=tls_ca_key_path,
         tls_ca_dir=tls_ca_dir,
         tls_ca_valid_days=tls_ca_valid_days,
+        template_path=template_path,
     )

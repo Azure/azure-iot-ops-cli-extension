@@ -14,7 +14,7 @@ from .conftest import (
     assert_conditions,
     assert_evaluations,
 )
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 
 @pytest.mark.parametrize(
@@ -235,7 +235,7 @@ def test_assets_checks(
         side_effect=[{"items": assets}],
     )
 
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for asset in assets:
         asset['metadata']['namespace'] = namespace
     result = evaluate_assets(detail_level=detail_level, resource_name=resource_name)
@@ -428,7 +428,7 @@ def test_asset_endpoint_profiles_checks(
         side_effect=[{"items": asset_endpoint_profiles}],
     )
 
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for asset_endpoint_profile in asset_endpoint_profiles:
         asset_endpoint_profile['metadata']['namespace'] = namespace
     result = evaluate_asset_endpoint_profiles(detail_level=detail_level, resource_name=resource_name)

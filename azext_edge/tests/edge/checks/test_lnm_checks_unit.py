@@ -21,7 +21,7 @@ from .conftest import (
     generate_pod_stub,
     generate_resource_stub
 )
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 
 @pytest.mark.parametrize(
@@ -222,7 +222,7 @@ def test_lnm_checks(
         side_effect=[lnms],
     )
 
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for lnm in lnms:
         lnm['metadata']['namespace'] = namespace
     result = evaluate_lnms(detail_level=detail_level, resource_name=resource_name)
@@ -343,7 +343,7 @@ def test_evaluate_core_service_runtime(
         return_value=pods,
     )
 
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for pod in pods:
         pod.metadata.namespace = namespace
     result = evaluate_core_service_runtime(detail_level=detail_level, resource_name=resource_name)

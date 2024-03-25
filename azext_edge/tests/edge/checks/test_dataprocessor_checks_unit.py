@@ -19,7 +19,7 @@ from .conftest import (
     assert_evaluations,
     generate_resource_stub,
 )
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 from azext_edge.edge.providers.check.common import (
     ALL_NAMESPACES_TARGET,
     ResourceOutputDetailLevel,
@@ -112,7 +112,7 @@ def test_instance_checks(
     detail_level,
     resource_name
 ):
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for instance in instances:
         instance['metadata']['namespace'] = namespace
     mocker = mocker.patch(
@@ -1002,7 +1002,7 @@ def test_pipeline_checks(
         side_effect=[pipelines],
     )
 
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for pipeline in pipelines:
         pipeline['metadata']['namespace'] = namespace
     result = evaluate_pipelines(detail_level=detail_level, resource_name=resource_name)
@@ -1103,7 +1103,7 @@ def test_dataset_checks(
     detail_level,
     resource_name
 ):
-    namespace = generate_generic_id()
+    namespace = generate_random_string()
     for dataset in datasets:
         dataset['metadata']['namespace'] = namespace
     mocker = mocker.patch(

@@ -14,57 +14,57 @@ from azext_edge.edge.commands_assets import create_asset
 from azext_edge.edge.common import ResourceProviderMapping, ResourceTypeMapping
 from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [{
     "resource_groups.get": {"location": generate_generic_id()},
-    "resources.begin_create_or_update": {"result": generate_generic_id()}
+    "resources.begin_create_or_update": {"result": generate_random_string()}
 }], ids=["create"], indirect=True)
 @pytest.mark.parametrize("asset_helpers_fixture", [{
-    "process_asset_sub_points": generate_generic_id(),
-    "update_properties": generate_generic_id(),
+    "process_asset_sub_points": generate_random_string(),
+    "update_properties": generate_random_string(),
 }], ids=["create helpers"], indirect=True)
 @pytest.mark.parametrize("req", [
     {
-        "data_points": generate_generic_id(),
+        "data_points": generate_random_string(),
     },
     {
-        "asset_type": generate_generic_id(),
-        "custom_location_name": generate_generic_id(),
-        "custom_location_resource_group": generate_generic_id(),
-        "custom_location_subscription": generate_generic_id(),
-        "cluster_name": generate_generic_id(),
-        "cluster_resource_group": generate_generic_id(),
-        "cluster_subscription": generate_generic_id(),
-        "data_points": generate_generic_id(),
-        "description": generate_generic_id(),
-        "display_name": generate_generic_id(),
+        "asset_type": generate_random_string(),
+        "custom_location_name": generate_random_string(),
+        "custom_location_resource_group": generate_random_string(),
+        "custom_location_subscription": generate_random_string(),
+        "cluster_name": generate_random_string(),
+        "cluster_resource_group": generate_random_string(),
+        "cluster_subscription": generate_random_string(),
+        "data_points": generate_random_string(),
+        "description": generate_random_string(),
+        "display_name": generate_random_string(),
         "disabled": True,
-        "documentation_uri": generate_generic_id(),
-        "events": generate_generic_id(),
-        "external_asset_id": generate_generic_id(),
-        "hardware_revision": generate_generic_id(),
-        "location": generate_generic_id(),
-        "manufacturer": generate_generic_id(),
-        "manufacturer_uri": generate_generic_id(),
-        "model": generate_generic_id(),
-        "product_code": generate_generic_id(),
-        "serial_number": generate_generic_id(),
-        "software_revision": generate_generic_id(),
+        "documentation_uri": generate_random_string(),
+        "events": generate_random_string(),
+        "external_asset_id": generate_random_string(),
+        "hardware_revision": generate_random_string(),
+        "location": generate_random_string(),
+        "manufacturer": generate_random_string(),
+        "manufacturer_uri": generate_random_string(),
+        "model": generate_random_string(),
+        "product_code": generate_random_string(),
+        "serial_number": generate_random_string(),
+        "software_revision": generate_random_string(),
         "dp_publishing_interval": 3333,
         "dp_sampling_interval": 44,
         "dp_queue_size": 55,
         "ev_publishing_interval": 666,
         "ev_sampling_interval": 777,
         "ev_queue_size": 888,
-        "tags": generate_generic_id(),
+        "tags": generate_random_string(),
     },
     {
-        "asset_type": generate_generic_id(),
-        "custom_location_resource_group": generate_generic_id(),
+        "asset_type": generate_random_string(),
+        "custom_location_resource_group": generate_random_string(),
         "disabled": False,
-        "events": generate_generic_id(),
+        "events": generate_random_string(),
         "dp_publishing_interval": 3333,
         "dp_sampling_interval": 44,
         "ev_queue_size": 888,
@@ -75,12 +75,12 @@ def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, ass
     patched_cap = mocker.patch(
         "azext_edge.edge.providers.rpsaas.adr.base.ADRBaseProvider.check_cluster_and_custom_location"
     )
-    patched_cap.return_value = generate_generic_id()
+    patched_cap.return_value = generate_random_string()
 
     # Required params
-    asset_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
-    endpoint_profile = generate_generic_id()
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    endpoint_profile = generate_random_string()
 
     result = create_asset(
         cmd=mocked_cmd,
@@ -157,7 +157,7 @@ def test_create_asset_error(mocked_cmd):
     with pytest.raises(RequiredArgumentMissingError):
         create_asset(
             cmd=mocked_cmd,
-            asset_name=generate_generic_id(),
-            resource_group_name=generate_generic_id(),
-            endpoint=generate_generic_id()
+            asset_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+            endpoint=generate_random_string()
         )

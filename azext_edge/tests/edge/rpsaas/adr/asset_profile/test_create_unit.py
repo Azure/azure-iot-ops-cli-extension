@@ -11,49 +11,49 @@ from azext_edge.edge.commands_asset_endpoint_profiles import create_asset_endpoi
 from azext_edge.edge.common import ResourceProviderMapping, ResourceTypeMapping
 from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [{
     "resource_groups.get": {"location": generate_generic_id()},
-    "resources.begin_create_or_update": {"result": generate_generic_id()}
+    "resources.begin_create_or_update": {"result": generate_random_string()}
 }], ids=["create"], indirect=True)
 @pytest.mark.parametrize("aep_helpers_fixture", [{
-    "update_properties": generate_generic_id(),
+    "update_properties": generate_random_string(),
 }], ids=["create helpers"], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
     {
-        "custom_location_name": generate_generic_id(),
-        "custom_location_resource_group": generate_generic_id(),
-        "custom_location_subscription": generate_generic_id(),
-        "cluster_name": generate_generic_id(),
-        "cluster_resource_group": generate_generic_id(),
-        "cluster_subscription": generate_generic_id(),
-        "additional_configuration": generate_generic_id(),
-        "username_reference": generate_generic_id(),
-        "password_reference": generate_generic_id(),
-        # "certificate_reference": generate_generic_id(),
-        "tags": generate_generic_id(),
+        "custom_location_name": generate_random_string(),
+        "custom_location_resource_group": generate_random_string(),
+        "custom_location_subscription": generate_random_string(),
+        "cluster_name": generate_random_string(),
+        "cluster_resource_group": generate_random_string(),
+        "cluster_subscription": generate_random_string(),
+        "additional_configuration": generate_random_string(),
+        "username_reference": generate_random_string(),
+        "password_reference": generate_random_string(),
+        # "certificate_reference": generate_random_string(),
+        "tags": generate_random_string(),
     },
     {
-        "custom_location_resource_group": generate_generic_id(),
-        "cluster_subscription": generate_generic_id(),
-        "additional_configuration": generate_generic_id(),
-        "username_reference": generate_generic_id(),
-        "password_reference": generate_generic_id(),
+        "custom_location_resource_group": generate_random_string(),
+        "cluster_subscription": generate_random_string(),
+        "additional_configuration": generate_random_string(),
+        "username_reference": generate_random_string(),
+        "password_reference": generate_random_string(),
     },
 ])
 def test_create_asset_endpoint_profile(mocker, mocked_cmd, mocked_resource_management_client, aep_helpers_fixture, req):
     patched_cap = mocker.patch(
         "azext_edge.edge.providers.rpsaas.adr.base.ADRBaseProvider.check_cluster_and_custom_location"
     )
-    patched_cap.return_value = generate_generic_id()
+    patched_cap.return_value = generate_random_string()
 
     # Required params
-    asset_endpoint_profile_name = generate_generic_id()
-    resource_group_name = generate_generic_id()
-    target_address = generate_generic_id()
+    asset_endpoint_profile_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    target_address = generate_random_string()
 
     result = create_asset_endpoint_profile(
         cmd=mocked_cmd,
@@ -112,8 +112,8 @@ def test_create_asset_endpoint_profile_error(mocker, mocked_cmd):
     with pytest.raises(InvalidArgumentValueError):
         create_asset_endpoint_profile(
             cmd=mocked_cmd,
-            asset_endpoint_profile_name=generate_generic_id(),
-            resource_group_name=generate_generic_id(),
-            target_address=generate_generic_id(),
-            certificate_reference=generate_generic_id()
+            asset_endpoint_profile_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+            target_address=generate_random_string(),
+            certificate_reference=generate_random_string()
         )
