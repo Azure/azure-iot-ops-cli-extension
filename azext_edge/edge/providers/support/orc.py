@@ -10,7 +10,14 @@ from typing import Iterable
 from knack.log import get_logger
 
 from ..edge_api import ORC_API_V1, EdgeResourceApi
-from .base import DAY_IN_SECONDS, assemble_crd_work, process_deployments, process_v1_pods, process_services, process_replicasets
+from .base import (
+    DAY_IN_SECONDS,
+    assemble_crd_work,
+    process_deployments,
+    process_v1_pods,
+    process_services,
+    process_replicasets
+)
 
 logger = get_logger(__name__)
 
