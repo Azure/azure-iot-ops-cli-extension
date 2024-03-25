@@ -109,7 +109,7 @@ def test_create_bundle(
             mocked_client=mocked_client,
             expected_pod_map=mocked_list_pods,
             mock_names=["aio-runner"],
-            mock_init_container=True
+            mock_init_containers=True
         )
 
     since_seconds = random.randint(86400, 172800)
