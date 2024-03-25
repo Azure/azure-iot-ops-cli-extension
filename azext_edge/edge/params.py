@@ -11,7 +11,7 @@ CLI parameter definitions.
 from knack.arguments import CaseInsensitiveList
 from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
-from .common import OpsServiceType
+from .common import OpsServiceType, PodState
 from .providers.edge_api import (
     AkriResourceKinds,
     DataProcessorResourceKinds,
@@ -73,6 +73,13 @@ def load_iotops_arguments(self, _):
             options_list=["--mq-traces"],
             arg_type=get_three_state_flag(),
             help="Include mq traces in the support bundle. Usage may add considerable size to the produced bundle.",
+        ),
+        context.argument(
+            "pod_states",
+            options_list=["--pod-states"],
+            choices=CaseInsensitiveList(PodState.list()),
+            nargs="*",
+            help="The state of the pods to include in the support bundle."
         )
 
     with self.argument_context("iot ops check") as context:

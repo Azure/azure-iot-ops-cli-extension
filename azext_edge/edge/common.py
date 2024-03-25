@@ -43,7 +43,7 @@ class ResourceState(Enum):
     error = "Error"
 
 
-class PodState(Enum):
+class PodState(ListableEnum):
     """
     K8s pod state.
     """
@@ -89,6 +89,7 @@ class OpsServiceType(ListableEnum):
     """
 
     auto = "auto"
+    billing = "billing"
     mq = "mq"
     lnm = "lnm"
     opcua = "opcua"

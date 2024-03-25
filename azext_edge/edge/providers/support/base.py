@@ -10,6 +10,7 @@ from pathlib import PurePath
 from typing import List, Dict, Optional, Iterable
 from functools import partial
 
+from azext_edge.edge.common import PodState
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Container, V1ObjectMeta, V1PodSpec
@@ -53,6 +54,7 @@ def process_v1_pods(
     capture_previous_logs=True,
     prefix_names: Optional[List[str]] = None,
     pod_prefix_for_init_container_logs: Optional[List[str]] = None,
+    pod_states: Optional[List[str]] = PodState.list(),
 ) -> List[dict]:
     from kubernetes.client.models import V1Pod, V1PodList
 
@@ -62,8 +64,13 @@ def process_v1_pods(
     processed = []
     if not prefix_names:
         prefix_names = []
+    
 
     pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
+
+    if pod_states:
+        pods = V1PodList(items=[p for p in pods.items if p.status.phase.lower() in pod_states])
+
     pod_logger_info = f"Detected {len(pods.items)} pods"
     if label_selector:
         pod_logger_info = f"{pod_logger_info} with label '{label_selector}'."
@@ -443,6 +450,46 @@ def process_persistent_volume_claims(
             {
                 "data": generic.sanitize_for_serialization(obj=d),
                 "zinfo": f"{pvc_namespace}/{resource_api.moniker}/pvc.{pvc_name}.yaml",
+            }
+        )
+
+    return processed
+
+
+def process_jobs(
+    resource_api: EdgeResourceApi,
+    label_selector: str = None,
+    field_selector: str = None,
+    prefix_names: List[str] = None,
+):
+    from kubernetes.client.models import V1Job, V1JobList
+
+    batch_v1_api = client.BatchV1Api()
+
+    processed = []
+    if not prefix_names:
+        prefix_names = []
+
+    jobs: V1JobList = batch_v1_api.list_job_for_all_namespaces(label_selector=label_selector, field_selector=field_selector)
+    logger.info(f"Detected {len(jobs.items)} jobs.")
+
+    for job in jobs.items:
+        j: V1Job = job
+        j.api_version = jobs.api_version
+        j.kind = "Job"
+        job_metadata: V1ObjectMeta = j.metadata
+        job_namespace: str = job_metadata.namespace
+        job_name: str = job_metadata.name
+
+        if prefix_names:
+            matched_prefix = [job_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
+
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=j),
+                "zinfo": f"{job_namespace}/{resource_api.moniker}/job.{job_name}.yaml",
             }
         )
 
