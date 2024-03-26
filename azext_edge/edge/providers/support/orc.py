@@ -10,7 +10,14 @@ from typing import Iterable
 from knack.log import get_logger
 
 from ..edge_api import ORC_API_V1, EdgeResourceApi
-from .base import assemble_crd_work, process_deployments, process_v1_pods, process_services, process_replicasets
+from .base import (
+    DAY_IN_SECONDS,
+    assemble_crd_work,
+    process_deployments,
+    process_v1_pods,
+    process_services,
+    process_replicasets
+)
 
 logger = get_logger(__name__)
 
@@ -20,19 +27,17 @@ ORC_APP_LABEL = "app in (aio-orc-api)"
 ORC_CONTROLLER_LABEL = "control-plane in (aio-orc-controller-manager)"
 
 
-def fetch_pods(since_seconds: int = 60 * 60 * 24):
+def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     processed = process_v1_pods(
         resource_api=ORC_API_V1,
         label_selector=ORC_INSTANCE_LABEL,
         since_seconds=since_seconds,
-        capture_previous_logs=True,
     )
     processed.extend(
         process_v1_pods(
             resource_api=ORC_API_V1,
             label_selector=ORC_APP_LABEL,
             since_seconds=since_seconds,
-            capture_previous_logs=True,
         )
     )
     processed.extend(
@@ -40,7 +45,6 @@ def fetch_pods(since_seconds: int = 60 * 60 * 24):
             resource_api=ORC_API_V1,
             label_selector=ORC_CONTROLLER_LABEL,
             since_seconds=since_seconds,
-            capture_previous_logs=True,
         )
     )
 
@@ -75,7 +79,7 @@ support_runtime_elements = {
 }
 
 
-def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
+def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS) -> dict:
     symphony_to_run = {}
     symphony_to_run.update(assemble_crd_work(apis))
 
