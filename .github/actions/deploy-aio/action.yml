@@ -49,6 +49,8 @@ inputs:
     description: User-provided CA key file path
   kv-sat-secret-name:
     description: Key Vault Secure Access Token Secret Name
+  template-file:
+    description: Path to custom IoT Operations deployment template. Intended for advanced use cases. 
   sp-app-id:
     description: 'Optional Service Principal ID to use for cluster operations'
   sp-object-id:
@@ -106,6 +108,7 @@ runs:
         ca-file: ${{ inputs.ca-file && format('--ca-file "{0}"', inputs.ca-file) || '' }}
         ca-key-file: ${{ inputs.ca-key-file && format('--ca-key-file "{0}"', inputs.ca-key-file) || '' }}
         kv-sat-secret-name: ${{ inputs.kv-sat-secret-name && format('--kv-sat-secret-name "{0}"', inputs.kv-sat-secret-name) || '' }}
+        template-file: ${{ inputs.template-file && format('--template-file "{0}"', inputs.template-file) || '' }}
         debug: ${{ inputs.debug == 'true' && '--debug' || '' }}
       run: >-
           az iot ops init
@@ -128,6 +131,7 @@ runs:
           ${{ env.ca-file }}
           ${{ env.ca-key-file }}
           ${{ env.kv-sat-secret-name }}
+          ${{ env.template-file }}
           ${{ env.debug }}
           --no-progress
       shell: bash
