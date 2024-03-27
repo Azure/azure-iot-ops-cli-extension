@@ -4,9 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict, List
-from os import mkdir
-from shutil import rmtree
+from typing import Dict, List, Optional
+from os import mkdir, path, walk
+from shutil import rmtree, unpack_archive
+from azext_edge.edge.common import OpsServiceType
+from ...helpers import run
+
+
+EXTRACTED_PATH = "unpacked"
+AUTO_EXTRACTED_PATH = f"auto_{EXTRACTED_PATH}"
 
 
 def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
@@ -23,9 +29,16 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
 
         # custom types should have a v
         if file_type not in ["daemonset", "deployment", "pod", "pvc", "replicaset", "service", "statefulset"]:
+            if name_obj["extension"] != "yaml":
+                # check diagnositcs.txt later
+                continue
             name_obj["version"] = name.pop(0)
             assert name_obj["version"].startswith("v")
         name_obj["name"] = name.pop(0)
+        if name_obj["name"] == "aio-opc-opc":
+            name_obj["name"] += f".{name.pop(0)}"
+        if "metric" in name and name_obj["extension"] == "yaml":
+            name_obj["name"] += f".{name.pop(0)}"
 
         # only logs should still have something in the name
         assert bool(name) == (name_obj["extension"] != "yaml")
@@ -36,7 +49,6 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
         # something like "previous", "init"
         if name:
             name_obj["sub_descriptor"] = name.pop(0)
-            assert name_obj["sub_descriptor"] in ["init", "previous"]
 
         file_name_objs[file_type].append(name_obj)
 
@@ -45,9 +57,11 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
 
 def check_non_custom_file_objs(
     file_objs: Dict[str, List[Dict[str, str]]],
-    expected: Dict[str, List[str]]
+    expected: Dict[str, List[str]],
+    optional: Optional[Dict[str, List[str]]] = None
 ):
-    assert len(file_objs) > len(expected)
+    optional = optional or {}
+    assert len(file_objs) >= len(expected)
     # pod
     expected_pods = expected.pop("pod")
     file_pods = {}
@@ -56,49 +70,134 @@ def check_non_custom_file_objs(
             file_pods[file["name"]] = {"yaml_present": False}
         converted_file = file_pods[file["name"]]
 
+        # for all of these files, make sure that it was not seen before
+        # in the end, there should be one yaml
+        # if sub_descriptor file present, descriptor file should be there too (has exceptions)
         if file["extension"] == "yaml":
             # only one yaml per pod
             assert not converted_file["yaml_present"]
             converted_file["yaml_present"] = True
         elif file.get("sub_descriptor") in ["init", None]:
-            assert file.get("sub_descriptor") not in converted_file
+            assert f"{file['descriptor']}.{file.get('sub_descriptor')}" not in converted_file
             converted_file[file["descriptor"]] = True
         else:
             assert file["sub_descriptor"] == "previous"
-            assert file["sub_descriptor"] not in converted_file
-            converted_file[file["sub_descriptor"]] = True
+            sub_key = f"{file['descriptor']}.{file['sub_descriptor']}"
+            assert sub_key not in converted_file
+            converted_file[sub_key] = True
             # if msi-adapter.previous present, msi-adapter must present too
             # for some reason does not apply to xxx.init
             if file["descriptor"] not in converted_file:
                 converted_file[file["descriptor"]] = False
 
-    assert len(file_pods) == len(expected_pods)
+    filtered = filter_duplicate_file_names(file_pods)
+    # length of filtered should be between expected and expected + optional
+    assert 0 <= len(filtered) - len(expected_pods) <= len(optional.get("pod", []))
+
+    def _name_check(name: str, expected_names: List[str], optional_names: Optional[List[str]]):
+        name = name.split(".")[0]
+        # make sure we can check names like aio-dp-operator-5c74655f8b-zr5xm
+        checks = [
+            name in expected_names,
+            name.rsplit("-", 1)[0] in expected_names,
+            name.rsplit("-", 2)[0] in expected_names,
+        ]
+        if optional_names:
+            # make sure we can check names like opcplc-000000-59778dd6f6-c7z42
+            checks.extend([
+                name in optional_names,
+                name.rsplit("-", 1)[0] in optional_names,
+                name.rsplit("-", 2)[0] in optional_names,
+                name.rsplit("-", 3)[0] in optional_names,
+            ])
+        assert any(checks)
+
     for name, files in file_pods.items():
-        assert any([
-            name in expected_pods,
-            name.rsplit("-", 1)[0] in expected_pods,
-            name.rsplit("-", 2)[0] in expected_pods
-        ])
+        _name_check(name, expected_pods, optional.get("pod"))
         for value in files.values():
             assert value
 
     # other
     for key in expected:
-        assert len(file_objs[key]) == len(expected[key])
         for file in file_objs[key]:
             assert file["extension"] == "yaml"
-            # make sure we can check names like aio-dp-operator-5c74655f8b-zr5xm
-            assert (
-                (file["name"] in expected[key])
-                or (file["name"].rsplit("-", 1)[0] in expected[key])
-                or (file["name"].rsplit("-", 2)[0] in expected[key])
-            )
+            _name_check(file["name"], expected[key], optional.get(key))
+        filtered_names = filter_duplicate_file_names([f["name"] for f in file_objs[key]])
+        assert 0 <= len(filtered_names) - len(expected[key]) <= len(optional.get(key, []))
 
 
-def ensure_clean_dir(path: str, tracked_files: List[str]):
+def ensure_clean_dir(dir_path: str, tracked_files: List[str]):
     try:
-        mkdir(path)
-        tracked_files.append(path)
+        mkdir(dir_path)
+        tracked_files.append(dir_path)
     except FileExistsError:
-        rmtree(path)
-        mkdir(path)
+        rmtree(dir_path)
+        mkdir(dir_path)
+
+
+def filter_duplicate_file_names(files):
+    filtered_files = []
+    for name in files:
+        # make sure multiple mq backend/frontend pods/statefulsets aren't counted more
+        # than once
+        if name.startswith("aio-mq-dmqtt-backend"):
+            if "aio-mq-dmqtt-backend" not in filtered_files:
+                filtered_files.append("aio-mq-dmqtt-backend")
+        elif name.startswith("aio-mq-dmqtt-frontend"):
+            if "aio-mq-dmqtt-frontend" not in filtered_files:
+                filtered_files.append("aio-mq-dmqtt-frontend")
+        elif name.startswith("aio-orc-api"):
+            if "aio-orc-api" not in filtered_files:
+                filtered_files.append("aio-orc-api")
+        else:
+            name = name.split(".")[0]
+            if name not in filtered_files:
+                filtered_files.append(name)
+    return filtered_files
+
+
+def get_file_map(
+    walk_result,
+    ops_service: str,
+    mq_traces: bool = False
+) -> Dict[str, List[Dict[str, str]]]:
+    # Remove all files that will not be checked
+    level_0 = walk_result.pop(EXTRACTED_PATH)
+    namespace = level_0["folders"][0]
+    walk_result.pop(path.join(EXTRACTED_PATH, namespace))
+
+    # Level 2 and 3 - bottom
+    if ops_service == OpsServiceType.dataprocessor.value and not walk_result:
+        return
+
+    ops_path = path.join(EXTRACTED_PATH, namespace, ops_service)
+    file_map = {}
+    if mq_traces and path.join(ops_path, "traces") in walk_result:
+        # still possible for no traces if cluster is too new
+        assert len(walk_result) == 2
+        assert walk_result[ops_path]["folders"]
+        assert not walk_result[path.join(ops_path, "traces")]["folders"]
+        file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
+    elif ops_service != "otel":
+        assert len(walk_result) == 1
+        assert not walk_result[ops_path]["folders"]
+
+    file_map.update(convert_file_names(walk_result[ops_path]["files"]))
+    return file_map
+
+
+def run_bundle_command(
+    command: str,
+    tracked_files: List[str],
+    extracted_path: str = EXTRACTED_PATH,
+) -> Dict[str, Dict[str, List[str]]]:
+    ensure_clean_dir(extracted_path, tracked_files)
+    result = run(command)
+    assert result["bundlePath"]
+    tracked_files.append(result["bundlePath"])
+    unpack_archive(result["bundlePath"], extract_dir=extracted_path)
+    return {
+        directory: {
+            "folders": folders, "files": files
+        } for directory, folders, files in walk(extracted_path)
+    }
