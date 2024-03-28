@@ -11,7 +11,7 @@ import yaml
 from knack.log import get_logger
 from rich.console import Console, NewLine
 
-from ..common import OpsServiceType, PodState
+from ..common import OpsServiceType
 from ..providers.edge_api import (
     BILLING_API_V1,
     DATA_PROCESSOR_API_V1,
@@ -43,7 +43,6 @@ def build_bundle(
     bundle_path: str,
     log_age_seconds: Optional[int] = None,
     include_mq_traces: Optional[bool] = None,
-    pod_states: Optional[List[str]] = PodState.list(),
 ):
     from rich.live import Live
     from rich.progress import Progress
@@ -102,8 +101,6 @@ def build_bundle(
                     bundle = bundle_method(deployed_apis)
                 elif service_moniker == OpsServiceType.mq.value:
                     bundle = bundle_method(deployed_apis, log_age_seconds, include_mq_traces)
-                elif service_moniker == OpsServiceType.billing.value:
-                    bundle = bundle_method(deployed_apis, log_age_seconds, pod_states)
                 else:
                     bundle = bundle_method(deployed_apis, log_age_seconds)
 

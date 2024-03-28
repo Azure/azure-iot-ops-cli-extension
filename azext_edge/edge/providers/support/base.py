@@ -7,10 +7,9 @@
 from os import makedirs
 from os.path import abspath, expanduser, isdir
 from pathlib import PurePath
-from typing import List, Dict, Optional, Iterable
+from typing import Any, List, Dict, Optional, Iterable
 from functools import partial
 
-from azext_edge.edge.common import PodState
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Container, V1ObjectMeta, V1PodSpec
@@ -54,7 +53,6 @@ def process_v1_pods(
     capture_previous_logs=True,
     prefix_names: Optional[List[str]] = None,
     pod_prefix_for_init_container_logs: Optional[List[str]] = None,
-    pod_states: Optional[List[str]] = PodState.list(),
 ) -> List[dict]:
     from kubernetes.client.models import V1Pod, V1PodList
 
@@ -66,9 +64,6 @@ def process_v1_pods(
         prefix_names = []
 
     pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
-
-    if pod_states != PodState.list():
-        pods = V1PodList(items=[p for p in pods.items if p.status.phase.lower() in pod_states])
 
     pod_logger_info = f"Detected {len(pods.items)} pods"
     if label_selector:
@@ -165,40 +160,25 @@ def process_deployments(
     return_namespaces: bool = False,
     prefix_names: List[str] = None,
 ):
-    from kubernetes.client.models import V1Deployment, V1DeploymentList
+    from kubernetes.client.models import V1DeploymentList
 
     v1_apps = client.AppsV1Api()
-
-    processed = []
-    if not prefix_names:
-        prefix_names = []
-
     deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
     )
-    logger.info(f"Detected {len(deployments.items)} deployments.")
     namespace_pods_work = {}
 
+    processed = _process_kubernetes_resources(
+        resources=deployments,
+        resource_api=resource_api,
+        prefix_names=prefix_names,
+        resource_type="deployment",
+        kind="Deployment",
+    )
+
     for deployment in deployments.items:
-        d: V1Deployment = deployment
-        # TODO: Workaround
-        d.api_version = deployments.api_version
-        d.kind = "Deployment"
-        deployment_metadata: V1ObjectMeta = d.metadata
-        deployment_namespace: str = deployment_metadata.namespace
-        deployment_name: str = deployment_metadata.name
+        deployment_namespace: str = deployment.metadata.namespace
 
-        if prefix_names:
-            matched_prefix = [deployment_name.startswith(prefix) for prefix in prefix_names]
-            if not any(matched_prefix):
-                continue
-
-        processed.append(
-            {
-                "data": generic.sanitize_for_serialization(obj=d),
-                "zinfo": f"{deployment_namespace}/{resource_api.moniker}/deployment.{deployment_name}.yaml",
-            }
-        )
         if deployment_namespace not in namespace_pods_work:
             namespace_pods_work[deployment_namespace] = True
 
@@ -213,33 +193,17 @@ def process_statefulset(
     label_selector: str = None,
     field_selector: str = None,
 ):
-    from kubernetes.client.models import V1StatefulSet, V1StatefulSetList
-
     v1_apps = client.AppsV1Api()
 
-    processed = []
-
-    statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
+    return _process_kubernetes_resources(
+        resources=v1_apps.list_stateful_set_for_all_namespaces(
+            label_selector=label_selector,
+            field_selector=field_selector
+        ),
+        resource_api=resource_api,
+        resource_type="statefulset",
+        kind="Statefulset",
     )
-    logger.info(f"Detected {len(statefulsets.items)} statefulsets.")
-
-    for statefulset in statefulsets.items:
-        s: V1StatefulSet = statefulset
-        # TODO: Workaround
-        s.api_version = statefulsets.api_version
-        s.kind = "Statefulset"
-        statefulset_metadata: V1ObjectMeta = s.metadata
-        statefulset_namespace: str = statefulset_metadata.namespace
-        statefulset_name: str = statefulset_metadata.name
-        processed.append(
-            {
-                "data": generic.sanitize_for_serialization(obj=s),
-                "zinfo": f"{statefulset_namespace}/{resource_api.moniker}/statefulset.{statefulset_name}.yaml",
-            }
-        )
-
-    return processed
 
 
 def process_services(
@@ -248,41 +212,18 @@ def process_services(
     field_selector: str = None,
     prefix_names: List[str] = None,
 ):
-    from kubernetes.client.models import V1Service, V1ServiceList
-
     v1_api = client.CoreV1Api()
 
-    processed = []
-    if not prefix_names:
-        prefix_names = []
-
-    services: V1ServiceList = v1_api.list_service_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
+    return _process_kubernetes_resources(
+        resources=v1_api.list_service_for_all_namespaces(
+            label_selector=label_selector,
+            field_selector=field_selector
+        ),
+        resource_api=resource_api,
+        prefix_names=prefix_names,
+        resource_type="service",
+        kind="Service",
     )
-    logger.info(f"Detected {len(services.items)} services.")
-
-    for service in services.items:
-        s: V1Service = service
-        # TODO: Workaround
-        s.api_version = services.api_version
-        s.kind = "Service"
-        service_metadata: V1ObjectMeta = s.metadata
-        service_namespace: str = service_metadata.namespace
-        service_name: str = service_metadata.name
-
-        if prefix_names:
-            matched_prefix = [service_name.startswith(prefix) for prefix in prefix_names]
-            if not any(matched_prefix):
-                continue
-
-        processed.append(
-            {
-                "data": generic.sanitize_for_serialization(obj=s),
-                "zinfo": f"{service_namespace}/{resource_api.moniker}/service.{service_name}.yaml",
-            }
-        )
-
-    return processed
 
 
 def process_replicasets(
@@ -290,39 +231,15 @@ def process_replicasets(
     label_selector: str = None,
     prefix_names: List[str] = None,
 ):
-    from kubernetes.client.models import V1ReplicaSet, V1ReplicaSetList
-
     v1_apps = client.AppsV1Api()
 
-    processed = []
-    if not prefix_names:
-        prefix_names = []
-
-    replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
-    logger.info(f"Detected {len(replicasets.items)} replicasets.")
-
-    for replicaset in replicasets.items:
-        r: V1ReplicaSet = replicaset
-        # TODO: Workaround
-        r.api_version = replicasets.api_version
-        r.kind = "Replicaset"
-        replicaset_metadata: V1ObjectMeta = r.metadata
-        replicaset_namespace: str = replicaset_metadata.namespace
-        replicaset_name: str = replicaset_metadata.name
-
-        if prefix_names:
-            matched_prefix = [replicaset_name.startswith(prefix) for prefix in prefix_names]
-            if not any(matched_prefix):
-                continue
-
-        processed.append(
-            {
-                "data": generic.sanitize_for_serialization(obj=r),
-                "zinfo": f"{replicaset_namespace}/{resource_api.moniker}/replicaset.{replicaset_name}.yaml",
-            }
-        )
-
-    return processed
+    return _process_kubernetes_resources(
+        resources=v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector),
+        resource_api=resource_api,
+        prefix_names=prefix_names,
+        resource_type="replicaset",
+        kind="Replicaset",
+    )
 
 
 def process_daemonsets(
@@ -331,40 +248,18 @@ def process_daemonsets(
     field_selector: str = None,
     prefix_names: List[str] = None,
 ):
-    from kubernetes.client.models import V1DaemonSet, V1DaemonSetList
-
     v1_apps = client.AppsV1Api()
 
-    processed = []
-    if not prefix_names:
-        prefix_names = []
-
-    daemonsets: V1DaemonSetList = v1_apps.list_daemon_set_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
+    return _process_kubernetes_resources(
+        resources=v1_apps.list_daemon_set_for_all_namespaces(
+            label_selector=label_selector,
+            field_selector=field_selector
+        ),
+        resource_api=resource_api,
+        prefix_names=prefix_names,
+        resource_type="daemonset",
+        kind="Daemonset",
     )
-    logger.info(f"Detected {len(daemonsets.items)} daemonsets.")
-
-    for daemonset in daemonsets.items:
-        d: V1DaemonSet = daemonset
-        d.api_version = daemonsets.api_version
-        d.kind = "Daemonset"
-        daemonset_metadata: V1ObjectMeta = d.metadata
-        daemonset_namespace: str = daemonset_metadata.namespace
-        daemonset_name: str = daemonset_metadata.name
-
-        if prefix_names:
-            matched_prefix = [daemonset_name.startswith(prefix) for prefix in prefix_names]
-            if not any(matched_prefix):
-                continue
-
-        processed.append(
-            {
-                "data": generic.sanitize_for_serialization(obj=d),
-                "zinfo": f"{daemonset_namespace}/{resource_api.moniker}/daemonset.{daemonset_name}.yaml",
-            }
-        )
-
-    return processed
 
 
 def process_nodes():
@@ -419,40 +314,18 @@ def process_persistent_volume_claims(
     field_selector: str = None,
     prefix_names: List[str] = None,
 ):
-    from kubernetes.client.models import V1PersistentVolumeClaim, V1PersistentVolumeClaimList
-
     v1_api = client.CoreV1Api()
 
-    processed = []
-    if not prefix_names:
-        prefix_names = []
-
-    pvcs: V1PersistentVolumeClaimList = v1_api.list_persistent_volume_claim_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
+    return _process_kubernetes_resources(
+        resources=v1_api.list_persistent_volume_claim_for_all_namespaces(
+            label_selector=label_selector,
+            field_selector=field_selector
+        ),
+        resource_api=resource_api,
+        prefix_names=prefix_names,
+        resource_type="pvc",
+        kind="PersistentVolumeClaim",
     )
-    logger.info(f"Detected {len(pvcs.items)} persistent volumn claims.")
-
-    for pvc in pvcs.items:
-        d: V1PersistentVolumeClaim = pvc
-        d.api_version = pvcs.api_version
-        d.kind = "PersistentVolumeClaim"
-        pvc_metadata: V1ObjectMeta = d.metadata
-        pvc_namespace: str = pvc_metadata.namespace
-        pvc_name: str = pvc_metadata.name
-
-        if prefix_names:
-            matched_prefix = [pvc_name.startswith(prefix) for prefix in prefix_names]
-            if not any(matched_prefix):
-                continue
-
-        processed.append(
-            {
-                "data": generic.sanitize_for_serialization(obj=d),
-                "zinfo": f"{pvc_namespace}/{resource_api.moniker}/pvc.{pvc_name}.yaml",
-            }
-        )
-
-    return processed
 
 
 def process_jobs(
@@ -461,38 +334,18 @@ def process_jobs(
     field_selector: str = None,
     prefix_names: List[str] = None,
 ):
-    from kubernetes.client.models import V1Job, V1JobList
-
     batch_v1_api = client.BatchV1Api()
 
-    processed = []
-    if not prefix_names:
-        prefix_names = []
-
-    jobs: V1JobList = batch_v1_api.list_job_for_all_namespaces(label_selector=label_selector, field_selector=field_selector)
-    logger.info(f"Detected {len(jobs.items)} jobs.")
-
-    for job in jobs.items:
-        j: V1Job = job
-        j.api_version = jobs.api_version
-        j.kind = "Job"
-        job_metadata: V1ObjectMeta = j.metadata
-        job_namespace: str = job_metadata.namespace
-        job_name: str = job_metadata.name
-
-        if prefix_names:
-            matched_prefix = [job_name.startswith(prefix) for prefix in prefix_names]
-            if not any(matched_prefix):
-                continue
-
-        processed.append(
-            {
-                "data": generic.sanitize_for_serialization(obj=j),
-                "zinfo": f"{job_namespace}/{resource_api.moniker}/job.{job_name}.yaml",
-            }
-        )
-
-    return processed
+    return _process_kubernetes_resources(
+        resources=batch_v1_api.list_job_for_all_namespaces(
+            label_selector=label_selector,
+            field_selector=field_selector
+        ),
+        resource_api=resource_api,
+        prefix_names=prefix_names,
+        resource_type="job",
+        kind="Job",
+    )
 
 
 def process_cron_jobs(
@@ -501,40 +354,18 @@ def process_cron_jobs(
     field_selector: str = None,
     prefix_names: List[str] = None,
 ):
-    from kubernetes.client.models import V1CronJob, V1CronJobList
-
     batch_v1_api = client.BatchV1Api()
 
-    processed = []
-    if not prefix_names:
-        prefix_names = []
-
-    cron_jobs: V1CronJobList = batch_v1_api.list_cron_job_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
+    return _process_kubernetes_resources(
+        resources=batch_v1_api.list_cron_job_for_all_namespaces(
+            label_selector=label_selector,
+            field_selector=field_selector
+        ),
+        resource_api=resource_api,
+        prefix_names=prefix_names,
+        resource_type="cronjob",
+        kind="CronJob",
     )
-    logger.info(f"Detected {len(cron_jobs.items)} cron jobs.")
-
-    for cron_job in cron_jobs.items:
-        cj: V1CronJob = cron_job
-        cj.api_version = cron_jobs.api_version
-        cj.kind = "CronJob"
-        cron_job_metadata: V1ObjectMeta = cj.metadata
-        cron_job_namespace: str = cron_job_metadata.namespace
-        cron_job_name: str = cron_job_metadata.name
-
-        if prefix_names:
-            matched_prefix = [cron_job_name.startswith(prefix) for prefix in prefix_names]
-            if not any(matched_prefix):
-                continue
-
-        processed.append(
-            {
-                "data": generic.sanitize_for_serialization(obj=cj),
-                "zinfo": f"{cron_job_namespace}/{resource_api.moniker}/cronjob.{cron_job_name}.yaml",
-            }
-        )
-
-    return processed
 
 
 def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional[Dict[str, str]] = None):
@@ -614,5 +445,41 @@ def _capture_init_container_logs(
             )
         except ApiException as e:
             logger.debug(e.body)
+
+    return processed
+
+
+def _process_kubernetes_resources(
+    resources: Any,
+    resource_api: EdgeResourceApi,
+    prefix_names: List[str] = None,
+    resource_type: str = None,
+    kind: str = None,
+):
+    processed = []
+
+    if not prefix_names:
+        prefix_names = []
+
+    logger.info(f"Detected {len(resources.items)} {resource_type}s.")
+    for resource in resources.items:
+        r = resource
+        r.api_version = resources.api_version
+        r.kind = kind
+        resource_metadata = r.metadata
+        resource_namespace = resource_metadata.namespace
+        resource_name = resource_metadata.name
+
+        if prefix_names:
+            matched_prefix = [resource_name.startswith(prefix) for prefix in prefix_names]
+            if not any(matched_prefix):
+                continue
+
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=r),
+                "zinfo": f"{resource_namespace}/{resource_api.moniker}/{resource_type}.{resource_name}.yaml",
+            }
+        )
 
     return processed
