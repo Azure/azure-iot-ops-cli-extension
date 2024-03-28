@@ -736,11 +736,6 @@ def test_verify_custom_locations_enabled(mocker, role_bindings):
         {  # fail no config map
             "failure": True,
             "config_map": None,
-            "connected_cluster": ConnectedCluster(
-                subscription_id=ZEROED_SUB,
-                cluster_name="cluster1",
-                resource_group_name="rg1",
-            ),
         },
         {  # fail config indicates diff cluster
             "failure": "cluster name",
@@ -756,11 +751,6 @@ def test_verify_custom_locations_enabled(mocker, role_bindings):
                     "namespace": "azure-arc",
                 },
             },
-            "connected_cluster": ConnectedCluster(
-                subscription_id=ZEROED_SUB,
-                cluster_name="cluster1",
-                resource_group_name="rg1",
-            ),
         },
         {  # fail config indicates diff rg
             "failure": "resource group",
@@ -776,11 +766,6 @@ def test_verify_custom_locations_enabled(mocker, role_bindings):
                     "namespace": "azure-arc",
                 },
             },
-            "connected_cluster": ConnectedCluster(
-                subscription_id=ZEROED_SUB,
-                cluster_name="cluster1",
-                resource_group_name="rg1",
-            ),
         },
         {  # fail config indicates diff sub
             "failure": "subscription Id",
@@ -796,11 +781,6 @@ def test_verify_custom_locations_enabled(mocker, role_bindings):
                     "namespace": "azure-arc",
                 },
             },
-            "connected_cluster": ConnectedCluster(
-                subscription_id=ZEROED_SUB,
-                cluster_name="cluster1",
-                resource_group_name="rg1",
-            ),
         },
         {  # success
             "failure": False,
@@ -816,11 +796,6 @@ def test_verify_custom_locations_enabled(mocker, role_bindings):
                     "namespace": "azure-arc",
                 },
             },
-            "connected_cluster": ConnectedCluster(
-                subscription_id=ZEROED_SUB,
-                cluster_name="cluster1",
-                resource_group_name="rg1",
-            ),
         },
     ],
 )
@@ -828,15 +803,21 @@ def test_verify_arc_cluster_config(mocker, test_scenario):
     get_config_map_patch = mocker.patch(f"{BASE_PATH}.get_config_map", return_value=test_scenario["config_map"])
     from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_config
 
+    connected_cluster = ConnectedCluster(
+        subscription_id=ZEROED_SUB,
+        cluster_name="cluster1",
+        resource_group_name="rg1",
+    )
+
     failure = test_scenario["failure"]
     if failure:
         match_str = ""
         if isinstance(failure, str):
             match_str = failure
         with pytest.raises(ValidationError, match=rf".*{match_str}.*"):
-            verify_arc_cluster_config(test_scenario["connected_cluster"])
+            verify_arc_cluster_config(connected_cluster)
             get_config_map_patch.assert_called_once()
         return
 
-    verify_arc_cluster_config(test_scenario["connected_cluster"])
+    verify_arc_cluster_config(connected_cluster)
     get_config_map_patch.assert_called_once()
