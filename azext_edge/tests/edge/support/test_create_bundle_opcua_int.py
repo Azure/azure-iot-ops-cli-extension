@@ -11,7 +11,6 @@ from .helpers import check_non_custom_file_objs, get_file_map, run_bundle_comman
 logger = get_logger(__name__)
 
 
-# TODO: retest
 def test_create_bundle_opcua(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS opcua."""
     ops_service = OpsServiceType.opcua.value

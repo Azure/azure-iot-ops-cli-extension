@@ -7,7 +7,7 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from .helpers import check_non_custom_file_objs, get_file_map, run_bundle_command
+from .helpers import check_name, check_non_custom_file_objs, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
 
@@ -68,6 +68,18 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     check_non_custom_file_objs(file_map, expected_file_objs)
 
     if traces:
-        pass
+        id_check = {}
+        for file in traces:
+            assert file["action"] in ["connect", "ping", "puback", "publish", "subscribe", "unsubscribe"]
+            check_name(file["name"], expected_file_objs["pod"])
 
-    # mq_traces check
+            # should be a json for each pb
+            if file["identifier"] not in id_check:
+                id_check[file["identifier"]] = {}
+            assert file["extension"] not in id_check[file["identifier"]]
+            # ex: id_check["b9c3173d9c2b97b75edfb6cf7cb482f2"]["json"]
+            id_check[file["identifier"]][file["extension"]] = True
+
+        for extension_dict in id_check.values():
+            assert extension_dict.get("json")
+            assert extension_dict.get("pb")

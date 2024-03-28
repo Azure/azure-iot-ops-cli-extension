@@ -25,6 +25,18 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             file_name_objs[file_type] = []
 
         name_obj = {"extension": name.pop(-1), "full_name": full_name}
+
+        if name_obj["extension"] in ["pb", "json"]:
+            # trace file
+            # aio-mq-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.otlp.pb
+            # aio-mq-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.tempo.json
+            name_obj["name"] = name.pop(0)
+            name_obj["action"] = name.pop(0, "").lower()
+            name_obj["identifier"] = name.pop(0, "")
+            assert name[-1] == "otlp" if name_obj["extension"] == "pb" else "tempo"
+            file_name_objs[file_type].append(name_obj)
+            continue
+
         assert name_obj["extension"] in ["log", "txt", "yaml"]
 
         # custom types should have a v
@@ -53,6 +65,25 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
         file_name_objs[file_type].append(name_obj)
 
     return file_name_objs
+
+
+def check_name(name: str, expected_names: List[str], optional_names: Optional[List[str]]):
+    name = name.split(".")[0]
+    # make sure we can check names like aio-dp-operator-5c74655f8b-zr5xm
+    checks = [
+        name in expected_names,
+        name.rsplit("-", 1)[0] in expected_names,
+        name.rsplit("-", 2)[0] in expected_names,
+    ]
+    if optional_names:
+        # make sure we can check names like opcplc-000000-59778dd6f6-c7z42
+        checks.extend([
+            name in optional_names,
+            name.rsplit("-", 1)[0] in optional_names,
+            name.rsplit("-", 2)[0] in optional_names,
+            name.rsplit("-", 3)[0] in optional_names,
+        ])
+    assert any(checks)
 
 
 def check_non_custom_file_objs(
@@ -94,26 +125,8 @@ def check_non_custom_file_objs(
     # length of filtered should be between expected and expected + optional
     assert 0 <= len(filtered) - len(expected_pods) <= len(optional.get("pod", []))
 
-    def _name_check(name: str, expected_names: List[str], optional_names: Optional[List[str]]):
-        name = name.split(".")[0]
-        # make sure we can check names like aio-dp-operator-5c74655f8b-zr5xm
-        checks = [
-            name in expected_names,
-            name.rsplit("-", 1)[0] in expected_names,
-            name.rsplit("-", 2)[0] in expected_names,
-        ]
-        if optional_names:
-            # make sure we can check names like opcplc-000000-59778dd6f6-c7z42
-            checks.extend([
-                name in optional_names,
-                name.rsplit("-", 1)[0] in optional_names,
-                name.rsplit("-", 2)[0] in optional_names,
-                name.rsplit("-", 3)[0] in optional_names,
-            ])
-        assert any(checks)
-
     for name, files in file_pods.items():
-        _name_check(name, expected_pods, optional.get("pod"))
+        check_name(name, expected_pods, optional.get("pod"))
         for value in files.values():
             assert value
 
@@ -121,7 +134,7 @@ def check_non_custom_file_objs(
     for key in expected:
         for file in file_objs[key]:
             assert file["extension"] == "yaml"
-            _name_check(file["name"], expected[key], optional.get(key))
+            check_name(file["name"], expected[key], optional.get(key))
         filtered_names = filter_duplicate_file_names([f["name"] for f in file_objs[key]])
         assert 0 <= len(filtered_names) - len(expected[key]) <= len(optional.get(key, []))
 
