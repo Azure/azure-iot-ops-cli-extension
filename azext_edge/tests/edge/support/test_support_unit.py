@@ -19,6 +19,7 @@ from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import AIO_MQ_OPERATOR, AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api import (
     AKRI_API_V0,
+    BILLING_API_V1,
     DATA_PROCESSOR_API_V1,
     DEVICEREGISTRY_API_V1,
     LNM_API_V1B1,
@@ -32,6 +33,10 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_APP_LABEL,
     AKRI_INSTANCE_LABEL,
     AKRI_SERVICE_LABEL,
+)
+from azext_edge.edge.providers.support.billing import (
+    AIO_BILLING_USAGE_NAME_LABEL,
+    ARC_BILLING_EXTENSION_COMP_LABEL,
 )
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.dataprocessor import (
@@ -72,6 +77,7 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1, BILLING_API_V1],
     ],
     indirect=True,
 )
@@ -82,6 +88,8 @@ def test_create_bundle(
     mocked_os_makedirs,
     mocked_zipfile,
     mocked_get_custom_objects,
+    mocked_list_cron_jobs,
+    mocked_list_jobs,
     mocked_list_deployments,
     mocked_list_persistent_volume_claims,
     mocked_list_pods,
@@ -126,6 +134,46 @@ def test_create_bundle(
 
             assert_get_custom_resources(
                 mocked_get_custom_objects, mocked_zipfile, api, kind, file_prefix=target_file_prefix
+            )
+
+        if api in [BILLING_API_V1]:
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
+                resource_api=BILLING_API_V1,
+                since_seconds=since_seconds,
+            )
+            assert_list_cron_jobs(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AIO_BILLING_USAGE_NAME_LABEL,
+                resource_api=BILLING_API_V1
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
+                resource_api=BILLING_API_V1,
+            )
+            assert_list_jobs(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AIO_BILLING_USAGE_NAME_LABEL,
+                resource_api=BILLING_API_V1
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
+                resource_api=BILLING_API_V1,
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
+                resource_api=BILLING_API_V1,
             )
 
         if api in COMPAT_MQ_APIS.resource_apis:
@@ -413,6 +461,19 @@ def assert_get_custom_resources(
     )
 
 
+def assert_list_cron_jobs(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
+    mocked_client.BatchV1Api().list_cron_job_for_all_namespaces.assert_any_call(
+        label_selector=label_selector,
+        field_selector=None
+    )
+
+    assert_zipfile_write(
+        mocked_zipfile,
+        zinfo=f"mock_namespace/{resource_api.moniker}/cronjob.mock_cron_job.yaml",
+        data="kind: CronJob\nmetadata:\n  name: mock_cron_job\n  namespace: mock_namespace\n",
+    )
+
+
 def assert_list_deployments(
     mocked_client,
     mocked_zipfile,
@@ -448,6 +509,19 @@ def assert_list_deployments(
             zinfo=f"mock_namespace/{moniker}/deployment.{name}.yaml",
             data=f"kind: Deployment\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
         )
+
+
+def assert_list_jobs(mocked_client, mocked_zipfile, label_selector: str, resource_api: EdgeResourceApi):
+    mocked_client.BatchV1Api().list_job_for_all_namespaces.assert_any_call(
+        label_selector=label_selector,
+        field_selector=None
+    )
+
+    assert_zipfile_write(
+        mocked_zipfile,
+        zinfo=f"mock_namespace/{resource_api.moniker}/job.mock_job.yaml",
+        data="kind: Job\nmetadata:\n  name: mock_job\n  namespace: mock_namespace\n",
+    )
 
 
 def assert_list_pods(
