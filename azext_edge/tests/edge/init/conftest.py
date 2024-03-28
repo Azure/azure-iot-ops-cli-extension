@@ -208,6 +208,14 @@ def mocked_verify_custom_locations_enabled(mocker):
 
 
 @pytest.fixture
+def mocked_verify_arc_cluster_config(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.base.verify_arc_cluster_config", autospec=True
+    )
+    yield patched
+
+
+@pytest.fixture
 def spy_get_current_template_copy(mocker):
     from azext_edge.edge.providers.orchestration import work
 
