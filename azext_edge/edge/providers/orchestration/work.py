@@ -202,6 +202,7 @@ class WorkManager:
             provision_akv_csi_driver,
             throw_if_iotops_deployed,
             validate_keyvault_permission_model,
+            verify_arc_cluster_config,
             verify_cluster_and_use_location,
             verify_custom_locations_enabled,
             wait_for_terminal_state,
@@ -218,6 +219,7 @@ class WorkManager:
                 verify_cli_client_connections(include_graph=bool(self._keyvault_resource_id))
                 # cluster_location uses actual connected cluster location. Same applies to location IF not provided.
                 self._connected_cluster = verify_cluster_and_use_location(self._kwargs)
+                verify_arc_cluster_config(self._connected_cluster)
 
             # Always run this check
             if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():

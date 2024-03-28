@@ -28,7 +28,10 @@ from ..base import (
 )
 from ..edge_api import KEYVAULT_API_V1
 from ..k8s.cluster_role_binding import get_bindings
+from ..k8s.config_map import get_config_map
 from .common import (
+    ARC_CONFIG_MAP,
+    ARC_NAMESPACE,
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     EXTENDED_LOCATION_ROLE_BINDING,
     GRAPH_V1_APP_ENDPOINT,
@@ -521,3 +524,31 @@ def verify_custom_locations_enabled():
             "The custom-locations feature is required but not enabled on the cluster. For guidance refer to:\n"
             "https://aka.ms/ArcK8sCustomLocationsDocsEnableFeature"
         )
+
+
+def verify_arc_cluster_config(connected_cluster: ConnectedCluster):
+    connect_config_map = get_config_map(name=ARC_CONFIG_MAP, namespace=ARC_NAMESPACE)
+    if not connect_config_map:
+        raise ValidationError(
+            "Unable to verify cluster arc config. Please ensure the target cluster is arc-enabled and a "
+            "corresponding kubeconfig context exists locally. "
+        )
+
+    connect_data_map: dict = connect_config_map.get("data", {})
+
+    evaluations: Tuple[str, str, str] = [
+        (connected_cluster.cluster_name, connect_data_map.get("AZURE_RESOURCE_NAME"), "cluster name"),
+        (connected_cluster.resource_group_name, connect_data_map.get("AZURE_RESOURCE_GROUP"), "resource group"),
+        (connected_cluster.subscription_id, connect_data_map.get("AZURE_SUBSCRIPTION_ID"), "subscription Id"),
+    ]
+
+    for evaluation in evaluations:
+        cloud_value = evaluation[0].lower()
+        arc_config_value = evaluation[1].lower()
+        description = evaluation[2]
+        if arc_config_value != cloud_value:
+            raise ValidationError(
+                f"The cluster-side arc config uses {arc_config_value} for {description}, "
+                f"while the cloud target is {cloud_value}.\n"
+                "Please ensure the local kubeconfig is up-to-date with the intended cluster for deployment."
+            )

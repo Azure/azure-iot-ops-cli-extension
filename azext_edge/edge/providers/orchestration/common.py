@@ -18,6 +18,8 @@ GRAPH_V1_APP_ENDPOINT = f"{GRAPH_V1_ENDPOINT}/applications"
 DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS = 365
 
 EXTENDED_LOCATION_ROLE_BINDING = "AzureArc-Microsoft.ExtendedLocation-RP-RoleBinding"
+ARC_CONFIG_MAP = "azure-clusterconfig"
+ARC_NAMESPACE = "azure-arc"
 
 
 class MqMode(Enum):
