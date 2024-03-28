@@ -84,7 +84,10 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             tracked_files=tracked_files,
             extracted_path=AUTO_EXTRACTED_PATH
         )
-        assert auto_walk_result[f"auto_{directory}"]["folders"] == walk_result[directory]["folders"]
+        expected_folders = [[]]
+        if mq_traces and ops_service == OpsServiceType.mq.value:
+            expected_folders.append(['traces'])
+        assert auto_walk_result[f"auto_{directory}"]["folders"] in expected_folders
         # make things easier if there is a different file
         auto_files = sorted(auto_walk_result[f"auto_{directory}"]["files"])
         ser_files = sorted(walk_result[directory]["files"])

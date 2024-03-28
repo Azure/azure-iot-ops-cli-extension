@@ -16,18 +16,20 @@ def test_create_bundle_dataprocessor(init_setup, tracked_files):
     ops_service = OpsServiceType.dataprocessor.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
-    if not walk_result:
-        logger.warning(f"No bundles created for {ops_service}.")
-        return
     file_map = get_file_map(walk_result, ops_service)
 
     # TODO: add in expected for each
     # dataprocessor
     # do we always have these? What cases do they have them vs not?
     # how can names change?
-    if file_map.get("instance"):
-        for config in file_map["instance"]:
-            assert config["version"] == "v1"
+    for config in file_map.get("dataset", []):
+        assert config["version"] == "v1"
+    for config in file_map.get("instance", []):
+        assert config["version"] == "v1"
+    for config in file_map.get("pipeline", []):
+        assert config["version"] == "v1"
+    for config in file_map.get("testrun", []):
+        assert config["version"] == "v1"
 
     expected_file_objs = {
         "deployment": [

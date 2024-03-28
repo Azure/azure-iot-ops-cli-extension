@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 from os import mkdir, path, walk
 from shutil import rmtree, unpack_archive
 from azext_edge.edge.common import OpsServiceType
-from ...helpers import run
+from ....helpers import run
 
 
 EXTRACTED_PATH = "unpacked"
@@ -21,21 +21,23 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
     for full_name in files:
         name = full_name.split(".")
         file_type = name.pop(0)
-        if file_type not in file_name_objs:
-            file_name_objs[file_type] = []
-
         name_obj = {"extension": name.pop(-1), "full_name": full_name}
 
         if name_obj["extension"] in ["pb", "json"]:
+            if "trace" not in file_name_objs:
+                file_name_objs["trace"] = []
             # trace file
             # aio-mq-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.otlp.pb
             # aio-mq-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.tempo.json
-            name_obj["name"] = name.pop(0)
-            name_obj["action"] = name.pop(0, "").lower()
-            name_obj["identifier"] = name.pop(0, "")
+            name_obj["name"] = file_type
+            name_obj["action"] = name.pop(0).lower()
+            name_obj["identifier"] = name.pop(0)
             assert name[-1] == "otlp" if name_obj["extension"] == "pb" else "tempo"
-            file_name_objs[file_type].append(name_obj)
+            file_name_objs["trace"].append(name_obj)
             continue
+
+        if file_type not in file_name_objs:
+            file_name_objs[file_type] = []
 
         assert name_obj["extension"] in ["log", "txt", "yaml"]
 

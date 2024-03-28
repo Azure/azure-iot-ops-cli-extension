@@ -19,7 +19,8 @@ def test_create_bundle_opcua(init_setup, tracked_files):
     file_map = get_file_map(walk_result, ops_service)
 
     # TODO: add in expected for each
-    # opc
+    for config in file_map.get("assettype", []):
+        assert config["version"] == "v1beta1"
     # do we always have these? What cases do they have them vs not?
     # how can names change?
 

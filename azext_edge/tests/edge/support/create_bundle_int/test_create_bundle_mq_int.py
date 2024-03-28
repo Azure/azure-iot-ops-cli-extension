@@ -21,15 +21,13 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     command = f"az iot ops support create-bundle --mq-traces {mq_traces} --ops-service {ops_service}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service, mq_traces=mq_traces)
-    traces = file_map.pop("traces", {})
+    traces = file_map.pop("trace", {})
 
     # TODO: add in expected for each
     # mq
     # do we always have these? What cases do they have them vs not?
     # how can names change?
-    if file_map.get("instance"):
-        for config in file_map["instance"]:
-            assert config["version"] == "v1"
+    check_mq_types(file_map)
 
     expected_file_objs = {
         "deployment": [
@@ -83,3 +81,32 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
         for extension_dict in id_check.values():
             assert extension_dict.get("json")
             assert extension_dict.get("pb")
+
+
+def check_mq_types(file_map):
+    for config in file_map.get("brokerauthentication", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("brokerauthorization", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("brokerlistener", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("broker", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("datalakeconnectortopicmap", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("datalakeconnector", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("diagnosticservice", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("iothubconnectorroutesmap", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("iothubconnector", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("kafkaconnectortopicmap", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("kafkaconnector", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("mqttbridgeconnector", []):
+        assert config["version"] == "v1beta1"
+    for config in file_map.get("mqttbridgetopicmap", []):
+        assert config["version"] == "v1beta1"

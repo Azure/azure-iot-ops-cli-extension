@@ -22,9 +22,12 @@ def test_create_bundle_orc(init_setup, tracked_files):
     # orc
     # do we always have these? What cases do they have them vs not?
     # how can names change?
-    if file_map.get("target"):
-        for config in file_map["target"]:
-            assert config["version"] == "v1"
+    for config in file_map.get("instance", []):
+        assert config["version"] == "v1"
+    for config in file_map.get("solution", []):
+        assert config["version"] == "v1"
+    for config in file_map.get("target", []):
+        assert config["version"] == "v1"
 
     expected_file_objs = {
         "deployment": [
