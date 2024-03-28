@@ -18,7 +18,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
     cluster_name = require_init["clusterName"]
 
     # Create an endpoint profile
-    anon_name = "test-endpoint-" + generate_random_string()[:4]
+    anon_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     address = f"tcp://{generate_random_string()}:5000"
     anon_endpoint = run(
         f"az iot ops asset endpoint create -n {anon_name} -g {rg} -c {cluster_name} "
@@ -54,7 +54,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
         additional_configuration=additional_configuration
     )
 
-    userpass_name = "test-endpoint-" + generate_random_string()[:4]
+    userpass_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     username = generate_random_string()
     password = generate_random_string()
     address = f"tcp://{generate_random_string()}:5000"

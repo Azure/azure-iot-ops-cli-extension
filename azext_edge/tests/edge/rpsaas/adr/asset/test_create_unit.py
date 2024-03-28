@@ -11,7 +11,7 @@ from azure.cli.core.azclierror import (
 )
 
 from azext_edge.edge.commands_assets import create_asset
-from azext_edge.edge.common import ResourceTypeMapping
+from azext_edge.edge.common import ResourceProviderMapping, ResourceTypeMapping
 from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
 from .....generators import generate_random_string
@@ -19,7 +19,7 @@ from .....generators import generate_random_string
 
 @pytest.mark.parametrize("mocked_resource_management_client", [{
     "resource_groups.get": {"location": generate_random_string()},
-    "resources.begin_create_or_update_by_id": {"result": generate_random_string()}
+    "resources.begin_create_or_update": {"result": generate_random_string()}
 }], ids=["create"], indirect=True)
 @pytest.mark.parametrize("asset_helpers_fixture", [{
     "process_asset_sub_points": generate_random_string(),
@@ -101,13 +101,15 @@ def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, ass
         mocked_resource_management_client.resource_groups.get.assert_called_once()
 
     # create call
-    poller = mocked_resource_management_client.resources.begin_create_or_update_by_id.return_value
+    poller = mocked_resource_management_client.resources.begin_create_or_update.return_value
     assert result == poller.result()
-    mocked_resource_management_client.resources.begin_create_or_update_by_id.assert_called_once()
-    call_kwargs = mocked_resource_management_client.resources.begin_create_or_update_by_id.call_args.kwargs
-    expected_resource_path = f"/resourceGroups/{resource_group_name}/providers/{ResourceTypeMapping.asset.value}"\
-        f"/{asset_name}"
-    assert expected_resource_path in call_kwargs["resource_id"]
+    mocked_resource_management_client.resources.begin_create_or_update.assert_called_once()
+    call_kwargs = mocked_resource_management_client.resources.begin_create_or_update.call_args.kwargs
+    assert call_kwargs["resource_group_name"] == resource_group_name
+    assert call_kwargs["resource_provider_namespace"] == ResourceProviderMapping.deviceregistry.value
+    assert call_kwargs["parent_resource_path"] == ""
+    assert call_kwargs["resource_type"] == ResourceTypeMapping.asset.value
+    assert call_kwargs["resource_name"] == asset_name
     assert call_kwargs["api_version"] == ADR_API_VERSION
 
     # asset body

@@ -54,7 +54,7 @@ def test_query_assets(mocked_cmd, mocked_get_subscription_id, mocked_build_query
     assert query_args["subscription_id"] == mocked_get_subscription_id.return_value
     assert query_args["location"] == req.get("location")
     assert query_args["resource_group"] == req.get("resource_group_name")
-    assert query_args["type"] == ResourceTypeMapping.asset.value
+    assert query_args["type"] == ResourceTypeMapping.asset.full_resource_path
     assert query_args["additional_project"] == "extendedLocation"
 
     expected_query = []

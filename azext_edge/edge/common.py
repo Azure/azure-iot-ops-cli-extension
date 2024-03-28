@@ -99,16 +99,42 @@ class OpsServiceType(ListableEnum):
     deviceregistry = "deviceregistry"
 
 
+class ResourceProviderMapping(ListableEnum):
+    """
+    Resource Provider mappings for graph queries.
+    """
+
+    deviceregistry = "Microsoft.DeviceRegistry"
+    extended_location = "Microsoft.ExtendedLocation"
+    kubernetes = "Microsoft.Kubernetes"
+    kubernetes_configuration = "Microsoft.KubernetesConfiguration"
+
+
 class ResourceTypeMapping(Enum):
     """
     Resource type mappings for graph queries.
     """
 
-    asset = "Microsoft.DeviceRegistry/assets"
-    asset_endpoint_profile = "Microsoft.DeviceRegistry/assetEndpointProfiles"
-    custom_location = "Microsoft.ExtendedLocation/customLocations"
-    connected_cluster = "Microsoft.Kubernetes/connectedClusters"
-    cluster_extensions = "Microsoft.KubernetesConfiguration/extensions"
+    asset = "assets"
+    asset_endpoint_profile = "assetEndpointProfiles"
+    custom_location = "customLocations"
+    connected_cluster = "connectedClusters"
+    cluster_extensions = "extensions"
+
+    @property
+    def full_resource_path(self):
+        return f"{self.provider}/{self.value}"
+
+    @property
+    def provider(self):
+        mapping = {
+            ResourceTypeMapping.asset: ResourceProviderMapping.deviceregistry.value,
+            ResourceTypeMapping.asset_endpoint_profile: ResourceProviderMapping.deviceregistry.value,
+            ResourceTypeMapping.custom_location: ResourceProviderMapping.extended_location.value,
+            ResourceTypeMapping.connected_cluster: ResourceProviderMapping.kubernetes.value,
+            ResourceTypeMapping.cluster_extensions: ResourceProviderMapping.kubernetes_configuration.value,
+        }
+        return mapping[self]
 
 
 class ClusterExtensionsMapping(Enum):

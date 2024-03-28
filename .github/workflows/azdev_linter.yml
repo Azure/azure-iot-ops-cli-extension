@@ -29,7 +29,7 @@ jobs:
     - uses: actions/setup-python@v5
       name: Setup python
       with:
-          python-version: "3.9"
+          python-version: "3.11"
 
     # Lint
     - name: azdev linter
@@ -50,4 +50,6 @@ jobs:
           az extension add --source $i -y --debug
         done
         cp ./linter_exclusions.yml $AZURE_EXTENSION_DIR/azure-iot-ops/
+        # temp fix for newest azdev v0.1.65
+        cp .pylintrc pylintrc
         azdev linter --include-whl-extensions azure-iot-ops --min-severity medium

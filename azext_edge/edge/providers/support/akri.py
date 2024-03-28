@@ -11,6 +11,7 @@ from knack.log import get_logger
 
 from ..edge_api import AKRI_API_V0, EdgeResourceApi
 from .base import (
+    DAY_IN_SECONDS,
     assemble_crd_work,
     process_daemonsets,
     process_deployments,
@@ -28,19 +29,17 @@ AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
 AKRI_PREFIX = "aio-akri-"
 
 
-def fetch_pods(since_seconds: int = 60 * 60 * 24):
+def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     processed = process_v1_pods(
         resource_api=AKRI_API_V0,
         label_selector=AKRI_INSTANCE_LABEL,
         since_seconds=since_seconds,
-        capture_previous_logs=True,
     )
     processed.extend(
         process_v1_pods(
             resource_api=AKRI_API_V0,
             label_selector=AKRI_APP_LABEL,
             since_seconds=since_seconds,
-            capture_previous_logs=True,
         )
     )
     return processed
@@ -88,7 +87,7 @@ support_runtime_elements = {
 }
 
 
-def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = 60 * 60 * 24) -> dict:
+def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS) -> dict:
     akri_to_run = {}
     akri_to_run.update(assemble_crd_work(apis))
 

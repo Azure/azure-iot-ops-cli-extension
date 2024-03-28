@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import copy
 import random
 from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
@@ -207,6 +208,7 @@ def test_create_bundle(
             )
 
         if api in [DATA_PROCESSOR_API_V1]:
+
             # Assert runtime resources
             assert_list_deployments(
                 mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
@@ -460,12 +462,23 @@ def assert_list_pods(
 
     for namespace in mocked_list_pods:
         for pod_name in mocked_list_pods[namespace]:
-            for container_name in mocked_list_pods[namespace][pod_name]:
+            init_data = ""
+            pods_with_container = copy.deepcopy(mocked_list_pods)
+
+            # find if pod has init containers
+            if "mock-init-container" in mocked_list_pods[namespace][pod_name]:
+                init_data = "  initContainers:\n  - name: mock-init-container\n"
+                # remove init container from pod, then do following container checks
+                pods_with_container[namespace][pod_name].pop("mock-init-container")
+            for container_name in pods_with_container[namespace][pod_name]:
+                data = f"kind: Pod\nmetadata:\n  name: {pod_name}\n  namespace: {namespace}\nspec:\n  " +\
+                    f"containers:\n  - name: {container_name}\n"
+                data += init_data
+
                 assert_zipfile_write(
                     mocked_zipfile,
                     zinfo=f"{namespace}/{resource_api.moniker}/pod.{pod_name}.yaml",
-                    data=f"kind: Pod\nmetadata:\n  name: {pod_name}\n  "
-                    f"namespace: {namespace}\nspec:\n  containers:\n  - name: {container_name}\n",
+                    data=data
                 )
 
                 if "since_seconds" in kwargs:
@@ -482,16 +495,8 @@ def assert_list_pods(
                             mocked_zipfile,
                             zinfo=f"{namespace}/{resource_api.moniker}/"
                             f"pod.{pod_name}.{container_name}{previous_segment}.log",
-                            data=mocked_list_pods[namespace][pod_name][container_name],
+                            data=pods_with_container[namespace][pod_name][container_name],
                         )
-
-            if "pod_prefix_for_init_container_logs" in kwargs:
-                if pod_name in kwargs["pod_prefix_for_init_container_logs"]:
-                    assert_zipfile_write(
-                        mocked_zipfile,
-                        zinfo=f"{namespace}/{resource_api.moniker}/pod.{pod_name}.mock-init-container.init.log",
-                        data=mocked_list_pods[namespace][pod_name]["mock-init-container"],
-                    )
 
 
 def assert_list_replica_sets(

@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 import pytest
 from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
@@ -35,8 +36,6 @@ def mocked_urlopen(mocker):
 
 @pytest.fixture
 def mocked_resource_management_client(request, mocker):
-    import json
-
     request_results = getattr(request, "param", {})
     resource_mgmt_client = mocker.Mock()
     # deployments
@@ -60,6 +59,7 @@ def mocked_resource_management_client(request, mocker):
     resource_get = mocker.Mock()
     get_result = request_results.get("resources.get")
     resource_get.original = get_result
+    resource_get.additional_properties = {}
     resource_get.as_dict.return_value = json.loads(json.dumps(get_result))
     resource_mgmt_client.resources.get.return_value = resource_get
 
@@ -70,12 +70,21 @@ def mocked_resource_management_client(request, mocker):
     resource_get.as_dict.return_value = json.loads(json.dumps(get_result))
     resource_mgmt_client.resources.get_by_id.return_value = resource_get
 
-    # Create
+    # Create/Update by Id
     poller = mocker.Mock()
     poller.wait.return_value = None
+    poller.status.return_value = "Succeeded"
     poller.result.return_value = request_results.get("resources.begin_create_or_update_by_id")
 
     resource_mgmt_client.resources.begin_create_or_update_by_id.return_value = poller
+
+    # Create/Update
+    poller = mocker.Mock()
+    poller.wait.return_value = None
+    poller.status.return_value = "Succeeded"
+    poller.result.return_value = request_results.get("resources.begin_create_or_update")
+
+    resource_mgmt_client.resources.begin_create_or_update.return_value = poller
 
     client_path = request_results.get("client_path", "azext_edge.edge.util.az_client")
     patched = mocker.patch(f"{client_path}.get_resource_client", autospec=True)

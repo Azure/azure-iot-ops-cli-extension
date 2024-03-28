@@ -7,7 +7,7 @@
 import pytest
 
 from azext_edge.edge.commands_asset_endpoint_profiles import show_asset_endpoint_profile
-from azext_edge.edge.common import ResourceTypeMapping
+from azext_edge.edge.common import ResourceProviderMapping, ResourceTypeMapping
 from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
 from .....generators import generate_random_string
@@ -35,7 +35,7 @@ def test_show_asset(
     assert call_kwargs["resource_group_name"] == resource_group
     assert call_kwargs["resource_type"] == ResourceTypeMapping.asset_endpoint_profile.value
     assert call_kwargs["parent_resource_path"] == ""
-    assert call_kwargs["resource_provider_namespace"] == ""
+    assert call_kwargs["resource_provider_namespace"] == ResourceProviderMapping.deviceregistry.value
     assert call_kwargs["resource_name"] == asset_endpoint_profile_name
     assert call_kwargs["api_version"] == ADR_API_VERSION
     assert result == mocked_resource_management_client.resources.get.return_value.as_dict.return_value

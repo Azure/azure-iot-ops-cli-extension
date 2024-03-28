@@ -12,12 +12,15 @@ import pytest
 
 
 def add_pod_to_mocked_pods(
-    mocked_client, expected_pod_map, mock_names: List[str] = None, mock_init_containers: bool = False
+    mocked_client,
+    expected_pod_map,
+    mock_names: List[str] = None,
+    mock_init_containers: bool = False
 ):
     from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
 
     current_pods = mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value
-    pod_list = current_pods.items()
+    pod_list = current_pods.items
     namespace = pod_list[0].metadata.namespace
     # all the mocks are the same
     # need to go through pod_name and container_name (that we don't care about here)
@@ -30,15 +33,17 @@ def add_pod_to_mocked_pods(
 
         if mock_init_containers:
             pod.spec.init_containers = [V1Container(name="mock-init-container")]
-            expected_pod_map[namespace][pod_name]["mock-init-container"] = mock_log
+            expected_pod_map[namespace][pod_name] = {"mock-init-container": mock_log}
         pod_list.append(pod)
-        expected_pod_map[namespace][pod_name] = {container_name: mock_log}
+
+        if pod_name in expected_pod_map[namespace]:
+            expected_pod_map[namespace][pod_name][container_name] = mock_log
+        else:
+            expected_pod_map[namespace][pod_name] = {container_name: mock_log}
 
     pods_list = V1PodList(items=pod_list)
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
     mocked_client.CoreV1Api().read_namespaced_pod_log.return_value = mock_log
-
-    yield expected_pod_map
 
 
 @pytest.fixture
