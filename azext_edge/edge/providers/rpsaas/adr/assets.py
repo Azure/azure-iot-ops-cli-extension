@@ -18,7 +18,7 @@ from azure.cli.core.azclierror import (
 from .base import ADRBaseProvider
 from .user_strings import MISSING_DATA_EVENT_ERROR, ENDPOINT_NOT_FOUND_WARNING
 from ....util import assemble_nargs_to_dict, build_query
-from ....common import ResourceTypeMapping
+from ....common import FileType, ResourceTypeMapping
 
 logger = get_logger(__name__)
 
@@ -307,19 +307,28 @@ class AssetProvider(ADRBaseProvider):
         asset_name: str,
         sub_point_type: str,
         resource_group_name: str,
-        extension: str = "json",
+        extension: str = FileType.json.value,
         output_dir: str = ".",
         replace: bool = False
     ):
         from ....util.file_operations import dump_content_to_file
-        sub_points = self.list_sub_points(
-            asset_name=asset_name,
-            sub_point_type=sub_point_type,
-            resource_group_name=resource_group_name,
-        )
+        asset_props = self.show(
+            resource_name=asset_name,
+            resource_group_name=resource_group_name
+        )["properties"]
+        sub_points = asset_props.get(sub_point_type, [])
+        # don't want to lose the later caps
+        config_key = f"default{sub_point_type[0].capitalize()}{sub_point_type[1:]}Configuration"
+        default_configuration = asset_props[config_key]
         fieldnames = None
-        if extension == "csv":
-            fieldnames = _convert_sub_points_to_csv(sub_points, sub_point_type)
+        if extension in [FileType.csv.value, FileType.portal_csv.value]:
+            fieldnames = _convert_sub_points_to_csv(
+                sub_points=sub_points,
+                sub_point_type=sub_point_type,
+                default_configuration=default_configuration,
+                portal_friendly=extension == FileType.portal_csv.value
+            )
+        extension = extension.replace("-", ".")
         dump_content_to_file(
             content=sub_points,
             file_name=f"{asset_name}_{sub_point_type}",
@@ -351,16 +360,17 @@ class AssetProvider(ADRBaseProvider):
         _convert_sub_points_from_csv(sub_points)
 
         key = "dataSource" if sub_point_type == "dataPoints" else "eventNotifier"
+        if replace:
+            asset["properties"][sub_point_type] = []
 
         # Restructure points in an easier way to compare
         original_points = {point[key]: point for point in asset["properties"][sub_point_type]}
         file_points = {point[key]: point for point in sub_points}
-        for point in file_points:
-            if any([
-                point not in original_points,
-                point in original_points and replace
-            ]):
-                original_points[point] = file_points[point]
+        for key in file_points:
+            if key in original_points:
+                logger.warning(f"{key} is already present in the asset and will be ignored.")
+            else:
+                original_points[key] = file_points[key]
 
         asset["properties"][sub_point_type] = list(original_points.values())
 
@@ -447,7 +457,7 @@ def _build_asset_sub_point(
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
 ) -> Dict[str, str]:
-    if capability_id is None and data_source:
+    if capability_id is None:
         capability_id = name
     custom_configuration = {}
     if sampling_interval:
@@ -485,66 +495,75 @@ def _build_default_configuration(
     return json.dumps(defaults)
 
 
+def _build_ordered_csv_conversion_map(sub_point_type: str, portal_friendly: bool = False) -> Dict[str, str]:
+    """Results in an ordered dict for headers"""
+    from collections import OrderedDict
+    csv_conversion_map = [
+        ("queueSize", "QueueSize" if portal_friendly else "Queue Size"),
+        ("observabilityMode", "ObservabilityMode" if portal_friendly else "Observability Mode"),
+        ("samplingInterval", "Sampling Interval Milliseconds"),
+    ]
+    if not portal_friendly:
+        csv_conversion_map.append(("capabilityId", "Capability Id"))
+    if sub_point_type == "dataPoints":
+        csv_conversion_map.insert(0, ("dataSource", "NodeID" if portal_friendly else "Data Source"))
+        csv_conversion_map.insert(1, ("name", "TagName" if portal_friendly else "Name"))
+    else:
+        csv_conversion_map.insert(0, ("eventNotifier", "EventNotifier" if portal_friendly else "Event Notifier"))
+        csv_conversion_map.insert(1, ("name", "EventName" if portal_friendly else "Name"))
+
+    # datasource, name, queuesize, observabilitymode, samplinginterval, capabilityid
+    return OrderedDict(csv_conversion_map)
+
+
 def _convert_sub_points_from_csv(sub_points: List[Dict[str, str]]):
     csv_conversion_map = {
+        "CapabilityId": "capabilityId",
+        "Capability Id": "capabilityId",
+        "Data Source": "dataSource",
         "EventName": "name",
         "EventNotifier": "eventNotifier",
+        "Event Notifier": "eventNotifier",
+        "Name": "name",
         "NodeID": "dataSource",
         "ObservabilityMode": "observabilityMode",
+        "Observability Mode": "observabilityMode",
+        "QueueSize": "queueSize",
+        "Queue Size": "queueSize",
+        "Sampling Interval Milliseconds": "samplingInterval",
         "TagName" : "name",
-        "CapabilityId": "capabilityId",
     }
     for point in sub_points:
+        point.pop("", None)
         for key, value in csv_conversion_map.items():
             if key in point:
                 point[value] = point.pop(key)
         configuration = {}
-        if point.get("Sampling Interval Milliseconds"):
-            configuration["samplingInterval"] = int(point.get("Sampling Interval Milliseconds"))
-        if point.get("QueueSize"):
-            configuration["queueSize"] = int(point.get("QueueSize"))
-        point.pop("Sampling Interval Milliseconds", None)
-        point.pop("QueueSize", None)
+        if point.get("samplingInterval"):
+            configuration["samplingInterval"] = int(point.pop("samplingInterval"))
+        if point.get("queueSize"):
+            configuration["queueSize"] = int(point.pop("queueSize"))
         if configuration:
             config_key = "dataPointConfiguration" if "dataSource" in point else "eventConfiguration"
             point[config_key] = json.dumps(configuration)
 
 
-def _convert_sub_points_to_csv(sub_points: List[Dict[str, str]], sub_point_type: str) -> List[str]:
-    csv_conversion_map = {
-        "name": "TagName" if sub_point_type == "dataPoints" else "EventName",
-        "observabilityMode": "ObservabilityMode",
-    }
-    if sub_point_type == "dataPoints":
-        csv_conversion_map["dataSource"] = "NodeID"
-        # limit capability id to just data points
-        csv_conversion_map["capabilityId"] = "CapabilityId"
-        fieldnames = [csv_conversion_map["dataSource"]]
-    else:
-        csv_conversion_map["eventNotifier"] = "EventNotifier"
-        fieldnames = [csv_conversion_map["eventNotifier"]]
+def _convert_sub_points_to_csv(
+    sub_points: List[Dict[str, str]],
+    sub_point_type: str,
+    default_configuration: str,
+    portal_friendly: bool = False
+) -> List[str]:
+    csv_conversion_map = _build_ordered_csv_conversion_map(sub_point_type, portal_friendly)
+    default_configuration = json.loads(default_configuration) if portal_friendly else {}
     for point in sub_points:
-        for key, value in csv_conversion_map.items():
-            point[value] = point.pop(key, None)
         configuration = point.pop(f"{sub_point_type[:-1]}Configuration", "{}")
-        configuration = json.loads(configuration)
-        point.pop("capabilityId", None)
-        # events should not have sampling internval milliseconds
-        if sub_point_type == "dataPoints":
-            point["Sampling Interval Milliseconds"] = configuration.get("samplingInterval")
-        point["QueueSize"] = configuration.get("queueSize")
-
-    fieldnames.extend([
-        csv_conversion_map["name"],
-        "QueueSize",
-        csv_conversion_map["observabilityMode"],
-    ])
-    if sub_point_type == "dataPoints":
-        fieldnames.extend([
-            "Sampling Interval Milliseconds",
-            csv_conversion_map["capabilityId"]
-        ])
-    return fieldnames
+        if portal_friendly:
+            point.pop("capabilityId", None)
+        point.update(json.loads(configuration))
+        for key, value in csv_conversion_map.items():
+            point[value] = point.pop(key, default_configuration.get(key))
+    return list(csv_conversion_map.values())
 
 
 def _process_asset_sub_points(required_arg: str, sub_points: Optional[List[str]]) -> Dict[str, str]:

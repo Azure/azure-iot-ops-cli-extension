@@ -287,9 +287,8 @@ def load_iotops_help():
 
         - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number.
           text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --event event_notifier={event_notifier}
-            name={name} observability_mode={observability_mode} queue_size={queue_size}
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}            --endpoint {endpoint} --event capability_id={capability_id} event_notifier={event_notifier}
+            name={name} observability_mode={observability_mode} sampling_interval={sampling_interval} queue_size={queue_size}
             --event event_notifier={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
             --serial-number {serial_number}
 
@@ -491,15 +490,17 @@ def load_iotops_help():
           text: >
             az iot ops asset event add --asset {asset} -g {resource_group} --event-notifier {event_notifier}
 
-        - name: Add an event to an asset with event name, observability mode, and custom queue size.
+        - name: Add an event to an asset with capability id, event name, observability mode, custom queue size,
+                and custom sampling interval.
           text: >
             az iot ops asset event add --asset {asset} -g {resource_group} --event-notifier {event_notifier}
-            --name {name} --observability-mode {observability_mode} --queue-size {queue_size}
+            --name {name} --capability-id {capability_id} --observability-mode
+            {observability_mode} --queue-size {queue_size} --sampling-interval {sampling_interval}
 
         - name: Add an event to an asset with the given pre-filled values.
           text: >
-            az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId1 --name eventName
-            --observability-mode log --queue-size 2
+            az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId --name eventName
+            --capability-id tagId1 --observability-mode histogram --queue-size 2 --sampling-interval 500
     """
 
     helps[

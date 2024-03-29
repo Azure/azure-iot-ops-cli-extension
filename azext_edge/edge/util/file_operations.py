@@ -54,7 +54,7 @@ def dump_content_to_file(
         if not replace:
             raise FileExistsError(f"File {file_path} already exists. Please choose another file name or add replace.")
         logger.warning(f"The file {file_path} will be overwritten.")
-    if extension == "csv":
+    if extension.endswith("csv"):
         with open(file_path, "w", newline="") as f:
             if not fieldnames:
                 fieldnames = content[0].keys()

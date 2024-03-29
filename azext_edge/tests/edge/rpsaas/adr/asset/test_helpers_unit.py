@@ -13,6 +13,7 @@ from azext_edge.edge.util.common import assemble_nargs_to_dict
 
 from azext_edge.edge.providers.rpsaas.adr.assets import (
     _build_asset_sub_point,
+    _build_ordered_csv_conversion_map,
     _build_default_configuration,
     _convert_sub_points_from_csv,
     _convert_sub_points_to_csv,
@@ -43,9 +44,7 @@ def test_build_asset_sub_point(
         sampling_interval=sampling_interval
     )
 
-    if not capability_id and data_source:
-        capability_id = name
-    assert result["capabilityId"] == capability_id
+    assert result["capabilityId"] == (capability_id or name)
     assert result["name"] == name
     assert result["observabilityMode"] == observability_mode
 
@@ -93,6 +92,37 @@ def test_build_default_configuration(original_configuration, publishing_interval
     assert new_config == old_config
 
 
+@pytest.mark.parametrize("portal_friendly", [True, False])
+@pytest.mark.parametrize("sub_point_type", ["dataPoints", "events"])
+def test_build_ordered_csv_conversion_map(sub_point_type, portal_friendly):
+    result = _build_ordered_csv_conversion_map(sub_point_type, portal_friendly)
+
+    if sub_point_type == "dataPoints":
+        assert result["dataSource"] == ("NodeID" if portal_friendly else "Data Source")
+        expected_order = ["dataSource"]
+    else:
+        assert result["eventNotifier"] == ("EventNotifier" if portal_friendly else "Event Notifier")
+        expected_order = ["eventNotifier"]
+    expected_order.extend(["name", "queueSize", "observabilityMode", "samplingInterval"])
+
+    assert result["queueSize"] == ("QueueSize" if portal_friendly else "Queue Size")
+    assert result["observabilityMode"] == ("ObservabilityMode" if portal_friendly else "Observability Mode")
+    assert result["samplingInterval"] == "Sampling Interval Milliseconds"
+
+    expected_name = "name"
+    if portal_friendly:
+        assert "capabilityId" not in result
+        expected_name = "EventName"
+        if sub_point_type == "dataPoints":
+            expected_name = "TagName"
+    else:
+        assert result["capabilityId"] == "Capability Id"
+        expected_order.append("capabilityId")
+
+    assert result["name"] == expected_name
+    assert list(result.keys()) == expected_order
+
+# TODO: add extra stuffs
 @pytest.mark.parametrize("sub_points", [
     [{}, {}],
     [
@@ -162,6 +192,7 @@ def test_convert_sub_points_from_csv(sub_points):
             assert configuration.get("queueSize") == (int(orig_queue) if orig_queue else None)
 
 
+# TODO: fix
 @pytest.mark.parametrize("sub_points", [
     [{}],
     [
@@ -385,7 +416,7 @@ def test_process_asset_sub_points_error(required_arg):
 ])
 def test_update_properties(properties, req):
     # lazy way of copying to avoid having to make sure we copy possible the lists
-    original_properties = json.loads(json.dumps(properties))
+    original_properties = deepcopy(properties)
     _update_properties(
         properties=properties,
         **req

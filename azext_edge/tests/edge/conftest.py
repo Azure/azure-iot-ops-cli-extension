@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
+from copy import deepcopy
 from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
 from ..helpers import run
@@ -35,8 +36,6 @@ def mocked_urlopen(mocker):
 
 @pytest.fixture
 def mocked_resource_management_client(request, mocker):
-    import json
-
     request_results = getattr(request, "param", {})
     resource_mgmt_client = mocker.Mock()
     # deployments
@@ -60,14 +59,14 @@ def mocked_resource_management_client(request, mocker):
     resource_get = mocker.Mock()
     get_result = request_results.get("resources.get")
     resource_get.original = get_result
-    resource_get.as_dict.return_value = json.loads(json.dumps(get_result))
+    resource_get.as_dict.return_value = deepcopy(get_result)
     resource_mgmt_client.resources.get.return_value = resource_get
 
     # Get by id + lazy way of ensuring original is present and result is a copy
     resource_get = mocker.Mock()
     get_result = request_results.get("resources.get_by_id")
     resource_get.original = get_result
-    resource_get.as_dict.return_value = json.loads(json.dumps(get_result))
+    resource_get.as_dict.return_value = deepcopy(get_result)
     resource_mgmt_client.resources.get_by_id.return_value = resource_get
 
     # Create

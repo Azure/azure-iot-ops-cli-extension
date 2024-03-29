@@ -138,10 +138,11 @@ class K8sSecretType(Enum):
 
 class FileType(ListableEnum):
     """
-    Supported file types/extensions.
+    Supported file types/extensions for bulk asset operations.
     """
     csv = "csv"
     json = "json"
+    portal_csv = "portal-csv"
     yaml = "yaml"
 
 

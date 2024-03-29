@@ -635,8 +635,9 @@ def load_iotops_arguments(self, _):
             nargs="+",
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the event to create. "
-            "The following key values are supported: `event_notifier` (required), "
-            "`name`, `observability_mode` (none, gauge, counter, histogram, or log), `queue_size` (int). "
+            "The following key values are supported: `capability_id`, `event_notifier` (required), "
+            "`name`, `observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` "
+            "(int), `queue_size` (int). "
             "--event can be used 1 or more times. Review help examples for full parameter usage",
             arg_group="Additional Info",
         )
