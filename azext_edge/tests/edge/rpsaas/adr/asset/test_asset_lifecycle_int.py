@@ -127,16 +127,16 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     cluster_name = require_init["clusterName"]
 
     # Create an endpoint profile
-    endpoint_name = "test-endpoint-" + generate_generic_id()[:4]
+    endpoint_name = "test-endpoint-" + generate_random_string()[:4]
     asset_endpoint = run(
         f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} "
         "--ta opc.tcp://opcplc-000000:50000"
     )
     tracked_resources.append(asset_endpoint["id"])
 
-    asset_name = "test-asset-" + generate_generic_id()[:4]
-    data_source = generate_generic_id()
-    expected_data_points = [{"data_source": generate_generic_id()}]
+    asset_name = "test-asset-" + generate_random_string()[:4]
+    data_source = generate_random_string()
+    expected_data_points = [{"data_source": generate_random_string()}]
     asset = run(
         f"az iot ops asset create -n {asset_name} -g {rg} -c {cluster_name} --endpoint {endpoint_name} "
         f"--data data_source={expected_data_points[0]['data_source']}"
@@ -157,9 +157,9 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
 
     # data points
     expected_data_points.append({
-        "capability_id": generate_generic_id(),
-        "data_source": generate_generic_id(),
-        "name": generate_generic_id(),
+        "capability_id": generate_random_string(),
+        "data_source": generate_random_string(),
+        "name": generate_random_string(),
         "observability_mode": "log",
         "queue_size": 1,
         "sampling_interval": 30,
@@ -199,8 +199,8 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
 
     # events
     expected_events = [{
-        "event_notifier": generate_generic_id(),
-        "name": generate_generic_id(),
+        "event_notifier": generate_random_string(),
+        "name": generate_random_string(),
         "observability_mode": "log",
         "queue_size": 1,
     }]
@@ -211,7 +211,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     asset_events = run(command)
     assert len(asset_events) == len(expected_events)
     expected_events .append({
-        "event_notifier": generate_generic_id(),
+        "event_notifier": generate_random_string(),
     })
     command = f"az iot ops asset event add -a {asset_name} -g {rg}"
     for arg, value in expected_events[1].items():

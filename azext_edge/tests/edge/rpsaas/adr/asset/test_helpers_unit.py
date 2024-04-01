@@ -130,72 +130,72 @@ def test_build_ordered_csv_conversion_map(sub_point_type, portal_friendly):
         {
             "Sampling Interval Milliseconds": "10",
             "QueueSize": "1000",
-            "EventName": generate_generic_id(),
-            "EventNotifier": generate_generic_id(),
+            "EventName": generate_random_string(),
+            "EventNotifier": generate_random_string(),
         }
     ],
     [
         {
-            "TagName": generate_generic_id(),
-            "NodeID": generate_generic_id(),
+            "TagName": generate_random_string(),
+            "NodeID": generate_random_string(),
         }
     ],
     [
         {
             "Sampling Interval Milliseconds": "10",
-            "TagName": generate_generic_id(),
-            "NodeID": generate_generic_id(),
-            "ObservabilityMode": generate_generic_id(),
+            "TagName": generate_random_string(),
+            "NodeID": generate_random_string(),
+            "ObservabilityMode": generate_random_string(),
         },
         {
             "Sampling Interval Milliseconds": "10",
             "QueueSize": "1000",
-            "EventName": generate_generic_id(),
-            "EventNotifier": generate_generic_id(),
-            "ObservabilityMode": generate_generic_id(),
+            "EventName": generate_random_string(),
+            "EventNotifier": generate_random_string(),
+            "ObservabilityMode": generate_random_string(),
         },
         {
             "Sampling Interval Milliseconds": "10",
-            "TagName": generate_generic_id(),
-            "NodeID": generate_generic_id(),
-            "ObservabilityMode": generate_generic_id(),
+            "TagName": generate_random_string(),
+            "NodeID": generate_random_string(),
+            "ObservabilityMode": generate_random_string(),
         }
     ],
     [
         {
-            "NodeID": generate_generic_id(),
+            "NodeID": generate_random_string(),
         },
         {
-            "EventNotifier": generate_generic_id(),
+            "EventNotifier": generate_random_string(),
         },
     ],
     [   # non portal csv
         {
             "Sampling Interval Milliseconds": "10",
-            "Name": generate_generic_id(),
-            "Data Source": generate_generic_id(),
-            "Observability Mode": generate_generic_id(),
+            "Name": generate_random_string(),
+            "Data Source": generate_random_string(),
+            "Observability Mode": generate_random_string(),
         },
         {
             "Sampling Interval Milliseconds": "10",
             "Queue Size": "1000",
-            "Name": generate_generic_id(),
-            "Event Notifier": generate_generic_id(),
-            "Observability Mode": generate_generic_id(),
+            "Name": generate_random_string(),
+            "Event Notifier": generate_random_string(),
+            "Observability Mode": generate_random_string(),
         },
         {
             "Sampling Interval Milliseconds": "10",
-            "Name": generate_generic_id(),
-            "Data Source": generate_generic_id(),
-            "Observability Mode": generate_generic_id(),
+            "Name": generate_random_string(),
+            "Data Source": generate_random_string(),
+            "Observability Mode": generate_random_string(),
         }
     ],
     [
         {
-            "Data Source": generate_generic_id(),
+            "Data Source": generate_random_string(),
         },
         {
-            "Event Notifier": generate_generic_id(),
+            "Event Notifier": generate_random_string(),
         },
     ],
 ])
@@ -239,35 +239,35 @@ def test_convert_sub_points_from_csv(sub_points):
     [
         {
             "configuration": "{\"samplingInterval\": \"100\", \"queueSize\": \"2\"}",
-            "capabilityId": generate_generic_id(),
-            "name": generate_generic_id(),
-            "observabilityMode": generate_generic_id(),
+            "capabilityId": generate_random_string(),
+            "name": generate_random_string(),
+            "observabilityMode": generate_random_string(),
         }
     ],
     [
         {
-            "name": generate_generic_id(),
-            "observabilityMode": generate_generic_id(),
+            "name": generate_random_string(),
+            "observabilityMode": generate_random_string(),
         }
     ],
     [
         {
             "configuration": "{\"queueSize\": \"2\"}",
-            "capabilityId": generate_generic_id(),
-            "name": generate_generic_id(),
-            "observabilityMode": generate_generic_id(),
+            "capabilityId": generate_random_string(),
+            "name": generate_random_string(),
+            "observabilityMode": generate_random_string(),
         },
         {
             "configuration": "{\"samplingInterval\": \"100\", \"queueSize\": \"5\"}",
-            "capabilityId": generate_generic_id(),
-            "name": generate_generic_id(),
-            "observabilityMode": generate_generic_id(),
+            "capabilityId": generate_random_string(),
+            "name": generate_random_string(),
+            "observabilityMode": generate_random_string(),
         },
         {
             "configuration": "{\"samplingInterval\": \"100\", \"queueSize\": \"4\"}",
-            "capabilityId": generate_generic_id(),
-            "name": generate_generic_id(),
-            "observabilityMode": generate_generic_id(),
+            "capabilityId": generate_random_string(),
+            "name": generate_random_string(),
+            "observabilityMode": generate_random_string(),
         }
     ],
 ])
@@ -280,7 +280,7 @@ def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_p
         config = sub_points[i].pop("configuration", None)
         if config:
             sub_points[i][f"{sub_point_type[:-1]}Configuration"] = config
-        sub_points[i][key] = generate_generic_id()
+        sub_points[i][key] = generate_random_string()
 
     original_copy = deepcopy(sub_points)
     fieldnames = _convert_sub_points_to_csv(
