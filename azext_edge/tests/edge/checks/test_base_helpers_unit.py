@@ -7,7 +7,7 @@
 import pytest
 from azext_edge.edge.common import CheckTaskStatus
 
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def mock_check_manager(mocker):
 @pytest.mark.parametrize("value", ["Null", "", "None", "NoError", "Everything is ok~", 100])
 def test_process_value_color(mock_check_manager, key, value):
     from azext_edge.edge.providers.check.base import process_value_color
-    target_name = generate_generic_id()
+    target_name = generate_random_string()
     result = process_value_color(
         check_manager=mock_check_manager, target_name=target_name, key=key, value=value
     )

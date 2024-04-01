@@ -25,7 +25,7 @@ from azext_edge.edge.providers.proto.diagnostics_service_pb2 import (
     TraceRetrievalInfo,
 )
 
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 from .traces_data import TEST_TRACE, TEST_TRACE_PARTIAL
 
 
@@ -39,8 +39,8 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
     # pylint: disable-next=unnecessary-dunder-call
     mocked_urlopen.return_value.__enter__.return_value = response
 
-    namespace = generate_generic_id()
-    context_name = generate_generic_id()
+    namespace = generate_random_string()
+    context_name = generate_random_string()
     result = stats(cmd=mocked_cmd, namespace=namespace, context_name=context_name)
     min_stats_assert(result)
     mocked_urlopen.assert_called_with(
@@ -159,8 +159,8 @@ def test_get_traces(
     pod_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
 
-    namespace = generate_generic_id()
-    context_name = generate_generic_id()
+    namespace = generate_random_string()
+    context_name = generate_random_string()
 
     for_support_bundle = False
     if trace_ids:

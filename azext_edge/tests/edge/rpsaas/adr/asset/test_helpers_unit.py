@@ -21,14 +21,14 @@ from azext_edge.edge.providers.rpsaas.adr.assets import (
     _update_properties
 )
 
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
-@pytest.mark.parametrize("data_source", [None, generate_generic_id()])
-@pytest.mark.parametrize("event_notifier", [None, generate_generic_id()])
-@pytest.mark.parametrize("capability_id", [None, generate_generic_id()])
-@pytest.mark.parametrize("name", [None, generate_generic_id()])
-@pytest.mark.parametrize("observability_mode", [None, generate_generic_id()])
+@pytest.mark.parametrize("data_source", [None, generate_random_string()])
+@pytest.mark.parametrize("event_notifier", [None, generate_random_string()])
+@pytest.mark.parametrize("capability_id", [None, generate_random_string()])
+@pytest.mark.parametrize("name", [None, generate_random_string()])
+@pytest.mark.parametrize("observability_mode", [None, generate_random_string()])
 @pytest.mark.parametrize("queue_size", [None, 20])
 @pytest.mark.parametrize("sampling_interval", [None, 33])
 def test_build_asset_sub_point(
@@ -314,37 +314,37 @@ def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_p
         [
             "sampling_interval=10",
             "queue_size=1000",
-            f"capability_id={generate_generic_id()}",
-            f"name={generate_generic_id()}",
-            f"observability_mode={generate_generic_id()}",
+            f"capability_id={generate_random_string()}",
+            f"name={generate_random_string()}",
+            f"observability_mode={generate_random_string()}",
         ]
     ],
     [
         [
-            f"name={generate_generic_id()}",
-            f"observability_mode={generate_generic_id()}",
+            f"name={generate_random_string()}",
+            f"observability_mode={generate_random_string()}",
         ]
     ],
     [
         [
             "sampling_interval=10",
-            f"capability_id={generate_generic_id()}",
-            f"name={generate_generic_id()}",
-            f"observability_mode={generate_generic_id()}",
+            f"capability_id={generate_random_string()}",
+            f"name={generate_random_string()}",
+            f"observability_mode={generate_random_string()}",
         ],
         [
             "sampling_interval=10",
             "queue_size=1000",
-            f"capability_id={generate_generic_id()}",
-            f"name={generate_generic_id()}",
-            f"observability_mode={generate_generic_id()}",
+            f"capability_id={generate_random_string()}",
+            f"name={generate_random_string()}",
+            f"observability_mode={generate_random_string()}",
         ],
         [
             "sampling_interval=10",
             "queue_size=1000",
-            f"capability_id={generate_generic_id()}",
-            f"name={generate_generic_id()}",
-            f"observability_mode={generate_generic_id()}",
+            f"capability_id={generate_random_string()}",
+            f"name={generate_random_string()}",
+            f"observability_mode={generate_random_string()}",
         ]
     ],
 ])
@@ -361,7 +361,7 @@ def test_process_asset_sub_points(required_arg, sub_points):
         # Make a copy to avoid tests from conflicting
         sub_points_copy = sub_points_copy[:]
         for i in range(len(sub_points_copy)):
-            sub_points_copy[i] = sub_points_copy[i][:] + [f"{required_arg}={generate_generic_id()}"]
+            sub_points_copy[i] = sub_points_copy[i][:] + [f"{required_arg}={generate_random_string()}"]
 
     result = _process_asset_sub_points(required_arg, sub_points_copy)
     if sub_points_copy is None:
@@ -387,7 +387,7 @@ def test_process_asset_sub_points_error(required_arg):
     with pytest.raises(InvalidArgumentValueError) as e:
         _process_asset_sub_points(
             required_arg,
-            [[f"{required_arg}={generate_generic_id()}", f"{invalid_arg}={generate_generic_id()}"]]
+            [[f"{required_arg}={generate_random_string()}", f"{invalid_arg}={generate_random_string()}"]]
         )
     assert e.value.error_msg.startswith(point_type)
     assert f"does not support {invalid_arg}." in e.value.error_msg
@@ -396,23 +396,23 @@ def test_process_asset_sub_points_error(required_arg):
 @pytest.mark.parametrize("properties", [
     {},
     {
-        "assetType": generate_generic_id(),
+        "assetType": generate_random_string(),
         "defaultDataPointsConfiguration": "{\"publishingInterval\": \"100\", \"samplingInterval\""
         ": \"10\", \"queueSize\": \"2\"}",
         "defaultEventsConfiguration": "{\"publishingInterval\": \"200\", \"samplingInterval\": "
         "\"20\", \"queueSize\": \"3\"}",
-        "description": generate_generic_id(),
-        "displayName": generate_generic_id(),
-        "documentationUri": generate_generic_id(),
+        "description": generate_random_string(),
+        "displayName": generate_random_string(),
+        "documentationUri": generate_random_string(),
         "enabled": True,
-        "externalAssetId": generate_generic_id(),
-        "hardwareRevision": generate_generic_id(),
-        "manufacturer": generate_generic_id(),
-        "manufacturerUri": generate_generic_id(),
-        "model": generate_generic_id(),
-        "productCode": generate_generic_id(),
-        "serialNumber": generate_generic_id(),
-        "softwareRevision": generate_generic_id(),
+        "externalAssetId": generate_random_string(),
+        "hardwareRevision": generate_random_string(),
+        "manufacturer": generate_random_string(),
+        "manufacturerUri": generate_random_string(),
+        "model": generate_random_string(),
+        "productCode": generate_random_string(),
+        "serialNumber": generate_random_string(),
+        "softwareRevision": generate_random_string(),
     }
 ])
 @pytest.mark.parametrize("req", [
@@ -424,19 +424,19 @@ def test_process_asset_sub_points_error(required_arg):
         "ev_sampling_interval": 123,
     },
     {
-        "asset_type": generate_generic_id(),
-        "description": generate_generic_id(),
+        "asset_type": generate_random_string(),
+        "description": generate_random_string(),
         "disabled": True,
-        "display_name": generate_generic_id(),
-        "documentation_uri": generate_generic_id(),
-        "external_asset_id": generate_generic_id(),
-        "hardware_revision": generate_generic_id(),
-        "manufacturer": generate_generic_id(),
-        "manufacturer_uri": generate_generic_id(),
-        "model": generate_generic_id(),
-        "product_code": generate_generic_id(),
-        "serial_number": generate_generic_id(),
-        "software_revision": generate_generic_id(),
+        "display_name": generate_random_string(),
+        "documentation_uri": generate_random_string(),
+        "external_asset_id": generate_random_string(),
+        "hardware_revision": generate_random_string(),
+        "manufacturer": generate_random_string(),
+        "manufacturer_uri": generate_random_string(),
+        "model": generate_random_string(),
+        "product_code": generate_random_string(),
+        "serial_number": generate_random_string(),
+        "software_revision": generate_random_string(),
         "dp_publishing_interval": 10,
         "dp_sampling_interval": 5,
         "dp_queue_size": 4,

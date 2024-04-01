@@ -4,12 +4,17 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import NamedTuple
+import json
+from copy import deepcopy
+from typing import NamedTuple, Optional
+
+from ...util import read_file_content
 
 
 class TemplateVer(NamedTuple):
     commit_id: str
     content: dict
+    moniker: str
 
     @property
     def component_vers(self) -> dict:
@@ -26,6 +31,7 @@ class TemplateVer(NamedTuple):
 
 V1_TEMPLATE = TemplateVer(
     commit_id="eac42bb5f3b13579b27adbcbbb71ef20e3d45df8",
+    moniker="0.4.0-preview",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
@@ -777,7 +783,13 @@ def get_insecure_mq_listener():
 CURRENT_TEMPLATE = V1_TEMPLATE
 
 
-def get_current_template_copy() -> TemplateVer:
-    from copy import deepcopy
+def get_current_template_copy(custom_template_path: Optional[str] = None) -> TemplateVer:
+    if custom_template_path:
+        content = json.loads(read_file_content(custom_template_path))
+        return TemplateVer(commit_id="custom", moniker="custom", content=content)
 
-    return TemplateVer(commit_id=CURRENT_TEMPLATE.commit_id, content=deepcopy(CURRENT_TEMPLATE.content))
+    return TemplateVer(
+        commit_id=CURRENT_TEMPLATE.commit_id,
+        moniker=CURRENT_TEMPLATE.moniker,
+        content=deepcopy(CURRENT_TEMPLATE.content),
+    )

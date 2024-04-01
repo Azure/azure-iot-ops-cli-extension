@@ -8,23 +8,23 @@
 from azext_edge.edge.common import CheckTaskStatus
 from azext_edge.edge.providers.check.base import CheckManager
 
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 
 def test_check_manager():
-    name = generate_generic_id()
-    desc = f"{generate_generic_id()} {generate_generic_id()}"
-    namespace = generate_generic_id()
+    name = generate_random_string()
+    desc = f"{generate_random_string()} {generate_random_string()}"
+    namespace = generate_random_string()
     check_manager = CheckManager(check_name=name, check_desc=desc)
     assert_check_manager_dict(
         check_manager=check_manager, expected_name=name, expected_namespace=namespace, expected_desc=desc
     )
 
-    target_1 = generate_generic_id()
-    target_1_condition_1 = generate_generic_id()
+    target_1 = generate_random_string()
+    target_1_condition_1 = generate_random_string()
     target_1_conditions = [target_1_condition_1]
-    target_1_eval_1_value = {generate_generic_id(): generate_generic_id()}
-    target_1_display_1 = generate_generic_id()
+    target_1_eval_1_value = {generate_random_string(): generate_random_string()}
+    target_1_display_1 = generate_random_string()
 
     check_manager.add_target(target_name=target_1, namespace=namespace, conditions=target_1_conditions)
     check_manager.add_target_eval(
@@ -79,8 +79,8 @@ def test_check_manager():
         expected_status=CheckTaskStatus.warning.value,
     )
 
-    target_2 = generate_generic_id()
-    target_2_condition_1 = generate_generic_id()
+    target_2 = generate_random_string()
+    target_2_condition_1 = generate_random_string()
     target_2_conditions = [target_2_condition_1]
     check_manager.add_target(target_name=target_2, namespace=namespace, conditions=target_2_conditions)
     check_manager.add_target_eval(

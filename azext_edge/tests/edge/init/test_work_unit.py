@@ -28,7 +28,7 @@ from azext_edge.edge.providers.orchestration.work import (
 )
 from azext_edge.edge.util import url_safe_hash_phrase
 
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 
 @pytest.mark.parametrize(
@@ -65,9 +65,9 @@ from ...generators import generate_generic_id
     """,
     [
         pytest.param(
-            generate_generic_id(),  # cluster_name
+            generate_random_string(),  # cluster_name
             None,  # cluster_namespace
-            generate_generic_id(),  # resource_group_name
+            generate_random_string(),  # resource_group_name
             None,  # keyvault_sat_secret_name
             None,  # keyvault_resource_id
             None,  # custom_location_name
@@ -96,21 +96,21 @@ from ...generators import generate_generic_id
             None,  # disable_rsync_rules
         ),
         pytest.param(
-            generate_generic_id(),  # cluster_name
-            generate_generic_id(),  # cluster_namespace
-            generate_generic_id(),  # resource_group_name
-            generate_generic_id(),  # keyvault_sat_secret_name
-            generate_generic_id(),  # keyvault_resource_id
-            generate_generic_id(),  # custom_location_name
+            generate_random_string(),  # cluster_name
+            generate_random_string(),  # cluster_namespace
+            generate_random_string(),  # resource_group_name
+            generate_random_string(),  # keyvault_sat_secret_name
+            generate_random_string(),  # keyvault_resource_id
+            generate_random_string(),  # custom_location_name
             None,  # custom_location_namespace
-            generate_generic_id(),  # location
+            generate_random_string(),  # location
             True,  # simulate_plc
             None,  # opcua_discovery_endpoint
             None,  # container_runtime_socket
             KubernetesDistroType.k3s.value,  # kubernetes_distro,
-            generate_generic_id(),  # dp_instance_name
-            generate_generic_id(),  # mq_instance_name
-            generate_generic_id(),  # mq_frontend_server_name
+            generate_random_string(),  # dp_instance_name
+            generate_random_string(),  # mq_instance_name
+            generate_random_string(),  # mq_frontend_server_name
             MqMode.auto.value,  # mq_mode
             MqMemoryProfile.high.value,  # mq_memory_profile
             MqServiceType.load_balancer.value,  # mq_service_type
@@ -119,29 +119,29 @@ from ...generators import generate_generic_id
             randint(1, 5),  # mq_backend_redundancy_factor
             randint(1, 5),  # mq_frontend_workers
             randint(1, 5),  # mq_frontend_replicas
-            generate_generic_id(),  # mq_listener_name
-            generate_generic_id(),  # mq_broker_name
-            generate_generic_id(),  # mq_authn_name
+            generate_random_string(),  # mq_listener_name
+            generate_random_string(),  # mq_broker_name
+            generate_random_string(),  # mq_authn_name
             None,  # mq_insecure
-            generate_generic_id(),  # target_name
+            generate_random_string(),  # target_name
             None,  # disable_rsync_rules
         ),
         pytest.param(
-            generate_generic_id(),  # cluster_name
-            generate_generic_id(),  # cluster_namespace
-            generate_generic_id(),  # resource_group_name
-            generate_generic_id(),  # keyvault_sat_secret_name
-            generate_generic_id(),  # keyvault_resource_id
-            generate_generic_id(),  # custom_location_name
+            generate_random_string(),  # cluster_name
+            generate_random_string(),  # cluster_namespace
+            generate_random_string(),  # resource_group_name
+            generate_random_string(),  # keyvault_sat_secret_name
+            generate_random_string(),  # keyvault_resource_id
+            generate_random_string(),  # custom_location_name
             None,  # custom_location_namespace
-            generate_generic_id(),  # location
+            generate_random_string(),  # location
             True,  # simulate_plc
-            generate_generic_id(),  # opcua_discovery_endpoint
-            generate_generic_id(),  # container_runtime_socket
+            generate_random_string(),  # opcua_discovery_endpoint
+            generate_random_string(),  # container_runtime_socket
             KubernetesDistroType.microk8s.value,  # kubernetes_distro,
-            generate_generic_id(),  # dp_instance_name
-            generate_generic_id(),  # mq_instance_name
-            generate_generic_id(),  # mq_frontend_server_name
+            generate_random_string(),  # dp_instance_name
+            generate_random_string(),  # mq_instance_name
+            generate_random_string(),  # mq_frontend_server_name
             MqMode.auto.value,  # mq_mode
             MqMemoryProfile.high.value,  # mq_memory_profile
             MqServiceType.load_balancer.value,  # mq_service_type
@@ -150,11 +150,11 @@ from ...generators import generate_generic_id
             randint(1, 5),  # mq_backend_redundancy_factor
             randint(1, 5),  # mq_frontend_workers
             randint(1, 5),  # mq_frontend_replicas
-            generate_generic_id(),  # mq_listener_name
-            generate_generic_id(),  # mq_broker_name
-            generate_generic_id(),  # mq_authn_name
+            generate_random_string(),  # mq_listener_name
+            generate_random_string(),  # mq_broker_name
+            generate_random_string(),  # mq_authn_name
             True,  # mq_insecure
-            generate_generic_id(),  # target_name
+            generate_random_string(),  # target_name
             True,  # disable_rsync_rules
         ),
     ],
@@ -236,7 +236,7 @@ def test_init_to_template_params(
 
     work = WorkManager(**mocked_deploy.call_args.kwargs)
     # emulate dynamic query of location
-    connected_cluster_location = generate_generic_id()
+    connected_cluster_location = generate_random_string()
     work._kwargs["cluster_location"] = connected_cluster_location
     if not location:
         assert mocked_deploy.call_args.kwargs["location"] is None
@@ -244,6 +244,9 @@ def test_init_to_template_params(
 
     template_ver, parameters = work.build_template({})
 
+    expected_cluster_namespace = cluster_namespace.lower() if cluster_namespace else DEFAULT_NAMESPACE
+
+    lowered_cluster_name = cluster_name.lower()
     assert "clusterName" in parameters
     assert parameters["clusterName"]["value"] == cluster_name
 
@@ -257,19 +260,19 @@ def test_init_to_template_params(
     if custom_location_name:
         assert parameters["customLocationName"]["value"] == custom_location_name
     else:
-        assert parameters["customLocationName"]["value"] == f"{cluster_name}-ops-init-cl"
+        assert parameters["customLocationName"]["value"] == f"{lowered_cluster_name}-ops-init-cl"
 
     assert "targetName" in parameters
     if target_name:
         assert parameters["targetName"]["value"] == target_name
     else:
-        assert parameters["targetName"]["value"] == f"{cluster_name}-ops-init-target"
+        assert parameters["targetName"]["value"] == f"{lowered_cluster_name}-ops-init-target"
 
     assert "dataProcessorInstanceName" in parameters
     if dp_instance_name:
         assert parameters["dataProcessorInstanceName"]["value"] == dp_instance_name
     else:
-        assert parameters["dataProcessorInstanceName"]["value"] == f"{cluster_name}-ops-init-processor"
+        assert parameters["dataProcessorInstanceName"]["value"] == f"{lowered_cluster_name}-ops-init-processor"
 
     assert "mqInstanceName" in parameters
     if mq_instance_name:
@@ -281,7 +284,8 @@ def test_init_to_template_params(
         assert "simulatePLC" in parameters and parameters["simulatePLC"]["value"] is True
         if not opcua_discovery_endpoint:
             assert (
-                parameters["opcuaDiscoveryEndpoint"]["value"] == f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
+                parameters["opcuaDiscoveryEndpoint"]["value"]
+                == f"opc.tcp://opcplc-000000.{expected_cluster_namespace}:50000"
             )
 
     if opcua_discovery_endpoint:
@@ -331,10 +335,7 @@ def test_init_to_template_params(
     for set_value_tuple in set_value_tuples:
         assert parameters[set_value_tuple[0]]["value"] == set_value_tuple[1]
 
-    if cluster_namespace:
-        assert template_ver.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] == cluster_namespace
-    else:
-        assert template_ver.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] == DEFAULT_NAMESPACE
+    assert template_ver.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] == expected_cluster_namespace
 
     # TODO
     assert template_ver.content["variables"]["AIO_TRUST_CONFIG_MAP"]
@@ -382,9 +383,9 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
     """,
     [
         pytest.param(
-            generate_generic_id(),  # cluster_name
+            generate_random_string(),  # cluster_name
             None,  # cluster_namespace
-            generate_generic_id(),  # resource_group_name
+            generate_random_string(),  # resource_group_name
             None,  # keyvault_resource_id
             None,  # keyvault_sat_secret_name
             None,  # disable_secret_rotation
@@ -398,10 +399,10 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_rsync_rules
         ),
         pytest.param(
-            generate_generic_id(),  # cluster_name
+            generate_random_string(),  # cluster_name
             None,  # cluster_namespace
-            generate_generic_id(),  # resource_group_name
-            generate_generic_id(),  # keyvault_resource_id
+            generate_random_string(),  # resource_group_name
+            generate_random_string(),  # keyvault_resource_id
             None,  # keyvault_sat_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
@@ -414,11 +415,11 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_rsync_rules
         ),
         pytest.param(
-            generate_generic_id(),  # cluster_name
-            generate_generic_id(),  # cluster_namespace
-            generate_generic_id(),  # resource_group_name
-            generate_generic_id(),  # keyvault_resource_id
-            generate_generic_id(),  # keyvault_sat_secret_name
+            generate_random_string(),  # cluster_name
+            generate_random_string(),  # cluster_namespace
+            generate_random_string(),  # resource_group_name
+            generate_random_string(),  # keyvault_resource_id
+            generate_random_string(),  # keyvault_sat_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # tls_ca_path
@@ -430,11 +431,11 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_rsync_rules
         ),
         pytest.param(
-            generate_generic_id(),  # cluster_name
+            generate_random_string(),  # cluster_name
             None,  # cluster_namespace
-            generate_generic_id(),  # resource_group_name
-            generate_generic_id(),  # keyvault_resource_id
-            generate_generic_id(),  # keyvault_sat_secret_name
+            generate_random_string(),  # resource_group_name
+            generate_random_string(),  # keyvault_resource_id
+            generate_random_string(),  # keyvault_sat_secret_name
             True,  # disable_secret_rotation
             "3h",  # rotation_poll_interval
             None,  # tls_ca_path
@@ -446,11 +447,11 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_rsync_rules
         ),
         pytest.param(
-            generate_generic_id(),  # cluster_name
+            generate_random_string(),  # cluster_name
             None,  # cluster_namespace
-            generate_generic_id(),  # resource_group_name
-            generate_generic_id(),  # keyvault_resource_id
-            generate_generic_id(),  # keyvault_sat_secret_name
+            generate_random_string(),  # resource_group_name
+            generate_random_string(),  # keyvault_resource_id
+            generate_random_string(),  # keyvault_sat_secret_name
             True,  # disable_secret_rotation
             "3h",  # rotation_poll_interval
             "/my/ca.crt",  # tls_ca_path
@@ -462,9 +463,9 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_rsync_rules
         ),
         pytest.param(
-            generate_generic_id(),  # cluster_name
+            generate_random_string(),  # cluster_name
             None,  # cluster_namespace
-            generate_generic_id(),  # resource_group_name
+            generate_random_string(),  # resource_group_name
             None,  # keyvault_resource_id
             None,  # keyvault_sat_secret_name
             None,  # disable_secret_rotation
@@ -478,9 +479,9 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_rsync_rules
         ),
         pytest.param(
-            generate_generic_id(),  # cluster_name
+            generate_random_string(),  # cluster_name
             None,  # cluster_namespace
-            generate_generic_id(),  # resource_group_name
+            generate_random_string(),  # resource_group_name
             None,  # keyvault_resource_id
             None,  # keyvault_sat_secret_name
             None,  # disable_secret_rotation
@@ -516,6 +517,7 @@ def test_work_order(
     mocked_connected_cluster_location: Mock,
     mocked_connected_cluster_extensions: Mock,
     mocked_verify_custom_locations_enabled: Mock,
+    mocked_verify_arc_cluster_config: Mock,
     spy_get_current_template_copy: Mock,
     cluster_name,
     cluster_namespace,
@@ -570,11 +572,14 @@ def test_work_order(
         mocked_verify_cli_client_connections.assert_called_once()
         mocked_connected_cluster_location.assert_called_once()
 
+    expected_cluster_namespace = cluster_namespace.lower() if cluster_namespace else DEFAULT_NAMESPACE
+
     if not no_preflight:
         expected_template_copies += 1
         mocked_register_providers.assert_called_once()
         mocked_verify_custom_locations_enabled.assert_called_once()
         mocked_connected_cluster_extensions.assert_called_once()
+        mocked_verify_arc_cluster_config.assert_called_once()
 
         if not disable_rsync_rules:
             mocked_verify_write_permission_against_rg.assert_called_once()
@@ -586,6 +591,7 @@ def test_work_order(
         mocked_register_providers.assert_not_called()
         mocked_verify_custom_locations_enabled.assert_not_called()
         mocked_connected_cluster_extensions.assert_not_called()
+        mocked_verify_arc_cluster_config.assert_not_called()
 
     if not keyvault_resource_id:
         mocked_edge_api_keyvault_api_v1.is_deployed.assert_called_once()
@@ -651,11 +657,7 @@ def test_work_order(
         assert "extension_name" not in mocked_provision_akv_csi_driver.call_args.kwargs
 
         mocked_configure_cluster_secrets.assert_called_once()
-        assert (
-            mocked_configure_cluster_secrets.call_args.kwargs["cluster_namespace"] == cluster_namespace
-            if cluster_namespace
-            else DEFAULT_NAMESPACE
-        )
+        assert mocked_configure_cluster_secrets.call_args.kwargs["cluster_namespace"] == expected_cluster_namespace
         assert mocked_configure_cluster_secrets.call_args.kwargs["cluster_secret_ref"] == CLUSTER_SECRET_REF
         assert (
             mocked_configure_cluster_secrets.call_args.kwargs["cluster_akv_secret_class_name"]
@@ -686,11 +688,8 @@ def test_work_order(
         assert mocked_prepare_ca.call_args.kwargs["tls_ca_dir"] == tls_ca_dir
 
         mocked_cluster_tls.assert_called_once()
-        assert (
-            mocked_cluster_tls.call_args.kwargs["cluster_namespace"] == cluster_namespace
-            if cluster_namespace
-            else DEFAULT_NAMESPACE
-        )
+        assert mocked_cluster_tls.call_args.kwargs["cluster_namespace"] == expected_cluster_namespace
+
         assert mocked_cluster_tls.call_args.kwargs["public_ca"]
         assert mocked_cluster_tls.call_args.kwargs["private_key"]
         assert mocked_cluster_tls.call_args.kwargs["secret_name"]
@@ -724,11 +723,7 @@ def test_work_order(
         assert mocked_deploy_template.call_args.kwargs["resource_group_name"] == resource_group_name
         assert mocked_deploy_template.call_args.kwargs["deployment_name"]
         assert mocked_deploy_template.call_args.kwargs["cluster_name"] == cluster_name
-        assert (
-            mocked_deploy_template.call_args.kwargs["cluster_namespace"] == cluster_namespace
-            if cluster_namespace
-            else DEFAULT_NAMESPACE
-        )
+        assert mocked_deploy_template.call_args.kwargs["cluster_namespace"] == expected_cluster_namespace
     else:
         if not nothing_to_do:
             assert "deploymentName" not in result

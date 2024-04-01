@@ -136,7 +136,9 @@ def mocked_verify_write_permission_against_rg(mocker):
 
 @pytest.fixture
 def mocked_prepare_keyvault_access_policy(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.prepare_keyvault_access_policy", autospec=True)
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.base.prepare_keyvault_access_policy", autospec=True
+    )
 
     def handle_return(*args, **kwargs):
         return f"https://localhost/{kwargs['keyvault_resource_id']}/vault"
@@ -201,6 +203,14 @@ def mocked_connected_cluster_extensions(mocker, request):
 def mocked_verify_custom_locations_enabled(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.base.verify_custom_locations_enabled", autospec=True
+    )
+    yield patched
+
+
+@pytest.fixture
+def mocked_verify_arc_cluster_config(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.base.verify_arc_cluster_config", autospec=True
     )
     yield patched
 

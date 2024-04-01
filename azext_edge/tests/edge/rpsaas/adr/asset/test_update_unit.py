@@ -13,49 +13,49 @@ from .conftest import (
     MINIMUM_ASSET,
     FULL_ASSET
 )
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [
     {
         "resources.get": MINIMUM_ASSET,
-        "resources.begin_create_or_update_by_id": {"result": generate_generic_id()}
+        "resources.begin_create_or_update_by_id": {"result": generate_random_string()}
     },
     {
         "resources.get": FULL_ASSET,
-        "resources.begin_create_or_update_by_id": {"result": generate_generic_id()}
+        "resources.begin_create_or_update_by_id": {"result": generate_random_string()}
     },
 ], ids=["minimal", "full"], indirect=True)
 @pytest.mark.parametrize("asset_helpers_fixture", [{
-    "process_asset_sub_points": generate_generic_id(),
-    "update_properties": generate_generic_id(),
+    "process_asset_sub_points": generate_random_string(),
+    "update_properties": generate_random_string(),
 }], ids=["update helpers"], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
     {
-        "asset_type": generate_generic_id(),
-        "description": generate_generic_id(),
+        "asset_type": generate_random_string(),
+        "description": generate_random_string(),
         "disabled": True,
-        "display_name": generate_generic_id(),
-        "documentation_uri": generate_generic_id(),
-        "external_asset_id": generate_generic_id(),
-        "hardware_revision": generate_generic_id(),
-        "manufacturer": generate_generic_id(),
-        "manufacturer_uri": generate_generic_id(),
-        "model": generate_generic_id(),
-        "product_code": generate_generic_id(),
-        "serial_number": generate_generic_id(),
-        "software_revision": generate_generic_id(),
+        "display_name": generate_random_string(),
+        "documentation_uri": generate_random_string(),
+        "external_asset_id": generate_random_string(),
+        "hardware_revision": generate_random_string(),
+        "manufacturer": generate_random_string(),
+        "manufacturer_uri": generate_random_string(),
+        "model": generate_random_string(),
+        "product_code": generate_random_string(),
+        "serial_number": generate_random_string(),
+        "software_revision": generate_random_string(),
         "dp_publishing_interval": 3333,
         "dp_sampling_interval": 44,
         "dp_queue_size": 55,
         "ev_publishing_interval": 666,
         "ev_sampling_interval": 777,
         "ev_queue_size": 888,
-        "tags": generate_generic_id(),
+        "tags": generate_random_string(),
     },
     {
-        "asset_type": generate_generic_id(),
+        "asset_type": generate_random_string(),
         "disabled": False,
         "dp_publishing_interval": 3333,
         "dp_sampling_interval": 44,
@@ -71,9 +71,9 @@ def test_update_asset(
 ):
     _, patched_up = asset_helpers_fixture
     # Required params
-    asset_name = generate_generic_id()
+    asset_name = generate_random_string()
     # force show call to one branch
-    resource_group_name = generate_generic_id()
+    resource_group_name = generate_random_string()
     result = update_asset(
         cmd=mocked_cmd,
         asset_name=asset_name,

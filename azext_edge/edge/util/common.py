@@ -12,7 +12,7 @@ common: Defines common utility functions and components.
 import base64
 import json
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from azure.cli.core.azclierror import FileOperationError
 from knack.log import get_logger
@@ -115,24 +115,31 @@ def generate_secret(byte_length=32):
     return base64.b64encode(token_bytes).decode("utf8")
 
 
-def read_file_content(file_path, read_as_binary=False):
-    from codecs import open as codecs_open
+def read_file_content(file_path: str, read_as_binary: bool = False) -> Union[bytes, str]:
+    from pathlib import Path
+
+    logger.debug("Processing %s", file_path)
+    pure_path = Path(file_path)
+
+    if not pure_path.exists():
+        raise FileOperationError(f"{file_path} does not exist.")
+
+    if not pure_path.is_file():
+        raise FileOperationError(f"{file_path} is not a file.")
 
     if read_as_binary:
-        with open(file_path, "rb") as input_file:
-            logger.debug("Attempting to read file %s as binary", file_path)
-            return input_file.read()
+        logger.debug("Reading %s as binary", str(pure_path))
+        return pure_path.read_bytes()
 
-    # Note, always put 'utf-8-sig' first, so that BOM in WinOS won't cause trouble.
-    for encoding in ["utf-8-sig", "utf-8", "utf-16", "utf-16le", "utf-16be"]:
+    # Try with 'utf-8-sig' first, so that BOM in WinOS won't cause trouble.
+    for encoding in ["utf-8-sig", "utf-8"]:
         try:
-            with codecs_open(file_path, encoding=encoding) as f:
-                logger.debug("Attempting to read file %s as %s", file_path, encoding)
-                return f.read()
+            logger.debug("Reading %s as %s", str(pure_path), encoding)
+            return pure_path.read_text(encoding=encoding)
         except (UnicodeError, UnicodeDecodeError):
             pass
 
-    raise FileOperationError("Failed to decode file {} - unknown decoding".format(file_path))
+    raise FileOperationError(f"Failed to decode file {str(pure_path)}.")
 
 
 def url_safe_hash_phrase(phrase: str):

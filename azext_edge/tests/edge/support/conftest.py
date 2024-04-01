@@ -6,7 +6,7 @@
 
 from functools import partial
 from typing import List
-from ...generators import generate_generic_id
+from ...generators import generate_random_string
 
 import pytest
 
@@ -20,28 +20,30 @@ def add_pod_to_mocked_pods(
     from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
 
     current_pods = mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value
-    pod_list = current_pods.items()
+    pod_list = current_pods.items
     namespace = pod_list[0].metadata.namespace
     # all the mocks are the same
     # need to go through pod_name and container_name (that we don't care about here)
     mock_log = list(list(expected_pod_map[namespace].values())[0].values())[0]
 
     for pod_name in mock_names:
-        container_name = generate_generic_id()
+        container_name = generate_random_string()
         spec = V1PodSpec(containers=[V1Container(name=container_name)])
         pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
 
         if mock_init_containers:
             pod.spec.init_containers = [V1Container(name="mock-init-container")]
-            expected_pod_map[namespace][pod_name]["mock-init-container"] = mock_log
+            expected_pod_map[namespace][pod_name] = {"mock-init-container": mock_log}
         pod_list.append(pod)
-        expected_pod_map[namespace][pod_name] = {container_name: mock_log}
+
+        if pod_name in expected_pod_map[namespace]:
+            expected_pod_map[namespace][pod_name][container_name] = mock_log
+        else:
+            expected_pod_map[namespace][pod_name] = {container_name: mock_log}
 
     pods_list = V1PodList(items=pod_list)
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
     mocked_client.CoreV1Api().read_namespaced_pod_log.return_value = mock_log
-
-    yield expected_pod_map
 
 
 @pytest.fixture
@@ -181,14 +183,14 @@ def mocked_list_pods(mocked_client):
     from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
 
     expected_pod_map = {}
-    namespaces = [generate_generic_id()]
-    mock_log = f"===mocked pod log {generate_generic_id()} ==="
+    namespaces = [generate_random_string()]
+    mock_log = f"===mocked pod log {generate_random_string()} ==="
     for namespace in namespaces:
-        pod_names = [generate_generic_id(), generate_generic_id()]
+        pod_names = [generate_random_string(), generate_random_string()]
         pods = []
         expected_pod_map[namespace] = {}
         for pod_name in pod_names:
-            container_name = generate_generic_id()
+            container_name = generate_random_string()
             spec = V1PodSpec(containers=[V1Container(name=container_name)])
             pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
             pods.append(pod)
@@ -342,7 +344,9 @@ def mocked_list_storage_classes(mocked_client):
     from kubernetes.client.models import V1StorageClassList, V1StorageClass, V1ObjectMeta
 
     def _handle_list_storage_classes(*args, **kwargs):
-        storage_class = V1StorageClass(provisioner="mock_provisioner", metadata=V1ObjectMeta(name="mock_storage_class"))
+        storage_class = V1StorageClass(
+            provisioner="mock_provisioner", metadata=V1ObjectMeta(name="mock_storage_class")
+        )
         storage_class_list = V1StorageClassList(items=[storage_class])
 
         return storage_class_list
@@ -384,8 +388,9 @@ def mocked_list_persistent_volume_claims(mocked_client):
 
         return pvc_list
 
-    mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.side_effect =\
+    mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.side_effect = (
         _handle_list_persistent_volume_claims
+    )
 
     yield mocked_client
 

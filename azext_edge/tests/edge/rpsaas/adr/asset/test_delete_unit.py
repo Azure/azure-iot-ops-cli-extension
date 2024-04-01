@@ -7,24 +7,24 @@
 import pytest
 
 from azext_edge.edge.commands_assets import delete_asset
-from azext_edge.edge.common import ResourceTypeMapping
+from azext_edge.edge.common import ResourceTypeMapping, ResourceProviderMapping
 from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_resource_management_client", [
-    {"resources.get": {"extendedLocation": {"name": generate_generic_id()}}}
+    {"resources.get": {"extendedLocation": {"name": generate_random_string()}}}
 ], ids=["resources.get"], indirect=True)
-@pytest.mark.parametrize("resource_group", [None, generate_generic_id()])
+@pytest.mark.parametrize("resource_group", [None, generate_random_string()])
 def test_delete_asset(
     mocked_cmd,
     mock_check_cluster_connectivity,
     mocked_resource_management_client,
     resource_group
 ):
-    asset_name = generate_generic_id()
-    resource_group = generate_generic_id()
+    asset_name = generate_random_string()
+    resource_group = generate_random_string()
     result = delete_asset(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -37,6 +37,6 @@ def test_delete_asset(
     assert call_kwargs["resource_group_name"] == resource_group
     assert call_kwargs["resource_type"] == ResourceTypeMapping.asset.value
     assert call_kwargs["parent_resource_path"] == ""
-    assert call_kwargs["resource_provider_namespace"] == ""
+    assert call_kwargs["resource_provider_namespace"] == ResourceProviderMapping.deviceregistry.value
     assert call_kwargs["resource_name"] == asset_name
     assert call_kwargs["api_version"] == ADR_API_VERSION

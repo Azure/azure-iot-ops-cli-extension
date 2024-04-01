@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.fixture()
@@ -36,102 +36,102 @@ ASSETS_PATH = "azext_edge.edge.providers.rpsaas.adr.assets"
 # Generic objects
 MINIMUM_ASSET = {
     "extendedLocation": {
-        "name": generate_generic_id(),
-        "type": generate_generic_id(),
+        "name": generate_random_string(),
+        "type": generate_random_string(),
     },
-    "id": generate_generic_id(),
+    "id": generate_random_string(),
     "location": "westus3",
     "name": "props-test-min",
     "properties": {
-        "assetEndpointProfileUri": generate_generic_id(),
+        "assetEndpointProfileUri": generate_random_string(),
         "defaultDataPointsConfiguration": "{\"publishingInterval\": 1000, \"samplingInterval\": 500, "
         "\"queueSize\": 1}",
         "defaultEventsConfiguration": "{\"publishingInterval\": 1000, \"samplingInterval\": 500, \"queueSize\": 1}",
         "displayName": "props-test-min",
         "enabled": True,
-        "externalAssetId": generate_generic_id(),
+        "externalAssetId": generate_random_string(),
         "provisioningState": "Accepted",
-        "uuid": generate_generic_id(),
+        "uuid": generate_random_string(),
         "version": 1
     },
-    "resourceGroup": generate_generic_id(),
+    "resourceGroup": generate_random_string(),
     "type": "microsoft.deviceregistry/assets"
 }
 FULL_ASSET = {
     "extendedLocation": {
-        "name": generate_generic_id(),
-        "type": generate_generic_id(),
+        "name": generate_random_string(),
+        "type": generate_random_string(),
     },
-    "id": generate_generic_id(),
+    "id": generate_random_string(),
     "location": "westus3",
     "name": "props-test-max",
     "properties": {
-        "assetType": generate_generic_id(),
-        "assetEndpointProfileUri": generate_generic_id(),
+        "assetType": generate_random_string(),
+        "assetEndpointProfileUri": generate_random_string(),
         "dataPoints": [
             {
-                "capabilityId": generate_generic_id(),
+                "capabilityId": generate_random_string(),
                 "dataPointConfiguration": "{\"samplingInterval\": 100, \"queueSize\": 50}",
-                "dataSource": generate_generic_id(),
-                "name": generate_generic_id(),
-                "observabilityMode": generate_generic_id()
+                "dataSource": generate_random_string(),
+                "name": generate_random_string(),
+                "observabilityMode": generate_random_string()
             },
             {
                 "dataPointConfiguration": "{}",
-                "dataSource": generate_generic_id(),
+                "dataSource": generate_random_string(),
             },
             {
-                "capabilityId": generate_generic_id(),
+                "capabilityId": generate_random_string(),
                 "dataPointConfiguration": "{\"samplingInterval\": 100}",
-                "dataSource": generate_generic_id(),
-                "name": generate_generic_id(),
-                "observabilityMode": generate_generic_id()
+                "dataSource": generate_random_string(),
+                "name": generate_random_string(),
+                "observabilityMode": generate_random_string()
             }
         ],
         "defaultDataPointsConfiguration": "{\"publishingInterval\": \"100\", \"samplingInterval\": \"10\","
         " \"queueSize\": \"2\"}",
         "defaultEventsConfiguration": "{\"publishingInterval\": \"200\", \"samplingInterval\": \"20\", "
         "\"queueSize\": \"3\"}",
-        "description": generate_generic_id(),
+        "description": generate_random_string(),
         "displayName": "props-test-max",
-        "documentationUri": generate_generic_id(),
+        "documentationUri": generate_random_string(),
         "enabled": False,
         "events": [
             {
-                "capabilityId": generate_generic_id(),
+                "capabilityId": generate_random_string(),
                 "eventConfiguration": "{\"samplingInterval\": 100}",
-                "eventNotifier": generate_generic_id(),
-                "name": generate_generic_id(),
-                "observabilityMode": generate_generic_id()
+                "eventNotifier": generate_random_string(),
+                "name": generate_random_string(),
+                "observabilityMode": generate_random_string()
             },
             {
                 "eventConfiguration": "{}",
-                "eventNotifier": generate_generic_id(),
+                "eventNotifier": generate_random_string(),
             },
             {
-                "capabilityId": generate_generic_id(),
+                "capabilityId": generate_random_string(),
                 "eventConfiguration": "{\"samplingInterval\": 100, \"queueSize\": 50}",
-                "eventNotifier": generate_generic_id(),
-                "name": generate_generic_id(),
-                "observabilityMode": generate_generic_id()
+                "eventNotifier": generate_random_string(),
+                "name": generate_random_string(),
+                "observabilityMode": generate_random_string()
             },
         ],
-        "externalAssetId": generate_generic_id(),
-        "hardwareRevision": generate_generic_id(),
-        "manufacturer": generate_generic_id(),
-        "manufacturerUri": generate_generic_id(),
-        "model": generate_generic_id(),
-        "productCode": generate_generic_id(),
+        "externalAssetId": generate_random_string(),
+        "hardwareRevision": generate_random_string(),
+        "manufacturer": generate_random_string(),
+        "manufacturerUri": generate_random_string(),
+        "model": generate_random_string(),
+        "productCode": generate_random_string(),
         "provisioningState": "Failed",
-        "serialNumber": generate_generic_id(),
-        "softwareRevision": generate_generic_id(),
-        "uuid": generate_generic_id(),
+        "serialNumber": generate_random_string(),
+        "softwareRevision": generate_random_string(),
+        "uuid": generate_random_string(),
         "version": 1
     },
-    "resourceGroup": generate_generic_id(),
+    "resourceGroup": generate_random_string(),
     "tags": {
-        generate_generic_id(): generate_generic_id(),
-        generate_generic_id(): generate_generic_id()
+        generate_random_string(): generate_random_string(),
+        generate_random_string(): generate_random_string()
     },
     "type": "microsoft.deviceregistry/assets"
 }

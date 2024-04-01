@@ -10,27 +10,27 @@ from azext_edge.edge.common import ResourceTypeMapping
 from azext_edge.edge.commands_asset_endpoint_profiles import query_asset_endpoint_profiles
 
 from .conftest import AEP_PATH
-from .....generators import generate_generic_id
+from .....generators import generate_random_string
 
 
 @pytest.mark.parametrize("mocked_build_query", [{
     "path": AEP_PATH,
-    "result": [{"result": generate_generic_id()}]
+    "result": [{"result": generate_random_string()}]
 }], ids=["query"], indirect=True)
 @pytest.mark.parametrize("req", [
     {},
     {
-        "custom_location_name": generate_generic_id(),
-        "target_address": generate_generic_id(),
-        "additional_configuration": generate_generic_id(),
-        "auth_mode": generate_generic_id(),
-        "location": generate_generic_id(),
-        "resource_group_name": generate_generic_id(),
+        "custom_location_name": generate_random_string(),
+        "target_address": generate_random_string(),
+        "additional_configuration": generate_random_string(),
+        "auth_mode": generate_random_string(),
+        "location": generate_random_string(),
+        "resource_group_name": generate_random_string(),
     },
     {
-        "additional_configuration": generate_generic_id(),
-        "auth_mode": generate_generic_id(),
-        "resource_group_name": generate_generic_id(),
+        "additional_configuration": generate_random_string(),
+        "auth_mode": generate_random_string(),
+        "resource_group_name": generate_random_string(),
     },
 ])
 def test_query_asset_endpoint_profiles(mocked_cmd, mocked_get_subscription_id, mocked_build_query, req):
@@ -43,7 +43,7 @@ def test_query_asset_endpoint_profiles(mocked_cmd, mocked_get_subscription_id, m
     assert query_args["subscription_id"] == mocked_get_subscription_id.return_value
     assert query_args["location"] == req.get("location")
     assert query_args["resource_group"] == req.get("resource_group_name")
-    assert query_args["type"] == ResourceTypeMapping.asset_endpoint_profile.value
+    assert query_args["type"] == ResourceTypeMapping.asset_endpoint_profile.full_resource_path
     assert query_args["additional_project"] == "extendedLocation"
 
     expected_query = ""
