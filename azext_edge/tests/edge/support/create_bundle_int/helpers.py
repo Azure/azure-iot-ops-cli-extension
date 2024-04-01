@@ -69,7 +69,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
     return file_name_objs
 
 
-def check_name(name: str, expected_names: List[str], optional_names: Optional[List[str]]):
+def check_name(name: str, expected_names: List[str], optional_names: Optional[List[str]] = None):
     name = name.split(".")[0]
     # make sure we can check names like aio-dp-operator-5c74655f8b-zr5xm
     checks = [
