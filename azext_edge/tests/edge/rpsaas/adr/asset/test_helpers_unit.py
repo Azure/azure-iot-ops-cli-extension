@@ -109,7 +109,7 @@ def test_build_ordered_csv_conversion_map(sub_point_type, portal_friendly):
     assert result["observabilityMode"] == ("ObservabilityMode" if portal_friendly else "Observability Mode")
     assert result["samplingInterval"] == "Sampling Interval Milliseconds"
 
-    expected_name = "name"
+    expected_name = "Name"
     if portal_friendly:
         assert "capabilityId" not in result
         expected_name = "EventName"
@@ -122,10 +122,11 @@ def test_build_ordered_csv_conversion_map(sub_point_type, portal_friendly):
     assert result["name"] == expected_name
     assert list(result.keys()) == expected_order
 
+
 # TODO: add extra stuffs
 @pytest.mark.parametrize("sub_points", [
     [{}, {}],
-    [
+    [   # portal csv
         {
             "Sampling Interval Milliseconds": "10",
             "QueueSize": "1000",
@@ -166,6 +167,35 @@ def test_build_ordered_csv_conversion_map(sub_point_type, portal_friendly):
         },
         {
             "EventNotifier": generate_generic_id(),
+        },
+    ],
+    [   # non portal csv
+        {
+            "Sampling Interval Milliseconds": "10",
+            "Name": generate_generic_id(),
+            "Data Source": generate_generic_id(),
+            "Observability Mode": generate_generic_id(),
+        },
+        {
+            "Sampling Interval Milliseconds": "10",
+            "Queue Size": "1000",
+            "Name": generate_generic_id(),
+            "Event Notifier": generate_generic_id(),
+            "Observability Mode": generate_generic_id(),
+        },
+        {
+            "Sampling Interval Milliseconds": "10",
+            "Name": generate_generic_id(),
+            "Data Source": generate_generic_id(),
+            "Observability Mode": generate_generic_id(),
+        }
+    ],
+    [
+        {
+            "Data Source": generate_generic_id(),
+        },
+        {
+            "Event Notifier": generate_generic_id(),
         },
     ],
 ])
@@ -177,22 +207,33 @@ def test_convert_sub_points_from_csv(sub_points):
         for key in original_copy[i]:
             assert key not in sub_points[i]
 
-        original_name = original_copy[i].get("TagName", original_copy[i].get("EventName"))
+        original_name = original_copy[i].get(
+            "TagName", original_copy[i].get("EventName", original_copy[i].get("Name"))
+        )
         assert sub_points[i].get("name") == original_name
-        assert sub_points[i].get("eventNotifier") == original_copy[i].get("EventNotifier")
-        assert sub_points[i].get("dataSource") == original_copy[i].get("NodeID")
-        assert sub_points[i].get("observabilityMode") == original_copy[i].get("ObservabilityMode")
+        event_notifier = original_copy[i].get("EventNotifier", original_copy[i].get("Event Notifier"))
+        assert sub_points[i].get("eventNotifier") == event_notifier
+        assert sub_points[i].get("dataSource") == original_copy[i].get(
+            "NodeID", original_copy[i].get("Data Source")
+        )
+        assert sub_points[i].get("observabilityMode") == original_copy[i].get(
+            "ObservabilityMode", original_copy[i].get("Observability Mode")
+        )
 
         if "Sampling Interval Milliseconds" in original_copy[i] or "QueueSize" in original_copy[i]:
-            config_key = "eventConfiguration" if original_copy[i].get("EventNotifier") else "dataPointConfiguration"
+            config_key = "eventConfiguration" if event_notifier else "dataPointConfiguration"
             configuration = json.loads(sub_points[i].get(config_key))
             orig_sample = original_copy[i].get("Sampling Interval Milliseconds")
             assert configuration.get("samplingInterval") == (int(orig_sample) if orig_sample else None)
-            orig_queue = original_copy[i].get("QueueSize")
+            orig_queue = original_copy[i].get("QueueSize", original_copy[i].get("Queue Size"))
             assert configuration.get("queueSize") == (int(orig_queue) if orig_queue else None)
 
 
-# TODO: fix
+@pytest.mark.parametrize("default_configuration", [
+    {"publishingInterval": 1000, "samplingInterval": 500, "queueSize": 1},
+    {"publishingInterval": 1000, "queueSize": 1},
+])
+@pytest.mark.parametrize("portal_friendly", [False, True])
 @pytest.mark.parametrize("sub_points", [
     [{}],
     [
@@ -231,8 +272,8 @@ def test_convert_sub_points_from_csv(sub_points):
     ],
 ])
 @pytest.mark.parametrize("sub_point_type", ["dataPoints", "events"])
-def test_convert_sub_points_to_csv(sub_points, sub_point_type):
-    # make sure tests dont collide
+def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_points, sub_point_type):
+    # do some extra modifications to get valid point and make sure tests dont collide
     sub_points = deepcopy(sub_points)
     key = "dataSource" if sub_point_type == "dataPoints" else "eventNotifier"
     for i in range(len(sub_points)):
@@ -242,36 +283,26 @@ def test_convert_sub_points_to_csv(sub_points, sub_point_type):
         sub_points[i][key] = generate_generic_id()
 
     original_copy = deepcopy(sub_points)
-    fieldnames = _convert_sub_points_to_csv(sub_points, sub_point_type)
+    fieldnames = _convert_sub_points_to_csv(
+        sub_points=sub_points,
+        sub_point_type=sub_point_type,
+        default_configuration=json.dumps(default_configuration),
+        portal_friendly=portal_friendly
+    )
+    csv_map = _build_ordered_csv_conversion_map(sub_point_type, portal_friendly)
+    assert fieldnames == list(csv_map.values())
+
     for i in range(len(sub_points)):
         for key in original_copy[i]:
             assert key not in sub_points[i]
-
-        if sub_point_type == "dataPoints":
-            assert sub_points[i].get("TagName") == original_copy[i].get("name")
-            assert sub_points[i].get("NodeID") == original_copy[i].get("dataSource")
-            assert sub_points[i].get("CapabilityId") == original_copy[i].get("capabilityId")
-        else:
-            assert sub_points[i].get("EventName") == original_copy[i].get("name")
-            assert sub_points[i].get("EventNotifier") == original_copy[i].get("eventNotifier")
-
-        configuration = json.loads(original_copy[i].get(f"{sub_point_type[:-1]}Configuration", "{}"))
-        assert sub_points[i].get("QueueSize") == configuration.get("queueSize")
-        if sub_point_type == "dataPoints":
-            assert sub_points[i].get("Sampling Interval Milliseconds") == configuration.get("samplingInterval")
-        assert sub_points[i].get("ObservabilityMode") == original_copy[i].get("observabilityMode")
-
-    if sub_point_type == "dataPoints":
-        assert fieldnames[0] == "NodeID"
-        assert fieldnames[1] == "TagName"
-        assert fieldnames[-2] == "Sampling Interval Milliseconds"
-        assert fieldnames[-1] == "CapabilityId"
-    else:
-        assert fieldnames[0] == "EventNotifier"
-        assert fieldnames[1] == "EventName"
-
-    assert fieldnames[2] == "QueueSize"
-    assert fieldnames[3] == "ObservabilityMode"
+        if portal_friendly:
+            assert "capabilityId" not in sub_points[i]
+        original_config = json.loads(original_copy[i].get(f"{sub_point_type[:-1]}Configuration", "{}"))
+        for asset_key, csv_key in csv_map.items():
+            default_config_value = default_configuration.get(asset_key) if portal_friendly else None
+            assert sub_points[i][csv_key] == original_copy[i].get(
+                asset_key, original_config.get(asset_key, default_config_value)
+            )
 
 
 @pytest.mark.parametrize("required_arg", ["data_source", "event_notifier"])

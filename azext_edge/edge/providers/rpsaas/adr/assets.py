@@ -561,8 +561,8 @@ def _convert_sub_points_to_csv(
         if portal_friendly:
             point.pop("capabilityId", None)
         point.update(json.loads(configuration))
-        for key, value in csv_conversion_map.items():
-            point[value] = point.pop(key, default_configuration.get(key))
+        for asset_key, csv_key in csv_conversion_map.items():
+            point[csv_key] = point.pop(asset_key, default_configuration.get(asset_key))
     return list(csv_conversion_map.values())
 
 
