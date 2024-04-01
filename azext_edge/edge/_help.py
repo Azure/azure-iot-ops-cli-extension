@@ -287,7 +287,8 @@ def load_iotops_help():
 
         - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number.
           text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}            --endpoint {endpoint} --event capability_id={capability_id} event_notifier={event_notifier}
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
+            --endpoint {endpoint} --event capability_id={capability_id} event_notifier={event_notifier}
             name={name} observability_mode={observability_mode} sampling_interval={sampling_interval} queue_size={queue_size}
             --event event_notifier={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
             --serial-number {serial_number}

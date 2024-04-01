@@ -14,6 +14,11 @@ from .common import (
     url_safe_hash_phrase,
 )
 from .x509 import generate_self_signed_cert
+from .file_operations import (
+    convert_file_content_to_json,
+    dump_content_to_file,
+    normalize_dir
+)
 
 __all__ = [
     "assemble_nargs_to_dict",
@@ -24,4 +29,7 @@ __all__ = [
     "generate_self_signed_cert",
     "read_file_content",
     "url_safe_hash_phrase",
+    "convert_file_content_to_json",
+    "dump_content_to_file",
+    "normalize_dir"
 ]

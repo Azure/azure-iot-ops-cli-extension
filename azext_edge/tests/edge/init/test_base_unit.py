@@ -406,7 +406,7 @@ def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path):
     file_patch = mocker.patch(f"{BASE_PATH}.read_file_content", return_value=generate_random_string())
     path_mock = mocker.Mock()
     path_mock.joinpath.return_value = generate_random_string()
-    normalize_patch = mocker.patch("azext_edge.edge.providers.support.base.normalize_dir", return_value=path_mock)
+    normalize_patch = mocker.patch("azext_edge.edge.util.normalize_dir", return_value=path_mock)
     cert_patch = mocker.patch(
         f"{BASE_PATH}.generate_self_signed_cert", return_value=(generate_random_string(), generate_random_string())
     )

@@ -229,7 +229,7 @@ def get_traces(
 
     # pylint: disable=no-name-in-module
     from .proto.diagnostics_service_pb2 import Request, Response, TraceRetrievalInfo
-    from .support.base import normalize_dir
+    from ..util import normalize_dir
 
     namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
 

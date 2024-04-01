@@ -170,7 +170,7 @@ def prepare_ca(
     tls_ca_valid_days: Optional[int] = None,
     **kwargs,
 ) -> Tuple[bytes, bytes, str, str]:
-    from ..support.base import normalize_dir
+    from ...util import normalize_dir
 
     public_cert = private_key = None
     secret_name = "aio-ca-key-pair"

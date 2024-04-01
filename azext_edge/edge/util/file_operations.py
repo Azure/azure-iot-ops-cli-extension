@@ -8,6 +8,7 @@ import csv
 import json
 import yaml
 import os
+from pathlib import PurePath
 from typing import List, Optional
 from azure.cli.core.azclierror import FileOperationError
 from knack.log import get_logger
@@ -46,9 +47,8 @@ def dump_content_to_file(
     fieldnames: Optional[List[str]] = None,
     output_dir: Optional[str] = None,
     replace: bool = False
-):
-    if not output_dir:
-        output_dir = "."
+) -> PurePath:
+    output_dir = normalize_dir(output_dir)
     file_path = os.path.join(output_dir, f"{file_name}.{extension}")
     if os.path.exists(file_path):
         if not replace:
@@ -61,7 +61,7 @@ def dump_content_to_file(
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(content)
-        return
+        return file_path
 
     # These let you dump to a string before writing to file
     if extension == "json":
@@ -71,9 +71,27 @@ def dump_content_to_file(
     with open(file_path, "w") as f:
         f.write(content)
 
+    return file_path
+
+
+def normalize_dir(dir_path: Optional[str] = None) -> PurePath:
+    if not dir_path:
+        dir_path = "."
+    if "~" in dir_path:
+        dir_path = os.path.expanduser(dir_path)
+    dir_path = os.path.abspath(dir_path)
+    dir_pure_path = PurePath(dir_path)
+    if not os.path.exists(str(dir_pure_path)):
+        os.makedirs(dir_pure_path, exist_ok=True)
+
+    return dir_pure_path
+
 
 def read_file_content(file_path: str, read_as_binary: bool = False):
     from codecs import open as codecs_open
+
+    # in case someone does ~/my_file.json
+    file_path = normalize_dir(file_path)
 
     if read_as_binary:
         with open(file_path, "rb") as input_file:

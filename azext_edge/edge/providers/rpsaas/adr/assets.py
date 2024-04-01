@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-import os
 from typing import Dict, List, Optional, Union
 
 from knack.log import get_logger
@@ -312,7 +311,7 @@ class AssetProvider(ADRBaseProvider):
         output_dir: str = ".",
         replace: bool = False
     ):
-        from ....util.file_operations import dump_content_to_file
+        from ....util import dump_content_to_file
         asset_props = self.show(
             resource_name=asset_name,
             resource_group_name=resource_group_name
@@ -330,7 +329,7 @@ class AssetProvider(ADRBaseProvider):
                 portal_friendly=extension == FileType.portal_csv.value
             )
         extension = extension.replace("-", ".")
-        dump_content_to_file(
+        file_path = dump_content_to_file(
             content=sub_points,
             file_name=f"{asset_name}_{sub_point_type}",
             extension=extension,
@@ -338,7 +337,7 @@ class AssetProvider(ADRBaseProvider):
             output_dir=output_dir,
             replace=replace
         )
-        return {"file_path": os.path.join(output_dir or ".", f"{asset_name}_{sub_point_type}.{extension}")}
+        return {"file_path": file_path}
 
     def import_sub_points(
         self,
@@ -348,7 +347,7 @@ class AssetProvider(ADRBaseProvider):
         resource_group_name: str,
         replace: bool = False
     ):
-        from ....util.file_operations import convert_file_content_to_json
+        from ....util import convert_file_content_to_json
         asset = self.show(
             resource_name=asset_name,
             resource_group_name=resource_group_name,
