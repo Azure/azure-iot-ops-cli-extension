@@ -18,14 +18,14 @@ def test_create_bundle_dataprocessor(init_setup, tracked_files):
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
 
-    # TODO: add in expected for each
-    # dataprocessor
     # do we always have these? What cases do they have them vs not?
     # how can names change?
     for config in file_map.get("dataset", []):
         assert config["version"] == "v1"
-    for config in file_map.get("instance", []):
+    # should be one right?
+    for config in file_map["instance"]:
         assert config["version"] == "v1"
+    assert len(file_map["instance"])
     for config in file_map.get("pipeline", []):
         assert config["version"] == "v1"
     for config in file_map.get("testrun", []):

@@ -23,10 +23,6 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     file_map = get_file_map(walk_result, ops_service, mq_traces=mq_traces)
     traces = file_map.pop("trace", {})
 
-    # TODO: add in expected for each
-    # mq
-    # do we always have these? What cases do they have them vs not?
-    # how can names change?
     check_mq_types(file_map)
 
     expected_file_objs = {
@@ -84,19 +80,24 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
 
 
 def check_mq_types(file_map):
-    for config in file_map.get("brokerauthentication", []):
+    # do we always have these? What cases do they have them vs not?
+    # how can names change?
+    for config in file_map["brokerauthentication"]:
         assert config["version"] == "v1beta1"
     for config in file_map.get("brokerauthorization", []):
         assert config["version"] == "v1beta1"
-    for config in file_map.get("brokerlistener", []):
+    # Expecting >=1 broker listeners per namespace
+    for config in file_map["brokerlistener"]:
         assert config["version"] == "v1beta1"
-    for config in file_map.get("broker", []):
+    # Expecting 1 broker resource per namespace
+    for config in file_map["broker"]:
         assert config["version"] == "v1beta1"
     for config in file_map.get("datalakeconnectortopicmap", []):
         assert config["version"] == "v1beta1"
     for config in file_map.get("datalakeconnector", []):
         assert config["version"] == "v1beta1"
-    for config in file_map.get("diagnosticservice", []):
+    # Expecting 1 diagnostics service resource per namespace
+    for config in file_map["diagnosticservice"]:
         assert config["version"] == "v1beta1"
     for config in file_map.get("iothubconnectorroutesmap", []):
         assert config["version"] == "v1beta1"

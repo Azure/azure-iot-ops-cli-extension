@@ -104,8 +104,6 @@ def test_create_bundle_otel(init_setup, tracked_files):
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, "otel")
 
-    # TODO: add in expected for each
-    # otel
     # do we always have these? What cases do they have them vs not?
     # how can names change?
     if file_map.get("configuration"):

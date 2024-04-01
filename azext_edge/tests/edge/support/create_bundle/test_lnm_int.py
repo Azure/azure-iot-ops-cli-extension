@@ -11,42 +11,27 @@ from .helpers import check_non_custom_file_objs, get_file_map, run_bundle_comman
 logger = get_logger(__name__)
 
 
-def test_create_bundle_akri(init_setup, tracked_files):
-    """Test for ensuring file names and content. ONLY CHECKS AKRI."""
-    ops_service = OpsServiceType.akri.value
+def test_create_bundle_lnm(init_setup, tracked_files):
+    """Test for ensuring file names and content. ONLY CHECKS lnm."""
+    ops_service = OpsServiceType.lnm.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
 
-    # TODO: add in expected for each
     # do we always have these? What cases do they have them vs not?
     # how can names change?
-    for config in file_map.get("configuration", []):
-        assert config["version"] == "v0"
-    for config in file_map.get("instance", []):
-        assert config["version"] == "v0"
+    for config in file_map.get("lnm", []):
+        assert config["version"] == "v1beta1"
 
     expected_file_objs = {
-        "daemonset": [
-            "aio-akri-agent-daemonset"
-        ],
         "deployment": [
-            "aio-akri-otel-collector",
-            "aio-akri-webhook-configuration"
+            "aio-lnm-operator"
         ],
         "pod": [
-            "aio-akri-agent-daemonset",
-            "aio-akri-otel-collector",
-            "aio-akri-webhook-configuration"
+            "aio-lnm-operator"
         ],
         "replicaset": [
-            "aio-akri-otel-collector",
-            "aio-akri-webhook-configuration"
-        ],
-        "service": [
-            "aio-akri-agent-metrics-service",
-            "aio-akri-controller-metrics-service",
-            "aio-akri-webhook-configuration"
+            "aio-lnm-operator"
         ]
     }
 
