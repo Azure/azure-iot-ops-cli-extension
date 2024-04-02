@@ -152,7 +152,7 @@ def mocked_prepare_keyvault_secret(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.prepare_keyvault_secret", autospec=True)
 
     def handle_return(*args, **kwargs):
-        return kwargs["keyvault_sat_secret_name"]
+        return kwargs["keyvault_spc_secret_name"]
 
     patched.side_effect = handle_return
     yield patched
@@ -212,6 +212,12 @@ def mocked_verify_arc_cluster_config(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.base.verify_arc_cluster_config", autospec=True
     )
+    yield patched
+
+
+@pytest.fixture
+def mocked_test_secret_via_sp(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.test_secret_via_sp", autospec=True)
     yield patched
 
 

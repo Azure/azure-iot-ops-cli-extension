@@ -36,7 +36,7 @@ from ...generators import generate_random_string
     cluster_name,
     cluster_namespace,
     resource_group_name,
-    keyvault_sat_secret_name,
+    keyvault_spc_secret_name,
     keyvault_resource_id,
     custom_location_name,
     custom_location_namespace,
@@ -68,7 +68,7 @@ from ...generators import generate_random_string
             generate_random_string(),  # cluster_name
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
-            None,  # keyvault_sat_secret_name
+            None,  # keyvault_spc_secret_name
             None,  # keyvault_resource_id
             None,  # custom_location_name
             None,  # custom_location_namespace
@@ -99,7 +99,7 @@ from ...generators import generate_random_string
             generate_random_string(),  # cluster_name
             generate_random_string(),  # cluster_namespace
             generate_random_string(),  # resource_group_name
-            generate_random_string(),  # keyvault_sat_secret_name
+            generate_random_string(),  # keyvault_spc_secret_name
             generate_random_string(),  # keyvault_resource_id
             generate_random_string(),  # custom_location_name
             None,  # custom_location_namespace
@@ -130,7 +130,7 @@ from ...generators import generate_random_string
             generate_random_string(),  # cluster_name
             generate_random_string(),  # cluster_namespace
             generate_random_string(),  # resource_group_name
-            generate_random_string(),  # keyvault_sat_secret_name
+            generate_random_string(),  # keyvault_spc_secret_name
             generate_random_string(),  # keyvault_resource_id
             generate_random_string(),  # custom_location_name
             None,  # custom_location_namespace
@@ -166,7 +166,7 @@ def test_init_to_template_params(
     cluster_name,
     cluster_namespace,
     resource_group_name,
-    keyvault_sat_secret_name,
+    keyvault_spc_secret_name,
     keyvault_resource_id,
     custom_location_name,
     custom_location_namespace,
@@ -197,7 +197,7 @@ def test_init_to_template_params(
 
     param_tuples = [
         (cluster_namespace, "cluster_namespace"),
-        (keyvault_sat_secret_name, "keyvault_sat_secret_name"),
+        (keyvault_spc_secret_name, "keyvault_spc_secret_name"),
         (keyvault_resource_id, "keyvault_resource_id"),
         (custom_location_name, "custom_location_name"),
         (custom_location_namespace, "custom_location_namespace"),
@@ -370,7 +370,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
     cluster_namespace,
     resource_group_name,
     keyvault_resource_id,
-    keyvault_sat_secret_name,
+    keyvault_spc_secret_name,
     disable_secret_rotation,
     rotation_poll_interval,
     tls_ca_path,
@@ -387,7 +387,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
             None,  # keyvault_resource_id
-            None,  # keyvault_sat_secret_name
+            None,  # keyvault_spc_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # tls_ca_path
@@ -403,7 +403,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
             generate_random_string(),  # keyvault_resource_id
-            None,  # keyvault_sat_secret_name
+            None,  # keyvault_spc_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # tls_ca_path
@@ -419,7 +419,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             generate_random_string(),  # cluster_namespace
             generate_random_string(),  # resource_group_name
             generate_random_string(),  # keyvault_resource_id
-            generate_random_string(),  # keyvault_sat_secret_name
+            generate_random_string(),  # keyvault_spc_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # tls_ca_path
@@ -435,7 +435,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
             generate_random_string(),  # keyvault_resource_id
-            generate_random_string(),  # keyvault_sat_secret_name
+            generate_random_string(),  # keyvault_spc_secret_name
             True,  # disable_secret_rotation
             "3h",  # rotation_poll_interval
             None,  # tls_ca_path
@@ -451,7 +451,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
             generate_random_string(),  # keyvault_resource_id
-            generate_random_string(),  # keyvault_sat_secret_name
+            generate_random_string(),  # keyvault_spc_secret_name
             True,  # disable_secret_rotation
             "3h",  # rotation_poll_interval
             "/my/ca.crt",  # tls_ca_path
@@ -467,7 +467,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
             None,  # keyvault_resource_id
-            None,  # keyvault_sat_secret_name
+            None,  # keyvault_spc_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # tls_ca_path
@@ -483,7 +483,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
             None,  # keyvault_resource_id
-            None,  # keyvault_sat_secret_name
+            None,  # keyvault_spc_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # tls_ca_path
@@ -518,12 +518,13 @@ def test_work_order(
     mocked_connected_cluster_extensions: Mock,
     mocked_verify_custom_locations_enabled: Mock,
     mocked_verify_arc_cluster_config: Mock,
+    mocked_test_secret_via_sp: Mock,
     spy_get_current_template_copy: Mock,
     cluster_name,
     cluster_namespace,
     resource_group_name,
     keyvault_resource_id,
-    keyvault_sat_secret_name,
+    keyvault_spc_secret_name,
     disable_secret_rotation,
     rotation_poll_interval,
     tls_ca_path,
@@ -550,8 +551,8 @@ def test_work_order(
         call_kwargs["rotation_poll_interval"] = rotation_poll_interval
     if cluster_namespace:
         call_kwargs["cluster_namespace"] = cluster_namespace
-    if keyvault_sat_secret_name:
-        call_kwargs["keyvault_sat_secret_name"] = keyvault_sat_secret_name
+    if keyvault_spc_secret_name:
+        call_kwargs["keyvault_spc_secret_name"] = keyvault_spc_secret_name
     if tls_ca_path:
         call_kwargs["tls_ca_path"] = tls_ca_path
     if tls_ca_key_path:
@@ -602,11 +603,9 @@ def test_work_order(
         assert result["csiDriver"]["version"] == KEYVAULT_ARC_EXTENSION_VERSION
         assert result["csiDriver"]["spObjectId"]
         assert result["csiDriver"]["keyVaultId"] == keyvault_resource_id
-        assert (
-            result["csiDriver"]["kvSatSecretName"] == keyvault_sat_secret_name
-            if keyvault_sat_secret_name
-            else DEFAULT_NAMESPACE
-        )
+
+        expected_keyvault_spc_secret_name = keyvault_spc_secret_name if keyvault_spc_secret_name else DEFAULT_NAMESPACE
+        assert result["csiDriver"]["kvSatSecretName"] == expected_keyvault_spc_secret_name
         assert (
             result["csiDriver"]["rotationPollInterval"] == rotation_poll_interval if rotation_poll_interval else "1h"
         )
@@ -628,17 +627,16 @@ def test_work_order(
         assert mocked_prepare_keyvault_access_policy.call_args.kwargs["sp_record"]
 
         mocked_prepare_keyvault_secret.assert_called_once()
+        expected_vault_uri = f"https://localhost/{keyvault_resource_id}/vault"
+
         assert mocked_prepare_keyvault_secret.call_args.kwargs["cmd"]
         assert mocked_prepare_keyvault_secret.call_args.kwargs["deployment_name"]
+        assert mocked_prepare_keyvault_secret.call_args.kwargs["vault_uri"] == expected_vault_uri
         assert (
-            mocked_prepare_keyvault_secret.call_args.kwargs["vault_uri"]
-            == f"https://localhost/{keyvault_resource_id}/vault"
+            mocked_prepare_keyvault_secret.call_args.kwargs["keyvault_spc_secret_name"]
+            == expected_keyvault_spc_secret_name
         )
-        assert (
-            mocked_prepare_keyvault_secret.call_args.kwargs["keyvault_sat_secret_name"] == keyvault_sat_secret_name
-            if keyvault_sat_secret_name
-            else DEFAULT_NAMESPACE
-        )
+
         mocked_provision_akv_csi_driver.assert_called_once()
         assert mocked_provision_akv_csi_driver.call_args.kwargs["subscription_id"]
         assert mocked_provision_akv_csi_driver.call_args.kwargs["cluster_name"] == cluster_name
@@ -664,12 +662,18 @@ def test_work_order(
             == CLUSTER_SECRET_CLASS_NAME
         )
         assert (
-            mocked_configure_cluster_secrets.call_args.kwargs["keyvault_sat_secret_name"] == keyvault_sat_secret_name
-            if keyvault_sat_secret_name
-            else DEFAULT_NAMESPACE
+            mocked_configure_cluster_secrets.call_args.kwargs["keyvault_spc_secret_name"]
+            == expected_keyvault_spc_secret_name
         )
         assert mocked_configure_cluster_secrets.call_args.kwargs["keyvault_resource_id"] == keyvault_resource_id
         assert mocked_configure_cluster_secrets.call_args.kwargs["sp_record"]
+
+        mocked_test_secret_via_sp.assert_called_once()
+        assert mocked_test_secret_via_sp.call_args.kwargs["vault_uri"] == expected_vault_uri
+        assert (
+            mocked_test_secret_via_sp.call_args.kwargs["keyvault_spc_secret_name"] == expected_keyvault_spc_secret_name
+        )
+        assert mocked_test_secret_via_sp.call_args.kwargs["sp_record"]
     else:
         if not nothing_to_do:
             assert "csiDriver" not in result
@@ -678,6 +682,7 @@ def test_work_order(
         mocked_prepare_keyvault_secret.assert_not_called()
         mocked_provision_akv_csi_driver.assert_not_called()
         mocked_configure_cluster_secrets.assert_not_called()
+        mocked_test_secret_via_sp.assert_not_called()
 
     if not no_tls:
         assert result["tls"]["aioTrustConfigMap"]  # TODO

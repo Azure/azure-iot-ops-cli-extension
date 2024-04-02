@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+import logging
 from time import sleep
 from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple
 
@@ -18,7 +19,12 @@ from ...util import (
     get_timestamp_now_utc,
     read_file_content,
 )
-from ...util.az_client import get_resource_client
+from ...util.az_client import (
+    get_resource_client,
+    get_tenant_id,
+    get_token_from_sp_credential,
+    wait_for_terminal_state,
+)
 from ..base import (
     create_cluster_namespace,
     create_namespaced_configmap,
@@ -45,22 +51,18 @@ from .connected_cluster import ConnectedCluster
 
 logger = get_logger(__name__)
 
-
 if TYPE_CHECKING:
-    from azure.core.polling import LROPoller
-    from azure.mgmt.resource.resources.models import GenericResource
+    from requests.models import Response
 
+
+EXTENSION_API_VERSION = "2022-11-01"  # TODO: fun testing with newer api
+IOT_OPERATIONS_EXTENSION_PREFIX = "microsoft.iotoperations"
 
 # TODO: pull out into keyvault file (with other related funcs)
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 KEYVAULT_ARC_EXTENSION_VERSION = "1.5.1"
 
-DEFAULT_POLL_RETRIES = 240
-DEFAULT_POLL_WAIT_SEC = 15
-
-EXTENSION_API_VERSION = "2022-11-01"  # TODO: fun testing with newer api
-
-IOT_OPERATIONS_EXTENSION_PREFIX = "microsoft.iotoperations"
+PROPAGATION_DELAY_SEC = 20
 
 
 class ServicePrincipal(NamedTuple):
@@ -109,7 +111,7 @@ def configure_cluster_secrets(
     cluster_namespace: str,
     cluster_secret_ref: str,
     cluster_akv_secret_class_name: str,
-    keyvault_sat_secret_name: str,
+    keyvault_spc_secret_name: str,
     keyvault_resource_id: str,
     sp_record: ServicePrincipal,
     **kwargs,
@@ -148,7 +150,7 @@ def configure_cluster_secrets(
                 name=secret_class,
                 namespace=cluster_namespace,
                 keyvault_name=keyvault_name,
-                secret_name=keyvault_sat_secret_name,
+                secret_name=keyvault_spc_secret_name,
                 tenantId=sp_record.tenant_id,
             )
         )
@@ -300,6 +302,7 @@ def prepare_sp(cmd, deployment_name: str, **kwargs) -> ServicePrincipal:
             body=json.dumps({"passwordCredential": {"displayName": deployment_name, "endDateTime": timestamp_str}}),
         )
         sp_secret = add_secret_op.json()["secretText"]
+        sleep(PROPAGATION_DELAY_SEC)
 
     return ServicePrincipal(
         client_id=sp_app_id,
@@ -358,7 +361,10 @@ def prepare_keyvault_access_policy(
     subscription_id: str, keyvault_resource: dict, keyvault_resource_id: str, sp_record: ServicePrincipal, **kwargs
 ) -> str:
     resource_client = get_resource_client(subscription_id=subscription_id)
-    vault_uri = keyvault_resource["properties"]["vaultUri"]
+    vault_uri: str = keyvault_resource["properties"]["vaultUri"]
+    if vault_uri[-1] == "/":
+        vault_uri = vault_uri[:-1]
+
     keyvault_access_policies: List[dict] = keyvault_resource["properties"].get("accessPolicies", [])
 
     add_access_policy = True
@@ -381,51 +387,81 @@ def prepare_keyvault_access_policy(
             api_version=KEYVAULT_CLOUD_API_VERSION,
             parameters={"properties": {"accessPolicies": keyvault_access_policies}},
         ).result()
+        sleep(PROPAGATION_DELAY_SEC)
 
     return vault_uri
 
 
 def prepare_keyvault_secret(
-    cmd, deployment_name: str, vault_uri: str, keyvault_sat_secret_name: Optional[str] = None, **kwargs
+    cmd, deployment_name: str, vault_uri: str, keyvault_spc_secret_name: Optional[str] = None, **kwargs
 ) -> str:
     from azure.cli.core.util import send_raw_request
 
     url = vault_uri + "/secrets/{0}{1}?api-version=7.4"
-    if keyvault_sat_secret_name:
-        get_secretver: dict = send_raw_request(
+    if keyvault_spc_secret_name:
+        get_secret_version: dict = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="GET",
-            url=url.format(keyvault_sat_secret_name, "/versions"),
+            url=url.format(keyvault_spc_secret_name, "/versions"),
             resource="https://vault.azure.net",
         ).json()
-        if not get_secretver.get("value"):
+        if not get_secret_version.get("value"):
             send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="PUT",
-                url=url.format(keyvault_sat_secret_name, ""),
+                url=url.format(keyvault_spc_secret_name, ""),
                 resource="https://vault.azure.net",
                 body=json.dumps({"value": generate_secret()}),
             ).json()
     else:
-        keyvault_sat_secret_name = deployment_name.replace(".", "-")
+        keyvault_spc_secret_name = deployment_name.replace(".", "-")
         send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="PUT",
-            url=url.format(keyvault_sat_secret_name, ""),
+            url=url.format(keyvault_spc_secret_name, ""),
             resource="https://vault.azure.net",
             body=json.dumps({"value": generate_secret()}),
         ).json()
 
-    return keyvault_sat_secret_name
+    return keyvault_spc_secret_name
 
 
-# TODO: should be in utils
-def get_tenant_id():
-    from azure.cli.core._profile import Profile
+def eval_secret_via_sp(cmd, vault_uri: str, keyvault_spc_secret_name: str, sp_record: ServicePrincipal):
+    from azure.cli.core.util import send_raw_request
 
-    profile = Profile()
-    sub = profile.get_subscription()
-    return sub["tenantId"]
+    identity_logger = logging.getLogger("azure.identity")
+    identity_logger_level = identity_logger.getEffectiveLevel()
+    identity_logger.setLevel(logging.ERROR)
+
+    auth_token = get_token_from_sp_credential(
+        tenant_id=sp_record.tenant_id,
+        client_id=sp_record.client_id,
+        client_secret=sp_record.secret,
+        scope="https://vault.azure.net/.default",
+    )
+    identity_logger.setLevel(identity_logger_level)
+
+    kv_secret_url = vault_uri + "/secrets/{0}?api-version=7.4"
+    try:
+        send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="GET",
+            headers=[f"Authorization=Bearer {auth_token}"],  # Expected header format :)
+            url=kv_secret_url.format(keyvault_spc_secret_name),
+        )
+    except HTTPError as e:
+        error_response: Response = e.response
+        http_error_msg = str(e)
+        if error_response.status_code in [401, 403]:
+            custom_error_msg = (
+                f"{http_error_msg}\n\n"
+                "The error indicates an auth failure to fetch the default SPC secret from Key Vault. "
+                "If no access policy exists for the service principal used to setup the CSI driver"
+                "init will create a suitable access policy given the logged-in principal "
+                "has permission to do so."
+            )
+            raise ValidationError(error_msg=custom_error_msg)
+        raise ValidationError(error_msg=http_error_msg)
 
 
 def deploy_template(
@@ -503,18 +539,6 @@ def throw_if_iotops_deployed(connected_cluster: ConnectedCluster):
                     "Detected existing IoT Operations deployment. "
                     "Remove IoT Operations or use a different connected cluster to continue.\n"
                 )
-
-
-# TODO: should be in utils
-def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
-    # resource client does not handle sigint well
-    counter = 0
-    while counter < DEFAULT_POLL_RETRIES:
-        sleep(DEFAULT_POLL_WAIT_SEC)
-        counter = counter + 1
-        if poller.done():
-            break
-    return poller.result()
 
 
 def verify_custom_locations_enabled():
