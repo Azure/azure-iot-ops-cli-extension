@@ -22,6 +22,7 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service, mq_traces=mq_traces)
     traces = file_map.pop("trace", {})
+    assert "diagnostic_metrics" in file_map
 
     check_mq_types(file_map)
 
@@ -60,6 +61,10 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     }
 
     check_non_custom_file_objs(file_map, expected_file_objs)
+
+    # There is a chance that traces are not present even if mq_traces is true
+    if not mq_traces:
+        assert not traces
 
     if traces:
         id_check = {}
