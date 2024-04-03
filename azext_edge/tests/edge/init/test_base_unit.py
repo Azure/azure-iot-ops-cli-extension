@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+from unittest.mock import Mock
 
 import pytest
 from azure.cli.core.azclierror import HTTPError, ValidationError
@@ -829,17 +830,18 @@ def test_verify_arc_cluster_config(mocker, test_scenario):
 def test_eval_secret_via_sp(mocker, mocked_cmd, http_error):
 
     def assert_mocked_get_token_from_sp_credential():
-        assert mocked_get_token_from_sp_credential.call_count == 1
-        assert mocked_get_token_from_sp_credential.call_args.kwargs["tenant_id"] == sp_record.tenant_id
-        assert mocked_get_token_from_sp_credential.call_args.kwargs["client_id"] == sp_record.client_id
-        assert mocked_get_token_from_sp_credential.call_args.kwargs["client_secret"] == sp_record.secret
-        assert mocked_get_token_from_sp_credential.call_args.kwargs["scope"] == "https://vault.azure.net/.default"
+        mocked_get_token_from_sp_credential.assert_called_once_with(
+            tenant_id=sp_record.tenant_id,
+            client_id=sp_record.client_id,
+            client_secret=sp_record.secret,
+            scope="https://vault.azure.net/.default",
+        )
 
     mock_token = generate_random_string()
-    mocked_get_token_from_sp_credential = mocker.patch(
+    mocked_get_token_from_sp_credential: Mock = mocker.patch(
         f"{BASE_PATH}.get_token_from_sp_credential", return_value=mock_token
     )
-    mocked_send_raw_request = mocker.patch("azure.cli.core.util.send_raw_request")
+    mocked_send_raw_request: Mock = mocker.patch("azure.cli.core.util.send_raw_request")
 
     if http_error:
         test_response = Response()
@@ -872,11 +874,9 @@ def test_eval_secret_via_sp(mocker, mocked_cmd, http_error):
         cmd=mocked_cmd, vault_uri=vault_uri, keyvault_spc_secret_name=kv_spc_secret_name, sp_record=sp_record
     )
     assert_mocked_get_token_from_sp_credential()
-
-    assert mocked_send_raw_request.call_count == 1
-    assert mocked_send_raw_request.call_args.kwargs["cli_ctx"]
-    assert mocked_send_raw_request.call_args.kwargs["method"] == "GET"
-    assert mocked_send_raw_request.call_args.kwargs["headers"] == [f"Authorization=Bearer {mock_token}"]
-    assert (
-        mocked_send_raw_request.call_args.kwargs["url"] == f"{vault_uri}/secrets/{kv_spc_secret_name}?api-version=7.4"
+    mocked_send_raw_request.assert_called_once_with(
+        cli_ctx=mocked_cmd.cli_ctx,
+        method="GET",
+        headers=[f"Authorization=Bearer {mock_token}"],
+        url=f"{vault_uri}/secrets/{kv_spc_secret_name}?api-version=7.4",
     )
