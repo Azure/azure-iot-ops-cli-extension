@@ -235,10 +235,10 @@ def init(
         service_principal_app_id=service_principal_app_id,
         service_principal_object_id=service_principal_object_id,
         service_principal_secret=service_principal_secret,
-        service_principal_secret_valid_days=service_principal_secret_valid_days,
+        service_principal_secret_valid_days=int(service_principal_secret_valid_days),
         tls_ca_path=tls_ca_path,
         tls_ca_key_path=tls_ca_key_path,
         tls_ca_dir=tls_ca_dir,
-        tls_ca_valid_days=tls_ca_valid_days,
+        tls_ca_valid_days=int(tls_ca_valid_days),
         template_path=template_path,
     )
