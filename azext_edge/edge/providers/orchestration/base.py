@@ -60,6 +60,7 @@ IOT_OPERATIONS_EXTENSION_PREFIX = "microsoft.iotoperations"
 
 # TODO: pull out into keyvault file (with other related funcs)
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
+KEYVAULT_DATAPLANE_API_VERSION = "7.4"
 KEYVAULT_ARC_EXTENSION_VERSION = "1.5.1"
 
 PROPAGATION_DELAY_SEC = 20
@@ -397,19 +398,19 @@ def prepare_keyvault_secret(
 ) -> str:
     from azure.cli.core.util import send_raw_request
 
-    url = vault_uri + "/secrets/{0}{1}?api-version=7.4"
+    url = vault_uri + "/secrets/{0}{1}?api-version={2}"
     if keyvault_spc_secret_name:
         get_secret_version: dict = send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="GET",
-            url=url.format(keyvault_spc_secret_name, "/versions"),
+            url=url.format(keyvault_spc_secret_name, "/versions", KEYVAULT_DATAPLANE_API_VERSION),
             resource="https://vault.azure.net",
         ).json()
         if not get_secret_version.get("value"):
             send_raw_request(
                 cli_ctx=cmd.cli_ctx,
                 method="PUT",
-                url=url.format(keyvault_spc_secret_name, ""),
+                url=url.format(keyvault_spc_secret_name, "", KEYVAULT_DATAPLANE_API_VERSION),
                 resource="https://vault.azure.net",
                 body=json.dumps({"value": generate_secret()}),
             ).json()
@@ -418,7 +419,7 @@ def prepare_keyvault_secret(
         send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="PUT",
-            url=url.format(keyvault_spc_secret_name, ""),
+            url=url.format(keyvault_spc_secret_name, "", KEYVAULT_DATAPLANE_API_VERSION),
             resource="https://vault.azure.net",
             body=json.dumps({"value": generate_secret()}),
         ).json()
@@ -441,13 +442,13 @@ def eval_secret_via_sp(cmd, vault_uri: str, keyvault_spc_secret_name: str, sp_re
     )
     identity_logger.setLevel(identity_logger_level)
 
-    kv_secret_url = vault_uri + "/secrets/{0}?api-version=7.4"
+    kv_secret_url = vault_uri + "/secrets/{0}?api-version={1}"
     try:
         send_raw_request(
             cli_ctx=cmd.cli_ctx,
             method="GET",
             headers=[f"Authorization=Bearer {auth_token}"],  # Expected header format :)
-            url=kv_secret_url.format(keyvault_spc_secret_name),
+            url=kv_secret_url.format(keyvault_spc_secret_name, KEYVAULT_DATAPLANE_API_VERSION),
         )
     except HTTPError as e:
         error_response: Response = e.response
