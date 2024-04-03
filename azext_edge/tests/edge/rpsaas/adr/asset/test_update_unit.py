@@ -69,7 +69,7 @@ def test_update_asset(
     asset_helpers_fixture,
     req
 ):
-    _, patched_up = asset_helpers_fixture
+    patched_up = asset_helpers_fixture["update_properties"]
     # Required params
     asset_name = generate_random_string()
     # force show call to one branch

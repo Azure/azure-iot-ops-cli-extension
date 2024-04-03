@@ -318,7 +318,7 @@ class AssetProvider(ADRBaseProvider):
         )["properties"]
         sub_points = asset_props.get(sub_point_type, [])
         # don't want to lose the later caps
-        config_key = f"default{sub_point_type[0].capitalize()}{sub_point_type[1:]}Configuration"
+        config_key = f"default{sub_point_type[0].upper()}{sub_point_type[1:]}Configuration"
         default_configuration = asset_props[config_key]
         fieldnames = None
         if extension in [FileType.csv.value, FileType.portal_csv.value]:
@@ -501,8 +501,9 @@ def _build_ordered_csv_conversion_map(sub_point_type: str, portal_friendly: bool
     csv_conversion_map = [
         ("queueSize", "QueueSize" if portal_friendly else "Queue Size"),
         ("observabilityMode", "ObservabilityMode" if portal_friendly else "Observability Mode"),
-        ("samplingInterval", "Sampling Interval Milliseconds"),
     ]
+    if not portal_friendly or sub_point_type == "dataPoints":
+        csv_conversion_map.append(("samplingInterval", "Sampling Interval Milliseconds"))
     if not portal_friendly:
         csv_conversion_map.append(("capabilityId", "Capability Id"))
     if sub_point_type == "dataPoints":
@@ -558,9 +559,11 @@ def _convert_sub_points_to_csv(
     default_configuration = json.loads(default_configuration) if portal_friendly else {}
     for point in sub_points:
         configuration = point.pop(f"{sub_point_type[:-1]}Configuration", "{}")
+        point.update(json.loads(configuration))
         if portal_friendly:
             point.pop("capabilityId", None)
-        point.update(json.loads(configuration))
+            if sub_point_type == "events":
+                point.pop("samplingInterval", None)
         for asset_key, csv_key in csv_conversion_map.items():
             point[csv_key] = point.pop(asset_key, default_configuration.get(asset_key))
     return list(csv_conversion_map.values())

@@ -103,11 +103,10 @@ def test_build_ordered_csv_conversion_map(sub_point_type, portal_friendly):
     else:
         assert result["eventNotifier"] == ("EventNotifier" if portal_friendly else "Event Notifier")
         expected_order = ["eventNotifier"]
-    expected_order.extend(["name", "queueSize", "observabilityMode", "samplingInterval"])
+    expected_order.extend(["name", "queueSize", "observabilityMode"])
 
     assert result["queueSize"] == ("QueueSize" if portal_friendly else "Queue Size")
     assert result["observabilityMode"] == ("ObservabilityMode" if portal_friendly else "Observability Mode")
-    assert result["samplingInterval"] == "Sampling Interval Milliseconds"
 
     expected_name = "Name"
     if portal_friendly:
@@ -115,8 +114,12 @@ def test_build_ordered_csv_conversion_map(sub_point_type, portal_friendly):
         expected_name = "EventName"
         if sub_point_type == "dataPoints":
             expected_name = "TagName"
+            expected_order.append("samplingInterval")
+            assert result["samplingInterval"] == "Sampling Interval Milliseconds"
     else:
         assert result["capabilityId"] == "Capability Id"
+        assert result["samplingInterval"] == "Sampling Interval Milliseconds"
+        expected_order.append("samplingInterval")
         expected_order.append("capabilityId")
 
     assert result["name"] == expected_name

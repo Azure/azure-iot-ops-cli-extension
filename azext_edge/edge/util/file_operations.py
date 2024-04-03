@@ -31,9 +31,8 @@ def convert_file_content_to_json(file_path: str):
             raise FileOperationError(f"Invalid YAML syntax: {e}")
     elif extension == "csv":
         try:
-            with open(file_path, "r") as f:
-                reader = csv.DictReader(f)
-                result = [row for row in reader]
+            with open(file_path, "r", encoding="utf-8") as f:
+                result = list(csv.DictReader(f))
             return result
         except csv.Error as e:
             raise FileOperationError(f"Invalid CSV syntax: {e}")
@@ -55,7 +54,7 @@ def dump_content_to_file(
             raise FileExistsError(f"File {file_path} already exists. Please choose another file name or add replace.")
         logger.warning(f"The file {file_path} will be overwritten.")
     if extension.endswith("csv"):
-        with open(file_path, "w", newline="") as f:
+        with open(file_path, "w", newline="", encoding="utf-8") as f:
             if not fieldnames:
                 fieldnames = content[0].keys()
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -68,7 +67,7 @@ def dump_content_to_file(
         content = json.dumps(content, indent=2)
     elif extension == "yaml":
         content = yaml.dump(content)
-    with open(file_path, "w") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
 
     return file_path

@@ -109,6 +109,25 @@ def mocked_build_query(mocker, request):
     yield build_query_mock
 
 
+@pytest.fixture
+def mocked_dump_content_to_file(mocker):
+    from ..generators import generate_random_string
+    yield mocker.patch(
+        "azext_edge.edge.util.dump_content_to_file", return_value=generate_random_string(), autospec=True
+    )
+
+
+@pytest.fixture
+def mocked_convert_file_content_to_json(mocker, request):
+    from ..generators import generate_random_string
+    request_params = getattr(request, "param", generate_random_string())
+    yield mocker.patch(
+        "azext_edge.edge.util.convert_file_content_to_json",
+        return_value=request_params,
+        autospec=True
+    )
+
+
 # Int testing
 @pytest.fixture(scope="session")
 def settings():

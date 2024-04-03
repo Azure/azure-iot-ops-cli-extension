@@ -10,11 +10,9 @@ from .....generators import generate_random_string
 
 @pytest.fixture()
 def asset_helpers_fixture(mocker, request):
-    # TODO: see if there is a nicer way to mass mock helper funcs
-    helper_fixtures = []
+    request_params = getattr(request, "param", {})
     patched_sp = mocker.patch(f"{ASSETS_PATH}._process_asset_sub_points")
-    patched_sp.return_value = request.param["process_asset_sub_points"]
-    helper_fixtures.append(patched_sp)
+    patched_sp.return_value = request_params.get("process_asset_sub_points", generate_random_string())
 
     def mock_update_properties(properties, **kwargs):
         """Minimize how much to check by setting everything update properties should touch to None."""
@@ -22,12 +20,21 @@ def asset_helpers_fixture(mocker, request):
             properties.pop(k, None)
         properties.pop("defaultDataPointsConfiguration", None)
         properties.pop("defaultEventsConfiguration", None)
-        properties["result"] = request.param["update_properties"]
+        properties["result"] = request_params.get("update_properties", generate_random_string())
 
     patched_up = mocker.patch(f"{ASSETS_PATH}._update_properties")
     patched_up.side_effect = mock_update_properties
-    helper_fixtures.append(patched_up)
-    yield helper_fixtures
+
+    patched_to_csv = mocker.patch(f"{ASSETS_PATH}._convert_sub_points_to_csv")
+    patched_to_csv.return_value = request_params.get("convert_sub_points_to_csv", generate_random_string())
+
+    patched_from_csv = mocker.patch(f"{ASSETS_PATH}._convert_sub_points_from_csv")
+    yield {
+        "process_asset_sub_points": patched_sp,
+        "update_properties": patched_up,
+        "convert_sub_points_to_csv": patched_to_csv,
+        "convert_sub_points_from_csv": patched_from_csv
+    }
 
 
 # Paths for mocking
