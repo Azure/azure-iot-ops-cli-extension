@@ -92,7 +92,7 @@ def mocked_cluster_resources(request, mocker):
         AKRI_API_V0,
         LNM_API_V1B1,
         DEVICEREGISTRY_API_V1,
-        BILLING_API_V1,
+        CLUSTER_CONFIG_API_V1,
     )
 
     requested_resource_apis = getattr(request, "param", [])
@@ -158,7 +158,7 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("Asset"))
             v1_resources.append(_get_api_resource("AssetEndpointProfile"))
 
-        if r == BILLING_API_V1:
+        if r == CLUSTER_CONFIG_API_V1:
             v1_resources.append(_get_api_resource("BillingError"))
             v1_resources.append(_get_api_resource("BillingSettings"))
             v1_resources.append(_get_api_resource("BillingUsage"))

@@ -14,7 +14,8 @@ class BillingResourceKinds(ListableEnum):
     BILLINGSTORAGE = "billingstorage"
     BILLINGUSAGE = "billingusage"
 
+# TODO: More resource kinds to be added under clusterconfig
 
-BILLING_API_V1 = EdgeResourceApi(
+CLUSTER_CONFIG_API_V1 = EdgeResourceApi(
     group="clusterconfig.azure.com", version="v1", moniker="clusterconfig"
 )

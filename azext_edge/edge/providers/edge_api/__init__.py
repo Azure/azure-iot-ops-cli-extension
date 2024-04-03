@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from .base import EdgeResourceApi, EdgeApiManager
-from .billing import BILLING_API_V1, BillingResourceKinds
+from .clusterconfig import CLUSTER_CONFIG_API_V1, BillingResourceKinds
 from .mq import MQ_ACTIVE_API, MQ_API_V1B1, MqResourceKinds
 from .dataprocessor import DATA_PROCESSOR_API_V1, DataProcessorResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
@@ -17,7 +17,7 @@ from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
 
 __all__ = [
     "BillingResourceKinds",
-    "BILLING_API_V1",
+    "CLUSTER_CONFIG_API_V1",
     "DataProcessorResourceKinds",
     "DATA_PROCESSOR_API_V1",
     "EdgeResourceApi",

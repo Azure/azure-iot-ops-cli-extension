@@ -24,7 +24,15 @@ generic = client.ApiClient()
 DAY_IN_SECONDS: int = 60 * 60 * 24
 
 
-def process_crd(group: str, version: str, kind: str, plural: str, api_moniker: str, file_prefix: Optional[str] = None):
+def process_crd(
+    group: str,
+    version: str,
+    kind: str,
+    plural: str,
+    api_moniker: str,
+    child_group: str = "",
+    file_prefix: Optional[str] = None,
+) -> List[dict]:
     result: dict = get_custom_objects(
         group=group,
         version=version,
@@ -40,13 +48,14 @@ def process_crd(group: str, version: str, kind: str, plural: str, api_moniker: s
         namespace = r["metadata"]["namespace"]
         namespaces.append(namespace)
         name = r["metadata"]["name"]
-        processed.append({"data": r, "zinfo": f"{namespace}/{api_moniker}/{file_prefix}.{version}.{name}.yaml"})
+        processed.append({"data": r, "zinfo": f"{namespace}/{api_moniker}/{child_group}{file_prefix}.{version}.{name}.yaml"})
 
     return processed
 
 
 def process_v1_pods(
     resource_api: EdgeResourceApi,
+    child_group: str = "",
     capture_previous_logs: bool = True,
     include_metrics: bool = False,
     since_seconds: int = DAY_IN_SECONDS,
@@ -86,7 +95,7 @@ def process_v1_pods(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=p),
-                "zinfo": f"{pod_namespace}/{resource_api.moniker}/pod.{pod_name}.yaml",
+                "zinfo": f"{pod_namespace}/{resource_api.moniker}/{child_group}pod.{pod_name}.yaml",
             }
         )
         pod_spec: V1PodSpec = p.spec
@@ -107,6 +116,7 @@ def process_v1_pods(
                 v1_api=v1_api,
                 since_seconds=since_seconds,
                 capture_previous_logs=capture_previous_logs,
+                child_group=child_group,
             )
         )
 
@@ -120,7 +130,7 @@ def process_v1_pods(
                     processed.append(
                         {
                             "data": metric,
-                            "zinfo": f"{pod_namespace}/{resource_api.moniker}/pod.{pod_name}.metric.yaml",
+                            "zinfo": f"{pod_namespace}/{resource_api.moniker}/{child_group}pod.{pod_name}.metric.yaml",
                         }
                     )
             except ApiException as e:
@@ -131,11 +141,12 @@ def process_v1_pods(
 
 def process_deployments(
     resource_api: EdgeResourceApi,
-    label_selector: str = None,
-    field_selector: str = None,
+    child_group: str = "",
     return_namespaces: bool = False,
-    prefix_names: List[str] = None,
-):
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+) -> List[dict]:
     from kubernetes.client.models import V1DeploymentList
 
     v1_apps = client.AppsV1Api()
@@ -145,10 +156,10 @@ def process_deployments(
     namespace_pods_work = {}
 
     processed = _process_kubernetes_resources(
+        child_group=child_group,
         resources=deployments,
         resource_api=resource_api,
         prefix_names=prefix_names,
-        resource_type="deployment",
         kind="Deployment",
     )
 
@@ -166,79 +177,83 @@ def process_deployments(
 
 def process_statefulset(
     resource_api: EdgeResourceApi,
-    label_selector: str = None,
-    field_selector: str = None,
-):
+    child_group: str = "",
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+) -> List[dict]:
     v1_apps = client.AppsV1Api()
 
     return _process_kubernetes_resources(
+        child_group=child_group,
         resources=v1_apps.list_stateful_set_for_all_namespaces(
             label_selector=label_selector,
             field_selector=field_selector
         ),
         resource_api=resource_api,
-        resource_type="statefulset",
         kind="Statefulset",
     )
 
 
 def process_services(
     resource_api: EdgeResourceApi,
-    label_selector: str = None,
-    field_selector: str = None,
-    prefix_names: List[str] = None,
-):
+    child_group: str = "",
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+) -> List[dict]:
     v1_api = client.CoreV1Api()
 
     return _process_kubernetes_resources(
+        child_group=child_group,
         resources=v1_api.list_service_for_all_namespaces(
             label_selector=label_selector,
             field_selector=field_selector
         ),
         resource_api=resource_api,
         prefix_names=prefix_names,
-        resource_type="service",
         kind="Service",
     )
 
 
 def process_replicasets(
     resource_api: EdgeResourceApi,
-    label_selector: str = None,
-    prefix_names: List[str] = None,
-):
+    child_group: str = "",
+    label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+) -> List[dict]:
     v1_apps = client.AppsV1Api()
 
     return _process_kubernetes_resources(
+        child_group=child_group,
         resources=v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector),
         resource_api=resource_api,
         prefix_names=prefix_names,
-        resource_type="replicaset",
         kind="Replicaset",
     )
 
 
 def process_daemonsets(
     resource_api: EdgeResourceApi,
-    label_selector: str = None,
-    field_selector: str = None,
-    prefix_names: List[str] = None,
-):
+    child_group: str = "",
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+) -> List[dict]:
     v1_apps = client.AppsV1Api()
 
     return _process_kubernetes_resources(
+        child_group=child_group,
         resources=v1_apps.list_daemon_set_for_all_namespaces(
             label_selector=label_selector,
             field_selector=field_selector
         ),
         resource_api=resource_api,
         prefix_names=prefix_names,
-        resource_type="daemonset",
         kind="Daemonset",
     )
 
 
-def process_nodes():
+def process_nodes() -> dict:
     return {
         "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_node()),
         "zinfo": "nodes.yaml",
@@ -256,7 +271,7 @@ def get_mq_namespaces() -> List[str]:
     return namespaces
 
 
-def process_events():
+def process_events() -> List[dict]:
     event_content = []
 
     core_v1_api = client.CoreV1Api()
@@ -270,7 +285,7 @@ def process_events():
     return event_content
 
 
-def process_storage_classes():
+def process_storage_classes() -> List[dict]:
     storage_class_content = []
 
     storage_v1_api = client.StorageV1Api()
@@ -286,65 +301,72 @@ def process_storage_classes():
 
 def process_persistent_volume_claims(
     resource_api: EdgeResourceApi,
-    label_selector: str = None,
-    field_selector: str = None,
-    prefix_names: List[str] = None,
-):
+    child_group: str = "",
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+) -> List[dict]:
     v1_api = client.CoreV1Api()
 
     return _process_kubernetes_resources(
+        child_group=child_group,
         resources=v1_api.list_persistent_volume_claim_for_all_namespaces(
             label_selector=label_selector,
             field_selector=field_selector
         ),
         resource_api=resource_api,
         prefix_names=prefix_names,
-        resource_type="pvc",
         kind="PersistentVolumeClaim",
     )
 
 
 def process_jobs(
     resource_api: EdgeResourceApi,
-    label_selector: str = None,
-    field_selector: str = None,
-    prefix_names: List[str] = None,
-):
+    child_group: str = "",
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+) -> List[dict]:
     batch_v1_api = client.BatchV1Api()
 
     return _process_kubernetes_resources(
+        child_group=child_group,
         resources=batch_v1_api.list_job_for_all_namespaces(
             label_selector=label_selector,
             field_selector=field_selector
         ),
         resource_api=resource_api,
         prefix_names=prefix_names,
-        resource_type="job",
         kind="Job",
     )
 
 
 def process_cron_jobs(
     resource_api: EdgeResourceApi,
-    label_selector: str = None,
-    field_selector: str = None,
-    prefix_names: List[str] = None,
-):
+    child_group: str = "",
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+) -> List[dict]:
     batch_v1_api = client.BatchV1Api()
 
     return _process_kubernetes_resources(
+        child_group=child_group,
         resources=batch_v1_api.list_cron_job_for_all_namespaces(
             label_selector=label_selector,
             field_selector=field_selector
         ),
         resource_api=resource_api,
         prefix_names=prefix_names,
-        resource_type="cronjob",
         kind="CronJob",
     )
 
 
-def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional[Dict[str, str]] = None):
+def assemble_crd_work(
+    apis: Iterable[EdgeResourceApi],
+    child_group: str = "",
+    file_prefix_map: Optional[Dict[str, str]] = None,
+) -> dict:
     if not file_prefix_map:
         file_prefix_map = {}
 
@@ -354,6 +376,7 @@ def assemble_crd_work(apis: Iterable[EdgeResourceApi], file_prefix_map: Optional
             file_prefix = file_prefix_map.get(kind)
             result[f"{api.moniker} {api.version} {kind}"] = partial(
                 process_crd,
+                child_group=child_group,
                 group=api.group,
                 version=api.version,
                 kind=kind,
@@ -397,6 +420,7 @@ def _capture_pod_container_logs(
     v1_api: client.CoreV1Api,
     capture_previous_logs: bool = True,
     since_seconds: int = DAY_IN_SECONDS,
+    child_group: Optional[str] = None,
 ) -> List[dict]:
 
     processed = []
@@ -423,7 +447,7 @@ def _capture_pod_container_logs(
                         "data": log,
                         "zinfo": (
                             f"{pod_namespace}/{resource_api.moniker}"
-                            f"/pod.{pod_name}.{container.name}.{zinfo_previous_segment}log"
+                            f"/{child_group}pod.{pod_name}.{container.name}.{zinfo_previous_segment}log"
                         ),
                     }
                 )
@@ -434,18 +458,18 @@ def _capture_pod_container_logs(
 
 
 def _process_kubernetes_resources(
-    resources: Any,
+    resources: object,
     resource_api: EdgeResourceApi,
-    prefix_names: List[str] = None,
-    resource_type: str = None,
-    kind: str = None,
-):
+    child_group: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+    kind: Optional[str] = None,
+) -> List[dict]:
     processed = []
 
     if not prefix_names:
         prefix_names = []
 
-    logger.info(f"Detected {len(resources.items)} {resource_type}s.")
+    logger.info(f"Detected {len(resources.items)} {kind}s.")
     for resource in resources.items:
         r = resource
         r.api_version = resources.api_version
@@ -459,10 +483,16 @@ def _process_kubernetes_resources(
             if not any(matched_prefix):
                 continue
 
+        if len(kind) > 12:
+            # get every first capital letter in the kind
+            resource_type = "".join([c for c in kind if c.isupper()]).lower()
+        else:
+            resource_type = kind.lower()
+
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=r),
-                "zinfo": f"{resource_namespace}/{resource_api.moniker}/{resource_type}.{resource_name}.yaml",
+                "zinfo": f"{resource_namespace}/{resource_api.moniker}/{child_group}{resource_type}.{resource_name}.yaml",
             }
         )
 

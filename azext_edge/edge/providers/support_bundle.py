@@ -13,7 +13,7 @@ from rich.console import Console, NewLine
 
 from ..common import OpsServiceType
 from ..providers.edge_api import (
-    BILLING_API_V1,
+    CLUSTER_CONFIG_API_V1,
     DATA_PROCESSOR_API_V1,
     MQ_API_V1B1,
     LNM_API_V1B1,
@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 
 console = Console()
 
-COMPAT_BILLING_APIS = EdgeApiManager(resource_apis=[BILLING_API_V1])
+COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
 COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DATA_PROCESSOR_APIS = EdgeApiManager(resource_apis=[DATA_PROCESSOR_API_V1])
@@ -48,7 +48,7 @@ def build_bundle(
     from rich.progress import Progress
     from rich.table import Table
 
-    from .support.billing import prepare_bundle as prepare_billing_bundle
+    from .support.clusterconfig.billing import prepare_bundle as prepare_billing_bundle
     from .support.dataprocessor import prepare_bundle as prepare_dataprocessor_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.lnm import prepare_bundle as prepare_lnm_bundle
@@ -59,11 +59,13 @@ def build_bundle(
     from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.otel import prepare_bundle as prepare_otel_bundle
 
+    from .support.clusterconfig.billing import BILLING_RESOURCE_KIND
+
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
-        OpsServiceType.billing.value: {"apis": COMPAT_BILLING_APIS, "prepare_bundle": prepare_billing_bundle},
+        OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
         OpsServiceType.mq.value: {"apis": COMPAT_MQ_APIS, "prepare_bundle": prepare_mq_bundle},
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
@@ -101,6 +103,8 @@ def build_bundle(
                     bundle = bundle_method(deployed_apis)
                 elif service_moniker == OpsServiceType.mq.value:
                     bundle = bundle_method(deployed_apis, log_age_seconds, include_mq_traces)
+                elif service_moniker == OpsServiceType.billing.value:
+                    bundle = bundle_method(deployed_apis, log_age_seconds, child_group=BILLING_RESOURCE_KIND)
                 else:
                     bundle = bundle_method(deployed_apis, log_age_seconds)
 
