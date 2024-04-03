@@ -426,10 +426,10 @@ def load_iotops_help():
             az iot ops asset data-point export --asset {asset} -g {resource_group}
         - name: Export all data points in an asset in CSV format in a specific output directory.
           text: >
-            az iot ops asset data point export --asset {asset} -g {resource_group} --format csv --output-dir {output_directory}
+            az iot ops asset data-point export --asset {asset} -g {resource_group} --format csv --output-dir {output_directory}
         - name: Export all data points in an asset in CSV format that can be uploaded via the DOE portal.
           text: >
-            az iot ops asset data point export --asset {asset} -g {resource_group} --format portal-csv
+            az iot ops asset data-point export --asset {asset} -g {resource_group} --format portal-csv
         - name: Export all data points in an asset in YAML format. Replace the file if one is present already.
           text: >
             az iot ops asset data-point export --asset {asset} -g {resource_group} --format yaml --replace
