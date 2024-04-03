@@ -430,7 +430,7 @@ def eval_secret_via_sp(cmd, vault_uri: str, keyvault_spc_secret_name: str, sp_re
     from azure.cli.core.util import send_raw_request
 
     identity_logger = logging.getLogger("azure.identity")
-    identity_logger_level = identity_logger.getEffectiveLevel()
+    identity_logger_level = identity_logger.level
     identity_logger.setLevel(logging.ERROR)
 
     auth_token = get_token_from_sp_credential(
