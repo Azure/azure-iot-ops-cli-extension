@@ -449,9 +449,9 @@ def load_iotops_arguments(self, _):
             arg_group="Key Vault CSI Driver",
         )
         context.argument(
-            "keyvault_sat_secret_name",
-            options_list=["--kv-sat-secret-name"],
-            help="The Key Vault secret *name* to use for the IoT Operations service account (SAT). "
+            "keyvault_spc_secret_name",
+            options_list=["--kv-spc-secret-name"],
+            help="The Key Vault secret **name** to use as the default SPC secret. "
             "If the secret does not exist, it will be created with a cryptographically secure placeholder value.",
             arg_group="Key Vault CSI Driver",
         )
@@ -471,26 +471,27 @@ def load_iotops_arguments(self, _):
         context.argument(
             "service_principal_app_id",
             options_list=["--sp-app-id"],
-            help="Service principal app Id. If provided it will be used for CSI driver setup. "
+            help="Service principal app Id. If provided will be used for CSI driver setup. "
             "Otherwise an app registration will be created. "
-            "!Required! if the logged in principal does not have permissions to query graph.",
+            "**Required** if the logged in principal does not have permissions to query graph.",
             arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "service_principal_object_id",
             options_list=["--sp-object-id"],
-            help="Service principal object Id. If provided it will be used for CSI driver setup. "
-            "Otherwise a service principal will be queried and in necessary will be created. "
-            "!Required! if the logged in principal does not have permissions to query graph.",
+            help="Service principal (sp) object Id. If provided will be used for CSI driver setup. "
+            "Otherwise the object Id will be queried from the app Id - creating the sp if one does not exist. "
+            "**Required** if the logged in principal does not have permissions to query graph. "
+            "Use `az ad sp show --id <app Id> --query id -o tsv` to produce the proper object Id. "
+            "Alternatively using Portal you can navigate to Enterprise Applications in your Entra Id tenant.",
             arg_group="Key Vault CSI Driver",
         )
         context.argument(
             "service_principal_secret",
             options_list=["--sp-secret"],
             help="The secret corresponding to the provided service principal app Id. "
-            "If provided it will be used for CSI driver setup. Otherwise a new secret "
-            "will be requested from MS graph. "
-            "!Required! if the logged in principal does not have permissions to query graph.",
+            "If provided will be used for CSI driver setup. Otherwise a new secret will be created. "
+            "**Required** if the logged in principal does not have permissions to query graph.",
             arg_group="Key Vault CSI Driver",
         )
         context.argument(
