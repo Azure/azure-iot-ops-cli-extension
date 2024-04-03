@@ -8,13 +8,13 @@ from .base import EdgeResourceApi
 from ...common import ListableEnum
 
 
+# TODO: More resource kinds to be added under clusterconfig
 class BillingResourceKinds(ListableEnum):
     BILLINGERROR = "billingerror"
     BILLINGSETTINGS = "billingsettings"
     BILLINGSTORAGE = "billingstorage"
     BILLINGUSAGE = "billingusage"
 
-# TODO: More resource kinds to be added under clusterconfig
 
 CLUSTER_CONFIG_API_V1 = EdgeResourceApi(
     group="clusterconfig.azure.com", version="v1", moniker="clusterconfig"

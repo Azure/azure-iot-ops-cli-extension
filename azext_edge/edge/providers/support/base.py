@@ -7,7 +7,7 @@
 from os import makedirs
 from os.path import abspath, expanduser, isdir
 from pathlib import PurePath
-from typing import Any, List, Dict, Optional, Iterable
+from typing import List, Dict, Optional, Iterable
 from functools import partial
 
 from knack.log import get_logger
@@ -48,7 +48,10 @@ def process_crd(
         namespace = r["metadata"]["namespace"]
         namespaces.append(namespace)
         name = r["metadata"]["name"]
-        processed.append({"data": r, "zinfo": f"{namespace}/{api_moniker}/{child_group}{file_prefix}.{version}.{name}.yaml"})
+        processed.append({
+            "data": r,
+            "zinfo": f"{namespace}/{api_moniker}/{child_group}{file_prefix}.{version}.{name}.yaml"
+        })
 
     return processed
 
@@ -492,7 +495,8 @@ def _process_kubernetes_resources(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=r),
-                "zinfo": f"{resource_namespace}/{resource_api.moniker}/{child_group}{resource_type}.{resource_name}.yaml",
+                "zinfo": f"{resource_namespace}/{resource_api.moniker}/"
+                f"{child_group}{resource_type}.{resource_name}.yaml",
             }
         )
 

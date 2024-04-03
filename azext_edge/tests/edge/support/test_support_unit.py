@@ -37,7 +37,6 @@ from azext_edge.edge.providers.support.akri import (
 from azext_edge.edge.providers.support.clusterconfig.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
     ARC_BILLING_EXTENSION_COMP_LABEL,
-    BILLING_RESOURCE_KIND,
 )
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.dataprocessor import (
@@ -134,9 +133,14 @@ def test_create_bundle(
 
         for kind in api.kinds:
             target_file_prefix = None
-            
+
             assert_get_custom_resources(
-                mocked_get_custom_objects, mocked_zipfile, api, kind, file_prefix=target_file_prefix, child_group=child_group
+                mocked_get_custom_objects,
+                mocked_zipfile,
+                api,
+                kind,
+                file_prefix=target_file_prefix,
+                child_group=child_group
             )
 
         if api in [CLUSTER_CONFIG_API_V1]:
