@@ -518,7 +518,7 @@ def test_work_order(
     mocked_connected_cluster_extensions: Mock,
     mocked_verify_custom_locations_enabled: Mock,
     mocked_verify_arc_cluster_config: Mock,
-    mocked_test_secret_via_sp: Mock,
+    mocked_eval_secret_via_sp: Mock,
     spy_get_current_template_copy: Mock,
     cluster_name,
     cluster_namespace,
@@ -668,12 +668,12 @@ def test_work_order(
         assert mocked_configure_cluster_secrets.call_args.kwargs["keyvault_resource_id"] == keyvault_resource_id
         assert mocked_configure_cluster_secrets.call_args.kwargs["sp_record"]
 
-        mocked_test_secret_via_sp.assert_called_once()
-        assert mocked_test_secret_via_sp.call_args.kwargs["vault_uri"] == expected_vault_uri
+        mocked_eval_secret_via_sp.assert_called_once()
+        assert mocked_eval_secret_via_sp.call_args.kwargs["vault_uri"] == expected_vault_uri
         assert (
-            mocked_test_secret_via_sp.call_args.kwargs["keyvault_spc_secret_name"] == expected_keyvault_spc_secret_name
+            mocked_eval_secret_via_sp.call_args.kwargs["keyvault_spc_secret_name"] == expected_keyvault_spc_secret_name
         )
-        assert mocked_test_secret_via_sp.call_args.kwargs["sp_record"]
+        assert mocked_eval_secret_via_sp.call_args.kwargs["sp_record"]
     else:
         if not nothing_to_do:
             assert "csiDriver" not in result
@@ -682,7 +682,7 @@ def test_work_order(
         mocked_prepare_keyvault_secret.assert_not_called()
         mocked_provision_akv_csi_driver.assert_not_called()
         mocked_configure_cluster_secrets.assert_not_called()
-        mocked_test_secret_via_sp.assert_not_called()
+        mocked_eval_secret_via_sp.assert_not_called()
 
     if not no_tls:
         assert result["tls"]["aioTrustConfigMap"]  # TODO

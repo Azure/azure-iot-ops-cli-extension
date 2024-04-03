@@ -878,6 +878,5 @@ def test_eval_secret_via_sp(mocker, mocked_cmd, http_error):
     assert mocked_send_raw_request.call_args.kwargs["method"] == "GET"
     assert mocked_send_raw_request.call_args.kwargs["headers"] == [f"Authorization=Bearer {mock_token}"]
     assert (
-        mocked_send_raw_request.call_args.kwargs["url"]
-        == f"{vault_uri}/secrets/{kv_spc_secret_name}/versions?api-version=7.4"
+        mocked_send_raw_request.call_args.kwargs["url"] == f"{vault_uri}/secrets/{kv_spc_secret_name}?api-version=7.4"
     )

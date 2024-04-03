@@ -216,8 +216,8 @@ def mocked_verify_arc_cluster_config(mocker):
 
 
 @pytest.fixture
-def mocked_test_secret_via_sp(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.test_secret_via_sp", autospec=True)
+def mocked_eval_secret_via_sp(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.eval_secret_via_sp", autospec=True)
     yield patched
 
 
