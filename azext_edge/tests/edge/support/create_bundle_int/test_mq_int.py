@@ -22,8 +22,11 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     command = f"az iot ops support create-bundle --mq-traces {mq_traces} --ops-service {ops_service}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service, mq_traces=mq_traces)
-    traces = file_map.pop("trace", {})
-    assert "diagnostic_metrics" in file_map
+    traces = file_map.pop("traces", {})
+    # diagnostic_metrics.txt
+    diagnostic = file_map.pop("diagnostic_metrics")
+    assert len(diagnostic) == 1
+    assert diagnostic[0]["extension"] == "txt"
 
     check_mq_types(file_map)
 
@@ -63,15 +66,14 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     expected_types = list(expected_file_objs.keys()) + MqResourceKinds.list()
     assert set(file_map.keys()).issubset(set(expected_types))
 
-    check_non_custom_file_objs(file_map, expected_file_objs)
-
     # There is a chance that traces are not present even if mq_traces is true
     if not mq_traces:
         assert not traces
 
     if traces:
+        # one trace should have two files - grab by id
         id_check = {}
-        for file in traces:
+        for file in traces["trace"]:
             assert file["action"] in ["connect", "ping", "puback", "publish", "subscribe", "unsubscribe"]
             check_name(file["name"], expected_file_objs["pod"])
 
@@ -85,6 +87,8 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
         for extension_dict in id_check.values():
             assert extension_dict.get("json")
             assert extension_dict.get("pb")
+
+    check_non_custom_file_objs(file_map, expected_file_objs)
 
 
 def check_mq_types(file_map):

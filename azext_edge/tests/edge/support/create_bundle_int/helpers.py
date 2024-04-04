@@ -24,10 +24,10 @@ def assert_file_names(files: List[str]):
         extension = name.pop(-1)
         # trace files
         if extension == "pb":
-            assert extension == "otlp"
+            assert name[-1] == "otlp"
             continue
-        elif extension == "json":
-            assert extension == "tempo"
+        if extension == "json":
+            assert name[-1] == "tempo"
             continue
 
         assert extension in ["log", "txt", "yaml"]
@@ -74,6 +74,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
         if file_type not in ["daemonset", "deployment", "pod", "pvc", "replicaset", "service", "statefulset"]:
             if name_obj["extension"] != "yaml":
                 # check diagnositcs.txt later
+                file_name_objs[file_type].append(name_obj)
                 continue
             name_obj["version"] = name.pop(0)
             assert name_obj["version"].startswith("v")
@@ -181,19 +182,16 @@ def filter_duplicate_file_names(files):
     for name in files:
         # make sure multiple mq backend/frontend pods/statefulsets aren't counted more
         # than once
-        if name.startswith("aio-mq-dmqtt-backend"):
-            if "aio-mq-dmqtt-backend" not in filtered_files:
-                filtered_files.append("aio-mq-dmqtt-backend")
-        elif name.startswith("aio-mq-dmqtt-frontend"):
-            if "aio-mq-dmqtt-frontend" not in filtered_files:
-                filtered_files.append("aio-mq-dmqtt-frontend")
-        elif name.startswith("aio-orc-api"):
-            if "aio-orc-api" not in filtered_files:
-                filtered_files.append("aio-orc-api")
-        else:
-            name = name.split(".")[0]
-            if name not in filtered_files:
-                filtered_files.append(name)
+        repeated = False
+        for repeatable in ["aio-mq-dmqtt-backend", "aio-mq-dmqtt-frontend", "aio-mq-operator", "aio-orc-api"]:
+            if name.startswith(repeatable):
+                repeated = True
+                if repeatable not in filtered_files:
+                    filtered_files.append(repeatable)
+                break
+        name = name.split(".")[0]
+        if name not in filtered_files and not repeated:
+            filtered_files.append(name)
     return filtered_files
 
 
