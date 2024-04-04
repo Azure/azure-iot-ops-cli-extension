@@ -327,4 +327,14 @@ AIO_LNM_PREFIX = "aio-lnm"
 
 MIN_K8S_VERSION = "1.20"
 
+# Node prerequisite constants
+
+MIN_NODE_MEMORY = "16G"
+MIN_NODE_STORAGE = "30G"
+MIN_NODE_VCPU = "4"
+AIO_SUPPORTED_ARCHITECTURES = ["amd64", "arm64"]
+
+DISPLAY_BYTES_PER_GIGABYTE = 10 ** 9
+
+# UI constants
 PADDING_SIZE = 4
