@@ -20,7 +20,12 @@ jobs:
       id-token: write
     outputs:
       upload_success: ${{ steps.upload.outputs.upload_success }}
-    runs-on: ubuntu-latest # [self-hosted, 1ES.Pool=iotupx-github-hosted-pool, 1ES.ImageOverride=MMSUbuntu20.04]
+    runs-on:
+      [
+        self-hosted,
+        1ES.Pool=iotupx-github-hosted-pool,
+        1ES.ImageOverride=MMSUbuntu20.04,
+      ]
     steps:
       - name: Download wheel
         id: wheel

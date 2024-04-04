@@ -4,7 +4,7 @@ on:
 
 jobs:
   build:
-      runs-on: ubuntu-latest # [self-hosted, 1ES.Pool=iotupx-github-hosted-pool, 1ES.ImageOverride=MMSUbuntu20.04]
+      runs-on: [self-hosted, 1ES.Pool=iotupx-github-hosted-pool, 1ES.ImageOverride=MMSUbuntu20.04]
       permissions:
         contents: read
       steps:
