@@ -9,8 +9,8 @@ from os import mkdir, path
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from .helpers import (
+    assert_file_names,
     check_non_custom_file_objs,
-    convert_file_names,
     get_file_map,
     run_bundle_command,
     AUTO_EXTRACTED_PATH,
@@ -65,8 +65,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         mq_level = walk_result.pop(path.join(EXTRACTED_PATH, namespace, "mq", "traces"), {})
         if mq_level:
             assert not mq_level["folders"]
-            for name in mq_level["files"]:
-                assert name.split(".")[-1] in ["json", "pb"]
+            assert_file_names(mq_level["files"])
             # make sure level 2 doesnt get messed up
             assert walk_result[path.join(EXTRACTED_PATH, namespace, "mq")]["folders"] == ["traces"]
             walk_result[path.join(EXTRACTED_PATH, namespace, "mq")]["folders"] = []
@@ -75,7 +74,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     assert len(walk_result) == len(expected_services)
     for directory in walk_result:
         assert not walk_result[directory]["folders"]
-        convert_file_names(walk_result[directory]["files"])
+        assert_file_names(walk_result[directory]["files"])
 
     # check service is within auto
     if ops_service != OpsServiceType.auto.value:

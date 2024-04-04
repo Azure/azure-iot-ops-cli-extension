@@ -6,6 +6,7 @@
 
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
+from azext_edge.edge.providers.edge_api import ORC_API_V1, OrcResourceKinds
 from .helpers import check_non_custom_file_objs, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
@@ -19,15 +20,12 @@ def test_create_bundle_orc(init_setup, tracked_files):
     file_map = get_file_map(walk_result, ops_service)
 
     # TODO: add in expected for each
-    # orc
-    # do we always have these? What cases do they have them vs not?
-    # how can names change?
-    for config in file_map.get("instance", []):
-        assert config["version"] == "v1"
-    for config in file_map.get("solution", []):
-        assert config["version"] == "v1"
-    for config in file_map.get("target", []):
-        assert config["version"] == "v1"
+    for config in file_map.get(OrcResourceKinds.INSTANCE.value, []):
+        assert config["version"] == ORC_API_V1.version
+    for config in file_map.get(OrcResourceKinds.SOLUTION.value, []):
+        assert config["version"] == ORC_API_V1.version
+    for config in file_map.get(OrcResourceKinds.TARGET.value, []):
+        assert config["version"] == ORC_API_V1.version
 
     expected_file_objs = {
         "deployment": [
@@ -58,5 +56,7 @@ def test_create_bundle_orc(init_setup, tracked_files):
             "aio-orc-webhook-service"
         ]
     }
+    expected_types = list(expected_file_objs.keys()) + OrcResourceKinds.list()
+    assert set(file_map.keys()).issubset(set(expected_types))
 
     check_non_custom_file_objs(file_map, expected_file_objs)

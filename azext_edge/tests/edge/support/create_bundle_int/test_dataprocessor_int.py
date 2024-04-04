@@ -6,6 +6,7 @@
 
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
+from azext_edge.edge.providers.edge_api import DATA_PROCESSOR_API_V1, DataProcessorResourceKinds
 from .helpers import check_non_custom_file_objs, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
@@ -20,16 +21,14 @@ def test_create_bundle_dataprocessor(init_setup, tracked_files):
 
     # do we always have these? What cases do they have them vs not?
     # how can names change?
-    for config in file_map.get("dataset", []):
-        assert config["version"] == "v1"
+    for config in file_map.get(DataProcessorResourceKinds.DATASET.value, []):
+        assert config["version"] == DATA_PROCESSOR_API_V1.version
     # should be one right?
-    for config in file_map["instance"]:
-        assert config["version"] == "v1"
-    assert len(file_map["instance"])
-    for config in file_map.get("pipeline", []):
-        assert config["version"] == "v1"
-    for config in file_map.get("testrun", []):
-        assert config["version"] == "v1"
+    for config in file_map[DataProcessorResourceKinds.INSTANCE.value]:
+        assert config["version"] == DATA_PROCESSOR_API_V1.version
+    assert len(file_map[DataProcessorResourceKinds.INSTANCE.value])
+    for config in file_map.get(DataProcessorResourceKinds.PIPELINE.value, []):
+        assert config["version"] == DATA_PROCESSOR_API_V1.version
 
     expected_file_objs = {
         "deployment": [
@@ -66,5 +65,7 @@ def test_create_bundle_dataprocessor(init_setup, tracked_files):
             "aio-dp-runner-worker"
         ]
     }
+    expected_types = list(expected_file_objs.keys()) + DataProcessorResourceKinds.list()
+    assert set(file_map.keys()).issubset(set(expected_types))
 
     check_non_custom_file_objs(file_map, expected_file_objs)

@@ -7,6 +7,7 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
+from azext_edge.edge.providers.edge_api import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
 from .helpers import EXTRACTED_PATH, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
@@ -21,7 +22,8 @@ def test_create_bundle_deviceregistry(init_setup, tracked_files):
         pytest.skip(f"No bundles created for {ops_service}.")
     file_map = get_file_map(walk_result, ops_service)
 
-    for config in file_map.get("assetendpointprofile", []):
-        assert config["version"] == "v1beta1"
-    for config in file_map.get("asset", []):
-        assert config["version"] == "v1beta1"
+    for config in file_map.get(DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value, []):
+        assert config["version"] == DEVICEREGISTRY_API_V1.version
+    for config in file_map.get(DeviceRegistryResourceKinds.ASSET.value, []):
+        assert config["version"] == DEVICEREGISTRY_API_V1.version
+    assert set(file_map.keys()).issubset(set(DeviceRegistryResourceKinds.list()))

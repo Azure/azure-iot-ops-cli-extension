@@ -13,6 +13,36 @@ from ....helpers import run
 
 EXTRACTED_PATH = "unpacked"
 AUTO_EXTRACTED_PATH = f"auto_{EXTRACTED_PATH}"
+NON_CUSTOM_TYPES = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service", "statefulset"]
+
+
+def assert_file_names(files: List[str]):
+    """Asserts file names."""
+    for full_name in files:
+        name = full_name.split(".")
+        file_type = name.pop(0)
+        extension = name.pop(-1)
+        # trace files
+        if extension == "pb":
+            assert extension == "otlp"
+            continue
+        elif extension == "json":
+            assert extension == "tempo"
+            continue
+
+        assert extension in ["log", "txt", "yaml"]
+        if file_type not in NON_CUSTOM_TYPES:
+            if extension == "txt":
+                continue
+            assert name.pop(0).startswith("v")
+
+        short_name = name.pop(0)
+        if short_name == "aio-opc-opc":
+            short_name += f".{name.pop(0)}"
+        if "metric" in name and extension == "yaml":
+            short_name += f".{name.pop(0)}"
+
+        assert bool(name) == (extension != "yaml")
 
 
 def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
@@ -32,7 +62,6 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             name_obj["name"] = file_type
             name_obj["action"] = name.pop(0).lower()
             name_obj["identifier"] = name.pop(0)
-            assert name[-1] == "otlp" if name_obj["extension"] == "pb" else "tempo"
             file_name_objs["trace"].append(name_obj)
             continue
 
@@ -53,9 +82,6 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             name_obj["name"] += f".{name.pop(0)}"
         if "metric" in name and name_obj["extension"] == "yaml":
             name_obj["name"] += f".{name.pop(0)}"
-
-        # only logs should still have something in the name
-        assert bool(name) == (name_obj["extension"] != "yaml")
 
         # something like "msi-adapter", "init-runner"
         if name:
