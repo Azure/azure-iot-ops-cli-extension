@@ -10,7 +10,6 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from .helpers import (
     assert_file_names,
-    check_custom_file_objs,
     check_non_custom_file_objs,
     get_file_map,
     run_bundle_command,

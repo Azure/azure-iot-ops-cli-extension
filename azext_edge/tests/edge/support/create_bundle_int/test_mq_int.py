@@ -9,10 +9,10 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
 from .helpers import (
-    check_custom_file_objs, 
-    check_name, 
-    check_non_custom_file_objs, 
-    get_file_map, 
+    check_custom_file_objs,
+    check_name,
+    check_non_custom_file_objs,
+    get_file_map,
     run_bundle_command
 )
 

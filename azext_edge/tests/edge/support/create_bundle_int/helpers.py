@@ -144,7 +144,7 @@ def check_custom_file_objs(
                 kind=kind,
                 namespace=namespace
             )
-        
+
         if not cluster_resources:
             cluster_resources = {}
         expected_names = [r["metadata"]["name"] for r in cluster_resources.get("items", [])]
