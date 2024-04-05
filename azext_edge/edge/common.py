@@ -43,7 +43,7 @@ class ResourceState(Enum):
     error = "Error"
 
 
-class PodState(ListableEnum):
+class PodState(Enum):
     """
     K8s pod state.
     """
