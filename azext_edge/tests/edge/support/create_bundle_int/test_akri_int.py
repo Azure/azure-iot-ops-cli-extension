@@ -7,7 +7,7 @@
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import AKRI_API_V0, AkriResourceKinds
-from .helpers import check_non_custom_file_objs, get_file_map, run_bundle_command
+from .helpers import check_custom_file_objs, check_non_custom_file_objs, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
 
@@ -19,12 +19,11 @@ def test_create_bundle_akri(init_setup, tracked_files):
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
 
-    # do we always have these? What cases do they have them vs not?
-    # how can names change?
-    for config in file_map.get(AkriResourceKinds.CONFIGURATION.value, []):
-        assert config["version"] == AKRI_API_V0.version
-    for config in file_map.get(AkriResourceKinds.INSTANCE.value, []):
-        assert config["version"] == AKRI_API_V0.version
+    check_custom_file_objs(
+        file_objs=file_map,
+        resource_api=AKRI_API_V0,
+        resource_kinds=AkriResourceKinds.list(),
+    )
 
     expected_file_objs = {
         "daemonset": [

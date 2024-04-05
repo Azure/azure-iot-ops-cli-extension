@@ -7,7 +7,9 @@
 from typing import Dict, List, Optional
 from os import mkdir, path, walk
 from shutil import rmtree, unpack_archive
+from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
+from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import run
 
 
@@ -113,6 +115,43 @@ def check_name(name: str, expected_names: List[str], optional_names: Optional[Li
             name.rsplit("-", 3)[0] in optional_names,
         ])
     assert any(checks)
+
+
+def check_custom_file_objs(
+    file_objs: Dict[str, List[Dict[str, str]]],
+    resource_api: EdgeResourceApi,
+    resource_kinds: List[str],
+    namespace: Optional[str] = None
+):
+    plural_map: Dict[str, str] = {}
+    try:
+        # prefer to use another tool to get resources
+        api_table = run(f"kubectl api-resources --api-group={resource_api.group}")
+        api_resources = [line.split() for line in api_table.split("\n")]
+        api_resources = api_resources[1:-1]
+        plural_map = {line[-1].lower(): line[0] for line in api_resources}
+    except CLIInternalError:
+        # fall back to python sdk if not possible
+        pass
+
+    for kind in resource_kinds:
+        if plural_map.get(kind):
+            cluster_resources = run(
+                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} -A -o json"
+            )
+        else:
+            cluster_resources = resource_api.get_resources(
+                kind=kind,
+                namespace=namespace
+            )
+        
+        if not cluster_resources:
+            cluster_resources = {}
+        expected_names = [r["metadata"]["name"] for r in cluster_resources.get("items", [])]
+        assert len(expected_names) == len(file_objs.get(kind, []))
+        for resource in file_objs.get(kind, []):
+            assert resource["name"] in expected_names
+            assert resource["version"] == resource_api.version
 
 
 def check_non_custom_file_objs(

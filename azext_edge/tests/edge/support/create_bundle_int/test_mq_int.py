@@ -8,7 +8,13 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
-from .helpers import check_name, check_non_custom_file_objs, get_file_map, run_bundle_command
+from .helpers import (
+    check_custom_file_objs, 
+    check_name, 
+    check_non_custom_file_objs, 
+    get_file_map, 
+    run_bundle_command
+)
 
 logger = get_logger(__name__)
 
@@ -28,7 +34,11 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     assert len(diagnostic) == 1
     assert diagnostic[0]["extension"] == "txt"
 
-    check_mq_types(file_map)
+    check_custom_file_objs(
+        file_objs=file_map,
+        resource_api=MQ_ACTIVE_API,
+        resource_kinds=MqResourceKinds.list(),
+    )
 
     expected_file_objs = {
         "deployment": [
@@ -89,38 +99,3 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
             assert extension_dict.get("pb")
 
     check_non_custom_file_objs(file_map, expected_file_objs)
-
-
-def check_mq_types(file_map):
-    # expecting 1?
-    for config in file_map[MqResourceKinds.BROKER_AUTHENTICATION.value]:
-        assert config["version"] == MQ_ACTIVE_API.version
-    for config in file_map.get(MqResourceKinds.BROKER_AUTHORIZATION.value, []):
-        assert config["version"] == MQ_ACTIVE_API.version
-    for config in file_map.get(MqResourceKinds.BROKER_DIAGNOSTIC.value, []):
-        assert config["version"] == MQ_ACTIVE_API.version
-    # Expecting >=1 broker listeners per namespace
-    for config in file_map[MqResourceKinds.BROKER_LISTENER.value]:
-        assert config["version"] == MQ_ACTIVE_API.version
-    # Expecting 1 broker resource per namespace
-    for config in file_map[MqResourceKinds.BROKER.value]:
-        assert config["version"] == MQ_ACTIVE_API.version
-    for config in file_map.get(MqResourceKinds.DATALAKE_CONNECTOR_TOPIC_MAP.value, []):
-        assert config["version"] == MQ_ACTIVE_API.version
-    for config in file_map.get(MqResourceKinds.DATALAKE_CONNECTOR.value, []):
-        assert config["version"] == MQ_ACTIVE_API.version
-    # Expecting 1 diagnostics service resource per namespace
-    for config in file_map[MqResourceKinds.DIAGNOSTIC_SERVICE.value]:
-        assert config["version"] == MQ_ACTIVE_API.version
-    for config in file_map.get(MqResourceKinds.IOT_HUB_CONNECTOR_ROUTE_MAP.value, []):
-        assert config["version"] == MQ_ACTIVE_API.version
-    for config in file_map.get(MqResourceKinds.IOT_HUB_CONNECTOR.value, []):
-        assert config["version"] == MQ_ACTIVE_API.version
-    for config in file_map.get(MqResourceKinds.KAFKA_CONNECTOR_TOPIC_MAP.value, []):
-        assert config["version"] == MQ_ACTIVE_API.version
-    for config in file_map.get(MqResourceKinds.KAFKA_CONNECTOR.value, []):
-        assert config["version"] == MQ_ACTIVE_API.version
-    for config in file_map.get(MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value, []):
-        assert config["version"] == MQ_ACTIVE_API.version
-    for config in file_map.get(MqResourceKinds.MQTT_BRIDGE_TOPIC_MAP.value, []):
-        assert config["version"] == MQ_ACTIVE_API.version

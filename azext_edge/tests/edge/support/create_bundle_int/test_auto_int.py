@@ -10,6 +10,7 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from .helpers import (
     assert_file_names,
+    check_custom_file_objs,
     check_non_custom_file_objs,
     get_file_map,
     run_bundle_command,
@@ -126,5 +127,5 @@ def test_create_bundle_otel(init_setup, tracked_files):
             "aio-otel-collector"
         ]
     }
-
+    assert set(file_map.keys()).issubset(set(expected_file_objs.keys()))
     check_non_custom_file_objs(file_map, expected_file_objs)
