@@ -59,8 +59,6 @@ def build_bundle(
     from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.otel import prepare_bundle as prepare_otel_bundle
 
-    from .support.clusterconfig.billing import BILLING_RESOURCE_KIND
-
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
 
@@ -103,8 +101,6 @@ def build_bundle(
                     bundle = bundle_method(deployed_apis)
                 elif service_moniker == OpsServiceType.mq.value:
                     bundle = bundle_method(deployed_apis, log_age_seconds, include_mq_traces)
-                elif service_moniker == OpsServiceType.billing.value:
-                    bundle = bundle_method(deployed_apis, log_age_seconds, child_group=BILLING_RESOURCE_KIND)
                 else:
                     bundle = bundle_method(deployed_apis, log_age_seconds)
 

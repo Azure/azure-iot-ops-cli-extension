@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import List
+from typing import List, Optional
 from ...generators import generate_random_string
 
 import pytest
@@ -44,6 +44,13 @@ def add_pod_to_mocked_pods(
     pods_list = V1PodList(items=pod_list)
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
     mocked_client.CoreV1Api().read_namespaced_pod_log.return_value = mock_log
+
+
+def process_sub_group(sub_group: Optional[str]):
+    if not sub_group:
+        return ""
+
+    return f"{sub_group}/"
 
 
 @pytest.fixture

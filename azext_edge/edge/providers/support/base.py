@@ -10,6 +10,7 @@ from pathlib import PurePath
 from typing import List, Dict, Optional, Iterable
 from functools import partial
 
+from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Container, V1ObjectMeta, V1PodSpec
@@ -30,7 +31,7 @@ def process_crd(
     kind: str,
     plural: str,
     api_moniker: str,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     file_prefix: Optional[str] = None,
 ) -> List[dict]:
     result: dict = get_custom_objects(
@@ -48,9 +49,14 @@ def process_crd(
         namespace = r["metadata"]["namespace"]
         namespaces.append(namespace)
         name = r["metadata"]["name"]
+        zinfo = _process_zinfo(
+            prefix=f"{namespace}/{api_moniker}",
+            suffix=f"{file_prefix}.{version}.{name}.yaml",
+            sub_group=sub_group,
+        )
         processed.append({
             "data": r,
-            "zinfo": f"{namespace}/{api_moniker}/{child_group}{file_prefix}.{version}.{name}.yaml"
+            "zinfo": zinfo,
         })
 
     return processed
@@ -58,7 +64,7 @@ def process_crd(
 
 def process_v1_pods(
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     capture_previous_logs: bool = True,
     include_metrics: bool = False,
     since_seconds: int = DAY_IN_SECONDS,
@@ -95,10 +101,15 @@ def process_v1_pods(
         # TODO: Workaround
         p.api_version = pods.api_version
         p.kind = "Pod"
+        zinfo = _process_zinfo(
+            prefix=f"{pod_namespace}/{resource_api.moniker}",
+            suffix=f"pod.{pod_name}.yaml",
+            sub_group=sub_group,
+        )
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=p),
-                "zinfo": f"{pod_namespace}/{resource_api.moniker}/{child_group}pod.{pod_name}.yaml",
+                "zinfo": zinfo,
             }
         )
         pod_spec: V1PodSpec = p.spec
@@ -119,7 +130,7 @@ def process_v1_pods(
                 v1_api=v1_api,
                 since_seconds=since_seconds,
                 capture_previous_logs=capture_previous_logs,
-                child_group=child_group,
+                sub_group=sub_group,
             )
         )
 
@@ -130,10 +141,15 @@ def process_v1_pods(
                     "metrics.k8s.io", "v1beta1", pod_namespace, "pods", pod_name
                 )
                 if metric:
+                    zinfo = _process_zinfo(
+                        prefix=f"{pod_namespace}/{resource_api.moniker}",
+                        suffix=f"pod.{pod_name}.metric.yaml",
+                        sub_group=sub_group,
+                    )
                     processed.append(
                         {
                             "data": metric,
-                            "zinfo": f"{pod_namespace}/{resource_api.moniker}/{child_group}pod.{pod_name}.metric.yaml",
+                            "zinfo": zinfo,
                         }
                     )
             except ApiException as e:
@@ -144,7 +160,7 @@ def process_v1_pods(
 
 def process_deployments(
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     return_namespaces: bool = False,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
@@ -159,11 +175,11 @@ def process_deployments(
     namespace_pods_work = {}
 
     processed = _process_kubernetes_resources(
-        child_group=child_group,
+        sub_group=sub_group,
         resources=deployments,
         resource_api=resource_api,
         prefix_names=prefix_names,
-        kind="Deployment",
+        kind=BundleResourceKind.deployment.value,
     )
 
     for deployment in deployments.items:
@@ -180,83 +196,92 @@ def process_deployments(
 
 def process_statefulset(
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
 ) -> List[dict]:
+    from kubernetes.client.models import V1StatefulSetList
+
     v1_apps = client.AppsV1Api()
+    statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
 
     return _process_kubernetes_resources(
-        child_group=child_group,
-        resources=v1_apps.list_stateful_set_for_all_namespaces(
-            label_selector=label_selector,
-            field_selector=field_selector
-        ),
+        sub_group=sub_group,
+        resources=statefulsets,
         resource_api=resource_api,
-        kind="Statefulset",
+        kind=BundleResourceKind.statefulset.value,
     )
 
 
 def process_services(
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
+    from kubernetes.client.models import V1ServiceList
+
     v1_api = client.CoreV1Api()
+    services: V1ServiceList = v1_api.list_service_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
 
     return _process_kubernetes_resources(
-        child_group=child_group,
-        resources=v1_api.list_service_for_all_namespaces(
-            label_selector=label_selector,
-            field_selector=field_selector
-        ),
+        sub_group=sub_group,
+        resources=services,
         resource_api=resource_api,
         prefix_names=prefix_names,
-        kind="Service",
+        kind=BundleResourceKind.service.value,
     )
 
 
 def process_replicasets(
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
+    from kubernetes.client.models import V1ReplicaSetList
+
     v1_apps = client.AppsV1Api()
+    replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
 
     return _process_kubernetes_resources(
-        child_group=child_group,
-        resources=v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector),
+        sub_group=sub_group,
+        resources=replicasets,
         resource_api=resource_api,
         prefix_names=prefix_names,
-        kind="Replicaset",
+        kind=BundleResourceKind.replicaset.value,
     )
 
 
 def process_daemonsets(
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
+    from kubernetes.client.models import V1DaemonSetList
+
     v1_apps = client.AppsV1Api()
+    daemonsets: V1DaemonSetList = v1_apps.list_daemon_set_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
 
     return _process_kubernetes_resources(
-        child_group=child_group,
-        resources=v1_apps.list_daemon_set_for_all_namespaces(
-            label_selector=label_selector,
-            field_selector=field_selector
-        ),
+        sub_group=sub_group,
+        resources=daemonsets,
         resource_api=resource_api,
         prefix_names=prefix_names,
-        kind="Daemonset",
+        kind=BundleResourceKind.daemonset.value,
     )
 
 
-def process_nodes() -> dict:
+def process_nodes() -> Dict[str, object]:
     return {
         "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_node()),
         "zinfo": "nodes.yaml",
@@ -304,70 +329,76 @@ def process_storage_classes() -> List[dict]:
 
 def process_persistent_volume_claims(
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
+    from kubernetes.client.models import V1PersistentVolumeClaimList
+
     v1_api = client.CoreV1Api()
+    pvcs: V1PersistentVolumeClaimList = v1_api.list_persistent_volume_claim_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
 
     return _process_kubernetes_resources(
-        child_group=child_group,
-        resources=v1_api.list_persistent_volume_claim_for_all_namespaces(
-            label_selector=label_selector,
-            field_selector=field_selector
-        ),
+        sub_group=sub_group,
+        resources=pvcs,
         resource_api=resource_api,
         prefix_names=prefix_names,
-        kind="PersistentVolumeClaim",
+        kind=BundleResourceKind.pvc.value,
     )
 
 
 def process_jobs(
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
+    from kubernetes.client.models import V1JobList
+
     batch_v1_api = client.BatchV1Api()
+    jobs: V1JobList = batch_v1_api.list_job_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
 
     return _process_kubernetes_resources(
-        child_group=child_group,
-        resources=batch_v1_api.list_job_for_all_namespaces(
-            label_selector=label_selector,
-            field_selector=field_selector
-        ),
+        sub_group=sub_group,
+        resources=jobs,
         resource_api=resource_api,
         prefix_names=prefix_names,
-        kind="Job",
+        kind=BundleResourceKind.job.value,
     )
 
 
 def process_cron_jobs(
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
+    from kubernetes.client.models import V1CronJobList
+
     batch_v1_api = client.BatchV1Api()
+    cron_jobs: V1CronJobList = batch_v1_api.list_cron_job_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
 
     return _process_kubernetes_resources(
-        child_group=child_group,
-        resources=batch_v1_api.list_cron_job_for_all_namespaces(
-            label_selector=label_selector,
-            field_selector=field_selector
-        ),
+        sub_group=sub_group,
+        resources=cron_jobs,
         resource_api=resource_api,
         prefix_names=prefix_names,
-        kind="CronJob",
+        kind=BundleResourceKind.cronjob.value,
     )
 
 
 def assemble_crd_work(
     apis: Iterable[EdgeResourceApi],
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     file_prefix_map: Optional[Dict[str, str]] = None,
 ) -> dict:
     if not file_prefix_map:
@@ -379,7 +410,7 @@ def assemble_crd_work(
             file_prefix = file_prefix_map.get(kind)
             result[f"{api.moniker} {api.version} {kind}"] = partial(
                 process_crd,
-                child_group=child_group,
+                sub_group=sub_group,
                 group=api.group,
                 version=api.version,
                 kind=kind,
@@ -423,7 +454,7 @@ def _capture_pod_container_logs(
     v1_api: client.CoreV1Api,
     capture_previous_logs: bool = True,
     since_seconds: int = DAY_IN_SECONDS,
-    child_group: Optional[str] = None,
+    sub_group: Optional[str] = None,
 ) -> List[dict]:
 
     processed = []
@@ -445,13 +476,15 @@ def _capture_pod_container_logs(
                     previous=capture_previous,
                 )
                 zinfo_previous_segment = "previous." if capture_previous else ""
+                zinfo = _process_zinfo(
+                    prefix=f"{pod_namespace}/{resource_api.moniker}",
+                    suffix=f"pod.{pod_name}.{container.name}.{zinfo_previous_segment}log",
+                    sub_group=sub_group,
+                )
                 processed.append(
                     {
                         "data": log,
-                        "zinfo": (
-                            f"{pod_namespace}/{resource_api.moniker}"
-                            f"/{child_group}pod.{pod_name}.{container.name}.{zinfo_previous_segment}log"
-                        ),
+                        "zinfo": zinfo,
                     }
                 )
             except ApiException as e:
@@ -463,7 +496,7 @@ def _capture_pod_container_logs(
 def _process_kubernetes_resources(
     resources: object,
     resource_api: EdgeResourceApi,
-    child_group: Optional[str] = None,
+    sub_group: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
     kind: Optional[str] = None,
 ) -> List[dict]:
@@ -472,7 +505,8 @@ def _process_kubernetes_resources(
     if not prefix_names:
         prefix_names = []
 
-    logger.info(f"Detected {len(resources.items)} {kind}s.")
+    log = f"Detected {len(resources.items)} {kind}s." if kind else f"Detected {len(resources.items)} resources."
+    logger.info(log)
     for resource in resources.items:
         r = resource
         r.api_version = resources.api_version
@@ -492,12 +526,29 @@ def _process_kubernetes_resources(
         else:
             resource_type = kind.lower()
 
+        zinfo = _process_zinfo(
+            prefix=f"{resource_namespace}/{resource_api.moniker}",
+            suffix=f"{resource_type}.{resource_name}.yaml",
+            sub_group=sub_group,
+        )
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=r),
-                "zinfo": f"{resource_namespace}/{resource_api.moniker}/"
-                f"{child_group}{resource_type}.{resource_name}.yaml",
+                "zinfo": zinfo,
             }
         )
 
     return processed
+
+
+def _process_zinfo(
+    prefix: str,
+    suffix: str,
+    sub_group: Optional[str] = None,
+) -> str:
+    if not sub_group:
+        sub_group = ""
+    else:
+        sub_group = f"{sub_group}/"
+
+    return f"{prefix}/{sub_group}{suffix}"

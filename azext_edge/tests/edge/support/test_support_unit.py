@@ -10,7 +10,7 @@ from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
 from zipfile import ZipInfo
 
-from .conftest import add_pod_to_mocked_pods
+from .conftest import add_pod_to_mocked_pods, process_sub_group
 
 import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
@@ -129,7 +129,7 @@ def test_create_bundle(
     expected_resources: List[EdgeResourceApi] = mocked_cluster_resources["param"]
 
     for api in expected_resources:
-        child_group = "billing/" if api in [CLUSTER_CONFIG_API_V1] else ""
+        sub_group = "billing" if api in [CLUSTER_CONFIG_API_V1] else ""
 
         for kind in api.kinds:
             target_file_prefix = None
@@ -140,7 +140,7 @@ def test_create_bundle(
                 api,
                 kind,
                 file_prefix=target_file_prefix,
-                child_group=child_group
+                sub_group=sub_group
             )
 
         if api in [CLUSTER_CONFIG_API_V1]:
@@ -151,42 +151,42 @@ def test_create_bundle(
                 label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
                 resource_api=CLUSTER_CONFIG_API_V1,
                 since_seconds=since_seconds,
-                child_group=child_group,
+                sub_group=sub_group,
             )
             assert_list_cron_jobs(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AIO_BILLING_USAGE_NAME_LABEL,
                 resource_api=CLUSTER_CONFIG_API_V1,
-                child_group=child_group,
+                sub_group=sub_group,
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
                 resource_api=CLUSTER_CONFIG_API_V1,
-                child_group=child_group,
+                sub_group=sub_group,
             )
             assert_list_jobs(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AIO_BILLING_USAGE_NAME_LABEL,
                 resource_api=CLUSTER_CONFIG_API_V1,
-                child_group=child_group,
+                sub_group=sub_group,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
                 resource_api=CLUSTER_CONFIG_API_V1,
-                child_group=child_group,
+                sub_group=sub_group,
             )
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
                 resource_api=CLUSTER_CONFIG_API_V1,
-                child_group=child_group,
+                sub_group=sub_group,
             )
 
         if api in COMPAT_MQ_APIS.resource_apis:
@@ -466,15 +466,17 @@ def assert_get_custom_resources(
     api: EdgeResourceApi,
     kind: str,
     file_prefix: str = None,
-    child_group: str = ""
+    sub_group: Optional[str] = None,
 ):
     mocked_get_custom_objects.assert_any_call(group=api.group, version=api.version, plural=f"{kind}s", use_cache=False)
     if not file_prefix:
         file_prefix = kind
 
+    sub_group = process_sub_group(sub_group)
+
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo=f"mock_namespace/{api.moniker}/{child_group}{file_prefix}.{api.version}.mock_name.yaml",
+        zinfo=f"mock_namespace/{api.moniker}/{sub_group}{file_prefix}.{api.version}.mock_name.yaml",
         data=f"kind: {kind}\nmetadata:\n  name: mock_name\n  namespace: mock_namespace\n",
     )
 
@@ -484,16 +486,17 @@ def assert_list_cron_jobs(
     mocked_zipfile,
     label_selector: str,
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
 ):
     mocked_client.BatchV1Api().list_cron_job_for_all_namespaces.assert_any_call(
         label_selector=label_selector,
         field_selector=None
     )
+    sub_group = process_sub_group(sub_group)
 
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/{child_group}cronjob.mock_cron_job.yaml",
+        zinfo=f"mock_namespace/{resource_api.moniker}/{sub_group}cronjob.mock_cron_job.yaml",
         data="kind: CronJob\nmetadata:\n  name: mock_cron_job\n  namespace: mock_namespace\n",
     )
 
@@ -505,7 +508,7 @@ def assert_list_deployments(
     resource_api: EdgeResourceApi,
     field_selector: str = None,
     mock_names: List[str] = None,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
 ):
     moniker = resource_api.moniker
     if resource_api in COMPAT_MQ_APIS.resource_apis:
@@ -526,12 +529,14 @@ def assert_list_deployments(
             label_selector=label_selector, field_selector=field_selector
         )
 
+    sub_group = process_sub_group(sub_group)
+
     # @jiacju - no label for lnm
     mock_names = mock_names or ["mock_deployment"]
     for name in mock_names:
         assert_zipfile_write(
             mocked_zipfile,
-            zinfo=f"mock_namespace/{moniker}/{child_group}deployment.{name}.yaml",
+            zinfo=f"mock_namespace/{moniker}/{sub_group}deployment.{name}.yaml",
             data=f"kind: Deployment\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
         )
 
@@ -541,16 +546,18 @@ def assert_list_jobs(
     mocked_zipfile,
     label_selector: str,
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
 ):
     mocked_client.BatchV1Api().list_job_for_all_namespaces.assert_any_call(
         label_selector=label_selector,
         field_selector=None
     )
 
+    sub_group = process_sub_group(sub_group)
+
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/{child_group}job.mock_job.yaml",
+        zinfo=f"mock_namespace/{resource_api.moniker}/{sub_group}job.mock_job.yaml",
         data="kind: Job\nmetadata:\n  name: mock_job\n  namespace: mock_namespace\n",
     )
 
@@ -561,10 +568,11 @@ def assert_list_pods(
     mocked_list_pods,
     label_selector: str,
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     **kwargs,
 ):
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.assert_any_call(label_selector=label_selector)
+    sub_group = process_sub_group(sub_group)
 
     for namespace in mocked_list_pods:
         for pod_name in mocked_list_pods[namespace]:
@@ -583,7 +591,7 @@ def assert_list_pods(
 
                 assert_zipfile_write(
                     mocked_zipfile,
-                    zinfo=f"{namespace}/{resource_api.moniker}/{child_group}pod.{pod_name}.yaml",
+                    zinfo=f"{namespace}/{resource_api.moniker}/{sub_group}pod.{pod_name}.yaml",
                     data=data
                 )
 
@@ -600,7 +608,7 @@ def assert_list_pods(
                         assert_zipfile_write(
                             mocked_zipfile,
                             zinfo=f"{namespace}/{resource_api.moniker}/"
-                            f"{child_group}pod.{pod_name}.{container_name}{previous_segment}.log",
+                            f"{sub_group}pod.{pod_name}.{container_name}{previous_segment}.log",
                             data=pods_with_container[namespace][pod_name][container_name],
                         )
 
@@ -610,16 +618,17 @@ def assert_list_replica_sets(
     mocked_zipfile,
     label_selector: str,
     resource_api: EdgeResourceApi,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
     mock_names: Optional[List[str]] = None,
 ):
     mocked_client.AppsV1Api().list_replica_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
     mock_names = mock_names or ["mock_replicaset"]
+    sub_group = process_sub_group(sub_group)
     for name in mock_names:
         assert_zipfile_write(
             mocked_zipfile,
-            zinfo=f"mock_namespace/{resource_api.moniker}/{child_group}replicaset.{name}.yaml",
+            zinfo=f"mock_namespace/{resource_api.moniker}/{sub_group}replicaset.{name}.yaml",
             data=f"kind: Replicaset\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
         )
 
@@ -630,15 +639,16 @@ def assert_list_persistent_volume_claims(
         resource_api: EdgeResourceApi,
         label_selector: str = None,
         field_selector: str = None,
-        child_group: str = "",
+        sub_group: Optional[str] = None,
 ):
     mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.assert_any_call(
         label_selector=label_selector, field_selector=field_selector
     )
+    sub_group = process_sub_group(sub_group)
 
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo=f"mock_namespace/{resource_api.moniker}/{child_group}pvc.mock_pvc.yaml",
+        zinfo=f"mock_namespace/{resource_api.moniker}/{sub_group}pvc.mock_pvc.yaml",
         data="kind: PersistentVolumeClaim\nmetadata:\n  name: mock_pvc\n  namespace: mock_namespace\n",
     )
 
@@ -668,17 +678,18 @@ def assert_list_services(
     label_selector: Optional[str] = None,
     field_selector: Optional[str] = None,
     mock_names: Optional[List[str]] = None,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
 ):
     mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(
         label_selector=label_selector, field_selector=field_selector
     )
 
     mock_names = mock_names or ["mock_service"]
+    sub_group = process_sub_group(sub_group)
     for name in mock_names:
         assert_zipfile_write(
             mocked_zipfile,
-            zinfo=f"mock_namespace/{resource_api.moniker}/{child_group}service.{name}.yaml",
+            zinfo=f"mock_namespace/{resource_api.moniker}/{sub_group}service.{name}.yaml",
             data=f"kind: Service\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
         )
 
@@ -690,17 +701,18 @@ def assert_list_daemon_sets(
     label_selector: Optional[str] = None,
     field_selector: Optional[str] = None,
     mock_names: Optional[List[str]] = None,
-    child_group: str = "",
+    sub_group: Optional[str] = None,
 ):
     mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.assert_any_call(
         label_selector=label_selector, field_selector=field_selector
     )
 
     mock_names = mock_names or ["mock_daemonset"]
+    sub_group = process_sub_group(sub_group)
     for name in mock_names:
         assert_zipfile_write(
             mocked_zipfile,
-            zinfo=f"mock_namespace/{resource_api.moniker}/{child_group}daemonset.{name}.yaml",
+            zinfo=f"mock_namespace/{resource_api.moniker}/{sub_group}daemonset.{name}.yaml",
             data=f"kind: Daemonset\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
         )
 

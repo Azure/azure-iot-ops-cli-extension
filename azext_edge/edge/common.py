@@ -163,6 +163,17 @@ class K8sSecretType(Enum):
     tls = "kubernetes.io/tls"
 
 
+class BundleResourceKind(Enum):
+    deployment = "Deployment"
+    statefulset = "Statefulset"
+    service = "Service"
+    replicaset = "Replicaset"
+    daemonset = "Daemonset"
+    pvc = "PersistentVolumeClaim"
+    job = "Job"
+    cronjob = "CronJob"
+
+
 # MQ runtime attributes
 
 AIO_MQ_RESOURCE_PREFIX = "aio-mq-"
