@@ -7,7 +7,7 @@
 from os import makedirs
 from os.path import abspath, expanduser, isdir
 from pathlib import PurePath
-from typing import List, Dict, Optional, Iterable
+from typing import List, Dict, Optional, Iterable, Union
 from functools import partial
 
 from azext_edge.edge.common import BundleResourceKind
@@ -281,7 +281,7 @@ def process_daemonsets(
     )
 
 
-def process_nodes() -> Dict[str, object]:
+def process_nodes() -> Dict[str, Union[dict, str]]:
     return {
         "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_node()),
         "zinfo": "nodes.yaml",
