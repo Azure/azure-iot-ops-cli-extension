@@ -496,17 +496,16 @@ def _capture_pod_container_logs(
 def _process_kubernetes_resources(
     resources: object,
     resource_api: EdgeResourceApi,
+    kind: str,
     sub_group: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
-    kind: Optional[str] = None,
 ) -> List[dict]:
     processed = []
 
     if not prefix_names:
         prefix_names = []
 
-    log = f"Detected {len(resources.items)} {kind}s." if kind else f"Detected {len(resources.items)} resources."
-    logger.info(log)
+    logger.info(f"Detected {len(resources.items)} {kind}s.")
     for resource in resources.items:
         r = resource
         r.api_version = resources.api_version
