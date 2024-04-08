@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from ...util.az_client import get_resource_client
+from ...util.resource_graph import ResourceGraph
 from typing import List
 
 CONNECTED_CLUSTER_API_VERSION = "2024-01-01"
@@ -19,10 +20,16 @@ class ConnectedCluster:
         self.resource_client = get_resource_client(self.subscription_id)
 
     @property
+    def resource_id(self) -> str:
+        return (
+            f"/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group_name}"
+            f"/providers/Microsoft.Kubernetes/connectedClusters/{self.cluster_name}"
+        )
+
+    @property
     def resource(self) -> dict:
         return self.resource_client.resources.get_by_id(
-            resource_id=f"/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group_name}"
-            f"/providers/Microsoft.Kubernetes/connectedClusters/{self.cluster_name}",
+            resource_id=self.resource_id,
             api_version=CONNECTED_CLUSTER_API_VERSION,
         ).as_dict()
 
@@ -34,9 +41,12 @@ class ConnectedCluster:
     def extensions(self) -> List[dict]:
         # TODO: This is not the right approach.
         additional_properties: dict = self.resource_client.resources.get_by_id(
-            resource_id=f"/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group_name}"
-            f"/providers/Microsoft.Kubernetes/connectedClusters/{self.cluster_name}"
-            "/providers/Microsoft.KubernetesConfiguration/extensions",
+            resource_id=f"{self.resource_id}/providers/Microsoft.KubernetesConfiguration/extensions",
             api_version=KUBERNETES_CONFIG_API_VERSION,
         ).additional_properties
         return additional_properties.get("value", [])
+
+    def get_custom_location_for_namespace(self, cmd, namespace: str):
+        resource_graph = ResourceGraph(cmd=cmd, subscriptions=[self.subscription_id])
+        result = resource_graph.query()
+        import pdb; pdb.set_trace()
