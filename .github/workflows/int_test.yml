@@ -196,7 +196,7 @@ jobs:
           ${{ env.template }}
           EOF
       - name: "AIO Deployment"
-        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
+        uses: c-ryan-k/azure-iot-ops-cli-extension/.github/actions/deploy-aio@kv_param_fix
         with:
           cluster: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
