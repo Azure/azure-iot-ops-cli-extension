@@ -37,6 +37,7 @@ from azext_edge.edge.providers.support.akri import (
 from azext_edge.edge.providers.support.clusterconfig.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
     ARC_BILLING_EXTENSION_COMP_LABEL,
+    BILLING_RESOURCE_KIND,
 )
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.dataprocessor import (
@@ -129,7 +130,7 @@ def test_create_bundle(
     expected_resources: List[EdgeResourceApi] = mocked_cluster_resources["param"]
 
     for api in expected_resources:
-        sub_group = "billing" if api in [CLUSTER_CONFIG_API_V1] else ""
+        sub_group = BILLING_RESOURCE_KIND if api in [CLUSTER_CONFIG_API_V1] else ""
 
         for kind in api.kinds:
             target_file_prefix = None
