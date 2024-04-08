@@ -1468,15 +1468,4 @@ def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = Non
 
 
 def _calculate_connector_status(resource_state: str) -> str:
-    eval_status = CheckTaskStatus.success.value
-
-    if resource_state in [ResourceState.error.value, ResourceState.failed.value]:
-        eval_status = CheckTaskStatus.error.value
-    elif resource_state in [
-        ResourceState.recovering.value,
-        ResourceState.warn.value,
-        ResourceState.starting.value,
-        "N/A",
-    ]:
-        eval_status = CheckTaskStatus.warning.value
-    return eval_status
+    return ResourceState.map_to_status(resource_state).value

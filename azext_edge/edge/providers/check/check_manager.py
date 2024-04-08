@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from knack.log import get_logger
 
@@ -79,7 +79,7 @@ class CheckManager:
         if namespace and namespace not in self.targets[target_name]:
             self.targets[target_name][namespace] = {}
         self.targets[target_name][namespace]["conditions"] = conditions
-        self.targets[target_name][namespace]["evaluations"]: List[Dict[str, Union[str, Any]]] = []
+        self.targets[target_name][namespace]["evaluations"] = []
         self.targets[target_name][namespace]["status"] = CheckTaskStatus.success.value
         if description:
             self.targets[target_name][namespace]["description"] = description

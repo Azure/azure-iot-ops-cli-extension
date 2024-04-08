@@ -14,6 +14,7 @@ from kubernetes.client.models import (
 )
 from rich.console import NewLine
 from rich.padding import Padding
+from rich.table import Table
 
 from .check_manager import CheckManager
 from .common import AIO_SUPPORTED_ARCHITECTURES, DISPLAY_BYTES_PER_GIGABYTE, MIN_NODE_MEMORY, MIN_NODE_STORAGE, MIN_NODE_VCPU
@@ -27,17 +28,10 @@ logger = get_logger(__name__)
 
 
 def check_nodes(as_list: bool = False) -> Dict[str, Any]:
-
     check_manager = CheckManager(check_name="evalClusterNodes", check_desc="Evaluate cluster nodes")
     padding = (0, 0, 0, 8)
     target = "cluster/nodes"
-    check_manager.add_target(
-        target_name=target,
-        conditions=[
-            "len(cluster/nodes)>=1",
-            "(cluster/nodes).each(node.status.allocatable[memory]>=140MiB)",
-        ],
-    )
+    check_manager.add_target(target_name=target, conditions=["len(cluster/nodes)>=1"])
 
     try:
         core_client = client.CoreV1Api()
@@ -78,15 +72,14 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
         check_manager.add_display(target_name=target, display=target_display)
         check_manager.add_display(target_name=target, display=NewLine())
 
-        check_individual_nodes(nodes, check_manager)
+        table = generate_node_table(check_manager, nodes)
+    check_manager.add_display(target_name=target, display=Padding(table, padding))
 
     return check_manager.as_dict(as_list)
 
 
-def check_individual_nodes(nodes: V1NodeList, check_manager: CheckManager):
+def generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Table:
     from kubernetes.utils import parse_quantity
-    from rich.table import Table
-    target = "cluster/nodes"
     # prep table
     table = Table(
         show_header=True, header_style="bold", show_lines=True, caption="Node resources", caption_justify="left"
@@ -102,104 +95,67 @@ def check_individual_nodes(nodes: V1NodeList, check_manager: CheckManager):
 
     node: V1Node
     for node in nodes.items:
-        # get node properties
-        # metadata: V1ObjectMeta = node.metadata
         node_name = node.metadata.name
-        # status: V1NodeStatus = node.status
-        # info: V1NodeSystemInfo = status.node_info
-        # capacity: dict = status.capacity
 
         # check_manager target for node
         node_target = f"cluster/nodes/{node_name}"
         check_manager.add_target(target_name=node_target)
 
-        # parse decimal values
-        memory_capacity = parse_quantity(node.status.capacity.get("memory"))
-        cpu_capacity = parse_quantity(node.status.capacity.get("cpu"))
-        storage_capacity = parse_quantity(node.status.capacity.get("ephemeral-storage"))
-
         # verify architecture
-        # TODO - verify / constant
-        arch_condition = "info.architecture"
-        check_manager.add_target_conditions(
-            target_name=node_target, conditions=[f"{arch_condition} in ({','.join(AIO_SUPPORTED_ARCHITECTURES)})"]
-        )
-        arch = node.status.node_info.architecture
-
-        # arch eval
-        arch_status = (
-            CheckTaskStatus.success.value if arch in AIO_SUPPORTED_ARCHITECTURES else CheckTaskStatus.error.value
-        )
-        check_manager.add_target_eval(target_name=node_target, status=arch_status, value={arch_condition: arch})
-
-        # arch display
-        arch_status_color = "green" if arch_status == CheckTaskStatus.success.value else "red"
-        arch_display = f"[{arch_status_color}]{arch}[/{arch_status_color}]"
-
-        # TODO - constants for expected values
         # build node table row
-        row_status = CheckTaskStatus.success.value
+        row_status = CheckTaskStatus.success
         row_cells = []
-        for condition, expected, actual, actual_display in [
+        for condition, expected, actual in [
+            (
+                "info.architecture",
+                AIO_SUPPORTED_ARCHITECTURES,
+                node.status.node_info.architecture,
+            ),
             (
                 "condition.cpu",
                 MIN_NODE_VCPU,
-                cpu_capacity,
-                f"{cpu_capacity}"
+                parse_quantity(node.status.capacity.get("cpu", 0)),
             ),
             (
                 "condition.memory",
                 MIN_NODE_MEMORY,
-                memory_capacity,
-                "%.2f" % (memory_capacity / DISPLAY_BYTES_PER_GIGABYTE),
+                parse_quantity(node.status.capacity.get("memory", 0)),
             ),
             (
                 "condition.ephemeral-storage",
                 MIN_NODE_STORAGE,
-                storage_capacity,
-                "%.2f" % (storage_capacity / DISPLAY_BYTES_PER_GIGABYTE),
+                parse_quantity(node.status.capacity.get("ephemeral-storage", 0)),
             ),
         ]:
-            # add expected target (str)
-            check_manager.add_target_conditions(target_name=node_target, conditions=[f"{condition}>={expected}"])
+            # determine strings, expected, status
+            condition_str = f"{condition}>={expected}"
+            displayed = actual
+            cell_status = CheckTaskStatus.success
+            if isinstance(expected, list):
+                condition_str = f"{condition} in ({','.join(expected)})"
+                if actual not in expected:
+                    row_status = CheckTaskStatus.error
+                    cell_status = CheckTaskStatus.error
+            else:
+                displayed = get_display_number(displayed, expected)
+                expected = parse_quantity(expected)
+                if actual < expected:
+                    row_status = CheckTaskStatus.error
+                    cell_status = CheckTaskStatus.error
+                actual = int(actual)
 
-            # convert expected to decimal and check
-            expected = parse_quantity(expected)
-            cell_status = CheckTaskStatus.success.value
-            if actual < expected:
-                row_status = CheckTaskStatus.error.value
-                cell_status = CheckTaskStatus.error.value
-
-            cell_status_color = "green" if cell_status == CheckTaskStatus.success.value else "red"
-            check_manager.add_target_eval(target_name=node_target, status=row_status, value={condition: int(actual)})
-
-            row_cells.append(f"[{cell_status_color}]{actual_display}[/{cell_status_color}]")
-        import pdb; pdb.set_trace()
+            check_manager.add_target_conditions(target_name=node_target, conditions=[condition_str])
+            check_manager.add_target_eval(target_name=node_target, status=cell_status.value, value={condition: actual})
+            row_cells.append(f"[{cell_status.color}]{displayed}[/{cell_status.color}]")
 
         # overall node name color
-        node_status_color = "green" if row_status == CheckTaskStatus.success.value else "red"
-        node_name_display = f"[{node_status_color}]{node_name}[/{node_status_color}]"
-        table.add_row(node_name_display, arch_display, *row_cells)
-        node_memory_value = {}
-        memory_status = CheckTaskStatus.success.value
-        memory: str = node.status.allocatable["memory"]
-        memory = memory.replace("Ki", "")
-        memory: int = int(int(memory) / 1024)
-        mem_colored = f"[green]{memory}[/green]"
-        node_name = node.metadata.name
-        node_memory_value[node_name] = f"{memory}MiB"
+        node_name_display = f"[{row_status.color}]{node_name}[/{row_status.color}]"
+        table.add_row(node_name_display, *row_cells)
+    return table
 
-        if memory < 140:
-            memory_status = CheckTaskStatus.warning.value
-            mem_colored = f"[yellow]{memory}[/yellow]"
 
-        node_memory_display = Padding(
-            f"[bright_blue]{node_name}[/bright_blue] {mem_colored} MiB",
-            (0, 0, 0, 8),
-        )
-        check_manager.add_target_eval(
-            target_name=target,
-            status=memory_status,
-            value=node_memory_value,
-        )
-        check_manager.add_display(target_name=target, display=node_memory_display)
+def get_display_number(number: int, number_with_unit: str) -> str:
+    displayed = f"{number}"
+    if number_with_unit.endswith("G"):
+        displayed = "%.2f" % (number / DISPLAY_BYTES_PER_GIGABYTE)
+    return displayed

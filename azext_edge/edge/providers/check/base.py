@@ -32,6 +32,7 @@ from ..base import (
 )
 
 logger = get_logger(__name__)
+COLOR_STR_FORMAT = "[{color}]{value}[/{color}]"
 
 
 def check_pre_deployment(
@@ -313,26 +314,14 @@ def check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
 def decorate_resource_status(status: str) -> str:
     from ...common import ResourceState
 
-    if status in [ResourceState.failed.value, ResourceState.error.value]:
-        return f"[red]{status}[/red]"
-    if status in [
-        ResourceState.recovering.value,
-        ResourceState.warn.value,
-        ResourceState.starting.value,
-        "N/A",
-    ]:
-        return f"[yellow]{status}[/yellow]"
-    return f"[green]{status}[/green]"
+    return COLOR_STR_FORMAT.format(color=ResourceState.map_to_color(status), value=status)
 
 
 def decorate_pod_phase(phase: str) -> Tuple[str, str]:
     from ...common import PodState
 
-    if phase == PodState.failed.value:
-        return f"[red]{phase}[/red]", CheckTaskStatus.error.value
-    if not phase or phase in [PodState.unknown.value, PodState.pending.value]:
-        return f"[yellow]{phase}[/yellow]", CheckTaskStatus.warning.value
-    return f"[green]{phase}[/green]", CheckTaskStatus.success.value
+    status = PodState.map_to_status(phase)
+    return COLOR_STR_FORMAT.format(color=status.color, value=phase), status.value
 
 
 def evaluate_pod_health(
