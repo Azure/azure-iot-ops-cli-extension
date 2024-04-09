@@ -26,6 +26,9 @@ ORC_INSTANCE_LABEL = "app.kubernetes.io/instance in (azure-iot-operations)"
 ORC_APP_LABEL = "app in (aio-orc-api)"
 ORC_CONTROLLER_LABEL = "control-plane in (aio-orc-controller-manager)"
 
+# TODO: @jiacju - this label will be used near future for consistency
+# META_AIO_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations)"
+
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     processed = process_v1_pods(

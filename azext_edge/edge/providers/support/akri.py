@@ -28,6 +28,14 @@ AKRI_APP_LABEL = "app in (otel-collector)"
 AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
 AKRI_PREFIX = "aio-akri-"
 
+AKRI_AGENT_LABEL = "aio-akri-agent"
+AKRI_WEBHOOK_LABEL = "aio-akri-webhook-configuration"
+
+AKRI_NAME_LABEL = "app.kubernetes.io/name in (0)"
+
+# TODO: @jiacju - this label will be used near future for consistency
+# AKRI_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations-akri)"
+
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     processed = process_v1_pods(
@@ -39,6 +47,15 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
         process_v1_pods(
             resource_api=AKRI_API_V0,
             label_selector=AKRI_APP_LABEL,
+            since_seconds=since_seconds,
+        )
+    )
+
+    pod_name_label = AKRI_NAME_LABEL.replace("0", f"{AKRI_AGENT_LABEL}, {AKRI_WEBHOOK_LABEL}")
+    processed.extend(
+        process_v1_pods(
+            resource_api=AKRI_API_V0,
+            label_selector=pod_name_label,
             since_seconds=since_seconds,
         )
     )
@@ -56,17 +73,36 @@ def fetch_deployments():
             label_selector=AKRI_APP_LABEL,
         )
     )
+
+    deployment_name_label = AKRI_NAME_LABEL.replace("0", f"{AKRI_WEBHOOK_LABEL}")
+    processed.extend(
+        process_deployments(
+            resource_api=AKRI_API_V0,
+            label_selector=deployment_name_label,
+        )
+    )
     return processed
 
 
 def fetch_daemonsets():
-    return process_daemonsets(resource_api=AKRI_API_V0, label_selector=AKRI_INSTANCE_LABEL)
+    processed = process_daemonsets(resource_api=AKRI_API_V0, label_selector=AKRI_INSTANCE_LABEL)
+
+    daemonset_name_label = AKRI_NAME_LABEL.replace("0", f"{AKRI_AGENT_LABEL}")
+    processed.extend(
+        process_daemonsets(resource_api=AKRI_API_V0, label_selector=daemonset_name_label)
+    )
+    return processed
 
 
 def fetch_services():
     processed = process_services(resource_api=AKRI_API_V0, label_selector=AKRI_SERVICE_LABEL)
     processed.extend(
         process_services(resource_api=AKRI_API_V0, label_selector=AKRI_INSTANCE_LABEL)
+    )
+
+    service_name_label = AKRI_NAME_LABEL.replace("0", f"{AKRI_WEBHOOK_LABEL}")
+    processed.extend(
+        process_services(resource_api=AKRI_API_V0, label_selector=service_name_label)
     )
     return processed
 
@@ -75,6 +111,11 @@ def fetch_replicasets():
     processed = process_replicasets(resource_api=AKRI_API_V0, label_selector=AKRI_INSTANCE_LABEL)
     processed.extend(
         process_replicasets(resource_api=AKRI_API_V0, label_selector=AKRI_APP_LABEL)
+    )
+
+    replicaset_name_label = AKRI_NAME_LABEL.replace("0", f"{AKRI_WEBHOOK_LABEL}")
+    processed.extend(
+        process_replicasets(resource_api=AKRI_API_V0, label_selector=replicaset_name_label)
     )
     return processed
 

@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable
+from typing import Iterable, List
 
 from knack.log import get_logger
 
@@ -26,12 +26,13 @@ logger = get_logger(__name__)
 DATA_PROCESSOR_READER_WORKER_PREFIX = "aio-dp-reader-worker-"
 DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL = "aio-dp-runner-worker"
 DATA_PROCESSOR_REFDATA_STORE_APP_LABEL = "aio-dp-refdata-store"
+DATA_PROCESSOR_NATS_APP_LABEL = "nats"
 DATA_PROCESSOR_RUNNER_WORKER_PREFIX = f"{DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL}-"
 DATA_PROCESSOR_APP_LABELS = [
     DATA_PROCESSOR_REFDATA_STORE_APP_LABEL,
     DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL,
+    DATA_PROCESSOR_NATS_APP_LABEL,
     'aio-dp-reader-worker',
-    'nats',
     'aio-dp-operator',
 ]
 DATA_PROCESSOR_PVC_APP_LABELS = [
@@ -41,8 +42,13 @@ DATA_PROCESSOR_PVC_APP_LABELS = [
 
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
 DATA_PROCESSOR_NAME_LABEL = "app.kubernetes.io/name in (dataprocessor)"
-DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
 DATA_PROCESSOR_PVC_APP_LABEL = f"app in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
+
+# TODO: @jiacju - will remove once the nats issue the fixed
+DATA_PROCESSOR_ONEOFF_LABEL = f"app in ({DATA_PROCESSOR_NATS_APP_LABEL})"
+
+# TODO: @jiacju - this label will be used near future for consistency
+DATA_PROCESSOR_NAME_LABEL_V2 = "app.kubernetes.io/name in (microsoft-iotoperations-dp)"
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
@@ -56,11 +62,27 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
         ],
     )
 
+    dataprocessor_pods.extend(
+        process_v1_pods(
+            resource_api=DATA_PROCESSOR_API_V1,
+            label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
+            since_seconds=since_seconds,
+            pod_prefix_for_init_container_logs=[
+                DATA_PROCESSOR_READER_WORKER_PREFIX,
+                DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
+            ],
+        )
+    )
+
+
     return dataprocessor_pods
 
 
 def fetch_deployments():
     processed = process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
+    processed.extend(
+        process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
+    )
 
     return processed
 
@@ -70,6 +92,12 @@ def fetch_statefulsets():
         resource_api=DATA_PROCESSOR_API_V1,
         label_selector=DATA_PROCESSOR_LABEL,
     )
+    processed.extend(
+        process_statefulset(
+            resource_api=DATA_PROCESSOR_API_V1,
+            label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
+        )
+    )
 
     return processed
 
@@ -77,27 +105,29 @@ def fetch_statefulsets():
 def fetch_replicasets():
     processed = []
     processed.extend(process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
+    processed.extend(
+        process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
+    )
 
     return processed
 
 
 def fetch_services():
-    processed = []
-    processed.extend(process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
+    processed = process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
     processed.extend(
         process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL)
+    )
+    processed.extend(
+        process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
     )
 
     return processed
 
 
 def fetch_persistent_volume_claims():
-    processed = []
-    processed.extend(
-        process_persistent_volume_claims(
-            resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_PVC_APP_LABEL
-        )
+    processed = process_persistent_volume_claims(
+        resource_api=DATA_PROCESSOR_API_V1,
+        label_selector=DATA_PROCESSOR_PVC_APP_LABEL
     )
     processed.extend(
         process_persistent_volume_claims(
@@ -108,7 +138,13 @@ def fetch_persistent_volume_claims():
     processed.extend(
         process_persistent_volume_claims(
             resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_INSTANCE_LABEL
+            label_selector=DATA_PROCESSOR_ONEOFF_LABEL
+        )
+    )
+    processed.extend(
+        process_persistent_volume_claims(
+            resource_api=DATA_PROCESSOR_API_V1,
+            label_selector=DATA_PROCESSOR_NAME_LABEL_V2
         )
     )
 

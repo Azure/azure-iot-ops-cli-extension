@@ -29,6 +29,9 @@ OPC_APP_LABEL = "app in (aio-opc-supervisor, aio-opc-admission-controller)"
 OPC_NAME_LABEL = "app.kubernetes.io/name in (aio-opc-opcua-connector, opcplc)"
 OPC_NAME_VAR_LABEL = "name in (aio-opc-asset-discovery)"
 
+# TODO: once this label is stabled, we can remove the other labels
+OPCUA_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations-opcuabroker)"
+
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     opcua_pods = process_v1_pods(
@@ -53,23 +56,35 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
             include_metrics=True,
         )
     )
+    opcua_pods.extend(
+        process_v1_pods(
+            resource_api=OPCUA_API_V1,
+            label_selector=OPCUA_NAME_LABEL,
+            since_seconds=since_seconds,
+            include_metrics=True,
+        )
+    )
     return opcua_pods
 
 
 def fetch_deployments():
     processed = process_deployments(resource_api=OPCUA_API_V1, prefix_names=[OPC_PREFIX, SIMULATOR_PREFIX])
+    processed.extend(process_deployments(resource_api=OPCUA_API_V1, label_selector=OPC_NAME_LABEL))
+    processed.extend(process_deployments(resource_api=OPCUA_API_V1, label_selector=OPCUA_NAME_LABEL))
     return processed
 
 
 def fetch_replicasets():
     processed = process_replicasets(resource_api=OPCUA_API_V1, label_selector=OPC_APP_LABEL)
     processed.extend(process_replicasets(resource_api=OPCUA_API_V1, label_selector=OPC_NAME_LABEL))
+    processed.extend(process_replicasets(resource_api=OPCUA_API_V1, label_selector=OPCUA_NAME_LABEL))
     return processed
 
 
 def fetch_services():
     processed = process_services(resource_api=OPCUA_API_V1, label_selector=OPC_APP_LABEL)
     processed.extend(process_services(resource_api=OPCUA_API_V1, prefix_names=[SIMULATOR_PREFIX]))
+    processed.extend(process_services(resource_api=OPCUA_API_V1, label_selector=OPCUA_NAME_LABEL))
     return processed
 
 
@@ -77,6 +92,12 @@ def fetch_daemonsets():
     processed = process_daemonsets(
         resource_api=OPCUA_API_V1,
         field_selector="metadata.name==aio-opc-asset-discovery",
+    )
+    processed.extend(
+        process_daemonsets(
+            resource_api=OPCUA_API_V1,
+            label_selector=OPCUA_NAME_LABEL,
+        )
     )
     return processed
 
