@@ -20,7 +20,7 @@ from rich.padding import Padding
 
 from .check_manager import CheckManager
 from .base_nodes import check_nodes
-from .common import ALL_NAMESPACES_TARGET, PADDING_SIZE, CoreServiceResourceKinds, ResourceOutputDetailLevel
+from .common import ALL_NAMESPACES_TARGET, COLOR_STR_FORMAT, PADDING_SIZE, CoreServiceResourceKinds, ResourceOutputDetailLevel
 from ...common import CheckTaskStatus, ListableEnum
 
 from ...providers.edge_api import EdgeResourceApi
@@ -32,7 +32,6 @@ from ..base import (
 )
 
 logger = get_logger(__name__)
-COLOR_STR_FORMAT = "[{color}]{value}[/{color}]"
 
 
 def check_pre_deployment(

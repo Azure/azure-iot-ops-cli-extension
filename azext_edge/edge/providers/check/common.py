@@ -338,3 +338,5 @@ DISPLAY_BYTES_PER_GIGABYTE = 10 ** 9
 
 # UI constants
 PADDING_SIZE = 4
+
+COLOR_STR_FORMAT = "[{color}]{value}[/{color}]"

@@ -6,7 +6,12 @@
 
 import pytest
 
-from kubernetes.client.models import V1Node, V1NodeList, V1NodeStatus, V1NodeSystemInfo, V1ObjectMeta
+from kubernetes.client.models import V1Node, V1NodeList, V1NodeStatus, V1ObjectMeta
+from kubernetes.utils import parse_quantity
+
+from azext_edge.edge.providers.check.common import (
+    AIO_SUPPORTED_ARCHITECTURES, DISPLAY_BYTES_PER_GIGABYTE, MIN_NODE_MEMORY, MIN_NODE_STORAGE, MIN_NODE_VCPU
+)
 from ...generators import generate_random_string
 
 
@@ -22,11 +27,13 @@ def mocked_node_client(mocked_client, mocker, request):
     nodes = []
     for node_params in params:
         arch = node_params.pop("architecture", generate_random_string(size=5))
+        # Too annoying to make a valid one
+        node_info = mocker.Mock(architecture=arch)
         node = V1Node(
             metadata=V1ObjectMeta(name=generate_random_string()),
             status=V1NodeStatus(
                 capacity=node_params,
-                node_info=V1NodeSystemInfo(architecture=arch)
+                node_info=node_info
             )
         )
         nodes.append(node)
@@ -87,18 +94,76 @@ def mocked_node_client(mocked_client, mocker, request):
         },
         {
             "architecture": "arm64",
-            "cpu": 4,
-            "memory": "20G",
-            "ephemeral-storage": "30G"
         }
     ],
 ], ids=["none", "min reqs", "storage", "memory", "cpu", "architecture", "multi-node"], indirect=True)
-@pytest.mark.parametrize("as_list", [True, False])
-def test_check_nodes(mocked_node_client, mocked_check_manager, as_list):
+def test_check_nodes(mocked_node_client):
     from azext_edge.edge.providers.check.base_nodes import check_nodes
-    result = check_nodes(as_list)
-    import pdb; pdb.set_trace()
-
+    # no point in checking as_list is false since it just affects check manager
+    result = check_nodes(as_list=True)
     assert result
-    mocked_check_manager.add_target.call_args_list[0]
+    assert result["name"] == "evalClusterNodes"
 
+    nodes = mocked_node_client.CoreV1Api().list_node.return_value.items
+    evaluation = result["targets"]["cluster/nodes"]["_all_"]["evaluations"]
+    if not nodes:
+        assert result["status"] == "error"
+        assert evaluation[0]["value"] == "No nodes detected."
+        return
+    elif len(nodes) > 1:
+        warning = result["targets"]["cluster/nodes"]["_all_"]["displays"][0].renderable
+        assert "Currently, only single-node clusters are officially supported for AIO deployments" in warning
+        assert result["targets"]["cluster/nodes"]["_all_"]["status"] == "warning"
+    else:
+        assert result["targets"]["cluster/nodes"]["_all_"]["status"] == "success"
+
+    assert len(result["targets"]) == (len(nodes) + 1)
+    table = result["targets"]["cluster/nodes"]["_all_"]["displays"][-1].renderable
+    headers = [col.header for col in table.columns]
+    assert headers == ["Name", "Architecture", "CPU (vCPU)", "Memory (GB)", "Storage (GB)"]
+
+    # the generator is weird
+    unpacked_cols = [[val for val in col.cells] for col in table.columns]
+
+    for i in range(len(nodes)):
+        node = nodes[i]
+        name = node.metadata.name
+        assert name in unpacked_cols[0][i]
+        arch = node.status.node_info.architecture
+        assert arch in unpacked_cols[1][i]
+        cpu = node.status.capacity.get("cpu", 0)
+        assert str(cpu) in unpacked_cols[2][i]
+        memory = node.status.capacity.get("memory", 0)
+        assert "%.2f" % (parse_quantity(memory) / DISPLAY_BYTES_PER_GIGABYTE) in unpacked_cols[3][i]
+        storage = node.status.capacity.get("ephemeral-storage", 0)
+        assert "%.2f" % (parse_quantity(storage) / DISPLAY_BYTES_PER_GIGABYTE) in unpacked_cols[4][i]
+
+        assert f"cluster/nodes/{name}" in result["targets"]
+        result_node = result["targets"][f"cluster/nodes/{name}"]["_all_"]
+
+        arch_status = arch in AIO_SUPPORTED_ARCHITECTURES
+        assert result_node["conditions"][0] == f"info.architecture in ({','.join(AIO_SUPPORTED_ARCHITECTURES)})"
+        assert result_node["evaluations"][0]["status"] == bool_to_status(arch_status)
+        assert result_node["evaluations"][0]["value"]["info.architecture"] == arch
+
+        cpu_status = cpu >= int(MIN_NODE_VCPU)
+        assert result_node["conditions"][1] == f"condition.cpu>={MIN_NODE_VCPU}"
+        assert result_node["evaluations"][1]["status"] == bool_to_status(cpu_status)
+        assert result_node["evaluations"][1]["value"]["condition.cpu"] == cpu
+
+        memory_status = parse_quantity(memory) >= parse_quantity(MIN_NODE_MEMORY)
+        assert result_node["conditions"][2] == f"condition.memory>={MIN_NODE_MEMORY}"
+        assert result_node["evaluations"][2]["status"] == bool_to_status(memory_status)
+        assert result_node["evaluations"][2]["value"]["condition.memory"] == parse_quantity(memory)
+
+        storage_status = parse_quantity(storage) >= parse_quantity(MIN_NODE_STORAGE)
+        assert result_node["conditions"][3] == f"condition.ephemeral-storage>={MIN_NODE_STORAGE}"
+        assert result_node["evaluations"][3]["status"] == bool_to_status(storage_status)
+        assert result_node["evaluations"][3]["value"]["condition.ephemeral-storage"] == parse_quantity(storage)
+
+        overall_status = all([arch_status, cpu_status, storage_status, memory_status])
+        assert result_node["status"] == bool_to_status(overall_status)
+
+
+def bool_to_status(status: bool):
+    return "success" if status else "error"

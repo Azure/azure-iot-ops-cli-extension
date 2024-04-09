@@ -14,8 +14,14 @@ from rich.padding import Padding
 from rich.table import Table
 
 from .check_manager import CheckManager
-from .common import AIO_SUPPORTED_ARCHITECTURES, DISPLAY_BYTES_PER_GIGABYTE, MIN_NODE_MEMORY, MIN_NODE_STORAGE, MIN_NODE_VCPU
-from ..base import client
+from .common import (
+    AIO_SUPPORTED_ARCHITECTURES,
+    COLOR_STR_FORMAT,
+    DISPLAY_BYTES_PER_GIGABYTE,
+    MIN_NODE_MEMORY,
+    MIN_NODE_STORAGE,
+    MIN_NODE_VCPU
+)
 from ...common import CheckTaskStatus
 
 
@@ -23,6 +29,7 @@ logger = get_logger(__name__)
 
 
 def check_nodes(as_list: bool = False) -> Dict[str, Any]:
+    from ..base import client
     check_manager = CheckManager(check_name="evalClusterNodes", check_desc="Evaluate cluster nodes")
     padding = (0, 0, 0, 8)
     target = "cluster/nodes"
@@ -44,31 +51,32 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
             display=Padding(api_error_text, (0, 0, 0, 8)),
         )
     else:
-        target_display = "At least 1 node is required. {}"
         if not nodes or not nodes.items:
             target_display = Padding("No nodes detected.", padding)
             check_manager.add_target_eval(
-                target_name=target, status=CheckTaskStatus.error.value, value="No nodes detected.")
+                target_name=target, status=CheckTaskStatus.error.value, value="No nodes detected."
+            )
             check_manager.add_display(target_name=target, display=target_display)
             return check_manager.as_dict()
 
+        check_manager.add_target_eval(
+            target_name=target,
+            status=CheckTaskStatus.warning.value if len(nodes.items) > 1 else CheckTaskStatus.success.value,
+            value=len(nodes.items)
+        )
         if len(nodes.items) > 1:
             check_manager.add_display(
                 target_name=target,
                 display=Padding(
-                    "[yellow]Currently, only single-node clusters are officially supported for AIO deployments", padding
+                    COLOR_STR_FORMAT.format(
+                        color=CheckTaskStatus.warning.color,
+                        value="Currently, only single-node clusters are officially supported for AIO deployments"
+                    ),
+                    padding
                 ),
             )
-
-        target_display = Padding(
-            target_display.format(f"[green]Detected {len(nodes.items)}[/green]."),
-            (0, 0, 0, 8),
-        )
-        check_manager.add_display(target_name=target, display=target_display)
-        check_manager.add_display(target_name=target, display=NewLine())
-
         table = _generate_node_table(check_manager, nodes)
-    check_manager.add_display(target_name=target, display=Padding(table, padding))
+        check_manager.add_display(target_name=target, display=Padding(table, padding))
 
     return check_manager.as_dict(as_list)
 
@@ -141,11 +149,10 @@ def _generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Tabl
 
             check_manager.add_target_conditions(target_name=node_target, conditions=[condition_str])
             check_manager.add_target_eval(target_name=node_target, status=cell_status.value, value={condition: actual})
-            row_cells.append(f"[{cell_status.color}]{displayed}[/{cell_status.color}]")
+            row_cells.append(COLOR_STR_FORMAT.format(color=cell_status.color, value=displayed))
 
         # overall node name color
-        node_name_display = f"[{row_status.color}]{node_name}[/{row_status.color}]"
-        table.add_row(node_name_display, *row_cells)
+        table.add_row(COLOR_STR_FORMAT.format(color=row_status.color, value=node_name), *row_cells)
     return table
 
 
