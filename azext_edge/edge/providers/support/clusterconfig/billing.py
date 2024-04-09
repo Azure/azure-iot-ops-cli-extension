@@ -83,25 +83,19 @@ def fetch_deployments():
 
 
 def fetch_replicasets():
-    processed = []
-    processed.extend(process_replicasets(
+    return process_replicasets(
         resource_api=CLUSTER_CONFIG_API_V1,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
         sub_group=BILLING_RESOURCE_KIND,
-    ))
-
-    return processed
+    )
 
 
 def fetch_services():
-    processed = []
-    processed.extend(process_services(
+    return process_services(
         resource_api=CLUSTER_CONFIG_API_V1,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
         sub_group=BILLING_RESOURCE_KIND,
-    ))
-
-    return processed
+    )
 
 
 support_runtime_elements = {
