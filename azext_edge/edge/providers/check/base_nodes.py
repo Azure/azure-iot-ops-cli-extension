@@ -9,7 +9,6 @@ from typing import Any, Dict
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Node, V1NodeList
-from rich.console import NewLine
 from rich.padding import Padding
 from rich.table import Table
 
