@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import List
+from typing import List, Optional
 from ...generators import generate_random_string
 
 import pytest
@@ -44,6 +44,13 @@ def add_pod_to_mocked_pods(
     pods_list = V1PodList(items=pod_list)
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
     mocked_client.CoreV1Api().read_namespaced_pod_log.return_value = mock_log
+
+
+def process_sub_group(sub_group: Optional[str]):
+    if not sub_group:
+        return ""
+
+    return f"{sub_group}/"
 
 
 @pytest.fixture
@@ -92,6 +99,7 @@ def mocked_cluster_resources(request, mocker):
         AKRI_API_V0,
         LNM_API_V1B1,
         DEVICEREGISTRY_API_V1,
+        CLUSTER_CONFIG_API_V1,
     )
 
     requested_resource_apis = getattr(request, "param", [])
@@ -157,6 +165,12 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("Asset"))
             v1_resources.append(_get_api_resource("AssetEndpointProfile"))
 
+        if r == CLUSTER_CONFIG_API_V1:
+            v1_resources.append(_get_api_resource("BillingError"))
+            v1_resources.append(_get_api_resource("BillingSettings"))
+            v1_resources.append(_get_api_resource("BillingUsage"))
+            v1_resources.append(_get_api_resource("BillingStorage"))
+
         resource_map[r_key] = V1APIResourceList(resources=v1_resources, group_version=r.version)
 
     def _handle_resource_call(*args, **kwargs):
@@ -217,6 +231,36 @@ def mocked_get_custom_objects(mocker):
 
     patched.side_effect = _handle_list_custom_object
     yield patched
+
+
+@pytest.fixture
+def mocked_list_cron_jobs(mocked_client):
+    from kubernetes.client.models import V1CronJobList, V1CronJob, V1ObjectMeta
+
+    def _handle_list_cron_jobs(*args, **kwargs):
+        cron_job = V1CronJob(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_cron_job"))
+        cron_job_list = V1CronJobList(items=[cron_job])
+
+        return cron_job_list
+
+    mocked_client.BatchV1Api().list_cron_job_for_all_namespaces.side_effect = _handle_list_cron_jobs
+
+    yield mocked_client
+
+
+@pytest.fixture
+def mocked_list_jobs(mocked_client):
+    from kubernetes.client.models import V1JobList, V1Job, V1ObjectMeta
+
+    def _handle_list_jobs(*args, **kwargs):
+        job = V1Job(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_job"))
+        job_list = V1JobList(items=[job])
+
+        return job_list
+
+    mocked_client.BatchV1Api().list_job_for_all_namespaces.side_effect = _handle_list_jobs
+
+    yield mocked_client
 
 
 @pytest.fixture

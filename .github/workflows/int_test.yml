@@ -7,6 +7,10 @@ on:
         type: string
         required: true
         default: ops-cli-int-test-rg
+      template-content:
+        description: Custom AIO deployment template file contents, used for all deployments in this workflow.
+        type: string
+        required: false
       custom-locations-oid:
         description: Custom Locations OID
         type: string
@@ -88,7 +92,7 @@ jobs:
           # default / limited options
           - feature: default
             ca-valid-days: 3
-            kv-sat-secret-name: test-kv-secret
+            kv-spc-secret-name: test-kv-secret
           # test --mq-insecure deployment
           - feature: mq-insecure
             mq-insecure: true
@@ -183,6 +187,14 @@ jobs:
           openssl ecparam -name prime256v1 -genkey -noout -out ${{ matrix.ca-key-file }}
           openssl req -new -x509 -key ${{ matrix.ca-key-file }} -days 30 -config ca.conf -out ${{ matrix.ca-file }}
           rm ca.conf
+      - name: "Create local template file"
+        if: ${{ inputs.template-content }}
+        env:
+          template: "${{ inputs.template-content }}"
+        run: |
+          >custom-template.json cat <<-'EOF'
+          ${{ env.template }}
+          EOF
       - name: "AIO Deployment"
         uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
         with:
@@ -198,7 +210,8 @@ jobs:
           ca-valid-days: ${{ matrix.ca-valid-days || '' }}
           ca-file: ${{ matrix.ca-file || '' }}
           ca-key-file: ${{ matrix.ca-key-file || '' }}
-          kv-sat-secret-name: ${{ matrix.kv-sat-secret-name || '' }}
+          kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
+          template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
       - name: "Allow cluster to finish provisioning"
         run: |
           sleep 2m

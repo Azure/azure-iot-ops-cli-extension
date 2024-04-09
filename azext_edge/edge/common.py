@@ -89,6 +89,7 @@ class OpsServiceType(ListableEnum):
     """
 
     auto = "auto"
+    billing = "billing"
     mq = "mq"
     lnm = "lnm"
     opcua = "opcua"
@@ -170,6 +171,17 @@ class FileType(ListableEnum):
     json = "json"
     portal_csv = "portal-csv"
     yaml = "yaml"
+
+    
+class BundleResourceKind(Enum):
+    deployment = "Deployment"
+    statefulset = "Statefulset"
+    service = "Service"
+    replicaset = "Replicaset"
+    daemonset = "Daemonset"
+    pvc = "PersistentVolumeClaim"
+    job = "Job"
+    cronjob = "CronJob"
 
 
 # MQ runtime attributes

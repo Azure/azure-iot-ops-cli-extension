@@ -13,6 +13,7 @@ from rich.console import Console, NewLine
 
 from ..common import OpsServiceType
 from ..providers.edge_api import (
+    CLUSTER_CONFIG_API_V1,
     DATA_PROCESSOR_API_V1,
     MQ_API_V1B1,
     LNM_API_V1B1,
@@ -27,6 +28,7 @@ logger = get_logger(__name__)
 
 console = Console()
 
+COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
 COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DATA_PROCESSOR_APIS = EdgeApiManager(resource_apis=[DATA_PROCESSOR_API_V1])
@@ -37,12 +39,16 @@ COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1
 
 
 def build_bundle(
-    ops_service: str, bundle_path: str, log_age_seconds: Optional[int] = None, include_mq_traces: Optional[bool] = None
+    ops_service: str,
+    bundle_path: str,
+    log_age_seconds: Optional[int] = None,
+    include_mq_traces: Optional[bool] = None,
 ):
     from rich.live import Live
     from rich.progress import Progress
     from rich.table import Table
 
+    from .support.clusterconfig.billing import prepare_bundle as prepare_billing_bundle
     from .support.dataprocessor import prepare_bundle as prepare_dataprocessor_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.lnm import prepare_bundle as prepare_lnm_bundle
@@ -57,6 +63,7 @@ def build_bundle(
     pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
+        OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
         OpsServiceType.mq.value: {"apis": COMPAT_MQ_APIS, "prepare_bundle": prepare_mq_bundle},
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
