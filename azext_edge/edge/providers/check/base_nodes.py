@@ -8,21 +8,16 @@ from typing import Any, Dict
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
-from kubernetes.client.models import (
-    V1Node,
-    V1NodeList
-)
+from kubernetes.client.models import V1Node, V1NodeList
 from rich.console import NewLine
 from rich.padding import Padding
 from rich.table import Table
 
 from .check_manager import CheckManager
 from .common import AIO_SUPPORTED_ARCHITECTURES, DISPLAY_BYTES_PER_GIGABYTE, MIN_NODE_MEMORY, MIN_NODE_STORAGE, MIN_NODE_VCPU
+from ..base import client
 from ...common import CheckTaskStatus
 
-from ..base import (
-    client,
-)
 
 logger = get_logger(__name__)
 
@@ -72,13 +67,13 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
         check_manager.add_display(target_name=target, display=target_display)
         check_manager.add_display(target_name=target, display=NewLine())
 
-        table = generate_node_table(check_manager, nodes)
+        table = _generate_node_table(check_manager, nodes)
     check_manager.add_display(target_name=target, display=Padding(table, padding))
 
     return check_manager.as_dict(as_list)
 
 
-def generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Table:
+def _generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Table:
     from kubernetes.utils import parse_quantity
     # prep table
     table = Table(
@@ -137,7 +132,7 @@ def generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Table
                     row_status = CheckTaskStatus.error
                     cell_status = CheckTaskStatus.error
             else:
-                displayed = get_display_number(displayed, expected)
+                displayed = _get_display_number(displayed, expected)
                 expected = parse_quantity(expected)
                 if actual < expected:
                     row_status = CheckTaskStatus.error
@@ -154,7 +149,7 @@ def generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Table
     return table
 
 
-def get_display_number(number: int, number_with_unit: str) -> str:
+def _get_display_number(number: int, number_with_unit: str) -> str:
     displayed = f"{number}"
     if number_with_unit.endswith("G"):
         displayed = "%.2f" % (number / DISPLAY_BYTES_PER_GIGABYTE)
