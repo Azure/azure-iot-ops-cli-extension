@@ -121,6 +121,9 @@ class WorkManager:
         kwargs["subscription_id"] = self._subscription_id  # TODO: temporary
         self._cluster_secret_ref = CLUSTER_SECRET_REF
         self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
+        # TODO: Make cluster target with KPIs
+        self._cluster_namespace = kwargs.get("cluster_namespace")
+        self._custom_location_name = kwargs.get("custom_location_name")
         self._deploy_rsync_rules = not kwargs.get("disable_rsync_rules", False)
         self._connected_cluster = None
         self._kwargs = kwargs
@@ -190,7 +193,7 @@ class WorkManager:
         self.display.add_step(
             WorkCategoryKey.DEPLOY_AIO,
             WorkStepKey.DEPLOY_AIO_MONIKER,
-            f"[green]{deployment_moniker}[/green]",
+            f"[cyan]{deployment_moniker}[/cyan]",
         )
 
     def do_work(self):  # noqa: C901
@@ -210,6 +213,7 @@ class WorkManager:
             verify_arc_cluster_config,
             verify_cluster_and_use_location,
             verify_custom_locations_enabled,
+            verify_custom_location_namespace,
             wait_for_terminal_state,
         )
         from .host import verify_cli_client_connections
@@ -245,13 +249,17 @@ class WorkManager:
                 # WorkStepKey.EVAL_LOGIN_PERM -- rest of pre-flight checks are under this step.
                 if self._connected_cluster:
                     throw_if_iotops_deployed(self._connected_cluster)
+                    verify_custom_locations_enabled()
+                    verify_custom_location_namespace(
+                        connected_cluster=self._connected_cluster,
+                        custom_location_name=self._custom_location_name,
+                        namespace=self._cluster_namespace,
+                    )
 
                 if self._deploy_rsync_rules:
                     verify_write_permission_against_rg(
                         **self._kwargs,
                     )
-
-                verify_custom_locations_enabled()
 
                 # Use pre-flight deployment as a shortcut to evaluate permissions
                 template, parameters = self.build_template(work_kpis=work_kpis)

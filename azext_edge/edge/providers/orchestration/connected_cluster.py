@@ -6,18 +6,19 @@
 
 from ...util.az_client import get_resource_client
 from ...util.resource_graph import ResourceGraph
-from typing import List
+from typing import List, Optional
 
 CONNECTED_CLUSTER_API_VERSION = "2024-01-01"
 KUBERNETES_CONFIG_API_VERSION = "2022-11-01"
 
 
 class ConnectedCluster:
-    def __init__(self, subscription_id: str, cluster_name: str, resource_group_name: str):
+    def __init__(self, cmd, subscription_id: str, cluster_name: str, resource_group_name: str):
         self.subscription_id = subscription_id
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
         self.resource_client = get_resource_client(self.subscription_id)
+        self.resource_graph = ResourceGraph(cmd=cmd, subscriptions=[self.subscription_id])
 
     @property
     def resource_id(self) -> str:
@@ -46,7 +47,15 @@ class ConnectedCluster:
         ).additional_properties
         return additional_properties.get("value", [])
 
-    def get_custom_location_for_namespace(self, cmd, namespace: str):
-        resource_graph = ResourceGraph(cmd=cmd, subscriptions=[self.subscription_id])
-        result = resource_graph.query()
-        import pdb; pdb.set_trace()
+    def get_custom_location_for_namespace(self, namespace: str) -> Optional[dict]:
+        query = f"""
+        Resources
+        | where type == 'microsoft.extendedlocation/customlocations'
+        | where tolower(properties.hostResourceId) == tolower('{self.resource_id}')
+        | where tolower(properties.namespace) == tolower('{namespace}')
+        | project id, name, location, properties
+        """
+
+        result = self.resource_graph.query_resources(query=query)
+        if "data" in result and result["data"]:
+            return result["data"][0]
