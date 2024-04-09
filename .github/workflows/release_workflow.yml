@@ -66,6 +66,8 @@ jobs:
     secrets: inherit
   # upload_wheel == 'true'
   upload_wheel:
+    permissions:
+      id-token: write
     needs: [approval]
     if: github.event.inputs.upload_wheel == 'true'
     uses: ./.github/workflows/upload_wheel.yml
