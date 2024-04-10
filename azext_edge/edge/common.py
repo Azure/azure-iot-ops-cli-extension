@@ -172,7 +172,7 @@ class FileType(ListableEnum):
     portal_csv = "portal-csv"
     yaml = "yaml"
 
-    
+
 class BundleResourceKind(Enum):
     deployment = "Deployment"
     statefulset = "Statefulset"
