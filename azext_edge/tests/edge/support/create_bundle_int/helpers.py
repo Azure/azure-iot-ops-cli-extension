@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 from os import mkdir, path, walk
 from shutil import rmtree, unpack_archive
 from azure.cli.core.azclierror import CLIInternalError
@@ -16,7 +16,7 @@ from ....helpers import run
 
 EXTRACTED_PATH = "unpacked"
 AUTO_EXTRACTED_PATH = f"auto_{EXTRACTED_PATH}"
-NON_CUSTOM_TYPES = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service", "statefulset"]
+WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service", "statefulset"]
 
 
 def assert_file_names(files: List[str]):
@@ -34,7 +34,7 @@ def assert_file_names(files: List[str]):
             continue
 
         assert extension in ["log", "txt", "yaml"]
-        if file_type not in NON_CUSTOM_TYPES:
+        if file_type not in WORKLOAD_TYPES:
             if extension == "txt":
                 continue
             assert name.pop(0).startswith("v")
@@ -102,11 +102,10 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
     return file_name_objs
 
 
-def check_custom_file_objs(
+def check_custom_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     resource_api: EdgeResourceApi,
-    resource_kinds: List[str],
-    namespace: Optional[str] = None
+    resource_kinds: List[str]
 ):
     plural_map: Dict[str, str] = {}
     try:
@@ -133,13 +132,13 @@ def check_custom_file_objs(
             assert resource["version"] == resource_api.version
 
 
-def check_non_custom_file_objs(
+def check_workload_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
-    expected: List[str],
-    prefixes: Union[str, List[str]],
-    include_pod_metrics: bool = False
+    expected_workload_types: List[str],
+    prefixes: Union[str, List[str]]
 ):
-    assert len(file_objs) >= len(expected)
+    if "pod" in expected_workload_types:
+        expected_workload_types.pop("pod")
     # pod
     file_pods = {}
     for file in file_objs["pod"]:
@@ -177,7 +176,7 @@ def check_non_custom_file_objs(
             assert value
 
     # other
-    for key in expected:
+    for key in expected_workload_types:
         expected_items = get_kubectl_items(prefixes, service_type=key)
         expected_item_names = [item["metadata"]["name"] for item in expected_items]
         for file in file_objs[key]:

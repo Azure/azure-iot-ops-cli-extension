@@ -10,7 +10,7 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from .helpers import (
     assert_file_names,
-    check_non_custom_file_objs,
+    check_workload_resource_files,
     get_file_map,
     run_bundle_command,
     AUTO_EXTRACTED_PATH,
@@ -112,6 +112,6 @@ def test_create_bundle_otel(init_setup, tracked_files):
         for config in file_map["instance"]:
             assert config["version"] == "v0"
 
-    expected_file_objs = ["deployment", "replicaset", "service"]
-    assert set(file_map.keys()).issubset(set(expected_file_objs + ["pod"]))
-    check_non_custom_file_objs(file_map, expected_file_objs, "aio-otel")
+    expected_workload_types = ["deployment", "pod", "replicaset", "service"]
+    assert set(file_map.keys()).issubset(set(expected_workload_types))
+    check_workload_resource_files(file_map, expected_workload_types, "aio-otel")

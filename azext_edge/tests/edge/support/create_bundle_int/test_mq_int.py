@@ -9,8 +9,8 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
 from .helpers import (
-    check_custom_file_objs,
-    check_non_custom_file_objs,
+    check_custom_resource_files,
+    check_workload_resource_files,
     get_file_map,
     get_kubectl_items,
     run_bundle_command
@@ -34,14 +34,14 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     assert len(diagnostic) == 1
     assert diagnostic[0]["extension"] == "txt"
 
-    check_custom_file_objs(
+    check_custom_resource_files(
         file_objs=file_map,
         resource_api=MQ_ACTIVE_API,
         resource_kinds=MqResourceKinds.list(),
     )
 
-    expected_file_objs = ["deployment", "replicaset", "service", "statefulset"]
-    expected_types = expected_file_objs + MqResourceKinds.list() + ["pod"]
+    expected_workload_types = ["deployment", "pod", "replicaset", "service", "statefulset"]
+    expected_types = expected_workload_types + MqResourceKinds.list()
     assert set(file_map.keys()).issubset(set(expected_types))
 
     # There is a chance that traces are not present even if mq_traces is true
@@ -68,4 +68,4 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
             assert extension_dict.get("json")
             assert extension_dict.get("pb")
 
-    check_non_custom_file_objs(file_map, expected_file_objs, "aio-mq")
+    check_workload_resource_files(file_map, expected_workload_types, "aio-mq")

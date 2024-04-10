@@ -8,7 +8,7 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
-from .helpers import check_custom_file_objs, EXTRACTED_PATH, get_file_map, run_bundle_command
+from .helpers import check_custom_resource_files, EXTRACTED_PATH, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
 
@@ -22,7 +22,7 @@ def test_create_bundle_deviceregistry(init_setup, tracked_files):
         pytest.skip(f"No bundles created for {ops_service}.")
     file_map = get_file_map(walk_result, ops_service)
 
-    check_custom_file_objs(
+    check_custom_resource_files(
         file_objs=file_map,
         resource_api=DEVICEREGISTRY_API_V1,
         resource_kinds=DeviceRegistryResourceKinds.list(),

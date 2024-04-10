@@ -7,7 +7,7 @@
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import LNM_API_V1B1, LnmResourceKinds
-from .helpers import check_custom_file_objs, check_non_custom_file_objs, get_file_map, run_bundle_command
+from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
 
@@ -19,14 +19,14 @@ def test_create_bundle_lnm(init_setup, tracked_files):
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
 
-    check_custom_file_objs(
+    check_custom_resource_files(
         file_objs=file_map,
         resource_api=LNM_API_V1B1,
         resource_kinds=LnmResourceKinds.list(),
     )
 
-    expected_file_objs = ["deployment", "replicaset"]
-    expected_types = expected_file_objs + LnmResourceKinds.list() + ["pod"]
+    expected_workload_types = ["deployment", "pod", "replicaset"]
+    expected_types = expected_workload_types + LnmResourceKinds.list()
     assert set(file_map.keys()).issubset(set(expected_types))
 
-    check_non_custom_file_objs(file_map, expected_file_objs, "aio-lnm")
+    check_workload_resource_files(file_map, expected_workload_types, "aio-lnm")
