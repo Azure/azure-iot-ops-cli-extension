@@ -25,18 +25,8 @@ def test_create_bundle_lnm(init_setup, tracked_files):
         resource_kinds=LnmResourceKinds.list(),
     )
 
-    expected_file_objs = {
-        "deployment": [
-            "aio-lnm-operator"
-        ],
-        "pod": [
-            "aio-lnm-operator"
-        ],
-        "replicaset": [
-            "aio-lnm-operator"
-        ]
-    }
-    expected_types = list(expected_file_objs.keys()) + LnmResourceKinds.list()
+    expected_file_objs = ["deployment", "replicaset"]
+    expected_types = expected_file_objs + LnmResourceKinds.list() + ["pod"]
     assert set(file_map.keys()).issubset(set(expected_types))
 
-    check_non_custom_file_objs(file_map, expected_file_objs)
+    check_non_custom_file_objs(file_map, expected_file_objs, "aio-lnm")

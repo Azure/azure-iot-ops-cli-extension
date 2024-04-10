@@ -25,42 +25,10 @@ def test_create_bundle_dataprocessor(init_setup, tracked_files):
         resource_kinds=DataProcessorResourceKinds.list(),
     )
 
-    expected_file_objs = {
-        "deployment": [
-            "aio-dp-operator"
-        ],
-        "pod": [
-            "aio-dp-msg-store",
-            "aio-dp-operator",
-            "aio-dp-reader-worker",
-            "aio-dp-refdata-store",
-            "aio-dp-runner-worker"
-        ],
-        "pvc": [
-            "aio-dp-msg-store-js-aio-dp-msg-store",
-            "checkpoint-store-local-aio-dp-runner-worker",
-            "refdatastore-local-aio-dp-refdata-store",
-            "runner-local-aio-dp-runner-worker"
-        ],
-        "replicaset": [
-            "aio-dp-operator"
-        ],
-        "service": [
-            "aio-dp-msg-store-headless",
-            "aio-dp-msg-store",
-            "aio-dp-operator",
-            "aio-dp-reader-worker",
-            "aio-dp-refdata-store",
-            "aio-dp-runner-worker"
-        ],
-        "statefulset": [
-            "aio-dp-msg-store",
-            "aio-dp-reader-worker",
-            "aio-dp-refdata-store",
-            "aio-dp-runner-worker"
-        ]
-    }
-    expected_types = list(expected_file_objs.keys()) + DataProcessorResourceKinds.list()
+    expected_file_objs = ["deployment", "pvc", "replicaset", "service", "statefulset"]
+    expected_types = expected_file_objs + DataProcessorResourceKinds.list() + ["pod"]
     assert set(file_map.keys()).issubset(set(expected_types))
 
-    check_non_custom_file_objs(file_map, expected_file_objs)
+    check_non_custom_file_objs(file_map, expected_file_objs, [
+        "aio-dp", "checkpoint-store-local-aio-dp", "refdatastore-local-aio-dp", "runner-local-aio-dp"
+    ])

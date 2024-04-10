@@ -25,46 +25,8 @@ def test_create_bundle_opcua(init_setup, tracked_files):
         resource_kinds=OpcuaResourceKinds.list(),
     )
 
-    expected_file_objs = {
-        "daemonset": [
-            "aio-opc-asset-discovery"
-        ],
-        "deployment": [
-            "aio-opc-admission-controller",
-            "aio-opc-supervisor"
-        ],
-        "pod": [
-            "aio-opc-admission-controller",
-            "aio-opc-asset-discovery",
-            "aio-opc-supervisor"
-        ],
-        "replicaset": [
-            "aio-opc-admission-controller",
-            "aio-opc-supervisor"
-        ],
-        "service": [
-            "aio-opc-admission-controller"
-        ]
-    }
-
-    optional_file_objs = {
-        "deployment": [
-            "opcplc",
-            "aio-opc-opc"
-        ],
-        "pod": [
-            "opcplc",
-            "aio-opc-opc"
-        ],
-        "replicaset": [
-            "opcplc",
-            "aio-opc-opc"
-        ],
-        "service": [
-            "opcplc"
-        ]
-    }
-    expected_types = list(expected_file_objs.keys()) + OpcuaResourceKinds.list()
+    expected_file_objs = ["daemonset", "deployment", "podmetric", "replicaset", "service"]
+    expected_types = expected_file_objs + OpcuaResourceKinds.list() + ["pod"]
     assert set(file_map.keys()).issubset(set(expected_types))
 
-    check_non_custom_file_objs(file_map, expected_file_objs, optional_file_objs)
+    check_non_custom_file_objs(file_map, expected_file_objs, "aio-opc", include_pod_metrics=True)

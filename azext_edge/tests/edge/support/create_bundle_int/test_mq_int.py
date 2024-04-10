@@ -10,9 +10,9 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
 from .helpers import (
     check_custom_file_objs,
-    check_name,
     check_non_custom_file_objs,
     get_file_map,
+    get_kubectl_items,
     run_bundle_command
 )
 
@@ -40,40 +40,8 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
         resource_kinds=MqResourceKinds.list(),
     )
 
-    expected_file_objs = {
-        "deployment": [
-            "aio-mq-diagnostics-service",
-            "aio-mq-operator"
-        ],
-        "pod": [
-            "aio-mq-diagnostics-probe",
-            "aio-mq-diagnostics-service",
-            "aio-mq-dmqtt-authentication",
-            "aio-mq-dmqtt-backend",  # could have multiple
-            "aio-mq-dmqtt-frontend",  # same
-            "aio-mq-dmqtt-health-manager",
-            "aio-mq-operator"
-        ],
-        "replicaset": [
-            "aio-mq-diagnostics-service",
-            "aio-mq-operator"
-        ],
-        "service": [
-            "aio-mq-diagnostics-service",
-            "aio-mq-dmqtt-authentication",
-            "aio-mq-dmqtt-backend",
-            "aio-mq-dmqtt-frontend",
-            "aio-mq-dmqtt-health-manager"
-        ],
-        "statefulset": [
-            "aio-mq-diagnostics-probe",
-            "aio-mq-dmqtt-authentication",
-            "aio-mq-dmqtt-backend",  # could have multiple
-            "aio-mq-dmqtt-frontend",
-            "aio-mq-dmqtt-health-manager"
-        ]
-    }
-    expected_types = list(expected_file_objs.keys()) + MqResourceKinds.list()
+    expected_file_objs = ["deployment", "replicaset", "service", "statefulset"]
+    expected_types = expected_file_objs + MqResourceKinds.list() + ["pod"]
     assert set(file_map.keys()).issubset(set(expected_types))
 
     # There is a chance that traces are not present even if mq_traces is true
@@ -82,10 +50,12 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
 
     if traces:
         # one trace should have two files - grab by id
+        expected_pods = get_kubectl_items("aio-mq", service_type="pod")
+        expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
         id_check = {}
         for file in traces["trace"]:
             assert file["action"] in ["connect", "ping", "puback", "publish", "subscribe", "unsubscribe"]
-            check_name(file["name"], expected_file_objs["pod"])
+            assert file["name"] in expected_pod_names
 
             # should be a json for each pb
             if file["identifier"] not in id_check:
@@ -98,4 +68,4 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
             assert extension_dict.get("json")
             assert extension_dict.get("pb")
 
-    check_non_custom_file_objs(file_map, expected_file_objs)
+    check_non_custom_file_objs(file_map, expected_file_objs, "aio-mq")

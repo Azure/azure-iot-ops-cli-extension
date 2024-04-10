@@ -25,36 +25,8 @@ def test_create_bundle_orc(init_setup, tracked_files):
         resource_kinds=OrcResourceKinds.list(),
     )
 
-    expected_file_objs = {
-        "deployment": [
-            "aio-cert-manager-cainjector",
-            "aio-cert-manager-webhook",
-            "aio-cert-manager",
-            "aio-orc-api",
-            "aio-orc-controller-manager"
-        ],
-        "pod": [
-            "aio-cert-manager",
-            "aio-cert-manager-cainjector",
-            "aio-cert-manager-webhook",
-            "aio-orc-api",
-            "aio-orc-controller-manager"
-        ],
-        "replicaset": [
-            "aio-cert-manager",
-            "aio-cert-manager-cainjector",
-            "aio-cert-manager-webhook",
-            "aio-orc-api",
-            "aio-orc-controller-manager"
-        ],
-        "service": [
-            "aio-cert-manager-webhook",
-            "aio-cert-manager",
-            "aio-orc-service",
-            "aio-orc-webhook-service"
-        ]
-    }
-    expected_types = list(expected_file_objs.keys()) + OrcResourceKinds.list()
+    expected_file_objs = ["deployment", "replicaset", "service"]
+    expected_types = expected_file_objs + OrcResourceKinds.list() + ["pod"]
     assert set(file_map.keys()).issubset(set(expected_types))
 
-    check_non_custom_file_objs(file_map, expected_file_objs)
+    check_non_custom_file_objs(file_map, expected_file_objs, ["aio-cert", "aio-orc"])

@@ -112,19 +112,6 @@ def test_create_bundle_otel(init_setup, tracked_files):
         for config in file_map["instance"]:
             assert config["version"] == "v0"
 
-    expected_file_objs = {
-        "deployment": [
-            "aio-otel-collector"
-        ],
-        "pod": [
-            "aio-otel-collector"
-        ],
-        "replicaset": [
-            "aio-otel-collector"
-        ],
-        "service": [
-            "aio-otel-collector"
-        ]
-    }
-    assert set(file_map.keys()).issubset(set(expected_file_objs.keys()))
-    check_non_custom_file_objs(file_map, expected_file_objs)
+    expected_file_objs = ["deployment", "replicaset", "service"]
+    assert set(file_map.keys()).issubset(set(expected_file_objs + ["pod"]))
+    check_non_custom_file_objs(file_map, expected_file_objs, "aio-otel")

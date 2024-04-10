@@ -25,30 +25,8 @@ def test_create_bundle_akri(init_setup, tracked_files):
         resource_kinds=AkriResourceKinds.list(),
     )
 
-    expected_file_objs = {
-        "daemonset": [
-            "aio-akri-agent-daemonset"
-        ],
-        "deployment": [
-            "aio-akri-otel-collector",
-            "aio-akri-webhook-configuration"
-        ],
-        "pod": [
-            "aio-akri-agent-daemonset",
-            "aio-akri-otel-collector",
-            "aio-akri-webhook-configuration"
-        ],
-        "replicaset": [
-            "aio-akri-otel-collector",
-            "aio-akri-webhook-configuration"
-        ],
-        "service": [
-            "aio-akri-agent-metrics-service",
-            "aio-akri-controller-metrics-service",
-            "aio-akri-webhook-configuration"
-        ]
-    }
-    expected_types = list(expected_file_objs.keys()) + AkriResourceKinds.list()
+    expected_file_objs = ["daemonset", "deployment", "replicaset", "service"]
+    expected_types = expected_file_objs + AkriResourceKinds.list() + ["pod"]
     assert set(file_map.keys()).issubset(set(expected_types))
 
-    check_non_custom_file_objs(file_map, expected_file_objs)
+    check_non_custom_file_objs(file_map, expected_file_objs, "aio-akri")
