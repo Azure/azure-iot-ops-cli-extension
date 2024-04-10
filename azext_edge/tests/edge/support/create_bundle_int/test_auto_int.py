@@ -10,6 +10,7 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from .helpers import (
     assert_file_names,
+    check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
     run_bundle_command,
@@ -102,15 +103,6 @@ def test_create_bundle_otel(init_setup, tracked_files):
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, "otel")
-
-    # do we always have these? What cases do they have them vs not?
-    # how can names change?
-    if file_map.get("configuration"):
-        for config in file_map["configuration"]:
-            assert config["version"] == "v0"
-    if file_map.get("instance"):
-        for config in file_map["instance"]:
-            assert config["version"] == "v0"
 
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     assert set(file_map.keys()).issubset(set(expected_workload_types))
