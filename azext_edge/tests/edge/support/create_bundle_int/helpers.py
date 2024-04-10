@@ -174,7 +174,6 @@ def check_workload_resource_files(
         for extension, value in files.items():
             assert value, f"Pod {name} is missing {extension}."
 
-
     # other
     for key in expected_workload_types:
         expected_items = get_kubectl_items(prefixes, service_type=key)
@@ -204,7 +203,7 @@ def find_extra_or_missing_files(
     missing_files = [name for name in expected_names if name not in bundle_names]
     if missing_files:
         error_msg.append(f"Missing {resource_type} files: {' ,'.join(missing_files)}.")
-    
+
     if error_msg:
         raise AssertionError('\n '.join(error_msg))
 

@@ -10,7 +10,6 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from .helpers import (
     assert_file_names,
-    check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
     run_bundle_command,
@@ -36,6 +35,13 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         except FileExistsError:
             pass
     walk_result = run_bundle_command(command=command.format(ops_service), tracked_files=tracked_files)
+    # generate second bundle as close as possible
+    if ops_service != OpsServiceType.auto.value:
+        auto_walk_result = run_bundle_command(
+            command=command.format(OpsServiceType.auto.value),
+            tracked_files=tracked_files,
+            extracted_path=AUTO_EXTRACTED_PATH
+        )
 
     # Level 0 - top
     level_0 = walk_result.pop(EXTRACTED_PATH)
@@ -79,11 +85,6 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
 
     # check service is within auto
     if ops_service != OpsServiceType.auto.value:
-        auto_walk_result = run_bundle_command(
-            command=command.format(OpsServiceType.auto.value),
-            tracked_files=tracked_files,
-            extracted_path=AUTO_EXTRACTED_PATH
-        )
         expected_folders = [[]]
         if mq_traces and ops_service == OpsServiceType.mq.value:
             expected_folders.append(['traces'])
