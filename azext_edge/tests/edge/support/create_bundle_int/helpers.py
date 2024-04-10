@@ -138,12 +138,12 @@ def check_workload_resource_files(
     prefixes: Union[str, List[str]]
 ):
     if "pod" in expected_workload_types:
-        expected_workload_types.pop("pod")
+        expected_workload_types.remove("pod")
     # pod
     file_pods = {}
     for file in file_objs["pod"]:
         if file["name"] not in file_pods:
-            file_pods[file["name"]] = {"yaml_present": False}
+            file_pods[file["name"]] = {"yaml": False}
         converted_file = file_pods[file["name"]]
 
         # for all of these files, make sure that it was not seen before
@@ -151,8 +151,8 @@ def check_workload_resource_files(
         # if sub_descriptor file present, descriptor file should be there too (has exceptions)
         if file["extension"] == "yaml":
             # only one yaml per pod
-            assert not converted_file["yaml_present"]
-            converted_file["yaml_present"] = True
+            assert not converted_file["yaml"]
+            converted_file["yaml"] = True
         elif file.get("sub_descriptor") in ["init", None]:
             assert f"{file['descriptor']}.{file.get('sub_descriptor')}" not in converted_file
             converted_file[file["descriptor"]] = True
@@ -168,12 +168,12 @@ def check_workload_resource_files(
 
     expected_pods = get_kubectl_items(prefixes, service_type="pod")
     expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
-    assert len(file_pods) == len(expected_pods)
+    find_extra_or_missing_files("pod", file_pods.keys(), expected_pod_names)
 
     for name, files in file_pods.items():
-        assert name in expected_pod_names
-        for value in files.values():
-            assert value
+        for extension, value in files.items():
+            assert value, f"Pod {name} is missing {extension}."
+
 
     # other
     for key in expected_workload_types:
@@ -181,8 +181,8 @@ def check_workload_resource_files(
         expected_item_names = [item["metadata"]["name"] for item in expected_items]
         for file in file_objs[key]:
             assert file["extension"] == "yaml"
-            assert file["name"] in expected_item_names
-        assert len(file_objs[key]) == len(expected_item_names)
+        present_names = [file["name"] for file in file_objs[key]]
+        find_extra_or_missing_files(key, present_names, expected_item_names)
 
 
 def ensure_clean_dir(dir_path: str, tracked_files: List[str]):
@@ -194,22 +194,19 @@ def ensure_clean_dir(dir_path: str, tracked_files: List[str]):
         mkdir(dir_path)
 
 
-def filter_duplicate_file_names(files):
-    return [name for name in files if not name.endswith(".metric")]
-    # for name in files:
-    #     # make sure multiple mq backend/frontend pods/statefulsets aren't counted more
-    #     # than once
-    #     repeated = False
-    #     for repeatable in ["aio-mq-dmqtt-backend", "aio-mq-dmqtt-frontend", "aio-mq-operator", "aio-orc-api"]:
-    #         if name.startswith(repeatable):
-    #             repeated = True
-    #             if repeatable not in filtered_files:
-    #                 filtered_files.append(repeatable)
-    #             break
-    #     name = name.split(".")[0]
-    #     if name not in filtered_files and not repeated:
-    #         filtered_files.append(name)
-    # return filtered_files
+def find_extra_or_missing_files(
+    resource_type: str, bundle_names: List[str], expected_names: List[str]
+):
+    error_msg = []
+    extra_names = [name for name in bundle_names if name not in expected_names]
+    if extra_names:
+        error_msg.append(f"Extra {resource_type} files: {' ,'.join(extra_names)}.")
+    missing_files = [name for name in expected_names if name not in bundle_names]
+    if missing_files:
+        error_msg.append(f"Missing {resource_type} files: {' ,'.join(missing_files)}.")
+    
+    if error_msg:
+        raise AssertionError('\n '.join(error_msg))
 
 
 def get_kubectl_items(prefixes: Union[str, List[str]], service_type: str) -> Dict[str, Any]:

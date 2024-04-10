@@ -54,7 +54,9 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
         expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
         id_check = {}
         for file in traces["trace"]:
-            assert file["action"] in ["connect", "ping", "puback", "publish", "subscribe", "unsubscribe"]
+            assert file["action"] in [
+                "connect", "disconnect", "ping", "puback", "publish", "subscribe", "unsubscribe"
+            ]
             assert file["name"] in expected_pod_names
 
             # should be a json for each pb
