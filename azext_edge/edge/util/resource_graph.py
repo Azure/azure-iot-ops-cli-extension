@@ -22,7 +22,6 @@ class ResourceGraph:
         self.subscriptions = []
         if subscriptions:
             self.subscriptions.extend(subscriptions)
-        self.subscriptions.append("2bd4119a-4d8d-4090-9183-f9e516c21723")
 
     def query_resources(self, query: str, page_size: Optional[int] = None) -> dict:
         """Query Azure Resource Graph (ARG).

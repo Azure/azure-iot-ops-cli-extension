@@ -635,8 +635,9 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
 
 @pytest.mark.parametrize("mocked_connected_cluster_location", ["mock_location"], indirect=True)
 @pytest.mark.parametrize("location", [None, generate_random_string()])
-def test_verify_cluster_and_use_location(mocked_connected_cluster_location, location):
+def test_verify_cluster_and_use_location(mocked_connected_cluster_location, mocked_cmd, location):
     kwargs = {
+        "cmd": mocked_cmd,
         "cluster_location": None,
         "location": location,
         "cluster_name": generate_random_string(),
@@ -669,7 +670,7 @@ def test_verify_cluster_and_use_location(mocked_connected_cluster_location, loca
     ],
     indirect=True,
 )
-def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions):
+def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions, mocked_cmd):
     from azext_edge.edge.providers.orchestration.base import (
         IOT_OPERATIONS_EXTENSION_PREFIX,
         ConnectedCluster,
@@ -677,6 +678,7 @@ def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions):
     )
 
     kwargs = {
+        "cmd": mocked_cmd,
         "cluster_name": generate_random_string(),
         "subscription_id": generate_random_string(),
         "resource_group_name": generate_random_string(),
@@ -802,11 +804,12 @@ def test_verify_custom_locations_enabled(mocker, role_bindings):
         },
     ],
 )
-def test_verify_arc_cluster_config(mocker, test_scenario):
+def test_verify_arc_cluster_config(mocker, mocked_cmd, test_scenario):
     get_config_map_patch = mocker.patch(f"{BASE_PATH}.get_config_map", return_value=test_scenario["config_map"])
     from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_config
 
     connected_cluster = ConnectedCluster(
+        cmd=mocked_cmd,
         subscription_id=ZEROED_SUB,
         cluster_name="cluster1",
         resource_group_name="rg1",
