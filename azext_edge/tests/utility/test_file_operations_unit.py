@@ -81,23 +81,23 @@ class TestFileHeaders(object):
 
 @pytest.mark.parametrize("loader_return", [None, generate_random_string()])
 @pytest.mark.parametrize("extension", ["json", "yml", "yaml", "csv", "whl"])
-def test_convert_file_content_to_json(mocker, extension, loader_return):
+def test_read_file_content_as_dict(mocker, extension, loader_return):
     patched_loader = mocker.patch(
-        "azext_edge.edge.util.file_operations.try_loading_as",
+        "azext_edge.edge.util.file_operations._try_loading_as",
         return_value=loader_return
     )
     patched_reader = mocker.patch(
         "azext_edge.edge.util.file_operations.read_file_content",
         return_value=f"{generate_random_string()}\n{generate_random_string()}"
     )
-    from azext_edge.edge.util import convert_file_content_to_json
+    from azext_edge.edge.util import read_file_content_as_dict
     file_path = f"{generate_random_string()}.{extension}"
 
     if loader_return is None:
         with pytest.raises(FileOperationError):
-            convert_file_content_to_json(file_path=file_path)
+            read_file_content_as_dict(file_path=file_path)
     else:
-        result = convert_file_content_to_json(file_path=file_path)
+        result = read_file_content_as_dict(file_path=file_path)
         assert result == loader_return
 
     call_count = 0
@@ -211,21 +211,21 @@ def test_read_file_content():
 @pytest.mark.parametrize("error", [None, FileOperationError])
 @pytest.mark.parametrize("raise_error", [True, False])
 def test_try_loading_as(mocker, error, raise_error, return_value):
-    from azext_edge.edge.util.file_operations import try_loading_as
+    from azext_edge.edge.util.file_operations import _try_loading_as
     loader = mocker.Mock(return_value=return_value)
     if error:
         loader.side_effect = error(generate_random_string())
     content = generate_random_string()
     if error and raise_error:
         with pytest.raises(FileOperationError):
-            try_loading_as(
+            _try_loading_as(
                 loader=loader,
                 content=content,
                 error_type=FileOperationError,
                 raise_error=raise_error
             )
     else:
-        result = try_loading_as(
+        result = _try_loading_as(
             loader=loader,
             content=content,
             error_type=FileOperationError,

@@ -9,42 +9,11 @@ import json
 import yaml
 import os
 from pathlib import PurePath
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Callable, Iterable, List, Optional, Union
 from azure.cli.core.azclierror import FileOperationError
 from knack.log import get_logger
 
 logger = get_logger(__name__)
-
-
-def convert_file_content_to_json(file_path: str) -> List[Dict[str, Any]]:
-    extension = file_path.split(".")[-1]
-    invalid_extension = extension not in ["json", "yaml", "yml", "csv"]
-    content = read_file_content(file_path)
-    result: Optional[List[Dict[str, Any]]] = None
-    if invalid_extension or extension == "json":
-        result = try_loading_as(
-            loader=json.loads,
-            content=content,
-            error_type=json.JSONDecodeError,
-            raise_error=not invalid_extension
-        )
-    if (not result and invalid_extension) or extension in ["yaml", "yml"]:
-        result = try_loading_as(
-            loader=yaml.safe_load,
-            content=content,
-            error_type=yaml.YAMLError,
-            raise_error=not invalid_extension
-        )
-    if (not result and invalid_extension) or extension == "csv":
-        result = try_loading_as(
-            loader=csv.DictReader,
-            content=content.splitlines(),
-            error_type=csv.Error,
-            raise_error=not invalid_extension
-        )
-    if result is not None:
-        return result
-    raise FileOperationError(f"File contents for {file_path} cannot be read.")
 
 
 # TODO: unit test
@@ -122,12 +91,43 @@ def read_file_content(file_path: str, read_as_binary: bool = False) -> Union[byt
     raise FileOperationError(f"Failed to decode file {file_path}.")
 
 
-def try_loading_as(
+def read_file_content_as_dict(file_path: str) -> Union[Iterable, dict]:
+    extension = file_path.split(".")[-1]
+    invalid_extension = extension not in ["json", "yaml", "yml", "csv"]
+    content = read_file_content(file_path)
+    result: Optional[Union[Iterable, dict]] = None
+    if invalid_extension or extension == "json":
+        result = _try_loading_as(
+            loader=json.loads,
+            content=content,
+            error_type=json.JSONDecodeError,
+            raise_error=not invalid_extension
+        )
+    if (not result and invalid_extension) or extension in ["yaml", "yml"]:
+        result = _try_loading_as(
+            loader=yaml.safe_load,
+            content=content,
+            error_type=yaml.YAMLError,
+            raise_error=not invalid_extension
+        )
+    if (not result and invalid_extension) or extension == "csv":
+        result = list(_try_loading_as(
+            loader=csv.DictReader,
+            content=content.splitlines(),
+            error_type=csv.Error,
+            raise_error=not invalid_extension
+        ))
+    if result is not None or not invalid_extension:
+        return result
+    raise FileOperationError(f"File contents for {file_path} cannot be read.")
+
+
+def _try_loading_as(
     loader: Callable,
     content: str,
     error_type: Exception,
     raise_error: bool = True
-) -> Optional[List[Dict[str, Any]]]:
+) -> Optional[Union[Iterable, dict]]:
     try:
         return list(loader(content))
     except error_type as e:
