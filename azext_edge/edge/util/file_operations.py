@@ -9,36 +9,45 @@ import json
 import yaml
 import os
 from pathlib import PurePath
-from typing import List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 from azure.cli.core.azclierror import FileOperationError
 from knack.log import get_logger
 
 logger = get_logger(__name__)
 
 
-def convert_file_content_to_json(file_path: str):
+def convert_file_content_to_json(file_path: str) -> List[Dict[str, Any]]:
     extension = file_path.split(".")[-1]
+    invalid_extension = extension not in ["json", "yaml", "yml", "csv"]
     content = read_file_content(file_path)
-    if extension == "json":
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError as e:
-            raise FileOperationError(f"Invalid JSON syntax: {e}")
-    elif extension == "yaml":
-        try:
-            return yaml.safe_load(content)
-        except yaml.YAMLError as e:
-            raise FileOperationError(f"Invalid YAML syntax: {e}")
-    elif extension == "csv":
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                result = list(csv.DictReader(f))
-            return result
-        except csv.Error as e:
-            raise FileOperationError(f"Invalid CSV syntax: {e}")
-    raise FileOperationError(f"Detected {extension} extension is not supported.")
+    result: Optional[List[Dict[str, Any]]] = None
+    if invalid_extension or extension == "json":
+        result = try_loading_as(
+            loader=json.loads,
+            content=content,
+            error_type=json.JSONDecodeError,
+            raise_error=not invalid_extension
+        )
+    if (not result and invalid_extension) or extension in ["yaml", "yml"]:
+        result = try_loading_as(
+            loader=yaml.safe_load,
+            content=content,
+            error_type=yaml.YAMLError,
+            raise_error=not invalid_extension
+        )
+    if (not result and invalid_extension) or extension == "csv":
+        result = try_loading_as(
+            loader=csv.DictReader,
+            content=content.splitlines(),
+            error_type=csv.Error,
+            raise_error=not invalid_extension
+        )
+    if result is not None:
+        return result
+    raise FileOperationError(f"File contents for {file_path} cannot be read.")
 
 
+# TODO: unit test
 def dump_content_to_file(
     content: List[dict],
     file_name: str,
@@ -65,7 +74,7 @@ def dump_content_to_file(
     # These let you dump to a string before writing to file
     if extension == "json":
         content = json.dumps(content, indent=2)
-    elif extension == "yaml":
+    elif extension in ["yaml", "yml"]:
         content = yaml.dump(content)
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
@@ -86,24 +95,41 @@ def normalize_dir(dir_path: Optional[str] = None) -> PurePath:
     return dir_pure_path
 
 
-def read_file_content(file_path: str, read_as_binary: bool = False):
-    from codecs import open as codecs_open
+def read_file_content(file_path: str, read_as_binary: bool = False) -> Union[bytes, str]:
+    from pathlib import Path
 
-    # in case someone does ~/my_file.json
-    file_path = normalize_dir(file_path)
+    logger.debug("Processing %s", file_path)
+    pure_path = Path(os.path.abspath(os.path.expanduser(file_path)))
+
+    if not pure_path.exists():
+        raise FileOperationError(f"{file_path} does not exist.")
+
+    if not pure_path.is_file():
+        raise FileOperationError(f"{file_path} is not a file.")
 
     if read_as_binary:
-        with open(file_path, "rb") as input_file:
-            logger.debug("Attempting to read file %s as binary", file_path)
-            return input_file.read()
+        logger.debug("Reading %s as binary", file_path)
+        return pure_path.read_bytes()
 
-    # Note, always put 'utf-8-sig' first, so that BOM in WinOS won't cause trouble.
-    for encoding in ["utf-8-sig", "utf-8", "utf-16", "utf-16le", "utf-16be"]:
+    # Try with 'utf-8-sig' first, so that BOM in WinOS won't cause trouble.
+    for encoding in ["utf-8-sig", "utf-8"]:
         try:
-            with codecs_open(file_path, encoding=encoding) as f:
-                logger.debug("Attempting to read file %s as %s", file_path, encoding)
-                return f.read()
+            logger.debug("Reading %s as %s", file_path, encoding)
+            return pure_path.read_text(encoding=encoding)
         except (UnicodeError, UnicodeDecodeError):
             pass
 
-    raise FileOperationError("Failed to decode file {} - unknown decoding".format(file_path))
+    raise FileOperationError(f"Failed to decode file {file_path}.")
+
+
+def try_loading_as(
+    loader: Callable,
+    content: str,
+    error_type: Exception,
+    raise_error: bool = True
+) -> Optional[List[Dict[str, Any]]]:
+    try:
+        return list(loader(content))
+    except error_type as e:
+        if raise_error:
+            raise FileOperationError(e)
