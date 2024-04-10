@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, List
+from typing import Iterable
 
 from knack.log import get_logger
 
@@ -42,6 +42,7 @@ DATA_PROCESSOR_PVC_APP_LABELS = [
 
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
 DATA_PROCESSOR_NAME_LABEL = "app.kubernetes.io/name in (dataprocessor)"
+DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
 DATA_PROCESSOR_PVC_APP_LABEL = f"app in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
 
 # TODO: @jiacju - will remove once the nats issue the fixed
@@ -73,7 +74,6 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
             ],
         )
     )
-
 
     return dataprocessor_pods
 
@@ -133,6 +133,12 @@ def fetch_persistent_volume_claims():
         process_persistent_volume_claims(
             resource_api=DATA_PROCESSOR_API_V1,
             label_selector=DATA_PROCESSOR_NAME_LABEL
+        )
+    )
+    processed.extend(
+        process_persistent_volume_claims(
+            resource_api=DATA_PROCESSOR_API_V1,
+            label_selector=DATA_PROCESSOR_INSTANCE_LABEL
         )
     )
     processed.extend(

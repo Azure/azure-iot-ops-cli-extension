@@ -44,6 +44,7 @@ MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
 # TODO: @jiacju - this label will be used near future for consistency
 # MQ_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations-mq)"
 
+
 def fetch_diagnostic_metrics(namespace: str):
     # @digimaun - TODO dynamically determine pod:port
     try:
