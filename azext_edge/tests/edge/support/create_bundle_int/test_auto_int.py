@@ -8,6 +8,7 @@ import pytest
 from os import mkdir, path
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
+from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
 from .helpers import (
     assert_file_names,
     check_workload_resource_files,
@@ -25,6 +26,8 @@ logger = get_logger(__name__)
 @pytest.mark.parametrize("mq_traces", [False, True])
 def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
     """Test to focus on ops_service param."""
+    if ops_service == OpsServiceType.billing.value and not CLUSTER_CONFIG_API_V1.is_deployed():
+        pytest.skip("TODO: Billing resources are not in deployed template yet.")
 
     command = f"az iot ops support create-bundle --mq-traces {mq_traces} " + "--ops-service {0}"
     if bundle_dir:
@@ -60,6 +63,9 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
         expected_services.append("otel")
+        # TODO; bake in billing when the template supports it
+        if not walk_result.get(path.join(EXTRACTED_PATH, namespace, OpsServiceType.billing.value)):
+            expected_services.remove(OpsServiceType.billing.value)
         # device registry folder will not be created if there are no device registry resources
         if not walk_result.get(path.join(EXTRACTED_PATH, namespace, OpsServiceType.deviceregistry.value)):
             expected_services.remove(OpsServiceType.deviceregistry.value)
