@@ -633,7 +633,7 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
         assert deployment == mocked_resource_management_client.deployments.begin_create_or_update.return_value
 
 
-@pytest.mark.parametrize("mocked_connected_cluster_location", ["mock_location"], indirect=True)
+@pytest.mark.parametrize("mocked_connected_cluster_location", ["westus2", "WestUS2"], indirect=True)
 @pytest.mark.parametrize("location", [None, generate_random_string()])
 def test_verify_cluster_and_use_location(mocked_connected_cluster_location, mocked_cmd, location):
     kwargs = {
@@ -648,13 +648,21 @@ def test_verify_cluster_and_use_location(mocked_connected_cluster_location, mock
         verify_cluster_and_use_location,
     )
 
-    verify_cluster_and_use_location(kwargs)
+    connected_cluster = verify_cluster_and_use_location(kwargs)
+
+    connected_cluster.cluster_name == kwargs["cluster_name"]
+    connected_cluster.subscription_id == kwargs["subscription_id"]
+    connected_cluster.resource_group_name == kwargs["resource_group_name"]
+
     mocked_connected_cluster_location.assert_called_once()
-    assert kwargs["cluster_location"] == mocked_connected_cluster_location.return_value
+
+    lowered_cluster_location = mocked_connected_cluster_location.return_value.lower()
+    assert kwargs["cluster_location"] == lowered_cluster_location
+
     if location:
         assert kwargs["location"] == location
     else:
-        assert kwargs["location"] == mocked_connected_cluster_location.return_value
+        assert kwargs["location"] == lowered_cluster_location
 
 
 @pytest.mark.parametrize(
