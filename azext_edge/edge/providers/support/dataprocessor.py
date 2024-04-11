@@ -75,15 +75,11 @@ def fetch_statefulsets():
 
 
 def fetch_replicasets():
-    processed = []
-    processed.extend(process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
-
-    return processed
+    return process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
 
 
 def fetch_services():
-    processed = []
-    processed.extend(process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
+    processed = process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
     processed.extend(
         process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL)
     )
@@ -92,13 +88,11 @@ def fetch_services():
 
 
 def fetch_persistent_volume_claims():
-    processed = []
-    processed.extend(
-        process_persistent_volume_claims(
-            resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_PVC_APP_LABEL
-        )
+    processed = process_persistent_volume_claims(
+        resource_api=DATA_PROCESSOR_API_V1,
+        label_selector=DATA_PROCESSOR_PVC_APP_LABEL
     )
+
     processed.extend(
         process_persistent_volume_claims(
             resource_api=DATA_PROCESSOR_API_V1,
