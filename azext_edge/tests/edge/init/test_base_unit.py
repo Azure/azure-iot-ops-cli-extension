@@ -635,8 +635,9 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
 
 @pytest.mark.parametrize("mocked_connected_cluster_location", ["mock_location"], indirect=True)
 @pytest.mark.parametrize("location", [None, generate_random_string()])
-def test_verify_cluster_and_use_location(mocked_connected_cluster_location, location):
+def test_verify_cluster_and_use_location(mocked_connected_cluster_location, mocked_cmd, location):
     kwargs = {
+        "cmd": mocked_cmd,
         "cluster_location": None,
         "location": location,
         "cluster_name": generate_random_string(),
@@ -669,7 +670,7 @@ def test_verify_cluster_and_use_location(mocked_connected_cluster_location, loca
     ],
     indirect=True,
 )
-def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions):
+def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions, mocked_cmd):
     from azext_edge.edge.providers.orchestration.base import (
         IOT_OPERATIONS_EXTENSION_PREFIX,
         ConnectedCluster,
@@ -677,6 +678,7 @@ def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions):
     )
 
     kwargs = {
+        "cmd": mocked_cmd,
         "cluster_name": generate_random_string(),
         "subscription_id": generate_random_string(),
         "resource_group_name": generate_random_string(),
@@ -802,11 +804,12 @@ def test_verify_custom_locations_enabled(mocker, role_bindings):
         },
     ],
 )
-def test_verify_arc_cluster_config(mocker, test_scenario):
+def test_verify_arc_cluster_config(mocker, mocked_cmd, test_scenario):
     get_config_map_patch = mocker.patch(f"{BASE_PATH}.get_config_map", return_value=test_scenario["config_map"])
     from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_config
 
     connected_cluster = ConnectedCluster(
+        cmd=mocked_cmd,
         subscription_id=ZEROED_SUB,
         cluster_name="cluster1",
         resource_group_name="rg1",
@@ -879,4 +882,45 @@ def test_eval_secret_via_sp(mocker, mocked_cmd, http_error):
         method="GET",
         headers=[f"Authorization=Bearer {mock_token}"],
         url=f"{vault_uri}/secrets/{kv_spc_secret_name}?api-version=7.4",
+    )
+
+
+@pytest.mark.parametrize(
+    "custom_location_name, namespace, get_cl_for_np_return_value",
+    [
+        ("mycl", "mynamespace", None),
+        ("mycl", "mynamespace", {"name": "mycl"}),
+        ("mycl", "mynamespace", {"name": "othercl"}),
+    ],
+)
+def test_verify_custom_location_namespace(
+    mocker, mocked_cmd, custom_location_name, namespace, get_cl_for_np_return_value
+):
+    mocked_get_custom_location_for_namespace = mocker.patch(
+        "azext_edge.edge.providers.orchestration.connected_cluster.ConnectedCluster.get_custom_location_for_namespace"
+    )
+    mocked_get_custom_location_for_namespace.return_value = get_cl_for_np_return_value
+
+    connected_cluster = ConnectedCluster(
+        cmd=mocked_cmd,
+        subscription_id=ZEROED_SUB,
+        cluster_name="cluster1",
+        resource_group_name="rg1",
+    )
+
+    from azext_edge.edge.providers.orchestration.base import verify_custom_location_namespace
+
+    if get_cl_for_np_return_value and get_cl_for_np_return_value["name"] != custom_location_name:
+        with pytest.raises(ValidationError) as ve:
+            verify_custom_location_namespace(
+                connected_cluster=connected_cluster, custom_location_name=custom_location_name, namespace=namespace
+            )
+        assert (
+            f"The intended namespace for deployment: {namespace}, is already referenced "
+            f"by custom location: {get_cl_for_np_return_value['name']}" in str(ve.value)
+        )
+        return
+
+    verify_custom_location_namespace(
+        connected_cluster=connected_cluster, custom_location_name=custom_location_name, namespace=namespace
     )

@@ -209,15 +209,21 @@ def mocked_verify_custom_locations_enabled(mocker):
 
 @pytest.fixture
 def mocked_verify_arc_cluster_config(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.base.verify_arc_cluster_config", autospec=True
-    )
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.verify_arc_cluster_config", autospec=True)
     yield patched
 
 
 @pytest.fixture
 def mocked_eval_secret_via_sp(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.eval_secret_via_sp", autospec=True)
+    yield patched
+
+
+@pytest.fixture
+def mocked_verify_custom_location_namespace(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.base.verify_custom_location_namespace", autospec=True
+    )
     yield patched
 
 

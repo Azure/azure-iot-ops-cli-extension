@@ -520,7 +520,10 @@ def verify_cluster_and_use_location(kwargs: dict) -> ConnectedCluster:
     from .connected_cluster import ConnectedCluster
 
     connected_cluster = ConnectedCluster(
-        subscription_id=subscription_id, cluster_name=cluster_name, resource_group_name=resource_group_name
+        cmd=kwargs["cmd"],
+        subscription_id=subscription_id,
+        cluster_name=cluster_name,
+        resource_group_name=resource_group_name,
     )
     connected_cluster_location = connected_cluster.location
 
@@ -577,3 +580,14 @@ def verify_arc_cluster_config(connected_cluster: ConnectedCluster):
                 f"while the cloud target is {cloud_value}.\n"
                 "Please ensure the local kubeconfig is up-to-date with the intended cluster for deployment."
             )
+
+
+def verify_custom_location_namespace(connected_cluster: ConnectedCluster, custom_location_name: str, namespace: str):
+    custom_location_ref = connected_cluster.get_custom_location_for_namespace(namespace=namespace)
+    if custom_location_ref and custom_location_ref["name"] != custom_location_name:
+        raise ValidationError(
+            f"The intended namespace for deployment: {namespace}, is already referenced by "
+            f"custom location: {custom_location_ref['name']}.\n"
+            "A namespace can only be referenced by a single custom location. "
+            "Please choose a different namespace via --cluster-namespace."
+        )
