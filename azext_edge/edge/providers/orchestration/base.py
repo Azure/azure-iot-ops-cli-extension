@@ -525,7 +525,7 @@ def verify_cluster_and_use_location(kwargs: dict) -> ConnectedCluster:
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
     )
-    connected_cluster_location = connected_cluster.location
+    connected_cluster_location = connected_cluster.location.lower()
 
     kwargs["cluster_location"] = connected_cluster_location
     if not location:
