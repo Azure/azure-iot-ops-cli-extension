@@ -28,26 +28,29 @@ logger = get_logger(__name__)
 
 
 class WorkCategoryKey(IntEnum):
-    PRE_CHECK = 1
+    PRE_FLIGHT = 1
     CSI_DRIVER = 2
     TLS_CA = 3
     DEPLOY_AIO = 4
 
 
 class WorkStepKey(IntEnum):
-    SP = 1
-    KV_CLOUD_PERM_MODEL = 2
-    KV_CLOUD_AP = 3
-    KV_CLOUD_SEC = 4
-    KV_CLOUD_TEST = 5
-    KV_CSI_DEPLOY = 6
-    KV_CSI_CLUSTER = 7
-    TLS_CERT = 8
-    TLS_CLUSTER = 9
+    REG_RP = 1
+    ENUMERATE_PRE_FLIGHT = 2
+    WHAT_IF = 3
 
-    REG_RP = 10
-    EVAL_LOGIN_PERM = 11
-    DEPLOY_AIO_MONIKER = 12
+    KV_CLOUD_PERM_MODEL = 4
+    SP = 5
+    KV_CLOUD_AP = 6
+    KV_CLOUD_SEC = 7
+    KV_CLOUD_TEST = 8
+    KV_CSI_DEPLOY = 9
+    KV_CSI_CLUSTER = 10
+
+    TLS_CERT = 11
+    TLS_CLUSTER = 12
+
+    DEPLOY_AIO_MONIKER = 13
 
 
 class WorkRecord:
@@ -132,36 +135,39 @@ class WorkManager:
 
     def _build_display(self):
         pre_check_cat_desc = "Pre-Flight"
-        self.display.add_category(WorkCategoryKey.PRE_CHECK, pre_check_cat_desc, skipped=self._no_preflight)
+        self.display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=self._no_preflight)
         self.display.add_step(
-            WorkCategoryKey.PRE_CHECK, WorkStepKey.REG_RP, "Ensure registered IoT Ops resource providers"
+            WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered IoT Ops resource providers"
         )
-        self.display.add_step(WorkCategoryKey.PRE_CHECK, WorkStepKey.EVAL_LOGIN_PERM, "Verify pre-flight deployment")
+        self.display.add_step(
+            WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
+        )
+        self.display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.WHAT_IF, "Verify What-If deployment")
 
         kv_csi_cat_desc = "Key Vault CSI Driver"
         self.display.add_category(WorkCategoryKey.CSI_DRIVER, kv_csi_cat_desc, skipped=not self._keyvault_resource_id)
 
         kv_cloud_perm_model_desc = "Verify Key Vault{}permission model"
         kv_cloud_perm_model_desc = kv_cloud_perm_model_desc.format(
-            f" '[green]{self._keyvault_name}[/green]' " if self._keyvault_resource_id else " "
+            f" '[cyan]{self._keyvault_name}[/cyan]' " if self._keyvault_resource_id else " "
         )
         self.display.add_step(
             WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_PERM_MODEL, description=kv_cloud_perm_model_desc
         )
 
         if self._sp_app_id:
-            sp_desc = f"Use app '[green]{self._sp_app_id}[/green]'"
+            sp_desc = f"Use SP app Id '[cyan]{self._sp_app_id}[/cyan]'"
         elif self._sp_obj_id:
-            sp_desc = f"Use SP object Id '[green]{self._sp_obj_id}[/green]'"
+            sp_desc = f"Use SP object Id '[cyan]{self._sp_obj_id}[/cyan]'"
         else:
-            sp_desc = "Created app"
+            sp_desc = "To create app"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.SP, description=sp_desc)
 
         self.display.add_step(
             WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_AP, description="Configure access policy"
         )
 
-        kv_cloud_sec_desc = f"Ensure secret name '[green]{self._keyvault_sat_secret_name}[/green]' for service account"
+        kv_cloud_sec_desc = f"Ensure default SPC secret name '[cyan]{self._keyvault_sat_secret_name}[/cyan]'"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_SEC, description=kv_cloud_sec_desc)
 
         kv_sp_test_desc = "Test SP access"
@@ -178,11 +184,11 @@ class WorkManager:
         # TODO @digimaun - MQ insecure mode
         self.display.add_category(WorkCategoryKey.TLS_CA, "TLS", self._no_tls)
         if self._tls_ca_path:
-            tls_ca_desc = f"User provided CA '[green]{self._tls_ca_path}[/green]'"
+            tls_ca_desc = f"User provided CA '[cyan]{self._tls_ca_path}[/cyan]'"
         else:
             tls_ca_desc = (
-                f"Generate test CA using '[green]{DEFAULT_EC_ALGO.name}[/green]' "
-                f"valid for '[green]{self._tls_ca_valid_days}[/green]' days"
+                f"Generate test CA using '[cyan]{DEFAULT_EC_ALGO.name}[/cyan]' "
+                f"valid for '[cyan]{self._tls_ca_valid_days}[/cyan]' days"
             )
 
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CERT, tls_ca_desc)
@@ -236,17 +242,17 @@ class WorkManager:
 
             # Pre-check segment
             if (
-                WorkCategoryKey.PRE_CHECK in self.display.categories
-                and not self.display.categories[WorkCategoryKey.PRE_CHECK][1]
+                WorkCategoryKey.PRE_FLIGHT in self.display.categories
+                and not self.display.categories[WorkCategoryKey.PRE_FLIGHT][1]
             ):
-                self.render_display(category=WorkCategoryKey.PRE_CHECK)
+                self.render_display(category=WorkCategoryKey.PRE_FLIGHT)
 
                 # WorkStepKey.REG_RP
                 register_providers(**self._kwargs)
 
-                self.complete_step(WorkCategoryKey.PRE_CHECK, WorkStepKey.REG_RP)
+                self.complete_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP)
 
-                # WorkStepKey.EVAL_LOGIN_PERM -- rest of pre-flight checks are under this step.
+                # WorkStepKey.ENUMERATE_PRE_FLIGHT
                 if self._connected_cluster:
                     throw_if_iotops_deployed(self._connected_cluster)
                     verify_custom_locations_enabled()
@@ -261,7 +267,9 @@ class WorkManager:
                         **self._kwargs,
                     )
 
-                # Use pre-flight deployment as a shortcut to evaluate permissions
+                self.complete_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT)
+
+                # Execute What-If deployment to allow RPs to evaluate deployment
                 template, parameters = self.build_template(work_kpis=work_kpis)
                 deployment_result, deployment_poller = deploy_template(
                     template=template.content,
@@ -275,7 +283,7 @@ class WorkManager:
                 if "status" in pre_flight_result and pre_flight_result["status"].lower() != PRE_FLIGHT_SUCCESS_STATUS:
                     raise AzureResponseError(dumps(pre_flight_result, indent=2))
 
-                self.complete_step(WorkCategoryKey.PRE_CHECK, WorkStepKey.EVAL_LOGIN_PERM)
+                self.complete_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.WHAT_IF)
             else:
                 if not self._render_progress:
                     logger.warning("Skipped Pre-Flight as requested.")
@@ -299,7 +307,7 @@ class WorkManager:
                     if sp_record.created_app:
                         self.display.steps[WorkCategoryKey.CSI_DRIVER][
                             WorkStepKey.SP
-                        ].title = f"Created app '[green]{sp_record.client_id}[/green]'"
+                        ].title = f"Created app '[cyan]{sp_record.client_id}[/cyan]'"
                         self.render_display(category=WorkCategoryKey.CSI_DRIVER)
                     work_kpis["csiDriver"]["spAppId"] = sp_record.client_id
                     work_kpis["csiDriver"]["spObjectId"] = sp_record.object_id
@@ -394,7 +402,9 @@ class WorkManager:
             if self._no_deploy:
                 if not self._render_progress:
                     logger.warning("Skipped deployment of AIO as requested.")
-                return work_kpis
+
+                if work_kpis:
+                    return work_kpis
 
             if (
                 WorkCategoryKey.DEPLOY_AIO in self.display.categories
