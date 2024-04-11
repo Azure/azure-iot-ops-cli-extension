@@ -50,8 +50,6 @@ class WorkStepKey(IntEnum):
     TLS_CERT = 11
     TLS_CLUSTER = 12
 
-    DEPLOY_AIO_MONIKER = 13
-
 
 class WorkRecord:
     def __init__(self, title: str):
@@ -194,12 +192,11 @@ class WorkManager:
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CERT, tls_ca_desc)
         self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CLUSTER, "Configure cluster for tls")
 
-        self.display.add_category(WorkCategoryKey.DEPLOY_AIO, "Deploy IoT Operations", skipped=self._no_deploy)
         deployment_moniker = "Custom template" if self._template_path else CURRENT_TEMPLATE.moniker
-        self.display.add_step(
+        self.display.add_category(
             WorkCategoryKey.DEPLOY_AIO,
-            WorkStepKey.DEPLOY_AIO_MONIKER,
-            f"[cyan]{deployment_moniker}[/cyan]",
+            f"Deploy IoT Operations - [cyan]{deployment_moniker}[/cyan]",
+            skipped=self._no_deploy,
         )
 
     def do_work(self):  # noqa: C901
