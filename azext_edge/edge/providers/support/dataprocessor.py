@@ -42,7 +42,7 @@ DATA_PROCESSOR_PVC_APP_LABELS = [
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
 DATA_PROCESSOR_NAME_LABEL = "app.kubernetes.io/name in (dataprocessor)"
 DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
-DATA_PROCESSOR_PVC_APP_LABEL = f"app in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
+DATA_PROCESSOR_PVC_APP_LABEL = f"app.kubernetes.io/name in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
