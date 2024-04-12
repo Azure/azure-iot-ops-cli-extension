@@ -7,7 +7,7 @@
 from enum import IntEnum
 from json import dumps
 from time import sleep
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple, Union, Optional
 from uuid import uuid4
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
@@ -118,6 +118,7 @@ class WorkManager:
         self._render_progress = not self._no_progress
         self._live = Live(None, transient=False, refresh_per_second=8, auto_refresh=self._render_progress)
         self._completed_steps: Dict[int, int] = {}
+        self._active_step: int = 0
         self._subscription_id = get_subscription_id(self._cmd.cli_ctx)
         kwargs["subscription_id"] = self._subscription_id  # TODO: temporary
         self._cluster_secret_ref = CLUSTER_SECRET_REF
@@ -242,12 +243,16 @@ class WorkManager:
                 WorkCategoryKey.PRE_FLIGHT in self.display.categories
                 and not self.display.categories[WorkCategoryKey.PRE_FLIGHT][1]
             ):
-                self.render_display(category=WorkCategoryKey.PRE_FLIGHT)
+                self.render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
 
                 # WorkStepKey.REG_RP
                 register_providers(**self._kwargs)
 
-                self.complete_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP)
+                self.complete_step(
+                    category=WorkCategoryKey.PRE_FLIGHT,
+                    completed_step=WorkStepKey.REG_RP,
+                    active_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
+                )
 
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
                 if self._connected_cluster:
@@ -264,8 +269,13 @@ class WorkManager:
                         **self._kwargs,
                     )
 
-                self.complete_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT)
+                self.complete_step(
+                    category=WorkCategoryKey.PRE_FLIGHT,
+                    completed_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
+                    active_step=WorkStepKey.WHAT_IF,
+                )
 
+                # WorkStepKey.WHAT_IF
                 # Execute What-If deployment to allow RPs to evaluate deployment
                 template, parameters = self.build_template(work_kpis=work_kpis)
                 deployment_result, deployment_poller = deploy_template(
@@ -280,7 +290,9 @@ class WorkManager:
                 if "status" in pre_flight_result and pre_flight_result["status"].lower() != PRE_FLIGHT_SUCCESS_STATUS:
                     raise AzureResponseError(dumps(pre_flight_result, indent=2))
 
-                self.complete_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.WHAT_IF)
+                self.complete_step(
+                    category=WorkCategoryKey.PRE_FLIGHT, completed_step=WorkStepKey.WHAT_IF, active_step=-1
+                )
             else:
                 if not self._render_progress:
                     logger.warning("Skipped Pre-Flight as requested.")
@@ -292,12 +304,18 @@ class WorkManager:
                     WorkCategoryKey.CSI_DRIVER in self.display.categories
                     and not self.display.categories[WorkCategoryKey.CSI_DRIVER][1]
                 ):
-                    self.render_display(category=WorkCategoryKey.CSI_DRIVER)
+                    self.render_display(
+                        category=WorkCategoryKey.CSI_DRIVER, active_step=WorkStepKey.KV_CLOUD_PERM_MODEL
+                    )
 
                     # WorkStepKey.KV_CLOUD_PERM_MODEL
                     keyvault_resource = validate_keyvault_permission_model(**self._kwargs)
 
-                    self.complete_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_PERM_MODEL)
+                    self.complete_step(
+                        category=WorkCategoryKey.CSI_DRIVER,
+                        completed_step=WorkStepKey.KV_CLOUD_PERM_MODEL,
+                        active_step=WorkStepKey.SP,
+                    )
 
                     # WorkStepKey.SP
                     sp_record = prepare_sp(deployment_name=self._work_name, **self._kwargs)
@@ -310,7 +328,11 @@ class WorkManager:
                     work_kpis["csiDriver"]["spObjectId"] = sp_record.object_id
                     work_kpis["csiDriver"]["keyVaultId"] = self._keyvault_resource_id
 
-                    self.complete_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.SP)
+                    self.complete_step(
+                        category=WorkCategoryKey.CSI_DRIVER,
+                        completed_step=WorkStepKey.SP,
+                        active_step=WorkStepKey.KV_CLOUD_AP,
+                    )
 
                     # WorkCategoryKey.KV_CLOUD_AP
                     vault_uri = prepare_keyvault_access_policy(
@@ -319,7 +341,11 @@ class WorkManager:
                         **self._kwargs,
                     )
 
-                    self.complete_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_AP)
+                    self.complete_step(
+                        category=WorkCategoryKey.CSI_DRIVER,
+                        completed_step=WorkStepKey.KV_CLOUD_AP,
+                        active_step=WorkStepKey.KV_CLOUD_SEC,
+                    )
 
                     # WorkStepKey.KV_CLOUD_SEC
                     keyvault_spc_secret_name = prepare_keyvault_secret(
@@ -329,7 +355,11 @@ class WorkManager:
                     )
                     work_kpis["csiDriver"]["kvSatSecretName"] = keyvault_spc_secret_name
 
-                    self.complete_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_SEC)
+                    self.complete_step(
+                        category=WorkCategoryKey.CSI_DRIVER,
+                        completed_step=WorkStepKey.KV_CLOUD_SEC,
+                        active_step=WorkStepKey.KV_CLOUD_TEST,
+                    )
 
                     # WorkStepKey.KV_CLOUD_TEST
                     eval_secret_via_sp(
@@ -339,7 +369,11 @@ class WorkManager:
                         sp_record=sp_record,
                     )
 
-                    self.complete_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_TEST)
+                    self.complete_step(
+                        category=WorkCategoryKey.CSI_DRIVER,
+                        completed_step=WorkStepKey.KV_CLOUD_TEST,
+                        active_step=WorkStepKey.KV_CSI_DEPLOY,
+                    )
 
                     # WorkStepKey.KV_CSI_DEPLOY
                     enable_secret_rotation = not self._kwargs.get("disable_secret_rotation", False)
@@ -352,7 +386,11 @@ class WorkManager:
                     )
                     work_kpis["csiDriver"]["version"] = akv_csi_driver_result["properties"]["version"]
 
-                    self.complete_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_DEPLOY)
+                    self.complete_step(
+                        category=WorkCategoryKey.CSI_DRIVER,
+                        completed_step=WorkStepKey.KV_CSI_DEPLOY,
+                        active_step=WorkStepKey.KV_CSI_CLUSTER,
+                    )
 
                     # WorkStepKey.KV_CSI_CLUSTER
                     configure_cluster_secrets(
@@ -362,7 +400,9 @@ class WorkManager:
                         **self._kwargs,
                     )
 
-                    self.complete_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_CLUSTER)
+                    self.complete_step(
+                        category=WorkCategoryKey.CSI_DRIVER, completed_step=WorkStepKey.KV_CSI_CLUSTER, active_step=-1
+                    )
             else:
                 if not self._render_progress:
                     logger.warning("Skipped AKV CSI driver setup as requested.")
@@ -373,14 +413,18 @@ class WorkManager:
                 and not self.display.categories[WorkCategoryKey.TLS_CA][1]
             ):
                 work_kpis["tls"] = {}
-                self.render_display(category=WorkCategoryKey.TLS_CA)
+                self.render_display(category=WorkCategoryKey.TLS_CA, active_step=WorkStepKey.TLS_CERT)
 
                 # WorkStepKey.TLS_CERT
                 public_ca, private_key, secret_name, cm_name = prepare_ca(**self._kwargs)
                 work_kpis["tls"]["aioTrustConfigMap"] = cm_name
                 work_kpis["tls"]["aioTrustSecretName"] = secret_name
 
-                self.complete_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CERT)
+                self.complete_step(
+                    category=WorkCategoryKey.TLS_CA,
+                    completed_step=WorkStepKey.TLS_CERT,
+                    active_step=WorkStepKey.TLS_CLUSTER,
+                )
 
                 configure_cluster_tls(
                     public_ca=public_ca,
@@ -390,7 +434,9 @@ class WorkManager:
                     **self._kwargs,
                 )
 
-                self.complete_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CLUSTER)
+                self.complete_step(
+                    category=WorkCategoryKey.TLS_CA, completed_step=WorkStepKey.TLS_CLUSTER, active_step=-1
+                )
             else:
                 if not self._render_progress:
                     logger.warning("Skipped TLS config as requested.")
@@ -424,7 +470,6 @@ class WorkManager:
                     f"[link={deployment_result['deploymentLink']}]"
                     f"{self.display.categories[WorkCategoryKey.DEPLOY_AIO][0].title}[/link]"
                 )
-                self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
 
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
                 deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
@@ -440,8 +485,6 @@ class WorkManager:
                 ]
                 work_kpis.update(deployment_result)
 
-                self.complete_step(WorkCategoryKey.DEPLOY_AIO, WorkStepKey.DEPLOY_AIO_MONIKER)
-
                 return work_kpis
 
         except HttpResponseError as e:
@@ -452,11 +495,16 @@ class WorkManager:
         finally:
             self.stop_display()
 
-    def complete_step(self, category: WorkCategoryKey, completed_step: WorkStepKey):
+    def complete_step(
+        self, category: WorkCategoryKey, completed_step: WorkStepKey, active_step: Optional[WorkStepKey] = None
+    ):
         self._completed_steps[completed_step] = 1
-        self.render_display(category)
+        self.render_display(category, active_step=active_step)
 
-    def render_display(self, category: WorkCategoryKey = None):
+    def render_display(self, category: Optional[WorkCategoryKey] = None, active_step: Optional[WorkStepKey] = None):
+        if active_step:
+            self._active_step = active_step
+
         if self._render_progress:
             grid = Table.grid(expand=False)
             grid.add_column()
@@ -472,10 +520,11 @@ class WorkManager:
             content_grid.add_column(max_width=3)
             content_grid.add_column()
 
-            active_str = "[cyan]->[/cyan] "
+            active_cat_str = "[cyan]->[/cyan] "
+            active_step_str = "[cyan]*[/cyan]"
             complete_str = "[green]:heavy_check_mark:[/green]"
             for c in self.display.categories:
-                cat_prefix = active_str if c == category else ""
+                cat_prefix = active_cat_str if c == category else ""
                 content_grid.add_row(
                     cat_prefix,
                     f"{self.display.categories[c][0].title} "
@@ -483,7 +532,13 @@ class WorkManager:
                 )
                 if c in self.display.steps:
                     for s in self.display.steps[c]:
-                        step_prefix = complete_str if s in self._completed_steps else "-"
+                        if s in self._completed_steps:
+                            step_prefix = complete_str
+                        elif s == self._active_step:
+                            step_prefix = active_step_str
+                        else:
+                            step_prefix = "-"
+
                         content_grid.add_row(
                             "",
                             Padding(
