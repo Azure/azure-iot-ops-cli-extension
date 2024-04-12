@@ -424,26 +424,29 @@ def test_ensure_correct_access(mocked_cmd, mocked_send_raw_request, key_vault, m
 
 @pytest.mark.parametrize("tls_ca_path", [None, generate_random_string()])
 @pytest.mark.parametrize("tls_ca_key_path", [None, generate_random_string()])
-def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path):
+@pytest.mark.parametrize("tls_ca_dir", [None, generate_random_string()])
+def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path, tls_ca_dir):
+    from unittest.mock import mock_open, patch
+
     file_patch = mocker.patch(f"{BASE_PATH}.read_file_content", return_value=generate_random_string())
     path_mock = mocker.Mock()
     path_mock.joinpath.return_value = generate_random_string()
-    normalize_patch = mocker.patch("azext_edge.edge.providers.support.base.normalize_dir", return_value=path_mock)
+    normalize_dir_patch = mocker.patch("azext_edge.edge.providers.support.base.normalize_dir", return_value=path_mock)
     cert_patch = mocker.patch(
         f"{BASE_PATH}.generate_self_signed_cert", return_value=(generate_random_string(), generate_random_string())
     )
-    open_patch = mocker.patch("builtins.open", autospec=True)
 
-    from azext_edge.edge.providers.orchestration.base import prepare_ca
+    with patch("builtins.open", mock_open(read_data="data")) as mock_open_file:
+        from azext_edge.edge.providers.orchestration.base import prepare_ca
 
-    tls_ca_dir = generate_random_string()
-    tls_ca_valid_days = 100
-    result = prepare_ca(
-        tls_ca_path=tls_ca_path,
-        tls_ca_key_path=tls_ca_key_path,
-        tls_ca_dir=tls_ca_dir,
-        tls_ca_valid_days=tls_ca_valid_days,
-    )
+        tls_ca_valid_days = 100
+        result = prepare_ca(
+            tls_ca_path=tls_ca_path,
+            tls_ca_key_path=tls_ca_key_path,
+            tls_ca_dir=tls_ca_dir,
+            tls_ca_valid_days=tls_ca_valid_days,
+        )
+
     if tls_ca_path:
         assert result[0] == file_patch.return_value
         assert result[1] == (file_patch.return_value if tls_ca_key_path else None)
@@ -452,10 +455,20 @@ def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path):
     else:
         assert result[0] == cert_patch.return_value[0]
         assert result[1] == cert_patch.return_value[1]
-        normalize_patch.assert_called_once_with(dir_path=tls_ca_dir)
-        assert open_patch.called is True
         assert result[2] == "aio-ca-key-pair-test-only"
         assert result[3] == "aio-ca-trust-bundle-test-only"
+
+    if tls_ca_dir and not tls_ca_path:
+        normalize_dir_patch.assert_called_once_with(dir_path=tls_ca_dir)
+        assert mock_open_file.call_count == 2
+        assert mock_open_file().write.call_count == 2
+        mock_open_file.assert_any_call(path_mock.joinpath.return_value, "wb")
+        mock_open_file().write.assert_any_call(cert_patch.return_value[0])
+        mock_open_file().write.assert_any_call(cert_patch.return_value[1])
+    else:
+        assert mock_open_file.call_count == 0
+        assert mock_open_file().write.call_count == 0
+        assert normalize_dir_patch.call_count == 0
 
 
 @pytest.mark.parametrize(
