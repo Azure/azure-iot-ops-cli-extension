@@ -279,12 +279,6 @@ def load_iotops_arguments(self, _):
             help="The TLS configuration workflow will be skipped.",
         )
         context.argument(
-            "no_preflight",
-            options_list=["--no-preflight"],
-            arg_type=get_three_state_flag(),
-            help="The pre-flight workflow will be skipped.",
-        )
-        context.argument(
             "disable_rsync_rules",
             options_list=["--disable-rsync-rules"],
             arg_type=get_three_state_flag(),
