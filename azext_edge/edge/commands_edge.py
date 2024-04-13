@@ -144,7 +144,7 @@ def init(
     from .util import url_safe_hash_phrase
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
 
-    no_preflight = getenv(INIT_NO_PREFLIGHT_ENV_KEY)
+    no_preflight = bool(getenv(INIT_NO_PREFLIGHT_ENV_KEY))
 
     if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
         logger.warning("Nothing to do :)")
