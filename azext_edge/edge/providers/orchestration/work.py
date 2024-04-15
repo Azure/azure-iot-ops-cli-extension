@@ -470,6 +470,7 @@ class WorkManager:
                     f"[link={deployment_result['deploymentLink']}]"
                     f"{self.display.categories[WorkCategoryKey.DEPLOY_AIO][0].title}[/link]"
                 )
+                self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
 
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
                 deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
