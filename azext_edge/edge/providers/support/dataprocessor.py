@@ -47,8 +47,6 @@ DATA_PROCESSOR_PVC_APP_LABEL = f"app in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS
 
 # TODO: @jiacju - will remove once the nats issue the fixed
 DATA_PROCESSOR_ONEOFF_LABEL = f"app in ({DATA_PROCESSOR_NATS_APP_LABEL})"
-
-# TODO: @jiacju - this label will be used near future for consistency
 DATA_PROCESSOR_NAME_LABEL_V2 = "app.kubernetes.io/name in (microsoft-iotoperations-dp)"
 
 
