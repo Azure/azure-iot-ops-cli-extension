@@ -184,20 +184,20 @@ def prepare_ca(
         if tls_ca_key_path:
             private_key = read_file_content(file_path=tls_ca_key_path, read_as_binary=True)
     else:
-        normalized_path = normalize_dir(dir_path=tls_ca_dir)
-        test_ca_path = normalized_path.joinpath("aio-test-ca.crt")
-        test_pk_path = normalized_path.joinpath("aio-test-private.key")
-
         public_cert, private_key = generate_self_signed_cert(tls_ca_valid_days)
-
-        with open(str(test_ca_path), "wb") as f:
-            f.write(public_cert)
-
-        with open(str(test_pk_path), "wb") as f:
-            f.write(private_key)
-
         secret_name = f"{secret_name}-test-only"
         cm_name = f"{cm_name}-test-only"
+
+        if tls_ca_dir:
+            normalized_path = normalize_dir(dir_path=tls_ca_dir)
+            test_ca_path = normalized_path.joinpath("aio-test-ca.crt")
+            test_pk_path = normalized_path.joinpath("aio-test-private.key")
+
+            with open(str(test_ca_path), "wb") as f:
+                f.write(public_cert)
+
+            with open(str(test_pk_path), "wb") as f:
+                f.write(private_key)
 
     return public_cert, private_key, secret_name, cm_name
 

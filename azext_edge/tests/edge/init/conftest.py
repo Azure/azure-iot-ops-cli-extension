@@ -234,3 +234,13 @@ def spy_get_current_template_copy(mocker):
     spy = mocker.spy(work, "get_current_template_copy")
 
     yield spy
+
+
+@pytest.fixture
+def spy_work_displays(mocker):
+    from azext_edge.edge.providers.orchestration.work import WorkManager
+
+    yield {
+        "render_display": mocker.spy(WorkManager, "render_display"),
+        "complete_step": mocker.spy(WorkManager, "complete_step"),
+    }
