@@ -821,3 +821,6 @@ def _assert_displays_for(work_category_set: FrozenSet[WorkCategoryKey], display_
 
     if WorkCategoryKey.DEPLOY_AIO in work_category_set:
         assert render_display_call_kwargs[index] == {"category": WorkCategoryKey.DEPLOY_AIO}
+        index += 1
+        # DEPLOY_AIO gets rendered twice to dynamically expose deployment link
+        assert render_display_call_kwargs[index] == {"category": WorkCategoryKey.DEPLOY_AIO}
