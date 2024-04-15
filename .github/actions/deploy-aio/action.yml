@@ -90,13 +90,13 @@ runs:
       shell: bash
     - name: "Deploy Azure IoT Operations"
       env:
+        AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ inputs.no-preflight }}
         cluster: ${{ format('--cluster "{0}"', inputs.cluster) }}
         resource-group: ${{ format('--resource-group "{0}"', inputs.resource-group) }}
         cluster-namespace: ${{ inputs.cluster-namespace != '' && format('--cluster-namespace "{0}"', inputs.cluster-namespace) || '' }}
         custom-location: ${{ inputs.custom-location != '' && format('--custom-location "{0}"', inputs.custom-location) || '' }}
         location: ${{ inputs.location != '' && format('--location "{0}"', inputs.location) || '' }}
         no-deploy: ${{ inputs.no-deploy == 'true' && '--no-deploy' || '' }}
-        no-preflight: ${{ inputs.no-preflight == 'true' && '--no-preflight' || '' }}
         no-tls: ${{ inputs.no-tls == 'true' && '--no-tls' || '' }}
         keyvault-id: ${{ inputs.keyvault-id != '' && format('--kv-id "{0}"', inputs.keyvault-id) || '' }}  
         sp-app-id: ${{ inputs.sp-app-id != '' && format('--sp-app-id "{0}"', inputs.sp-app-id) || '' }}
@@ -119,7 +119,6 @@ runs:
           ${{ env.disable-rsync-rules }}
           ${{ env.location }}
           ${{ env.no-deploy }}
-          ${{ env.no-preflight }}
           ${{ env.no-tls }}
           ${{ env.keyvault-id }}
           ${{ env.sp-app-id }}
