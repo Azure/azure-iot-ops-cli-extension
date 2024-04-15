@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 from os.path import exists
-from os import getenv
 from pathlib import PurePath
 from typing import Any, Dict, List, Optional, Union
 
@@ -141,10 +140,10 @@ def init(
     ensure_latest: Optional[bool] = None,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration import deploy
-    from .util import url_safe_hash_phrase
+    from .util import url_safe_hash_phrase, is_env_flag_enabled
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
 
-    no_preflight = bool(getenv(INIT_NO_PREFLIGHT_ENV_KEY))
+    no_preflight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
     if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
         logger.warning("Nothing to do :)")
