@@ -41,8 +41,7 @@ MQ_APP_LABELS = [
 
 MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
 
-# TODO: @jiacju - this label will be used near future for consistency
-# MQ_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations-mq)"
+MQ_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations-mq)"
 
 
 def fetch_diagnostic_metrics(namespace: str):
@@ -119,6 +118,12 @@ def fetch_statefulsets():
         resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
     )
+    processed.extend(
+        process_statefulset(
+            resource_api=MQ_ACTIVE_API,
+            label_selector=MQ_NAME_LABEL,
+        )
+    )
 
     # bridge connector stateful sets have no labels
     connectors = []
@@ -141,25 +146,50 @@ def fetch_statefulsets():
 
 
 def fetch_services():
-    return process_services(
+    processed = process_services(
         resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
     )
+    processed.extend(
+        process_services(
+            resource_api=MQ_ACTIVE_API,
+            label_selector=MQ_NAME_LABEL,
+        )
+    )
+
+    return processed
 
 
 def fetch_replicasets():
-    return process_replicasets(
+    processed = process_replicasets(
         resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
     )
+    processed.extend(
+        process_replicasets(
+            resource_api=MQ_ACTIVE_API,
+            label_selector=MQ_NAME_LABEL,
+        )
+    )
+
+    return processed
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
-    return process_v1_pods(
+    processed = process_v1_pods(
         resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
         since_seconds=since_seconds,
     )
+    processed.extend(
+        process_v1_pods(
+            resource_api=MQ_ACTIVE_API,
+            label_selector=MQ_NAME_LABEL,
+            since_seconds=since_seconds,
+        )
+    )
+
+    return processed
 
 
 support_runtime_elements = {

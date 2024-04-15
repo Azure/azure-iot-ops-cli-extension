@@ -46,7 +46,7 @@ from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_PVC_APP_LABEL,
 )
 from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
-from azext_edge.edge.providers.support.mq import MQ_LABEL
+from azext_edge.edge.providers.support.mq import MQ_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
     OPC_NAME_LABEL,
@@ -154,11 +154,26 @@ def test_create_bundle(
                 resource_api=MQ_API_V1B1,
                 since_seconds=since_seconds,
             )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=MQ_NAME_LABEL,
+                resource_api=MQ_API_V1B1,
+                since_seconds=since_seconds,
+            )
             assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
+            assert_list_replica_sets(
+                mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, resource_api=MQ_API_V1B1
+            )
             assert_list_stateful_sets(
                 mocked_client, mocked_zipfile, label_selector=MQ_LABEL, field_selector=None, resource_api=MQ_API_V1B1
             )
+            assert_list_stateful_sets(
+                mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, field_selector=None, resource_api=MQ_API_V1B1
+            )
             assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
+            assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, resource_api=MQ_API_V1B1)
             assert_mq_stats(mocked_zipfile)
 
         if api in [OPCUA_API_V1]:
@@ -873,7 +888,9 @@ def test_mq_list_stateful_sets(
 
     # TODO - assert zipfile write of generic statefulset
     if not custom_objects["items"]:
-        mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_called_once()
+        # TODO - will revert to initial call once the old label is removed
+        # mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_called_once()
+        mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_called()
 
     # assert secondary connector calls to list stateful sets
     for item in custom_objects["items"]:
