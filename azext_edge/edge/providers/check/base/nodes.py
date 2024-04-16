@@ -13,7 +13,7 @@ from rich.padding import Padding
 from rich.table import Table
 
 from .check_manager import CheckManager
-from .common import (
+from ..common import (
     AIO_SUPPORTED_ARCHITECTURES,
     COLOR_STR_FORMAT,
     DISPLAY_BYTES_PER_GIGABYTE,
@@ -21,14 +21,14 @@ from .common import (
     MIN_NODE_STORAGE,
     MIN_NODE_VCPU
 )
-from ...common import CheckTaskStatus
+from ....common import CheckTaskStatus
 
 
 logger = get_logger(__name__)
 
 
 def check_nodes(as_list: bool = False) -> Dict[str, Any]:
-    from ..base import client
+    from ...base import client
     check_manager = CheckManager(check_name="evalClusterNodes", check_desc="Evaluate cluster nodes")
     padding = (0, 0, 0, 8)
     target = "cluster/nodes"
@@ -84,7 +84,7 @@ def _generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Tabl
     from kubernetes.utils import parse_quantity
     # prep table
     table = Table(
-        show_header=True, header_style="bold", show_lines=True, caption="Node resources", caption_justify="left"
+        show_header=True, header_style="bold", show_lines=True, caption_justify="left"
     )
     for column_name, justify in [
         ("Name", "left"),

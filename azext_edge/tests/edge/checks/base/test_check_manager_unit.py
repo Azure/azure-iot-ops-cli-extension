@@ -8,7 +8,7 @@
 from azext_edge.edge.common import CheckTaskStatus
 from azext_edge.edge.providers.check.base import CheckManager
 
-from ...generators import generate_random_string
+from ....generators import generate_random_string
 
 
 def test_check_manager():

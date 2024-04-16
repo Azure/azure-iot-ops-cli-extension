@@ -13,8 +13,8 @@ from .base import (
     generate_target_resource_name,
     get_resources_by_name,
     process_list_resource,
-    process_properties,
-    resources_grouped_by_namespace,
+    process_resource_properties,
+    get_resources_grouped_by_namespace,
 )
 
 from rich.padding import Padding
@@ -91,7 +91,7 @@ def evaluate_assets(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, assets) in resources_grouped_by_namespace(all_assets):
+    for (namespace, assets) in get_resources_grouped_by_namespace(all_assets):
         check_manager.add_target(target_name=target_assets, namespace=namespace, conditions=asset_namespace_conditions)
         check_manager.add_display(
             target_name=target_assets,
@@ -211,7 +211,7 @@ def evaluate_assets(
                     )
 
                     if detail_level > ResourceOutputDetailLevel.summary.value:
-                        process_properties(
+                        process_resource_properties(
                             check_manager=check_manager,
                             detail_level=detail_level,
                             target_name=target_assets,
@@ -222,7 +222,7 @@ def evaluate_assets(
                         )
 
             if detail_level > ResourceOutputDetailLevel.summary.value:
-                process_properties(
+                process_resource_properties(
                     check_manager=check_manager,
                     detail_level=detail_level,
                     target_name=target_assets,
@@ -298,7 +298,7 @@ def evaluate_assets(
                     )
 
                     if detail_level > ResourceOutputDetailLevel.summary.value:
-                        process_properties(
+                        process_resource_properties(
                             check_manager=check_manager,
                             detail_level=detail_level,
                             target_name=target_assets,
@@ -384,7 +384,7 @@ def evaluate_asset_endpoint_profiles(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, asset_endpoint_profiles) in resources_grouped_by_namespace(all_asset_endpoint_profiles):
+    for (namespace, asset_endpoint_profiles) in get_resources_grouped_by_namespace(all_asset_endpoint_profiles):
         check_manager.add_target(target_name=target_asset_endpoint_profiles, namespace=namespace, conditions=lnm_namespace_conditions)
         check_manager.add_display(
             target_name=target_asset_endpoint_profiles,
@@ -608,7 +608,7 @@ def evaluate_asset_endpoint_profiles(
                     )
 
             if detail_level > ResourceOutputDetailLevel.summary.value:
-                process_properties(
+                process_resource_properties(
                     check_manager=check_manager,
                     detail_level=detail_level,
                     target_name=target_asset_endpoint_profiles,

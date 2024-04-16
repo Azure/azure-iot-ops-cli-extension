@@ -15,7 +15,7 @@ from .base import (
     evaluate_pod_health,
     get_resource_metadata_property,
     get_resources_by_name,
-    resources_grouped_by_namespace
+    get_resources_grouped_by_namespace
 )
 
 from rich.console import NewLine
@@ -110,7 +110,7 @@ def evaluate_diagnostics_service(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, diagnostic_services) in resources_grouped_by_namespace(all_diagnostic_services):
+    for (namespace, diagnostic_services) in get_resources_grouped_by_namespace(all_diagnostic_services):
         check_manager.add_target(
             target_name=target_diagnostic_service,
             namespace=namespace,
@@ -311,7 +311,7 @@ def evaluate_broker_listeners(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, listeners) in resources_grouped_by_namespace(all_listeners):
+    for (namespace, listeners) in get_resources_grouped_by_namespace(all_listeners):
         valid_broker_refs = _get_valid_references(kind=MqResourceKinds.BROKER, namespace=namespace)
 
         check_manager.add_target(
@@ -552,7 +552,7 @@ def evaluate_brokers(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, brokers) in resources_grouped_by_namespace(all_brokers):
+    for (namespace, brokers) in get_resources_grouped_by_namespace(all_brokers):
         check_manager.add_target(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
         check_manager.add_display(
             target_name=target_brokers,

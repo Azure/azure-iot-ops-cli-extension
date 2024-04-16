@@ -6,8 +6,7 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from azext_edge.edge.providers.base import get_namespaced_pods_by_prefix
-
+from ..base import get_namespaced_pods_by_prefix
 from .base import (
     CheckManager,
     add_display_and_eval,
@@ -16,8 +15,8 @@ from .base import (
     filter_resources_by_name,
     generate_target_resource_name,
     get_resources_by_name,
-    process_properties,
-    resources_grouped_by_namespace,
+    process_resource_properties,
+    get_resources_grouped_by_namespace,
 )
 
 from rich.padding import Padding
@@ -121,7 +120,7 @@ def evaluate_lnms(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, lnms) in resources_grouped_by_namespace(all_lnms):
+    for (namespace, lnms) in get_resources_grouped_by_namespace(all_lnms):
         lnm_names = []
         check_manager.add_target(target_name=target_lnms, namespace=namespace, conditions=lnm_namespace_conditions)
         check_manager.add_display(
@@ -208,7 +207,7 @@ def evaluate_lnms(
                     padding=(0, 0, 0, property_padding)
                 )
 
-                process_properties(
+                process_resource_properties(
                     check_manager=check_manager,
                     detail_level=detail_level,
                     target_name=target_lnms,
@@ -218,7 +217,7 @@ def evaluate_lnms(
                     padding=(0, 0, 0, property_padding + PADDING_SIZE)
                 )
 
-                process_properties(
+                process_resource_properties(
                     check_manager=check_manager,
                     detail_level=detail_level,
                     target_name=target_lnms,
@@ -254,7 +253,7 @@ def evaluate_lnms(
                     padding=(0, 0, 0, property_padding)
                 )
 
-                process_properties(
+                process_resource_properties(
                     check_manager=check_manager,
                     detail_level=detail_level,
                     target_name=target_lnms,
@@ -329,7 +328,7 @@ def _process_lnm_pods(
             check_manager.add_display(target_name=target, display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)))
             return
 
-    for (namespace, pods) in resources_grouped_by_namespace(pods):
+    for (namespace, pods) in get_resources_grouped_by_namespace(pods):
         check_manager.add_target(target_name=target, namespace=namespace, conditions=conditions)
         check_manager.add_display(
             target_name=target,

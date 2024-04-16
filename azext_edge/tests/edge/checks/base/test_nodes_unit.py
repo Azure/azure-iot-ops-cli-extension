@@ -12,12 +12,7 @@ from kubernetes.utils import parse_quantity
 from azext_edge.edge.providers.check.common import (
     AIO_SUPPORTED_ARCHITECTURES, DISPLAY_BYTES_PER_GIGABYTE, MIN_NODE_MEMORY, MIN_NODE_STORAGE, MIN_NODE_VCPU
 )
-from ...generators import generate_random_string
-
-
-@pytest.fixture
-def mocked_check_manager(mocker):
-    return mocker.patch("azext_edge.edge.providers.check.check_manager.CheckManager", autospec=True)
+from ....generators import generate_random_string
 
 
 @pytest.fixture
@@ -98,7 +93,7 @@ def mocked_node_client(mocked_client, mocker, request):
     ],
 ], ids=["none", "min reqs", "storage", "memory", "cpu", "architecture", "multi-node"], indirect=True)
 def test_check_nodes(mocked_node_client):
-    from azext_edge.edge.providers.check.base_nodes import check_nodes
+    from azext_edge.edge.providers.check.base.nodes import check_nodes
     # no point in checking as_list is false since it just affects check manager
     result = check_nodes(as_list=True)
     assert result

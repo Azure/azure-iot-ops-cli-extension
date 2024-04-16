@@ -8,8 +8,8 @@ from typing import Any, Dict, List, Optional
 
 from knack.log import get_logger
 
-from .common import ALL_NAMESPACES_TARGET
-from ...common import CheckTaskStatus
+from ..common import ALL_NAMESPACES_TARGET
+from ....common import CheckTaskStatus
 
 logger = get_logger(__name__)
 

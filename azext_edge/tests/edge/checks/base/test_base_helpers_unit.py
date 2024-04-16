@@ -7,7 +7,7 @@
 import pytest
 from azext_edge.edge.common import CheckTaskStatus
 
-from ...generators import generate_random_string
+from ....generators import generate_random_string
 
 
 @pytest.fixture

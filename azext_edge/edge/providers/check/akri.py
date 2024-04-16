@@ -17,16 +17,16 @@ from ..edge_api import (
 
 from ..support.akri import AKRI_PREFIX, AKRI_INSTANCE_LABEL, AKRI_APP_LABEL
 
+from ..base import get_namespaced_pods_by_prefix
 from .base import (
     CheckManager,
     check_post_deployment,
     filter_resources_by_name,
     generate_target_resource_name,
-    get_namespaced_pods_by_prefix,
     get_resources_by_name,
     process_dict_resource,
     process_pods_status,
-    resources_grouped_by_namespace,
+    get_resources_grouped_by_namespace,
 )
 
 from .common import (
@@ -92,7 +92,7 @@ def evaluate_core_service_runtime(
             check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value)
             check_manager.add_display(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)))
 
-    for (namespace, pods) in resources_grouped_by_namespace(akri_runtime_resources):
+    for (namespace, pods) in get_resources_grouped_by_namespace(akri_runtime_resources):
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
@@ -142,7 +142,7 @@ def evaluate_configurations(
         )
         check_manager.add_display(target_name=target_configurations, display=Padding(fetch_configurations_error_text, (0, 0, 0, 8)))
 
-    for (namespace, configurations) in resources_grouped_by_namespace(all_configurations):
+    for (namespace, configurations) in get_resources_grouped_by_namespace(all_configurations):
         check_manager.add_target(
             target_name=target_configurations,
             namespace=namespace,
@@ -269,7 +269,7 @@ def evaluate_instances(
         )
         check_manager.add_display(target_name=target_instances, display=Padding(fetch_instances_skip_text, (0, 0, 0, 8)))
 
-    for (namespace, instances) in resources_grouped_by_namespace(all_instances):
+    for (namespace, instances) in get_resources_grouped_by_namespace(all_instances):
         check_manager.add_target(
             target_name=target_instances,
             namespace=namespace,

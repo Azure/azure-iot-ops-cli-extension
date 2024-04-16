@@ -14,10 +14,10 @@ from ..support.mq import MQ_LABEL
 from .base import (
     CheckManager,
     evaluate_pod_health,
-    filter_by_namespace,
+    filter_resources_by_namespace,
     filter_resources_by_name,
     get_resource_metadata_property,
-    resources_grouped_by_namespace,
+    get_resources_grouped_by_namespace,
 )
 from .common import PADDING_SIZE, ResourceOutputDetailLevel
 
@@ -73,7 +73,7 @@ def process_cloud_connector(
             padding=connector_padding,
         )
         if detail_level != ResourceOutputDetailLevel.summary.value and not connector_resource_name:
-            for topic_maps, namespace in resources_grouped_by_namespace(
+            for topic_maps, namespace in get_resources_grouped_by_namespace(
                 all_topic_maps
             ):
                 _display_invalid_topic_maps(
@@ -87,8 +87,8 @@ def process_cloud_connector(
 
     # track displayed topic maps
     processed_maps = []
-    for namespace, connectors in resources_grouped_by_namespace(all_connectors):
-        namespace_topic_maps = filter_by_namespace(all_topic_maps, namespace)
+    for namespace, connectors in get_resources_grouped_by_namespace(all_connectors):
+        namespace_topic_maps = filter_resources_by_namespace(all_topic_maps, namespace)
 
         check_manager.add_target(target_name=connector_target, namespace=namespace)
         check_manager.set_target_conditions(
@@ -161,7 +161,7 @@ def process_cloud_connector(
     # only show invalid topic maps in other namespaces in non-summary detail-levels
     if detail_level != ResourceOutputDetailLevel.summary.value:
         invalid_maps = [map for map in all_topic_maps if map not in processed_maps]
-        for namespace, maps in resources_grouped_by_namespace(invalid_maps):
+        for namespace, maps in get_resources_grouped_by_namespace(invalid_maps):
             check_manager.add_target(
                 target_name=topic_map_target,
                 namespace=namespace,

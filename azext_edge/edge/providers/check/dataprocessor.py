@@ -13,9 +13,9 @@ from .base import (
     evaluate_pod_health,
     generate_target_resource_name,
     get_resources_by_name,
-    process_properties,
-    process_property_by_type,
-    resources_grouped_by_namespace,
+    process_resource_properties,
+    process_resource_property_by_type,
+    get_resources_grouped_by_namespace,
 )
 
 from rich.padding import Padding
@@ -115,7 +115,7 @@ def evaluate_instances(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, instances) in resources_grouped_by_namespace(all_instances):
+    for (namespace, instances) in get_resources_grouped_by_namespace(all_instances):
         check_manager.add_target(target_name=target_instances, namespace=namespace, conditions=instance_namespace_conditions)
         check_manager.add_display(
             target_name=target_instances,
@@ -259,7 +259,7 @@ def evaluate_pipelines(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, pipelines) in resources_grouped_by_namespace(all_pipelines):
+    for (namespace, pipelines) in get_resources_grouped_by_namespace(all_pipelines):
         check_manager.add_target(target_name=target_pipelines, namespace=namespace, conditions=pipeline_namespace_conditions)
         check_manager.add_display(
             target_name=target_pipelines,
@@ -436,7 +436,7 @@ def evaluate_datasets(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, datasets) in resources_grouped_by_namespace(all_datasets):
+    for (namespace, datasets) in get_resources_grouped_by_namespace(all_datasets):
         check_manager.add_target(target_name=target_datasets, namespace=namespace, conditions=dataset_namespace_conditions)
         check_manager.add_display(
             target_name=target_datasets,
@@ -562,7 +562,7 @@ def evaluate_datasets(
                     )
 
             if detail_level == ResourceOutputDetailLevel.verbose.value and dataset_spec.get("keys"):
-                process_property_by_type(
+                process_resource_property_by_type(
                     check_manager=check_manager,
                     target_name=target_datasets,
                     properties=d["spec"]["keys"],
@@ -587,7 +587,7 @@ def _process_stage_properties(
 
     for stage_value, properties in stage_properties.items():
         if stage_value in stage_type:
-            process_properties(
+            process_resource_properties(
                 check_manager=check_manager,
                 detail_level=detail_level,
                 target_name=target_name,

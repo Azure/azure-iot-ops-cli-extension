@@ -38,6 +38,20 @@ class CheckTaskStatus(Enum):
         }
         return color_map[self]
 
+    @property
+    def emoji(self) -> str:
+        emoji_map = {
+            CheckTaskStatus.success: "heavy_check_mark",
+            CheckTaskStatus.warning: "warning",
+            CheckTaskStatus.error: "stop_sign",
+            CheckTaskStatus.skipped: "hammer",
+        }
+        return f":{emoji_map[self]}:"
+
+    @classmethod
+    def map_to_colored_emoji(cls, value) -> str:
+        return f"[{cls[value].color}]{cls[value].emoji}[{cls[value].color}]"
+
 
 class ResourceState(Enum):
     """

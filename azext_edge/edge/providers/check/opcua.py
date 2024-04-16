@@ -16,7 +16,7 @@ from .base import (
     generate_target_resource_name,
     get_resources_by_name,
     process_pods_status,
-    resources_grouped_by_namespace,
+    get_resources_grouped_by_namespace,
 )
 
 from ...common import CheckTaskStatus
@@ -89,7 +89,7 @@ def evaluate_core_service_runtime(
             check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value)
             check_manager.add_display(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)))
 
-    for (namespace, pods) in resources_grouped_by_namespace(opcua_runtime_resources):
+    for (namespace, pods) in get_resources_grouped_by_namespace(opcua_runtime_resources):
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
@@ -137,7 +137,7 @@ def evaluate_asset_types(
         )
         check_manager.add_display(target_name=target_asset_types, display=Padding(fetch_asset_types_error_text, (0, 0, 0, 8)))
 
-    for (namespace, asset_types) in resources_grouped_by_namespace(all_asset_types):
+    for (namespace, asset_types) in get_resources_grouped_by_namespace(all_asset_types):
         check_manager.add_target(
             target_name=target_asset_types,
             namespace=namespace,

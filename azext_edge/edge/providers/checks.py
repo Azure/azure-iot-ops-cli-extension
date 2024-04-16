@@ -10,7 +10,7 @@ from azure.cli.core.azclierror import ArgumentUsageError
 from rich.console import Console
 
 from ..common import ListableEnum, OpsServiceType
-from .check.base import check_pre_deployment, process_as_list
+from .check.base import check_pre_deployment, display_as_list
 from .check.common import ResourceOutputDetailLevel
 from .check.dataprocessor import check_dataprocessor_deployment
 from .check.deviceregistry import check_deviceregistry_deployment
@@ -43,8 +43,6 @@ def run_checks(
     if resource_kinds:
         _validate_resource_kinds_under_service(ops_service, resource_kinds)
 
-    # check_pre_deployment(result, as_list)
-    # return result
     with console.status(status="Analyzing cluster...", refresh_per_second=12.5):
         from time import sleep
 
@@ -73,7 +71,7 @@ def run_checks(
             )
 
         if as_list:
-            return process_as_list(console=console, result=result)
+            return display_as_list(console=console, result=result)
         return result
 
 
