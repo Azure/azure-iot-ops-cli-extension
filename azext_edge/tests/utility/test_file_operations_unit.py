@@ -79,7 +79,7 @@ class TestFileHeaders(object):
             )
 
 
-@pytest.mark.parametrize("loader_return", [None, generate_random_string()])
+@pytest.mark.parametrize("loader_return", ["", generate_random_string()])
 @pytest.mark.parametrize("extension", ["json", "yml", "yaml", "csv", "whl"])
 def test_read_file_content_as_dict(mocker, extension, loader_return):
     patched_loader = mocker.patch(

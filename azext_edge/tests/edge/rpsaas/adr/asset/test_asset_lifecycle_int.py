@@ -127,14 +127,14 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     cluster_name = require_init["clusterName"]
 
     # Create an endpoint profile
-    endpoint_name = "test-endpoint-" + generate_random_string()[:4]
+    endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     asset_endpoint = run(
         f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} "
         "--ta opc.tcp://opcplc-000000:50000"
     )
     tracked_resources.append(asset_endpoint["id"])
 
-    asset_name = "test-asset-" + generate_random_string()[:4]
+    asset_name = "test-asset-" + generate_random_string(force_lower=True)[:4]
     data_source = generate_random_string()
     expected_data_points = [{"data_source": generate_random_string()}]
     asset = run(
@@ -210,7 +210,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
 
     asset_events = run(command)
     assert len(asset_events) == len(expected_events)
-    expected_events .append({
+    expected_events.append({
         "event_notifier": generate_random_string(),
     })
     command = f"az iot ops asset event add -a {asset_name} -g {rg}"
@@ -282,7 +282,7 @@ def assert_asset_props(result, **expected):
 
 
 def assert_sub_point(result, **expected):
-    assert result.get("capabilityId") == expected.get("capability_id")
+    assert result.get("capabilityId") == expected.get("capability_id", expected.get("name"))
     assert result.get("dataSource") == expected.get("data_source")
     assert result.get("eventNotifier") == expected.get("event_notifier")
     assert result.get("name") == expected.get("name")

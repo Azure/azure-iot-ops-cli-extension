@@ -356,7 +356,7 @@ class AssetProvider(ADRBaseProvider):
         if sub_point_type not in asset["properties"]:
             asset["properties"][sub_point_type] = []
 
-        sub_points = read_file_content_as_dict(file_path=file_path)
+        sub_points = list(read_file_content_as_dict(file_path=file_path))
         _convert_sub_points_from_csv(sub_points)
 
         key = "dataSource" if sub_point_type == "dataPoints" else "eventNotifier"
@@ -542,8 +542,12 @@ def _convert_sub_points_from_csv(sub_points: List[Dict[str, str]]):
         configuration = {}
         if point.get("samplingInterval"):
             configuration["samplingInterval"] = int(point.pop("samplingInterval"))
+        else:
+            point.pop("samplingInterval", None)
         if point.get("queueSize"):
             configuration["queueSize"] = int(point.pop("queueSize"))
+        else:
+            point.pop("queueSize", None)
         if configuration:
             config_key = "dataPointConfiguration" if "dataSource" in point else "eventConfiguration"
             point[config_key] = json.dumps(configuration)

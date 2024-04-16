@@ -95,6 +95,8 @@ def read_file_content_as_dict(file_path: str) -> Union[Iterable, dict]:
     extension = file_path.split(".")[-1]
     invalid_extension = extension not in ["json", "yaml", "yml", "csv"]
     content = read_file_content(file_path)
+    if content == "":
+        raise FileOperationError(f"File {file_path} is empty.")
     result: Optional[Union[Iterable, dict]] = None
     if invalid_extension or extension == "json":
         result = _try_loading_as(
@@ -111,12 +113,12 @@ def read_file_content_as_dict(file_path: str) -> Union[Iterable, dict]:
             raise_error=not invalid_extension
         )
     if (not result and invalid_extension) or extension == "csv":
-        result = list(_try_loading_as(
+        result = _try_loading_as(
             loader=csv.DictReader,
             content=content.splitlines(),
             error_type=csv.Error,
             raise_error=not invalid_extension
-        ))
+        )
     if result is not None or not invalid_extension:
         return result
     raise FileOperationError(f"File contents for {file_path} cannot be read.")
@@ -129,7 +131,7 @@ def _try_loading_as(
     raise_error: bool = True
 ) -> Optional[Union[Iterable, dict]]:
     try:
-        return list(loader(content))
+        return loader(content)
     except error_type as e:
         if raise_error:
             raise FileOperationError(e)
