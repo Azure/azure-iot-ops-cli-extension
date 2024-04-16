@@ -123,7 +123,7 @@ def test_check_nodes(mocked_node_client):
     assert headers == ["Name", "Architecture", "CPU (vCPU)", "Memory (GB)", "Storage (GB)"]
 
     # the generator is weird
-    unpacked_cols = [[val for val in col.cells] for col in table.columns]
+    unpacked_cols = [list(col.cells) for col in table.columns]
 
     for i in range(len(nodes)):
         node = nodes[i]
