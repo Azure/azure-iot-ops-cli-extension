@@ -143,7 +143,7 @@ def test_normalize_dir(dir_path, exists):
         os.rmdir(os.path.abspath(os.path.expanduser(dir_path)))
 
 
-def test_read_file_content():
+def test_read_file_content(tracked_files):
     from azext_edge.edge.util import read_file_content
 
     class TestScenario(NamedTuple):
@@ -164,10 +164,8 @@ def test_read_file_content():
             # pylint: disable-next=unspecified-encoding
             with open(file_name, mode=mode, encoding=self.encoding) as file:
                 file.write(random_data)
+            tracked_files.append(file_name)
             return random_data
-
-        def delete_content(self):
-            os.remove(os.path.abspath(os.path.expanduser(self.file_name)))
 
     file_prefix = "azext_edge_util_test_data"
 
@@ -191,7 +189,6 @@ def test_read_file_content():
 
         file_content = read_file_content(file_path=scenario.file_name, read_as_binary=scenario.is_binary)
         assert file_content == expected_content
-        scenario.delete_content()
 
     non_existant_path = "/some/path/that/doesnt/exist"
     with pytest.raises(FileOperationError, match=f"{non_existant_path} does not exist."):
