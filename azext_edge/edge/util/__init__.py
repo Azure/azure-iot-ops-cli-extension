@@ -11,6 +11,7 @@ from .common import (
     get_timestamp_now_utc,
     set_log_level,
     url_safe_hash_phrase,
+    is_env_flag_enabled,
 )
 from .x509 import generate_self_signed_cert
 from .file_operations import (
@@ -31,5 +32,6 @@ __all__ = [
     "url_safe_hash_phrase",
     "read_file_content_as_dict",
     "dump_content_to_file",
-    "normalize_dir"
+    "normalize_dir",
+    "is_env_flag_enabled",
 ]

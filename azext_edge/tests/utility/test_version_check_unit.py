@@ -27,6 +27,8 @@ from azext_edge.edge.util.version_check import (
     SESSION_KEY_LAST_FETCHED,
 )
 
+from .conftest import MockResponseRaw
+
 cli_ctx = get_default_cli()
 
 
@@ -174,19 +176,6 @@ def patch_requests_session(mocker, status_code: Union[int, RequestException] = 2
     mock_requests_session.return_value = mock_response
 
     return mock_requests_session
-
-
-class MockResponseRaw:
-    def __init__(self, content: bytes):
-        self.read_calls = 0
-        self.content = content
-
-    def read(self, chunk_size: int) -> bytes:
-        _ = chunk_size
-        if not self.read_calls:
-            self.read_calls += 1
-            return self.content
-        return b""
 
 
 @pytest.fixture

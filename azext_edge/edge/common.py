@@ -149,6 +149,7 @@ class AEPAuthModes(Enum):
     """
     Authentication modes for asset endpoints
     """
+
     anonymous = "Anonymous"
     certificate = "Certificate"
     userpass = "UsernamePassword"
@@ -191,3 +192,7 @@ AIO_MQ_DIAGNOSTICS_SERVICE = "aio-mq-diagnostics-service"
 AIO_MQ_OPERATOR = "aio-mq-operator"
 METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800
+
+# Init Env Control
+
+INIT_NO_PREFLIGHT_ENV_KEY = "AIO_CLI_INIT_PREFLIGHT_DISABLED"

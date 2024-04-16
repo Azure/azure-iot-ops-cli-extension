@@ -130,6 +130,7 @@ def ensure_azure_namespace_path():
     import sys
 
     from azure.cli.core.extension import get_extension_path
+
     from ...constants import EXTENSION_NAME
 
     ext_path = get_extension_path(EXTENSION_NAME)
@@ -151,7 +152,7 @@ def ensure_azure_namespace_path():
 
 
 def run_host_command(command: str, shell_mode: bool = True):
-    from shlex import split, quote
+    from shlex import quote, split
     from subprocess import run
 
     if not command:
@@ -165,3 +166,9 @@ def run_host_command(command: str, shell_mode: bool = True):
         return run(split_command, capture_output=True, check=False, shell=shell_mode)
     except FileNotFoundError:
         pass
+
+
+def is_env_flag_enabled(env_flag_key: str) -> bool:
+    from os import getenv
+
+    return getenv(env_flag_key, "false").lower() in ["true", "1", "y"]
