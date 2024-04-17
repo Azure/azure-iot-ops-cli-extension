@@ -356,7 +356,7 @@ class AssetProvider(ADRBaseProvider):
         if sub_point_type not in asset["properties"]:
             asset["properties"][sub_point_type] = []
 
-        sub_points = deserialize_file_content(file_path=file_path)
+        sub_points = list(deserialize_file_content(file_path=file_path))
         _convert_sub_points_from_csv(sub_points)
 
         key = "dataSource" if sub_point_type == "dataPoints" else "eventNotifier"
