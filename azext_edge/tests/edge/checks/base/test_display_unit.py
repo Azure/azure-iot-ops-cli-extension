@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from rich.padding import Padding
 from azext_edge.edge.common import CheckTaskStatus
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
 
@@ -31,11 +30,17 @@ def test_add_display_and_eval(mocked_check_manager, resource_name, namespace, pa
         namespace=namespace,
         padding=padding
     )
-    mocked_check_manager.add_display.assert_called_once_with(
-        target_name=target_name,
-        namespace=namespace,
-        display=Padding(display_text, padding)
-    )
+    kwargs = mocked_check_manager.add_display.call_args.kwargs
+    assert kwargs["target_name"] == target_name
+    assert kwargs["namespace"] == namespace
+    assert kwargs["display"].renderable == display_text
+    assert (
+        kwargs["display"].top,
+        kwargs["display"].right,
+        kwargs["display"].bottom,
+        kwargs["display"].left
+    ) == padding
+
     mocked_check_manager.add_target_eval.assert_called_once_with(
         target_name=target_name,
         namespace=namespace,
