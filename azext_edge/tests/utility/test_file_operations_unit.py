@@ -81,7 +81,7 @@ class TestFileHeaders(object):
 
 @pytest.mark.parametrize("loader_return", ["", generate_random_string()])
 @pytest.mark.parametrize("extension", ["json", "yml", "yaml", "csv", "whl"])
-def test_read_file_content_as_dict(mocker, extension, loader_return):
+def test_deserialize_file_content(mocker, extension, loader_return):
     patched_loader = mocker.patch(
         "azext_edge.edge.util.file_operations._try_loading_as",
         return_value=loader_return
@@ -90,14 +90,14 @@ def test_read_file_content_as_dict(mocker, extension, loader_return):
         "azext_edge.edge.util.file_operations.read_file_content",
         return_value=f"{generate_random_string()}\n{generate_random_string()}"
     )
-    from azext_edge.edge.util import read_file_content_as_dict
+    from azext_edge.edge.util import deserialize_file_content
     file_path = f"{generate_random_string()}.{extension}"
 
     if loader_return is None:
         with pytest.raises(FileOperationError):
-            read_file_content_as_dict(file_path=file_path)
+            deserialize_file_content(file_path=file_path)
     else:
-        result = read_file_content_as_dict(file_path=file_path)
+        result = deserialize_file_content(file_path=file_path)
         assert result == loader_return
 
     call_count = 0

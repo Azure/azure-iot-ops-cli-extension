@@ -91,7 +91,7 @@ def read_file_content(file_path: str, read_as_binary: bool = False) -> Union[byt
     raise FileOperationError(f"Failed to decode file {file_path}.")
 
 
-def read_file_content_as_dict(file_path: str) -> Union[Iterable, dict]:
+def deserialize_file_content(file_path: str) -> Union[Iterable, dict, str]:
     extension = file_path.split(".")[-1]
     invalid_extension = extension not in ["json", "yaml", "yml", "csv"]
     content = read_file_content(file_path)
@@ -99,6 +99,7 @@ def read_file_content_as_dict(file_path: str) -> Union[Iterable, dict]:
         raise FileOperationError(f"File {file_path} is empty.")
     result: Optional[Union[Iterable, dict]] = None
     if invalid_extension or extension == "json":
+        # will always be a list or dict
         result = _try_loading_as(
             loader=json.loads,
             content=content,
@@ -106,6 +107,7 @@ def read_file_content_as_dict(file_path: str) -> Union[Iterable, dict]:
             raise_error=not invalid_extension
         )
     if (not result and invalid_extension) or extension in ["yaml", "yml"]:
+        # can be list, dict, str, none
         result = _try_loading_as(
             loader=yaml.safe_load,
             content=content,
@@ -113,12 +115,13 @@ def read_file_content_as_dict(file_path: str) -> Union[Iterable, dict]:
             raise_error=not invalid_extension
         )
     if (not result and invalid_extension) or extension == "csv":
-        result = _try_loading_as(
+        # iterrable object so lets cast to list
+        result = list(_try_loading_as(
             loader=csv.DictReader,
             content=content.splitlines(),
             error_type=csv.Error,
             raise_error=not invalid_extension
-        )
+        ))
     if result is not None or not invalid_extension:
         return result
     raise FileOperationError(f"File contents for {file_path} cannot be read.")

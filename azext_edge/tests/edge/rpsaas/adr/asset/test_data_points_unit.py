@@ -166,7 +166,7 @@ def test_export_asset_data_points(
         }
     },
 ], ids=["minimal", "full"], indirect=True)
-@pytest.mark.parametrize("mocked_read_file_content_as_dict", [[
+@pytest.mark.parametrize("mocked_deserialize_file_content", [[
     FULL_ASSET["properties"]["dataPoints"][0],
     {
         "capabilityId": generate_random_string(),
@@ -181,7 +181,7 @@ def test_import_data_points(
     asset_helpers_fixture,
     mock_check_cluster_connectivity,
     mocked_resource_management_client,
-    mocked_read_file_content_as_dict,
+    mocked_deserialize_file_content,
     replace
 ):
     patched_from_csv = asset_helpers_fixture["convert_sub_points_from_csv"]
@@ -205,8 +205,8 @@ def test_import_data_points(
     original_asset = mocked_resource_management_client.resources.get.return_value.original
     original_points = original_asset["properties"].get("dataPoints", [])
 
-    mocked_read_file_content_as_dict.assert_called_once_with(file_path=file_path)
-    file_points = mocked_read_file_content_as_dict.return_value
+    mocked_deserialize_file_content.assert_called_once_with(file_path=file_path)
+    file_points = mocked_deserialize_file_content.return_value
 
     patched_from_csv.assert_called_once_with(file_points)
 

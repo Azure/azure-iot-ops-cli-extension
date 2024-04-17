@@ -347,7 +347,7 @@ class AssetProvider(ADRBaseProvider):
         resource_group_name: str,
         replace: bool = False
     ):
-        from ....util import read_file_content_as_dict
+        from ....util import deserialize_file_content
         asset = self.show(
             resource_name=asset_name,
             resource_group_name=resource_group_name,
@@ -356,7 +356,7 @@ class AssetProvider(ADRBaseProvider):
         if sub_point_type not in asset["properties"]:
             asset["properties"][sub_point_type] = []
 
-        sub_points = list(read_file_content_as_dict(file_path=file_path))
+        sub_points = deserialize_file_content(file_path=file_path)
         _convert_sub_points_from_csv(sub_points)
 
         key = "dataSource" if sub_point_type == "dataPoints" else "eventNotifier"

@@ -15,7 +15,7 @@ from .common import (
 )
 from .x509 import generate_self_signed_cert
 from .file_operations import (
-    read_file_content_as_dict,
+    deserialize_file_content,
     dump_content_to_file,
     normalize_dir,
     read_file_content,
@@ -30,7 +30,7 @@ __all__ = [
     "generate_self_signed_cert",
     "read_file_content",
     "url_safe_hash_phrase",
-    "read_file_content_as_dict",
+    "deserialize_file_content",
     "dump_content_to_file",
     "normalize_dir",
     "is_env_flag_enabled",

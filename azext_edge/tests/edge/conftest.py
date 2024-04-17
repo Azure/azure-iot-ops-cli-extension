@@ -118,11 +118,11 @@ def mocked_dump_content_to_file(mocker):
 
 
 @pytest.fixture
-def mocked_read_file_content_as_dict(mocker, request):
+def mocked_deserialize_file_content(mocker, request):
     from ..generators import generate_random_string
     request_params = getattr(request, "param", generate_random_string())
     yield mocker.patch(
-        "azext_edge.edge.util.read_file_content_as_dict",
+        "azext_edge.edge.util.deserialize_file_content",
         return_value=request_params,
         autospec=True
     )
