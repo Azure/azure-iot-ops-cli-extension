@@ -43,7 +43,7 @@ DATA_PROCESSOR_PVC_APP_LABELS = [
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
 DATA_PROCESSOR_NAME_LABEL = "app.kubernetes.io/name in (dataprocessor)"
 DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
-DATA_PROCESSOR_PVC_APP_LABEL = f"app in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
+DATA_PROCESSOR_PVC_APP_LABEL = f"app.kubernetes.io/name in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
 
 # TODO: @jiacju - will remove once the nats issue the fixed
 DATA_PROCESSOR_ONEOFF_LABEL = f"app in ({DATA_PROCESSOR_NATS_APP_LABEL})"
@@ -101,7 +101,7 @@ def fetch_statefulsets():
 
 
 def fetch_replicasets():
-    processed = []
+    processed = process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
     processed.extend(process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
     processed.extend(
         process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
@@ -127,6 +127,7 @@ def fetch_persistent_volume_claims():
         resource_api=DATA_PROCESSOR_API_V1,
         label_selector=DATA_PROCESSOR_PVC_APP_LABEL
     )
+
     processed.extend(
         process_persistent_volume_claims(
             resource_api=DATA_PROCESSOR_API_V1,

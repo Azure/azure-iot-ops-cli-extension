@@ -11,27 +11,27 @@ inputs:
   config:
     description: |
       Contents of kubeconfig to connect to cluster. If not provided, we will attempt 
-      to use your local `~/.kube/config` file
+      to use your local `~/.kube/config` file.
   cluster:
-    description: Name of ARC connected cluster
+    description: 'Name of ARC connected cluster.'
     required: true
   resource-group:
-    description: Resource Group
+    description: 'Resource group for deployment.'
     required: true
   cluster-namespace:
-    description: The cluster namespace AIO infra will be deployed to.
+    description: 'The cluster namespace AIO infra will be deployed to.'
   custom-location:
-    description: The custom location namespace corresponding to the AIO deployment
+    description: 'The custom location namespace corresponding to the AIO deployment.'
   disable-rsync-rules:
-    description: Resource sync rules will not be included in the deployment.
+    description: 'Resource sync rules will not be included in the deployment.'
   location:
-    description: The ARM location for RPSaaS collateral.
+    description: 'The ARM location for RPSaaS collateral.'
   no-deploy:
-    description: The IoT Operations deployment workflow will be skipped.
+    description: 'The IoT Operations deployment workflow will be skipped.'
   no-preflight:
-    description: Disable preflight checks for deployment.
+    description: 'Disable preflight checks for deployment.'
   no-tls:
-    description: The TLS configuration workflow will be skipped.
+    description: 'The TLS configuration workflow will be skipped.'
   keyvault-id:
     description: |
       Keyvault ID to use for AIO deployment SPC.
@@ -42,23 +42,23 @@ inputs:
       port 1883 with no authN or authZ. The broker encryptInternalTraffic setting
       will be set to false. For non-production workloads only.
   ca-valid-days:
-    description: Days for self-signed test certificate to be valid.
+    description: 'Days for self-signed test certificate to be valid.'
   ca-file:
-    description: User-provided CA certificate file path
+    description: 'User-provided CA certificate file path.'
   ca-key-file:
-    description: User-provided CA key file path
-  kv-sat-secret-name:
-    description: Key Vault Secure Access Token Secret Name
+    description: 'User-provided CA key file path.'
+  kv-spc-secret-name:
+    description: 'Key Vault secret name to be used as the default SPC secret.'
   template-file:
-    description: Path to custom IoT Operations deployment template. Intended for advanced use cases. 
+    description: 'Path to custom IoT Operations deployment template. Intended for advanced use cases.'
   sp-app-id:
-    description: 'Optional Service Principal ID to use for cluster operations'
+    description: 'Optional Service Principal ID to use for cluster operations.'
   sp-object-id:
-    description: 'Optional Service Principal Object ID to use for cluster operations'
+    description: 'Optional Service Principal Object ID to use for cluster operations.'
   sp-secret:
-    description: 'Optional Service Principal Secret to use for cluster operations'
+    description: 'Optional Service Principal Secret to use for cluster operations.'
   debug:
-    description: Run `az iot ops init` with debugging output
+    description: 'Run `az iot ops init` with debugging output.'
 
 runs:
   using: 'composite'
@@ -90,13 +90,13 @@ runs:
       shell: bash
     - name: "Deploy Azure IoT Operations"
       env:
+        AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ inputs.no-preflight }}
         cluster: ${{ format('--cluster "{0}"', inputs.cluster) }}
         resource-group: ${{ format('--resource-group "{0}"', inputs.resource-group) }}
         cluster-namespace: ${{ inputs.cluster-namespace != '' && format('--cluster-namespace "{0}"', inputs.cluster-namespace) || '' }}
         custom-location: ${{ inputs.custom-location != '' && format('--custom-location "{0}"', inputs.custom-location) || '' }}
         location: ${{ inputs.location != '' && format('--location "{0}"', inputs.location) || '' }}
         no-deploy: ${{ inputs.no-deploy == 'true' && '--no-deploy' || '' }}
-        no-preflight: ${{ inputs.no-preflight == 'true' && '--no-preflight' || '' }}
         no-tls: ${{ inputs.no-tls == 'true' && '--no-tls' || '' }}
         keyvault-id: ${{ inputs.keyvault-id != '' && format('--kv-id "{0}"', inputs.keyvault-id) || '' }}  
         sp-app-id: ${{ inputs.sp-app-id != '' && format('--sp-app-id "{0}"', inputs.sp-app-id) || '' }}
@@ -107,7 +107,7 @@ runs:
         disable-rsync-rules: ${{ inputs.disable-rsync-rules == 'true' && '--disable-rsync-rules' || '' }}
         ca-file: ${{ inputs.ca-file && format('--ca-file "{0}"', inputs.ca-file) || '' }}
         ca-key-file: ${{ inputs.ca-key-file && format('--ca-key-file "{0}"', inputs.ca-key-file) || '' }}
-        kv-sat-secret-name: ${{ inputs.kv-sat-secret-name && format('--kv-sat-secret-name "{0}"', inputs.kv-sat-secret-name) || '' }}
+        kv-spc-secret-name: ${{ inputs.kv-spc-secret-name && format('--kv-spc-secret-name "{0}"', inputs.kv-spc-secret-name) || '' }}
         template-file: ${{ inputs.template-file && format('--template-file "{0}"', inputs.template-file) || '' }}
         debug: ${{ inputs.debug == 'true' && '--debug' || '' }}
       run: >-
@@ -119,7 +119,6 @@ runs:
           ${{ env.disable-rsync-rules }}
           ${{ env.location }}
           ${{ env.no-deploy }}
-          ${{ env.no-preflight }}
           ${{ env.no-tls }}
           ${{ env.keyvault-id }}
           ${{ env.sp-app-id }}
@@ -130,7 +129,7 @@ runs:
           ${{ env.disable-rsync-rules }}
           ${{ env.ca-file }}
           ${{ env.ca-key-file }}
-          ${{ env.kv-sat-secret-name }}
+          ${{ env.kv-spc-secret-name }}
           ${{ env.template-file }}
           ${{ env.debug }}
           --no-progress

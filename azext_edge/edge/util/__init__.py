@@ -12,6 +12,7 @@ from .common import (
     read_file_content,
     set_log_level,
     url_safe_hash_phrase,
+    is_env_flag_enabled,
 )
 from .x509 import generate_self_signed_cert
 
@@ -24,4 +25,5 @@ __all__ = [
     "generate_self_signed_cert",
     "read_file_content",
     "url_safe_hash_phrase",
+    "is_env_flag_enabled",
 ]

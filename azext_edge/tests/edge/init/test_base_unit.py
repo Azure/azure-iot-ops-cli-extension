@@ -424,26 +424,29 @@ def test_ensure_correct_access(mocked_cmd, mocked_send_raw_request, key_vault, m
 
 @pytest.mark.parametrize("tls_ca_path", [None, generate_random_string()])
 @pytest.mark.parametrize("tls_ca_key_path", [None, generate_random_string()])
-def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path):
+@pytest.mark.parametrize("tls_ca_dir", [None, generate_random_string()])
+def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path, tls_ca_dir):
+    from unittest.mock import mock_open, patch
+
     file_patch = mocker.patch(f"{BASE_PATH}.read_file_content", return_value=generate_random_string())
     path_mock = mocker.Mock()
     path_mock.joinpath.return_value = generate_random_string()
-    normalize_patch = mocker.patch("azext_edge.edge.providers.support.base.normalize_dir", return_value=path_mock)
+    normalize_dir_patch = mocker.patch("azext_edge.edge.providers.support.base.normalize_dir", return_value=path_mock)
     cert_patch = mocker.patch(
         f"{BASE_PATH}.generate_self_signed_cert", return_value=(generate_random_string(), generate_random_string())
     )
-    open_patch = mocker.patch("builtins.open", autospec=True)
 
-    from azext_edge.edge.providers.orchestration.base import prepare_ca
+    with patch("builtins.open", mock_open(read_data="data")) as mock_open_file:
+        from azext_edge.edge.providers.orchestration.base import prepare_ca
 
-    tls_ca_dir = generate_random_string()
-    tls_ca_valid_days = 100
-    result = prepare_ca(
-        tls_ca_path=tls_ca_path,
-        tls_ca_key_path=tls_ca_key_path,
-        tls_ca_dir=tls_ca_dir,
-        tls_ca_valid_days=tls_ca_valid_days,
-    )
+        tls_ca_valid_days = 100
+        result = prepare_ca(
+            tls_ca_path=tls_ca_path,
+            tls_ca_key_path=tls_ca_key_path,
+            tls_ca_dir=tls_ca_dir,
+            tls_ca_valid_days=tls_ca_valid_days,
+        )
+
     if tls_ca_path:
         assert result[0] == file_patch.return_value
         assert result[1] == (file_patch.return_value if tls_ca_key_path else None)
@@ -452,10 +455,20 @@ def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path):
     else:
         assert result[0] == cert_patch.return_value[0]
         assert result[1] == cert_patch.return_value[1]
-        normalize_patch.assert_called_once_with(dir_path=tls_ca_dir)
-        assert open_patch.called is True
         assert result[2] == "aio-ca-key-pair-test-only"
         assert result[3] == "aio-ca-trust-bundle-test-only"
+
+    if tls_ca_dir and not tls_ca_path:
+        normalize_dir_patch.assert_called_once_with(dir_path=tls_ca_dir)
+        assert mock_open_file.call_count == 2
+        assert mock_open_file().write.call_count == 2
+        mock_open_file.assert_any_call(path_mock.joinpath.return_value, "wb")
+        mock_open_file().write.assert_any_call(cert_patch.return_value[0])
+        mock_open_file().write.assert_any_call(cert_patch.return_value[1])
+    else:
+        assert mock_open_file.call_count == 0
+        assert mock_open_file().write.call_count == 0
+        assert normalize_dir_patch.call_count == 0
 
 
 @pytest.mark.parametrize(
@@ -633,10 +646,11 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
         assert deployment == mocked_resource_management_client.deployments.begin_create_or_update.return_value
 
 
-@pytest.mark.parametrize("mocked_connected_cluster_location", ["mock_location"], indirect=True)
+@pytest.mark.parametrize("mocked_connected_cluster_location", ["westus2", "WestUS2"], indirect=True)
 @pytest.mark.parametrize("location", [None, generate_random_string()])
-def test_verify_cluster_and_use_location(mocked_connected_cluster_location, location):
+def test_verify_cluster_and_use_location(mocked_connected_cluster_location, mocked_cmd, location):
     kwargs = {
+        "cmd": mocked_cmd,
         "cluster_location": None,
         "location": location,
         "cluster_name": generate_random_string(),
@@ -647,13 +661,21 @@ def test_verify_cluster_and_use_location(mocked_connected_cluster_location, loca
         verify_cluster_and_use_location,
     )
 
-    verify_cluster_and_use_location(kwargs)
+    connected_cluster = verify_cluster_and_use_location(kwargs)
+
+    connected_cluster.cluster_name == kwargs["cluster_name"]
+    connected_cluster.subscription_id == kwargs["subscription_id"]
+    connected_cluster.resource_group_name == kwargs["resource_group_name"]
+
     mocked_connected_cluster_location.assert_called_once()
-    assert kwargs["cluster_location"] == mocked_connected_cluster_location.return_value
+
+    lowered_cluster_location = mocked_connected_cluster_location.return_value.lower()
+    assert kwargs["cluster_location"] == lowered_cluster_location
+
     if location:
         assert kwargs["location"] == location
     else:
-        assert kwargs["location"] == mocked_connected_cluster_location.return_value
+        assert kwargs["location"] == lowered_cluster_location
 
 
 @pytest.mark.parametrize(
@@ -669,7 +691,7 @@ def test_verify_cluster_and_use_location(mocked_connected_cluster_location, loca
     ],
     indirect=True,
 )
-def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions):
+def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions, mocked_cmd):
     from azext_edge.edge.providers.orchestration.base import (
         IOT_OPERATIONS_EXTENSION_PREFIX,
         ConnectedCluster,
@@ -677,6 +699,7 @@ def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions):
     )
 
     kwargs = {
+        "cmd": mocked_cmd,
         "cluster_name": generate_random_string(),
         "subscription_id": generate_random_string(),
         "resource_group_name": generate_random_string(),
@@ -802,11 +825,12 @@ def test_verify_custom_locations_enabled(mocker, role_bindings):
         },
     ],
 )
-def test_verify_arc_cluster_config(mocker, test_scenario):
+def test_verify_arc_cluster_config(mocker, mocked_cmd, test_scenario):
     get_config_map_patch = mocker.patch(f"{BASE_PATH}.get_config_map", return_value=test_scenario["config_map"])
     from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_config
 
     connected_cluster = ConnectedCluster(
+        cmd=mocked_cmd,
         subscription_id=ZEROED_SUB,
         cluster_name="cluster1",
         resource_group_name="rg1",
@@ -879,4 +903,45 @@ def test_eval_secret_via_sp(mocker, mocked_cmd, http_error):
         method="GET",
         headers=[f"Authorization=Bearer {mock_token}"],
         url=f"{vault_uri}/secrets/{kv_spc_secret_name}?api-version=7.4",
+    )
+
+
+@pytest.mark.parametrize(
+    "custom_location_name, namespace, get_cl_for_np_return_value",
+    [
+        ("mycl", "mynamespace", None),
+        ("mycl", "mynamespace", {"name": "mycl"}),
+        ("mycl", "mynamespace", {"name": "othercl"}),
+    ],
+)
+def test_verify_custom_location_namespace(
+    mocker, mocked_cmd, custom_location_name, namespace, get_cl_for_np_return_value
+):
+    mocked_get_custom_location_for_namespace = mocker.patch(
+        "azext_edge.edge.providers.orchestration.connected_cluster.ConnectedCluster.get_custom_location_for_namespace"
+    )
+    mocked_get_custom_location_for_namespace.return_value = get_cl_for_np_return_value
+
+    connected_cluster = ConnectedCluster(
+        cmd=mocked_cmd,
+        subscription_id=ZEROED_SUB,
+        cluster_name="cluster1",
+        resource_group_name="rg1",
+    )
+
+    from azext_edge.edge.providers.orchestration.base import verify_custom_location_namespace
+
+    if get_cl_for_np_return_value and get_cl_for_np_return_value["name"] != custom_location_name:
+        with pytest.raises(ValidationError) as ve:
+            verify_custom_location_namespace(
+                connected_cluster=connected_cluster, custom_location_name=custom_location_name, namespace=namespace
+            )
+        assert (
+            f"The intended namespace for deployment: {namespace}, is already referenced "
+            f"by custom location: {get_cl_for_np_return_value['name']}" in str(ve.value)
+        )
+        return
+
+    verify_custom_location_namespace(
+        connected_cluster=connected_cluster, custom_location_name=custom_location_name, namespace=namespace
     )

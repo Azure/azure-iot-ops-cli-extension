@@ -89,6 +89,7 @@ class OpsServiceType(ListableEnum):
     """
 
     auto = "auto"
+    billing = "billing"
     mq = "mq"
     lnm = "lnm"
     opcua = "opcua"
@@ -148,6 +149,7 @@ class AEPAuthModes(Enum):
     """
     Authentication modes for asset endpoints
     """
+
     anonymous = "Anonymous"
     certificate = "Certificate"
     userpass = "UsernamePassword"
@@ -162,6 +164,17 @@ class K8sSecretType(Enum):
     tls = "kubernetes.io/tls"
 
 
+class BundleResourceKind(Enum):
+    deployment = "Deployment"
+    statefulset = "Statefulset"
+    service = "Service"
+    replicaset = "Replicaset"
+    daemonset = "Daemonset"
+    pvc = "PersistentVolumeClaim"
+    job = "Job"
+    cronjob = "CronJob"
+
+
 # MQ runtime attributes
 
 AIO_MQ_RESOURCE_PREFIX = "aio-mq-"
@@ -169,3 +182,7 @@ AIO_MQ_DIAGNOSTICS_SERVICE = "aio-mq-diagnostics-service"
 AIO_MQ_OPERATOR = "aio-mq-operator"
 METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800
+
+# Init Env Control
+
+INIT_NO_PREFLIGHT_ENV_KEY = "AIO_CLI_INIT_PREFLIGHT_DISABLED"

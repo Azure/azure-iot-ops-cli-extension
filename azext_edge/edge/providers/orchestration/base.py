@@ -184,20 +184,20 @@ def prepare_ca(
         if tls_ca_key_path:
             private_key = read_file_content(file_path=tls_ca_key_path, read_as_binary=True)
     else:
-        normalized_path = normalize_dir(dir_path=tls_ca_dir)
-        test_ca_path = normalized_path.joinpath("aio-test-ca.crt")
-        test_pk_path = normalized_path.joinpath("aio-test-private.key")
-
         public_cert, private_key = generate_self_signed_cert(tls_ca_valid_days)
-
-        with open(str(test_ca_path), "wb") as f:
-            f.write(public_cert)
-
-        with open(str(test_pk_path), "wb") as f:
-            f.write(private_key)
-
         secret_name = f"{secret_name}-test-only"
         cm_name = f"{cm_name}-test-only"
+
+        if tls_ca_dir:
+            normalized_path = normalize_dir(dir_path=tls_ca_dir)
+            test_ca_path = normalized_path.joinpath("aio-test-ca.crt")
+            test_pk_path = normalized_path.joinpath("aio-test-private.key")
+
+            with open(str(test_ca_path), "wb") as f:
+                f.write(public_cert)
+
+            with open(str(test_pk_path), "wb") as f:
+                f.write(private_key)
 
     return public_cert, private_key, secret_name, cm_name
 
@@ -520,9 +520,12 @@ def verify_cluster_and_use_location(kwargs: dict) -> ConnectedCluster:
     from .connected_cluster import ConnectedCluster
 
     connected_cluster = ConnectedCluster(
-        subscription_id=subscription_id, cluster_name=cluster_name, resource_group_name=resource_group_name
+        cmd=kwargs["cmd"],
+        subscription_id=subscription_id,
+        cluster_name=cluster_name,
+        resource_group_name=resource_group_name,
     )
-    connected_cluster_location = connected_cluster.location
+    connected_cluster_location = connected_cluster.location.lower()
 
     kwargs["cluster_location"] = connected_cluster_location
     if not location:
@@ -577,3 +580,14 @@ def verify_arc_cluster_config(connected_cluster: ConnectedCluster):
                 f"while the cloud target is {cloud_value}.\n"
                 "Please ensure the local kubeconfig is up-to-date with the intended cluster for deployment."
             )
+
+
+def verify_custom_location_namespace(connected_cluster: ConnectedCluster, custom_location_name: str, namespace: str):
+    custom_location_ref = connected_cluster.get_custom_location_for_namespace(namespace=namespace)
+    if custom_location_ref and custom_location_ref["name"] != custom_location_name:
+        raise ValidationError(
+            f"The intended namespace for deployment: {namespace}, is already referenced by "
+            f"custom location: {custom_location_ref['name']}.\n"
+            "A namespace can only be referenced by a single custom location. "
+            "Please choose a different namespace via --cluster-namespace."
+        )
