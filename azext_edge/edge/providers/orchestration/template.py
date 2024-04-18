@@ -31,7 +31,7 @@ class TemplateVer(NamedTuple):
 
 V1_TEMPLATE = TemplateVer(
     commit_id="eac42bb5f3b13579b27adbcbbb71ef20e3d45df8",
-    moniker="0.4.0-preview",
+    moniker="v0.4.0-preview",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",

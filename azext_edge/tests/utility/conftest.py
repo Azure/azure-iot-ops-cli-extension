@@ -3,11 +3,15 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
-"""This module defines constants for use across the CLI extension package"""
 
-import os
+class MockResponseRaw:
+    def __init__(self, content: bytes):
+        self.read_calls = 0
+        self.content = content
 
-VERSION = "0.4.0b5"
-EXTENSION_NAME = "azure-iot-ops"
-EXTENSION_ROOT = os.path.dirname(os.path.abspath(__file__))
-USER_AGENT = "IotOperationsCliExtension/{}".format(VERSION)
+    def read(self, chunk_size: int) -> bytes:
+        _ = chunk_size
+        if not self.read_calls:
+            self.read_calls += 1
+            return self.content
+        return b""

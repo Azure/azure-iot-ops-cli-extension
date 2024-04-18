@@ -209,9 +209,7 @@ def mocked_verify_custom_locations_enabled(mocker):
 
 @pytest.fixture
 def mocked_verify_arc_cluster_config(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.base.verify_arc_cluster_config", autospec=True
-    )
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.verify_arc_cluster_config", autospec=True)
     yield patched
 
 
@@ -222,9 +220,27 @@ def mocked_eval_secret_via_sp(mocker):
 
 
 @pytest.fixture
+def mocked_verify_custom_location_namespace(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.base.verify_custom_location_namespace", autospec=True
+    )
+    yield patched
+
+
+@pytest.fixture
 def spy_get_current_template_copy(mocker):
     from azext_edge.edge.providers.orchestration import work
 
     spy = mocker.spy(work, "get_current_template_copy")
 
     yield spy
+
+
+@pytest.fixture
+def spy_work_displays(mocker):
+    from azext_edge.edge.providers.orchestration.work import WorkManager
+
+    yield {
+        "render_display": mocker.spy(WorkManager, "render_display"),
+        "complete_step": mocker.spy(WorkManager, "complete_step"),
+    }

@@ -5,26 +5,31 @@
 # ----------------------------------------------------------------------------------------------
 
 
+from os import environ
 from random import randint
+from typing import Dict, FrozenSet
 from unittest.mock import Mock
 
 import pytest
 
 from azext_edge.edge.commands_edge import init
+from azext_edge.edge.common import INIT_NO_PREFLIGHT_ENV_KEY
 from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
 from azext_edge.edge.providers.orchestration.base import KEYVAULT_ARC_EXTENSION_VERSION
 from azext_edge.edge.providers.orchestration.common import (
+    KubernetesDistroType,
     MqMemoryProfile,
     MqMode,
     MqServiceType,
-    KubernetesDistroType,
 )
 from azext_edge.edge.providers.orchestration.work import (
     CLUSTER_SECRET_CLASS_NAME,
     CLUSTER_SECRET_REF,
     CURRENT_TEMPLATE,
     TemplateVer,
+    WorkCategoryKey,
     WorkManager,
+    WorkStepKey,
 )
 from azext_edge.edge.util import url_safe_hash_phrase
 
@@ -519,6 +524,7 @@ def test_work_order(
     mocked_verify_custom_locations_enabled: Mock,
     mocked_verify_arc_cluster_config: Mock,
     mocked_eval_secret_via_sp: Mock,
+    mocked_verify_custom_location_namespace: Mock,
     spy_get_current_template_copy: Mock,
     cluster_name,
     cluster_namespace,
@@ -534,7 +540,10 @@ def test_work_order(
     no_tls,
     no_preflight,
     disable_rsync_rules,
+    spy_work_displays,
 ):
+    # TODO: Refactor for simplification
+
     call_kwargs = {
         "cmd": mocked_cmd,
         "cluster_name": cluster_name,
@@ -543,10 +552,13 @@ def test_work_order(
         "disable_secret_rotation": disable_secret_rotation,
         "no_deploy": no_deploy,
         "no_tls": no_tls,
-        "no_preflight": no_preflight,
         "no_progress": True,
         "disable_rsync_rules": disable_rsync_rules,
     }
+
+    if no_preflight:
+        environ[INIT_NO_PREFLIGHT_ENV_KEY] = "true"
+
     if rotation_poll_interval:
         call_kwargs["rotation_poll_interval"] = rotation_poll_interval
     if cluster_namespace:
@@ -575,12 +587,24 @@ def test_work_order(
 
     expected_cluster_namespace = cluster_namespace.lower() if cluster_namespace else DEFAULT_NAMESPACE
 
+    displays_to_eval = []
+    for category_tuple in [
+        (not no_preflight, WorkCategoryKey.PRE_FLIGHT),
+        (keyvault_resource_id, WorkCategoryKey.CSI_DRIVER),
+        (not no_tls, WorkCategoryKey.TLS_CA),
+        (not no_deploy, WorkCategoryKey.DEPLOY_AIO),
+    ]:
+        if category_tuple[0]:
+            displays_to_eval.append(category_tuple[1])
+    _assert_displays_for(set(displays_to_eval), spy_work_displays)
+
     if not no_preflight:
         expected_template_copies += 1
         mocked_register_providers.assert_called_once()
         mocked_verify_custom_locations_enabled.assert_called_once()
         mocked_connected_cluster_extensions.assert_called_once()
         mocked_verify_arc_cluster_config.assert_called_once()
+        mocked_verify_custom_location_namespace.assert_called_once()
 
         if not disable_rsync_rules:
             mocked_verify_write_permission_against_rg.assert_called_once()
@@ -593,9 +617,7 @@ def test_work_order(
         mocked_verify_custom_locations_enabled.assert_not_called()
         mocked_connected_cluster_extensions.assert_not_called()
         mocked_verify_arc_cluster_config.assert_not_called()
-
-    if not keyvault_resource_id:
-        mocked_edge_api_keyvault_api_v1.is_deployed.assert_called_once()
+        mocked_verify_custom_location_namespace.assert_not_called()
 
     if keyvault_resource_id:
         assert result["csiDriver"]
@@ -675,7 +697,7 @@ def test_work_order(
         )
         assert mocked_eval_secret_via_sp.call_args.kwargs["sp_record"]
     else:
-        if not nothing_to_do:
+        if not nothing_to_do and result:
             assert "csiDriver" not in result
         mocked_prepare_sp.assert_not_called()
         mocked_prepare_keyvault_access_policy.assert_not_called()
@@ -683,6 +705,8 @@ def test_work_order(
         mocked_provision_akv_csi_driver.assert_not_called()
         mocked_configure_cluster_secrets.assert_not_called()
         mocked_eval_secret_via_sp.assert_not_called()
+
+        mocked_edge_api_keyvault_api_v1.is_deployed.assert_called_once()
 
     if not no_tls:
         assert result["tls"]["aioTrustConfigMap"]  # TODO
@@ -700,7 +724,7 @@ def test_work_order(
         assert mocked_cluster_tls.call_args.kwargs["secret_name"]
         assert mocked_cluster_tls.call_args.kwargs["cm_name"]
     else:
-        if not nothing_to_do:
+        if not nothing_to_do and result:
             assert "tls" not in result
         mocked_prepare_ca.assert_not_called()
         mocked_cluster_tls.assert_not_called()
@@ -730,7 +754,7 @@ def test_work_order(
         assert mocked_deploy_template.call_args.kwargs["cluster_name"] == cluster_name
         assert mocked_deploy_template.call_args.kwargs["cluster_namespace"] == expected_cluster_namespace
     else:
-        if not nothing_to_do:
+        if not nothing_to_do and result:
             assert "deploymentName" not in result
             assert "resourceGroup" not in result
             assert "clusterName" not in result
@@ -741,3 +765,62 @@ def test_work_order(
         # mocked_deploy_template.assert_not_called()
 
     assert spy_get_current_template_copy.call_count == expected_template_copies
+
+
+def _assert_displays_for(work_category_set: FrozenSet[WorkCategoryKey], display_spys: Dict[str, Mock]):
+    render_display = display_spys["render_display"]
+    render_display_call_kwargs = [m.kwargs for m in render_display.mock_calls]
+
+    index = 0
+    if WorkCategoryKey.PRE_FLIGHT in work_category_set:
+        assert render_display_call_kwargs[index] == {
+            "category": WorkCategoryKey.PRE_FLIGHT,
+            "active_step": WorkStepKey.REG_RP,
+        }
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.ENUMERATE_PRE_FLIGHT}
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.WHAT_IF}
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": -1}
+        index += 1
+
+    if WorkCategoryKey.CSI_DRIVER in work_category_set:
+        assert render_display_call_kwargs[index] == {
+            "category": WorkCategoryKey.CSI_DRIVER,
+            "active_step": WorkStepKey.KV_CLOUD_PERM_MODEL,
+        }
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.SP}
+        index += 1
+        assert render_display_call_kwargs[index] == {"category": WorkCategoryKey.CSI_DRIVER}
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.KV_CLOUD_AP}
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.KV_CLOUD_SEC}
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.KV_CLOUD_TEST}
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.KV_CSI_DEPLOY}
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.KV_CSI_CLUSTER}
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": -1}
+        index += 1
+
+    if WorkCategoryKey.TLS_CA in work_category_set:
+        assert render_display_call_kwargs[index] == {
+            "category": WorkCategoryKey.TLS_CA,
+            "active_step": WorkStepKey.TLS_CERT,
+        }
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.TLS_CLUSTER}
+        index += 1
+        assert render_display_call_kwargs[index] == {"active_step": -1}
+        index += 1
+
+    if WorkCategoryKey.DEPLOY_AIO in work_category_set:
+        assert render_display_call_kwargs[index] == {"category": WorkCategoryKey.DEPLOY_AIO}
+        index += 1
+        # DEPLOY_AIO gets rendered twice to dynamically expose deployment link
+        assert render_display_call_kwargs[index] == {"category": WorkCategoryKey.DEPLOY_AIO}

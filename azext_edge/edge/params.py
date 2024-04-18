@@ -279,12 +279,6 @@ def load_iotops_arguments(self, _):
             help="The TLS configuration workflow will be skipped.",
         )
         context.argument(
-            "no_preflight",
-            options_list=["--no-preflight"],
-            arg_type=get_three_state_flag(),
-            help="The pre-flight workflow will be skipped.",
-        )
-        context.argument(
             "disable_rsync_rules",
             options_list=["--disable-rsync-rules"],
             arg_type=get_three_state_flag(),
@@ -519,7 +513,7 @@ def load_iotops_arguments(self, _):
             "tls_ca_dir",
             options_list=["--ca-dir"],
             help="The local directory the generated test CA and private key will be placed in. "
-            "If no directory is provided the current directory is used. Applicable when no "
+            "If no directory is provided no files will be written to disk. Applicable when no "
             "--ca-file and --ca-key-file are provided.",
             arg_group="TLS",
         )

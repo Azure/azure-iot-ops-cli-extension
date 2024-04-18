@@ -135,13 +135,15 @@ def init(
     template_path: Optional[str] = None,
     no_deploy: Optional[bool] = None,
     no_tls: Optional[bool] = None,
-    no_preflight: Optional[bool] = None,
     disable_rsync_rules: Optional[bool] = None,
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration import deploy
-    from .util import url_safe_hash_phrase
+    from .util import url_safe_hash_phrase, is_env_flag_enabled
+    from .common import INIT_NO_PREFLIGHT_ENV_KEY
+
+    no_preflight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
     if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
         logger.warning("Nothing to do :)")
