@@ -4,8 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import json
 import pytest
+from copy import deepcopy
 
 from azure.cli.core.azclierror import (
     CLIError,
@@ -295,7 +295,7 @@ def test_process_certificates_unrecognized_error(password):
 ])
 def test_update_properties(properties, req):
     # lazy way of copying to avoid having to make sure we copy possible the lists
-    original_properties = json.loads(json.dumps(properties))
+    original_properties = deepcopy(properties)
     _update_properties(
         properties=properties,
         **req

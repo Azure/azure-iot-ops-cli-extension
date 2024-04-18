@@ -71,7 +71,8 @@ from .....generators import generate_random_string
     },
 ])
 def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, asset_helpers_fixture, req):
-    patched_sp, patched_up = asset_helpers_fixture
+    patched_sp = asset_helpers_fixture["process_asset_sub_points"]
+    patched_up = asset_helpers_fixture["update_properties"]
     patched_cap = mocker.patch(
         "azext_edge.edge.providers.rpsaas.adr.base.ADRBaseProvider.check_cluster_and_custom_location"
     )

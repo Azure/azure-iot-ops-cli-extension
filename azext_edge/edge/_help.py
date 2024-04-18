@@ -305,9 +305,9 @@ def load_iotops_help():
         - name: Create an asset with the given pre-filled values.
           text: >
             az iot ops asset create --name MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
-            --data capability_id=myTagId data_source=nodeId1 name=myTagName1
+            --data capability_id=myTagId data_source=NodeID1 name=myTagName1
             observability_mode=counter sampling_interval=10 queue_size=2 --data
-            data_source=nodeId2 --data-publish-int 1000 --data-queue-size 1 --data-sample-int 30
+            data_source=NodeID2 --data-publish-int 1000 --data-queue-size 1 --data-sample-int 30
             --asset-type customAsset --description 'Description for a test asset.'
             --documentation-uri www.help.com --external-asset-id 000-000-0000 --hardware-revision 10.0
             --product-code XXX100 --software-revision 0.1 --manufacturer Contoso
@@ -412,8 +412,43 @@ def load_iotops_help():
 
         - name: Add a data point to an asset with the given pre-filled values.
           text: >
-            az iot ops asset data-point add --asset MyAsset -g MyRG --data-source nodeId1 --name tagName1
+            az iot ops asset data-point add --asset MyAsset -g MyRG --data-source NodeID1 --name tagName1
             --capability-id tagId1 --observability-mode log --queue-size 5 --sampling-interval 200
+    """
+
+    helps[
+        "iot ops asset data-point export"
+    ] = """
+        type: command
+        short-summary: Export data points in an asset.
+        long-summary: The file name will be {asset_name}_dataPoints.{file_type}.
+        examples:
+        - name: Export all data points in an asset in JSON format.
+          text: >
+            az iot ops asset data-point export --asset {asset} -g {resource_group}
+        - name: Export all data points in an asset in CSV format in a specific output directory.
+          text: >
+            az iot ops asset data-point export --asset {asset} -g {resource_group} --format csv --output-dir {output_directory}
+        - name: Export all data points in an asset in CSV format that can be uploaded via the DOE portal.
+          text: >
+            az iot ops asset data-point export --asset {asset} -g {resource_group} --format portal-csv
+        - name: Export all data points in an asset in YAML format. Replace the file if one is present already.
+          text: >
+            az iot ops asset data-point export --asset {asset} -g {resource_group} --format yaml --replace
+    """
+
+    helps[
+        "iot ops asset data-point import"
+    ] = """
+        type: command
+        short-summary: Import data points in an asset.
+        examples:
+        - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be ignored.
+          text: >
+            az iot ops asset data-point import --asset {asset} -g {resource_group} --input-file {input_file}
+        - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be replaced.
+          text: >
+            az iot ops asset data-point import --asset {asset} -g {resource_group} --input-file {input_file} --replace
     """
 
     helps[
@@ -472,6 +507,41 @@ def load_iotops_help():
           text: >
             az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId --name eventName
             --capability-id tagId1 --observability-mode histogram --queue-size 2 --sampling-interval 500
+    """
+
+    helps[
+        "iot ops asset event export"
+    ] = """
+        type: command
+        short-summary: Export events in an asset.
+        long-summary: The file name will be {asset_name}_dataPoints.{file_type}.
+        examples:
+        - name: Export all events in an asset in JSON format.
+          text: >
+            az iot ops asset event export --asset {asset} -g {resource_group}
+        - name: Export all events in an asset in CSV format in a specific output directory.
+          text: >
+            az iot ops asset event export --asset {asset} -g {resource_group} --format csv --output-dir {output_directory}
+        - name: Export all events in an asset in CSV format that can be uploaded to the DOE portal.
+          text: >
+            az iot ops asset event export --asset {asset} -g {resource_group} --format portal-csv
+        - name: Export all events in an asset in YAML format. Replace the file if one is present already.
+          text: >
+            az iot ops asset event export --asset {asset} -g {resource_group} --format yaml --replace
+    """
+
+    helps[
+        "iot ops asset event import"
+    ] = """
+        type: command
+        short-summary: Import events in an asset.
+        examples:
+        - name: Import all events from a file. These events will be appended to the asset's current events.
+          text: >
+            az iot ops asset event import --asset {asset} -g {resource_group} --input-file {input_file}
+        - name: Import all events from a file. These events will replace the asset's current events.
+          text: >
+            az iot ops asset event import --asset {asset} -g {resource_group} --input-file {input_file} --replace
     """
 
     helps[

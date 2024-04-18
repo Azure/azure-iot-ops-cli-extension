@@ -164,6 +164,16 @@ class K8sSecretType(Enum):
     tls = "kubernetes.io/tls"
 
 
+class FileType(ListableEnum):
+    """
+    Supported file types/extensions for bulk asset operations.
+    """
+    csv = "csv"
+    json = "json"
+    portal_csv = "portal-csv"
+    yaml = "yaml"
+
+
 class BundleResourceKind(Enum):
     deployment = "Deployment"
     statefulset = "Statefulset"

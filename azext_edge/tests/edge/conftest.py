@@ -4,8 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import json
 import pytest
+from copy import deepcopy
 from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
 from ..helpers import run
@@ -60,14 +60,14 @@ def mocked_resource_management_client(request, mocker):
     get_result = request_results.get("resources.get")
     resource_get.original = get_result
     resource_get.additional_properties = {}
-    resource_get.as_dict.return_value = json.loads(json.dumps(get_result))
+    resource_get.as_dict.return_value = deepcopy(get_result)
     resource_mgmt_client.resources.get.return_value = resource_get
 
     # Get by id + lazy way of ensuring original is present and result is a copy
     resource_get = mocker.Mock()
     get_result = request_results.get("resources.get_by_id")
     resource_get.original = get_result
-    resource_get.as_dict.return_value = json.loads(json.dumps(get_result))
+    resource_get.as_dict.return_value = deepcopy(get_result)
     resource_mgmt_client.resources.get_by_id.return_value = resource_get
 
     # Create/Update by Id
@@ -107,6 +107,25 @@ def mocked_build_query(mocker, request):
     if request_params.get("return_value") is not None:
         build_query_mock.return_value = request_params["return_value"]
     yield build_query_mock
+
+
+@pytest.fixture
+def mocked_dump_content_to_file(mocker):
+    from ..generators import generate_random_string
+    yield mocker.patch(
+        "azext_edge.edge.util.dump_content_to_file", return_value=generate_random_string(), autospec=True
+    )
+
+
+@pytest.fixture
+def mocked_deserialize_file_content(mocker, request):
+    from ..generators import generate_random_string
+    request_params = getattr(request, "param", generate_random_string())
+    yield mocker.patch(
+        "azext_edge.edge.util.deserialize_file_content",
+        return_value=request_params,
+        autospec=True
+    )
 
 
 # Int testing

@@ -67,7 +67,7 @@ def mocked_root_logger(mocker, mocked_client):
 
 @pytest.fixture
 def mocked_os_makedirs(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.support.base.makedirs", autospec=True)
+    patched = mocker.patch("os.makedirs", autospec=True)
     yield patched
 
 

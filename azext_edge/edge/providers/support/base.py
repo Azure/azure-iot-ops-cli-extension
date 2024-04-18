@@ -4,8 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from os import makedirs
-from os.path import abspath, expanduser, isdir
 from pathlib import PurePath
 from typing import List, Dict, Optional, Iterable, Union
 from functools import partial
@@ -423,22 +421,10 @@ def assemble_crd_work(
 
 
 def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "aio") -> PurePath:
+    from ...util import normalize_dir
     bundle_dir_pure_path = normalize_dir(bundle_dir)
     bundle_pure_path = bundle_dir_pure_path.joinpath(default_bundle_name(system_name))
     return bundle_pure_path
-
-
-def normalize_dir(dir_path: Optional[str] = None) -> PurePath:
-    if not dir_path:
-        dir_path = "."
-    if "~" in dir_path:
-        dir_path = expanduser(dir_path)
-    dir_path = abspath(dir_path)
-    dir_pure_path = PurePath(dir_path)
-    if not isdir(str(dir_pure_path)):
-        makedirs(dir_pure_path, exist_ok=True)
-
-    return dir_pure_path
 
 
 def default_bundle_name(system_name: str) -> str:

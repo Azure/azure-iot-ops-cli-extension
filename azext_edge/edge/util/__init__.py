@@ -9,12 +9,17 @@ from .common import (
     build_query,
     generate_secret,
     get_timestamp_now_utc,
-    read_file_content,
     set_log_level,
     url_safe_hash_phrase,
     is_env_flag_enabled,
 )
 from .x509 import generate_self_signed_cert
+from .file_operations import (
+    deserialize_file_content,
+    dump_content_to_file,
+    normalize_dir,
+    read_file_content,
+)
 
 __all__ = [
     "assemble_nargs_to_dict",
@@ -25,5 +30,8 @@ __all__ = [
     "generate_self_signed_cert",
     "read_file_content",
     "url_safe_hash_phrase",
+    "deserialize_file_content",
+    "dump_content_to_file",
+    "normalize_dir",
     "is_env_flag_enabled",
 ]
