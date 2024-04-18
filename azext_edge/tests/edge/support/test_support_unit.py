@@ -33,6 +33,7 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_APP_LABEL,
     AKRI_INSTANCE_LABEL,
     AKRI_NAME_LABEL,
+    AKRI_NAME_LABEL_V2,
     AKRI_SERVICE_LABEL,
     AKRI_WEBHOOK_LABEL,
 )
@@ -170,7 +171,11 @@ def test_create_bundle(
                 mocked_client, mocked_zipfile, label_selector=MQ_LABEL, field_selector=None, resource_api=MQ_API_V1B1
             )
             assert_list_stateful_sets(
-                mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, field_selector=None, resource_api=MQ_API_V1B1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=MQ_NAME_LABEL,
+                field_selector=None,
+                resource_api=MQ_API_V1B1
             )
             assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
             assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, resource_api=MQ_API_V1B1)
@@ -429,6 +434,14 @@ def test_create_bundle(
                 resource_api=AKRI_API_V0,
                 since_seconds=since_seconds,
             )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=AKRI_NAME_LABEL_V2,
+                resource_api=AKRI_API_V0,
+                since_seconds=since_seconds,
+            )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
@@ -439,6 +452,12 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_APP_LABEL,
+                resource_api=AKRI_API_V0,
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_NAME_LABEL_V2,
                 resource_api=AKRI_API_V0,
             )
             assert_list_replica_sets(
@@ -457,6 +476,12 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_NAME_LABEL.replace("0", f"{AKRI_WEBHOOK_LABEL}"),
+                resource_api=AKRI_API_V0,
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_NAME_LABEL_V2,
                 resource_api=AKRI_API_V0,
             )
             assert_list_services(
@@ -471,6 +496,9 @@ def test_create_bundle(
                 label_selector=AKRI_NAME_LABEL.replace("0", f"{AKRI_WEBHOOK_LABEL}"),
                 resource_api=AKRI_API_V0,
             )
+            assert_list_services(
+                mocked_client, mocked_zipfile, label_selector=AKRI_NAME_LABEL_V2, resource_api=AKRI_API_V0
+            )
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
@@ -482,6 +510,12 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=AKRI_NAME_LABEL.replace("0", f"{AKRI_AGENT_LABEL}"),
                 resource_api=OPCUA_API_V1,
+            )
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_NAME_LABEL_V2,
+                resource_api=AKRI_API_V0,
             )
 
         if api in [LNM_API_V1B1]:
@@ -581,6 +615,7 @@ def assert_list_deployments(
                 call(label_selector=MQ_LABEL, field_selector=None),
                 # Specific for `aio-mq-operator` (no app label)
                 call(label_selector=None, field_selector=field_selector),
+                call(label_selector=MQ_NAME_LABEL, field_selector=None),
             ]
         )
     else:

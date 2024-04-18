@@ -94,7 +94,12 @@ def fetch_deployments():
     )
     processed.extend(operators)
 
-    for namespace in {**namespaces, **operator_namespaces}:
+    operators_v2, operator_namespaces_v2 = process_deployments(
+        resource_api=MQ_ACTIVE_API, label_selector=MQ_NAME_LABEL, return_namespaces=True
+    )
+    processed.extend(operators_v2)
+
+    for namespace in {**namespaces, **operator_namespaces, **operator_namespaces_v2}:
         metrics: dict = fetch_diagnostic_metrics(namespace)
         if metrics:
             processed.append(metrics)
