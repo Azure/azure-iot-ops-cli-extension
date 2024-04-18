@@ -254,6 +254,7 @@ def mocked_namespaced_custom_objects(mocked_client):
     yield mocked_client
 
 
+@pytest.fixture
 def mocked_list_cron_jobs(mocked_client):
     from kubernetes.client.models import V1CronJobList, V1CronJob, V1ObjectMeta
 
