@@ -25,9 +25,11 @@ from .base import (
     process_statefulset,
     process_v1_pods,
 )
+from .shared import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
+# TODO: @jiacju - will remove old labels once new labels are stabled
 MQ_APP_LABELS = [
     "broker",  # aio-mq-dmqtt-frontend, aio-mq-dmqtt-backend, aio-mq-dmqtt-authentication
     "diagnostics",  # aio-mq-diagnostics-service
@@ -41,7 +43,7 @@ MQ_APP_LABELS = [
 
 MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
 
-MQ_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations-mq)"
+MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-mq")
 
 
 def fetch_diagnostic_metrics(namespace: str):

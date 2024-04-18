@@ -20,9 +20,11 @@ from .base import (
     process_statefulset,
     process_v1_pods,
 )
+from .shared import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
+# TODO: @jiacju - will remove old labels once new labels are stabled
 DATA_PROCESSOR_READER_WORKER_PREFIX = "aio-dp-reader-worker-"
 DATA_PROCESSOR_RUNNER_WORKER_APP_LABEL = "aio-dp-runner-worker"
 DATA_PROCESSOR_REFDATA_STORE_APP_LABEL = "aio-dp-refdata-store"
@@ -41,13 +43,13 @@ DATA_PROCESSOR_PVC_APP_LABELS = [
 ]
 
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
-DATA_PROCESSOR_NAME_LABEL = "app.kubernetes.io/name in (dataprocessor)"
+DATA_PROCESSOR_NAME_LABEL = NAME_LABEL_FORMAT.format(label="dataprocessor")
 DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
-DATA_PROCESSOR_PVC_APP_LABEL = f"app.kubernetes.io/name in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
+DATA_PROCESSOR_PVC_APP_LABEL = NAME_LABEL_FORMAT.format(label=','.join(DATA_PROCESSOR_PVC_APP_LABELS))
 
 # TODO: @jiacju - will remove once the nats issue the fixed
 DATA_PROCESSOR_ONEOFF_LABEL = f"app in ({DATA_PROCESSOR_NATS_APP_LABEL})"
-DATA_PROCESSOR_NAME_LABEL_V2 = "app.kubernetes.io/name in (microsoft-iotoperations-dp)"
+DATA_PROCESSOR_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-dp")
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
@@ -102,7 +104,6 @@ def fetch_statefulsets():
 
 def fetch_replicasets():
     processed = process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
-    processed.extend(process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL))
     processed.extend(
         process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
     )
@@ -111,10 +112,19 @@ def fetch_replicasets():
 
 
 def fetch_services():
-    processed = process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
-    processed.extend(
-        process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL)
-    )
+    processed = []
+    service_name_labels = [
+        DATA_PROCESSOR_LABEL,
+        DATA_PROCESSOR_NAME_LABEL,
+    ]
+    for service_name_label in service_name_labels:
+        processed.extend(
+            process_services(
+                resource_api=DATA_PROCESSOR_API_V1,
+                label_selector=service_name_label,
+            )
+        )
+
     processed.extend(
         process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
     )
@@ -123,29 +133,21 @@ def fetch_services():
 
 
 def fetch_persistent_volume_claims():
-    processed = process_persistent_volume_claims(
-        resource_api=DATA_PROCESSOR_API_V1,
-        label_selector=DATA_PROCESSOR_PVC_APP_LABEL
-    )
+    processed = []
+    persistent_volume_claims_name_labels = [
+        DATA_PROCESSOR_PVC_APP_LABEL,
+        DATA_PROCESSOR_NAME_LABEL,
+        DATA_PROCESSOR_INSTANCE_LABEL,
+        DATA_PROCESSOR_ONEOFF_LABEL,
+    ]
+    for persistent_volume_claims_name_label in persistent_volume_claims_name_labels:
+        processed.extend(
+            process_persistent_volume_claims(
+                resource_api=DATA_PROCESSOR_API_V1,
+                label_selector=persistent_volume_claims_name_label,
+            )
+        )
 
-    processed.extend(
-        process_persistent_volume_claims(
-            resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_NAME_LABEL
-        )
-    )
-    processed.extend(
-        process_persistent_volume_claims(
-            resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_INSTANCE_LABEL
-        )
-    )
-    processed.extend(
-        process_persistent_volume_claims(
-            resource_api=DATA_PROCESSOR_API_V1,
-            label_selector=DATA_PROCESSOR_ONEOFF_LABEL
-        )
-    )
     processed.extend(
         process_persistent_volume_claims(
             resource_api=DATA_PROCESSOR_API_V1,

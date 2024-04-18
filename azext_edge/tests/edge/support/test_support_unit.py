@@ -10,6 +10,8 @@ from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
 from zipfile import ZipInfo
 
+from azext_edge.edge.providers.support.shared import NAME_LABEL_FORMAT
+
 from .conftest import add_pod_to_mocked_pods, process_sub_group
 
 import pytest
@@ -33,7 +35,6 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_AGENT_LABEL,
     AKRI_APP_LABEL,
     AKRI_INSTANCE_LABEL,
-    AKRI_NAME_LABEL,
     AKRI_NAME_LABEL_V2,
     AKRI_SERVICE_LABEL,
     AKRI_WEBHOOK_LABEL,
@@ -492,7 +493,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=AKRI_NAME_LABEL.replace("0", f"{AKRI_AGENT_LABEL}, {AKRI_WEBHOOK_LABEL}"),
+                label_selector=NAME_LABEL_FORMAT.format(label=f"{AKRI_AGENT_LABEL}, {AKRI_WEBHOOK_LABEL}"),
                 resource_api=AKRI_API_V0,
                 since_seconds=since_seconds,
             )
@@ -537,7 +538,7 @@ def test_create_bundle(
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=AKRI_NAME_LABEL.replace("0", f"{AKRI_WEBHOOK_LABEL}"),
+                label_selector=NAME_LABEL_FORMAT.format(label=AKRI_WEBHOOK_LABEL),
                 resource_api=AKRI_API_V0,
             )
             assert_list_replica_sets(
@@ -555,7 +556,7 @@ def test_create_bundle(
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=AKRI_NAME_LABEL.replace("0", f"{AKRI_WEBHOOK_LABEL}"),
+                label_selector=NAME_LABEL_FORMAT.format(label=AKRI_WEBHOOK_LABEL),
                 resource_api=AKRI_API_V0,
             )
             assert_list_services(
@@ -570,7 +571,7 @@ def test_create_bundle(
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=AKRI_NAME_LABEL.replace("0", f"{AKRI_AGENT_LABEL}"),
+                label_selector=NAME_LABEL_FORMAT.format(label=AKRI_AGENT_LABEL),
                 resource_api=OPCUA_API_V1,
             )
             assert_list_daemon_sets(
