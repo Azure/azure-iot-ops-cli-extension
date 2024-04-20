@@ -230,6 +230,17 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops remove"
+    ] = """
+        type: command
+        short-summary: Remove IoT Operations from the cluster.
+        examples:
+        - name: Minimum input for complete removal.
+          text: >
+            az iot ops remove --cluster mycluster -g myresourcegroup
+    """
+
+    helps[
         "iot ops asset"
     ] = """
         type: group

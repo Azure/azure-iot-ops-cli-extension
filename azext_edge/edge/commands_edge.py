@@ -244,3 +244,14 @@ def init(
         tls_ca_valid_days=int(tls_ca_valid_days),
         template_path=template_path,
     )
+
+
+def remove(
+    cmd,
+    cluster_name: str,
+    resource_group_name: str,
+    confirm_yes: Optional[bool] = None
+):
+    from .providers.orchestration import remove_ops_resources
+
+    remove_ops_resources(cmd=cmd, cluster_name=cluster_name, resource_group_name=resource_group_name, confirm_yes=confirm_yes)
