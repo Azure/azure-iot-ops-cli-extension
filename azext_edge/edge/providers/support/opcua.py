@@ -19,7 +19,7 @@ from .base import (
     process_replicasets,
     process_daemonsets,
 )
-from .shared import NAME_LABEL_FORMAT
+from .shared import EXTENSION_LABELS, NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
@@ -31,7 +31,7 @@ OPC_NAME_LABEL = NAME_LABEL_FORMAT.format(label="aio-opc-opcua-connector, opcplc
 OPC_NAME_VAR_LABEL = "name in (aio-opc-asset-discovery)"
 
 # TODO: once this label is stabled, we can remove the other labels
-OPCUA_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-opcuabroker")
+OPCUA_NAME_LABEL = NAME_LABEL_FORMAT.format(label=EXTENSION_LABELS["opcua"])
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):

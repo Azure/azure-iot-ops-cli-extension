@@ -14,8 +14,8 @@ from ..edge_api import EdgeResourceApi
 
 logger = get_logger(__name__)
 
-
-OTEL_NAME_LABEL = NAME_LABEL_FORMAT.format(label="aio-opentelemetry-collector")
+OTEL_EXTENSION_LABEL = "aio-opentelemetry-collector"
+OTEL_NAME_LABEL = NAME_LABEL_FORMAT.format(label=OTEL_EXTENSION_LABEL)
 
 # Defined here as this is not an IoT Operations API
 OTEL_API = EdgeResourceApi(group="otel", version="v1", moniker="otel")

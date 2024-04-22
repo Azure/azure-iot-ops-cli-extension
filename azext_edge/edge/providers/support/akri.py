@@ -19,7 +19,7 @@ from .base import (
     process_services,
     process_replicasets,
 )
-from .shared import NAME_LABEL_FORMAT
+from .shared import EXTENSION_LABELS, NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
@@ -27,12 +27,11 @@ logger = get_logger(__name__)
 AKRI_INSTANCE_LABEL = "app.kubernetes.io/instance in (akri)"
 AKRI_APP_LABEL = "app in (otel-collector)"
 AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
-AKRI_PREFIX = "aio-akri-"
 
 AKRI_AGENT_LABEL = "aio-akri-agent"
 AKRI_WEBHOOK_LABEL = "aio-akri-webhook-configuration"
 
-AKRI_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-akri")
+AKRI_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label=EXTENSION_LABELS["akri"])
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
