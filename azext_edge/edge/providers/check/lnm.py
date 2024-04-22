@@ -61,7 +61,6 @@ def check_lnm_deployment(
         check_name="enumerateLnmApi",
         check_desc="Enumerate LNM API resources",
         result=result,
-        resource_kinds_enum=LnmResourceKinds,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,

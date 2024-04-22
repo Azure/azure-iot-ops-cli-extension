@@ -54,7 +54,6 @@ def check_akri_deployment(
         check_name="enumerateAkriApi",
         check_desc="Enumerate Akri API resources",
         result=result,
-        resource_kinds_enum=AkriResourceKinds,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,

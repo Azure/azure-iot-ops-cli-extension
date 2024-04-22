@@ -68,7 +68,6 @@ def check_mq_deployment(
         check_name="enumerateMqApi",
         check_desc="Enumerate MQ API resources",
         result=result,
-        resource_kinds_enum=MqResourceKinds,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,

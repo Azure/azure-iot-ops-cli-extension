@@ -4,9 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional
-
 from knack.log import get_logger
+from typing import Any, Dict, List, Optional
 
 from ..common import ALL_NAMESPACES_TARGET
 from ....common import CheckTaskStatus
@@ -71,7 +70,13 @@ class CheckManager:
         self.target_displays = {}
         self.worst_status = CheckTaskStatus.success.value
 
-    def add_target(self, target_name: str, namespace: str = ALL_NAMESPACES_TARGET, conditions: List[str] = None, description: str = None) -> None:
+    def add_target(
+        self,
+        target_name: str,
+        namespace: str = ALL_NAMESPACES_TARGET,
+        conditions: List[str] = None,
+        description: str = None
+    ) -> None:
         # TODO: maybe make a singular taget into a class for consistent structure?
         if target_name not in self.targets:
             # Create a default `None` namespace target for targets with no namespace
@@ -84,10 +89,14 @@ class CheckManager:
         if description:
             self.targets[target_name][namespace]["description"] = description
 
-    def set_target_conditions(self, target_name: str, conditions: List[str], namespace: str = ALL_NAMESPACES_TARGET) -> None:
+    def set_target_conditions(
+        self, target_name: str, conditions: List[str], namespace: str = ALL_NAMESPACES_TARGET
+    ) -> None:
         self.targets[target_name][namespace]["conditions"] = conditions
 
-    def add_target_conditions(self, target_name: str, conditions: List[str], namespace: str = ALL_NAMESPACES_TARGET) -> None:
+    def add_target_conditions(
+        self, target_name: str, conditions: List[str], namespace: str = ALL_NAMESPACES_TARGET
+    ) -> None:
         if self.targets[target_name][namespace]["conditions"] is None:
             self.targets[target_name][namespace]["conditions"] = []
         self.targets[target_name][namespace]["conditions"].extend(conditions)
@@ -124,9 +133,9 @@ class CheckManager:
             ]:
                 self.targets[target_name][namespace]["status"] = status
                 self.worst_status = status
-            elif (
-                existing_status == CheckTaskStatus.warning.value or existing_status == CheckTaskStatus.skipped.value
-            ) and status in [CheckTaskStatus.error.value]:
+            elif existing_status in [
+                CheckTaskStatus.warning.value, CheckTaskStatus.skipped.value
+            ] and status in [CheckTaskStatus.error.value]:
                 self.targets[target_name][namespace]["status"] = status
                 self.worst_status = status
 

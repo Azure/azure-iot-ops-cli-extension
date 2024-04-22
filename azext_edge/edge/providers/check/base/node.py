@@ -4,15 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict
-
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Node, V1NodeList
 from rich.padding import Padding
 from rich.table import Table
+from typing import Any, Dict
 
 from .check_manager import CheckManager
+from .user_strings import MULTINODE_CLUSTER_MSG, NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
 from ..common import (
     AIO_SUPPORTED_ARCHITECTURES,
     COLOR_STR_FORMAT,
@@ -39,7 +39,7 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
         nodes: V1NodeList = core_client.list_node()
     except ApiException as ae:
         logger.debug(str(ae))
-        api_error_text = "Unable to fetch nodes. Is there connectivity to the cluster?"
+        api_error_text = UNABLE_TO_FETCH_NODES_MSG
         check_manager.add_target_eval(
             target_name=target,
             status=CheckTaskStatus.error.value,
@@ -51,9 +51,9 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
         )
     else:
         if not nodes or not nodes.items:
-            target_display = Padding("No nodes detected.", padding)
+            target_display = Padding(NO_NODES_MSG, padding)
             check_manager.add_target_eval(
-                target_name=target, status=CheckTaskStatus.error.value, value="No nodes detected."
+                target_name=target, status=CheckTaskStatus.error.value, value=NO_NODES_MSG
             )
             check_manager.add_display(target_name=target, display=target_display)
             return check_manager.as_dict()
@@ -69,7 +69,7 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
                 display=Padding(
                     COLOR_STR_FORMAT.format(
                         color=CheckTaskStatus.warning.color,
-                        value="Currently, only single-node clusters are officially supported for AIO deployments"
+                        value=MULTINODE_CLUSTER_MSG
                     ),
                     padding
                 ),

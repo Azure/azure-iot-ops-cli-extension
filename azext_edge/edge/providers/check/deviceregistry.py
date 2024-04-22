@@ -54,7 +54,6 @@ def check_deviceregistry_deployment(
         check_name="enumerateDeviceRegistryApi",
         check_desc="Enumerate Device Registry API resources",
         result=result,
-        resource_kinds_enum=DeviceRegistryResourceKinds,
         resource_name=resource_name,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,

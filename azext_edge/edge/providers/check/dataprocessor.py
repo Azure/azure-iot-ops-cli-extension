@@ -74,7 +74,6 @@ def check_dataprocessor_deployment(
         check_name="enumerateDataProcessorApi",
         check_desc="Enumerate Data Processor API resources",
         result=result,
-        resource_kinds_enum=DataProcessorResourceKinds,
         resource_name=resource_name,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,

@@ -93,7 +93,7 @@ def mocked_node_client(mocked_client, mocker, request):
     ],
 ], ids=["none", "min reqs", "storage", "memory", "cpu", "architecture", "multi-node"], indirect=True)
 def test_check_nodes(mocked_node_client):
-    from azext_edge.edge.providers.check.base.nodes import check_nodes
+    from azext_edge.edge.providers.check.base.node import check_nodes
     # no point in checking as_list is false since it just affects check manager
     result = check_nodes(as_list=True)
     assert result

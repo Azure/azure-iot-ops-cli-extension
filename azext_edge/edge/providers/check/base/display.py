@@ -4,11 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Tuple
-
 from knack.log import get_logger
 from rich.console import Console, NewLine
 from rich.padding import Padding
+from typing import Any, Dict, List, Optional, Tuple
 
 from .check_manager import CheckManager
 from ..common import ALL_NAMESPACES_TARGET
@@ -41,7 +40,7 @@ def add_display_and_eval(
     )
 
 
-# TODO: test
+# TODO: test + refactor
 def display_as_list(console: Console, result: Dict[str, Any]) -> None:
     success_count: int = 0
     warning_count: int = 0

@@ -4,10 +4,9 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List, Tuple
-
 from knack.log import get_logger
 from rich.padding import Padding
+from typing import List, Tuple
 
 from .check_manager import CheckManager
 from .display import add_display_and_eval
@@ -17,6 +16,7 @@ from ....common import CheckTaskStatus
 
 
 logger = get_logger(__name__)
+# TODO: unit test
 
 
 def decorate_pod_phase(phase: str) -> Tuple[str, str]:

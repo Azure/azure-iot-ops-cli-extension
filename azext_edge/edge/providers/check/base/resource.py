@@ -4,26 +4,24 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from itertools import groupby
-from typing import Any, Dict, List, Optional, Tuple, Union
 from enum import Enum
-
+from itertools import groupby
 from knack.log import get_logger
 from kubernetes.client.models import (
     V1APIResource,
     V1APIResourceList,
 )
 from rich.padding import Padding
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .check_manager import CheckManager
 from .display import process_value_color
 from ..common import COLOR_STR_FORMAT, PADDING_SIZE, ResourceOutputDetailLevel
+from ...base import get_cluster_custom_api
+from ...edge_api import EdgeResourceApi
 from ....common import CheckTaskStatus
 
-from ...edge_api import EdgeResourceApi
-
-from ...base import get_cluster_custom_api
-
+# TODO: unit test + refactor
 logger = get_logger(__name__)
 
 

@@ -5,25 +5,23 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional
-from enum import Enum
-
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from rich.padding import Padding
+from typing import Any, Callable, Dict, List, Optional
 
 from .check_manager import CheckManager
-from .nodes import check_nodes
-from .resources import enumerate_ops_service_resources
+from .node import check_nodes
+from .resource import enumerate_ops_service_resources
+from .user_strings import UNABLE_TO_DETERMINE_VERSION_MSG
 from ..common import CoreServiceResourceKinds, ResourceOutputDetailLevel
-from ....common import CheckTaskStatus, ListableEnum
-
-from ....providers.edge_api import EdgeResourceApi
-
 from ...base import client
+from ....common import CheckTaskStatus, ListableEnum
+from ....providers.edge_api import EdgeResourceApi
 
 
 logger = get_logger(__name__)
+# TODO: unit test
 
 
 def check_pre_deployment(
@@ -49,7 +47,6 @@ def check_post_deployment(
     check_name: str,
     check_desc: str,
     result: Dict[str, Any],
-    resource_kinds_enum: Enum,
     evaluate_funcs: Dict[ListableEnum, Callable],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
@@ -57,7 +54,9 @@ def check_post_deployment(
     resource_name: str = None,
     excluded_resources: Optional[List[str]] = None,
 ) -> None:
-    resource_enumeration, api_resources = enumerate_ops_service_resources(api_info, check_name, check_desc, as_list, excluded_resources)
+    resource_enumeration, api_resources = enumerate_ops_service_resources(
+        api_info, check_name, check_desc, as_list, excluded_resources
+    )
     result["postDeployment"].append(resource_enumeration)
     lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
@@ -72,7 +71,9 @@ def check_post_deployment(
                 append_resource = True
 
             if append_resource:
-                result["postDeployment"].append(evaluate_func(detail_level=detail_level, as_list=as_list, resource_name=resource_name))
+                result["postDeployment"].append(
+                    evaluate_func(detail_level=detail_level, as_list=as_list, resource_name=resource_name)
+                )
 
 
 def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
@@ -94,7 +95,7 @@ def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
         version_details: VersionInfo = version_client.get_code()
     except ApiException as ae:
         logger.debug(str(ae))
-        api_error_text = "Unable to determine. Is there connectivity to the cluster?"
+        api_error_text = UNABLE_TO_DETERMINE_VERSION_MSG
         check_manager.add_target_eval(
             target_name=target_k8s_version,
             status=CheckTaskStatus.error.value,

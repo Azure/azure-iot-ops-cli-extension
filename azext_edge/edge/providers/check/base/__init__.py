@@ -7,9 +7,9 @@
 from .check_manager import CheckManager
 from .deployment import check_pre_deployment, check_post_deployment
 from .display import add_display_and_eval, display_as_list, process_value_color
-from .nodes import check_nodes
-from .pods import decorate_pod_phase, evaluate_pod_health, process_pods_status
-from .resources import (
+from .node import check_nodes
+from .pod import decorate_pod_phase, evaluate_pod_health, process_pods_status
+from .resource import (
     decorate_resource_status,
     filter_resources_by_name,
     filter_resources_by_namespace,
@@ -22,7 +22,6 @@ from .resources import (
     process_resource_properties,
     process_resource_property_by_type
 )
-
 
 __all__ = [
     "add_display_and_eval",
