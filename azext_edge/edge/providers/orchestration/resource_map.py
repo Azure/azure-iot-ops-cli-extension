@@ -13,7 +13,7 @@ from .connected_cluster import ConnectedCluster
 
 class IoTOperationsResource(NamedTuple):
     resource_id: str
-    display_id: str
+    display_name: str
 
 
 class IoTOperationsResourceMap:
@@ -43,7 +43,7 @@ class IoTOperationsResourceMap:
         if "extensions" in self._resource_map and self._resource_map["extensions"]:
             for ext_id in self._resource_map["extensions"]:
                 result.append(
-                    IoTOperationsResource(resource_id=ext_id, display_id=ext_id.lower().split(filter_prefix)[-1])
+                    IoTOperationsResource(resource_id=ext_id, display_name=ext_id.lower().split(filter_prefix)[-1])
                 )
         return result
 
@@ -54,7 +54,7 @@ class IoTOperationsResourceMap:
         if "customLocations" in self._resource_map and self._resource_map["customLocations"]:
             for cl_id in self._resource_map["customLocations"]:
                 result.append(
-                    IoTOperationsResource(resource_id=cl_id, display_id=cl_id.lower().split(filter_prefix)[-1])
+                    IoTOperationsResource(resource_id=cl_id, display_name=cl_id.lower().split(filter_prefix)[-1])
                 )
         return result
 
@@ -72,8 +72,28 @@ class IoTOperationsResourceMap:
         ):
             for rsr_id in self._resource_map["customLocations"][custom_location_id]["resourceSyncRules"]:
                 result.append(
-                    IoTOperationsResource(resource_id=rsr_id, display_id=rsr_id.lower().split(filter_prefix)[-1])
+                    IoTOperationsResource(resource_id=rsr_id, display_name=rsr_id.lower().split(filter_prefix)[-1])
                 )
+        return result
+
+    def get_resources(self, custom_location_id: str) -> List[IoTOperationsResource]:
+        result = []
+        if (
+            "customLocations" in self._resource_map
+            and self._resource_map["customLocations"]
+            and custom_location_id in self._resource_map["customLocations"]
+            and self._resource_map["customLocations"][custom_location_id]
+            and "resources" in self._resource_map["customLocations"][custom_location_id]
+            and self._resource_map["customLocations"][custom_location_id]["resources"]
+        ):
+            sorted_resources = sorted(
+                self._resource_map["customLocations"][custom_location_id]["resources"],
+                key=lambda r: (len(r["id"].split("/")), r["name"].lower()),
+                reverse=True,
+            )
+            for resource in sorted_resources:
+                result.append(IoTOperationsResource(resource_id=resource["id"], display_name=resource["name"]))
+
         return result
 
     def refresh_related_resource_ids(self) -> Dict[str, Union[List[str], Dict[str, List[str]]]]:
@@ -95,24 +115,32 @@ class IoTOperationsResourceMap:
 
                 cl_resources = self.connected_cluster.get_aio_resources(cl_id)
                 if cl_resources:
-                    result["customLocations"][cl_id]["resources"] = [cl_r["id"] for cl_r in cl_resources]
+                    result["customLocations"][cl_id]["resources"] = []
+                    for resource in cl_resources:
+                        res_map = {"id": resource["id"], "name": resource["name"]}
+                        result["customLocations"][cl_id]["resources"].append(res_map)
 
         return result
 
     def build_tree(self):
         tree = Tree(f"[green]{self.cluster_name}[/green]")
         extensions_node = tree.add(label="[cyan]extensions[/cyan]")
-        [extensions_node.add(ext.display_id) for ext in self.extensions]
+        [extensions_node.add(ext.display_name) for ext in self.extensions]
 
         custom_locations = self.custom_locations
         if custom_locations:
             root_cl_node = tree.add(label="[cyan]customLocations[/cyan]")
-            #import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             for cl in custom_locations:
-                cl_node = root_cl_node.add(cl.display_id)
+                cl_node = root_cl_node.add(cl.display_name)
                 resource_sync_rules = self.get_resource_sync_rules(cl.resource_id)
                 if resource_sync_rules:
                     rsr_node = cl_node.add("[cyan]resourceSyncRules[/cyan]")
-                    [rsr_node.add(rsr.display_id) for rsr in resource_sync_rules]
+                    [rsr_node.add(rsr.display_name) for rsr in resource_sync_rules]
+
+                cl_resources = self.get_resources(cl.resource_id)
+                if cl_resources:
+                    resource_node = cl_node.add("[cyan]resources[/cyan]")
+                    [resource_node.add(resource.display_name) for resource in cl_resources]
 
         return tree

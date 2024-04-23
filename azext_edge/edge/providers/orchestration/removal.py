@@ -36,13 +36,18 @@ class RemovalManager:
     def do_work(self, confirm_yes: Optional[bool] = None):
         should_delete = True
         if not confirm_yes:
-            self.display_work()
-            should_delete = Confirm.ask("Remove resources?")
+            self.display_resource_tree()
+            should_delete = Confirm.ask("Delete?")
 
-        import pdb
 
-        pdb.set_trace()
+        if not should_delete:
+            return
+
+        import pdb; pdb.set_trace()
         pass
 
-    def display_work(self):
+    def display_resource_tree(self):
         print(self.resource_map.build_tree())
+
+    def _process(self):
+        pass

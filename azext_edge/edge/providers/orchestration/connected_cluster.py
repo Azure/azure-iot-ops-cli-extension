@@ -90,7 +90,7 @@ class ConnectedCluster:
             | where extensionType startswith 'microsoft.iotoperations'
                 or extensionType =~ "microsoft.deviceregistry.assets"
         ) on clusterExtensionId
-        | distinct id
+        | distinct id, name
         """
 
         result = self.resource_graph.query_resources(query=query)
