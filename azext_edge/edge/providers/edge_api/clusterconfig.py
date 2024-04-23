@@ -8,5 +8,5 @@ from .base import EdgeResourceApi
 
 
 CLUSTER_CONFIG_API_V1 = EdgeResourceApi(
-    group="clusterconfig.azure.com", version="v1", moniker="clusterconfig"
+    group="clusterconfig.azure.com", version="v1", moniker="clusterconfig", label="microsoft-iotoperations"
 )

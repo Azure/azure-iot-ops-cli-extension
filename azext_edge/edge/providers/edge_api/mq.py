@@ -25,6 +25,8 @@ class MqResourceKinds(ListableEnum):
     IOT_HUB_CONNECTOR_ROUTE_MAP = "iothubconnectorroutesmap"
 
 
-MQ_API_V1B1 = EdgeResourceApi(group="mq.iotoperations.azure.com", version="v1beta1", moniker="mq")
+MQ_API_V1B1 = EdgeResourceApi(
+    group="mq.iotoperations.azure.com", version="v1beta1", moniker="mq", label="microsoft-iotoperations-mq"
+)
 
 MQ_ACTIVE_API = MQ_API_V1B1

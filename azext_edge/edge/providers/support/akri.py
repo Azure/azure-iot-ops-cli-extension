@@ -19,7 +19,7 @@ from .base import (
     process_services,
     process_replicasets,
 )
-from .shared import EXTENSION_LABELS, NAME_LABEL_FORMAT
+from .shared import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
@@ -31,7 +31,7 @@ AKRI_SERVICE_LABEL = "service in (aio-akri-metrics)"
 AKRI_AGENT_LABEL = "aio-akri-agent"
 AKRI_WEBHOOK_LABEL = "aio-akri-webhook-configuration"
 
-AKRI_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label=EXTENSION_LABELS["akri"])
+AKRI_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label=AKRI_API_V0.label)
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
