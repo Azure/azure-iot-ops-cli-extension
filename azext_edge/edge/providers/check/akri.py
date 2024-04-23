@@ -15,7 +15,7 @@ from ..edge_api import (
     AkriResourceKinds,
 )
 
-from ..support.akri import AKRI_PREFIX, AKRI_INSTANCE_LABEL, AKRI_APP_LABEL
+from ..support.akri import AKRI_INSTANCE_LABEL, AKRI_APP_LABEL
 
 from .base import (
     CheckManager,
@@ -30,6 +30,7 @@ from .base import (
 )
 
 from .common import (
+    AKRI_PREFIX,
     PADDING_SIZE,
     CoreServiceResourceKinds,
     ResourceOutputDetailLevel,

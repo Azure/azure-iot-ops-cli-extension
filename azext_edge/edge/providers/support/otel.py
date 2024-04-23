@@ -9,12 +9,13 @@ from functools import partial
 from knack.log import get_logger
 
 from .base import DAY_IN_SECONDS, process_v1_pods, process_deployments, process_services, process_replicasets
+from .shared import NAME_LABEL_FORMAT
 from ..edge_api import EdgeResourceApi
 
 logger = get_logger(__name__)
 
-
-OTEL_NAME_LABEL = "app.kubernetes.io/name in (aio-opentelemetry-collector)"
+OTEL_EXTENSION_LABEL = "aio-opentelemetry-collector"
+OTEL_NAME_LABEL = NAME_LABEL_FORMAT.format(label=OTEL_EXTENSION_LABEL)
 
 # Defined here as this is not an IoT Operations API
 OTEL_API = EdgeResourceApi(group="otel", version="v1", moniker="otel")

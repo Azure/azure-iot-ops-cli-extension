@@ -10,6 +10,8 @@ from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
 from zipfile import ZipInfo
 
+from azext_edge.edge.providers.support.shared import NAME_LABEL_FORMAT
+
 from .conftest import add_pod_to_mocked_pods, process_sub_group
 
 import pytest
@@ -30,9 +32,12 @@ from azext_edge.edge.providers.edge_api import (
     EdgeResourceApi,
 )
 from azext_edge.edge.providers.support.akri import (
+    AKRI_AGENT_LABEL,
     AKRI_APP_LABEL,
     AKRI_INSTANCE_LABEL,
+    AKRI_NAME_LABEL_V2,
     AKRI_SERVICE_LABEL,
+    AKRI_WEBHOOK_LABEL,
 )
 from azext_edge.edge.providers.support.clusterconfig.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
@@ -44,13 +49,17 @@ from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_INSTANCE_LABEL,
     DATA_PROCESSOR_LABEL,
     DATA_PROCESSOR_NAME_LABEL,
+    DATA_PROCESSOR_NAME_LABEL_V2,
+    DATA_PROCESSOR_ONEOFF_LABEL,
     DATA_PROCESSOR_PVC_APP_LABEL,
 )
 from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
-from azext_edge.edge.providers.support.mq import MQ_LABEL
+from azext_edge.edge.providers.support.mq import MQ_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
     OPC_NAME_LABEL,
+    OPC_NAME_VAR_LABEL,
+    OPCUA_NAME_LABEL,
 )
 from azext_edge.edge.providers.support.orc import (
     ORC_APP_LABEL,
@@ -104,7 +113,9 @@ def test_create_bundle(
     mocked_get_stats,
     mocked_root_logger,
     mocked_mq_active_api,
+    mocked_namespaced_custom_objects,
 ):
+    # TODO: clean up label once all service labels become stable
     asset_raises_not_found_error(mocked_cluster_resources)
 
     if mocked_cluster_resources["param"] == []:
@@ -207,11 +218,30 @@ def test_create_bundle(
                 resource_api=MQ_API_V1B1,
                 since_seconds=since_seconds,
             )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=MQ_NAME_LABEL,
+                resource_api=MQ_API_V1B1,
+                since_seconds=since_seconds,
+            )
             assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
+            assert_list_replica_sets(
+                mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, resource_api=MQ_API_V1B1
+            )
             assert_list_stateful_sets(
                 mocked_client, mocked_zipfile, label_selector=MQ_LABEL, field_selector=None, resource_api=MQ_API_V1B1
             )
+            assert_list_stateful_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=MQ_NAME_LABEL,
+                field_selector=None,
+                resource_api=MQ_API_V1B1
+            )
             assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
+            assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, resource_api=MQ_API_V1B1)
             assert_mq_stats(mocked_zipfile)
 
         if api in [OPCUA_API_V1]:
@@ -223,6 +253,7 @@ def test_create_bundle(
                 label_selector=OPC_APP_LABEL,
                 resource_api=OPCUA_API_V1,
                 since_seconds=since_seconds,
+                include_metrics=True,
             )
             assert_list_pods(
                 mocked_client,
@@ -231,6 +262,25 @@ def test_create_bundle(
                 label_selector=OPC_NAME_LABEL,
                 resource_api=OPCUA_API_V1,
                 since_seconds=since_seconds,
+                include_metrics=True,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=OPC_NAME_VAR_LABEL,
+                resource_api=OPCUA_API_V1,
+                since_seconds=since_seconds,
+                include_metrics=True,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=OPCUA_NAME_LABEL,
+                resource_api=OPCUA_API_V1,
+                since_seconds=since_seconds,
+                include_metrics=True,
             )
             assert_list_deployments(
                 mocked_client,
@@ -238,6 +288,18 @@ def test_create_bundle(
                 label_selector=None,
                 resource_api=OPCUA_API_V1,
                 mock_names=["aio-opc-admission-controller", "aio-opc-supervisor", "aio-opc-opc", "opcplc-0000000"],
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=OPC_NAME_LABEL,
+                resource_api=OPCUA_API_V1,
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=OPCUA_NAME_LABEL,
+                resource_api=OPCUA_API_V1,
             )
             assert_list_replica_sets(
                 mocked_client,
@@ -249,6 +311,12 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=OPC_APP_LABEL,
+                resource_api=OPCUA_API_V1,
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=OPCUA_NAME_LABEL,
                 resource_api=OPCUA_API_V1,
             )
             assert_list_services(
@@ -261,6 +329,9 @@ def test_create_bundle(
             assert_list_services(
                 mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, resource_api=OPCUA_API_V1
             )
+            assert_list_services(
+                mocked_client, mocked_zipfile, label_selector=OPCUA_NAME_LABEL, resource_api=OPCUA_API_V1
+            )
             # TODO: one-off field selector remove after label
             assert_list_daemon_sets(
                 mocked_client,
@@ -268,12 +339,27 @@ def test_create_bundle(
                 field_selector="metadata.name==aio-opc-asset-discovery",
                 resource_api=OPCUA_API_V1,
             )
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=OPCUA_NAME_LABEL,
+                resource_api=OPCUA_API_V1,
+            )
 
         if api in [DATA_PROCESSOR_API_V1]:
 
             # Assert runtime resources
             assert_list_deployments(
-                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
+                resource_api=DATA_PROCESSOR_API_V1
             )
 
             assert_list_pods(
@@ -285,15 +371,39 @@ def test_create_bundle(
                 since_seconds=since_seconds,
                 pod_prefix_for_init_container_logs=["aio-"],
             )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
+                resource_api=DATA_PROCESSOR_API_V1,
+                since_seconds=since_seconds,
+                pod_prefix_for_init_container_logs=["aio-"],
+            )
 
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
+                resource_api=DATA_PROCESSOR_API_V1,
             )
 
             assert_list_stateful_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
+            )
+            assert_list_stateful_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
                 resource_api=DATA_PROCESSOR_API_V1,
             )
 
@@ -304,6 +414,12 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
                 resource_api=DATA_PROCESSOR_API_V1,
             )
 
@@ -323,6 +439,18 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
+            )
+            assert_list_persistent_volume_claims(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
+            )
+            assert_list_persistent_volume_claims(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
                 resource_api=DATA_PROCESSOR_API_V1,
             )
 
@@ -361,6 +489,22 @@ def test_create_bundle(
                 resource_api=AKRI_API_V0,
                 since_seconds=since_seconds,
             )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=NAME_LABEL_FORMAT.format(label=f"{AKRI_AGENT_LABEL}, {AKRI_WEBHOOK_LABEL}"),
+                resource_api=AKRI_API_V0,
+                since_seconds=since_seconds,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=AKRI_NAME_LABEL_V2,
+                resource_api=AKRI_API_V0,
+                since_seconds=since_seconds,
+            )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
@@ -373,6 +517,12 @@ def test_create_bundle(
                 label_selector=AKRI_APP_LABEL,
                 resource_api=AKRI_API_V0,
             )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_NAME_LABEL_V2,
+                resource_api=AKRI_API_V0,
+            )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
@@ -383,6 +533,18 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_APP_LABEL,
+                resource_api=AKRI_API_V0,
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=NAME_LABEL_FORMAT.format(label=AKRI_WEBHOOK_LABEL),
+                resource_api=AKRI_API_V0,
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_NAME_LABEL_V2,
                 resource_api=AKRI_API_V0,
             )
             assert_list_services(
@@ -391,10 +553,31 @@ def test_create_bundle(
             assert_list_services(
                 mocked_client, mocked_zipfile, label_selector=AKRI_INSTANCE_LABEL, resource_api=AKRI_API_V0
             )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=NAME_LABEL_FORMAT.format(label=AKRI_WEBHOOK_LABEL),
+                resource_api=AKRI_API_V0,
+            )
+            assert_list_services(
+                mocked_client, mocked_zipfile, label_selector=AKRI_NAME_LABEL_V2, resource_api=AKRI_API_V0
+            )
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_INSTANCE_LABEL,
+                resource_api=AKRI_API_V0,
+            )
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=NAME_LABEL_FORMAT.format(label=AKRI_AGENT_LABEL),
+                resource_api=OPCUA_API_V1,
+            )
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_NAME_LABEL_V2,
                 resource_api=AKRI_API_V0,
             )
 
@@ -523,6 +706,7 @@ def assert_list_deployments(
                 call(label_selector=MQ_LABEL, field_selector=None),
                 # Specific for `aio-mq-operator` (no app label)
                 call(label_selector=None, field_selector=field_selector),
+                call(label_selector=MQ_NAME_LABEL, field_selector=None),
             ]
         )
     else:
@@ -585,6 +769,24 @@ def assert_list_pods(
                 init_data = "  initContainers:\n  - name: mock-init-container\n"
                 # remove init container from pod, then do following container checks
                 pods_with_container[namespace][pod_name].pop("mock-init-container")
+
+            if "include_metrics" in kwargs and kwargs["include_metrics"]:
+                mocked_client.CustomObjectsApi().get_namespaced_custom_object.assert_any_call(
+                    group="metrics.k8s.io",
+                    version="v1beta1",
+                    namespace=namespace,
+                    plural="pods",
+                    name=pod_name,
+                )
+                assert_zipfile_write(
+                    mocked_zipfile,
+                    zinfo=f"{namespace}/{resource_api.moniker}/"
+                    f"pod.{pod_name}.metric.yaml",
+                    data="apiVersion: metrics.k8s.io/v1beta1\nkind: PodMetrics\nmetadata:\n  "
+                    "creationTimestamp: '0000-00-00T00:00:00Z'\n  name: mock_custom_object\n  "
+                    "namespace: namespace\ntimestamp: '0000-00-00T00:00:00Z'\n",
+                )
+
             for container_name in pods_with_container[namespace][pod_name]:
                 data = f"kind: Pod\nmetadata:\n  name: {pod_name}\n  namespace: {namespace}\nspec:\n  " +\
                     f"containers:\n  - name: {container_name}\n"
@@ -845,7 +1047,9 @@ def test_mq_list_stateful_sets(
 
     # TODO - assert zipfile write of generic statefulset
     if not custom_objects["items"]:
-        mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_called_once()
+        # TODO - will revert to initial call once the old label is removed
+        # mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_called_once()
+        mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_called()
 
     # assert secondary connector calls to list stateful sets
     for item in custom_objects["items"]:
