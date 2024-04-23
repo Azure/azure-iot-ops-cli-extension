@@ -17,7 +17,7 @@ class EdgeResourceApi:
         self.group: str = group
         self.version: str = version
         self.moniker: str = moniker
-        self.label: str = label
+        self.label: Optional[str] = label
         self._api: V1APIResourceList = None
         self._kinds: Dict[str, str] = None
 
