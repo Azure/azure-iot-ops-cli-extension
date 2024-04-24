@@ -49,15 +49,15 @@ def test_check(init_setup, detail_level, services_map, post, pre):
     expected_title = "Evaluation for {[bright_blue]" + ops_service + "[/bright_blue]} service deployment"
     assert result["title"] == expected_title
 
+    if post is None:
+        post = not pre
     if pre is None:
         try:
             aio_check = run("kubectl api-resources --api-group=orchestrator.iotoperations.azure.com")
-            pre = "orchestrator.iotoperations.azure.com" in aio_check
+            pre = "orchestrator.iotoperations.azure.com" not in aio_check
         except CLIInternalError:
             from azext_edge.edge.providers.edge_api.orc import ORC_API_V1
             pre = not ORC_API_V1.is_deployed()
-    if post is None:
-        post = not pre
 
     assert bool(result.get("postDeployment")) == post
     assert bool(result.get("preDeployment")) == pre
