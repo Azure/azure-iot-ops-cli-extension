@@ -34,6 +34,7 @@ AKRI_WEBHOOK_LABEL = "aio-akri-webhook-configuration"
 AKRI_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label=AKRI_API_V0.label)
 AKRI_POD_NAME_LABEL = NAME_LABEL_FORMAT.format(label=f"{AKRI_AGENT_LABEL}, {AKRI_WEBHOOK_LABEL}")
 
+
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     processed = []
     pod_name_labels = [

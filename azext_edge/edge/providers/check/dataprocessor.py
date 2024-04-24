@@ -214,7 +214,7 @@ def evaluate_instances(
                     service_label=DATA_PROCESSOR_NAME_LABEL_V2,
                     namespace=namespace
                 )
-            
+
             # TODO: remove once the new label is stabled
             evaluate_pod_health(
                 check_manager=check_manager,
