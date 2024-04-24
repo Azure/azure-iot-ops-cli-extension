@@ -77,21 +77,11 @@ def evaluate_core_service_runtime(
     check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate Akri core service")
 
     padding = 6
-    akri_runtime_resources: List[dict] = []
-
-    for label in [
-        AKRI_INSTANCE_LABEL,
-        AKRI_APP_LABEL,
-        AKRI_POD_NAME_LABEL,
-        AKRI_NAME_LABEL_V2,
-    ]:
-        akri_runtime_resources.extend(
-            get_namespaced_pods_by_prefix(
-                prefix=AKRI_PREFIX,
-                namespace="",
-                label_selector=label,
-            )
-        )
+    akri_runtime_resources: List[dict] = get_namespaced_pods_by_prefix(
+        prefix=AKRI_PREFIX,
+        namespace="",
+        label_selector=AKRI_NAME_LABEL_V2,
+    )
 
     if resource_name:
         akri_runtime_resources = filter_resources_by_name(
