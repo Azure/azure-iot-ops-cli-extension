@@ -20,7 +20,7 @@ from .base import (
     process_statefulset,
     process_v1_pods,
 )
-from .shared import EXTENSION_LABELS, NAME_LABEL_FORMAT
+from .shared import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
@@ -45,11 +45,11 @@ DATA_PROCESSOR_PVC_APP_LABELS = [
 DATA_PROCESSOR_LABEL = f"app in ({','.join(DATA_PROCESSOR_APP_LABELS)})"
 DATA_PROCESSOR_NAME_LABEL = NAME_LABEL_FORMAT.format(label="dataprocessor")
 DATA_PROCESSOR_INSTANCE_LABEL = "app.kubernetes.io/instance in (processor)"
-DATA_PROCESSOR_PVC_APP_LABEL = NAME_LABEL_FORMAT.format(label=','.join(DATA_PROCESSOR_PVC_APP_LABELS))
+DATA_PROCESSOR_PVC_APP_LABEL = f"app in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS)})"
 
 # TODO: @jiacju - will remove once the nats issue the fixed
 DATA_PROCESSOR_ONEOFF_LABEL = f"app in ({DATA_PROCESSOR_NATS_APP_LABEL})"
-DATA_PROCESSOR_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label=EXTENSION_LABELS["billing"])
+DATA_PROCESSOR_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label=DATA_PROCESSOR_API_V1.label)
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):

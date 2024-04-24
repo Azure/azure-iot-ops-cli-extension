@@ -25,7 +25,7 @@ from .base import (
     process_statefulset,
     process_v1_pods,
 )
-from .shared import EXTENSION_LABELS, NAME_LABEL_FORMAT
+from .shared import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
@@ -43,7 +43,7 @@ MQ_APP_LABELS = [
 
 MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
 
-MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=EXTENSION_LABELS["mq"])
+MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_ACTIVE_API.label)
 
 
 def fetch_diagnostic_metrics(namespace: str):
