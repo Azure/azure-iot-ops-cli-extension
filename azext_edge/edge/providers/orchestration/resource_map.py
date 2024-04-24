@@ -36,32 +36,26 @@ class IoTOperationsResourceMap:
     @property
     def extensions(self) -> List[IoTOperationsResource]:
         result = []
-        filter_prefix = (
-            f"{self.base_id_prefix}/Microsoft.Kubernetes/ConnectedClusters/{self.cluster_name}"
-            "/providers/Microsoft.KubernetesConfiguration/Extensions/"
-        ).lower()
         if "extensions" in self._resource_map and self._resource_map["extensions"]:
-            for ext_id in self._resource_map["extensions"]:
-                result.append(
-                    IoTOperationsResource(resource_id=ext_id, display_name=ext_id.lower().split(filter_prefix)[-1])
-                )
+            for ext in self._resource_map["extensions"]:
+                result.append(IoTOperationsResource(resource_id=ext["id"], display_name=ext["name"]))
         return result
 
     @property
     def custom_locations(self) -> List[IoTOperationsResource]:
         result = []
-        filter_prefix = f"{self.base_id_prefix}/Microsoft.ExtendedLocation/customLocations/".lower()
         if "customLocations" in self._resource_map and self._resource_map["customLocations"]:
             for cl_id in self._resource_map["customLocations"]:
                 result.append(
-                    IoTOperationsResource(resource_id=cl_id, display_name=cl_id.lower().split(filter_prefix)[-1])
+                    IoTOperationsResource(
+                        resource_id=cl_id,
+                        display_name=self._resource_map["customLocations"][cl_id]["name"],
+                    )
                 )
         return result
 
     def get_resource_sync_rules(self, custom_location_id: str) -> List[IoTOperationsResource]:
         result = []
-        filter_prefix = f"{custom_location_id}/resourceSyncRules/".lower()
-
         if (
             "customLocations" in self._resource_map
             and self._resource_map["customLocations"]
@@ -70,10 +64,8 @@ class IoTOperationsResourceMap:
             and "resourceSyncRules" in self._resource_map["customLocations"][custom_location_id]
             and self._resource_map["customLocations"][custom_location_id]["resourceSyncRules"]
         ):
-            for rsr_id in self._resource_map["customLocations"][custom_location_id]["resourceSyncRules"]:
-                result.append(
-                    IoTOperationsResource(resource_id=rsr_id, display_name=rsr_id.lower().split(filter_prefix)[-1])
-                )
+            for rsr in self._resource_map["customLocations"][custom_location_id]["resourceSyncRules"]:
+                result.append(IoTOperationsResource(resource_id=rsr["id"], display_name=rsr["name"]))
         return result
 
     def get_resources(self, custom_location_id: str) -> List[IoTOperationsResource]:
@@ -96,29 +88,37 @@ class IoTOperationsResourceMap:
 
         return result
 
-    def refresh_related_resource_ids(self) -> Dict[str, Union[List[str], Dict[str, List[str]]]]:
+    def refresh_related_resource_ids(
+        self,
+    ) -> Dict[str, Union[List[Dict[str, str]], Dict[str, Dict[str, Union[List[Dict[str, str], str]]]]]]:
         result = {}
         extensions = self.connected_cluster.get_aio_extensions()
+
         if extensions:
-            result["extensions"] = [ext["id"] for ext in extensions]
+            result["extensions"] = []
+            for ext in extensions:
+                ext_map = {"id": ext["id"], "name": ext["name"]}
+                result["extensions"].append(ext_map)
+
         custom_locations = self.connected_cluster.get_aio_custom_locations()
         if custom_locations:
             result["customLocations"] = {}
-            custom_location_ids = [cl["id"] for cl in custom_locations]
-            for cl_id in custom_location_ids:
-                result["customLocations"][cl_id] = {}
-                cl_sync_rules = self.connected_cluster.get_resource_sync_rules(cl_id)
-                if cl_sync_rules:
-                    result["customLocations"][cl_id]["resourceSyncRules"] = [
-                        cl_sync["id"] for cl_sync in cl_sync_rules
-                    ]
+            for cl in custom_locations:
+                result["customLocations"][cl["id"]] = {"name": cl["name"]}
 
-                cl_resources = self.connected_cluster.get_aio_resources(cl_id)
+                cl_sync_rules = self.connected_cluster.get_resource_sync_rules(cl["id"])
+                if cl_sync_rules:
+                    result["customLocations"][cl["id"]]["resourceSyncRules"] = []
+                    for sync_rule in cl_sync_rules:
+                        sync_rule_map = {"id": sync_rule["id"], "name": sync_rule["name"]}
+                        result["customLocations"][cl["id"]]["resourceSyncRules"].append(sync_rule_map)
+
+                cl_resources = self.connected_cluster.get_aio_resources(cl["id"])
                 if cl_resources:
-                    result["customLocations"][cl_id]["resources"] = []
+                    result["customLocations"][cl["id"]]["resources"] = []
                     for resource in cl_resources:
                         res_map = {"id": resource["id"], "name": resource["name"]}
-                        result["customLocations"][cl_id]["resources"].append(res_map)
+                        result["customLocations"][cl["id"]]["resources"].append(res_map)
 
         return result
 
@@ -130,7 +130,6 @@ class IoTOperationsResourceMap:
         custom_locations = self.custom_locations
         if custom_locations:
             root_cl_node = tree.add(label="[cyan]customLocations[/cyan]")
-            # import pdb; pdb.set_trace()
             for cl in custom_locations:
                 cl_node = root_cl_node.add(cl.display_name)
                 resource_sync_rules = self.get_resource_sync_rules(cl.resource_id)
