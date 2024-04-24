@@ -49,9 +49,9 @@ def test_check(init_setup, detail_level, services_map, post, pre):
     expected_title = "Evaluation for {[bright_blue]" + ops_service + "[/bright_blue]} service deployment"
     assert result["title"] == expected_title
 
-    if post is None:
-        post = not pre
-    if pre is None:
+    expected_pre = not post if pre is None else pre
+    expected_post = not pre if post is None else post
+    if pre is None and not post:
         try:
             aio_check = run("kubectl api-resources --api-group=orchestrator.iotoperations.azure.com")
             pre = "orchestrator.iotoperations.azure.com" not in aio_check
@@ -59,7 +59,7 @@ def test_check(init_setup, detail_level, services_map, post, pre):
             from azext_edge.edge.providers.edge_api.orc import ORC_API_V1
             pre = not ORC_API_V1.is_deployed()
 
-    assert bool(result.get("postDeployment")) == post
-    assert bool(result.get("preDeployment")) == pre
+    assert bool(result.get("preDeployment")) == expected_pre
+    assert bool(result.get("postDeployment")) == expected_post
 
     # TODO: see how specific to get - for now keep it simple
