@@ -6,6 +6,7 @@
 
 import pytest
 from knack.log import get_logger
+from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
 from azext_edge.edge.providers.edge_api import (
     AkriResourceKinds,
@@ -32,20 +33,31 @@ logger = get_logger(__name__)
     ]),
     ("opcua", OpcuaResourceKinds.list())
 ])
-@pytest.mark.parametrize("post", [False, True])
-@pytest.mark.parametrize("pre", [False, True])
+@pytest.mark.parametrize("post", [None, False, True])
+@pytest.mark.parametrize("pre", [None, False, True])
 def test_check(init_setup, detail_level, services_map, post, pre):
     ops_service, resources = services_map
     resources = " ".join(resources)
-    command = f"az iot ops check --as-object --detail-level {detail_level} --ops-service {ops_service} --post {post} "\
-        f"--pre {pre} --resources {resources}"
+    command = f"az iot ops check --as-object --detail-level {detail_level} --ops-service {ops_service} "\
+        f"--resources {resources}"
+    if pre is not None:
+        command += f" --pre {pre}"
+    if post is not None:
+        command += f" --post {post}"
     result = run(command)
 
     expected_title = "Evaluation for {[bright_blue]" + ops_service + "[/bright_blue]} service deployment"
     assert result["title"] == expected_title
 
-    if not post and not pre:
-        post = pre = True
+    if pre is None:
+        try:
+            aio_check = run("kubectl api-resources --api-group=orchestrator.iotoperations.azure.com")
+            pre = "orchestrator.iotoperations.azure.com" in aio_check
+        except CLIInternalError:
+            from azext_edge.edge.providers.edge_api.orc import ORC_API_V1
+            pre = not ORC_API_V1.is_deployed()
+    if post is None:
+        post = not pre
 
     assert bool(result.get("postDeployment")) == post
     assert bool(result.get("preDeployment")) == pre
