@@ -64,8 +64,10 @@ def check(
     from .providers.checks import run_checks
 
     # by default - run prechecks if AIO is not deployed
-    run_pre = not ORC_API_V1.is_deployed()
-    run_post = True
+    run_pre = not ORC_API_V1.is_deployed() if pre_deployment_checks is None else pre_deployment_checks
+    run_post = True if post_deployment_checks is None else post_deployment_checks
+
+    # only one of pre or post is explicity set to True
     if pre_deployment_checks and not post_deployment_checks:
         run_post = False
     if post_deployment_checks and not pre_deployment_checks:
