@@ -15,7 +15,7 @@ from ..edge_api import (
     AkriResourceKinds,
 )
 
-from ..support.akri import AKRI_INSTANCE_LABEL, AKRI_APP_LABEL
+from ..support.akri import AKRI_INSTANCE_LABEL, AKRI_APP_LABEL, AKRI_POD_NAME_LABEL, AKRI_NAME_LABEL_V2
 
 from .base import (
     CheckManager,
@@ -74,7 +74,12 @@ def evaluate_core_service_runtime(
     padding = 6
     akri_runtime_resources: List[dict] = []
 
-    for label in [AKRI_INSTANCE_LABEL, AKRI_APP_LABEL]:
+    for label in [
+        AKRI_INSTANCE_LABEL,
+        AKRI_APP_LABEL,
+        AKRI_POD_NAME_LABEL,
+        AKRI_NAME_LABEL_V2,
+    ]:
         akri_runtime_resources.extend(
             get_namespaced_pods_by_prefix(
                 prefix=AKRI_PREFIX,

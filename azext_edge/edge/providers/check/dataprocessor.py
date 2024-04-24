@@ -198,13 +198,12 @@ def evaluate_instances(
                 ),
             )
 
-            from ..support.dataprocessor import DATA_PROCESSOR_LABEL
+            from ..support.dataprocessor import DATA_PROCESSOR_NAME_LABEL_V2, DATA_PROCESSOR_ONEOFF_LABEL
 
             for pod in [
                 DATA_PROCESSOR_READER_WORKER_PREFIX,
                 DATA_PROCESSOR_RUNNER_WORKER_PREFIX,
                 DATA_PROCESSOR_REFDATA_STORE_PREFIX,
-                DATA_PROCESSOR_NATS_PREFIX,
                 DATA_PROCESSOR_OPERATOR,
             ]:
                 evaluate_pod_health(
@@ -212,9 +211,19 @@ def evaluate_instances(
                     target=target_instances,
                     pod=pod,
                     display_padding=12,
-                    service_label=DATA_PROCESSOR_LABEL,
+                    service_label=DATA_PROCESSOR_NAME_LABEL_V2,
                     namespace=namespace
                 )
+            
+            # TODO: remove once the new label is stabled
+            evaluate_pod_health(
+                check_manager=check_manager,
+                target=target_instances,
+                pod=DATA_PROCESSOR_NATS_PREFIX,
+                display_padding=12,
+                service_label=DATA_PROCESSOR_ONEOFF_LABEL,
+                namespace=namespace
+            )
 
     return check_manager.as_dict(as_list)
 

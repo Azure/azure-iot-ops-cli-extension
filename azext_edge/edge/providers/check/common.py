@@ -320,6 +320,7 @@ AIO_MQ_FRONTEND_PREFIX = "aio-mq-dmqtt-frontend"
 AIO_MQ_BACKEND_PREFIX = "aio-mq-dmqtt-backend"
 AIO_MQ_AUTH_PREFIX = "aio-mq-dmqtt-authentication"
 AIO_MQ_KAFKA_CONFIG_PREFIX = "aio-mq-kafka-config"
+AIO_MQ_HEALTH_MANAGER = "aio-mq-dmqtt-health-manager"
 
 # Lnm runtime attributes
 AIO_LNM_PREFIX = "aio-lnm"
