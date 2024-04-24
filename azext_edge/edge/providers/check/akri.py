@@ -15,12 +15,7 @@ from ..edge_api import (
     AkriResourceKinds,
 )
 
-from ..support.akri import (
-    AKRI_INSTANCE_LABEL,
-    AKRI_APP_LABEL,
-    AKRI_POD_NAME_LABEL,
-    AKRI_NAME_LABEL_V2,
-)
+from ..support.akri import AKRI_NAME_LABEL_V2
 
 from .base import (
     CheckManager,
