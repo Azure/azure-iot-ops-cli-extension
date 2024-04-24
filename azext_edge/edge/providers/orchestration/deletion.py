@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.prompt import Confirm
 
 from .resource_map import IoTOperationsResource, IoTOperationsResourceMap
+from ...util.az_client import get_resource_client, wait_for_terminal_state
 
 logger = get_logger(__name__)
 
@@ -33,8 +34,8 @@ class DeletionManager:
         self.resource_map = IoTOperationsResourceMap(
             cmd=cmd, cluster_name=cluster_name, resource_group_name=resource_group_name
         )
-
         self.subscription_id = get_subscription_id(cli_ctx=cmd.cli_ctx)
+        self.resource_client = get_resource_client(self.subscription_id)
 
     def do_work(self, confirm_yes: Optional[bool] = None):
         self.display_resource_tree()
@@ -48,10 +49,14 @@ class DeletionManager:
             return
 
         import pdb; pdb.set_trace()
-        pass
+        self._process(self)
 
     def display_resource_tree(self):
         print(self.resource_map.build_tree())
 
     def _process(self):
-        pass
+        todo_extensions = self.resource_map.extensions
+        extension_work = []
+
+        for extension in todo_extensions:
+            self.resource_client.resources.begin_delete_by_id(resource_id=extension.resource_id)

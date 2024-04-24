@@ -246,12 +246,9 @@ def init(
     )
 
 
-def delete(
-    cmd,
-    cluster_name: str,
-    resource_group_name: str,
-    confirm_yes: Optional[bool] = None
-):
+def delete(cmd, cluster_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None):
     from .providers.orchestration import delete_ops_resources
 
-    delete_ops_resources(cmd=cmd, cluster_name=cluster_name, resource_group_name=resource_group_name, confirm_yes=confirm_yes)
+    delete_ops_resources(
+        cmd=cmd, cluster_name=cluster_name, resource_group_name=resource_group_name, confirm_yes=confirm_yes
+    )
