@@ -32,6 +32,7 @@ from .common import (
     AIO_MQ_FRONTEND_PREFIX,
     AIO_MQ_BACKEND_PREFIX,
     AIO_MQ_AUTH_PREFIX,
+    AIO_MQ_HEALTH_MANAGER,
     PADDING_SIZE,
     DataLakeConnectorTargetType,
     KafkaTopicMapRouteType,
@@ -42,7 +43,7 @@ from ...providers.edge_api import (
     MQ_ACTIVE_API,
     MqResourceKinds
 )
-from ..support.mq import MQ_LABEL
+from ..support.mq import MQ_NAME_LABEL
 
 from ..base import get_namespaced_service
 
@@ -264,7 +265,7 @@ def evaluate_diagnostics_service(
                     target=target_service_deployed,
                     pod=AIO_MQ_DIAGNOSTICS_SERVICE,
                     display_padding=12,
-                    service_label=MQ_LABEL
+                    service_label=MQ_NAME_LABEL
                 )
 
     return check_manager.as_dict(as_list)
@@ -760,7 +761,8 @@ def evaluate_brokers(
                 AIO_MQ_DIAGNOSTICS_PROBE_PREFIX,
                 AIO_MQ_FRONTEND_PREFIX,
                 AIO_MQ_BACKEND_PREFIX,
-                AIO_MQ_AUTH_PREFIX
+                AIO_MQ_AUTH_PREFIX,
+                AIO_MQ_HEALTH_MANAGER
             ]:
                 evaluate_pod_health(
                     check_manager=check_manager,
@@ -768,7 +770,7 @@ def evaluate_brokers(
                     namespace=namespace,
                     pod=pod,
                     display_padding=12,
-                    service_label=MQ_LABEL
+                    service_label=MQ_NAME_LABEL
                 )
 
     return check_manager.as_dict(as_list)
