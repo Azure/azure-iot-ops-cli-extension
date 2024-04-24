@@ -4,23 +4,26 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Optional, Union
+
+from knack.log import get_logger
+from rich import print
 from rich.console import Console
 from rich.prompt import Confirm
-from rich import print
 
-from .resource_map import IoTOperationsResourceMap, IoTOperationsResource
+from .resource_map import IoTOperationsResource, IoTOperationsResourceMap
 
+logger = get_logger(__name__)
 
 console = Console()
 
 
-def remove_ops_resources(cmd, cluster_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None):
-    manager = RemovalManager(cmd=cmd, cluster_name=cluster_name, resource_group_name=resource_group_name)
+def delete_ops_resources(cmd, cluster_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None):
+    manager = DeletionManager(cmd=cmd, cluster_name=cluster_name, resource_group_name=resource_group_name)
     manager.do_work(confirm_yes=confirm_yes)
 
 
-class RemovalManager:
+class DeletionManager:
     def __init__(self, cmd, cluster_name: str, resource_group_name: str):
         from azure.cli.core.commands.client_factory import get_subscription_id
 
@@ -34,13 +37,14 @@ class RemovalManager:
         self.subscription_id = get_subscription_id(cli_ctx=cmd.cli_ctx)
 
     def do_work(self, confirm_yes: Optional[bool] = None):
+        self.display_resource_tree()
+
         should_delete = True
         if not confirm_yes:
-            self.display_resource_tree()
             should_delete = Confirm.ask("Delete?")
 
-
         if not should_delete:
+            logger.warning("Deletion cancelled.")
             return
 
         import pdb; pdb.set_trace()

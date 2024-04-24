@@ -90,7 +90,7 @@ class IoTOperationsResourceMap:
 
     def refresh_related_resource_ids(
         self,
-    ) -> Dict[str, Union[List[Dict[str, str]], Dict[str, Dict[str, Union[List[Dict[str, str], str]]]]]]:
+    ) -> Dict[str, Union[List[Dict[str, str]], Dict[str, Dict[str, Union[List[Dict[str, str]], str]]]]]:
         result = {}
         extensions = self.connected_cluster.get_aio_extensions()
 

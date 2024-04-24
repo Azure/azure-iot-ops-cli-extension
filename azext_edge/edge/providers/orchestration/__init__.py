@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from .work import deploy
-from .removal import remove_ops_resources
+from .deletion import delete_ops_resources
 from .host import run_host_verify
 
-__all__ = ["deploy", "remove_ops_resources", "run_host_verify"]
+__all__ = ["deploy", "delete_ops_resources", "run_host_verify"]
