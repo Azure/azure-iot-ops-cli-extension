@@ -53,7 +53,7 @@ class ConnectedCluster:
         | where type =~ 'microsoft.extendedlocation/customlocations'
         | where properties.hostResourceId =~ '{self.resource_id}'
         | where properties.namespace =~ '{namespace}'
-        | project id, name, location, properties
+        | project id, name, location, properties, apiVersion
         """
 
         result = self.resource_graph.query_resources(query=query)
@@ -68,6 +68,7 @@ class ConnectedCluster:
         | where properties.ExtensionType startswith "microsoft.iotoperations" 
             or properties.ExtensionType =~ "microsoft.deviceregistry.assets"
             or properties.ExtensionType =~ "microsoft.azurekeyvaultsecretsprovider"
+        | project id, name, apiVersion
         """
         # @digimaun TODO microsoft.azurekeyvaultsecretsprovider
 
@@ -90,7 +91,7 @@ class ConnectedCluster:
             | where extensionType startswith 'microsoft.iotoperations'
                 or extensionType =~ "microsoft.deviceregistry.assets"
         ) on clusterExtensionId
-        | distinct id, name
+        | distinct id, name, apiVersion
         """
 
         result = self.resource_graph.query_resources(query=query)
@@ -103,6 +104,7 @@ class ConnectedCluster:
         | where extendedLocation.name =~ '{custom_location_id}'
         | where type startswith 'microsoft.iotoperations'
             or type startswith 'microsoft.deviceregistry.assets'
+        | project id, name, apiVersion
         """
 
         result = self.resource_graph.query_resources(query=query)
@@ -114,6 +116,7 @@ class ConnectedCluster:
         resources
         | where type =~ "microsoft.extendedlocation/customlocations/resourcesyncrules"
         | where id startswith '{custom_location_id}'
+        | project id, name, apiVersion
         """
 
         result = self.resource_graph.query_resources(query=query)

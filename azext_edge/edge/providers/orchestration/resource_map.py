@@ -14,6 +14,7 @@ from .connected_cluster import ConnectedCluster
 class IoTOperationsResource(NamedTuple):
     resource_id: str
     display_name: str
+    api_version: str
 
 
 class IoTOperationsResourceMap:
@@ -38,7 +39,11 @@ class IoTOperationsResourceMap:
         result = []
         if "extensions" in self._resource_map and self._resource_map["extensions"]:
             for ext in self._resource_map["extensions"]:
-                result.append(IoTOperationsResource(resource_id=ext["id"], display_name=ext["name"]))
+                result.append(
+                    IoTOperationsResource(
+                        resource_id=ext["id"], display_name=ext["name"], api_version=ext["apiVersion"]
+                    )
+                )
         return result
 
     @property
@@ -50,6 +55,7 @@ class IoTOperationsResourceMap:
                     IoTOperationsResource(
                         resource_id=cl_id,
                         display_name=self._resource_map["customLocations"][cl_id]["name"],
+                        api_version=self._resource_map["customLocations"][cl_id]["apiVersion"],
                     )
                 )
         return result
@@ -65,7 +71,11 @@ class IoTOperationsResourceMap:
             and self._resource_map["customLocations"][custom_location_id]["resourceSyncRules"]
         ):
             for rsr in self._resource_map["customLocations"][custom_location_id]["resourceSyncRules"]:
-                result.append(IoTOperationsResource(resource_id=rsr["id"], display_name=rsr["name"]))
+                result.append(
+                    IoTOperationsResource(
+                        resource_id=rsr["id"], display_name=rsr["name"], api_version=rsr["apiVersion"]
+                    )
+                )
         return result
 
     def get_resources(self, custom_location_id: str) -> List[IoTOperationsResource]:
@@ -84,7 +94,11 @@ class IoTOperationsResourceMap:
                 reverse=True,
             )
             for resource in sorted_resources:
-                result.append(IoTOperationsResource(resource_id=resource["id"], display_name=resource["name"]))
+                result.append(
+                    IoTOperationsResource(
+                        resource_id=resource["id"], display_name=resource["name"], api_version=resource["apiVersion"]
+                    )
+                )
 
         return result
 
@@ -97,27 +111,35 @@ class IoTOperationsResourceMap:
         if extensions:
             result["extensions"] = []
             for ext in extensions:
-                ext_map = {"id": ext["id"], "name": ext["name"]}
+                ext_map = {"id": ext["id"], "name": ext["name"], "apiVersion": ext["apiVersion"]}
                 result["extensions"].append(ext_map)
 
         custom_locations = self.connected_cluster.get_aio_custom_locations()
         if custom_locations:
             result["customLocations"] = {}
             for cl in custom_locations:
-                result["customLocations"][cl["id"]] = {"name": cl["name"]}
+                result["customLocations"][cl["id"]] = {"name": cl["name"], "apiVersion": cl["apiVersion"]}
 
                 cl_sync_rules = self.connected_cluster.get_resource_sync_rules(cl["id"])
                 if cl_sync_rules:
                     result["customLocations"][cl["id"]]["resourceSyncRules"] = []
                     for sync_rule in cl_sync_rules:
-                        sync_rule_map = {"id": sync_rule["id"], "name": sync_rule["name"]}
+                        sync_rule_map = {
+                            "id": sync_rule["id"],
+                            "name": sync_rule["name"],
+                            "apiVersion": sync_rule["apiVersion"],
+                        }
                         result["customLocations"][cl["id"]]["resourceSyncRules"].append(sync_rule_map)
 
                 cl_resources = self.connected_cluster.get_aio_resources(cl["id"])
                 if cl_resources:
                     result["customLocations"][cl["id"]]["resources"] = []
                     for resource in cl_resources:
-                        res_map = {"id": resource["id"], "name": resource["name"]}
+                        res_map = {
+                            "id": resource["id"],
+                            "name": resource["name"],
+                            "apiVersion": resource["apiVersion"],
+                        }
                         result["customLocations"][cl["id"]]["resources"].append(res_map)
 
         return result
