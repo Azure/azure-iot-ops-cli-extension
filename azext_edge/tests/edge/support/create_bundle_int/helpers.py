@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 from os import mkdir, path, walk
 from shutil import rmtree, unpack_archive
 from azure.cli.core.azclierror import CLIInternalError

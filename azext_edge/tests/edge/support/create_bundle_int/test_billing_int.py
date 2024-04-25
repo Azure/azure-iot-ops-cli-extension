@@ -31,7 +31,7 @@ def test_create_bundle_billing(init_setup, tracked_files):
         resource_api=CLUSTER_CONFIG_API_V1,
         resource_kinds=resource_kinds
     )
-    expected_workload_types = ["deployment", "pod", "replicaset", "service"] 
+    expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     expected_types = expected_workload_types + resource_kinds
     assert set(file_map["usage"].keys()).issubset(set(expected_types))
     check_workload_resource_files(file_map["usage"], expected_workload_types, ["billing-operator"])
