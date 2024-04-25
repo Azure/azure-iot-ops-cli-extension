@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from os import mkdir, path, walk
 from shutil import rmtree, unpack_archive
 from azure.cli.core.azclierror import CLIInternalError
@@ -223,13 +223,12 @@ def get_kubectl_items(prefixes: Union[str, List[str]], service_type: str) -> Dic
 
 
 def get_file_map(
-    walk_result,
+    walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
     mq_traces: bool = False
-) -> Dict[str, List[Dict[str, str]]]:
+) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    level_0 = walk_result.pop(EXTRACTED_PATH)
-    namespace = level_0["folders"][0]
+    namespace, c_namespace = process_top_levels(walk_result, ops_service)
     walk_result.pop(path.join(EXTRACTED_PATH, namespace))
 
     # Level 2 and 3 - bottom
@@ -244,12 +243,51 @@ def get_file_map(
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
+    elif ops_service == "billing":
+        assert len(walk_result) == 2
+        ops_path = path.join(EXTRACTED_PATH, namespace, "clusterconfig", ops_service)
+        c_path = path.join(EXTRACTED_PATH, c_namespace, "clusterconfig", ops_service)
+        file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
     elif ops_service != "otel":
         assert len(walk_result) == 1
         assert not walk_result[ops_path]["folders"]
-
-    file_map.update(convert_file_names(walk_result[ops_path]["files"]))
+    file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     return file_map
+
+
+def process_top_levels(
+    walk_result: Dict[str, Dict[str, List[str]]], ops_service: str
+) -> Tuple[str, str]:
+    level_0 = walk_result.pop(EXTRACTED_PATH)
+    for file in ["events.yaml", "nodes.yaml", "storage_classes.yaml"]:
+        assert file in level_0["files"]
+    if not level_0["folders"]:
+        pytest.skip(f"No bundles created for {ops_service}.")
+    namespaces = level_0["folders"]
+    namespace = namespaces[0]
+    clusterconfig_namespace = None
+    for name in namespaces:
+        # determine which namespace belongs to aio vs billing
+        level_1 = walk_result.get(path.join(EXTRACTED_PATH, name, "clusterconfig", "billing"))
+        files = [f for f in level_1["files"] if f.startswith("job")]
+        if files:
+            namespace = name
+        elif len(namespace) > 1:
+            clusterconfig_namespace = name
+
+    if clusterconfig_namespace:
+        # remove empty billing related folders
+        level_1 = walk_result.pop(path.join(EXTRACTED_PATH, clusterconfig_namespace))
+        assert level_1["folders"] == ["clusterconfig"]
+        assert not level_1["files"]
+        level_2 = walk_result.pop(path.join(EXTRACTED_PATH, namespace, "clusterconfig"))
+        assert level_2["folders"] == ["billing"]
+        assert not level_2["files"]
+        level_2 = walk_result.pop(path.join(EXTRACTED_PATH, clusterconfig_namespace, "clusterconfig"))
+        assert level_2["folders"] == ["billing"]
+        assert not level_2["files"]
+
+    return namespace, clusterconfig_namespace
 
 
 def run_bundle_command(

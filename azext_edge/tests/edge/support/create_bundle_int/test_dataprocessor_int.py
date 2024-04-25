@@ -17,7 +17,7 @@ def test_create_bundle_dataprocessor(init_setup, tracked_files):
     ops_service = OpsServiceType.dataprocessor.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
-    file_map = get_file_map(walk_result, ops_service)
+    file_map = get_file_map(walk_result, ops_service)["aio"]
 
     check_custom_resource_files(
         file_objs=file_map,

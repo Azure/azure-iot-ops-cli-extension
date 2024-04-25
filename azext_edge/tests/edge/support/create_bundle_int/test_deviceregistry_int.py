@@ -20,7 +20,7 @@ def test_create_bundle_deviceregistry(init_setup, tracked_files):
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     if not walk_result[EXTRACTED_PATH]["folders"]:
         pytest.skip(f"No bundles created for {ops_service}.")
-    file_map = get_file_map(walk_result, ops_service)
+    file_map = get_file_map(walk_result, ops_service)["aio"]
 
     check_custom_resource_files(
         file_objs=file_map,

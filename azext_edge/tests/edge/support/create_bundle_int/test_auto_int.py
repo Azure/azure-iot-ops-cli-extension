@@ -7,12 +7,14 @@
 import pytest
 from os import mkdir, path
 from knack.log import get_logger
+from typing import Dict, List
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
 from .helpers import (
     assert_file_names,
     check_workload_resource_files,
     get_file_map,
+    process_top_levels,
     run_bundle_command,
     AUTO_EXTRACTED_PATH,
     EXTRACTED_PATH
@@ -47,29 +49,11 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         )
 
     # Level 0 - top
-    level_0 = walk_result.pop(EXTRACTED_PATH)
-    for file in ["events.yaml", "nodes.yaml", "storage_classes.yaml"]:
-        assert file in level_0["files"]
-    if not level_0["folders"]:
-        logger.warning(f"No bundles created for {ops_service}.")
-        return
-    namespace = level_0["folders"][0]
+    namespace, _ = process_top_levels(walk_result, ops_service)
 
     # Level 1
     level_1 = walk_result.pop(path.join(EXTRACTED_PATH, namespace))
-    expected_services = [ops_service]
-    if ops_service == OpsServiceType.auto.value:
-        # these should always be generated
-        expected_services = OpsServiceType.list()
-        expected_services.remove(OpsServiceType.auto.value)
-        expected_services.append("otel")
-        # TODO; bake in billing when the template supports it
-        if not walk_result.get(path.join(EXTRACTED_PATH, namespace, OpsServiceType.billing.value)):
-            expected_services.remove(OpsServiceType.billing.value)
-        # device registry folder will not be created if there are no device registry resources
-        if not walk_result.get(path.join(EXTRACTED_PATH, namespace, OpsServiceType.deviceregistry.value)):
-            expected_services.remove(OpsServiceType.deviceregistry.value)
-        expected_services.sort()
+    expected_services = _get_expected_services(walk_result, ops_service, namespace)
     assert sorted(level_1["folders"]) == expected_services
     assert not level_1["files"]
 
@@ -84,7 +68,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             walk_result[path.join(EXTRACTED_PATH, namespace, "mq")]["folders"] = []
 
     # Level 2 and 3 - bottom
-    assert len(walk_result) == len(expected_services)
+    assert len(walk_result) == (len(expected_services) + int("clusterconfig" in expected_services))
     for directory in walk_result:
         assert not walk_result[directory]["folders"]
         assert_file_names(walk_result[directory]["files"])
@@ -94,13 +78,14 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         expected_folders = [[]]
         if mq_traces and ops_service == OpsServiceType.mq.value:
             expected_folders.append(['traces'])
-        assert auto_walk_result[f"auto_{directory}"]["folders"] in expected_folders
-        # make things easier if there is a different file
-        auto_files = sorted(auto_walk_result[f"auto_{directory}"]["files"])
-        ser_files = sorted(walk_result[directory]["files"])
-        for file in auto_files:
-            assert file in ser_files
-        assert len(auto_files) == len(ser_files)
+        for directory in walk_result:
+            assert auto_walk_result[f"auto_{directory}"]["folders"] in expected_folders
+            # make things easier if there is a different file
+            auto_files = sorted(auto_walk_result[f"auto_{directory}"]["files"])
+            ser_files = sorted(walk_result[directory]["files"])
+            for file in auto_files:
+                assert file in ser_files
+            assert len(auto_files) == len(ser_files)
 
 
 def test_create_bundle_otel(init_setup, tracked_files):
@@ -114,3 +99,25 @@ def test_create_bundle_otel(init_setup, tracked_files):
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     assert set(file_map.keys()).issubset(set(expected_workload_types))
     check_workload_resource_files(file_map, expected_workload_types, "aio-otel")
+
+
+def _get_expected_services(
+    walk_result: Dict[str, Dict[str, List[str]]], ops_service: str , namespace: str
+) -> List[str]:
+    expected_services = [ops_service]
+    if ops_service == OpsServiceType.auto.value:
+        # these should always be generated
+        expected_services = OpsServiceType.list()
+        expected_services.remove(OpsServiceType.auto.value)
+        expected_services.remove(OpsServiceType.billing.value)
+        expected_services.append("otel")
+        if walk_result.get(path.join(EXTRACTED_PATH, namespace, "clusterconfig")):
+            expected_services.append("clusterconfig")
+        # device registry folder will not be created if there are no device registry resources
+        if not walk_result.get(path.join(EXTRACTED_PATH, namespace, OpsServiceType.deviceregistry.value)):
+            expected_services.remove(OpsServiceType.deviceregistry.value)
+        expected_services.sort()
+    elif ops_service == OpsServiceType.billing.value:
+        expected_services.remove(OpsServiceType.billing.value)
+        expected_services.append("clusterconfig")
+    return expected_services
