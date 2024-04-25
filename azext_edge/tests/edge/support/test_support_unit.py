@@ -347,7 +347,10 @@ def test_create_bundle(
 
             # Assert runtime resources
             assert_list_deployments(
-                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_LABEL,
+                resource_api=DATA_PROCESSOR_API_V1,
             )
             assert_list_deployments(
                 mocked_client,
