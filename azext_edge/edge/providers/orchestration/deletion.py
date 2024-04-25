@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import Dict, List, Optional, Union
+from time import sleep
 
 from knack.log import get_logger
 from rich import print
@@ -17,6 +18,9 @@ from ...util.az_client import get_resource_client, wait_for_terminal_state
 logger = get_logger(__name__)
 
 console = Console()
+
+
+MAX_WAITS = 60
 
 
 def delete_ops_resources(cmd, cluster_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None):
@@ -48,8 +52,10 @@ class DeletionManager:
             logger.warning("Deletion cancelled.")
             return
 
-        import pdb; pdb.set_trace()
-        self._process(self)
+        import pdb
+
+        pdb.set_trace()
+        self._process()
 
     def display_resource_tree(self):
         print(self.resource_map.build_tree())
@@ -58,5 +64,20 @@ class DeletionManager:
         todo_extensions = self.resource_map.extensions
         extension_work = []
 
+        import pdb; pdb.set_trace()
         for extension in todo_extensions:
-            self.resource_client.resources.begin_delete_by_id(resource_id=extension.resource_id)
+            extension_work.append(
+                self.resource_client.resources.begin_delete_by_id(
+                    resource_id=extension.resource_id, api_version=extension.api_version
+                )
+            )
+
+        if extension_work:
+            for _ in range(MAX_WAITS):
+                for i in range(len(extension_work)):
+                    if extension_work[i].done():
+                        extension_work.pop(i)
+                sleep(15)
+
+        import pdb; pdb.set_trace()
+        pass
