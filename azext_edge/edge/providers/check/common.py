@@ -304,8 +304,10 @@ class DataLakeConnectorTargetType(ListableEnum):
     local_storage = "localStorage"
 
 
-# Data processor runtime attributes
+# Akri runtime attributes
+AKRI_PREFIX = "aio-akri-"
 
+# Data processor runtime attributes
 DATA_PROCESSOR_READER_WORKER_PREFIX = "aio-dp-reader-worker"
 DATA_PROCESSOR_RUNNER_WORKER_PREFIX = "aio-dp-runner-worker"
 DATA_PROCESSOR_REFDATA_STORE_PREFIX = "aio-dp-refdata-store"
@@ -313,12 +315,12 @@ DATA_PROCESSOR_NATS_PREFIX = "aio-dp-msg-store"
 DATA_PROCESSOR_OPERATOR = "aio-dp-operator"
 
 # MQ runtime attributes
-
 AIO_MQ_DIAGNOSTICS_PROBE_PREFIX = "aio-mq-diagnostics-probe"
 AIO_MQ_FRONTEND_PREFIX = "aio-mq-dmqtt-frontend"
 AIO_MQ_BACKEND_PREFIX = "aio-mq-dmqtt-backend"
 AIO_MQ_AUTH_PREFIX = "aio-mq-dmqtt-authentication"
 AIO_MQ_KAFKA_CONFIG_PREFIX = "aio-mq-kafka-config"
+AIO_MQ_HEALTH_MANAGER = "aio-mq-dmqtt-health-manager"
 
 # Lnm runtime attributes
 AIO_LNM_PREFIX = "aio-lnm"

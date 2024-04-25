@@ -13,10 +13,11 @@ from azure.cli.core.azclierror import ResourceNotFoundError
 
 
 class EdgeResourceApi:
-    def __init__(self, group: str, version: str, moniker: str):
+    def __init__(self, group: str, version: str, moniker: str, label: Optional[str] = None):
         self.group: str = group
         self.version: str = version
         self.moniker: str = moniker
+        self.label: Optional[str] = label
         self._api: V1APIResourceList = None
         self._kinds: Dict[str, str] = None
 

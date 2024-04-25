@@ -15,5 +15,8 @@ class DataProcessorResourceKinds(ListableEnum):
 
 
 DATA_PROCESSOR_API_V1 = EdgeResourceApi(
-    group="dataprocessor.iotoperations.azure.com", version="v1", moniker="dataprocessor"
+    group="dataprocessor.iotoperations.azure.com",
+    version="v1",
+    moniker="dataprocessor",
+    label="microsoft-iotoperations-dp"
 )

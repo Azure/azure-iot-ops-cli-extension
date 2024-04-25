@@ -7,7 +7,7 @@
 from enum import IntEnum
 from json import dumps
 from time import sleep
-from typing import Dict, Tuple, Union, Optional
+from typing import Dict, Optional, Tuple, Union
 from uuid import uuid4
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
@@ -22,6 +22,7 @@ from rich.table import Table
 
 from ...util import get_timestamp_now_utc
 from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
+from .base import KEYVAULT_ARC_EXTENSION_VERSION
 from .template import CURRENT_TEMPLATE, TemplateVer, get_current_template_copy
 
 logger = get_logger(__name__)
@@ -172,7 +173,7 @@ class WorkManager:
         kv_sp_test_desc = "Test SP access"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_TEST, description=kv_sp_test_desc)
 
-        kv_csi_deploy_desc = "Deploy driver to cluster"
+        kv_csi_deploy_desc = f"Deploy driver to cluster '[cyan]v{KEYVAULT_ARC_EXTENSION_VERSION}[/cyan]'"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_DEPLOY, description=kv_csi_deploy_desc)
 
         kv_csi_configure_desc = "Configure driver"

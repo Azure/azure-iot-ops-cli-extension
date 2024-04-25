@@ -25,9 +25,11 @@ from .base import (
     process_statefulset,
     process_v1_pods,
 )
+from .shared import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
+# TODO: @jiacju - will remove old labels once new labels are stabled
 MQ_APP_LABELS = [
     "broker",  # aio-mq-dmqtt-frontend, aio-mq-dmqtt-backend, aio-mq-dmqtt-authentication
     "diagnostics",  # aio-mq-diagnostics-service
@@ -40,6 +42,8 @@ MQ_APP_LABELS = [
 ]
 
 MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
+
+MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_ACTIVE_API.label)
 
 
 def fetch_diagnostic_metrics(namespace: str):
@@ -92,7 +96,12 @@ def fetch_deployments():
     )
     processed.extend(operators)
 
-    for namespace in {**namespaces, **operator_namespaces}:
+    operators_v2, operator_namespaces_v2 = process_deployments(
+        resource_api=MQ_ACTIVE_API, label_selector=MQ_NAME_LABEL, return_namespaces=True
+    )
+    processed.extend(operators_v2)
+
+    for namespace in {**namespaces, **operator_namespaces, **operator_namespaces_v2}:
         metrics: dict = fetch_diagnostic_metrics(namespace)
         if metrics:
             processed.append(metrics)
@@ -116,6 +125,12 @@ def fetch_statefulsets():
         resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
     )
+    processed.extend(
+        process_statefulset(
+            resource_api=MQ_ACTIVE_API,
+            label_selector=MQ_NAME_LABEL,
+        )
+    )
 
     # bridge connector stateful sets have no labels
     connectors = []
@@ -138,25 +153,50 @@ def fetch_statefulsets():
 
 
 def fetch_services():
-    return process_services(
+    processed = process_services(
         resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
     )
+    processed.extend(
+        process_services(
+            resource_api=MQ_ACTIVE_API,
+            label_selector=MQ_NAME_LABEL,
+        )
+    )
+
+    return processed
 
 
 def fetch_replicasets():
-    return process_replicasets(
+    processed = process_replicasets(
         resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
     )
+    processed.extend(
+        process_replicasets(
+            resource_api=MQ_ACTIVE_API,
+            label_selector=MQ_NAME_LABEL,
+        )
+    )
+
+    return processed
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
-    return process_v1_pods(
+    processed = process_v1_pods(
         resource_api=MQ_ACTIVE_API,
         label_selector=MQ_LABEL,
         since_seconds=since_seconds,
     )
+    processed.extend(
+        process_v1_pods(
+            resource_api=MQ_ACTIVE_API,
+            label_selector=MQ_NAME_LABEL,
+            since_seconds=since_seconds,
+        )
+    )
+
+    return processed
 
 
 support_runtime_elements = {

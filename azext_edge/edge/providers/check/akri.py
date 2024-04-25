@@ -15,7 +15,7 @@ from ..edge_api import (
     AkriResourceKinds,
 )
 
-from ..support.akri import AKRI_PREFIX, AKRI_INSTANCE_LABEL, AKRI_APP_LABEL
+from ..support.akri import AKRI_NAME_LABEL_V2
 
 from .base import (
     CheckManager,
@@ -30,6 +30,7 @@ from .base import (
 )
 
 from .common import (
+    AKRI_PREFIX,
     PADDING_SIZE,
     CoreServiceResourceKinds,
     ResourceOutputDetailLevel,
@@ -71,16 +72,11 @@ def evaluate_core_service_runtime(
     check_manager = CheckManager(check_name="evalCoreServiceRuntime", check_desc="Evaluate Akri core service")
 
     padding = 6
-    akri_runtime_resources: List[dict] = []
-
-    for label in [AKRI_INSTANCE_LABEL, AKRI_APP_LABEL]:
-        akri_runtime_resources.extend(
-            get_namespaced_pods_by_prefix(
-                prefix=AKRI_PREFIX,
-                namespace="",
-                label_selector=label,
-            )
-        )
+    akri_runtime_resources: List[dict] = get_namespaced_pods_by_prefix(
+        prefix=AKRI_PREFIX,
+        namespace="",
+        label_selector=AKRI_NAME_LABEL_V2,
+    )
 
     if resource_name:
         akri_runtime_resources = filter_resources_by_name(
