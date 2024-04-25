@@ -51,10 +51,12 @@ def test_custom_template():
     to_consume_custom_template_path.write_text(json.dumps(expected_custom_template_content), encoding="utf-8")
 
     custom_template = get_current_template_copy(str(to_consume_custom_template_path))
-    custom_template.commit_id == "custom"
-    custom_template.moniker == "custom"
-    custom_template.content == expected_custom_template_content
-    custom_template.parameters == expected_custom_template_content["parameters"]
-    custom_template.content_vers == expected_custom_template_content["variables"]["VERSIONS"]
+
+    assert custom_template.commit_id == "custom"
+    assert custom_template.moniker == "custom"
+    assert custom_template.content == expected_custom_template_content
+    assert custom_template.parameters == expected_custom_template_content["parameters"]
+    assert custom_template.component_vers == expected_custom_template_content["variables"]["VERSIONS"]
+    assert custom_template.content_vers == expected_custom_template_content["contentVersion"]
 
     to_consume_custom_template_path.unlink()
