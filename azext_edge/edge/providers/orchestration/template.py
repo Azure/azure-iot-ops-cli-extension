@@ -30,25 +30,19 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="eac42bb5f3b13579b27adbcbbb71ef20e3d45df8",
-    moniker="v0.4.0-preview",
+    commit_id="9eb7a88d0060d5eae5132a513024a589b5ed8ce1",
+    moniker="v0.5.0-preview",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.25.53.49325", "templateHash": "5277875297568178172"},
+            "_generator": {"name": "bicep", "version": "0.26.170.59819", "templateHash": "14443314871985323425"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
             "clusterName": {"type": "string"},
-            "clusterLocation": {
-                "type": "string",
-                "defaultValue": "[parameters('location')]",
-            },
-            "location": {
-                "type": "string",
-                "defaultValue": "[resourceGroup().location]",
-            },
+            "clusterLocation": {"type": "string", "defaultValue": "[parameters('location')]"},
+            "location": {"type": "string", "defaultValue": "[resourceGroup().location]"},
             "customLocationName": {"type": "string", "defaultValue": "[format('{0}-cl', parameters('clusterName'))]"},
             "simulatePLC": {"type": "bool", "defaultValue": False},
             "opcuaDiscoveryEndpoint": {"type": "string", "defaultValue": "opc.tcp://<NOT_SET>:<NOT_SET>"},
@@ -110,6 +104,7 @@ V1_TEMPLATE = TemplateVer(
             },
             "AIO_CLUSTER_RELEASE_NAMESPACE": "azure-iot-operations",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "[variables('AIO_CLUSTER_RELEASE_NAMESPACE')]"}},
+            "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_TRUST_CONFIG_MAP": "aio-ca-trust-bundle-test-only",
             "AIO_TRUST_ISSUER": "aio-ca-issuer",
             "AIO_TRUST_CONFIG_MAP_KEY": "ca.crt",
@@ -133,14 +128,14 @@ V1_TEMPLATE = TemplateVer(
                 "opcUaBroker": "[variables('DEFAULT_CONTAINER_REGISTRY')]",
             },
             "VERSIONS": {
-                "mq": "0.3.0-preview",
+                "mq": "0.4.0-preview-rc8",
                 "observability": "0.1.0-preview",
-                "aio": "0.4.0-preview",
+                "aio": "0.5.0-preview-rc2",
                 "layeredNetworking": "0.1.0-preview",
-                "processor": "0.2.0-preview",
-                "opcUaBroker": "0.3.0-preview",
+                "processor": "0.2.1-preview-rc2",
+                "opcUaBroker": "0.4.0-preview-rc1",
                 "adr": "0.1.0-preview",
-                "akri": "0.2.1-preview",
+                "akri": "0.3.0-preview-rc1",
             },
             "TRAINS": {
                 "mq": "preview",
@@ -242,7 +237,7 @@ V1_TEMPLATE = TemplateVer(
                                     "containers": [
                                         {
                                             "name": "aio-opc-asset-discovery",
-                                            "image": "[format('{0}/opcuabroker/discovery-handler:{1}.4', variables('CONTAINER_REGISTRY_DOMAINS').opcUaBroker, variables('VERSIONS').opcUaBroker)]",
+                                            "image": "[format('{0}/opcuabroker/discovery-handler:{1}', variables('CONTAINER_REGISTRY_DOMAINS').opcUaBroker, variables('VERSIONS').opcUaBroker)]",
                                             "imagePullPolicy": "Always",
                                             "resources": {
                                                 "requests": {"memory": "64Mi", "cpu": "10m"},
@@ -290,7 +285,7 @@ V1_TEMPLATE = TemplateVer(
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "azure-iot-operations",
+                "name": "[format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "extensionType": "microsoft.iotoperations",
@@ -314,7 +309,7 @@ V1_TEMPLATE = TemplateVer(
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "assets",
+                "name": "[format('assets-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "properties": {
                     "extensionType": "microsoft.deviceregistry.assets",
                     "version": "[variables('VERSIONS').adr]",
@@ -324,14 +319,14 @@ V1_TEMPLATE = TemplateVer(
                     "configurationSettings": {"Microsoft.CustomLocation.ServiceAccount": "default"},
                 },
                 "dependsOn": [
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]"
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]"
                 ],
             },
             {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "mq",
+                "name": "[format('mq-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "extensionType": "microsoft.iotoperations.mq",
@@ -348,14 +343,14 @@ V1_TEMPLATE = TemplateVer(
                     },
                 },
                 "dependsOn": [
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]"
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]"
                 ],
             },
             {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "processor",
+                "name": "[format('processor-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "extensionType": "microsoft.iotoperations.dataprocessor",
@@ -375,14 +370,14 @@ V1_TEMPLATE = TemplateVer(
                     },
                 },
                 "dependsOn": [
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]"
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]"
                 ],
             },
             {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "akri",
+                "name": "[format('akri-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "properties": {
                     "extensionType": "microsoft.iotoperations.akri",
                     "version": "[variables('VERSIONS').akri]",
@@ -390,21 +385,21 @@ V1_TEMPLATE = TemplateVer(
                     "autoUpgradeMinorVersion": False,
                     "scope": "[variables('AIO_EXTENSION_SCOPE')]",
                     "configurationSettings": {
-                        "webhookConfiguration.enabled": "true",
-                        "certManagerWebhookCertificate.enabled": "true",
+                        "webhookConfiguration.enabled": "false",
+                        "certManagerWebhookCertificate.enabled": "false",
                         "agent.host.containerRuntimeSocket": "[parameters('containerRuntimeSocket')]",
                         "kubernetesDistro": "[parameters('kubernetesDistro')]",
                     },
                 },
                 "dependsOn": [
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]"
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]"
                 ],
             },
             {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "opc-ua-broker",
+                "name": "[format('opc-ua-broker-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "properties": {
                     "extensionType": "microsoft.iotoperations.opcuabroker",
                     "version": "[variables('VERSIONS').opcUaBroker]",
@@ -419,6 +414,7 @@ V1_TEMPLATE = TemplateVer(
                         "mqttBroker.address": "[variables('MQ_PROPERTIES').localUrl]",
                         "mqttBroker.connectUserProperties.metriccategory": "aio-opc",
                         "opcPlcSimulation.deploy": "[format('{0}', parameters('simulatePLC'))]",
+                        "opcPlcSimulation.autoAcceptUntrustedCertificates": "[format('{0}', parameters('simulatePLC'))]",
                         "openTelemetry.enabled": "true",
                         "openTelemetry.endpoints.default.uri": "[variables('OBSERVABILITY').otelCollectorAddress]",
                         "openTelemetry.endpoints.default.protocol": "grpc",
@@ -437,16 +433,16 @@ V1_TEMPLATE = TemplateVer(
                     },
                 },
                 "dependsOn": [
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]",
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
                     "[resourceId('Microsoft.IoTOperationsMQ/mq', parameters('mqInstanceName'))]",
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'mq')]",
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('mq-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
                 ],
             },
             {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "layered-networking",
+                "name": "[format('layered-networking-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                 "properties": {
                     "extensionType": "microsoft.iotoperations.layerednetworkmanagement",
                     "version": "[variables('VERSIONS').layeredNetworking]",
@@ -456,7 +452,7 @@ V1_TEMPLATE = TemplateVer(
                     "configurationSettings": {},
                 },
                 "dependsOn": [
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]"
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]"
                 ],
             },
             {
@@ -469,17 +465,17 @@ V1_TEMPLATE = TemplateVer(
                     "namespace": "[variables('AIO_CLUSTER_RELEASE_NAMESPACE')]",
                     "displayName": "[parameters('customLocationName')]",
                     "clusterExtensionIds": [
-                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]",
-                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'assets')]",
-                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'processor')]",
-                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'mq')]",
+                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
+                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('assets-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
+                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('processor-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
+                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('mq-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
                     ],
                 },
                 "dependsOn": [
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations')]",
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'processor')]",
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'assets')]",
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'mq')]",
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('processor-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('assets-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('mq-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
                 ],
             },
             {
@@ -593,20 +589,20 @@ V1_TEMPLATE = TemplateVer(
                     "authImage": {
                         "pullPolicy": "Always",
                         "repository": "[format('{0}/dmqtt-authentication', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
+                        "tag": "[variables('VERSIONS').mq]",
                     },
                     "brokerImage": {
                         "pullPolicy": "Always",
                         "repository": "[format('{0}/dmqtt-pod', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
+                        "tag": "[variables('VERSIONS').mq]",
                     },
                     "healthManagerImage": {
                         "pullPolicy": "Always",
                         "repository": "[format('{0}/dmqtt-operator', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
+                        "tag": "[variables('VERSIONS').mq]",
                     },
                     "diagnostics": {
-                        "probeImage": "[format('{0}/diagnostics-probe:{1}-rc3', variables('CONTAINER_REGISTRY_DOMAINS').mq, variables('VERSIONS').mq)]",
+                        "probeImage": "[format('{0}/diagnostics-probe:{1}', variables('CONTAINER_REGISTRY_DOMAINS').mq, variables('VERSIONS').mq)]",
                         "enableSelfCheck": True,
                     },
                     "mode": "[parameters('mqMode')]",
@@ -640,7 +636,7 @@ V1_TEMPLATE = TemplateVer(
                 "properties": {
                     "image": {
                         "repository": "[format('{0}/diagnostics-service', variables('CONTAINER_REGISTRY_DOMAINS').mq)]",
-                        "tag": "[format('{0}-rc3', variables('VERSIONS').mq)]",
+                        "tag": "[variables('VERSIONS').mq]",
                     },
                     "logLevel": "info",
                     "logFormat": "text",
