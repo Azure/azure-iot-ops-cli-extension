@@ -769,7 +769,7 @@ def assert_list_pods(
                 )
                 assert_zipfile_write(
                     mocked_zipfile,
-                    zinfo=f"{namespace}/{resource_api.moniker}/" f"pod.{pod_name}.metric.yaml",
+                    zinfo=f"{namespace}/{resource_api.moniker}/pod.{pod_name}.metric.yaml",
                     data="apiVersion: metrics.k8s.io/v1beta1\nkind: PodMetrics\nmetadata:\n  "
                     "creationTimestamp: '0000-00-00T00:00:00Z'\n  name: mock_custom_object\n  "
                     "namespace: namespace\ntimestamp: '0000-00-00T00:00:00Z'\n",
