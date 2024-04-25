@@ -25,13 +25,11 @@ def test_create_bundle_billing(init_setup, tracked_files):
     check_workload_resource_files(file_map["aio"], expected_workload_types, ["aio-usage"])
 
     # USAGE
-    resource_kinds = ["billingerror", "billingsettings", "billingusage", "billingstorage"]
     check_custom_resource_files(
         file_objs=file_map["usage"],
-        resource_api=CLUSTER_CONFIG_API_V1,
-        resource_kinds=resource_kinds
+        resource_api=CLUSTER_CONFIG_API_V1
     )
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
-    expected_types = expected_workload_types + resource_kinds
-    assert set(file_map["usage"].keys()).issubset(set(expected_types))
+    expected_types = set(expected_workload_types).union(CLUSTER_CONFIG_API_V1.kinds)
+    assert set(file_map["usage"].keys()).issubset(expected_types)
     check_workload_resource_files(file_map["usage"], expected_workload_types, ["billing-operator"])

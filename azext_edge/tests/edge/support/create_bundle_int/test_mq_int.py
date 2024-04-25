@@ -7,7 +7,7 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
+from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
@@ -37,13 +37,12 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
 
     check_custom_resource_files(
         file_objs=file_map,
-        resource_api=MQ_ACTIVE_API,
-        resource_kinds=MqResourceKinds.list(),
+        resource_api=MQ_ACTIVE_API
     )
 
     expected_workload_types = ["deployment", "pod", "replicaset", "service", "statefulset"]
-    expected_types = expected_workload_types + MqResourceKinds.list()
-    assert set(file_map.keys()).issubset(set(expected_types))
+    expected_types = set(expected_workload_types).union(MQ_ACTIVE_API.kinds)
+    assert set(file_map.keys()).issubset(expected_types)
 
     # There is a chance that traces are not present even if mq_traces is true
     if not mq_traces:

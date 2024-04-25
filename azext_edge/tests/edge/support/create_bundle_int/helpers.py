@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from knack.log import get_logger
 from typing import Any, Dict, List, Tuple, Union
 from os import mkdir, path, walk
 from shutil import rmtree, unpack_archive
@@ -14,6 +15,7 @@ from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import run
 
 
+logger = get_logger(__name__)
 EXTRACTED_PATH = "unpacked"
 AUTO_EXTRACTED_PATH = f"auto_{EXTRACTED_PATH}"
 WORKLOAD_TYPES = [
@@ -104,8 +106,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
 
 def check_custom_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
-    resource_api: EdgeResourceApi,
-    resource_kinds: List[str]
+    resource_api: EdgeResourceApi
 ):
     plural_map: Dict[str, str] = {}
     try:
@@ -118,7 +119,7 @@ def check_custom_resource_files(
         # fall back to python sdk if not possible
         pytest.skip("Cannot access resources via kubectl.")
 
-    for kind in resource_kinds:
+    for kind in resource_api.kinds:
         cluster_resources = {}
         if plural_map.get(kind):
             cluster_resources = run(
@@ -194,12 +195,16 @@ def ensure_clean_dir(dir_path: str, tracked_files: List[str]):
 
 
 def find_extra_or_missing_files(
-    resource_type: str, bundle_names: List[str], expected_names: List[str]
+    resource_type: str, bundle_names: List[str], expected_names: List[str], ignore_extras: bool = False
 ):
     error_msg = []
     extra_names = [name for name in bundle_names if name not in expected_names]
     if extra_names:
-        error_msg.append(f"Extra {resource_type} files: {' ,'.join(extra_names)}.")
+        msg = f"Extra {resource_type} files: {' ,'.join(extra_names)}."
+        if ignore_extras:
+            logger.warning(msg)
+        else:
+            error_msg.append(msg)
     missing_files = [name for name in expected_names if name not in bundle_names]
     if missing_files:
         error_msg.append(f"Missing {resource_type} files: {' ,'.join(missing_files)}.")
