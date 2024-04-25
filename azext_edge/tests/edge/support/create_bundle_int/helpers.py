@@ -200,14 +200,14 @@ def find_extra_or_missing_files(
     error_msg = []
     extra_names = [name for name in bundle_names if name not in expected_names]
     if extra_names:
-        msg = f"Extra {resource_type} files: {' ,'.join(extra_names)}."
+        msg = f"Extra {resource_type} files: {', '.join(extra_names)}."
         if ignore_extras:
             logger.warning(msg)
         else:
             error_msg.append(msg)
     missing_files = [name for name in expected_names if name not in bundle_names]
     if missing_files:
-        error_msg.append(f"Missing {resource_type} files: {' ,'.join(missing_files)}.")
+        error_msg.append(f"Missing {resource_type} files: {', '.join(missing_files)}.")
 
     if error_msg:
         raise AssertionError('\n '.join(error_msg))
