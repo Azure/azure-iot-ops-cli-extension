@@ -13,6 +13,7 @@ from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
 from .helpers import (
     assert_file_names,
     check_workload_resource_files,
+    find_extra_or_missing_files,
     get_file_map,
     process_top_levels,
     run_bundle_command,
@@ -83,9 +84,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             # make things easier if there is a different file
             auto_files = sorted(auto_walk_result[f"auto_{directory}"]["files"])
             ser_files = sorted(walk_result[directory]["files"])
-            for file in auto_files:
-                assert file in ser_files
-            assert len(auto_files) == len(ser_files)
+            find_extra_or_missing_files("auto-bundle", auto_files, ser_files)
 
 
 def test_create_bundle_otel(init_setup, tracked_files):
