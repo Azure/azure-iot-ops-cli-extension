@@ -36,7 +36,7 @@ V1_TEMPLATE = TemplateVer(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.26.170.59819", "templateHash": "12307490065967321960"},
+            "_generator": {"name": "bicep", "version": "0.26.170.59819", "templateHash": "14443314871985323425"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -130,9 +130,9 @@ V1_TEMPLATE = TemplateVer(
             "VERSIONS": {
                 "mq": "0.4.0-preview-rc8",
                 "observability": "0.1.0-preview",
-                "aio": "0.5.0-preview-rc1",
+                "aio": "0.5.0-preview-rc2",
                 "layeredNetworking": "0.1.0-preview",
-                "processor": "0.2.1-preview-rc1",
+                "processor": "0.2.1-preview-rc2",
                 "opcUaBroker": "0.4.0-preview-rc1",
                 "adr": "0.1.0-preview",
                 "akri": "0.3.0-preview-rc1",
