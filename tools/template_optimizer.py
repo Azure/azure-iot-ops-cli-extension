@@ -3,9 +3,11 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
-import sys
 import json
+import sys
+from ast import literal_eval
 from subprocess import run
+from unittest import TestCase
 
 
 def process_template(input_template_path: str, output_format: str = "json"):
@@ -36,6 +38,18 @@ def process_template(input_template_path: str, output_format: str = "json"):
             write_file.write(str(data))
             write_file.close()
             run(f"black {output_template_path} --line-length=119 --target-version=py38", check=True)
+
+    # Test serialized content
+    with open(output_template_path, "r") as read_file:
+        content = read_file.read()
+        if output_format == "json":
+            payload_to_integrate = json.loads(content)
+        elif output_format == "python":
+            payload_to_integrate = literal_eval(content)
+
+    assert payload_to_integrate == data
+    TestCase().assertDictEqual(data, payload_to_integrate)
+    print("Expected data assertions passed!")
 
 
 if __name__ == "__main__":
