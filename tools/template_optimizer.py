@@ -36,8 +36,6 @@ def process_template(input_template_path: str, output_format: str = "json"):
             write_file.write(str(data))
             write_file.close()
             run(f"black {output_template_path} --line-length=119 --target-version=py38", check=True)
-        else:
-            raise ValueError("Unsupported output format.")
 
 
 if __name__ == "__main__":
