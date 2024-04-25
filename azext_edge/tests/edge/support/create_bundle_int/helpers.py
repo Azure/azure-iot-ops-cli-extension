@@ -16,7 +16,9 @@ from ....helpers import run
 
 EXTRACTED_PATH = "unpacked"
 AUTO_EXTRACTED_PATH = f"auto_{EXTRACTED_PATH}"
-WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service", "statefulset"]
+WORKLOAD_TYPES = [
+    "cronjob", "daemonset", "deployment", "job", "pod", "podmetric", "pvc", "replicaset", "service", "statefulset"
+]
 
 
 def assert_file_names(files: List[str]):
@@ -77,9 +79,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
         assert name_obj["extension"] in ["log", "txt", "yaml"]
 
         # custom types should have a v
-        if file_type not in [
-            "daemonset", "deployment", "pod", "podmetric", "pvc", "replicaset", "service", "statefulset"
-        ]:
+        if file_type not in WORKLOAD_TYPES:
             if name_obj["extension"] != "yaml":
                 # check diagnositcs.txt later
                 file_name_objs[file_type].append(name_obj)
@@ -268,11 +268,11 @@ def process_top_levels(
     clusterconfig_namespace = None
     for name in namespaces:
         # determine which namespace belongs to aio vs billing
-        level_1 = walk_result.get(path.join(EXTRACTED_PATH, name, "clusterconfig", "billing"))
-        files = [f for f in level_1["files"] if f.startswith("job")]
+        level_1 = walk_result.get(path.join(EXTRACTED_PATH, name, "clusterconfig", "billing"), {})
+        files = [f for f in level_1.get("files", []) if f.startswith("job")]
         if files:
             namespace = name
-        elif len(namespace) > 1:
+        elif level_1:
             clusterconfig_namespace = name
 
     if clusterconfig_namespace:

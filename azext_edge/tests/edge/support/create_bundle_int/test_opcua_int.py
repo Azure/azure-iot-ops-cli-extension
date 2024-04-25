@@ -28,4 +28,4 @@ def test_create_bundle_opcua(init_setup, tracked_files):
     expected_workload_types = ["daemonset", "deployment", "pod", "podmetric", "replicaset", "service"]
     expected_types = expected_workload_types + OpcuaResourceKinds.list()
     assert set(file_map.keys()).issubset(set(expected_types))
-    check_workload_resource_files(file_map, expected_workload_types, "aio-opc")
+    check_workload_resource_files(file_map, expected_workload_types, ["aio-opc", "opcplc"])

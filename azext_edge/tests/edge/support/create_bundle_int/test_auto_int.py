@@ -94,7 +94,7 @@ def test_create_bundle_otel(init_setup, tracked_files):
     ops_service = OpsServiceType.auto.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
-    file_map = get_file_map(walk_result, "otel")
+    file_map = get_file_map(walk_result, "otel")["aio"]
 
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     assert set(file_map.keys()).issubset(set(expected_workload_types))
@@ -111,7 +111,7 @@ def _get_expected_services(
         expected_services.remove(OpsServiceType.auto.value)
         expected_services.remove(OpsServiceType.billing.value)
         expected_services.append("otel")
-        if walk_result.get(path.join(EXTRACTED_PATH, namespace, "clusterconfig")):
+        if walk_result.get(path.join(EXTRACTED_PATH, namespace, "clusterconfig", "billing")):
             expected_services.append("clusterconfig")
         # device registry folder will not be created if there are no device registry resources
         if not walk_result.get(path.join(EXTRACTED_PATH, namespace, OpsServiceType.deviceregistry.value)):
