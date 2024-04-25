@@ -10,10 +10,6 @@ from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
 from zipfile import ZipInfo
 
-from azext_edge.edge.providers.support.shared import NAME_LABEL_FORMAT
-
-from .conftest import add_pod_to_mocked_pods, process_sub_group
-
 import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
@@ -39,12 +35,12 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_SERVICE_LABEL,
     AKRI_WEBHOOK_LABEL,
 )
+from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.clusterconfig.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
     ARC_BILLING_EXTENSION_COMP_LABEL,
     BILLING_RESOURCE_KIND,
 )
-from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_INSTANCE_LABEL,
     DATA_PROCESSOR_LABEL,
@@ -64,12 +60,13 @@ from azext_edge.edge.providers.support.opcua import (
 from azext_edge.edge.providers.support.orc import (
     ORC_APP_LABEL,
     ORC_CONTROLLER_LABEL,
-    ORC_INSTANCE_LABEL,
 )
 from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
+from azext_edge.edge.providers.support.shared import NAME_LABEL_FORMAT
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
 from ...generators import generate_random_string
+from .conftest import add_pod_to_mocked_pods, process_sub_group
 
 a_bundle_dir = f"support_test_{generate_random_string()}"
 
@@ -129,7 +126,7 @@ def test_create_bundle(
             mocked_client=mocked_client,
             expected_pod_map=mocked_list_pods,
             mock_names=["aio-runner"],
-            mock_init_containers=True
+            mock_init_containers=True,
         )
 
     since_seconds = random.randint(86400, 172800)
@@ -152,7 +149,7 @@ def test_create_bundle(
                 api,
                 kind,
                 file_prefix=target_file_prefix,
-                sub_group=sub_group
+                sub_group=sub_group,
             )
 
         if api in [CLUSTER_CONFIG_API_V1]:
@@ -238,7 +235,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=MQ_NAME_LABEL,
                 field_selector=None,
-                resource_api=MQ_API_V1B1
+                resource_api=MQ_API_V1B1,
             )
             assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, resource_api=MQ_API_V1B1)
             assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, resource_api=MQ_API_V1B1)
@@ -350,16 +347,13 @@ def test_create_bundle(
 
             # Assert runtime resources
             assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1
+                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                resource_api=DATA_PROCESSOR_API_V1
+                resource_api=DATA_PROCESSOR_API_V1,
             )
 
             assert_list_pods(
@@ -382,10 +376,7 @@ def test_create_bundle(
             )
 
             assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_LABEL,
-                resource_api=DATA_PROCESSOR_API_V1
+                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, resource_api=DATA_PROCESSOR_API_V1
             )
             assert_list_replica_sets(
                 mocked_client,
@@ -455,7 +446,7 @@ def test_create_bundle(
             )
 
         if api in [ORC_API_V1]:
-            for orc_label in [ORC_APP_LABEL, ORC_INSTANCE_LABEL, ORC_CONTROLLER_LABEL]:
+            for orc_label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
                 assert_list_pods(
                     mocked_client,
                     mocked_zipfile,
@@ -673,8 +664,7 @@ def assert_list_cron_jobs(
     sub_group: Optional[str] = None,
 ):
     mocked_client.BatchV1Api().list_cron_job_for_all_namespaces.assert_any_call(
-        label_selector=label_selector,
-        field_selector=None
+        label_selector=label_selector, field_selector=None
     )
     sub_group = process_sub_group(sub_group)
 
@@ -734,8 +724,7 @@ def assert_list_jobs(
     sub_group: Optional[str] = None,
 ):
     mocked_client.BatchV1Api().list_job_for_all_namespaces.assert_any_call(
-        label_selector=label_selector,
-        field_selector=None
+        label_selector=label_selector, field_selector=None
     )
 
     sub_group = process_sub_group(sub_group)
@@ -780,22 +769,23 @@ def assert_list_pods(
                 )
                 assert_zipfile_write(
                     mocked_zipfile,
-                    zinfo=f"{namespace}/{resource_api.moniker}/"
-                    f"pod.{pod_name}.metric.yaml",
+                    zinfo=f"{namespace}/{resource_api.moniker}/" f"pod.{pod_name}.metric.yaml",
                     data="apiVersion: metrics.k8s.io/v1beta1\nkind: PodMetrics\nmetadata:\n  "
                     "creationTimestamp: '0000-00-00T00:00:00Z'\n  name: mock_custom_object\n  "
                     "namespace: namespace\ntimestamp: '0000-00-00T00:00:00Z'\n",
                 )
 
             for container_name in pods_with_container[namespace][pod_name]:
-                data = f"kind: Pod\nmetadata:\n  name: {pod_name}\n  namespace: {namespace}\nspec:\n  " +\
+                data = (
+                    f"kind: Pod\nmetadata:\n  name: {pod_name}\n  namespace: {namespace}\nspec:\n  "
                     f"containers:\n  - name: {container_name}\n"
+                )
                 data += init_data
 
                 assert_zipfile_write(
                     mocked_zipfile,
                     zinfo=f"{namespace}/{resource_api.moniker}/{sub_group}pod.{pod_name}.yaml",
-                    data=data
+                    data=data,
                 )
 
                 if "since_seconds" in kwargs:
@@ -837,12 +827,12 @@ def assert_list_replica_sets(
 
 
 def assert_list_persistent_volume_claims(
-        mocked_client,
-        mocked_zipfile,
-        resource_api: EdgeResourceApi,
-        label_selector: str = None,
-        field_selector: str = None,
-        sub_group: Optional[str] = None,
+    mocked_client,
+    mocked_zipfile,
+    resource_api: EdgeResourceApi,
+    label_selector: str = None,
+    field_selector: str = None,
+    sub_group: Optional[str] = None,
 ):
     mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.assert_any_call(
         label_selector=label_selector, field_selector=field_selector
