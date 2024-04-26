@@ -41,9 +41,9 @@ def test_connected_cluster_operations(
     )
 
     resource_id = connected_cluster.resource_id
-    assert (
-        resource_id
-        == f"/subscriptions/{sub}/resourceGroups/{rg_name}/providers/Microsoft.Kubernetes/connectedClusters/{cluster_name}"
+    assert resource_id == (
+        f"/subscriptions/{sub}/resourceGroups/{rg_name}"
+        f"/providers/Microsoft.Kubernetes/connectedClusters/{cluster_name}"
     )
 
     target_namespace = generate_random_string()

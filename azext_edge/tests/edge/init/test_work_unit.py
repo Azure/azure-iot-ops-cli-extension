@@ -568,20 +568,17 @@ def test_work_order(
     if no_preflight:
         environ[INIT_NO_PREFLIGHT_ENV_KEY] = "true"
 
-    if rotation_poll_interval:
-        call_kwargs["rotation_poll_interval"] = rotation_poll_interval
-    if csi_driver_version:
-        call_kwargs["csi_driver_version"] = csi_driver_version
-    if cluster_namespace:
-        call_kwargs["cluster_namespace"] = cluster_namespace
-    if keyvault_spc_secret_name:
-        call_kwargs["keyvault_spc_secret_name"] = keyvault_spc_secret_name
-    if tls_ca_path:
-        call_kwargs["tls_ca_path"] = tls_ca_path
-    if tls_ca_key_path:
-        call_kwargs["tls_ca_key_path"] = tls_ca_key_path
-    if tls_ca_dir:
-        call_kwargs["tls_ca_dir"] = tls_ca_dir
+    for param_with_default in [
+        (rotation_poll_interval, "rotation_poll_interval"),
+        (csi_driver_version, "csi_driver_version"),
+        (cluster_namespace, "cluster_namespace"),
+        (keyvault_spc_secret_name, "keyvault_spc_secret_name"),
+        (tls_ca_path, "tls_ca_path"),
+        (tls_ca_key_path, "tls_ca_key_path"),
+        (tls_ca_dir, "tls_ca_dir")
+    ]:
+        if param_with_default[0]:
+            call_kwargs[param_with_default[1]] = param_with_default[1]
 
     result = init(**call_kwargs)
     expected_template_copies = 0
