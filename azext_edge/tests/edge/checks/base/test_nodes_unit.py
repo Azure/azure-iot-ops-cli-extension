@@ -119,10 +119,19 @@ def test_check_nodes(mocked_node_client):
 
     # the generator is weird
     unpacked_cols = [list(col.cells) for col in table.columns]
+    
+    # expected row
+    assert "Minimum requirements" in unpacked_cols[0][0]
+    assert ", ".join(AIO_SUPPORTED_ARCHITECTURES) in unpacked_cols[1][0]
+    assert MIN_NODE_VCPU in unpacked_cols[2][0]
+    assert MIN_NODE_MEMORY[:-1] in unpacked_cols[3][0]
+    assert MIN_NODE_STORAGE[:-1] in unpacked_cols[4][0]
 
     for i in range(len(nodes)):
         node = nodes[i]
         name = node.metadata.name
+        # first row is to show expected
+        i = i + 1
         assert name in unpacked_cols[0][i]
         arch = node.status.node_info.architecture
         assert arch in unpacked_cols[1][i]

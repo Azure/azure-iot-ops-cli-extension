@@ -94,7 +94,13 @@ def _generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Tabl
         ("Storage (GB)", "right"),
     ]:
         table.add_column(column_name, justify=f"{justify}")
-
+    table.add_row(*[COLOR_STR_FORMAT.format(color="cyan", value=value) for value in [
+        "Minimum requirements",
+        ", ".join(AIO_SUPPORTED_ARCHITECTURES),
+        MIN_NODE_VCPU,
+        MIN_NODE_MEMORY[:-1],
+        MIN_NODE_STORAGE[:-1]
+    ]])
     node: V1Node
     for node in nodes.items:
         node_name = node.metadata.name
