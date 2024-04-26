@@ -9,7 +9,6 @@ from os import mkdir, path
 from knack.log import get_logger
 from typing import Dict, List
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
 from .helpers import (
     assert_file_names,
     check_workload_resource_files,
