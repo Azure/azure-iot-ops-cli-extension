@@ -11,6 +11,11 @@ from azext_edge.edge.providers.check.common import CoreServiceResourceKinds
 
 
 @pytest.fixture
+def mocked_check_manager(mocker):
+    return mocker.patch("azext_edge.edge.providers.check.base.CheckManager", autospec=True)
+
+
+@pytest.fixture
 def mock_evaluate_akri_pod_health(mocker):
     patched = mocker.patch("azext_edge.edge.providers.check.akri.evaluate_pod_health", return_value={})
     yield patched
@@ -81,7 +86,7 @@ def mock_opcua_get_namespaced_pods_by_prefix(mocker):
 
 @pytest.fixture
 def mock_resource_types(mocker, ops_service):
-    patched = mocker.patch("azext_edge.edge.providers.check.base.enumerate_ops_service_resources")
+    patched = mocker.patch("azext_edge.edge.providers.check.base.deployment.enumerate_ops_service_resources")
 
     if ops_service == "mq":
         patched.return_value = (
@@ -200,7 +205,7 @@ def generate_pod_stub(
     return pod
 
 
-def assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup):
+def assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup):
     # Mock the functions
     for key, value in eval_lookup.items():
         eval_lookup[key] = mocker.patch(value, return_value={})

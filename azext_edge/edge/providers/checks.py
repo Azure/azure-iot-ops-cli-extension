@@ -10,7 +10,7 @@ from azure.cli.core.azclierror import ArgumentUsageError
 from rich.console import Console
 
 from ..common import ListableEnum, OpsServiceType
-from .check.base import check_pre_deployment, process_as_list
+from .check.base import check_pre_deployment, display_as_list
 from .check.common import ResourceOutputDetailLevel
 from .check.dataprocessor import check_dataprocessor_deployment
 from .check.deviceregistry import check_deviceregistry_deployment
@@ -71,7 +71,7 @@ def run_checks(
             )
 
         if as_list:
-            return process_as_list(console=console, result=result) if as_list else result
+            return display_as_list(console=console, result=result)
         return result
 
 

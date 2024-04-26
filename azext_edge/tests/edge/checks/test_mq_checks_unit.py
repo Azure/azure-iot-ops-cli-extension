@@ -68,7 +68,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
         MqResourceKinds.DATALAKE_CONNECTOR.value: "azext_edge.edge.providers.check.mq.evaluate_datalake_connectors",
     }
 
-    assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
+    assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())

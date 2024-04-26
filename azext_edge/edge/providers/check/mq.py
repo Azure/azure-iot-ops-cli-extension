@@ -15,7 +15,7 @@ from .base import (
     evaluate_pod_health,
     get_resource_metadata_property,
     get_resources_by_name,
-    resources_grouped_by_namespace
+    get_resources_grouped_by_namespace
 )
 
 from rich.console import NewLine
@@ -69,7 +69,6 @@ def check_mq_deployment(
         check_name="enumerateMqApi",
         check_desc="Enumerate MQ API resources",
         result=result,
-        resource_kinds_enum=MqResourceKinds,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
@@ -111,7 +110,7 @@ def evaluate_diagnostics_service(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, diagnostic_services) in resources_grouped_by_namespace(all_diagnostic_services):
+    for (namespace, diagnostic_services) in get_resources_grouped_by_namespace(all_diagnostic_services):
         check_manager.add_target(
             target_name=target_diagnostic_service,
             namespace=namespace,
@@ -312,7 +311,7 @@ def evaluate_broker_listeners(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, listeners) in resources_grouped_by_namespace(all_listeners):
+    for (namespace, listeners) in get_resources_grouped_by_namespace(all_listeners):
         valid_broker_refs = _get_valid_references(kind=MqResourceKinds.BROKER, namespace=namespace)
 
         check_manager.add_target(
@@ -553,7 +552,7 @@ def evaluate_brokers(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, brokers) in resources_grouped_by_namespace(all_brokers):
+    for (namespace, brokers) in get_resources_grouped_by_namespace(all_brokers):
         check_manager.add_target(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
         check_manager.add_display(
             target_name=target_brokers,
@@ -1470,15 +1469,4 @@ def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = Non
 
 
 def _calculate_connector_status(resource_state: str) -> str:
-    eval_status = CheckTaskStatus.success.value
-
-    if resource_state in [ResourceState.error.value, ResourceState.failed.value]:
-        eval_status = CheckTaskStatus.error.value
-    elif resource_state in [
-        ResourceState.recovering.value,
-        ResourceState.warn.value,
-        ResourceState.starting.value,
-        "N/A",
-    ]:
-        eval_status = CheckTaskStatus.warning.value
-    return eval_status
+    return ResourceState.map_to_status(resource_state).value

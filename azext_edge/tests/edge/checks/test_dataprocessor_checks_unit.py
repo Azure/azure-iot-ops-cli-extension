@@ -54,7 +54,7 @@ def test_check_dataprocessor_by_resource_types(ops_service, mocker, mock_resourc
         DataProcessorResourceKinds.PIPELINE.value: "azext_edge.edge.providers.check.dataprocessor.evaluate_pipelines",
     }
 
-    assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
+    assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())

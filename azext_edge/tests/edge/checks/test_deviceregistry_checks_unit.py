@@ -39,7 +39,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
             "azext_edge.edge.providers.check.deviceregistry.evaluate_asset_endpoint_profiles",
     }
 
-    assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
+    assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())

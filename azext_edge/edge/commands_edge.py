@@ -11,8 +11,10 @@ from typing import Any, Dict, List, Optional, Union
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 
+
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
+from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
     MqMemoryProfile,
     MqMode,
@@ -61,8 +63,11 @@ def check(
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
 
-    run_pre = True
-    run_post = True
+    # by default - run prechecks if AIO is not deployed
+    run_pre = not ORC_API_V1.is_deployed() if pre_deployment_checks is None else pre_deployment_checks
+    run_post = True if post_deployment_checks is None else post_deployment_checks
+
+    # only one of pre or post is explicity set to True
     if pre_deployment_checks and not post_deployment_checks:
         run_post = False
     if post_deployment_checks and not pre_deployment_checks:
