@@ -119,7 +119,7 @@ def test_check_nodes(mocked_node_client):
 
     # the generator is weird
     unpacked_cols = [list(col.cells) for col in table.columns]
-    
+
     # expected row
     assert "Minimum requirements" in unpacked_cols[0][0]
     assert ", ".join(AIO_SUPPORTED_ARCHITECTURES) in unpacked_cols[1][0]
