@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from os import path, sep
 from zipfile import ZipFile
 from azure.cli.core.azclierror import CLIInternalError
@@ -105,7 +105,8 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
 
 def check_custom_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
-    resource_api: EdgeResourceApi
+    resource_api: EdgeResourceApi,
+    namespace: Optional[str] = None
 ):
     plural_map: Dict[str, str] = {}
     try:
@@ -118,11 +119,12 @@ def check_custom_resource_files(
         # fall back to python sdk if not possible
         pytest.skip("Cannot access resources via kubectl.")
 
+    namespace = f"-n {namespace}" if namespace else "-A"
     for kind in resource_api.kinds:
         cluster_resources = {}
         if plural_map.get(kind):
             cluster_resources = run(
-                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} -A -o json"
+                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
             )
 
         expected_names = [r["metadata"]["name"] for r in cluster_resources.get("items", [])]
@@ -231,7 +233,8 @@ def get_file_map(
         return
 
     ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
-    file_map = {}
+    # separate namespaces
+    file_map = {"__namespaces__": {}}
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
         assert len(walk_result) == 2
@@ -243,10 +246,12 @@ def get_file_map(
         ops_path = path.join(BASE_ZIP_PATH, namespace, "clusterconfig", ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
+        file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service != "otel":
         assert len(walk_result) == 1
         assert not walk_result[ops_path]["folders"]
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
+    file_map["__namespaces__"]["aio"] = namespace
     return file_map
 
 
