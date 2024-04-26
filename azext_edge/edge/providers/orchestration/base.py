@@ -43,6 +43,9 @@ from .common import (
     GRAPH_V1_APP_ENDPOINT,
     GRAPH_V1_ENDPOINT,
     GRAPH_V1_SP_ENDPOINT,
+    KEYVAULT_ARC_EXTENSION_VERSION,
+    KEYVAULT_CLOUD_API_VERSION,
+    KEYVAULT_DATAPLANE_API_VERSION,
 )
 from .components import (
     get_kv_secret_store_yaml,
@@ -57,11 +60,6 @@ if TYPE_CHECKING:
 
 EXTENSION_API_VERSION = "2022-11-01"  # TODO: fun testing with newer api
 IOT_OPERATIONS_EXTENSION_PREFIX = "microsoft.iotoperations"
-
-# TODO: pull out into keyvault file (with other related funcs)
-KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
-KEYVAULT_DATAPLANE_API_VERSION = "7.4"
-KEYVAULT_ARC_EXTENSION_VERSION = "1.5.2"
 
 PROPAGATION_DELAY_SEC = 25
 
@@ -81,6 +79,7 @@ def provision_akv_csi_driver(
     enable_secret_rotation: str,
     rotation_poll_interval: str = "1h",
     extension_name: str = "akvsecretsprovider",
+    extension_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
     **kwargs,  # TODO: someday remove all kwargs from the smaller funcs
 ) -> dict:
     resource_client = get_resource_client(subscription_id=subscription_id)
@@ -94,7 +93,7 @@ def provision_akv_csi_driver(
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "autoUpgradeMinorVersion": False,
-                    "version": KEYVAULT_ARC_EXTENSION_VERSION,
+                    "version": extension_version,
                     "extensionType": "microsoft.azurekeyvaultsecretsprovider",
                     "configurationSettings": {
                         "secrets-store-csi-driver.enableSecretRotation": enable_secret_rotation,

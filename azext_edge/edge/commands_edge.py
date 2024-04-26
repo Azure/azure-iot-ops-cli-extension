@@ -20,6 +20,7 @@ from .providers.orchestration.common import (
     KubernetesDistroType,
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     DEFAULT_X509_CA_VALID_DAYS,
+    KEYVAULT_ARC_EXTENSION_VERSION,
 )
 from .providers.support.base import get_bundle_path
 from .common import OpsServiceType
@@ -123,6 +124,7 @@ def init(
     target_name: Optional[str] = None,
     disable_secret_rotation: Optional[bool] = None,
     rotation_poll_interval: str = "1h",
+    csi_driver_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
     service_principal_app_id: Optional[str] = None,
     service_principal_object_id: Optional[str] = None,
     service_principal_secret: Optional[str] = None,
@@ -234,6 +236,7 @@ def init(
         keyvault_spc_secret_name=str(keyvault_spc_secret_name),
         disable_secret_rotation=disable_secret_rotation,
         rotation_poll_interval=str(rotation_poll_interval),
+        csi_driver_version=str(csi_driver_version),
         service_principal_app_id=service_principal_app_id,
         service_principal_object_id=service_principal_object_id,
         service_principal_secret=service_principal_secret,

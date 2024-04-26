@@ -22,7 +22,6 @@ from rich.table import Table
 
 from ...util import get_timestamp_now_utc
 from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
-from .base import KEYVAULT_ARC_EXTENSION_VERSION
 from .template import CURRENT_TEMPLATE, TemplateVer, get_current_template_copy
 
 logger = get_logger(__name__)
@@ -108,6 +107,7 @@ class WorkManager:
         if self._keyvault_resource_id:
             self._keyvault_name = self._keyvault_resource_id.split("/")[-1]
         self._keyvault_sat_secret_name = kwargs["keyvault_spc_secret_name"]
+        self._csi_driver_version = kwargs["csi_driver_version"]
         self._sp_app_id = kwargs.get("service_principal_app_id")
         self._sp_obj_id = kwargs.get("service_principal_object_id")
         self._tls_ca_path = kwargs.get("tls_ca_path")
@@ -125,8 +125,8 @@ class WorkManager:
         self._cluster_secret_ref = CLUSTER_SECRET_REF
         self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
         # TODO: Make cluster target with KPIs
-        self._cluster_namespace = kwargs.get("cluster_namespace")
-        self._custom_location_name = kwargs.get("custom_location_name")
+        self._cluster_namespace = kwargs["cluster_namespace"]
+        self._custom_location_name = kwargs["custom_location_name"]
         self._deploy_rsync_rules = not kwargs.get("disable_rsync_rules", False)
         self._connected_cluster = None
         self._kwargs = kwargs
@@ -173,7 +173,7 @@ class WorkManager:
         kv_sp_test_desc = "Test SP access"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_TEST, description=kv_sp_test_desc)
 
-        kv_csi_deploy_desc = f"Deploy driver to cluster '[cyan]v{KEYVAULT_ARC_EXTENSION_VERSION}[/cyan]'"
+        kv_csi_deploy_desc = f"Deploy driver to cluster '[cyan]v{self._csi_driver_version}[/cyan]'"
         self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_DEPLOY, description=kv_csi_deploy_desc)
 
         kv_csi_configure_desc = "Configure driver"
@@ -383,7 +383,9 @@ class WorkManager:
                     work_kpis["csiDriver"]["enableSecretRotation"] = enable_secret_rotation
 
                     akv_csi_driver_result = provision_akv_csi_driver(
-                        enable_secret_rotation=enable_secret_rotation, **self._kwargs
+                        enable_secret_rotation=enable_secret_rotation,
+                        extension_version=self._csi_driver_version,
+                        **self._kwargs,
                     )
                     work_kpis["csiDriver"]["version"] = akv_csi_driver_result["properties"]["version"]
 

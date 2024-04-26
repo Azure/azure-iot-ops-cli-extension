@@ -80,8 +80,13 @@ def mocked_base_namespace_functions(mocker, request):
 )
 @pytest.mark.parametrize("rotation_poll_interval", ["1h"])
 @pytest.mark.parametrize("extension_name", ["akvsecretsprovider"])
+@pytest.mark.parametrize("extension_version", [None, "1.5.1", "1.5.3"])
 def test_provision_akv_csi_driver(
-    mocked_resource_management_client, mocked_wait_for_terminal_state, rotation_poll_interval, extension_name
+    mocked_resource_management_client,
+    mocked_wait_for_terminal_state,
+    rotation_poll_interval,
+    extension_name,
+    extension_version,
 ):
     from azext_edge.edge.providers.orchestration.base import (
         KEYVAULT_ARC_EXTENSION_VERSION,
@@ -92,6 +97,13 @@ def test_provision_akv_csi_driver(
     cluster_name = generate_random_string()
     resource_group_name = generate_random_string()
     enable_secret_rotation = generate_random_string()
+
+    options = {}
+    expected_extension_version = KEYVAULT_ARC_EXTENSION_VERSION
+    if extension_version:
+        options["extension_version"] = extension_version
+        expected_extension_version = extension_version
+
     result = provision_akv_csi_driver(
         subscription_id=subscription_id,
         cluster_name=cluster_name,
@@ -99,6 +111,7 @@ def test_provision_akv_csi_driver(
         enable_secret_rotation=enable_secret_rotation,
         rotation_poll_interval=rotation_poll_interval,
         extension_name=extension_name,
+        **options,
     )
 
     assert result == mocked_wait_for_terminal_state.return_value.as_dict.return_value
@@ -117,7 +130,7 @@ def test_provision_akv_csi_driver(
     params = call_kwargs["parameters"]
     assert params["identity"] == {"type": "SystemAssigned"}
     assert params["properties"]["autoUpgradeMinorVersion"] is False
-    assert params["properties"]["version"] == KEYVAULT_ARC_EXTENSION_VERSION
+    assert params["properties"]["version"] == expected_extension_version
     assert params["properties"]["configurationProtectedSettings"] == {}
     config_settings = params["properties"]["configurationSettings"]
     assert config_settings["secrets-store-csi-driver.enableSecretRotation"] == enable_secret_rotation
@@ -929,7 +942,9 @@ def test_verify_custom_location_namespace(
         resource_group_name="rg1",
     )
 
-    from azext_edge.edge.providers.orchestration.base import verify_custom_location_namespace
+    from azext_edge.edge.providers.orchestration.base import (
+        verify_custom_location_namespace,
+    )
 
     if get_cl_for_np_return_value and get_cl_for_np_return_value["name"] != custom_location_name:
         with pytest.raises(ValidationError) as ve:
