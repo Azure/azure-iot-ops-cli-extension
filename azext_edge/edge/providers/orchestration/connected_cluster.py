@@ -49,11 +49,11 @@ class ConnectedCluster:
 
     def get_custom_location_for_namespace(self, namespace: str) -> Optional[dict]:
         query = f"""
-        Resources
-        | where type == 'microsoft.extendedlocation/customlocations'
-        | where tolower(properties.hostResourceId) == tolower('{self.resource_id}')
-        | where tolower(properties.namespace) == tolower('{namespace}')
-        | project id, name, location, properties
+        resources
+        | where type =~ 'microsoft.extendedlocation/customlocations'
+        | where properties.hostResourceId =~ '{self.resource_id}'
+        | where properties.namespace =~ '{namespace}'
+        | project id, name, location, properties, apiVersion
         """
 
         result = self.resource_graph.query_resources(query=query)

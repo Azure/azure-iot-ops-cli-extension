@@ -21,6 +21,11 @@ EXTENDED_LOCATION_ROLE_BINDING = "AzureArc-Microsoft.ExtendedLocation-RP-RoleBin
 ARC_CONFIG_MAP = "azure-clusterconfig"
 ARC_NAMESPACE = "azure-arc"
 
+# Key Vault KPIs
+KEYVAULT_ARC_EXTENSION_VERSION = "1.5.2"
+KEYVAULT_DATAPLANE_API_VERSION = "7.4"
+KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
+
 
 class MqMode(Enum):
     auto = "auto"
@@ -53,4 +58,7 @@ __all__ = [
     "KubernetesDistroType",
     "DEFAULT_X509_CA_VALID_DAYS",
     "DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS",
+    "KEYVAULT_ARC_EXTENSION_VERSION",
+    "KEYVAULT_DATAPLANE_API_VERSION",
+    "KEYVAULT_CLOUD_API_VERSION",
 ]
