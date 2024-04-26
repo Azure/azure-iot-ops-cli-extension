@@ -578,7 +578,7 @@ def test_work_order(
         (tls_ca_dir, "tls_ca_dir")
     ]:
         if param_with_default[0]:
-            call_kwargs[param_with_default[1]] = param_with_default[1]
+            call_kwargs[param_with_default[1]] = param_with_default[0]
 
     result = init(**call_kwargs)
     expected_template_copies = 0
