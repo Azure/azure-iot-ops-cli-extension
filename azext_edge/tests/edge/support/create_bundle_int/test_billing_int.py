@@ -20,8 +20,13 @@ def test_create_bundle_billing(init_setup, tracked_files):
     file_map = get_file_map(walk_result, ops_service)
 
     # AIO
+    check_custom_resource_files(
+        file_objs=file_map["usage"],
+        resource_api=CLUSTER_CONFIG_API_V1
+    )
     expected_workload_types = ["cronjob", "job", "pod"]
-    assert set(file_map["aio"].keys()).issubset(set(expected_workload_types))
+    expected_types = set(expected_workload_types).union(CLUSTER_CONFIG_API_V1.kinds)
+    assert set(file_map["aio"].keys()).issubset(set(expected_types))
     check_workload_resource_files(file_map["aio"], expected_workload_types, ["aio-usage"])
 
     # USAGE
