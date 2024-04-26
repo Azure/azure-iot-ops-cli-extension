@@ -6,8 +6,8 @@
 
 from knack.log import get_logger
 from typing import Any, Dict, List, Tuple, Union
-from os import mkdir, path, walk
-from shutil import rmtree, unpack_archive
+from os import path, sep
+from zipfile import ZipFile
 from azure.cli.core.azclierror import CLIInternalError
 import pytest
 from azext_edge.edge.common import OpsServiceType
@@ -16,8 +16,7 @@ from ....helpers import run
 
 
 logger = get_logger(__name__)
-EXTRACTED_PATH = "unpacked"
-AUTO_EXTRACTED_PATH = f"auto_{EXTRACTED_PATH}"
+BASE_ZIP_PATH = "__root__"
 WORKLOAD_TYPES = [
     "cronjob", "daemonset", "deployment", "job", "pod", "podmetric", "pvc", "replicaset", "service", "statefulset"
 ]
@@ -185,15 +184,6 @@ def check_workload_resource_files(
         find_extra_or_missing_files(key, present_names, expected_item_names)
 
 
-def ensure_clean_dir(dir_path: str, tracked_files: List[str]):
-    try:
-        mkdir(dir_path)
-        tracked_files.append(dir_path)
-    except FileExistsError:
-        rmtree(dir_path)
-        mkdir(dir_path)
-
-
 def find_extra_or_missing_files(
     resource_type: str, bundle_names: List[str], expected_names: List[str], ignore_extras: bool = False
 ):
@@ -234,13 +224,13 @@ def get_file_map(
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
     namespace, c_namespace = process_top_levels(walk_result, ops_service)
-    walk_result.pop(path.join(EXTRACTED_PATH, namespace))
+    walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
 
     # Level 2 and 3 - bottom
     if ops_service == OpsServiceType.dataprocessor.value and not walk_result:
         return
 
-    ops_path = path.join(EXTRACTED_PATH, namespace, ops_service)
+    ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
     file_map = {}
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
@@ -250,8 +240,8 @@ def get_file_map(
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
     elif ops_service == "billing":
         assert len(walk_result) == 2
-        ops_path = path.join(EXTRACTED_PATH, namespace, "clusterconfig", ops_service)
-        c_path = path.join(EXTRACTED_PATH, c_namespace, "clusterconfig", ops_service)
+        ops_path = path.join(BASE_ZIP_PATH, namespace, "clusterconfig", ops_service)
+        c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
     elif ops_service != "otel":
         assert len(walk_result) == 1
@@ -263,7 +253,7 @@ def get_file_map(
 def process_top_levels(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str
 ) -> Tuple[str, str]:
-    level_0 = walk_result.pop(EXTRACTED_PATH)
+    level_0 = walk_result.pop(BASE_ZIP_PATH)
     for file in ["events.yaml", "nodes.yaml", "storage_classes.yaml"]:
         assert file in level_0["files"]
     if not level_0["folders"]:
@@ -273,7 +263,7 @@ def process_top_levels(
     clusterconfig_namespace = None
     for name in namespaces:
         # determine which namespace belongs to aio vs billing
-        level_1 = walk_result.get(path.join(EXTRACTED_PATH, name, "clusterconfig", "billing"), {})
+        level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, "clusterconfig", "billing"), {})
         files = [f for f in level_1.get("files", []) if f.startswith("job")]
         if files:
             namespace = name
@@ -282,13 +272,13 @@ def process_top_levels(
 
     if clusterconfig_namespace:
         # remove empty billing related folders
-        level_1 = walk_result.pop(path.join(EXTRACTED_PATH, clusterconfig_namespace))
+        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
         assert level_1["folders"] == ["clusterconfig"]
         assert not level_1["files"]
-        level_2 = walk_result.pop(path.join(EXTRACTED_PATH, namespace, "clusterconfig"))
+        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, "clusterconfig"))
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
-        level_2 = walk_result.pop(path.join(EXTRACTED_PATH, clusterconfig_namespace, "clusterconfig"))
+        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
 
@@ -298,15 +288,30 @@ def process_top_levels(
 def run_bundle_command(
     command: str,
     tracked_files: List[str],
-    extracted_path: str = EXTRACTED_PATH,
 ) -> Dict[str, Dict[str, List[str]]]:
-    ensure_clean_dir(extracted_path, tracked_files)
     result = run(command)
     assert result["bundlePath"]
     tracked_files.append(result["bundlePath"])
-    unpack_archive(result["bundlePath"], extract_dir=extracted_path)
-    return {
-        directory: {
-            "folders": folders, "files": files
-        } for directory, folders, files in walk(extracted_path)
-    }
+    # transform this into a walk result of an extracted zip file
+    walk_result = {}
+    with ZipFile(result["bundlePath"], 'r') as zip:
+        file_names = zip.namelist()
+        for name in file_names:
+            name = path.join(BASE_ZIP_PATH, name)
+            # fill out files
+            directory, file_name = path.split(name)
+            if directory not in walk_result:
+                walk_result[directory] = {"folders": [], "files": []}
+            walk_result[directory]["files"].append(file_name)
+
+            # fill out folders - handle all levels on first time seeing it
+            while sep in directory:
+                directory, sub = directory.rsplit(sep, 1)
+                if directory not in walk_result:
+                    walk_result[directory] = {"folders": [], "files": []}
+                if sub not in walk_result[directory]["folders"]:
+                    walk_result[directory]["folders"].append(sub)
+                else:
+                    # if we have seen sub before, then the higher levels should have been handled already
+                    break
+    return walk_result

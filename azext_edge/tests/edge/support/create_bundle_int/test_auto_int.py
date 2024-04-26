@@ -17,8 +17,7 @@ from .helpers import (
     get_file_map,
     process_top_levels,
     run_bundle_command,
-    AUTO_EXTRACTED_PATH,
-    EXTRACTED_PATH
+    BASE_ZIP_PATH
 )
 
 logger = get_logger(__name__)
@@ -29,8 +28,6 @@ logger = get_logger(__name__)
 @pytest.mark.parametrize("mq_traces", [False, True])
 def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
     """Test to focus on ops_service param."""
-    if ops_service == OpsServiceType.billing.value and not CLUSTER_CONFIG_API_V1.is_deployed():
-        pytest.skip("TODO: Billing resources are not in deployed template yet.")
 
     command = f"az iot ops support create-bundle --mq-traces {mq_traces} " + "--ops-service {0}"
     if bundle_dir:
@@ -45,28 +42,27 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     if ops_service != OpsServiceType.auto.value:
         auto_walk_result = run_bundle_command(
             command=command.format(OpsServiceType.auto.value),
-            tracked_files=tracked_files,
-            extracted_path=AUTO_EXTRACTED_PATH
+            tracked_files=tracked_files
         )
 
     # Level 0 - top
     namespace, _ = process_top_levels(walk_result, ops_service)
 
     # Level 1
-    level_1 = walk_result.pop(path.join(EXTRACTED_PATH, namespace))
+    level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
     expected_services = _get_expected_services(walk_result, ops_service, namespace)
     assert sorted(level_1["folders"]) == expected_services
     assert not level_1["files"]
 
     # Check and take out mq traces:
     if mq_traces and ops_service in [OpsServiceType.auto.value, OpsServiceType.mq.value]:
-        mq_level = walk_result.pop(path.join(EXTRACTED_PATH, namespace, "mq", "traces"), {})
+        mq_level = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, "mq", "traces"), {})
         if mq_level:
             assert not mq_level["folders"]
             assert_file_names(mq_level["files"])
             # make sure level 2 doesnt get messed up
-            assert walk_result[path.join(EXTRACTED_PATH, namespace, "mq")]["folders"] == ["traces"]
-            walk_result[path.join(EXTRACTED_PATH, namespace, "mq")]["folders"] = []
+            assert walk_result[path.join(BASE_ZIP_PATH, namespace, "mq")]["folders"] == ["traces"]
+            walk_result[path.join(BASE_ZIP_PATH, namespace, "mq")]["folders"] = []
 
     # Level 2 and 3 - bottom
     assert len(walk_result) == (len(expected_services) + int("clusterconfig" in expected_services))
@@ -80,9 +76,9 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         if mq_traces and ops_service == OpsServiceType.mq.value:
             expected_folders.append(['traces'])
         for directory in walk_result:
-            assert auto_walk_result[f"auto_{directory}"]["folders"] in expected_folders
+            assert auto_walk_result[directory]["folders"] in expected_folders
             # make things easier if there is a different file
-            auto_files = sorted(auto_walk_result[f"auto_{directory}"]["files"])
+            auto_files = sorted(auto_walk_result[directory]["files"])
             ser_files = sorted(walk_result[directory]["files"])
             find_extra_or_missing_files(
                 f"auto bundle files not found in {ops_service} bundle", auto_files, ser_files, ignore_extras=True
@@ -112,10 +108,10 @@ def _get_expected_services(
         expected_services.remove(OpsServiceType.auto.value)
         expected_services.remove(OpsServiceType.billing.value)
         expected_services.append("otel")
-        if walk_result.get(path.join(EXTRACTED_PATH, namespace, "clusterconfig", "billing")):
+        if walk_result.get(path.join(BASE_ZIP_PATH, namespace, "clusterconfig", "billing")):
             expected_services.append("clusterconfig")
         # device registry folder will not be created if there are no device registry resources
-        if not walk_result.get(path.join(EXTRACTED_PATH, namespace, OpsServiceType.deviceregistry.value)):
+        if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value)):
             expected_services.remove(OpsServiceType.deviceregistry.value)
         expected_services.sort()
     elif ops_service == OpsServiceType.billing.value:

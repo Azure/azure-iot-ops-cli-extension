@@ -21,7 +21,7 @@ from azext_edge.edge.providers.orchestration.connected_cluster import ConnectedC
 
 from ...generators import generate_random_string, get_zeroed_subscription
 
-BASE_PATH = "azext_edge.edge.providers.orchestration.base"
+BASE_ZIP_PATH = "azext_edge.edge.providers.orchestration.base"
 ZEROED_SUB = get_zeroed_subscription()
 
 
@@ -30,24 +30,24 @@ ZEROED_SUB = get_zeroed_subscription()
 def mocked_wait_for_terminal_state(mocker):
     terminal_result = mocker.Mock()
     terminal_result.as_dict.return_value = generate_random_string()
-    terminal_patch = mocker.patch(f"{BASE_PATH}.wait_for_terminal_state", autospec=True, return_value=terminal_result)
+    terminal_patch = mocker.patch(f"{BASE_ZIP_PATH}.wait_for_terminal_state", autospec=True, return_value=terminal_result)
     yield terminal_patch
 
 
 @pytest.fixture
 def mocked_sleep(mocker):
-    yield mocker.patch(f"{BASE_PATH}.sleep")
+    yield mocker.patch(f"{BASE_ZIP_PATH}.sleep")
 
 
 @pytest.fixture
 def mocked_get_tenant_id(mocker):
-    yield mocker.patch(f"{BASE_PATH}.get_tenant_id", return_value=generate_random_string())
+    yield mocker.patch(f"{BASE_ZIP_PATH}.get_tenant_id", return_value=generate_random_string())
 
 
 @pytest.fixture
 def mocked_keyvault_api(mocker, request):
     is_deployed = getattr(request, "param", True)
-    api_patch = mocker.patch(f"{BASE_PATH}.KEYVAULT_API_V1")
+    api_patch = mocker.patch(f"{BASE_ZIP_PATH}.KEYVAULT_API_V1")
     api_patch.is_deployed.return_value = is_deployed
     api_patch.group = generate_random_string()
     api_patch.version = generate_random_string()
@@ -57,7 +57,7 @@ def mocked_keyvault_api(mocker, request):
 @pytest.fixture
 def mocked_base_namespace_functions(mocker, request):
     requests = getattr(request, "param", {})
-    path = requests.get("path", BASE_PATH)
+    path = requests.get("path", BASE_ZIP_PATH)
     get_cluster = requests.get("get_cluster_namespace")
     get_cluster_patch = mocker.patch(f"{path}.get_cluster_namespace", return_value=get_cluster)
     create_cluster_patch = mocker.patch(f"{path}.create_cluster_namespace")
@@ -75,7 +75,7 @@ def mocked_base_namespace_functions(mocker, request):
 
 @pytest.mark.parametrize(
     "mocked_resource_management_client",
-    [{"client_path": BASE_PATH, "resources.begin_create_or_update_by_id": {"result": generate_random_string()}}],
+    [{"client_path": BASE_ZIP_PATH, "resources.begin_create_or_update_by_id": {"result": generate_random_string()}}],
     indirect=True,
 )
 @pytest.mark.parametrize("rotation_poll_interval", ["1h"])
@@ -131,7 +131,7 @@ def test_provision_akv_csi_driver(
     indirect=True,
 )
 def test_configure_cluster_secrets(mocker, mocked_base_namespace_functions, mocked_keyvault_api):
-    get_store_patch = mocker.patch(f"{BASE_PATH}.get_kv_secret_store_yaml", return_value=generate_random_string())
+    get_store_patch = mocker.patch(f"{BASE_ZIP_PATH}.get_kv_secret_store_yaml", return_value=generate_random_string())
     from azext_edge.edge.providers.orchestration.base import configure_cluster_secrets
 
     cluster_namespace = generate_random_string()
@@ -249,7 +249,7 @@ def test_prepare_sp(
     import datetime
 
     timedelta_spy = mocker.spy(datetime, "timedelta")
-    access_patch = mocker.patch(f"{BASE_PATH}.ensure_correct_access")
+    access_patch = mocker.patch(f"{BASE_ZIP_PATH}.ensure_correct_access")
     from azext_edge.edge.providers.orchestration.base import prepare_sp
 
     deployment_name = generate_random_string()
@@ -334,7 +334,7 @@ def test_prepare_sp_catches(mocker, mocked_cmd, mocked_get_tenant_id, mocked_sen
         return request_mock
 
     mocked_send_raw_request.side_effect = custom_responses
-    mocker.patch(f"{BASE_PATH}.ensure_correct_access")
+    mocker.patch(f"{BASE_ZIP_PATH}.ensure_correct_access")
     sp = prepare_sp(
         mocked_cmd,
         generate_random_string(),
@@ -374,7 +374,7 @@ def test_prepare_sp_error(
     mocked_send_raw_request.return_value.json.side_effect = HTTPError(
         error_msg=generate_random_string(), response=response
     )
-    mocker.patch(f"{BASE_PATH}.ensure_correct_access")
+    mocker.patch(f"{BASE_ZIP_PATH}.ensure_correct_access")
     from azext_edge.edge.providers.orchestration.base import prepare_sp
 
     if not all([app_id, object_id, secret]):
@@ -428,12 +428,12 @@ def test_ensure_correct_access(mocked_cmd, mocked_send_raw_request, key_vault, m
 def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path, tls_ca_dir):
     from unittest.mock import mock_open, patch
 
-    file_patch = mocker.patch(f"{BASE_PATH}.read_file_content", return_value=generate_random_string())
+    file_patch = mocker.patch(f"{BASE_ZIP_PATH}.read_file_content", return_value=generate_random_string())
     path_mock = mocker.Mock()
     path_mock.joinpath.return_value = generate_random_string()
     normalize_dir_patch = mocker.patch("azext_edge.edge.util.normalize_dir", return_value=path_mock)
     cert_patch = mocker.patch(
-        f"{BASE_PATH}.generate_self_signed_cert", return_value=(generate_random_string(), generate_random_string())
+        f"{BASE_ZIP_PATH}.generate_self_signed_cert", return_value=(generate_random_string(), generate_random_string())
     )
 
     with patch("builtins.open", mock_open(read_data="data")) as mock_open_file:
@@ -475,7 +475,7 @@ def test_prepare_ca(mocker, tls_ca_path, tls_ca_key_path, tls_ca_dir):
     "mocked_resource_management_client",
     [
         {
-            "client_path": BASE_PATH,
+            "client_path": BASE_ZIP_PATH,
             "resources.get_by_id": {"properties": {"result": generate_random_string()}},
         }
     ],
@@ -497,7 +497,7 @@ def test_validate_keyvault_permission_model(mocked_resource_management_client):
     "mocked_resource_management_client",
     [
         {
-            "client_path": BASE_PATH,
+            "client_path": BASE_ZIP_PATH,
             "resources.get_by_id": {"properties": {"enableRbacAuthorization": True}},
         }
     ],
@@ -519,7 +519,7 @@ def test_validate_keyvault_permission_model_error(mocked_resource_management_cli
     "mocked_resource_management_client",
     [
         {
-            "client_path": BASE_PATH,
+            "client_path": BASE_ZIP_PATH,
             "resources.begin_create_or_update_by_id": {"result": generate_random_string()},
         }
     ],
@@ -590,7 +590,7 @@ def test_prepare_keyvault_secret(mocked_cmd, mocked_send_raw_request, secret_nam
     "mocked_resource_management_client",
     [
         {
-            "client_path": BASE_PATH,
+            "client_path": BASE_ZIP_PATH,
             "deployments.begin_create_or_update": {"result": generate_random_string()},
             "deployments.begin_what_if": {"result": generate_random_string()},
         }
@@ -741,7 +741,7 @@ def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions, mocked_cm
     ],
 )
 def test_verify_custom_locations_enabled(mocker, role_bindings):
-    get_binding_patch = mocker.patch(f"{BASE_PATH}.get_bindings", return_value=role_bindings)
+    get_binding_patch = mocker.patch(f"{BASE_ZIP_PATH}.get_bindings", return_value=role_bindings)
     from azext_edge.edge.providers.orchestration.base import (
         verify_custom_locations_enabled,
     )
@@ -826,7 +826,7 @@ def test_verify_custom_locations_enabled(mocker, role_bindings):
     ],
 )
 def test_verify_arc_cluster_config(mocker, mocked_cmd, test_scenario):
-    get_config_map_patch = mocker.patch(f"{BASE_PATH}.get_config_map", return_value=test_scenario["config_map"])
+    get_config_map_patch = mocker.patch(f"{BASE_ZIP_PATH}.get_config_map", return_value=test_scenario["config_map"])
     from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_config
 
     connected_cluster = ConnectedCluster(
@@ -863,7 +863,7 @@ def test_eval_secret_via_sp(mocker, mocked_cmd, http_error):
 
     mock_token = generate_random_string()
     mocked_get_token_from_sp_credential: Mock = mocker.patch(
-        f"{BASE_PATH}.get_token_from_sp_credential", return_value=mock_token
+        f"{BASE_ZIP_PATH}.get_token_from_sp_credential", return_value=mock_token
     )
     mocked_send_raw_request: Mock = mocker.patch("azure.cli.core.util.send_raw_request")
 
