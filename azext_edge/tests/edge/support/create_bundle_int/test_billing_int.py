@@ -21,7 +21,7 @@ def test_create_bundle_billing(init_setup, tracked_files):
 
     # AIO
     check_custom_resource_files(
-        file_objs=file_map["usage"],
+        file_objs=file_map["aio"],
         resource_api=CLUSTER_CONFIG_API_V1
     )
     expected_workload_types = ["cronjob", "job", "pod"]
