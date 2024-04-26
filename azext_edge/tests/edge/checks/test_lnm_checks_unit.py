@@ -40,7 +40,7 @@ def test_check_lnm_by_resource_types(ops_service, mocker, mock_resource_types, r
         LnmResourceKinds.LNM.value: "azext_edge.edge.providers.check.lnm.evaluate_lnms",
     }
 
-    assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
+    assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())

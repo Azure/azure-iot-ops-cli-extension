@@ -11,8 +11,10 @@ from typing import Any, Dict, List, Optional, Union
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 
+
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
+from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
     MqMemoryProfile,
     MqMode,
@@ -20,6 +22,7 @@ from .providers.orchestration.common import (
     KubernetesDistroType,
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     DEFAULT_X509_CA_VALID_DAYS,
+    KEYVAULT_ARC_EXTENSION_VERSION,
 )
 from .providers.support.base import get_bundle_path
 from .common import OpsServiceType
@@ -61,8 +64,11 @@ def check(
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
 
-    run_pre = True
-    run_post = True
+    # by default - run prechecks if AIO is not deployed
+    run_pre = not ORC_API_V1.is_deployed() if pre_deployment_checks is None else pre_deployment_checks
+    run_post = True if post_deployment_checks is None else post_deployment_checks
+
+    # only one of pre or post is explicity set to True
     if pre_deployment_checks and not post_deployment_checks:
         run_post = False
     if post_deployment_checks and not pre_deployment_checks:
@@ -123,6 +129,7 @@ def init(
     target_name: Optional[str] = None,
     disable_secret_rotation: Optional[bool] = None,
     rotation_poll_interval: str = "1h",
+    csi_driver_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
     service_principal_app_id: Optional[str] = None,
     service_principal_object_id: Optional[str] = None,
     service_principal_secret: Optional[str] = None,
@@ -234,6 +241,7 @@ def init(
         keyvault_spc_secret_name=str(keyvault_spc_secret_name),
         disable_secret_rotation=disable_secret_rotation,
         rotation_poll_interval=str(rotation_poll_interval),
+        csi_driver_version=str(csi_driver_version),
         service_principal_app_id=service_principal_app_id,
         service_principal_object_id=service_principal_object_id,
         service_principal_secret=service_principal_secret,

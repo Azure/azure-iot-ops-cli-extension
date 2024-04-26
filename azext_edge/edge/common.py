@@ -28,6 +28,30 @@ class CheckTaskStatus(Enum):
     error = "error"
     skipped = "skipped"
 
+    @property
+    def color(self) -> str:
+        color_map = {
+            CheckTaskStatus.success: "green",
+            CheckTaskStatus.warning: "yellow",
+            CheckTaskStatus.error: "red",
+            CheckTaskStatus.skipped: "bright white",
+        }
+        return color_map[self]
+
+    @property
+    def emoji(self) -> str:
+        emoji_map = {
+            CheckTaskStatus.success: "heavy_check_mark",
+            CheckTaskStatus.warning: "warning",
+            CheckTaskStatus.error: "stop_sign",
+            CheckTaskStatus.skipped: "hammer",
+        }
+        return f":{emoji_map[self]}:"
+
+    @classmethod
+    def map_to_colored_emoji(cls, value) -> str:
+        return f"[{cls[value].color}]{cls[value].emoji}[{cls[value].color}]"
+
 
 class ResourceState(Enum):
     """
@@ -37,10 +61,28 @@ class ResourceState(Enum):
     starting = "Starting"
     running = "Running"
     recovering = "Recovering"
+    succeeded = "Succeeded"
     failed = "Failed"
     ok = "OK"
     warn = "warn"
     error = "Error"
+    n_a = "N/A"
+
+    @classmethod
+    def map_to_color(cls, value) -> str:
+        return cls.map_to_status(value).color
+
+    @classmethod
+    def map_to_status(cls, value) -> CheckTaskStatus:
+        status_map = {
+            cls.starting.value: CheckTaskStatus.warning,
+            cls.recovering.value: CheckTaskStatus.warning,
+            cls.warn.value: CheckTaskStatus.warning,
+            cls.n_a.value: CheckTaskStatus.warning,
+            cls.failed.value: CheckTaskStatus.error,
+            cls.error.value: CheckTaskStatus.error,
+        }
+        return status_map.get(value, CheckTaskStatus.success)
 
 
 class PodState(Enum):
@@ -53,6 +95,15 @@ class PodState(Enum):
     succeeded = "Succeeded"
     failed = "Failed"
     unknown = "Unknown"
+
+    @classmethod
+    def map_to_status(cls, value) -> CheckTaskStatus:
+        status_map = {
+            cls.pending.value: CheckTaskStatus.warning,
+            cls.unknown.value: CheckTaskStatus.warning,
+            cls.failed.value: CheckTaskStatus.error,
+        }
+        return status_map.get(value, CheckTaskStatus.success)
 
 
 class ProvisioningState(Enum):

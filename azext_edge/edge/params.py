@@ -477,6 +477,12 @@ def load_iotops_arguments(self, _):
             arg_group="Key Vault CSI Driver",
         )
         context.argument(
+            "csi_driver_version",
+            options_list=["--csi-driver-ver"],
+            help="CSI driver version.",
+            arg_group="Key Vault CSI Driver",
+        )
+        context.argument(
             "service_principal_app_id",
             options_list=["--sp-app-id"],
             help="Service principal app Id. If provided will be used for CSI driver setup. "

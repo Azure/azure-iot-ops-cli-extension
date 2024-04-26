@@ -4,9 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Union
-from os import mkdir, path, walk
-from shutil import rmtree, unpack_archive
+from knack.log import get_logger
+from typing import Any, Dict, List, Optional, Tuple, Union
+from os import path, sep
+from zipfile import ZipFile
 from azure.cli.core.azclierror import CLIInternalError
 import pytest
 from azext_edge.edge.common import OpsServiceType
@@ -14,9 +15,11 @@ from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import run
 
 
-EXTRACTED_PATH = "unpacked"
-AUTO_EXTRACTED_PATH = f"auto_{EXTRACTED_PATH}"
-WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service", "statefulset"]
+logger = get_logger(__name__)
+BASE_ZIP_PATH = "__root__"
+WORKLOAD_TYPES = [
+    "cronjob", "daemonset", "deployment", "job", "pod", "podmetric", "pvc", "replicaset", "service", "statefulset"
+]
 
 
 def assert_file_names(files: List[str]):
@@ -77,9 +80,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
         assert name_obj["extension"] in ["log", "txt", "yaml"]
 
         # custom types should have a v
-        if file_type not in [
-            "daemonset", "deployment", "pod", "podmetric", "pvc", "replicaset", "service", "statefulset"
-        ]:
+        if file_type not in WORKLOAD_TYPES:
             if name_obj["extension"] != "yaml":
                 # check diagnositcs.txt later
                 file_name_objs[file_type].append(name_obj)
@@ -105,7 +106,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
 def check_custom_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     resource_api: EdgeResourceApi,
-    resource_kinds: List[str]
+    namespace: Optional[str] = None
 ):
     plural_map: Dict[str, str] = {}
     try:
@@ -118,11 +119,12 @@ def check_custom_resource_files(
         # fall back to python sdk if not possible
         pytest.skip("Cannot access resources via kubectl.")
 
-    for kind in resource_kinds:
+    namespace = f"-n {namespace}" if namespace else "-A"
+    for kind in resource_api.kinds:
         cluster_resources = {}
         if plural_map.get(kind):
             cluster_resources = run(
-                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} -A -o json"
+                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
             )
 
         expected_names = [r["metadata"]["name"] for r in cluster_resources.get("items", [])]
@@ -184,25 +186,20 @@ def check_workload_resource_files(
         find_extra_or_missing_files(key, present_names, expected_item_names)
 
 
-def ensure_clean_dir(dir_path: str, tracked_files: List[str]):
-    try:
-        mkdir(dir_path)
-        tracked_files.append(dir_path)
-    except FileExistsError:
-        rmtree(dir_path)
-        mkdir(dir_path)
-
-
 def find_extra_or_missing_files(
-    resource_type: str, bundle_names: List[str], expected_names: List[str]
+    resource_type: str, bundle_names: List[str], expected_names: List[str], ignore_extras: bool = False
 ):
     error_msg = []
     extra_names = [name for name in bundle_names if name not in expected_names]
     if extra_names:
-        error_msg.append(f"Extra {resource_type} files: {' ,'.join(extra_names)}.")
+        msg = f"Extra {resource_type} files: {', '.join(extra_names)}."
+        if ignore_extras:
+            logger.warning(msg)
+        else:
+            error_msg.append(msg)
     missing_files = [name for name in expected_names if name not in bundle_names]
     if missing_files:
-        error_msg.append(f"Missing {resource_type} files: {' ,'.join(missing_files)}.")
+        error_msg.append(f"Missing {resource_type} files: {', '.join(missing_files)}.")
 
     if error_msg:
         raise AssertionError('\n '.join(error_msg))
@@ -223,47 +220,103 @@ def get_kubectl_items(prefixes: Union[str, List[str]], service_type: str) -> Dic
 
 
 def get_file_map(
-    walk_result,
+    walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
     mq_traces: bool = False
-) -> Dict[str, List[Dict[str, str]]]:
+) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    level_0 = walk_result.pop(EXTRACTED_PATH)
-    namespace = level_0["folders"][0]
-    walk_result.pop(path.join(EXTRACTED_PATH, namespace))
+    namespace, c_namespace = process_top_levels(walk_result, ops_service)
+    walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
 
     # Level 2 and 3 - bottom
     if ops_service == OpsServiceType.dataprocessor.value and not walk_result:
         return
 
-    ops_path = path.join(EXTRACTED_PATH, namespace, ops_service)
-    file_map = {}
+    ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
+    # separate namespaces
+    file_map = {"__namespaces__": {}}
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
         assert len(walk_result) == 2
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
+    elif ops_service == "billing":
+        assert len(walk_result) == 2
+        ops_path = path.join(BASE_ZIP_PATH, namespace, "clusterconfig", ops_service)
+        c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
+        file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
+        file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service != "otel":
         assert len(walk_result) == 1
         assert not walk_result[ops_path]["folders"]
-
-    file_map.update(convert_file_names(walk_result[ops_path]["files"]))
+    file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
+    file_map["__namespaces__"]["aio"] = namespace
     return file_map
+
+
+def process_top_levels(
+    walk_result: Dict[str, Dict[str, List[str]]], ops_service: str
+) -> Tuple[str, str]:
+    level_0 = walk_result.pop(BASE_ZIP_PATH)
+    for file in ["events.yaml", "nodes.yaml", "storage_classes.yaml"]:
+        assert file in level_0["files"]
+    if not level_0["folders"]:
+        pytest.skip(f"No bundles created for {ops_service}.")
+    namespaces = level_0["folders"]
+    namespace = namespaces[0]
+    clusterconfig_namespace = None
+    for name in namespaces:
+        # determine which namespace belongs to aio vs billing
+        level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, "clusterconfig", "billing"), {})
+        files = [f for f in level_1.get("files", []) if f.startswith("job")]
+        if files:
+            namespace = name
+        elif level_1:
+            clusterconfig_namespace = name
+
+    if clusterconfig_namespace:
+        # remove empty billing related folders
+        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
+        assert level_1["folders"] == ["clusterconfig"]
+        assert not level_1["files"]
+        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, "clusterconfig"))
+        assert level_2["folders"] == ["billing"]
+        assert not level_2["files"]
+        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
+        assert level_2["folders"] == ["billing"]
+        assert not level_2["files"]
+
+    return namespace, clusterconfig_namespace
 
 
 def run_bundle_command(
     command: str,
     tracked_files: List[str],
-    extracted_path: str = EXTRACTED_PATH,
 ) -> Dict[str, Dict[str, List[str]]]:
-    ensure_clean_dir(extracted_path, tracked_files)
     result = run(command)
     assert result["bundlePath"]
     tracked_files.append(result["bundlePath"])
-    unpack_archive(result["bundlePath"], extract_dir=extracted_path)
-    return {
-        directory: {
-            "folders": folders, "files": files
-        } for directory, folders, files in walk(extracted_path)
-    }
+    # transform this into a walk result of an extracted zip file
+    walk_result = {}
+    with ZipFile(result["bundlePath"], 'r') as zip:
+        file_names = zip.namelist()
+        for name in file_names:
+            name = path.join(BASE_ZIP_PATH, name)
+            # fill out files
+            directory, file_name = path.split(name)
+            if directory not in walk_result:
+                walk_result[directory] = {"folders": [], "files": []}
+            walk_result[directory]["files"].append(file_name)
+
+            # fill out folders - handle all levels on first time seeing it
+            while sep in directory:
+                directory, sub = directory.rsplit(sep, 1)
+                if directory not in walk_result:
+                    walk_result[directory] = {"folders": [], "files": []}
+                if sub not in walk_result[directory]["folders"]:
+                    walk_result[directory]["folders"].append(sub)
+                else:
+                    # if we have seen sub before, then the higher levels should have been handled already
+                    break
+    return walk_result

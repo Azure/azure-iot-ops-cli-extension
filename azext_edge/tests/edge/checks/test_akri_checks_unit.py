@@ -45,7 +45,7 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
         AkriResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.akri.evaluate_instances",
     }
 
-    assert_check_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds, eval_lookup)
+    assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())

@@ -16,14 +16,13 @@ from .base import (
     process_deployments,
     process_v1_pods,
     process_services,
-    process_replicasets
+    process_replicasets,
 )
 
 logger = get_logger(__name__)
 
 
-ORC_INSTANCE_LABEL = "app.kubernetes.io/instance in (azure-iot-operations)"
-ORC_APP_LABEL = "app in (aio-orc-api)"
+ORC_APP_LABEL = "app in (aio-orc-api, cert-manager, cainjector, webhook)"
 ORC_CONTROLLER_LABEL = "control-plane in (aio-orc-controller-manager)"
 
 # TODO: @jiacju - this label will be used near future for consistency
@@ -31,47 +30,40 @@ ORC_CONTROLLER_LABEL = "control-plane in (aio-orc-controller-manager)"
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
-    processed = process_v1_pods(
-        resource_api=ORC_API_V1,
-        label_selector=ORC_INSTANCE_LABEL,
-        since_seconds=since_seconds,
-    )
-    processed.extend(
-        process_v1_pods(
-            resource_api=ORC_API_V1,
-            label_selector=ORC_APP_LABEL,
-            since_seconds=since_seconds,
+    processed = []
+    for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
+        processed.extend(
+            process_v1_pods(
+                resource_api=ORC_API_V1,
+                label_selector=label,
+                since_seconds=since_seconds,
+            )
         )
-    )
-    processed.extend(
-        process_v1_pods(
-            resource_api=ORC_API_V1,
-            label_selector=ORC_CONTROLLER_LABEL,
-            since_seconds=since_seconds,
-        )
-    )
 
     return processed
 
 
 def fetch_deployments():
-    processed = process_deployments(resource_api=ORC_API_V1, label_selector=ORC_INSTANCE_LABEL)
-    processed.extend(process_deployments(resource_api=ORC_API_V1, label_selector=ORC_APP_LABEL))
-    processed.extend(process_deployments(resource_api=ORC_API_V1, label_selector=ORC_CONTROLLER_LABEL))
+    processed = []
+    for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
+        processed.extend(process_deployments(resource_api=ORC_API_V1, label_selector=label))
+
     return processed
 
 
 def fetch_services():
-    processed = process_services(resource_api=ORC_API_V1, label_selector=ORC_INSTANCE_LABEL)
-    processed.extend(process_services(resource_api=ORC_API_V1, label_selector=ORC_APP_LABEL))
-    processed.extend(process_services(resource_api=ORC_API_V1, label_selector=ORC_CONTROLLER_LABEL))
+    processed = []
+    for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
+        processed.extend(process_services(resource_api=ORC_API_V1, label_selector=label))
+
     return processed
 
 
 def fetch_replicasets():
-    processed = process_replicasets(resource_api=ORC_API_V1, label_selector=ORC_INSTANCE_LABEL)
-    processed.extend(process_replicasets(resource_api=ORC_API_V1, label_selector=ORC_APP_LABEL))
-    processed.extend(process_replicasets(resource_api=ORC_API_V1, label_selector=ORC_CONTROLLER_LABEL))
+    processed = []
+    for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
+        processed.extend(process_replicasets(resource_api=ORC_API_V1, label_selector=label))
+
     return processed
 
 
