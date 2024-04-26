@@ -378,6 +378,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
     keyvault_spc_secret_name,
     disable_secret_rotation,
     rotation_poll_interval,
+    csi_driver_version,
     tls_ca_path,
     tls_ca_key_path,
     tls_ca_dir,
@@ -395,6 +396,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # keyvault_spc_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
+            None,  # csi_driver_version
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -411,6 +413,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # keyvault_spc_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
+            None,  # csi_driver_version
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -427,6 +430,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             generate_random_string(),  # keyvault_spc_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
+            None,  # csi_driver_version
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -443,6 +447,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             generate_random_string(),  # keyvault_spc_secret_name
             True,  # disable_secret_rotation
             "3h",  # rotation_poll_interval
+            None,  # csi_driver_version
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             "/certs/",  # tls_ca_dir
@@ -459,6 +464,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             generate_random_string(),  # keyvault_spc_secret_name
             True,  # disable_secret_rotation
             "3h",  # rotation_poll_interval
+            "2.0.0",  # csi_driver_version
             "/my/ca.crt",  # tls_ca_path
             "/my/key.pem",  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -475,6 +481,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # keyvault_spc_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
+            None,  # csi_driver_version
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -491,6 +498,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # keyvault_spc_secret_name
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
+            None,  # csi_driver_version
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -533,6 +541,7 @@ def test_work_order(
     keyvault_spc_secret_name,
     disable_secret_rotation,
     rotation_poll_interval,
+    csi_driver_version,
     tls_ca_path,
     tls_ca_key_path,
     tls_ca_dir,
@@ -561,6 +570,8 @@ def test_work_order(
 
     if rotation_poll_interval:
         call_kwargs["rotation_poll_interval"] = rotation_poll_interval
+    if csi_driver_version:
+        call_kwargs["csi_driver_version"] = csi_driver_version
     if cluster_namespace:
         call_kwargs["cluster_namespace"] = cluster_namespace
     if keyvault_spc_secret_name:
@@ -622,9 +633,11 @@ def test_work_order(
     if keyvault_resource_id:
         assert result["csiDriver"]
         assert result["csiDriver"]["spAppId"]
-        assert result["csiDriver"]["version"] == KEYVAULT_ARC_EXTENSION_VERSION
         assert result["csiDriver"]["spObjectId"]
         assert result["csiDriver"]["keyVaultId"] == keyvault_resource_id
+
+        expected_csi_driver_version = csi_driver_version if csi_driver_version else KEYVAULT_ARC_EXTENSION_VERSION
+        assert result["csiDriver"]["version"] == expected_csi_driver_version
 
         expected_keyvault_spc_secret_name = keyvault_spc_secret_name if keyvault_spc_secret_name else DEFAULT_NAMESPACE
         assert result["csiDriver"]["kvSatSecretName"] == expected_keyvault_spc_secret_name
