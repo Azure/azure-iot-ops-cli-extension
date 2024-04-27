@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict, List, NamedTuple, Union
+from typing import Dict, List, NamedTuple, Union, Optional
 
 from rich.tree import Tree
 
@@ -15,6 +15,7 @@ class IoTOperationsResource(NamedTuple):
     resource_id: str
     display_name: str
     api_version: str
+    segments: Optional[int] = None
 
 
 class IoTOperationsResourceMap:
@@ -79,7 +80,7 @@ class IoTOperationsResourceMap:
         return result
 
     def get_resources(self, custom_location_id: str) -> List[IoTOperationsResource]:
-        result = []
+        result: List[IoTOperationsResource] = []
         if (
             "customLocations" in self._resource_map
             and self._resource_map["customLocations"]
@@ -88,19 +89,30 @@ class IoTOperationsResourceMap:
             and "resources" in self._resource_map["customLocations"][custom_location_id]
             and self._resource_map["customLocations"][custom_location_id]["resources"]
         ):
-            sorted_resources = sorted(
-                self._resource_map["customLocations"][custom_location_id]["resources"],
-                key=lambda r: (len(r["id"].split("/")), r["name"].lower()),
-                reverse=True,
-            )
-            for resource in sorted_resources:
+            # sorted_resources = sorted(
+            #     self._resource_map["customLocations"][custom_location_id]["resources"],
+            #     key=lambda r: (len(r["id"].split("/")), r["name"].lower()),
+            #     reverse=True,
+            # )
+            for resource in self._resource_map["customLocations"][custom_location_id]["resources"]:
                 result.append(
                     IoTOperationsResource(
-                        resource_id=resource["id"], display_name=resource["name"], api_version=resource["apiVersion"]
+                        resource_id=resource["id"],
+                        display_name=resource["name"],
+                        api_version=resource["apiVersion"],
+                        segments=len(resource["id"].split("/")),
                     )
                 )
+            sorted_resources = sorted(result, key=lambda r: (r.segments, r.display_name.lower()), reverse=True)
 
-        return result
+            # for resource in sorted_resources:
+            #     result.append(
+            #         IoTOperationsResource(
+            #             resource_id=resource["id"], display_name=resource["name"], api_version=resource["apiVersion"]
+            #         )
+            #     )
+
+        return sorted_resources
 
     def refresh_related_resource_ids(
         self,

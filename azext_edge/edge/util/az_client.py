@@ -59,8 +59,18 @@ def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
     return poller.result()
 
 
-def wait_for_terminal_states(*pollers: "LROPoller"):
-    pass
+def wait_for_terminal_states(
+    *pollers: "LROPoller", retries: int = POLL_RETRIES, wait_sec: int = POLL_WAIT_SEC
+) -> "LROPoller":
+    counter = 0
+    while counter < retries:
+        sleep(wait_sec)
+        counter = counter + 1
+        batch_done = all([poller.done() for poller in pollers])
+        if batch_done:
+            break
+
+    return pollers
 
 
 def get_tenant_id() -> str:
