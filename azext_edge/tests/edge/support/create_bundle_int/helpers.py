@@ -269,11 +269,17 @@ def process_top_levels(
     for name in namespaces:
         # determine which namespace belongs to aio vs billing
         level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, "clusterconfig", "billing"), {})
-        files = [f for f in level_1.get("files", []) if f.startswith("job")]
+        files = [f for f in level_1.get("files", []) if f.startswith("deployment")]
         if files:
-            namespace = name
-        elif level_1:
+            # if there is a deployment, should be azure-extensions-usage-system
             clusterconfig_namespace = name
+        else:
+            namespace = name
+
+    logger.info("Determined the following namespaces:")
+    logger.info(f"AIO namespace: {namespace}")
+    if clusterconfig_namespace:
+        logger.info(f"Usage system namespace: {clusterconfig_namespace}")
 
     if clusterconfig_namespace:
         # remove empty billing related folders
