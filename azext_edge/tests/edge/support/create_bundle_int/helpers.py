@@ -6,7 +6,7 @@
 
 from knack.log import get_logger
 from typing import Any, Dict, List, Optional, Tuple, Union
-from os import path, sep
+from os import path
 from zipfile import ZipFile
 from azure.cli.core.azclierror import CLIInternalError
 import pytest
@@ -269,13 +269,17 @@ def process_top_levels(
     for name in namespaces:
         # determine which namespace belongs to aio vs billing
         level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, "clusterconfig", "billing"), {})
-        files = [f for f in level_1.get("files", []) if f.startswith("job")]
+        files = [f for f in level_1.get("files", []) if f.startswith("deployment")]
         if files:
-            namespace = name
-        elif level_1:
+            # if there is a deployment, should be azure-extensions-usage-system
             clusterconfig_namespace = name
+        else:
+            namespace = name
 
     if clusterconfig_namespace:
+        logger.debug("Determined the following namespaces:")
+        logger.debug(f"AIO namespace: {namespace}")
+        logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
         # remove empty billing related folders
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
         assert level_1["folders"] == ["clusterconfig"]
@@ -303,20 +307,30 @@ def run_bundle_command(
         file_names = zip.namelist()
         for name in file_names:
             name = path.join(BASE_ZIP_PATH, name)
-            # fill out files
             directory, file_name = path.split(name)
-            if directory not in walk_result:
-                walk_result[directory] = {"folders": [], "files": []}
-            walk_result[directory]["files"].append(file_name)
 
-            # fill out folders - handle all levels on first time seeing it
-            while sep in directory:
-                directory, sub = directory.rsplit(sep, 1)
-                if directory not in walk_result:
-                    walk_result[directory] = {"folders": [], "files": []}
-                if sub not in walk_result[directory]["folders"]:
-                    walk_result[directory]["folders"].append(sub)
-                else:
-                    # if we have seen sub before, then the higher levels should have been handled already
-                    break
+            # decompose incase seperator from zipfile is different from os sep. Example:
+            # windows sep is \\
+            # zipfile returns azure-extensions-usage-system/clusterconfig/billing
+            decomposed_folders = []
+            while path.split(directory)[0]:
+                directory, sub = path.split(directory)
+                decomposed_folders.append(sub)
+            decomposed_folders.append(directory)
+
+            built_path = ""
+            while decomposed_folders:
+                folder = decomposed_folders.pop(-1)
+                # make sure to add in directory to parent folder if it exists
+                if built_path and folder not in walk_result[built_path]["folders"]:
+                    walk_result[built_path]["folders"].append(folder)
+
+                built_path = path.join(built_path, folder)
+                # add in the current built directory in
+                if built_path not in walk_result:
+                    walk_result[built_path] = {"folders": [], "files": []}
+
+            # lastly add in the file (with the correct seperators)
+            walk_result[built_path]["files"].append(file_name)
+
     return walk_result
