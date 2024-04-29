@@ -132,6 +132,16 @@ jobs:
             for asset in $(az resource list -g ${{ env.RESOURCE_GROUP }} --resource-type $asset_type --query "[?$in_cluster_ext_loc].id" -o tsv); do
               az resource delete -v --id $asset --verbose
             done
+      - name: Delete asset endpoint profiles
+        uses: azure/cli@v2
+        with:
+          azcliversion: 2.58.0
+          inlineScript: |
+            endpoint_type="Microsoft.DeviceRegistry/assetEndpointProfiles"
+            in_cluster_ext_loc="contains(to_string(extendedLocation.name), '${{ env.CLUSTER_PREFIX }}')"
+            for endpoint in $(az resource list -g ${{ env.RESOURCE_GROUP }} --resource-type $endpoint_type --query "[?$in_cluster_ext_loc].id" -o tsv); do
+              az resource delete -v --id $endpoint --verbose
+            done
   arc-cleanup:
     runs-on: ubuntu-latest
     needs: [resource-cleanup, mq-cleanup]
