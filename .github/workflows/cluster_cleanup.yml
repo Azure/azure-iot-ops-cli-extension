@@ -45,21 +45,6 @@ permissions:
   id-token: 'write'
 
 jobs:
-  arc-cleanup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Az CLI login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Delete ARC instances
-        run: |
-          cluster_type="Microsoft.Kubernetes/connectedClusters"
-          for cluster in $(az resource list -g ${{ env.RESOURCE_GROUP }} --resource-type $cluster_type --query "[?starts_with(name, '${{ env.CLUSTER_PREFIX }}')].id" -o tsv); do
-            az resource delete -v --id $cluster --verbose
-          done
   keyvault-cleanup:
     runs-on: ubuntu-latest
     steps:
@@ -70,12 +55,14 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Delete keyvaults
-        run: |
-          for vault in $(az keyvault list --query "[?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
-            az keyvault delete -n $vault -g ${{ env.RESOURCE_GROUP }} --no-wait
-          done
+        uses: azure/cli@v2
+        with:
+          azcliversion: 2.58.0
+          inlineScript: |
+            for vault in $(az keyvault list --query "[?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
+              az keyvault delete -n $vault -g ${{ env.RESOURCE_GROUP }} --no-wait
+            done
   resource-cleanup:
-    needs: [arc-cleanup]
     runs-on: ubuntu-latest
     steps:
       - name: Az CLI login
@@ -85,10 +72,13 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Delete linked AIO resources
-        run: |
-          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.CLUSTER_PREFIX }}')].id" -o tsv); do
-            az resource delete -v --id $resource --verbose
-          done
+        uses: azure/cli@v2
+        with:
+          azcliversion: 2.58.0
+          inlineScript: |
+            for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.CLUSTER_PREFIX }}')].id" -o tsv); do
+              az resource delete -v --id $resource --verbose
+            done
   mq-cleanup:
     runs-on: ubuntu-latest
     steps:
@@ -99,21 +89,65 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Delete MQ child resources
-        run: |
-          is_mq_child_resource="contains(to_string(type), 'Microsoft.IoTOperationsMQ/mq/')"
-          in_cluster_ext_loc="contains(to_string(extendedLocation.name), '${{ env.CLUSTER_PREFIX }}')"
+        uses: azure/cli@v2
+        with:
+          azcliversion: 2.58.0
+          inlineScript: |
+            is_mq_child_resource="contains(to_string(type), 'Microsoft.IoTOperationsMQ/mq/')"
+            in_cluster_ext_loc="contains(to_string(extendedLocation.name), '${{ env.CLUSTER_PREFIX }}')"
 
-          for mq_resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?$in_cluster_ext_loc && $is_mq_child_resource].id" -o tsv); do
-            az resource delete -v --id $mq_resource --verbose
-          done
+            for mq_resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?$in_cluster_ext_loc && $is_mq_child_resource].id" -o tsv); do
+              az resource delete -v --id $mq_resource --verbose
+            done
       - name: Delete MQ instances
-        run: |
-          mq_type="Microsoft.IoTOperationsMQ/mq"
-          in_cluster_ext_loc="contains(to_string(extendedLocation.name), '${{ env.CLUSTER_PREFIX }}')"
-          
-          # MQ instance cannot be deleted until all child resources have successfully deleted
-          sleep 15s
+        uses: azure/cli@v2
+        with:
+          azcliversion: 2.58.0
+          inlineScript: |
+            mq_type="Microsoft.IoTOperationsMQ/mq"
+            in_cluster_ext_loc="contains(to_string(extendedLocation.name), '${{ env.CLUSTER_PREFIX }}')"
+            
+            # MQ instance cannot be deleted until all child resources have successfully deleted
+            sleep 15s
 
-          for mq in $(az resource list -g ${{ env.RESOURCE_GROUP }} --resource-type $mq_type  --query "[?$in_cluster_ext_loc].id" -o tsv); do
-            az resource delete -v --id $mq --verbose
-          done
+            for mq in $(az resource list -g ${{ env.RESOURCE_GROUP }} --resource-type $mq_type  --query "[?$in_cluster_ext_loc].id" -o tsv); do
+              az resource delete -v --id $mq --verbose
+            done
+  asset-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Az CLI login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Delete Assets
+        uses: azure/cli@v2
+        with:
+          azcliversion: 2.58.0
+          inlineScript: |
+            asset_type="Microsoft.DeviceRegistry/assets"
+            in_cluster_ext_loc="contains(to_string(extendedLocation.name), '${{ env.CLUSTER_PREFIX }}')"
+            for asset in $(az resource list -g ${{ env.RESOURCE_GROUP }} --resource-type $asset_type --query "[?$in_cluster_ext_loc].id" -o tsv); do
+              az resource delete -v --id $asset --verbose
+            done
+  arc-cleanup:
+    runs-on: ubuntu-latest
+    needs: [resource-cleanup, mq-cleanup]
+    steps:
+      - name: Az CLI login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Delete ARC instances
+        uses: azure/cli@v2
+        with:
+          azcliversion: 2.58.0
+          inlineScript: |
+            cluster_type="Microsoft.Kubernetes/connectedClusters"
+            for cluster in $(az resource list -g ${{ env.RESOURCE_GROUP }} --resource-type $cluster_type --query "[?starts_with(name, '${{ env.CLUSTER_PREFIX }}')].id" -o tsv); do
+              az resource delete -v --id $cluster --verbose
+            done
