@@ -48,7 +48,12 @@ def run_checks(
 
         sleep(0.5)
 
-        result["title"] = f"Evaluation for {{[bright_blue]{ops_service}[/bright_blue]}} service deployment"
+        title_subject = (
+            f"{{[bright_blue]{ops_service}[/bright_blue]}} service deployment"
+            if post_deployment
+            else "[bright_blue]AIO readiness[/bright_blue]"
+        )
+        result["title"] = f"Evaluation for {title_subject}"
 
         if pre_deployment:
             check_pre_deployment(result, as_list)
