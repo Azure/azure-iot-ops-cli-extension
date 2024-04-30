@@ -6,11 +6,18 @@
 
 from knack.log import get_logger
 from rich.padding import Padding
+from kubernetes.client.models import (
+    V1APIResourceList,
+    V1ObjectMeta,
+    V1Pod,
+    V1PodList,
+    V1Service,
+)
 from typing import List, Tuple
 
 from .check_manager import CheckManager
 from .display import add_display_and_eval
-from ..common import COLOR_STR_FORMAT
+from ..common import COLOR_STR_FORMAT, POD_CONDITION_TEXT_MAP, ResourceOutputDetailLevel
 from ...base import get_namespaced_pods_by_prefix
 from ....common import CheckTaskStatus
 
@@ -90,3 +97,106 @@ def process_pods_status(
                     (0, 0, 0, display_padding),
                 ),
             )
+
+
+def evaluate_detailed_pod_health(
+    check_manager: CheckManager,
+    target: str,
+    pod: V1Pod,
+    display_padding: int,
+    namespace: str,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> None:
+
+    def _decorate_pod_condition(condition: bool) -> Tuple[str, str]:
+        if condition:
+            return f"[green]{condition}[/green]", CheckTaskStatus.success.value
+        return f"[red]{condition}[/red]", CheckTaskStatus.error.value
+
+    target_service_pod = f"pod/{pod.metadata.name}"
+
+    pod_conditions = [
+        f"{target_service_pod}.status.phase",
+        f"{target_service_pod}.status.conditions.ready",
+        f"{target_service_pod}.status.conditions.initialized",
+        f"{target_service_pod}.status.conditions.containersready",
+        f"{target_service_pod}.status.conditions.podscheduled",
+        f"{target_service_pod}.status.conditions.podreadytostartcontainers",
+    ]
+
+    if check_manager.targets.get(target, {}).get(namespace, {}).get("conditions", None):
+        check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
+    else:
+        check_manager.set_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
+
+    if not pod:
+        add_display_and_eval(
+            check_manager=check_manager,
+            target_name=target,
+            display_text=f"{target_service_pod}* [yellow]not detected[/yellow].",
+            eval_status=CheckTaskStatus.warning.value,
+            eval_value=None,
+            resource_name=target_service_pod,
+            namespace=namespace,
+            padding=(0, 0, 0, display_padding)
+        )
+    else:
+        pod_dict = pod.to_dict()
+        pod_name = pod_dict["metadata"]["name"]
+        pod_phase = pod_dict.get("status", {}).get("phase")
+        pod_conditions = pod_dict.get("status", {}).get("conditions", {})
+        pod_phase_deco, status = decorate_pod_phase(pod_phase)
+
+        check_manager.add_target_eval(
+            target_name=target,
+            namespace=namespace,
+            status=status,
+            resource_name=target_service_pod,
+            value={"name": pod_name, "status.phase": pod_phase},
+        )
+
+        for text in [
+            f"\nPod {{[bright_blue]{pod_name}[/bright_blue]}}",
+            f"- Phase: {pod_phase_deco}",
+            "- Conditions:"
+        ]:
+            padding = 2 if "\nPod" not in text else 0
+            padding += display_padding
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(text, (0, 0, 0, padding)),
+            )
+
+        for condition in pod_conditions:
+            type = condition.get("type")
+            condition_type = POD_CONDITION_TEXT_MAP[type]
+            condition_status = True if condition.get("status") == "True" else False
+            pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
+
+            add_display_and_eval(
+                check_manager=check_manager,
+                target_name=target,
+                display_text=f"{condition_type}: {pod_condition_deco}",
+                eval_status=status,
+                eval_value={"name": pod_name, f"status.conditions.{type.lower()}": condition_status},
+                resource_name=target_service_pod,
+                namespace=namespace,
+                padding=(0, 0, 0, display_padding + 8)
+            )
+
+            if detail_level > ResourceOutputDetailLevel.summary.value:
+                condition_reason = condition.get("message")
+                condition_reason_text = f"{condition_reason}" if condition_reason else ""
+
+                if condition_reason_text:
+                    # remove the [ and ] to prevent console not printing the text
+                    condition_reason_text = condition_reason_text.replace("[", "\\[")
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(
+                            f"[red]Reason: {condition_reason_text}[/red]",
+                            (0, 0, 0, display_padding + 8),
+                        ),
+                    )

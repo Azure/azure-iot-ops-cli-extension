@@ -6,6 +6,8 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from azext_edge.edge.providers.check.base.pod import evaluate_detailed_pod_health
+
 from ..base import get_namespaced_pods_by_prefix
 from .base import (
     CheckManager,
@@ -31,7 +33,7 @@ from .common import (
     LNM_ALLOWLIST_PROPERTIES,
     LNM_EXCLUDED_SUBRESOURCE,
     LNM_IMAGE_PROPERTIES,
-    LNM_POD_CONDITION_TEXT_MAP,
+    POD_CONDITION_TEXT_MAP,
     LNM_REST_PROPERTIES,
     ResourceOutputDetailLevel,
 )
@@ -281,7 +283,7 @@ def evaluate_lnms(
             pods = get_namespaced_pods_by_prefix(prefix=AIO_LNM_PREFIX, namespace="", label_selector=lnm_label)
 
             for pod in pods:
-                _evaluate_lnm_pod_health(
+                evaluate_detailed_pod_health(
                     check_manager=check_manager,
                     target=target_lnms,
                     pod=pod,
@@ -339,7 +341,7 @@ def _process_lnm_pods(
         )
 
         for pod in pods:
-            _evaluate_lnm_pod_health(
+            evaluate_detailed_pod_health(
                 check_manager=check_manager,
                 target=target,
                 pod=pod,
@@ -371,6 +373,7 @@ def _evaluate_lnm_pod_health(
         f"{target_service_pod}.status.conditions.initialized",
         f"{target_service_pod}.status.conditions.containersready",
         f"{target_service_pod}.status.conditions.podscheduled",
+        f"{target_service_pod}.status.conditions.podreadytostartcontainers",
     ]
 
     if check_manager.targets.get(target, {}).get(namespace, {}).get("conditions", None):
@@ -419,7 +422,7 @@ def _evaluate_lnm_pod_health(
 
         for condition in pod_conditions:
             type = condition.get("type")
-            condition_type = LNM_POD_CONDITION_TEXT_MAP[type]
+            condition_type = POD_CONDITION_TEXT_MAP[type]
             condition_status = True if condition.get("status") == "True" else False
             pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
 

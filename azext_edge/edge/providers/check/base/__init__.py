@@ -8,7 +8,7 @@ from .check_manager import CheckManager
 from .deployment import check_pre_deployment, check_post_deployment
 from .display import add_display_and_eval, display_as_list, process_value_color
 from .node import check_nodes
-from .pod import decorate_pod_phase, evaluate_pod_health, process_pods_status
+from .pod import decorate_pod_phase, evaluate_pod_health, process_pods_status, evaluate_detailed_pod_health
 from .resource import (
     decorate_resource_status,
     filter_resources_by_name,
@@ -33,6 +33,7 @@ __all__ = [
     "decorate_resource_status",
     "display_as_list",
     "evaluate_pod_health",
+    "evaluate_detailed_pod_health",
     "filter_resources_by_name",
     "filter_resources_by_namespace",
     "generate_target_resource_name",
