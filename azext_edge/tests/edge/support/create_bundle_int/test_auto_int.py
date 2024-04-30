@@ -7,7 +7,7 @@
 import pytest
 from os import mkdir, path
 from knack.log import get_logger
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 from azext_edge.edge.common import OpsServiceType
 from .helpers import (
     assert_file_names,
@@ -22,11 +22,16 @@ from .helpers import (
 logger = get_logger(__name__)
 
 
-@pytest.mark.parametrize("bundle_dir", ["support_bundles"])
-@pytest.mark.parametrize("ops_service", OpsServiceType.list())
-@pytest.mark.parametrize("mq_traces", [False, True])
+def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
+    # case = ops_service, mq_traces, bundle_dir
+    cases = [(service, False, "support_bundles") for service in OpsServiceType.list()]
+    cases.append((OpsServiceType.mq.value, True, None))
+    return cases
+
+
+@pytest.mark.parametrize("ops_service, mq_traces, bundle_dir", generate_bundle_test_cases())
 def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
-    """Test to focus on ops_service param."""
+    """Test to focus on ops_service param: Are all the service bundle files also in auto?"""
 
     command = f"az iot ops support create-bundle --mq-traces {mq_traces} " + "--ops-service {0}"
     if bundle_dir:
