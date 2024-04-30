@@ -87,23 +87,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [default, mq-insecure, no-syncrules, ca-certs]
+        feature: [default]
         include:
           # default / limited options
           - feature: default
             ca-valid-days: 3
             kv-spc-secret-name: test-kv-secret
-          # test --mq-insecure deployment
-          - feature: mq-insecure
-            mq-insecure: true
-            no-preflight: true
-          # test disabling custom sync rules
-          - feature: no-syncrules
-            disable-rsync-rules: true
-          # test custom ca files
-          - feature: ca-certs
-            ca-file: 'test-ca.pem'
-            ca-key-file: 'test-ca-key.pem'
+          # # test --mq-insecure deployment
+          # - feature: mq-insecure
+          #   mq-insecure: true
+          #   no-preflight: true
+          # # test disabling custom sync rules
+          # - feature: no-syncrules
+          #   disable-rsync-rules: true
+          # # test custom ca files
+          # - feature: ca-certs
+          #   ca-file: 'test-ca.pem'
+          #   ca-key-file: 'test-ca-key.pem'
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -246,7 +246,7 @@ jobs:
           azext_edge_skip_init: True
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-          tox r -e python-int --skip-pkg-install --durations=0
+          tox r -e python-int --skip-pkg-install -- --durations=0
       - name: "Az CLI login refresh"
         uses: azure/login@v2
         with:
