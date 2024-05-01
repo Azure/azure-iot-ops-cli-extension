@@ -5,12 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 from sys import maxsize
-from time import sleep
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from knack.log import get_logger
 from rich import print
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.prompt import Confirm
 
 from ...util.az_client import get_resource_client, wait_for_terminal_states
@@ -53,9 +53,6 @@ class DeletionManager:
             logger.warning("Deletion cancelled.")
             return
 
-        import pdb
-
-        pdb.set_trace()
         self._process()
 
     def display_resource_tree(self):
@@ -76,48 +73,56 @@ class DeletionManager:
             resources=todo_resources,
             resource_sync_rules=todo_resource_sync_rules,
             custom_locations=todo_custom_locations,
+            extensions=todo_extensions,
         )
+        if not batched_work:
+            logger.warning("Nothing to delete.")
+            return
 
         if batched_work:
-            for batch in batched_work:
-                # import pdb; pdb.set_trace()
-                delete_batch_result = self._delete_batch(batch)
-                # import pdb; pdb.set_trace()
-                pass
-
-        import pdb
-
-        pdb.set_trace()
-        pass
+            with Progress(
+                SpinnerColumn(), *Progress.get_default_columns(), "Elapsed:", TimeElapsedColumn(), transient=False
+            ) as progress:
+                delete_task = progress.add_task("[red]***", total=None)
+                for batches_key in batched_work:
+                    progress.update(delete_task, description=f"[red]Deleting {batches_key}...")
+                    for batch in batched_work[batches_key]:
+                        delete_batch_result = self._delete_batch(batch)
 
     def _batch_resources(
         self,
-        resources: List[IoTOperationsResource],
-        resource_sync_rules: List[IoTOperationsResource],
-        custom_locations: List[IoTOperationsResource],
-    ) -> List[List[IoTOperationsResource]]:
-        resource_batches: List[List[IoTOperationsResource]] = []
+        resources: List[IoTOperationsResource] = None,
+        resource_sync_rules: List[IoTOperationsResource] = None,
+        custom_locations: List[IoTOperationsResource] = None,
+        extensions: List[IoTOperationsResource] = None,
+    ) -> Dict[str, List[List[IoTOperationsResource]]]:
+        batched_work: Dict[str, List[List[IoTOperationsResource]]] = {}
 
-        last_segments = maxsize
-        current_batch = []
-        for resource in resources:
-            current_segments = resource.segments
-            if current_segments < last_segments and current_batch:
+        if resources:
+            resource_batches: List[List[IoTOperationsResource]] = []
+            last_segments = maxsize
+            current_batch = []
+            for resource in resources:
+                current_segments = resource.segments
+                if current_segments < last_segments and current_batch:
+                    resource_batches.append(current_batch)
+                    current_batch = []
+                current_batch.append(resource)
+                last_segments = current_segments
+            if current_batch:
                 resource_batches.append(current_batch)
-                current_batch = []
-            current_batch.append(resource)
-            last_segments = current_segments
-        if current_batch:
-            resource_batches.append(current_batch)
+            batched_work["resources"] = resource_batches
 
         if resource_sync_rules:
-            resource_batches.append(resource_sync_rules)
+            batched_work["resource sync rules"] = [resource_sync_rules]
         if custom_locations:
-            resource_batches.append(custom_locations)
+            batched_work["custom locations"] = [custom_locations]
+        if extensions:
+            batched_work["extensions"] = [extensions]
 
-        return resource_batches
+        return batched_work
 
-    def _delete_batch(self, resource_batch: List[IoTOperationsResource]):
+    def _delete_batch(self, resource_batch: List[IoTOperationsResource]) -> List["LROPoller"]:
         return wait_for_terminal_states(
             *[
                 self.resource_client.resources.begin_delete_by_id(

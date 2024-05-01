@@ -29,6 +29,7 @@ class ConnectedCluster:
 
     @property
     def resource(self) -> dict:
+        # TODO: Cache
         return self.resource_client.resources.get_by_id(
             resource_id=self.resource_id,
             api_version=CONNECTED_CLUSTER_API_VERSION,
@@ -37,6 +38,11 @@ class ConnectedCluster:
     @property
     def location(self) -> str:
         return self.resource["location"]
+
+    @property
+    def is_connected(self) -> bool:
+        properties = self.resource.get("properties", {})
+        return "connectivityStatus" in properties and properties["connectivityStatus"].lower() == "connected"
 
     @property
     def extensions(self) -> List[dict]:
@@ -89,7 +95,7 @@ class ConnectedCluster:
             | where type =~ 'microsoft.extendedlocation/customLocations/enabledResourcetypes'
             | project clusterExtensionId = tolower(properties.clusterExtensionId), extensionType = tolower(properties.extensionType)
             | where extensionType startswith 'microsoft.iotoperations'
-                or extensionType =~ "microsoft.deviceregistry.assets"
+                or extensionType startswith 'microsoft.deviceregistry'
         ) on clusterExtensionId
         | distinct id, name, apiVersion
         """
@@ -103,7 +109,7 @@ class ConnectedCluster:
         resources
         | where extendedLocation.name =~ '{custom_location_id}'
         | where type startswith 'microsoft.iotoperations'
-            or type startswith 'microsoft.deviceregistry.assets'
+            or type startswith 'microsoft.deviceregistry'
         | project id, name, apiVersion
         """
 

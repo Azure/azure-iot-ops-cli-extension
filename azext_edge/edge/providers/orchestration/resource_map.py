@@ -9,6 +9,9 @@ from typing import Dict, List, NamedTuple, Union, Optional
 from rich.tree import Tree
 
 from .connected_cluster import ConnectedCluster
+from knack.log import get_logger
+
+logger = get_logger(__name__)
 
 
 class IoTOperationsResource(NamedTuple):
@@ -38,6 +41,11 @@ class IoTOperationsResourceMap:
     @property
     def extensions(self) -> List[IoTOperationsResource]:
         result = []
+
+        if not self.connected_cluster.is_connected:
+            logger.warning("When the cluster is not connected to Azure, extension removal will be skipped.")
+            return result
+
         if "extensions" in self._resource_map and self._resource_map["extensions"]:
             for ext in self._resource_map["extensions"]:
                 result.append(
@@ -89,11 +97,6 @@ class IoTOperationsResourceMap:
             and "resources" in self._resource_map["customLocations"][custom_location_id]
             and self._resource_map["customLocations"][custom_location_id]["resources"]
         ):
-            # sorted_resources = sorted(
-            #     self._resource_map["customLocations"][custom_location_id]["resources"],
-            #     key=lambda r: (len(r["id"].split("/")), r["name"].lower()),
-            #     reverse=True,
-            # )
             for resource in self._resource_map["customLocations"][custom_location_id]["resources"]:
                 result.append(
                     IoTOperationsResource(
@@ -104,13 +107,6 @@ class IoTOperationsResourceMap:
                     )
                 )
             sorted_resources = sorted(result, key=lambda r: (r.segments, r.display_name.lower()), reverse=True)
-
-            # for resource in sorted_resources:
-            #     result.append(
-            #         IoTOperationsResource(
-            #             resource_id=resource["id"], display_name=resource["name"], api_version=resource["apiVersion"]
-            #         )
-            #     )
 
         return sorted_resources
 
@@ -161,19 +157,19 @@ class IoTOperationsResourceMap:
         extensions_node = tree.add(label="[cyan]extensions[/cyan]")
         [extensions_node.add(ext.display_name) for ext in self.extensions]
 
+        root_cl_node = tree.add(label="[cyan]customLocations[/cyan]")
         custom_locations = self.custom_locations
         if custom_locations:
-            root_cl_node = tree.add(label="[cyan]customLocations[/cyan]")
             for cl in custom_locations:
                 cl_node = root_cl_node.add(cl.display_name)
                 resource_sync_rules = self.get_resource_sync_rules(cl.resource_id)
+                rsr_node = cl_node.add("[cyan]resourceSyncRules[/cyan]")
                 if resource_sync_rules:
-                    rsr_node = cl_node.add("[cyan]resourceSyncRules[/cyan]")
                     [rsr_node.add(rsr.display_name) for rsr in resource_sync_rules]
 
+                resource_node = cl_node.add("[cyan]resources[/cyan]")
                 cl_resources = self.get_resources(cl.resource_id)
                 if cl_resources:
-                    resource_node = cl_node.add("[cyan]resources[/cyan]")
                     [resource_node.add(resource.display_name) for resource in cl_resources]
 
         return tree
