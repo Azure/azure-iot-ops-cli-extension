@@ -4,9 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from typing import List, Optional
+
 from ...util.az_client import get_resource_client
 from ...util.resource_graph import ResourceGraph
-from typing import List, Optional
 
 CONNECTED_CLUSTER_API_VERSION = "2024-01-01"
 KUBERNETES_CONFIG_API_VERSION = "2022-11-01"
@@ -40,7 +41,7 @@ class ConnectedCluster:
         return self.resource["location"]
 
     @property
-    def is_connected(self) -> bool:
+    def connected(self) -> bool:
         properties = self.resource.get("properties", {})
         return "connectivityStatus" in properties and properties["connectivityStatus"].lower() == "connected"
 

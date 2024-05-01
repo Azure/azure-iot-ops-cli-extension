@@ -41,11 +41,6 @@ class IoTOperationsResourceMap:
     @property
     def extensions(self) -> List[IoTOperationsResource]:
         result = []
-
-        if not self.connected_cluster.is_connected:
-            logger.warning("When the cluster is not connected to Azure, extension removal will be skipped.")
-            return result
-
         if "extensions" in self._resource_map and self._resource_map["extensions"]:
             for ext in self._resource_map["extensions"]:
                 result.append(

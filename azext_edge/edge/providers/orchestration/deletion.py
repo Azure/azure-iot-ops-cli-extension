@@ -9,9 +9,11 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 
 from knack.log import get_logger
 from rich import print
-from rich.console import Console
+from rich.console import Console, NewLine
+from rich.live import Live
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.prompt import Confirm
+from rich.table import Table
 
 from ...util.az_client import get_resource_client, wait_for_terminal_states
 from .resource_map import IoTOperationsResource, IoTOperationsResourceMap
@@ -24,13 +26,28 @@ if TYPE_CHECKING:
     from azure.core.polling import LROPoller
 
 
-def delete_ops_resources(cmd, cluster_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None):
-    manager = DeletionManager(cmd=cmd, cluster_name=cluster_name, resource_group_name=resource_group_name)
-    manager.do_work(confirm_yes=confirm_yes)
+def delete_ops_resources(
+    cmd,
+    cluster_name: str,
+    resource_group_name: str,
+    confirm_yes: Optional[bool] = None,
+    no_progress: Optional[bool] = None,
+    force: Optional[bool] = None,
+):
+    manager = DeletionManager(
+        cmd=cmd, cluster_name=cluster_name, resource_group_name=resource_group_name, no_progress=no_progress
+    )
+    manager.do_work(confirm_yes=confirm_yes, force=force)
 
 
 class DeletionManager:
-    def __init__(self, cmd, cluster_name: str, resource_group_name: str):
+    def __init__(
+        self,
+        cmd,
+        cluster_name: str,
+        resource_group_name: str,
+        no_progress: Optional[bool] = None,
+    ):
         from azure.cli.core.commands.client_factory import get_subscription_id
 
         self.cmd = cmd
@@ -42,21 +59,53 @@ class DeletionManager:
         self.subscription_id = get_subscription_id(cli_ctx=cmd.cli_ctx)
         self.resource_client = get_resource_client(self.subscription_id)
 
-    def do_work(self, confirm_yes: Optional[bool] = None):
-        self.display_resource_tree()
+        self._render_progress = not no_progress
+        self._live = Live(None, transient=False, refresh_per_second=8, auto_refresh=self._render_progress)
+        self._progress_bar = Progress(
+            SpinnerColumn(),
+            *Progress.get_default_columns(),
+            "Elapsed:",
+            TimeElapsedColumn(),
+            transient=False,
+        )
+        self._delete_task = self._progress_bar.add_task("Work.", total=None)
+
+    def do_work(self, confirm_yes: Optional[bool] = None, force: Optional[bool] = None):
+        if self._render_progress:
+            self._display_resource_tree()
 
         should_delete = True
         if not confirm_yes:
-            should_delete = Confirm.ask("Delete?")
+            should_delete = Confirm.ask("Continue?")
 
         if not should_delete:
             logger.warning("Deletion cancelled.")
             return
 
+        if not force:
+            if not self.resource_map.connected_cluster.connected:
+                logger.warning(
+                    "The cluster is not connected to Azure. Deletion cancelled. "
+                    "Use --force to continue anyway (not recommended)."
+                )
+                return
+
         self._process()
 
-    def display_resource_tree(self):
+    def _display_resource_tree(self):
         print(self.resource_map.build_tree())
+
+    def _render_progress_display(self, description: str):
+        grid = Table.grid(expand=False)
+        grid.add_column()
+        grid.add_row(NewLine(1))
+        grid.add_row(description)
+        grid.add_row(NewLine(1))
+        grid.add_row(self._progress_bar)
+        self._live.update(grid, refresh=True)
+
+        if self._render_progress and not self._live.is_started:
+            self._live.start(True)
 
     def _process(self):
         todo_extensions = self.resource_map.extensions
@@ -76,18 +125,17 @@ class DeletionManager:
             extensions=todo_extensions,
         )
         if not batched_work:
-            logger.warning("Nothing to delete.")
+            logger.warning("Nothing to delete :)")
             return
 
-        if batched_work:
-            with Progress(
-                SpinnerColumn(), *Progress.get_default_columns(), "Elapsed:", TimeElapsedColumn(), transient=False
-            ) as progress:
-                delete_task = progress.add_task("[red]***", total=None)
-                for batches_key in batched_work:
-                    progress.update(delete_task, description=f"[red]Deleting {batches_key}...")
-                    for batch in batched_work[batches_key]:
-                        delete_batch_result = self._delete_batch(batch)
+        try:
+            for batches_key in batched_work:
+                self._render_progress_display(f"[red]Deleting {batches_key}...")
+                for batch in batched_work[batches_key]:
+                    # TODO: @digimaun - Show summary as result
+                    self._delete_batch(batch)
+        finally:
+            self._live.stop()
 
     def _batch_resources(
         self,
@@ -131,6 +179,3 @@ class DeletionManager:
                 for resource in resource_batch
             ]
         )
-
-    def _process_batch_result(self, pollers: List["LROPoller"]):
-        pass

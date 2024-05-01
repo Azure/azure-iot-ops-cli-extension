@@ -67,6 +67,12 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Disable visual representation of work.",
         )
+        context.argument(
+            "force",
+            options_list=["--force"],
+            arg_type=get_three_state_flag(),
+            help="Force the operation to execute.",
+        )
 
     with self.argument_context("iot ops support") as context:
         context.argument(
