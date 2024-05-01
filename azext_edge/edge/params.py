@@ -558,11 +558,11 @@ def load_iotops_arguments(self, _):
             deprecate_info=context.deprecate(hide=True),
         )
 
-    with self.argument_context("iot ops remove") as context:
+    with self.argument_context("iot ops delete") as context:
         context.argument(
             "cluster_name",
             options_list=["--cluster"],
-            help="Target cluster name for IoT Operations removal.",
+            help="Target cluster name for IoT Operations deletion.",
         )
 
     with self.argument_context("iot ops asset") as context:
