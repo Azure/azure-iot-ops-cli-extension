@@ -8,16 +8,17 @@ Help definitions for Digital Twins commands.
 """
 
 from knack.help_files import helps
+
 from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
+    COMPAT_AKRI_APIS,
+    COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DATA_PROCESSOR_APIS,
-    COMPAT_MQ_APIS,
+    COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_LNM_APIS,
+    COMPAT_MQ_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
-    COMPAT_DEVICEREGISTRY_APIS,
-    COMPAT_AKRI_APIS,
-    COMPAT_CLUSTER_CONFIG_APIS
 )
 
 
