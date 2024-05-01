@@ -224,6 +224,7 @@ POD_CONDITION_TEXT_MAP = {
     "Initialized": "Pod Initialized",
     "ContainersReady": "Containers Readiness",
     "PodScheduled": "Pod Scheduled",
+    "PodReadyToStartContainers": "Pod Ready To Start Containers",
 }
 
 LNM_EXCLUDED_SUBRESOURCE = [
