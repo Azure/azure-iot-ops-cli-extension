@@ -86,7 +86,7 @@ class DeletionManager:
             if not self.resource_map.connected_cluster.connected:
                 logger.warning(
                     "The cluster is not connected to Azure. Deletion cancelled. "
-                    "Use --force to continue anyway (not recommended)."
+                    "Use --force to continue anyway. Not recommended."
                 )
                 return
 
