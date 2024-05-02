@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 
 from knack.log import get_logger
 from rich import print
-from rich.console import Console, NewLine
+from rich.console import NewLine
 from rich.live import Live
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.prompt import Confirm
@@ -20,7 +20,6 @@ from .resource_map import IoTOperationsResource, IoTOperationsResourceMap
 
 logger = get_logger(__name__)
 
-console = Console()
 
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
