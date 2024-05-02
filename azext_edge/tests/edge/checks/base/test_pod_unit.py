@@ -5,15 +5,18 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
+
 from azext_edge.edge.common import CheckTaskStatus, PodState
-from azext_edge.edge.providers.check.base.pod import evaluate_pod_health, process_pods_status
-from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
-from azext_edge.tests.edge.checks.conftest import generate_pod_stub
 from azext_edge.edge.providers.check.base import (
     decorate_pod_phase,
     evaluate_detailed_pod_health,
 )
-
+from azext_edge.edge.providers.check.base.pod import (
+    evaluate_pod_health, 
+    process_pods_status
+)
+from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
+from azext_edge.tests.edge.checks.conftest import generate_pod_stub
 from ....generators import generate_random_string
 
 
@@ -62,12 +65,12 @@ def test_decorate_pod_phase(phase, expected):
 )
 def test_evaluate_pod_health(
     mocker,
+    mock_process_pods_status,
     mocked_check_manager,
     namespace,
-    pods,
     padding,
+    pods,
     target_service_pod,
-    mock_process_pods_status,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.check.base.pod.get_namespaced_pods_by_prefix",
@@ -132,12 +135,12 @@ def test_evaluate_pod_health(
     ]
 )
 def test_process_pods_status(
+    mock_add_display_and_eval,
     mocked_check_manager,
     namespace,
-    pods,
     padding,
+    pods,
     target_service_pod,
-    mock_add_display_and_eval,
 ):
     process_pods_status(
         check_manager=mocked_check_manager,
@@ -392,21 +395,21 @@ def test_process_pods_status(
         # resource_name
         "lnm-operator-5",
         # conditions
-        []
+        None
     )
 ])
 def test_evaluate_detailed_pod_health(
-    mocked_check_manager,
+    conditions,
     detail_level,
-    resource_name,
+    eval_status,
+    eval_value,
+    mock_add_display_and_eval,
+    mocked_check_manager,
     namespace,
     padding,
     pod,
-    eval_status,
-    eval_value,
+    resource_name,
     target_service_pod,
-    conditions,
-    mock_add_display_and_eval
 ):
     target_name = generate_random_string()
 
@@ -441,6 +444,9 @@ def test_evaluate_detailed_pod_health(
             value=eval_value,
             resource_name=f"pod/{resource_name}"
         )
+
+        if not conditions:
+            return
 
         for condition in conditions:
             condition_status = True if condition.get("status") == "True" else False
