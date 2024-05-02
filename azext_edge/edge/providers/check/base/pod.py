@@ -6,13 +6,7 @@
 
 from knack.log import get_logger
 from rich.padding import Padding
-from kubernetes.client.models import (
-    V1APIResourceList,
-    V1ObjectMeta,
-    V1Pod,
-    V1PodList,
-    V1Service,
-)
+from kubernetes.client.models import V1Pod
 from typing import List, Tuple
 
 from .check_manager import CheckManager
@@ -23,7 +17,6 @@ from ....common import CheckTaskStatus
 
 
 logger = get_logger(__name__)
-# TODO: unit test
 
 
 def decorate_pod_phase(phase: str) -> Tuple[str, str]:
@@ -82,26 +75,22 @@ def process_pods_status(
             pod_phase_deco, status = decorate_pod_phase(pod_phase)
             target_service_pod = f"pod/{pod_name}"
 
-            check_manager.add_target_eval(
+            add_display_and_eval(
+                check_manager=check_manager,
                 target_name=target,
-                namespace=namespace,
-                status=status,
+                display_text=f"Pod {{[bright_blue]{pod_name}[/bright_blue]}} in phase {{{pod_phase_deco}}}.",
+                eval_status=status,
+                eval_value={"name": pod_name, "status.phase": pod_phase},
                 resource_name=target_service_pod,
-                value={"name": pod_name, "status.phase": pod_phase},
-            )
-            check_manager.add_display(
-                target_name=target,
                 namespace=namespace,
-                display=Padding(
-                    f"Pod {{[bright_blue]{pod_name}[/bright_blue]}} in phase {{{pod_phase_deco}}}.",
-                    (0, 0, 0, display_padding),
-                ),
+                padding=(0, 0, 0, display_padding)
             )
 
 
 def evaluate_detailed_pod_health(
     check_manager: CheckManager,
     target: str,
+    target_service_pod: str,
     pod: V1Pod,
     display_padding: int,
     namespace: str,
@@ -112,6 +101,18 @@ def evaluate_detailed_pod_health(
         if condition:
             return f"[green]{condition}[/green]", CheckTaskStatus.success.value
         return f"[red]{condition}[/red]", CheckTaskStatus.error.value
+
+    if not pod:
+        return add_display_and_eval(
+            check_manager=check_manager,
+            target_name=target,
+            display_text=f"{target_service_pod}* [yellow]not detected[/yellow].",
+            eval_status=CheckTaskStatus.warning.value,
+            eval_value=None,
+            resource_name=target_service_pod,
+            namespace=namespace,
+            padding=(0, 0, 0, display_padding)
+        )
 
     target_service_pod = f"pod/{pod.metadata.name}"
 
@@ -129,44 +130,39 @@ def evaluate_detailed_pod_health(
     else:
         check_manager.set_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
 
-    if not pod:
-        add_display_and_eval(
-            check_manager=check_manager,
-            target_name=target,
-            display_text=f"{target_service_pod}* [yellow]not detected[/yellow].",
-            eval_status=CheckTaskStatus.warning.value,
-            eval_value=None,
-            resource_name=target_service_pod,
-            namespace=namespace,
-            padding=(0, 0, 0, display_padding)
-        )
-    else:
-        pod_dict = pod.to_dict()
-        pod_name = pod_dict["metadata"]["name"]
-        pod_phase = pod_dict.get("status", {}).get("phase")
-        pod_conditions = pod_dict.get("status", {}).get("conditions", {})
-        pod_phase_deco, status = decorate_pod_phase(pod_phase)
+    pod_dict = pod.to_dict()
+    pod_name = pod_dict["metadata"]["name"]
+    pod_phase = pod_dict.get("status", {}).get("phase")
+    pod_conditions = pod_dict.get("status", {}).get("conditions", [])
+    pod_phase_deco, status = decorate_pod_phase(pod_phase)
 
-        check_manager.add_target_eval(
+    check_manager.add_target_eval(
+        target_name=target,
+        namespace=namespace,
+        status=status,
+        resource_name=target_service_pod,
+        value={"name": pod_name, "status.phase": pod_phase},
+    )
+
+    for text in [
+        f"\nPod {{[bright_blue]{pod_name}[/bright_blue]}}",
+        f"- Phase: {pod_phase_deco}"
+    ]:
+        padding = 2 if "\nPod" not in text else 0
+        padding += display_padding
+        check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            status=status,
-            resource_name=target_service_pod,
-            value={"name": pod_name, "status.phase": pod_phase},
+            display=Padding(text, (0, 0, 0, padding)),
         )
 
-        for text in [
-            f"\nPod {{[bright_blue]{pod_name}[/bright_blue]}}",
-            f"- Phase: {pod_phase_deco}",
-            "- Conditions:"
-        ]:
-            padding = 2 if "\nPod" not in text else 0
-            padding += display_padding
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(text, (0, 0, 0, padding)),
-            )
+    # When pod in obnormal state, sometimes the conditions are not available
+    if pod_conditions:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("- Conditions:", (0, 0, 0, padding)),
+        )
 
         for condition in pod_conditions:
             type = condition.get("type")
