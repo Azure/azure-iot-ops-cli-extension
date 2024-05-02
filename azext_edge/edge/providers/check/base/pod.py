@@ -167,7 +167,7 @@ def evaluate_detailed_pod_health(
         for condition in pod_conditions:
             type = condition.get("type")
             condition_type = POD_CONDITION_TEXT_MAP[type]
-            condition_status =  condition.get("status") == "True"
+            condition_status = condition.get("status") == "True"
             pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
 
             add_display_and_eval(
