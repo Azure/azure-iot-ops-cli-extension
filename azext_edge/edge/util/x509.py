@@ -25,8 +25,8 @@ DEFAULT_VALID_DAYS = 365
 def generate_self_signed_cert(valid_days: int = DEFAULT_VALID_DAYS) -> Tuple[bytes, bytes]:
     if not valid_days or valid_days < 0:
         valid_days = DEFAULT_VALID_DAYS
-
-    key = ec.generate_private_key(curve=DEFAULT_EC_ALGO, backend=default_backend())
+    # Not using DEFAULT_EC_ALGO due CodeQL issue parsing private key algo
+    key = ec.generate_private_key(curve=ec.SECP256R1(), backend=default_backend())
     key_bytes = key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.TraditionalOpenSSL,
