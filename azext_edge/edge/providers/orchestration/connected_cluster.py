@@ -72,12 +72,12 @@ class ConnectedCluster:
         kubernetesconfigurationresources
         | where type =~ 'microsoft.kubernetesconfiguration/extensions'
         | where id startswith '{self.resource_id}'
-        | where properties.ExtensionType startswith "microsoft.iotoperations" 
-            or properties.ExtensionType =~ "microsoft.deviceregistry.assets"
-            or properties.ExtensionType =~ "microsoft.azurekeyvaultsecretsprovider"
+        | where properties.extensionType startswith 'microsoft.iotoperations'
+            or properties.extensionType =~ 'microsoft.deviceregistry.assets'
+            or properties.extensionType =~ 'microsoft.azurekeyvaultsecretsprovider'
         | project id, name, apiVersion
         """
-        # @digimaun TODO microsoft.azurekeyvaultsecretsprovider
+        # TODO - @digimaun microsoft.azurekeyvaultsecretsprovider optionality
 
         result = self.resource_graph.query_resources(query=query)
         if "data" in result and result["data"]:
@@ -94,7 +94,8 @@ class ConnectedCluster:
         | join kind=inner(
             extendedlocationresources
             | where type =~ 'microsoft.extendedlocation/customLocations/enabledResourcetypes'
-            | project clusterExtensionId = tolower(properties.clusterExtensionId), extensionType = tolower(properties.extensionType)
+            | project clusterExtensionId = tolower(properties.clusterExtensionId),
+                extensionType = tolower(properties.extensionType)
             | where extensionType startswith 'microsoft.iotoperations'
                 or extensionType startswith 'microsoft.deviceregistry'
         ) on clusterExtensionId
