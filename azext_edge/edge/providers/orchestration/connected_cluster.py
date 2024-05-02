@@ -72,9 +72,9 @@ class ConnectedCluster:
         kubernetesconfigurationresources
         | where type =~ 'microsoft.kubernetesconfiguration/extensions'
         | where id startswith '{self.resource_id}'
-        | where properties.extensionType startswith 'microsoft.iotoperations'
-            or properties.extensionType =~ 'microsoft.deviceregistry.assets'
-            or properties.extensionType =~ 'microsoft.azurekeyvaultsecretsprovider'
+        | where properties.ExtensionType startswith 'microsoft.iotoperations'
+            or properties.ExtensionType =~ 'microsoft.deviceregistry.assets'
+            or properties.ExtensionType =~ 'microsoft.azurekeyvaultsecretsprovider'
         | project id, name, apiVersion
         """
         # TODO - @digimaun microsoft.azurekeyvaultsecretsprovider optionality
