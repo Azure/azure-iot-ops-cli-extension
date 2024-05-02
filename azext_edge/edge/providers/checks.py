@@ -51,7 +51,7 @@ def run_checks(
         title_subject = (
             f"{{[bright_blue]{ops_service}[/bright_blue]}} service deployment"
             if post_deployment
-            else "[bright_blue]AIO readiness[/bright_blue]"
+            else "[bright_blue]IoT Operations readiness[/bright_blue]"
         )
         result["title"] = f"Evaluation for {title_subject}"
 
