@@ -12,8 +12,8 @@ from azext_edge.edge.providers.check.base import (
     evaluate_detailed_pod_health,
 )
 from azext_edge.edge.providers.check.base.pod import (
-    evaluate_pod_health, 
-    process_pods_status
+    evaluate_pod_health,
+    process_pods_status,
 )
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 from azext_edge.tests.edge.checks.conftest import generate_pod_stub
