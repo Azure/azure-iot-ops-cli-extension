@@ -30,13 +30,13 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="9eb7a88d0060d5eae5132a513024a589b5ed8ce1",
+    commit_id="96256421fccda86328d82a0c2cf3fbef752f9da0",
     moniker="v0.5.0-preview",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.26.170.59819", "templateHash": "14443314871985323425"},
+            "_generator": {"name": "bicep", "version": "0.26.170.59819", "templateHash": "5997715933122945541"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -128,14 +128,14 @@ V1_TEMPLATE = TemplateVer(
                 "opcUaBroker": "[variables('DEFAULT_CONTAINER_REGISTRY')]",
             },
             "VERSIONS": {
-                "mq": "0.4.0-preview-rc8",
+                "mq": "0.4.0-preview",
                 "observability": "0.1.0-preview",
-                "aio": "0.5.0-preview-rc2",
+                "aio": "0.5.0-preview",
                 "layeredNetworking": "0.1.0-preview",
-                "processor": "0.2.1-preview-rc2",
-                "opcUaBroker": "0.4.0-preview-rc1",
+                "processor": "0.2.1-preview",
+                "opcUaBroker": "0.4.0-preview",
                 "adr": "0.1.0-preview",
-                "akri": "0.3.0-preview-rc1",
+                "akri": "0.3.0-preview",
             },
             "TRAINS": {
                 "mq": "preview",
