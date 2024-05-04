@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from sys import maxsize
+from time import sleep
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 from knack.log import get_logger
@@ -67,11 +68,10 @@ class DeletionManager:
             TimeElapsedColumn(),
             transient=False,
         )
-        self._delete_task = self._progress_bar.add_task("Work.", total=None)
+        self._progress_shown = False
 
     def do_work(self, confirm_yes: Optional[bool] = None, force: Optional[bool] = None):
-        if self._render_progress:
-            self._display_resource_tree()
+        self._display_resource_tree()
 
         should_delete = True
         if not confirm_yes:
@@ -81,32 +81,37 @@ class DeletionManager:
             logger.warning("Deletion cancelled.")
             return
 
-        if not force:
-            if not self.resource_map.connected_cluster.connected:
-                logger.warning(
-                    "Deletion cancelled. The cluster is not connected to Azure."
-                    "Use --force to continue anyway. Not recommended."
-                )
-                return
-
-        self._process()
+        self._process(force=force)
 
     def _display_resource_tree(self):
-        print(self.resource_map.build_tree())
+        if self._render_progress:
+            print(self.resource_map.build_tree())
 
-    def _render_progress_display(self, description: str):
-        grid = Table.grid(expand=False)
-        grid.add_column()
-        grid.add_row(NewLine(1))
-        grid.add_row(description)
-        grid.add_row(NewLine(1))
-        grid.add_row(self._progress_bar)
-        self._live.update(grid, refresh=True)
+    def _render_display(self, description: str):
+        if self._render_progress:
+            grid = Table.grid(expand=False)
+            grid.add_column()
+            grid.add_row(NewLine(1))
+            grid.add_row(description)
+            grid.add_row(NewLine(1))
+            grid.add_row(self._progress_bar)
 
-        if self._render_progress and not self._live.is_started:
-            self._live.start(True)
+            if not self._progress_shown:
+                self._task_id = self._progress_bar.add_task(description="Work.", total=None)
+                self._progress_shown = True
+            self._live.update(grid, refresh=True)
 
-    def _process(self):
+            if not self._live.is_started:
+                self._live.start(True)
+
+    def _stop_display(self):
+        if self._render_progress and self._live.is_started:
+            if self._progress_shown:
+                self._progress_bar.update(self._task_id, description="Done.")
+                sleep(0.5)
+            self._live.stop()
+
+    def _process(self, force: bool = False):
         todo_extensions = self.resource_map.extensions
         todo_custom_locations = self.resource_map.custom_locations
         todo_resource_sync_rules = []
@@ -127,14 +132,22 @@ class DeletionManager:
             logger.warning("Nothing to delete :)")
             return
 
+        if not force:
+            if not self.resource_map.connected_cluster.connected:
+                logger.warning(
+                    "Deletion cancelled. The cluster is not connected to Azure. "
+                    "Use --force to continue anyway. Not recommended."
+                )
+                return
+
         try:
             for batches_key in batched_work:
-                self._render_progress_display(f"[red]Deleting {batches_key}...")
+                self._render_display(f"[red]Deleting {batches_key}...")
                 for batch in batched_work[batches_key]:
                     # TODO: @digimaun - Show summary as result
                     self._delete_batch(batch)
         finally:
-            self._live.stop()
+            self._stop_display()
 
     def _batch_resources(
         self,
@@ -162,8 +175,10 @@ class DeletionManager:
 
         if resource_sync_rules:
             batched_work["resource sync rules"] = [resource_sync_rules]
+
         if custom_locations:
             batched_work["custom locations"] = [custom_locations]
+
         if extensions:
             batched_work["extensions"] = [extensions]
 
