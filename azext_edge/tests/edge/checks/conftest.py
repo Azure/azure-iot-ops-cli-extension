@@ -12,7 +12,22 @@ from azext_edge.edge.providers.check.common import CoreServiceResourceKinds
 
 @pytest.fixture
 def mocked_check_manager(mocker):
-    return mocker.patch("azext_edge.edge.providers.check.base.CheckManager", autospec=True)
+    manager = mocker.patch("azext_edge.edge.providers.check.base.CheckManager", autospec=True)
+    # add `targets` attribute
+    manager.configure_mock(targets={})
+    return manager
+
+
+@pytest.fixture
+def mock_process_pods_status(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.base.pod.process_pods_status")
+    yield patched
+
+
+@pytest.fixture
+def mock_add_display_and_eval(mocker):
+    patched = mocker.patch('azext_edge.edge.providers.check.base.pod.add_display_and_eval')
+    yield patched
 
 
 @pytest.fixture

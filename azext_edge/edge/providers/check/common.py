@@ -219,11 +219,12 @@ LNM_REST_PROPERTIES = [
     ("replicas", "Replicas", False),
 ]
 
-LNM_POD_CONDITION_TEXT_MAP = {
+POD_CONDITION_TEXT_MAP = {
     "Ready": "Pod Readiness",
     "Initialized": "Pod Initialized",
     "ContainersReady": "Containers Readiness",
     "PodScheduled": "Pod Scheduled",
+    "PodReadyToStartContainers": "Pod Ready To Start Containers",
 }
 
 LNM_EXCLUDED_SUBRESOURCE = [

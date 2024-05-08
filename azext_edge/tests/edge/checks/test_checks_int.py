@@ -47,10 +47,11 @@ def test_check(init_setup, detail_level, services_map, post, pre):
     result = run(command)
 
     expected_title = "Evaluation for {[bright_blue]" + ops_service + "[/bright_blue]} service deployment"
-    assert result["title"] == expected_title
-
+    expected_precheck_title = "[bright_blue]IoT Operations readiness[/bright_blue]"
     expected_pre = not post if pre is None else pre
     expected_post = not pre if post is None else post
+    assert result["title"] == expected_title if expected_post else expected_precheck_title
+
     if pre is None and not post:
         try:
             aio_check = run("kubectl api-resources --api-group=orchestrator.iotoperations.azure.com")
