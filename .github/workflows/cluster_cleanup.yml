@@ -12,9 +12,9 @@ on:
         description: "Resource group to clean up"
         required: true
       keyvault_prefix:
-          type: string
-          description: "Prefix of keyvault to delete"
-          required: true
+        type: string
+        description: "Prefix of keyvault to delete"
+        required: true
     secrets:
       AZURE_CLIENT_ID:
         required: true
@@ -32,7 +32,7 @@ on:
         default: ops-cli-int-test-rg
   # Run every night at midnight (Pacific) to cleanup resources
   schedule:
-    - cron: '0 8 * * *'
+    - cron: "0 8 * * *"
 
 env:
   RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
@@ -41,8 +41,8 @@ env:
 
 permissions:
   # required for OpenID federation
-  contents: 'read'
-  id-token: 'write'
+  contents: "read"
+  id-token: "write"
 
 jobs:
   keyvault-cleanup:
@@ -106,7 +106,7 @@ jobs:
           inlineScript: |
             mq_type="Microsoft.IoTOperationsMQ/mq"
             in_cluster_ext_loc="contains(to_string(extendedLocation.name), '${{ env.CLUSTER_PREFIX }}')"
-            
+
             # MQ instance cannot be deleted until all child resources have successfully deleted
             sleep 15s
 
