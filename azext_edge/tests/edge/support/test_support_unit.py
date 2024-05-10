@@ -223,7 +223,12 @@ def test_create_bundle(
                 moniker=MQ_API_V1B1.moniker,
                 since_seconds=since_seconds,
             )
-            assert_list_replica_sets(mocked_client, mocked_zipfile, label_selector=MQ_LABEL, moniker=MQ_API_V1B1.moniker)
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=MQ_LABEL,
+                moniker=MQ_API_V1B1.moniker
+            )
             assert_list_replica_sets(
                 mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, moniker=MQ_API_V1B1.moniker
             )
@@ -237,8 +242,18 @@ def test_create_bundle(
                 field_selector=None,
                 moniker=MQ_API_V1B1.moniker,
             )
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_LABEL,moniker=MQ_API_V1B1.moniker)
-            assert_list_services(mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, moniker=MQ_API_V1B1.moniker)
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=MQ_LABEL,
+                moniker=MQ_API_V1B1.moniker
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=MQ_NAME_LABEL,
+                moniker=MQ_API_V1B1.moniker
+            )
             assert_mq_stats(mocked_zipfile)
 
         if api in [OPCUA_API_V1]:
@@ -379,7 +394,10 @@ def test_create_bundle(
             )
 
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, moniker=DATA_PROCESSOR_API_V1.moniker
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_LABEL,
+                moniker=DATA_PROCESSOR_API_V1.moniker
             )
             assert_list_replica_sets(
                 mocked_client,
@@ -402,7 +420,10 @@ def test_create_bundle(
             )
 
             assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=DATA_PROCESSOR_LABEL, moniker=DATA_PROCESSOR_API_V1.moniker
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATA_PROCESSOR_LABEL,
+                moniker=DATA_PROCESSOR_API_V1.moniker
             )
             assert_list_services(
                 mocked_client,
@@ -464,7 +485,12 @@ def test_create_bundle(
                 assert_list_replica_sets(
                     mocked_client, mocked_zipfile, label_selector=orc_label, moniker=ORC_API_V1.moniker
                 )
-                assert_list_services(mocked_client, mocked_zipfile, label_selector=orc_label, moniker=ORC_API_V1.moniker)
+                assert_list_services(
+                    mocked_client,
+                    mocked_zipfile,
+                    label_selector=orc_label,
+                    moniker=ORC_API_V1.moniker
+                )
 
         if api in [AKRI_API_V0]:
             assert_list_pods(
