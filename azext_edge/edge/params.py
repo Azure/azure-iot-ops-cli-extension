@@ -74,12 +74,6 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Include mq traces in the support bundle. Usage may add considerable size to the produced bundle.",
         )
-        context.argument(
-            "include_arc_agent",
-            options_list=["--arc-agent"],
-            arg_type=get_three_state_flag(),
-            help="Include arc agent logs in the support bundle. Usage may add considerable size to the produced bundle.",
-        )
 
     with self.argument_context("iot ops check") as context:
         context.argument(

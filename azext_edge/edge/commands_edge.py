@@ -35,7 +35,6 @@ def support_bundle(
     log_age_seconds: int = 60 * 60 * 24,
     ops_service: str = OpsServiceType.auto.value,
     bundle_dir: Optional[str] = None,
-    include_arc_agent: Optional[bool] = None,
     include_mq_traces: Optional[bool] = None,
     context_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
@@ -47,7 +46,6 @@ def support_bundle(
         ops_service=ops_service,
         bundle_path=str(bundle_path),
         log_age_seconds=log_age_seconds,
-        include_arc_agent=include_arc_agent,
         include_mq_traces=include_mq_traces,
     )
 
