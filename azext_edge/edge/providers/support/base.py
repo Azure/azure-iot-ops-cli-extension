@@ -61,7 +61,7 @@ def process_crd(
 
 
 def process_v1_pods(
-    resource_api: EdgeResourceApi,
+    moniker: str,
     sub_group: Optional[str] = None,
     capture_previous_logs: bool = True,
     include_metrics: bool = False,
@@ -100,7 +100,7 @@ def process_v1_pods(
         p.api_version = pods.api_version
         p.kind = "Pod"
         zinfo = _process_zinfo(
-            prefix=f"{pod_namespace}/{resource_api.moniker}",
+            prefix=f"{pod_namespace}/{moniker}",
             suffix=f"pod.{pod_name}.yaml",
             sub_group=sub_group,
         )
@@ -124,7 +124,7 @@ def process_v1_pods(
                 pod_containers=pod_containers,
                 pod_name=pod_name,
                 pod_namespace=pod_namespace,
-                resource_api=resource_api,
+                moniker=moniker,
                 v1_api=v1_api,
                 since_seconds=since_seconds,
                 capture_previous_logs=capture_previous_logs,
@@ -140,7 +140,7 @@ def process_v1_pods(
                 )
                 if metric:
                     zinfo = _process_zinfo(
-                        prefix=f"{pod_namespace}/{resource_api.moniker}",
+                        prefix=f"{pod_namespace}/{moniker}",
                         suffix=f"pod.{pod_name}.metric.yaml",
                         sub_group=sub_group,
                     )
@@ -157,7 +157,7 @@ def process_v1_pods(
 
 
 def process_deployments(
-    resource_api: EdgeResourceApi,
+    moniker: str,
     sub_group: Optional[str] = None,
     return_namespaces: bool = False,
     field_selector: Optional[str] = None,
@@ -175,7 +175,7 @@ def process_deployments(
     processed = _process_kubernetes_resources(
         sub_group=sub_group,
         resources=deployments,
-        resource_api=resource_api,
+        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.deployment.value,
     )
@@ -193,7 +193,7 @@ def process_deployments(
 
 
 def process_statefulset(
-    resource_api: EdgeResourceApi,
+    moniker: str,
     sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
@@ -208,13 +208,13 @@ def process_statefulset(
     return _process_kubernetes_resources(
         sub_group=sub_group,
         resources=statefulsets,
-        resource_api=resource_api,
+        moniker=moniker,
         kind=BundleResourceKind.statefulset.value,
     )
 
 
 def process_services(
-    resource_api: EdgeResourceApi,
+    moniker: str,
     sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
@@ -230,14 +230,14 @@ def process_services(
     return _process_kubernetes_resources(
         sub_group=sub_group,
         resources=services,
-        resource_api=resource_api,
+        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.service.value,
     )
 
 
 def process_replicasets(
-    resource_api: EdgeResourceApi,
+    moniker: str,
     sub_group: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -250,14 +250,14 @@ def process_replicasets(
     return _process_kubernetes_resources(
         sub_group=sub_group,
         resources=replicasets,
-        resource_api=resource_api,
+        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.replicaset.value,
     )
 
 
 def process_daemonsets(
-    resource_api: EdgeResourceApi,
+    moniker: str,
     sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
@@ -273,7 +273,7 @@ def process_daemonsets(
     return _process_kubernetes_resources(
         sub_group=sub_group,
         resources=daemonsets,
-        resource_api=resource_api,
+        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.daemonset.value,
     )
@@ -326,7 +326,7 @@ def process_storage_classes() -> List[dict]:
 
 
 def process_persistent_volume_claims(
-    resource_api: EdgeResourceApi,
+    moniker: str,
     sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
@@ -342,14 +342,14 @@ def process_persistent_volume_claims(
     return _process_kubernetes_resources(
         sub_group=sub_group,
         resources=pvcs,
-        resource_api=resource_api,
+        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.pvc.value,
     )
 
 
 def process_jobs(
-    resource_api: EdgeResourceApi,
+    moniker: str,
     sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
@@ -365,14 +365,14 @@ def process_jobs(
     return _process_kubernetes_resources(
         sub_group=sub_group,
         resources=jobs,
-        resource_api=resource_api,
+        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.job.value,
     )
 
 
 def process_cron_jobs(
-    resource_api: EdgeResourceApi,
+    moniker: str,
     sub_group: Optional[str] = None,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
@@ -388,7 +388,7 @@ def process_cron_jobs(
     return _process_kubernetes_resources(
         sub_group=sub_group,
         resources=cron_jobs,
-        resource_api=resource_api,
+        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.cronjob.value,
     )
@@ -436,7 +436,7 @@ def _capture_pod_container_logs(
     pod_containers: List[V1Container],
     pod_name: str,
     pod_namespace: str,
-    resource_api: EdgeResourceApi,
+    moniker: str,
     v1_api: client.CoreV1Api,
     capture_previous_logs: bool = True,
     since_seconds: int = DAY_IN_SECONDS,
@@ -463,7 +463,7 @@ def _capture_pod_container_logs(
                 )
                 zinfo_previous_segment = "previous." if capture_previous else ""
                 zinfo = _process_zinfo(
-                    prefix=f"{pod_namespace}/{resource_api.moniker}",
+                    prefix=f"{pod_namespace}/{moniker}",
                     suffix=f"pod.{pod_name}.{container.name}.{zinfo_previous_segment}log",
                     sub_group=sub_group,
                 )
@@ -481,7 +481,7 @@ def _capture_pod_container_logs(
 
 def _process_kubernetes_resources(
     resources: object,
-    resource_api: EdgeResourceApi,
+    moniker: str,
     kind: str,
     sub_group: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -512,7 +512,7 @@ def _process_kubernetes_resources(
             resource_type = kind.lower()
 
         zinfo = _process_zinfo(
-            prefix=f"{resource_namespace}/{resource_api.moniker}",
+            prefix=f"{resource_namespace}/{moniker}",
             suffix=f"{resource_type}.{resource_name}.yaml",
             sub_group=sub_group,
         )

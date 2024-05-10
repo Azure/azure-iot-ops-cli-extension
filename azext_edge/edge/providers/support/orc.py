@@ -34,7 +34,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
         processed.extend(
             process_v1_pods(
-                resource_api=ORC_API_V1,
+                moniker=ORC_API_V1.moniker,
                 label_selector=label,
                 since_seconds=since_seconds,
             )
@@ -46,7 +46,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 def fetch_deployments():
     processed = []
     for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
-        processed.extend(process_deployments(resource_api=ORC_API_V1, label_selector=label))
+        processed.extend(process_deployments(moniker=ORC_API_V1.moniker, label_selector=label))
 
     return processed
 
@@ -54,7 +54,7 @@ def fetch_deployments():
 def fetch_services():
     processed = []
     for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
-        processed.extend(process_services(resource_api=ORC_API_V1, label_selector=label))
+        processed.extend(process_services(moniker=ORC_API_V1.moniker, label_selector=label))
 
     return processed
 
@@ -62,7 +62,7 @@ def fetch_services():
 def fetch_replicasets():
     processed = []
     for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
-        processed.extend(process_replicasets(resource_api=ORC_API_V1, label_selector=label))
+        processed.extend(process_replicasets(moniker=ORC_API_V1.moniker, label_selector=label))
 
     return processed
 

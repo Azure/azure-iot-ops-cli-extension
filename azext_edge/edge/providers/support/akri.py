@@ -45,7 +45,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     for pod_name_label in pod_name_labels:
         processed.extend(
             process_v1_pods(
-                resource_api=AKRI_API_V0,
+                moniker=AKRI_API_V0.moniker,
                 label_selector=pod_name_label,
                 since_seconds=since_seconds,
             )
@@ -53,7 +53,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
     processed.extend(
         process_v1_pods(
-            resource_api=AKRI_API_V0,
+            moniker=AKRI_API_V0.moniker,
             label_selector=AKRI_NAME_LABEL_V2,
             since_seconds=since_seconds,
         )
@@ -71,14 +71,14 @@ def fetch_deployments():
     for deployment_name_label in deployment_name_labels:
         processed.extend(
             process_deployments(
-                resource_api=AKRI_API_V0,
+                moniker=AKRI_API_V0.moniker,
                 label_selector=deployment_name_label,
             )
         )
 
     processed.extend(
         process_deployments(
-            resource_api=AKRI_API_V0,
+            moniker=AKRI_API_V0.moniker,
             label_selector=AKRI_NAME_LABEL_V2,
         )
     )
@@ -94,13 +94,13 @@ def fetch_daemonsets():
     for daemonset_name_label in daemonset_name_labels:
         processed.extend(
             process_daemonsets(
-                resource_api=AKRI_API_V0,
+                moniker=AKRI_API_V0.moniker,
                 label_selector=daemonset_name_label,
             )
         )
 
     processed.extend(
-        process_daemonsets(resource_api=AKRI_API_V0, label_selector=AKRI_NAME_LABEL_V2)
+        process_daemonsets(moniker=AKRI_API_V0.moniker, label_selector=AKRI_NAME_LABEL_V2)
     )
     return processed
 
@@ -115,13 +115,13 @@ def fetch_services():
     for service_name_label in service_name_labels:
         processed.extend(
             process_services(
-                resource_api=AKRI_API_V0,
+                moniker=AKRI_API_V0.moniker,
                 label_selector=service_name_label,
             )
         )
 
     processed.extend(
-        process_services(resource_api=AKRI_API_V0, label_selector=AKRI_NAME_LABEL_V2)
+        process_services(moniker=AKRI_API_V0.moniker, label_selector=AKRI_NAME_LABEL_V2)
     )
     return processed
 
@@ -136,13 +136,13 @@ def fetch_replicasets():
     for replicaset_name_label in replicaset_name_labels:
         processed.extend(
             process_replicasets(
-                resource_api=AKRI_API_V0,
+                moniker=AKRI_API_V0.moniker,
                 label_selector=replicaset_name_label,
             )
         )
 
     processed.extend(
-        process_replicasets(resource_api=AKRI_API_V0, label_selector=AKRI_NAME_LABEL_V2)
+        process_replicasets(moniker=AKRI_API_V0.moniker, label_selector=AKRI_NAME_LABEL_V2)
     )
     return processed
 

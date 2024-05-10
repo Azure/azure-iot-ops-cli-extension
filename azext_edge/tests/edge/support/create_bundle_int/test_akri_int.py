@@ -21,7 +21,7 @@ def test_create_bundle_akri(init_setup, tracked_files):
 
     check_custom_resource_files(
         file_objs=file_map,
-        resource_api=AKRI_API_V0
+        resource_api=AKRI_API_V0,
     )
 
     expected_workload_types = ["daemonset", "deployment", "pod", "replicaset", "service"]

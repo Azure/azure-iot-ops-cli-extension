@@ -88,16 +88,16 @@ def fetch_diagnostic_traces():
 
 def fetch_deployments():
     processed, namespaces = process_deployments(
-        resource_api=MQ_ACTIVE_API, label_selector=MQ_LABEL, return_namespaces=True
+        moniker=MQ_ACTIVE_API.moniker, label_selector=MQ_LABEL, return_namespaces=True
     )
     # aio-mq-operator deployment has no app label
     operators, operator_namespaces = process_deployments(
-        resource_api=MQ_ACTIVE_API, field_selector=f"metadata.name={AIO_MQ_OPERATOR}", return_namespaces=True
+        moniker=MQ_ACTIVE_API.moniker, field_selector=f"metadata.name={AIO_MQ_OPERATOR}", return_namespaces=True
     )
     processed.extend(operators)
 
     operators_v2, operator_namespaces_v2 = process_deployments(
-        resource_api=MQ_ACTIVE_API, label_selector=MQ_NAME_LABEL, return_namespaces=True
+        moniker=MQ_ACTIVE_API.moniker, label_selector=MQ_NAME_LABEL, return_namespaces=True
     )
     processed.extend(operators_v2)
 
@@ -122,12 +122,12 @@ def fetch_deployments():
 
 def fetch_statefulsets():
     processed = process_statefulset(
-        resource_api=MQ_ACTIVE_API,
+        moniker=MQ_ACTIVE_API.moniker,
         label_selector=MQ_LABEL,
     )
     processed.extend(
         process_statefulset(
-            resource_api=MQ_ACTIVE_API,
+            moniker=MQ_ACTIVE_API.moniker,
             label_selector=MQ_NAME_LABEL,
         )
     )
@@ -144,7 +144,7 @@ def fetch_statefulsets():
     for connector in connectors:
         connector_name = connector.get("metadata", {}).get("name")
         stateful_set = process_statefulset(
-            resource_api=MQ_ACTIVE_API,
+            moniker=MQ_ACTIVE_API.moniker,
             field_selector=f"metadata.name={AIO_MQ_RESOURCE_PREFIX}{connector_name}",
         )
         processed.extend(stateful_set)
@@ -154,12 +154,12 @@ def fetch_statefulsets():
 
 def fetch_services():
     processed = process_services(
-        resource_api=MQ_ACTIVE_API,
+        moniker=MQ_ACTIVE_API.moniker,
         label_selector=MQ_LABEL,
     )
     processed.extend(
         process_services(
-            resource_api=MQ_ACTIVE_API,
+            moniker=MQ_ACTIVE_API.moniker,
             label_selector=MQ_NAME_LABEL,
         )
     )
@@ -169,12 +169,12 @@ def fetch_services():
 
 def fetch_replicasets():
     processed = process_replicasets(
-        resource_api=MQ_ACTIVE_API,
+        moniker=MQ_ACTIVE_API.moniker,
         label_selector=MQ_LABEL,
     )
     processed.extend(
         process_replicasets(
-            resource_api=MQ_ACTIVE_API,
+            moniker=MQ_ACTIVE_API.moniker,
             label_selector=MQ_NAME_LABEL,
         )
     )
@@ -184,13 +184,13 @@ def fetch_replicasets():
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     processed = process_v1_pods(
-        resource_api=MQ_ACTIVE_API,
+        moniker=MQ_ACTIVE_API.moniker,
         label_selector=MQ_LABEL,
         since_seconds=since_seconds,
     )
     processed.extend(
         process_v1_pods(
-            resource_api=MQ_ACTIVE_API,
+            moniker=MQ_ACTIVE_API.moniker,
             label_selector=MQ_NAME_LABEL,
             since_seconds=since_seconds,
         )

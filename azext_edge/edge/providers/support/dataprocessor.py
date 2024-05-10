@@ -54,7 +54,7 @@ DATA_PROCESSOR_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label=DATA_PROCESSOR_API
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     dataprocessor_pods = process_v1_pods(
-        resource_api=DATA_PROCESSOR_API_V1,
+        moniker=DATA_PROCESSOR_API_V1.moniker,
         label_selector=DATA_PROCESSOR_LABEL,
         since_seconds=since_seconds,
         pod_prefix_for_init_container_logs=[
@@ -65,7 +65,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
     dataprocessor_pods.extend(
         process_v1_pods(
-            resource_api=DATA_PROCESSOR_API_V1,
+            moniker=DATA_PROCESSOR_API_V1.moniker,
             label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
             since_seconds=since_seconds,
             pod_prefix_for_init_container_logs=[
@@ -79,9 +79,9 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
 
 def fetch_deployments():
-    processed = process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
+    processed = process_deployments(moniker=DATA_PROCESSOR_API_V1.moniker, label_selector=DATA_PROCESSOR_LABEL)
     processed.extend(
-        process_deployments(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
+        process_deployments(moniker=DATA_PROCESSOR_API_V1.moniker, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
     )
 
     return processed
@@ -89,12 +89,12 @@ def fetch_deployments():
 
 def fetch_statefulsets():
     processed = process_statefulset(
-        resource_api=DATA_PROCESSOR_API_V1,
+        moniker=DATA_PROCESSOR_API_V1.moniker,
         label_selector=DATA_PROCESSOR_LABEL,
     )
     processed.extend(
         process_statefulset(
-            resource_api=DATA_PROCESSOR_API_V1,
+            moniker=DATA_PROCESSOR_API_V1.moniker,
             label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
         )
     )
@@ -103,9 +103,9 @@ def fetch_statefulsets():
 
 
 def fetch_replicasets():
-    processed = process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_LABEL)
+    processed = process_replicasets(moniker=DATA_PROCESSOR_API_V1.moniker, label_selector=DATA_PROCESSOR_LABEL)
     processed.extend(
-        process_replicasets(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
+        process_replicasets(moniker=DATA_PROCESSOR_API_V1.moniker, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
     )
 
     return processed
@@ -120,13 +120,13 @@ def fetch_services():
     for service_name_label in service_name_labels:
         processed.extend(
             process_services(
-                resource_api=DATA_PROCESSOR_API_V1,
+                moniker=DATA_PROCESSOR_API_V1.moniker,
                 label_selector=service_name_label,
             )
         )
 
     processed.extend(
-        process_services(resource_api=DATA_PROCESSOR_API_V1, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
+        process_services(moniker=DATA_PROCESSOR_API_V1.moniker, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
     )
 
     return processed
@@ -143,14 +143,14 @@ def fetch_persistent_volume_claims():
     for persistent_volume_claims_name_label in persistent_volume_claims_name_labels:
         processed.extend(
             process_persistent_volume_claims(
-                resource_api=DATA_PROCESSOR_API_V1,
+                moniker=DATA_PROCESSOR_API_V1.moniker,
                 label_selector=persistent_volume_claims_name_label,
             )
         )
 
     processed.extend(
         process_persistent_volume_claims(
-            resource_api=DATA_PROCESSOR_API_V1,
+            moniker=DATA_PROCESSOR_API_V1.moniker,
             label_selector=DATA_PROCESSOR_NAME_LABEL_V2
         )
     )

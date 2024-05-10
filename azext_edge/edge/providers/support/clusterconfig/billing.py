@@ -33,7 +33,7 @@ def fetch_pods(
 ):
     # capture billing pods for aio usage
     billing_pods = process_v1_pods(
-        resource_api=CLUSTER_CONFIG_API_V1,
+        moniker=CLUSTER_CONFIG_API_V1.moniker,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
         since_seconds=since_seconds,
         sub_group=BILLING_RESOURCE_KIND,
@@ -42,7 +42,7 @@ def fetch_pods(
     # capture billing pods for arc extension
     billing_pods.extend(
         process_v1_pods(
-            resource_api=CLUSTER_CONFIG_API_V1,
+            moniker=CLUSTER_CONFIG_API_V1.moniker,
             label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
             since_seconds=since_seconds,
             sub_group=BILLING_RESOURCE_KIND,
@@ -54,7 +54,7 @@ def fetch_pods(
 
 def fetch_jobs():
     processed = process_jobs(
-        resource_api=CLUSTER_CONFIG_API_V1,
+        moniker=CLUSTER_CONFIG_API_V1.moniker,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
         sub_group=BILLING_RESOURCE_KIND,
     )
@@ -64,7 +64,7 @@ def fetch_jobs():
 
 def fetch_cron_jobs():
     processed = process_cron_jobs(
-        resource_api=CLUSTER_CONFIG_API_V1,
+        moniker=CLUSTER_CONFIG_API_V1.moniker,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
         sub_group=BILLING_RESOURCE_KIND,
     )
@@ -74,7 +74,7 @@ def fetch_cron_jobs():
 
 def fetch_deployments():
     processed = process_deployments(
-        resource_api=CLUSTER_CONFIG_API_V1,
+        moniker=CLUSTER_CONFIG_API_V1.moniker,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
         sub_group=BILLING_RESOURCE_KIND,
     )
@@ -84,7 +84,7 @@ def fetch_deployments():
 
 def fetch_replicasets():
     return process_replicasets(
-        resource_api=CLUSTER_CONFIG_API_V1,
+        moniker=CLUSTER_CONFIG_API_V1.moniker,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
         sub_group=BILLING_RESOURCE_KIND,
     )
@@ -92,7 +92,7 @@ def fetch_replicasets():
 
 def fetch_services():
     return process_services(
-        resource_api=CLUSTER_CONFIG_API_V1,
+        moniker=CLUSTER_CONFIG_API_V1.moniker,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
         sub_group=BILLING_RESOURCE_KIND,
     )
