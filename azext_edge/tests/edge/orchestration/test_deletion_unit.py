@@ -116,6 +116,7 @@ def test_batch_resources(
     mocker,
     mocked_cmd: Mock,
     mocked_get_resource_client: Mock,
+    mocked_resource_map: Mock,
     expected_resources_map: Dict[str, Union[dict, Optional[List[IoTOperationsResource]]]],
 ):
     from azext_edge.edge.providers.orchestration.deletion import DeletionManager
