@@ -101,9 +101,10 @@ class IoTOperationsResourceMap:
                         segments=len(resource["id"].split("/")),
                     )
                 )
-            sorted_resources = sorted(result, key=lambda r: (r.segments, r.display_name.lower()), reverse=True)
 
-        return sorted_resources
+            result = sorted(result, key=lambda r: (r.segments, r.display_name.lower()), reverse=True)
+
+        return result
 
     def refresh_related_resource_ids(
         self,
@@ -147,7 +148,7 @@ class IoTOperationsResourceMap:
 
         return result
 
-    def build_tree(self):
+    def build_tree(self) -> Tree:
         tree = Tree(f"[green]{self.cluster_name}")
         extensions_node = tree.add(label="[red]extensions")
         [extensions_node.add(ext.display_name) for ext in self.extensions]
