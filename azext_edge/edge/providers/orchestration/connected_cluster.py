@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from ...util.az_client import get_resource_client
 from ...util.resource_graph import ResourceGraph
@@ -108,34 +108,35 @@ class ConnectedCluster:
         query = QUERIES["get_custom_location_for_namespace"].format(resource_id=self.resource_id, namespace=namespace)
 
         result = self.resource_graph.query_resources(query=query)
-        if "data" in result and result["data"]:
-            return result["data"][0]
+        return self._process_query_result(result, first=True)
 
     def get_aio_extensions(self) -> Optional[List[dict]]:
         query = QUERIES["get_aio_extensions"].format(resource_id=self.resource_id)
         # TODO - @digimaun microsoft.azurekeyvaultsecretsprovider optionality
 
         result = self.resource_graph.query_resources(query=query)
-        if "data" in result and result["data"]:
-            return result["data"]
+        return self._process_query_result(result)
 
     def get_aio_custom_locations(self) -> Optional[List[dict]]:
         query = QUERIES["get_aio_custom_locations"].format(resource_id=self.resource_id)
 
         result = self.resource_graph.query_resources(query=query)
-        if "data" in result and result["data"]:
-            return result["data"]
+        return self._process_query_result(result)
 
     def get_aio_resources(self, custom_location_id: str) -> Optional[List[dict]]:
         query = QUERIES["get_aio_resources"].format(custom_location_id=custom_location_id)
 
         result = self.resource_graph.query_resources(query=query)
-        if "data" in result and result["data"]:
-            return result["data"]
+        return self._process_query_result(result)
 
     def get_resource_sync_rules(self, custom_location_id: str) -> Optional[List[dict]]:
         query = QUERIES["get_resource_sync_rules"].format(custom_location_id=custom_location_id)
 
         result = self.resource_graph.query_resources(query=query)
+        return self._process_query_result(result)
+
+    def _process_query_result(self, result: dict, first: bool = False) -> Optional[Union[dict, List[dict]]]:
         if "data" in result and result["data"]:
+            if first:
+                return result["data"][0]
             return result["data"]
