@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from typing import List, Optional, Type, Union
 from unittest.mock import Mock
 
 import pytest
@@ -32,9 +33,12 @@ def test_connected_cluster_queries(
     mocked_get_resource_client: Mock,
     expected_query_result: dict,
 ):
-    def _assert_query_result(result: dict):
+    def _assert_query_result(
+        result: Optional[Union[dict, List[dict]]], expected_type: Union[Type[dict], Type[list]] = list
+    ):
         if expected_query_result["data"]:
             assert result
+            assert isinstance(result, expected_type)
         else:
             assert result is None
 
@@ -53,7 +57,9 @@ def test_connected_cluster_queries(
     mocked_resource_graph.return_value.query_resources.return_value = expected_query_result
 
     target_namespace = generate_random_string()
-    _assert_query_result(connected_cluster.get_custom_location_for_namespace(namespace=target_namespace))
+    _assert_query_result(
+        connected_cluster.get_custom_location_for_namespace(namespace=target_namespace), expected_type=dict
+    )
     mocked_resource_graph.return_value.query_resources.assert_called_with(
         query=f"""
         resources

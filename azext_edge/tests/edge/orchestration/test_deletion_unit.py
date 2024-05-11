@@ -4,9 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from unittest.mock import Mock
-from random import randint
 
 import pytest
 
@@ -23,32 +22,59 @@ def mocked_resource_map(mocker):
     yield patched
 
 
-def _generate_iot_ops_resources(count: int = 1) -> List[IoTOperationsResource]:
-    result = []
-    segments = sorted([randint(1, 10) for _ in range(count)], key=int, reverse=True)
+def _generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
+    resource_id = ""
+    for _ in range(segments):
+        resource_id = f"{resource_id}/{generate_random_string()}"
 
-    for i in range(count):
-        result.append(
-            IoTOperationsResource(
-                resource_id=generate_random_string(),
-                display_name=generate_random_string(),
-                api_version=generate_random_string(),
-                segments=segments[i],
-            )
-        )
+    resource = IoTOperationsResource(
+        resource_id=resource_id,
+        display_name=resource_id.split("/")[-1],
+        api_version=generate_random_string(),
+        segments=segments,
+    )
 
-    return result
+    return resource
 
 
 @pytest.mark.parametrize(
     "expected_resources_map",
     [
-        {"resources": None, "resource_sync_rules": None, "custom_locations": None, "extensions": None},
         {
-            "resources": _generate_iot_ops_resources(),
-            "resource_sync_rules": _generate_iot_ops_resources(),
-            "custom_locations": _generate_iot_ops_resources(),
-            "extensions": _generate_iot_ops_resources(),
+            "resources": None,
+            "resource sync rules": None,
+            "custom locations": None,
+            "extensions": None,
+            "meta": {
+                "expected_total": 0,
+            },
+        },
+        {
+            "resources": [
+                _generate_ops_resource(4),
+            ],
+            "resource sync rules": [_generate_ops_resource()],
+            "custom locations": [_generate_ops_resource()],
+            "extensions": [_generate_ops_resource()],
+            "meta": {
+                "expected_total": 4,
+                "resource_batches": 1,
+            },
+        },
+        {
+            "resources": [
+                _generate_ops_resource(4),
+                _generate_ops_resource(4),
+                _generate_ops_resource(3),
+                _generate_ops_resource(1),
+            ],
+            "resource sync rules": [],
+            "custom locations": [_generate_ops_resource()],
+            "extensions": [_generate_ops_resource(), _generate_ops_resource()],
+            "meta": {
+                "expected_total": 7,
+                "resource_batches": 3,
+            },
         },
     ],
 )
@@ -57,7 +83,7 @@ def test_batch_resources(
     mocked_cmd: Mock,
     mocked_resource_map: Mock,
     mocked_get_resource_client: Mock,
-    expected_resources_map: Dict[str, Optional[List[IoTOperationsResource]]],
+    expected_resources_map: Dict[str, Union[dict, Optional[List[IoTOperationsResource]]]],
 ):
     from azext_edge.edge.providers.orchestration.deletion import DeletionManager
 
@@ -65,21 +91,26 @@ def test_batch_resources(
     rg_name = generate_random_string()
 
     deletion_manager = DeletionManager(cmd=mocked_cmd, cluster_name=cluster_name, resource_group_name=rg_name)
-    batch = deletion_manager._batch_resources(
+    batches = deletion_manager._batch_resources(
         resources=expected_resources_map["resources"],
-        resource_sync_rules=expected_resources_map["resource_sync_rules"],
-        custom_locations=expected_resources_map["custom_locations"],
+        resource_sync_rules=expected_resources_map["resource sync rules"],
+        custom_locations=expected_resources_map["custom locations"],
         extensions=expected_resources_map["extensions"],
     )
 
+    actual_total = 0
     if expected_resources_map["resources"]:
-        assert "resources" in batch
-    if expected_resources_map["resource_sync_rules"]:
-        assert "resource sync rules" in batch
-    if expected_resources_map["custom_locations"]:
-        assert "custom locations" in batch
-    if expected_resources_map["extensions"]:
-        assert "extensions" in batch
+        assert "resources" in batches
+        assert expected_resources_map["meta"]["resource_batches"] == len(batches["resources"])
+        for batch in batches["resources"]:
+            actual_total += len(batch)
+            segments_set = set([r.segments for r in batch])
+            assert len(segments_set) == 1
 
-    # import pdb; pdb.set_trace()
-    pass
+    for map_key in ["resource sync rules", "custom locations", "extensions"]:
+        if expected_resources_map[map_key]:
+            assert map_key in batches
+            for batch in batches[map_key]:
+                actual_total += len(batch)
+
+    assert actual_total == expected_resources_map["meta"]["expected_total"]
