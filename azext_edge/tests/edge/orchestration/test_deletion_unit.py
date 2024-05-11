@@ -22,6 +22,27 @@ def mocked_resource_map(mocker):
     yield patched
 
 
+@pytest.fixture
+def mocked_logger(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.deletion.logger",
+    )
+    yield patched
+
+
+@pytest.fixture
+def spy_deletion_manager(mocker):
+    from azext_edge.edge.providers.orchestration.deletion import DeletionManager
+
+    yield {
+        "_process": mocker.spy(DeletionManager, "_process"),
+        "_display_resource_tree": mocker.spy(DeletionManager, "_display_resource_tree"),
+        "_render_display": mocker.spy(DeletionManager, "_render_display"),
+        "_stop_display": mocker.spy(DeletionManager, "_stop_display"),
+        "_delete_batch": mocker.spy(DeletionManager, "_delete_batch"),
+    }
+
+
 def _generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
     resource_id = ""
     for _ in range(segments):
@@ -35,6 +56,19 @@ def _generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
     )
 
     return resource
+
+
+def _assemble_resource_map_mock(
+    resource_map_mock: Mock,
+    extensions: Optional[List[dict]],
+    custom_locations: Optional[List[dict]],
+    resources: Optional[List[dict]],
+    sync_rules: Optional[List[dict]],
+):
+    resource_map_mock().extensions = extensions
+    resource_map_mock().custom_locations = custom_locations
+    resource_map_mock().get_resources.return_value = resources
+    resource_map_mock().get_resource_sync_rules.return_value = sync_rules
 
 
 @pytest.mark.parametrize(
@@ -81,7 +115,6 @@ def _generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
 def test_batch_resources(
     mocker,
     mocked_cmd: Mock,
-    mocked_resource_map: Mock,
     mocked_get_resource_client: Mock,
     expected_resources_map: Dict[str, Union[dict, Optional[List[IoTOperationsResource]]]],
 ):
@@ -114,3 +147,61 @@ def test_batch_resources(
                 actual_total += len(batch)
 
     assert actual_total == expected_resources_map["meta"]["expected_total"]
+
+
+# IoTOperationsResourceMap returns empty array over None
+@pytest.mark.parametrize(
+    "expected_resources_map",
+    [
+        {
+            "resources": [],
+            "resource sync rules": [],
+            "custom locations": [],
+            "extensions": [],
+            "meta": {
+                "expected_total": 0,
+            },
+        },
+    ],
+)
+def test_delete_lifecycle(
+    mocker,
+    mocked_cmd: Mock,
+    mocked_resource_map: Mock,
+    mocked_get_resource_client: Mock,
+    mocked_logger: Mock,
+    spy_deletion_manager: Dict[str, Mock],
+    expected_resources_map: Dict[str, Union[dict, Optional[List[IoTOperationsResource]]]],
+):
+    from azext_edge.edge.providers.orchestration.deletion import delete_ops_resources
+
+    cluster_name = generate_random_string()
+    rg_name = generate_random_string()
+
+    _assemble_resource_map_mock(
+        resource_map_mock=mocked_resource_map,
+        extensions=expected_resources_map["extensions"],
+        custom_locations=expected_resources_map["custom locations"],
+        resources=expected_resources_map["resources"],
+        sync_rules=expected_resources_map["resource sync rules"],
+    )
+
+    delete_ops_resources(cmd=mocked_cmd, cluster_name=cluster_name, resource_group_name=rg_name, confirm_yes=True)
+    spy_deletion_manager["_display_resource_tree"].assert_called_once()
+    spy_deletion_manager["_process"].assert_called_once()
+
+    if not all(
+        [
+            expected_resources_map["extensions"],
+            expected_resources_map["custom locations"],
+            expected_resources_map["resources"],
+            expected_resources_map["resource sync rules"],
+        ]
+    ):
+        assert mocked_logger.warning.call_args[0][0] == "Nothing to delete :)"
+        spy_deletion_manager["_delete_batch"].assert_not_called()
+        return
+
+    spy_deletion_manager["_render_display"].assert_called()
+    spy_deletion_manager["_delete_batch"].assert_called()
+    spy_deletion_manager["_stop_display"].assert_called_once()

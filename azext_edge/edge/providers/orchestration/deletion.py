@@ -6,7 +6,7 @@
 
 from sys import maxsize
 from time import sleep
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 from knack.log import get_logger
 from rich import print
@@ -183,7 +183,7 @@ class DeletionManager:
 
         return batched_work
 
-    def _delete_batch(self, resource_batch: List[IoTOperationsResource]) -> List["LROPoller"]:
+    def _delete_batch(self, resource_batch: List[IoTOperationsResource]) -> Tuple["LROPoller"]:
         return wait_for_terminal_states(
             *[
                 self.resource_client.resources.begin_delete_by_id(
