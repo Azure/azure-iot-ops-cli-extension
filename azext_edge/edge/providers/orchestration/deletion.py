@@ -121,7 +121,6 @@ class DeletionManager:
             todo_resource_sync_rules.extend(self.resource_map.get_resource_sync_rules(cl.resource_id))
             todo_resources.extend(self.resource_map.get_resources(cl.resource_id))
 
-        # delete_batch_result[0].status() == "Succeeded"
         batched_work = self._batch_resources(
             resources=todo_resources,
             resource_sync_rules=todo_resource_sync_rules,
@@ -151,10 +150,10 @@ class DeletionManager:
 
     def _batch_resources(
         self,
-        resources: List[IoTOperationsResource] = None,
-        resource_sync_rules: List[IoTOperationsResource] = None,
-        custom_locations: List[IoTOperationsResource] = None,
-        extensions: List[IoTOperationsResource] = None,
+        resources: Optional[List[IoTOperationsResource]] = None,
+        resource_sync_rules: Optional[List[IoTOperationsResource]] = None,
+        custom_locations: Optional[List[IoTOperationsResource]] = None,
+        extensions: Optional[List[IoTOperationsResource]] = None,
     ) -> Dict[str, List[List[IoTOperationsResource]]]:
         batched_work: Dict[str, List[List[IoTOperationsResource]]] = {}
 
