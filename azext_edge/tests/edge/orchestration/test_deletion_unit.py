@@ -31,6 +31,18 @@ def mocked_logger(mocker):
 
 
 @pytest.fixture
+def mocked_get_resource_client(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.deletion.get_resource_client", autospec=True)
+    yield patched
+
+
+@pytest.fixture
+def mocked_wait_for_terminal_states(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.deletion.wait_for_terminal_states", autospec=True)
+    yield patched
+
+
+@pytest.fixture
 def spy_deletion_manager(mocker):
     from azext_edge.edge.providers.orchestration.deletion import DeletionManager
 
@@ -163,6 +175,30 @@ def test_batch_resources(
                 "expected_total": 0,
             },
         },
+        {
+            "resources": [
+                _generate_ops_resource(4),
+            ],
+            "resource sync rules": [_generate_ops_resource(), _generate_ops_resource()],
+            "custom locations": [_generate_ops_resource()],
+            "extensions": [_generate_ops_resource()],
+            "meta": {
+                "expected_total": 4,
+                "resource_batches": 1,
+                "expected_delete_calls": 4,
+            },
+        },
+        {
+            "resources": [_generate_ops_resource(4), _generate_ops_resource(2)],
+            "resource sync rules": [_generate_ops_resource()],
+            "custom locations": [],
+            "extensions": [_generate_ops_resource()],
+            "meta": {
+                "expected_total": 4,
+                "resource_batches": 2,
+                "expected_delete_calls": 4,
+            },
+        },
     ],
 )
 def test_delete_lifecycle(
@@ -170,6 +206,7 @@ def test_delete_lifecycle(
     mocked_cmd: Mock,
     mocked_resource_map: Mock,
     mocked_get_resource_client: Mock,
+    mocked_wait_for_terminal_states: Mock,
     mocked_logger: Mock,
     spy_deletion_manager: Dict[str, Mock],
     expected_resources_map: Dict[str, Union[dict, Optional[List[IoTOperationsResource]]]],
@@ -191,7 +228,7 @@ def test_delete_lifecycle(
     spy_deletion_manager["_display_resource_tree"].assert_called_once()
     spy_deletion_manager["_process"].assert_called_once()
 
-    if not all(
+    if not any(
         [
             expected_resources_map["extensions"],
             expected_resources_map["custom locations"],
@@ -204,5 +241,5 @@ def test_delete_lifecycle(
         return
 
     spy_deletion_manager["_render_display"].assert_called()
-    spy_deletion_manager["_delete_batch"].assert_called()
     spy_deletion_manager["_stop_display"].assert_called_once()
+    spy_deletion_manager["_delete_batch"].call_count == expected_resources_map["meta"]["expected_delete_calls"]
