@@ -199,6 +199,17 @@ def test_batch_resources(
                 "expected_delete_calls": 4,
             },
         },
+        {
+            "resources": [],
+            "resource sync rules": [],
+            "custom locations": [],
+            "extensions": [_generate_ops_resource()],
+            "meta": {
+                "expected_total": 1,
+                "resource_batches": 0,
+                "expected_delete_calls": 1,
+            },
+        },
     ],
 )
 def test_delete_lifecycle(
