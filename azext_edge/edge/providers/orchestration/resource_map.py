@@ -35,7 +35,6 @@ class IoTOperationsResourceMap:
             cluster_name=self.cluster_name,
             resource_group_name=self.resource_group_name,
         )
-        self.base_id_prefix = f"/subscriptions/{self.subscription_id}/resourceGroups/{resource_group_name}/providers"
         self._resource_map = self.refresh_related_resource_ids()
 
     @property

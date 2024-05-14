@@ -158,6 +158,7 @@ class DeletionManager:
         batched_work: Dict[str, List[List[IoTOperationsResource]]] = {}
 
         if resources:
+            # resource_map.get_resources will sort resources in descending order by segment then display name
             resource_batches: List[List[IoTOperationsResource]] = []
             last_segments = maxsize
             current_batch = []
