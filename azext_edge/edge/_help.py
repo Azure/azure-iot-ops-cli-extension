@@ -245,7 +245,7 @@ def load_iotops_help():
         - name: Skip confirmation prompt and continue to deletion process. Useful for CI scenarios.
           text: >
             az iot ops delete --cluster mycluster -g myresourcegroup -y
-        - name: Force deletion regardless of warnings. Not recommended.
+        - name: Force deletion regardless of warnings. May lead to errors.
           text: >
             az iot ops delete --cluster mycluster -g myresourcegroup --force
     """
