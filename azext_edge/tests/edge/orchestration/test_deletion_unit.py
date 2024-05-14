@@ -43,6 +43,12 @@ def mocked_wait_for_terminal_states(mocker):
 
 
 @pytest.fixture
+def mocked_live_display(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.deletion.Live")
+    yield patched
+
+
+@pytest.fixture
 def spy_deletion_manager(mocker):
     from azext_edge.edge.providers.orchestration.deletion import DeletionManager
 
@@ -163,6 +169,7 @@ def test_batch_resources(
 
 
 # IoTOperationsResourceMap returns empty array over None
+# Order resources from segment size since resource map takes care of this.
 @pytest.mark.parametrize(
     "expected_resources_map",
     [
@@ -177,17 +184,18 @@ def test_batch_resources(
         },
         {
             "resources": [
-                _generate_ops_resource(4),
+                _generate_ops_resource(4), _generate_ops_resource(2)
             ],
             "resource sync rules": [_generate_ops_resource(), _generate_ops_resource()],
             "custom locations": [_generate_ops_resource()],
             "extensions": [_generate_ops_resource()],
             "meta": {
-                "expected_total": 4,
-                "resource_batches": 1,
-                "expected_delete_calls": 4,
+                "expected_total": 5,
+                "resource_batches": 2,
+                "expected_delete_calls": 5,
             },
         },
+        # Currently no associated custom location means no non-extensions get deleted
         {
             "resources": [_generate_ops_resource(4), _generate_ops_resource(2)],
             "resource sync rules": [_generate_ops_resource()],
@@ -196,7 +204,7 @@ def test_batch_resources(
             "meta": {
                 "expected_total": 4,
                 "resource_batches": 2,
-                "expected_delete_calls": 4,
+                "expected_delete_calls": 1,
             },
         },
         {
@@ -208,6 +216,7 @@ def test_batch_resources(
                 "expected_total": 1,
                 "resource_batches": 0,
                 "expected_delete_calls": 1,
+                "no_progress": True,
             },
         },
     ],
@@ -218,6 +227,7 @@ def test_delete_lifecycle(
     mocked_resource_map: Mock,
     mocked_get_resource_client: Mock,
     mocked_wait_for_terminal_states: Mock,
+    mocked_live_display: Mock,
     mocked_logger: Mock,
     spy_deletion_manager: Dict[str, Mock],
     expected_resources_map: Dict[str, Union[dict, Optional[List[IoTOperationsResource]]]],
@@ -235,7 +245,16 @@ def test_delete_lifecycle(
         sync_rules=expected_resources_map["resource sync rules"],
     )
 
-    delete_ops_resources(cmd=mocked_cmd, cluster_name=cluster_name, resource_group_name=rg_name, confirm_yes=True)
+    kwargs = {
+        "cmd": mocked_cmd,
+        "cluster_name": cluster_name,
+        "resource_group_name": rg_name,
+        "confirm_yes": True,
+        "no_progress": expected_resources_map["meta"].get("no_progress"),
+    }
+
+    delete_ops_resources(**kwargs)
+
     spy_deletion_manager["_display_resource_tree"].assert_called_once()
     spy_deletion_manager["_process"].assert_called_once()
 
@@ -253,4 +272,8 @@ def test_delete_lifecycle(
 
     spy_deletion_manager["_render_display"].assert_called()
     spy_deletion_manager["_stop_display"].assert_called_once()
-    spy_deletion_manager["_delete_batch"].call_count == expected_resources_map["meta"]["expected_delete_calls"]
+    assert spy_deletion_manager["_delete_batch"].call_count == expected_resources_map["meta"]["expected_delete_calls"]
+    assert mocked_live_display.call_count >= 1
+
+    if kwargs["no_progress"]:
+        mocked_live_display.assert_called_once_with(None, transient=False, refresh_per_second=8, auto_refresh=False)

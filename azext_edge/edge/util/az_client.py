@@ -66,7 +66,7 @@ def wait_for_terminal_states(
     while counter < retries:
         sleep(wait_sec)
         counter = counter + 1
-        batch_done = all([poller.done() for poller in pollers])
+        batch_done = all(poller.done() for poller in pollers)
         if batch_done:
             break
 
