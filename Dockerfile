@@ -1,5 +1,15 @@
 FROM mcr.microsoft.com/cbl-mariner/base/python:3
 
+# install ca-certificates
+RUN \
+ yum update -y && \
+ yum -y install ca-certificates && \
+ yum clean all
+
+# install kubectl
+RUN curl -LO https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl
+RUN chmod +x ./kubectl && mv ./kubectl /usr/local/bin
+
 # working directory
 WORKDIR /usr/src/azure-iot-ops
 
@@ -16,7 +26,6 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # tox setup
 RUN pip install tox
-
 # currently using smaller image, longer runtime dependency download
 # RUN tox r -vv -e python-int-edge --notest
 
