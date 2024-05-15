@@ -578,7 +578,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "custom_attributes",
-            options_list=["--custom-attribute", "--ca"],
+            options_list=["--custom-attribute", "--attr"],
             help="Space-separated key=value pairs corresponding to additional custom attributes for the asset.",
             nargs="+",
             action="extend",
