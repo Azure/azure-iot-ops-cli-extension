@@ -28,4 +28,5 @@ jobs:
             echo VERSION=$(sed -n -e 's/^VERSION = "\(.*\)"/\1/p' ./azext_edge/constants.py) >> $GITHUB_ENV
       - name: Build and push container image
         run: |
-          az acr build -t aziotops/cli-extension-tests:${{ github.event.release.tag_name || github.sha }} -t ${{ env.VERSION }}  -r aziotops -g ado-int-test-rg .
+          base="aziotops/cli-extension-tests"
+          az acr build -t $base:latest -t $base:${{ github.event.release.tag_name || github.sha }} -t $base:${{ env.VERSION }}  -r aziotops -g ado-int-test-rg .
