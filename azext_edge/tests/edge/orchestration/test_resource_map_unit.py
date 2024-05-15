@@ -91,7 +91,6 @@ def test_resource_map(
     resource_map = IoTOperationsResourceMap(cmd=mocked_cmd, cluster_name=cluster_name, resource_group_name=rg_name)
 
     assert resource_map.subscription_id == sub
-
     mocked_connected_cluster().get_aio_extensions.assert_called_once()
     _assert_ops_resource_eq(resource_map.extensions, expected_extensions)
 
