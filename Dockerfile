@@ -21,4 +21,4 @@ RUN pip install tox
 # RUN tox r -vv -e python-int-edge --notest
 
 # run tests
-ENTRYPOINT ["tox", "r", "-vv", "-e", "python-int-edge"]
+ENTRYPOINT ["tox", "r", "-vv", "-e", "python-int", "--", "--durations=0"]
