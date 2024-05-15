@@ -8,16 +8,17 @@ Help definitions for Digital Twins commands.
 """
 
 from knack.help_files import helps
+
 from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
+    COMPAT_AKRI_APIS,
+    COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DATA_PROCESSOR_APIS,
-    COMPAT_MQ_APIS,
+    COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_LNM_APIS,
+    COMPAT_MQ_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
-    COMPAT_DEVICEREGISTRY_APIS,
-    COMPAT_AKRI_APIS,
-    COMPAT_CLUSTER_CONFIG_APIS
 )
 
 
@@ -227,6 +228,26 @@ def load_iotops_help():
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29
             --sp-secret $SP_SECRET
+    """
+
+    helps[
+        "iot ops delete"
+    ] = """
+        type: command
+        short-summary: Delete IoT Operations from the cluster.
+        long-summary: The operation uses Azure Resource Graph to determine correlated resources.
+          Resource Graph being eventually consistent does not guarantee a synchronized state at the time of execution.
+
+        examples:
+        - name: Minimum input for complete deletion.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup
+        - name: Skip confirmation prompt and continue to deletion process. Useful for CI scenarios.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup -y
+        - name: Force deletion regardless of warnings. May lead to errors.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup --force
     """
 
     helps[

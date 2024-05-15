@@ -574,7 +574,7 @@ class WorkManager:
     def stop_display(self):
         if self._render_progress and self._live.is_started:
             if self._progress_shown:
-                self._progress_bar.update(self._task_id, description="DONE!")
+                self._progress_bar.update(self._task_id, description="Done.")
                 sleep(0.5)
             self._live.stop()
 

@@ -8,10 +8,16 @@
 CLI parameter definitions.
 """
 
+from azure.cli.core.commands.parameters import (
+    get_enum_type,
+    get_three_state_flag,
+    tags_type,
+)
 from knack.arguments import CaseInsensitiveList
-from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
-from .common import OpsServiceType, FileType
+from ._validators import validate_namespace, validate_resource_name
+from .common import FileType, OpsServiceType
+from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
     AkriResourceKinds,
     DataProcessorResourceKinds,
@@ -20,10 +26,12 @@ from .providers.edge_api import (
     MqResourceKinds,
     OpcuaResourceKinds,
 )
-from .providers.check.common import ResourceOutputDetailLevel
-from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType, KubernetesDistroType
-
-from ._validators import validate_namespace, validate_resource_name
+from .providers.orchestration.common import (
+    KubernetesDistroType,
+    MqMemoryProfile,
+    MqMode,
+    MqServiceType,
+)
 
 
 def load_iotops_arguments(self, _):
@@ -46,6 +54,24 @@ def load_iotops_arguments(self, _):
             "If no namespace is provided the kubeconfig current_context namespace will be used. "
             "If not defined, the fallback value `azure-iot-operations` will be used. ",
             validator=validate_namespace,
+        )
+        context.argument(
+            "confirm_yes",
+            options_list=["--yes", "-y"],
+            arg_type=get_three_state_flag(),
+            help="Confirm [y]es without a prompt. Useful for CI and automation scenarios.",
+        )
+        context.argument(
+            "no_progress",
+            options_list=["--no-progress"],
+            arg_type=get_three_state_flag(),
+            help="Disable visual representation of work.",
+        )
+        context.argument(
+            "force",
+            options_list=["--force"],
+            arg_type=get_three_state_flag(),
+            help="Force the operation to execute.",
         )
 
     with self.argument_context("iot ops support") as context:
@@ -253,12 +279,6 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Flag when set, will output the template intended for deployment.",
             arg_group="Template",
-        )
-        context.argument(
-            "no_progress",
-            options_list=["--no-progress"],
-            arg_type=get_three_state_flag(),
-            help="Disable init progress bar.",
         )
         context.argument(
             "no_block",
@@ -538,18 +558,11 @@ def load_iotops_arguments(self, _):
             deprecate_info=context.deprecate(hide=True),
         )
 
-    with self.argument_context("iot ops verify-host") as context:
+    with self.argument_context("iot ops delete") as context:
         context.argument(
-            "confirm_yes",
-            options_list=["--yes", "-y"],
-            arg_type=get_three_state_flag(),
-            help="Confirm [y]es without a prompt. Useful for CI and automation scenarios.",
-        )
-        context.argument(
-            "no_progress",
-            options_list=["--no-progress"],
-            arg_type=get_three_state_flag(),
-            help="Disable visual representation of work.",
+            "cluster_name",
+            options_list=["--cluster"],
+            help="Target cluster name for IoT Operations deletion.",
         )
 
     with self.argument_context("iot ops asset") as context:

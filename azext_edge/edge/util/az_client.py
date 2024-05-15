@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from time import sleep
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 
 from ...constants import USER_AGENT
 from .common import ensure_azure_namespace_path
@@ -57,6 +57,20 @@ def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
         if poller.done():
             break
     return poller.result()
+
+
+def wait_for_terminal_states(
+    *pollers: "LROPoller", retries: int = POLL_RETRIES, wait_sec: int = POLL_WAIT_SEC
+) -> Tuple["LROPoller"]:
+    counter = 0
+    while counter < retries:
+        sleep(wait_sec)
+        counter = counter + 1
+        batch_done = all(poller.done() for poller in pollers)
+        if batch_done:
+            break
+
+    return pollers
 
 
 def get_tenant_id() -> str:
