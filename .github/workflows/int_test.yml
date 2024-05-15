@@ -265,7 +265,7 @@ jobs:
             -e "azext_edge_skip_init=True" \
             -e "KUBECONFIG=$kubeconfig_mount" \
             -v "$kubeconfig:$kubeconfig_mount:ro" \
-            -v "${tempLog}:junit" \
+            -v "${tempLog}:/usr/src/azure-iot-ops/junit" \
             --network host \
             "$IMAGE"
           ls -l "$tempLog"
