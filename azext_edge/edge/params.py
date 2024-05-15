@@ -577,6 +577,13 @@ def load_iotops_arguments(self, _):
             help="Asset endpoint name.",
         )
         context.argument(
+            "custom_attributes",
+            options_list=["--custom-attribute", "--ca"],
+            help="Space-separated key=value pairs corresponding to additional custom attributes for the asset.",
+            nargs="+",
+            action="extend",
+        )
+        context.argument(
             "custom_location_name",
             options_list=["--custom-location", "--cl"],
             help="Custom location used to associate asset with cluster.",
@@ -786,6 +793,16 @@ def load_iotops_arguments(self, _):
             help="State of asset.",
             arg_group="Additional Info",
             arg_type=get_three_state_flag(),
+        )
+
+    with self.argument_context("iot ops asset update") as context:
+        context.argument(
+            "custom_attributes",
+            options_list=["--custom-attribute", "--ca"],
+            help="Space-separated key=value pairs corresponding to additional custom attributes for the asset. "
+            "To remove a custom attribute, please set the attribute's value to \"\".",
+            nargs="+",
+            action="extend",
         )
 
     with self.argument_context("iot ops asset data-point") as context:

@@ -18,6 +18,7 @@ from azext_edge.edge.providers.rpsaas.adr.assets import (
     _convert_sub_points_from_csv,
     _convert_sub_points_to_csv,
     _process_asset_sub_points,
+    _process_custom_attributes,
     _update_properties
 )
 
@@ -396,10 +397,32 @@ def test_process_asset_sub_points_error(required_arg):
     assert f"does not support {invalid_arg}." in e.value.error_msg
 
 
+@pytest.mark.parametrize("current_attributes", [{}, {"example1": generate_random_string()}])
+@pytest.mark.parametrize("custom_attributes", [
+    [f"example1={generate_random_string()}", f"{generate_random_string()}={generate_random_string()}"],
+    ["example1=\"\"", f"{generate_random_string()}=\"\""],
+])
+def test_process_custom_attributes(current_attributes, custom_attributes):
+    original = deepcopy(current_attributes)
+    _process_custom_attributes(
+        current_attributes=current_attributes,
+        custom_attributes=custom_attributes
+    )
+
+    parsed_attributes = assemble_nargs_to_dict(custom_attributes)
+    original.update(parsed_attributes)
+    for key, value in parsed_attributes.items():
+        if value == "":
+            assert key not in current_attributes
+        else:
+            assert current_attributes[key] == value
+
+
 @pytest.mark.parametrize("properties", [
     {},
     {
         "assetType": generate_random_string(),
+        "attributes": {generate_random_string(): generate_random_string()},
         "defaultDataPointsConfiguration": "{\"publishingInterval\": \"100\", \"samplingInterval\""
         ": \"10\", \"queueSize\": \"2\"}",
         "defaultEventsConfiguration": "{\"publishingInterval\": \"200\", \"samplingInterval\": "
@@ -421,12 +444,19 @@ def test_process_asset_sub_points_error(required_arg):
 @pytest.mark.parametrize("req", [
     {},
     {
+        "custom_attributes": [
+            f"{generate_random_string()}={generate_random_string()}",
+            f"{generate_random_string()}={generate_random_string()}"
+        ],
         "disabled": False,
         "dp_queue_size": 4,
         "ev_publishing_interval": 200,
         "ev_sampling_interval": 123,
     },
     {
+        "custom_attributes": [
+            f"{generate_random_string()}={generate_random_string()}"
+        ],
         "asset_type": generate_random_string(),
         "description": generate_random_string(),
         "disabled": True,
@@ -449,7 +479,6 @@ def test_process_asset_sub_points_error(required_arg):
     }
 ])
 def test_update_properties(properties, req):
-    # lazy way of copying to avoid having to make sure we copy possible the lists
     original_properties = deepcopy(properties)
     _update_properties(
         properties=properties,
@@ -479,6 +508,13 @@ def test_update_properties(properties, req):
     assert properties.get("softwareRevision") == req.get(
         "software_revision", original_properties.get("softwareRevision")
     )
+
+    expected_attributes = deepcopy(original_properties.get("attributes", {}))
+    _process_custom_attributes(
+        current_attributes=expected_attributes,
+        custom_attributes=req.get("custom_attributes", [])
+    )
+    assert properties.get("attributes", {}) == expected_attributes
 
     expected_default_data_points = _build_default_configuration(
         original_configuration=properties.get("defaultDataPointsConfiguration", "{}"),
