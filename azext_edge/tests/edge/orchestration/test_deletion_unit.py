@@ -70,7 +70,6 @@ def _generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
         resource_id=resource_id,
         display_name=resource_id.split("/")[-1],
         api_version=generate_random_string(),
-        segments=segments,
     )
 
     return resource
@@ -183,9 +182,7 @@ def test_batch_resources(
             },
         },
         {
-            "resources": [
-                _generate_ops_resource(4), _generate_ops_resource(2)
-            ],
+            "resources": [_generate_ops_resource(4), _generate_ops_resource(2)],
             "resource sync rules": [_generate_ops_resource(), _generate_ops_resource()],
             "custom locations": [_generate_ops_resource()],
             "extensions": [_generate_ops_resource()],
