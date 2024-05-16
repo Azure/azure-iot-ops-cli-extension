@@ -31,6 +31,7 @@ from .....generators import generate_random_string
     },
     {
         "asset_type": generate_random_string(),
+        "custom_attributes": [generate_random_string()],
         "custom_location_name": generate_random_string(),
         "custom_location_resource_group": generate_random_string(),
         "custom_location_subscription": generate_random_string(),
@@ -62,6 +63,7 @@ from .....generators import generate_random_string
     },
     {
         "asset_type": generate_random_string(),
+        "custom_attributes": [generate_random_string()],
         "custom_location_resource_group": generate_random_string(),
         "disabled": False,
         "events": generate_random_string(),

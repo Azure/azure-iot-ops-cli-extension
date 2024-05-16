@@ -75,6 +75,10 @@ FULL_ASSET = {
     "properties": {
         "assetType": generate_random_string(),
         "assetEndpointProfileUri": generate_random_string(),
+        "attributes": {
+            generate_random_string(): generate_random_string(),
+            generate_random_string(): generate_random_string()
+        },
         "dataPoints": [
             {
                 "capabilityId": generate_random_string(),
