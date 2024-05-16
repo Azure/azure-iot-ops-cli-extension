@@ -29,4 +29,4 @@ jobs:
       - name: Build and push container image
         run: |
           base="aziotops/cli-extension-tests"
-          az acr build -t $base:latest -t $base:${{ github.event.release.tag_name || github.sha }} -t $base:${{ env.VERSION }}  -r aziotops -g ado-int-test-rg .
+          az acr build -t $base:latest -t $base:${{ github.event.release.tag_name || github.sha }} -t $base:${{ env.VERSION }}  -r aziotops .
