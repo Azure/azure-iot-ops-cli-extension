@@ -38,6 +38,7 @@ class AssetProvider(ADRBaseProvider):
         cluster_name: Optional[str] = None,
         cluster_resource_group: Optional[str] = None,
         cluster_subscription: Optional[str] = None,
+        custom_attributes: Optional[List[str]] = None,
         custom_location_name: Optional[str] = None,
         custom_location_resource_group: Optional[str] = None,
         custom_location_subscription: Optional[str] = None,
@@ -89,6 +90,7 @@ class AssetProvider(ADRBaseProvider):
         _update_properties(
             properties,
             asset_type=asset_type,
+            custom_attributes=custom_attributes,
             description=description,
             display_name=display_name,
             disabled=disabled,
@@ -195,6 +197,7 @@ class AssetProvider(ADRBaseProvider):
         asset_name: str,
         resource_group_name: str,
         asset_type: Optional[str] = None,
+        custom_attributes: Optional[List[str]] = None,
         description: Optional[str] = None,
         disabled: Optional[bool] = None,
         display_name: Optional[str] = None,
@@ -232,6 +235,7 @@ class AssetProvider(ADRBaseProvider):
         _update_properties(
             properties,
             asset_type=asset_type,
+            custom_attributes=custom_attributes,
             description=description,
             disabled=disabled,
             documentation_uri=documentation_uri,
@@ -600,9 +604,19 @@ def _process_asset_sub_points(required_arg: str, sub_points: Optional[List[str]]
     return processed_points
 
 
+def _process_custom_attributes(current_attributes: Dict[str, str], custom_attributes: List[str]):
+    custom_attributes = assemble_nargs_to_dict(custom_attributes)
+    for key, value in custom_attributes.items():
+        if value == "":
+            current_attributes.pop(key, None)
+        else:
+            current_attributes[key] = value
+
+
 def _update_properties(
     properties: Dict[str, Union[str, List[Dict[str, str]]]],
     asset_type: Optional[str] = None,
+    custom_attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
     display_name: Optional[str] = None,
@@ -648,6 +662,13 @@ def _update_properties(
         properties["serialNumber"] = serial_number
     if software_revision:
         properties["softwareRevision"] = software_revision
+
+    if custom_attributes:
+        if "attributes" not in properties:
+            properties["attributes"] = {}
+        _process_custom_attributes(
+            properties["attributes"], custom_attributes=custom_attributes
+        )
 
     # Defaults
     properties["defaultDataPointsConfiguration"] = _build_default_configuration(
