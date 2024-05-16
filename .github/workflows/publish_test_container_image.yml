@@ -1,6 +1,6 @@
 on:
-    release:
-        types: released
+  release:
+    types: [published]
     workflow_dispatch:
 name: Publish Integration Test Container Image
 permissions:
