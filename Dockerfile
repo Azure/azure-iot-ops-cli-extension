@@ -26,8 +26,6 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # tox setup
 RUN pip install tox
-# currently using smaller image, longer runtime dependency download
-# RUN tox r -vv -e python-int-edge --notest
 
 # run tests
 ENTRYPOINT ["tox", "r", "-vv", "-e", "python,python-int", "--", "--durations=0"]
