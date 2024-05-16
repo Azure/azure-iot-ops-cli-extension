@@ -143,7 +143,7 @@ def check_workload_resource_files(
         expected_workload_types.remove("pod")
     # pod
     file_pods = {}
-    for file in file_objs["pod"]:
+    for file in file_objs.get("pod", []):
         if file["name"] not in file_pods:
             file_pods[file["name"]] = {"yaml": False}
         converted_file = file_pods[file["name"]]
@@ -180,9 +180,9 @@ def check_workload_resource_files(
     for key in expected_workload_types:
         expected_items = get_kubectl_items(prefixes, service_type=key)
         expected_item_names = [item["metadata"]["name"] for item in expected_items]
-        for file in file_objs[key]:
+        for file in file_objs.get(key, []):
             assert file["extension"] == "yaml"
-        present_names = [file["name"] for file in file_objs[key]]
+        present_names = [file["name"] for file in file_objs.get(key, [])]
         find_extra_or_missing_files(key, present_names, expected_item_names)
 
 
