@@ -261,8 +261,6 @@ jobs:
           set +e
           docker run \
             --rm \
-            -e "azext_edge_rg=$CLUSTER_NAME" \
-            -e "azext_edge_cluster=$CLUSTER_RG" \
             -e "azext_edge_skip_init=True" \
             -e "KUBECONFIG=$kubeconfig_mount" \
             -v "$kubeconfig:$kubeconfig_mount:ro" \
