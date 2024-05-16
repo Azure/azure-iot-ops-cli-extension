@@ -9,7 +9,6 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      # checkout the repo
       - name: "Checkout GitHub Action"
         uses: actions/checkout@main
       - name: "Az CLI login"
@@ -21,10 +20,10 @@ jobs:
       - name: Login to ACR via OIDC
         run: |
             az acr login --name aziotops
-      - name: Determine Version
+      - name: Determine version from constants
         run: |
             echo VERSION=$(sed -n -e 's/^VERSION = "\(.*\)"/\1/p' ./azext_edge/constants.py) >> $GITHUB_ENV
-      - name: Build and push container image
+      - name: Build, tag, and push container image to registry
         run: |
           base="aziotops/cli-extension-tests"
           az acr build -t $base:latest -t $base:${{ github.sha }} -t $base:${{ env.VERSION }} -r aziotops .
