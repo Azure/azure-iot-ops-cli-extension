@@ -114,10 +114,23 @@ def generate_secret(byte_length=32):
     return base64.b64encode(token_bytes).decode("utf8")
 
 
-def url_safe_hash_phrase(phrase: str):
+def url_safe_hash_phrase(phrase: str) -> str:
     from hashlib import sha256
 
     return sha256(phrase.encode("utf8")).hexdigest()
+
+
+def url_safe_random_chars(count: int) -> str:
+    import secrets
+
+    token = ""
+    while len(token) < count:
+        _t = secrets.token_urlsafe()
+        _t = _t.replace("-", "")
+        _t = _t.replace("_", "")
+        token += _t
+
+    return token[:count]
 
 
 def ensure_azure_namespace_path():

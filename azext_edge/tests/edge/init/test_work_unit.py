@@ -11,6 +11,7 @@ from typing import Dict, FrozenSet
 from unittest.mock import Mock
 
 import pytest
+import string
 
 from azext_edge.edge.commands_edge import init
 from azext_edge.edge.common import INIT_NO_PREFLIGHT_ENV_KEY
@@ -265,7 +266,13 @@ def test_init_to_template_params(
     if custom_location_name:
         assert parameters["customLocationName"]["value"] == custom_location_name
     else:
-        assert parameters["customLocationName"]["value"] == f"{lowered_cluster_name}-ops-init-cl"
+        split_custom_location_name = parameters["customLocationName"]["value"].split("-")
+        assert split_custom_location_name[0] == lowered_cluster_name
+
+        expected_char_set = string.ascii_lowercase + string.ascii_uppercase + string.digits
+        for c in split_custom_location_name[1]:
+                assert c in expected_char_set
+        parameters["customLocationName"]["value"].endswith("-ops-init-cli")
 
     assert "targetName" in parameters
     if target_name:
