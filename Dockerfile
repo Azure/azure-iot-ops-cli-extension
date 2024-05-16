@@ -30,4 +30,4 @@ RUN pip install tox
 # RUN tox r -vv -e python-int-edge --notest
 
 # run tests
-ENTRYPOINT ["tox", "r", "-vv", "-e", "python-int", "--", "--durations=0"]
+ENTRYPOINT ["tox", "r", "-vv", "-e", "python,python-int", "--", "--durations=0"]
