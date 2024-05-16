@@ -15,7 +15,7 @@ on:
         description: Custom Locations OID
         type: string
         required: false
-        default: "51dfe1e8-70c6-4de5-a08e-e18aff23d815"
+        default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
       cleanup:
         description: Attempt to cleanup resources after testing
         type: boolean
@@ -44,7 +44,7 @@ on:
         description: Object ID of Custom Locations RP
         type: string
         required: false
-        default: "51dfe1e8-70c6-4de5-a08e-e18aff23d815"
+        default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
       cleanup:
         description: Attempt to cleanup resources after testing
         type: boolean
@@ -53,8 +53,8 @@ on:
 
 permissions:
   # required for OpenID federation
-  contents: "read"
-  id-token: "write"
+  contents: 'read'
+  id-token: 'write'
 
 env:
   KV_NAME: "opskv${{ github.run_number }}"
@@ -64,14 +64,14 @@ jobs:
   create_kv:
     runs-on: ubuntu-22.04
     steps:
-      - name: "Az CLI login"
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "Create Key Vault for clusters"
-        run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false
+    - name: "Az CLI login"
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    - name: "Create Key Vault for clusters"
+      run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false
 
   test:
     needs: [create_kv]
@@ -87,8 +87,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # feature: [default, mq-insecure, no-syncrules, ca-certs]
-        feature: [default]
+        feature: [default, mq-insecure, no-syncrules, ca-certs]
         include:
           # default / limited options
           - feature: default
@@ -103,8 +102,8 @@ jobs:
             disable-rsync-rules: true
           # test custom ca files
           - feature: ca-certs
-            ca-file: "test-ca.pem"
-            ca-key-file: "test-ca-key.pem"
+            ca-file: 'test-ca.pem'
+            ca-key-file: 'test-ca-key.pem'
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -216,12 +215,12 @@ jobs:
       - name: "Allow cluster to finish provisioning"
         run: |
           sleep 2m
-      # - name: "Tox test environment setup"
-      #   if: ${{matrix.feature == 'default'}}
-      #   run: |
-      #     cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-      #     python -m pip install tox
-      #     tox r -vv -e python-int --notest
+      - name: "Tox test environment setup"
+        if: ${{matrix.feature == 'default'}}
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          python -m pip install tox
+          tox r -vv -e python-int --notest
       - name: "Az CLI login refresh"
         if: ${{matrix.feature == 'default'}}
         uses: azure/login@v2
@@ -239,37 +238,15 @@ jobs:
             # Sleep for 4 minutes
             sleep 240
           done &
-      - name: "Run containerized tests"
+      - name: "Tox Integration Tests"
         if: ${{matrix.feature == 'default'}}
         env:
-          CLUSTER_RG: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
-          CLUSTER_NAME: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_skip_init: True
         run: |
-          CLUSTER_NAME="${{ env.CLUSTER_NAME}}"
-          CLUSTER_RG="${{ env.CLUSTER_RG}}"
-
-          kubeconfig=$(realpath ~/.kube/config)
-          kubeconfig_mount=/root/.kube/config
-          azure_dir=$(realpath ~/.azure)
-          IMAGE_TAG='latest'
-          IMAGE="aziotops.azurecr.io/aziotops/cli-extension-tests:$IMAGE_TAG"
-
-          az acr login --name "aziotops"
-          echo "Using image: $IMAGE"
-          docker pull "$IMAGE"
-          tempLog=$(mktemp -d)
-          set +e
-          docker run \
-            --rm \
-            -e "azext_edge_rg=$CLUSTER_RG" \
-            -e "azext_edge_cluster=$CLUSTER_NAME" \
-            -e "azext_edge_skip_init=True" \
-            -e "KUBECONFIG=$kubeconfig_mount" \
-            -v "$kubeconfig:$kubeconfig_mount:ro" \
-            -v "${tempLog}:/usr/src/azure-iot-ops/junit" \
-            -v "${azure_dir}:/root/.azure" \
-            --network host \
-            "$IMAGE"
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          tox r -e python-int --skip-pkg-install -- --durations=0
       - name: "Az CLI login refresh"
         uses: azure/login@v2
         with:
@@ -296,7 +273,7 @@ jobs:
   cleanup:
     needs: [test]
     if: ${{ github.event.inputs.cleanup == 'true' }}
-    uses: "./.github/workflows/cluster_cleanup.yml"
+    uses: './.github/workflows/cluster_cleanup.yml'
     with:
       cluster_prefix: ${{ needs.test.outputs.CLUSTER_PREFIX }}
       resource_group: ${{ needs.test.outputs.RESOURCE_GROUP }}
