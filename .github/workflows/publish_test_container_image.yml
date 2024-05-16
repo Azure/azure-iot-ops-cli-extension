@@ -1,7 +1,5 @@
 on:
-  release:
-    types: [published]
-    workflow_dispatch:
+  workflow_dispatch:
 name: Publish Integration Test Container Image
 permissions:
     # required for OpenID federation
@@ -29,4 +27,4 @@ jobs:
       - name: Build and push container image
         run: |
           base="aziotops/cli-extension-tests"
-          az acr build -t $base:latest -t $base:${{ github.event.release.tag_name || github.sha }} -t $base:${{ env.VERSION }} -r aziotops .
+          az acr build -t $base:latest -t $base:${{ github.sha }} -t $base:${{ env.VERSION }} -r aziotops .
