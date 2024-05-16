@@ -250,6 +250,7 @@ jobs:
 
           kubeconfig=$(realpath ~/.kube/config)
           kubeconfig_mount=/root/.kube/config
+          azure_dir=$(realpath ~/.azure)
           IMAGE_TAG='latest'
           IMAGE="aziotops.azurecr.io/aziotops/cli-extension-tests:$IMAGE_TAG"
 
@@ -266,6 +267,7 @@ jobs:
             -e "KUBECONFIG=$kubeconfig_mount" \
             -v "$kubeconfig:$kubeconfig_mount:ro" \
             -v "${tempLog}:/usr/src/azure-iot-ops/junit" \
+            -v "${azure_dir}:/root/.azure" \
             --network host \
             "$IMAGE"
           ls -l "$tempLog"
