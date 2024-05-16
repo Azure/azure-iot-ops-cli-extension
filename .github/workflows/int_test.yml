@@ -270,7 +270,6 @@ jobs:
             -v "${azure_dir}:/root/.azure" \
             --network host \
             "$IMAGE"
-          ls -l "$tempLog"
       - name: "Az CLI login refresh"
         uses: azure/login@v2
         with:
