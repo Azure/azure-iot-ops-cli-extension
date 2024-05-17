@@ -271,7 +271,7 @@ jobs:
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
           az iot ops verify-host
       - name: "Test cluster deletion"
-        if: ${{matrix.feature == 'no-syncrules'}}
+        if: ${{matrix.feature == 'ca-certs'}}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
 
