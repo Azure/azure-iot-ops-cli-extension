@@ -107,7 +107,8 @@ class WorkManager:
         if self._keyvault_resource_id:
             self._keyvault_name = self._keyvault_resource_id.split("/")[-1]
         self._keyvault_sat_secret_name = kwargs["keyvault_spc_secret_name"]
-        self._csi_driver_version = kwargs["csi_driver_version"]
+        self._csi_driver_version: str = kwargs["csi_driver_version"]
+        self._csi_driver_config: Optional[Dict[str, str]] = kwargs.get("csi_driver_config")
         self._sp_app_id = kwargs.get("service_principal_app_id")
         self._sp_obj_id = kwargs.get("service_principal_object_id")
         self._tls_ca_path = kwargs.get("tls_ca_path")
@@ -385,9 +386,13 @@ class WorkManager:
                     akv_csi_driver_result = provision_akv_csi_driver(
                         enable_secret_rotation=enable_secret_rotation,
                         extension_version=self._csi_driver_version,
+                        extension_config=self._csi_driver_config,
                         **self._kwargs,
                     )
                     work_kpis["csiDriver"]["version"] = akv_csi_driver_result["properties"]["version"]
+                    work_kpis["csiDriver"]["configurationSettings"] = akv_csi_driver_result["properties"][
+                        "configurationSettings"
+                    ]
 
                     self.complete_step(
                         category=WorkCategoryKey.CSI_DRIVER,

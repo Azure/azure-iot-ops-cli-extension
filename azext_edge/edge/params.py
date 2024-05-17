@@ -484,8 +484,17 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "csi_driver_version",
-            options_list=["--csi-driver-ver"],
-            help="CSI driver version.",
+            options_list=["--csi-ver"],
+            help="CSI driver extension version.",
+            arg_group="Key Vault CSI Driver",
+        )
+        context.argument(
+            "csi_driver_config",
+            options_list=["--csi-config"],
+            nargs="+",
+            action="extend",
+            help="CSI driver extension custom configuration. Format is space-separated key=value pairs. "
+            "--csi-config can be used one or more times.",
             arg_group="Key Vault CSI Driver",
         )
         context.argument(
