@@ -34,6 +34,7 @@ from .....generators import generate_random_string
     {},
     {
         "asset_type": generate_random_string(),
+        "custom_attributes": [generate_random_string()],
         "description": generate_random_string(),
         "disabled": True,
         "display_name": generate_random_string(),
@@ -56,6 +57,7 @@ from .....generators import generate_random_string
     },
     {
         "asset_type": generate_random_string(),
+        "custom_attributes": [generate_random_string()],
         "disabled": False,
         "dp_publishing_interval": 3333,
         "dp_sampling_interval": 44,
