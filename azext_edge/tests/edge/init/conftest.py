@@ -4,6 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from typing import Dict
+
 import pytest
 
 from azext_edge.edge.providers.orchestration.base import KEYVAULT_ARC_EXTENSION_VERSION
@@ -20,11 +22,21 @@ def mocked_deploy(mocker):
 def mocked_provision_akv_csi_driver(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.provision_akv_csi_driver", autospec=True)
 
+    base_config_settings: Dict[str, str] = {
+        "secrets-store-csi-driver.enableSecretRotation": "true",
+        "secrets-store-csi-driver.rotationPollInterval": "1h",
+        "secrets-store-csi-driver.syncSecret.enabled": "false",
+    }
+
     def handle_return(*args, **kwargs):
+        custom_config = kwargs.get("extension_config")
+        if custom_config:
+            base_config_settings.update(custom_config)
+
         return {
             "properties": {
                 "version": kwargs.get("extension_version") or KEYVAULT_ARC_EXTENSION_VERSION,
-                "configurationSettings": kwargs.get("extension_config") or {},
+                "configurationSettings": base_config_settings,
             }
         }
 

@@ -653,8 +653,10 @@ def test_work_order(
         expected_csi_driver_version = csi_driver_version if csi_driver_version else KEYVAULT_ARC_EXTENSION_VERSION
         assert result["csiDriver"]["version"] == expected_csi_driver_version
 
-        expected_csi_driver_config = assemble_nargs_to_dict(csi_driver_config) if csi_driver_config else {}
-        assert result["csiDriver"]["configurationSettings"] == expected_csi_driver_config
+        expected_csi_driver_custom_config = assemble_nargs_to_dict(csi_driver_config) if csi_driver_config else {}
+        if expected_csi_driver_custom_config:
+            for key in expected_csi_driver_custom_config:
+                assert expected_csi_driver_custom_config[key] == result["csiDriver"]["configurationSettings"][key]
 
         expected_keyvault_spc_secret_name = keyvault_spc_secret_name if keyvault_spc_secret_name else DEFAULT_NAMESPACE
         assert result["csiDriver"]["kvSpcSecretName"] == expected_keyvault_spc_secret_name
