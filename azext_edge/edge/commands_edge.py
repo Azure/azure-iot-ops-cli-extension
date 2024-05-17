@@ -129,6 +129,7 @@ def init(
     disable_secret_rotation: Optional[bool] = None,
     rotation_poll_interval: str = "1h",
     csi_driver_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
+    csi_driver_config: Optional[List[str]] = None,
     service_principal_app_id: Optional[str] = None,
     service_principal_object_id: Optional[str] = None,
     service_principal_secret: Optional[str] = None,
@@ -147,7 +148,12 @@ def init(
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
     from .providers.orchestration import deploy
-    from .util import is_env_flag_enabled, url_safe_hash_phrase, url_safe_random_chars
+    from .util import (
+        assemble_nargs_to_dict,
+        is_env_flag_enabled,
+        url_safe_hash_phrase,
+        url_safe_random_chars,
+    )
 
     no_preflight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
@@ -200,6 +206,9 @@ def init(
         if not exists(tls_ca_key_path):
             raise InvalidArgumentValueError("Provided CA private key file does not exist.")
 
+    if csi_driver_config:
+        csi_driver_config = assemble_nargs_to_dict(csi_driver_config)
+
     return deploy(
         cmd=cmd,
         cluster_name=cluster_name,
@@ -241,6 +250,7 @@ def init(
         disable_secret_rotation=disable_secret_rotation,
         rotation_poll_interval=str(rotation_poll_interval),
         csi_driver_version=str(csi_driver_version),
+        csi_driver_config=csi_driver_config,
         service_principal_app_id=service_principal_app_id,
         service_principal_object_id=service_principal_object_id,
         service_principal_secret=service_principal_secret,

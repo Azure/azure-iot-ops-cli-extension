@@ -81,12 +81,14 @@ def mocked_base_namespace_functions(mocker, request):
 @pytest.mark.parametrize("rotation_poll_interval", ["1h"])
 @pytest.mark.parametrize("extension_name", ["akvsecretsprovider"])
 @pytest.mark.parametrize("extension_version", [None, "1.5.1", "1.5.3"])
+@pytest.mark.parametrize("extension_config", [None, {"arc.enableMonitoring": "false", "a": "b"}])
 def test_provision_akv_csi_driver(
     mocked_resource_management_client,
     mocked_wait_for_terminal_state,
     rotation_poll_interval,
     extension_name,
     extension_version,
+    extension_config,
 ):
     from azext_edge.edge.providers.orchestration.base import (
         KEYVAULT_ARC_EXTENSION_VERSION,
@@ -103,6 +105,8 @@ def test_provision_akv_csi_driver(
     if extension_version:
         options["extension_version"] = extension_version
         expected_extension_version = extension_version
+    if extension_config:
+        options["extension_config"] = extension_config
 
     result = provision_akv_csi_driver(
         subscription_id=subscription_id,
@@ -131,11 +135,17 @@ def test_provision_akv_csi_driver(
     assert params["identity"] == {"type": "SystemAssigned"}
     assert params["properties"]["autoUpgradeMinorVersion"] is False
     assert params["properties"]["version"] == expected_extension_version
+
     assert params["properties"]["configurationProtectedSettings"] == {}
+
     config_settings = params["properties"]["configurationSettings"]
     assert config_settings["secrets-store-csi-driver.enableSecretRotation"] == enable_secret_rotation
     assert config_settings["secrets-store-csi-driver.rotationPollInterval"] == rotation_poll_interval
     assert config_settings["secrets-store-csi-driver.syncSecret.enabled"] == "false"
+
+    if extension_config:
+        for c in extension_config:
+            assert config_settings[c] == extension_config[c]
 
 
 @pytest.mark.parametrize(

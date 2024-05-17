@@ -7,7 +7,7 @@
 import json
 import logging
 from time import sleep
-from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Tuple
 
 from azure.cli.core.azclierror import HTTPError, ValidationError
 from knack.log import get_logger
@@ -80,9 +80,20 @@ def provision_akv_csi_driver(
     rotation_poll_interval: str = "1h",
     extension_name: str = "akvsecretsprovider",
     extension_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
+    extension_config: Optional[Dict[str, str]] = None,
     **kwargs,  # TODO: someday remove all kwargs from the smaller funcs
 ) -> dict:
     resource_client = get_resource_client(subscription_id=subscription_id)
+
+    base_config_settings: Dict[str, str] = {
+        "secrets-store-csi-driver.enableSecretRotation": enable_secret_rotation,
+        "secrets-store-csi-driver.rotationPollInterval": rotation_poll_interval,
+        "secrets-store-csi-driver.syncSecret.enabled": "false",
+    }
+
+    if extension_config:
+        base_config_settings.update(extension_config)
+
     return wait_for_terminal_state(
         resource_client.resources.begin_create_or_update_by_id(
             resource_id=f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
@@ -95,11 +106,7 @@ def provision_akv_csi_driver(
                     "autoUpgradeMinorVersion": False,
                     "version": extension_version,
                     "extensionType": "microsoft.azurekeyvaultsecretsprovider",
-                    "configurationSettings": {
-                        "secrets-store-csi-driver.enableSecretRotation": enable_secret_rotation,
-                        "secrets-store-csi-driver.rotationPollInterval": rotation_poll_interval,
-                        "secrets-store-csi-driver.syncSecret.enabled": "false",
-                    },
+                    "configurationSettings": base_config_settings,
                     "configurationProtectedSettings": {},
                 },
             },
