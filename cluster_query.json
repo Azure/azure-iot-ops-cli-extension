@@ -1,1 +1,0 @@
-{"query": "where type =~ 'Microsoft.ExtendedLocation/customLocations' | where properties.hostResourceId =~ '/subscriptions/a386d5ea-ea90-441a-8263-d816368c84a1/resourceGroups/vilit-clusters/providers/Microsoft.Kubernetes/connectedClusters/space-yodel' | project name, resourceGroup"}
