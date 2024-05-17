@@ -109,7 +109,7 @@ runs:
         ca-key-file: ${{ inputs.ca-key-file && format('--ca-key-file "{0}"', inputs.ca-key-file) || '' }}
         kv-spc-secret-name: ${{ inputs.kv-spc-secret-name && format('--kv-spc-secret-name "{0}"', inputs.kv-spc-secret-name) || '' }}
         template-file: ${{ inputs.template-file && format('--template-file "{0}"', inputs.template-file) || '' }}
-        csi-config: ${{ inputs.csi-config && format('--csi-config "{0}"', inputs.csi-config) || '' }}
+        csi-config: ${{ inputs.csi-config && format('--csi-config {0}', inputs.csi-config) || '' }}
         debug: ${{ inputs.debug == 'true' && '--debug' || '' }}
       run: >-
           az iot ops init
