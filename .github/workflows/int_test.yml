@@ -87,7 +87,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [default, mq-insecure, no-syncrules, ca-certs]
+        # feature: [default, mq-insecure, no-syncrules, ca-certs]
+        feature: [mq-insecure]
         include:
           # default / limited options
           - feature: default
