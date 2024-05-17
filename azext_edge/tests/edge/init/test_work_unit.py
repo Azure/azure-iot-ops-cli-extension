@@ -657,11 +657,7 @@ def test_work_order(
         assert result["csiDriver"]["configurationSettings"] == expected_csi_driver_config
 
         expected_keyvault_spc_secret_name = keyvault_spc_secret_name if keyvault_spc_secret_name else DEFAULT_NAMESPACE
-        assert result["csiDriver"]["kvSatSecretName"] == expected_keyvault_spc_secret_name
-        assert (
-            result["csiDriver"]["rotationPollInterval"] == rotation_poll_interval if rotation_poll_interval else "1h"
-        )
-        assert result["csiDriver"]["enableSecretRotation"] == "false" if disable_secret_rotation else "true"
+        assert result["csiDriver"]["kvSpcSecretName"] == expected_keyvault_spc_secret_name
 
         mocked_validate_keyvault_permission_model.assert_called_once()
         assert mocked_validate_keyvault_permission_model.call_args.kwargs["subscription_id"]

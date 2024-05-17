@@ -355,7 +355,7 @@ class WorkManager:
                         vault_uri=vault_uri,
                         **self._kwargs,
                     )
-                    work_kpis["csiDriver"]["kvSatSecretName"] = keyvault_spc_secret_name
+                    work_kpis["csiDriver"]["kvSpcSecretName"] = keyvault_spc_secret_name
 
                     self.complete_step(
                         category=WorkCategoryKey.CSI_DRIVER,
@@ -380,8 +380,6 @@ class WorkManager:
                     # WorkStepKey.KV_CSI_DEPLOY
                     enable_secret_rotation = not self._kwargs.get("disable_secret_rotation", False)
                     enable_secret_rotation = "true" if enable_secret_rotation else "false"
-                    work_kpis["csiDriver"]["rotationPollInterval"] = self._kwargs.get("rotation_poll_interval")
-                    work_kpis["csiDriver"]["enableSecretRotation"] = enable_secret_rotation
 
                     akv_csi_driver_result = provision_akv_csi_driver(
                         enable_secret_rotation=enable_secret_rotation,
