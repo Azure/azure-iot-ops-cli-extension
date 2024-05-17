@@ -21,7 +21,12 @@ def mocked_provision_akv_csi_driver(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.provision_akv_csi_driver", autospec=True)
 
     def handle_return(*args, **kwargs):
-        return {"properties": {"version": kwargs.get("extension_version") or KEYVAULT_ARC_EXTENSION_VERSION}}
+        return {
+            "properties": {
+                "version": kwargs.get("extension_version") or KEYVAULT_ARC_EXTENSION_VERSION,
+                "configurationSettings": kwargs.get("extension_config") or {},
+            }
+        }
 
     patched.side_effect = handle_return
     yield patched
