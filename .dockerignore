@@ -1,0 +1,26 @@
+# .env environment file
+.env
+
+# workflow files and folders
+.github/
+
+# builds
+build/
+
+# docs
+docs/
+
+# support bundles
+*.zip
+
+# tools
+tools/
+
+# non-code files
+*.md
+
+# tox
+.tox/
+
+# venv
+env*/
