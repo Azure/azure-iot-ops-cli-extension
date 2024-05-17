@@ -97,6 +97,7 @@ jobs:
           - feature: mq-insecure
             mq-insecure: true
             no-preflight: true
+            csi-config: 'telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m'
           # test disabling custom sync rules
           - feature: no-syncrules
             disable-rsync-rules: true
@@ -212,6 +213,7 @@ jobs:
           ca-key-file: ${{ matrix.ca-key-file || '' }}
           kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
+          csi-config: ${{ matrix.csi-config || ''}}
       - name: "Allow cluster to finish provisioning"
         run: |
           sleep 2m
