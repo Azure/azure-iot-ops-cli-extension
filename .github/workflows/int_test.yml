@@ -270,6 +270,10 @@ jobs:
           az iot ops mq get-password-hash -p test
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
           az iot ops verify-host
+      - name: "Test cluster deletion"
+        if: ${{matrix.feature == 'no-syncrules'}}
+        run: |
+          az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
 
   # Optional cleanup job
   cleanup:
