@@ -300,6 +300,11 @@ def load_iotops_help():
             --event-publish-int {event_publishing_interval} --event-queue-size {event_queue_size}
             --event-sample-int {event_sampling_interval} --event event_notifier={event_notifier}
 
+        - name: Create an asset with additional custom attributes.
+          text: >
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
+            --endpoint {endpoint} --custom-attribute {attribute_key}={attribute_value} --custom-attribute {attribute_key}={attribute_value}
+
         - name: Create an asset with custom asset type, description, documentation uri, external asset id, hardware revision,
                 product code, and software revision.
           text: >
@@ -333,6 +338,7 @@ def load_iotops_help():
             --documentation-uri www.help.com --external-asset-id 000-000-0000 --hardware-revision 10.0
             --product-code XXX100 --software-revision 0.1 --manufacturer Contoso
             --manufacturer-uri constoso.com --model AssetModel --serial-number 000-000-ABC10
+            --custom-attribute work_location=factory
     """
 
     helps[
@@ -385,14 +391,14 @@ def load_iotops_help():
             --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
             --product-code {product_code} --software-revision {software_revision}
 
-        - name: Update an asset's manufacturer, manufacturer uri, model, serial number.
+        - name: Update an asset's manufacturer, manufacturer uri, model, serial number, and custom attribute.
           text: >
             az iot ops asset update --name {asset_name} -g {resource_group} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
-            --serial-number {serial_number}
+            --serial-number {serial_number} --custom-attribute {attribute_key}={attribute_value}
 
-        - name: Disable an asset.
+        - name: Disable an asset and remove a custom attribute called "work_site".
           text: >
-            az iot ops asset update --name {asset_name} -g {resource_group} --disable
+            az iot ops asset update --name {asset_name} -g {resource_group} --disable --custom-attribute work_site=""
     """
 
     helps[
