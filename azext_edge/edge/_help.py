@@ -228,6 +228,11 @@ def load_iotops_help():
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29
             --sp-secret $SP_SECRET
+
+        - name: To customize configuration of the Key Vault CSI driver, --csi-config can be used. For example setting resource limits on the telegraf container dependency.
+          text: >
+            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d
+            --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m
     """
 
     helps[
