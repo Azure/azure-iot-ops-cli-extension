@@ -21,7 +21,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
     anon_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     address = f"tcp://{generate_random_string()}:5000"
     anon_endpoint = run(
-        f"az iot ops asset endpoint create -n {anon_name} -g {rg} -c {cluster_name} "
+        f"az iot ops asset endpoint create -n {anon_name} -g {rg} -c {cluster_name} --crg {rg} "
         f"--ta {address}"
     )
     tracked_resources.append(anon_endpoint["id"])
@@ -59,7 +59,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
     password = generate_random_string()
     address = f"tcp://{generate_random_string()}:5000"
     userpass_endpoint = run(
-        f"az iot ops asset endpoint create -n {userpass_name} -g {rg} -c {cluster_name} "
+        f"az iot ops asset endpoint create -n {userpass_name} -g {rg} -c {cluster_name} --crg {rg} "
         f"--ta {address} --username-ref {username} --password-ref {password}"
     )
     tracked_resources.append(userpass_endpoint["id"])

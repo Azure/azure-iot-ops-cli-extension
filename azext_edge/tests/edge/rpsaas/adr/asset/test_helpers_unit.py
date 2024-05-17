@@ -19,7 +19,9 @@ from azext_edge.edge.providers.rpsaas.adr.assets import (
     _convert_sub_points_to_csv,
     _process_asset_sub_points,
     _process_custom_attributes,
-    _update_properties
+    _update_properties,
+    VALID_DATA_OBSERVABILITY_MODES,
+    VALID_EVENT_OBSERVABILITY_MODES
 )
 
 from .....generators import generate_random_string
@@ -29,7 +31,7 @@ from .....generators import generate_random_string
 @pytest.mark.parametrize("event_notifier", [None, generate_random_string()])
 @pytest.mark.parametrize("capability_id", [None, generate_random_string()])
 @pytest.mark.parametrize("name", [None, generate_random_string()])
-@pytest.mark.parametrize("observability_mode", [None, generate_random_string()])
+@pytest.mark.parametrize("observability_mode", [None, "log"])
 @pytest.mark.parametrize("queue_size", [None, 20])
 @pytest.mark.parametrize("sampling_interval", [None, 33])
 def test_build_asset_sub_point(
@@ -47,7 +49,7 @@ def test_build_asset_sub_point(
 
     assert result["capabilityId"] == (capability_id or name)
     assert result["name"] == name
-    assert result["observabilityMode"] == observability_mode
+    assert result["observabilityMode"] == (observability_mode or "none")
 
     custom_configuration = {}
     if data_source:
@@ -65,6 +67,34 @@ def test_build_asset_sub_point(
         sampling_interval if data_source or event_notifier else None
     )
     assert custom_configuration.get("queueSize") == (queue_size if data_source or event_notifier else None)
+
+
+def test_build_asset_sub_point_error():
+    for obs_mode in VALID_DATA_OBSERVABILITY_MODES:
+        result = _build_asset_sub_point(
+            data_source=generate_random_string(),
+            observability_mode=obs_mode,
+        )
+        assert result["observabilityMode"] == obs_mode
+
+    with pytest.raises(InvalidArgumentValueError):
+        result = _build_asset_sub_point(
+            data_source=generate_random_string(),
+            observability_mode=generate_random_string(),
+        )
+
+    for obs_mode in VALID_EVENT_OBSERVABILITY_MODES:
+        result = _build_asset_sub_point(
+            event_notifier=generate_random_string(),
+            observability_mode=obs_mode,
+        )
+        assert result["observabilityMode"] == obs_mode
+
+    with pytest.raises(InvalidArgumentValueError):
+        result = _build_asset_sub_point(
+            event_notifier=generate_random_string(),
+            observability_mode=generate_random_string(),
+        )
 
 
 @pytest.mark.parametrize("original_configuration", [
@@ -320,13 +350,13 @@ def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_p
             "queue_size=1000",
             f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
-            f"observability_mode={generate_random_string()}",
+            "observability_mode=none",
         ]
     ],
     [
         [
             f"name={generate_random_string()}",
-            f"observability_mode={generate_random_string()}",
+            "observability_mode=log",
         ]
     ],
     [
@@ -334,21 +364,21 @@ def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_p
             "sampling_interval=10",
             f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
-            f"observability_mode={generate_random_string()}",
+            "observability_mode=none",
         ],
         [
             "sampling_interval=10",
             "queue_size=1000",
             f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
-            f"observability_mode={generate_random_string()}",
+            "observability_mode=log",
         ],
         [
             "sampling_interval=10",
             "queue_size=1000",
             f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
-            f"observability_mode={generate_random_string()}",
+            "observability_mode=none",
         ]
     ],
 ])
