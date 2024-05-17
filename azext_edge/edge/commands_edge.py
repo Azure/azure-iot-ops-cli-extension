@@ -11,21 +11,20 @@ from typing import Any, Dict, List, Optional, Union
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 
-
+from .common import OpsServiceType
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
-    MqMemoryProfile,
-    MqMode,
-    MqServiceType,
-    KubernetesDistroType,
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     DEFAULT_X509_CA_VALID_DAYS,
     KEYVAULT_ARC_EXTENSION_VERSION,
+    KubernetesDistroType,
+    MqMemoryProfile,
+    MqMode,
+    MqServiceType,
 )
 from .providers.support.base import get_bundle_path
-from .common import OpsServiceType
 
 logger = get_logger(__name__)
 
@@ -146,9 +145,9 @@ def init(
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
 ) -> Union[Dict[str, Any], None]:
-    from .providers.orchestration import deploy
-    from .util import url_safe_hash_phrase, is_env_flag_enabled
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
+    from .providers.orchestration import deploy
+    from .util import is_env_flag_enabled, url_safe_hash_phrase, url_safe_random_chars
 
     no_preflight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
@@ -175,7 +174,7 @@ def init(
         mq_authn_name = "authn"
 
     if not custom_location_name:
-        custom_location_name = f"{cluster_name_lowered}-ops-init-cl"
+        custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
 
     if not custom_location_namespace:
         custom_location_namespace = cluster_namespace
