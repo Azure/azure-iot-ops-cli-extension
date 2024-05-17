@@ -26,7 +26,7 @@ def require_init(init_setup, tracked_files):
     with open(file_name, "w", encoding="utf-8") as f:
         body = {
             "query": "where type =~ 'Microsoft.ExtendedLocation/customLocations' | where properties.hostResourceId "
-            f"=~ '{cluster_id}' | project name"
+            f"=~ '{cluster_id}' | project name, resourceGroup"
         }
         json.dump(body, f)
     tracked_files.append(file_name)
@@ -36,4 +36,5 @@ def require_init(init_setup, tracked_files):
         f"/resources?api-version=2022-10-01 --body @{file_name}"
     )["data"]
     init_setup["customLocation"] = custom_location_result[0]["name"]
+    init_setup["customLocationResourceGroup"] = custom_location_result[0]["resourceGroup"]
     yield init_setup
