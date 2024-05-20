@@ -57,6 +57,8 @@ inputs:
     description: 'Optional Service Principal Object ID to use for cluster operations.'
   sp-secret:
     description: 'Optional Service Principal Secret to use for cluster operations.'
+  csi-config:
+    description: 'Customize configuration of the Key Vault CSI driver with space-separated key=value options.'
   debug:
     description: 'Run `az iot ops init` with debugging output.'
 
