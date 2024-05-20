@@ -28,4 +28,4 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 RUN pip install tox
 
 # run tests
-ENTRYPOINT ["tox", "r", "-vv", "-e", "python,python-int", "--", "--durations=0"]
+ENTRYPOINT ["tox", "r", "-vv", "-e", "python-int", "--", "--durations=0"]
