@@ -15,11 +15,14 @@ from azure.cli.core.azclierror import (
 )
 
 from .base import ADRBaseProvider
-from .user_strings import MISSING_DATA_EVENT_ERROR, ENDPOINT_NOT_FOUND_WARNING
+from .user_strings import MISSING_DATA_EVENT_ERROR, ENDPOINT_NOT_FOUND_WARNING, INVALID_OBSERVABILITY_MODE_ERROR
 from ....util import assemble_nargs_to_dict, build_query
 from ....common import FileType, ResourceTypeMapping
 
 logger = get_logger(__name__)
+
+VALID_DATA_OBSERVABILITY_MODES = ["none", "gauge", "counter", "histogram", "log"]
+VALID_EVENT_OBSERVABILITY_MODES = ["none", "log"]
 
 
 class AssetProvider(ADRBaseProvider):
@@ -471,15 +474,26 @@ def _build_asset_sub_point(
     result = {
         "capabilityId": capability_id,
         "name": name,
-        "observabilityMode": observability_mode
     }
+    if not observability_mode:
+        observability_mode = "none"
 
     if data_source:
         result["dataSource"] = data_source
         result["dataPointConfiguration"] = json.dumps(custom_configuration)
+        if observability_mode not in VALID_DATA_OBSERVABILITY_MODES:
+            raise InvalidArgumentValueError(
+                INVALID_OBSERVABILITY_MODE_ERROR.format(data_source, ', '.join(VALID_DATA_OBSERVABILITY_MODES))
+            )
     elif event_notifier:
         result["eventNotifier"] = event_notifier
         result["eventConfiguration"] = json.dumps(custom_configuration)
+        if observability_mode not in VALID_EVENT_OBSERVABILITY_MODES:
+            raise InvalidArgumentValueError(
+                INVALID_OBSERVABILITY_MODE_ERROR.format(event_notifier, ', '.join(VALID_EVENT_OBSERVABILITY_MODES))
+            )
+
+    result["observabilityMode"] = observability_mode
     return result
 
 

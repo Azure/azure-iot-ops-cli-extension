@@ -17,6 +17,7 @@ from azext_edge.edge.commands_assets import (
 )
 from azext_edge.edge.common import FileType
 from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
+from azext_edge.edge.providers.rpsaas.adr.assets import VALID_EVENT_OBSERVABILITY_MODES
 
 from .conftest import (
     MINIMUM_ASSET,
@@ -44,7 +45,7 @@ FULL_EVENT = FULL_ASSET["properties"]["events"][0]
 ], ids=["minimal", "full"], indirect=True)
 @pytest.mark.parametrize("capability_id", [None, generate_random_string()])
 @pytest.mark.parametrize("name", [None, generate_random_string()])
-@pytest.mark.parametrize("observability_mode", [None, generate_random_string()])
+@pytest.mark.parametrize("observability_mode", VALID_EVENT_OBSERVABILITY_MODES + [None])
 @pytest.mark.parametrize("queue_size", [None, 20])
 @pytest.mark.parametrize("sampling_interval", [None, 33])
 def test_add_asset_event(
@@ -90,7 +91,7 @@ def test_add_asset_event(
     added_event = request_events[-1]
     assert added_event["capabilityId"] == (capability_id or name)
     assert added_event["name"] == name
-    assert added_event["observabilityMode"] == observability_mode
+    assert added_event["observabilityMode"] == (observability_mode or "none")
 
     assert added_event["eventNotifier"] == event_notifier
     assert added_event["eventConfiguration"]

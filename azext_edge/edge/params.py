@@ -672,7 +672,7 @@ def load_iotops_arguments(self, _):
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the event to create. "
             "The following key values are supported: `capability_id`, `event_notifier` (required), "
-            "`name`, `observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` "
+            "`name`, `observability_mode` (none or log), `sampling_interval` "
             "(int), `queue_size` (int). "
             "--event can be used 1 or more times. Review help examples for full parameter usage",
             arg_group="Additional Info",
@@ -768,11 +768,6 @@ def load_iotops_arguments(self, _):
             arg_type=tags_type,
         )
         context.argument(
-            "observability_mode",
-            options_list=["--observability-mode", "--om"],
-            help="Observability mode.",
-        )
-        context.argument(
             "queue_size",
             options_list=["--queue-size", "--qs"],
             help="Custom queue size.",
@@ -807,7 +802,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops asset update") as context:
         context.argument(
             "custom_attributes",
-            options_list=["--custom-attribute", "--ca"],
+            options_list=["--custom-attribute", "--attr"],
             help="Space-separated key=value pairs corresponding to additional custom attributes for the asset. "
             "To remove a custom attribute, please set the attribute's value to \"\".",
             nargs="+",
@@ -834,6 +829,11 @@ def load_iotops_arguments(self, _):
             "data_source",
             options_list=["--data-source", "--ds"],
             help="Data source.",
+        )
+        context.argument(
+            "observability_mode",
+            options_list=["--observability-mode", "--om"],
+            help="Observability mode. Must be none, gauge, counter, histogram, or log.",
         )
 
     with self.argument_context("iot ops asset data-point export") as context:
@@ -879,6 +879,11 @@ def load_iotops_arguments(self, _):
             "event_notifier",
             options_list=["--event-notifier", "--en"],
             help="Event notifier.",
+        )
+        context.argument(
+            "observability_mode",
+            options_list=["--observability-mode", "--om"],
+            help="Observability mode. Must be none or log.",
         )
 
     with self.argument_context("iot ops asset event export") as context:
