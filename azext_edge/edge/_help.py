@@ -538,7 +538,7 @@ def load_iotops_help():
         - name: Add an event to an asset with the given pre-filled values.
           text: >
             az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId --name eventName
-            --capability-id tagId1 --observability-mode histogram --queue-size 2 --sampling-interval 500
+            --capability-id tagId1 --observability-mode log --queue-size 2 --sampling-interval 500
     """
 
     helps[
