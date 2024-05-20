@@ -31,7 +31,12 @@ from .traces_data import TEST_TRACE, TEST_TRACE_PARTIAL
 
 
 def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlopen, stub_raw_stats):
-    pods = [V1Pod(metadata=V1ObjectMeta(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace="namespace"))]
+    pods = [
+        V1Pod(
+            metadata=V1ObjectMeta(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace="namespace"),
+            status=V1PodStatus(phase="Running"),
+        )
+    ]
     pod_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
 
@@ -156,7 +161,12 @@ def test_get_traces(
     mocker, mocked_cmd, mocked_client, mocked_config, mocked_zipfile, trace_ids, trace_dir, recv_side_effect
 ):
     # pylint: disable=unnecessary-dunder-call
-    pods = [V1Pod(metadata=V1ObjectMeta(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace="namespace"))]
+    pods = [
+        V1Pod(
+            metadata=V1ObjectMeta(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace="namespace"),
+            status=V1PodStatus(phase="Running"),
+        )
+    ]
     pod_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
 
@@ -393,7 +403,4 @@ def test__preprocess_stats(
         return
 
     target_namespace, target_pod = _preprocess_stats(namespace=target_namespace)
-    assert (
-        target_pod.metadata.name
-        == test_state["expected_pods"][test_state["expected_pod_index"]].metadata.name
-    )
+    assert target_pod.metadata.name == test_state["expected_pods"][test_state["expected_pod_index"]].metadata.name
