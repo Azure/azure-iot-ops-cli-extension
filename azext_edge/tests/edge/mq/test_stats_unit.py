@@ -383,7 +383,6 @@ def test__preprocess_stats(
 ):
     from azext_edge.edge.providers.stats import _preprocess_stats
 
-    # pylint: disable=unnecessary-dunder-call
     pod_list = V1PodList(items=test_state["expected_pods"])
     mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
 
