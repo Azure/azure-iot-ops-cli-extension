@@ -10,8 +10,9 @@ from unittest.mock import MagicMock
 from zipfile import ZIP_DEFLATED, ZipInfo
 
 import pytest
+from azure.cli.core.azclierror import ResourceNotFoundError
 from google.protobuf.json_format import ParseDict
-from kubernetes.client.models import V1ObjectMeta, V1Pod, V1PodList
+from kubernetes.client.models import V1ObjectMeta, V1Pod, V1PodList, V1PodStatus
 from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
 from azext_edge.edge.commands_mq import stats
@@ -314,3 +315,86 @@ def test___determine_root_span():
     assert root_span is None
     assert resource_name is None
     assert timestamp is None
+
+
+@pytest.mark.parametrize(
+    "test_state",
+    [
+        {
+            "expected_pods": [
+                V1Pod(
+                    metadata=V1ObjectMeta(
+                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                    ),
+                    status=V1PodStatus(phase="Running"),
+                )
+            ],
+            "expected_pod_index": 0,
+        },
+        {
+            "expected_pods": [
+                V1Pod(
+                    metadata=V1ObjectMeta(
+                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                    ),
+                    status=V1PodStatus(phase="Terminated"),
+                ),
+                V1Pod(
+                    metadata=V1ObjectMeta(
+                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                    ),
+                    status=V1PodStatus(phase="Completed"),
+                ),
+                V1Pod(
+                    metadata=V1ObjectMeta(
+                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                    ),
+                    status=V1PodStatus(phase="Running"),
+                ),
+            ],
+            "expected_pod_index": 2,
+        },
+        {
+            "expected_pods": [
+                V1Pod(
+                    metadata=V1ObjectMeta(
+                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                    ),
+                    status=V1PodStatus(phase="Terminated"),
+                ),
+                V1Pod(
+                    metadata=V1ObjectMeta(
+                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                    ),
+                    status=V1PodStatus(phase="Completed"),
+                ),
+            ],
+            "expected_pod_index": -1,
+        },
+        {
+            "expected_pods": [],
+            "expected_pod_index": -1,
+        },
+    ],
+)
+def test__preprocess_stats(
+    mocked_client,
+    test_state: dict,
+):
+    from azext_edge.edge.providers.stats import _preprocess_stats
+
+    # pylint: disable=unnecessary-dunder-call
+    pod_list = V1PodList(items=test_state["expected_pods"])
+    mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
+
+    target_namespace = generate_random_string()
+    if test_state["expected_pod_index"] == -1:
+        with pytest.raises(ResourceNotFoundError):
+            _preprocess_stats(namespace=target_namespace)
+        return
+
+    target_namespace, target_pod = _preprocess_stats(namespace=target_namespace)
+    assert (
+        target_pod.metadata.name
+        == test_state["expected_pods"][test_state["expected_pod_index"]].metadata.name
+    )

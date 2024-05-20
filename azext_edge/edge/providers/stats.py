@@ -15,7 +15,7 @@ from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
 
-from ..common import AIO_MQ_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT
+from ..common import AIO_MQ_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT, PodState
 from ..util import get_timestamp_now_utc
 from .base import get_namespaced_pods_by_prefix, portforward_http, portforward_socket, V1Pod
 
@@ -43,9 +43,14 @@ def _preprocess_stats(
         raise ResourceNotFoundError(
             f"Diagnostics service pod '{diag_service_pod_prefix}' does not exist in namespace '{namespace}'."
         )
-    diagnostic_pod = target_pods[0]
+    for pod in target_pods:
+        if pod.status.phase.lower() == PodState.running.name:
+            return namespace, pod
 
-    return namespace, diagnostic_pod
+    raise ResourceNotFoundError(
+        f"No diagnostics service pod '{diag_service_pod_prefix}' in phase "
+        f"'{PodState.running.value}' detected in namespace '{namespace}'."
+    )
 
 
 def get_stats(
