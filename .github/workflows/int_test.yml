@@ -274,6 +274,25 @@ jobs:
         if: ${{matrix.feature == 'ca-certs'}}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
+      - name: "Test cluster redeployment"
+        if: ${{matrix.feature == 'ca-certs'}}
+        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
+        with:
+          cluster: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          keyvault-id: ${{ env.KV_ID }}
+          sp-app-id: ${{ secrets.AIO_SP_APP_ID || '' }}
+          sp-object-id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
+          sp-secret: ${{ secrets.AIO_SP_SECRET || '' }}
+          no-preflight: ${{ matrix.no-preflight }}
+          mq-insecure: ${{ matrix.mq-insecure }}
+          disable-rsync-rules: ${{ matrix.disable-rsync-rules }}
+          ca-valid-days: ${{ matrix.ca-valid-days || '' }}
+          ca-file: ${{ matrix.ca-file || '' }}
+          ca-key-file: ${{ matrix.ca-key-file || '' }}
+          kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
+          template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
+          csi-config: ${{ matrix.csi-config || ''}}
 
   # Optional cleanup job
   cleanup:
