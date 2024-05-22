@@ -7,39 +7,16 @@
 import pytest
 from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
-from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
-from azext_edge.edge.providers.edge_api import (
-    AkriResourceKinds,
-    DataProcessorResourceKinds,
-    LnmResourceKinds,
-    MqResourceKinds,
-    OpcuaResourceKinds,
-)
-from ...helpers import run
+from ....helpers import run
 
 logger = get_logger(__name__)
 
 
-@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("services_map", [
-    ("akri", AkriResourceKinds.list()),
-    ("dataprocessor", DataProcessorResourceKinds.list()),
-    ("lnm", LnmResourceKinds.list()),
-    ("mq", [
-        MqResourceKinds.BROKER.value,
-        MqResourceKinds.BROKER_LISTENER.value,
-        MqResourceKinds.DIAGNOSTIC_SERVICE.value,
-        MqResourceKinds.KAFKA_CONNECTOR.value,
-    ]),
-    ("opcua", OpcuaResourceKinds.list())
-])
+@pytest.mark.parametrize("ops_service", ["akri", "dataprocessor", "lnm", "mq", "opcua"])
 @pytest.mark.parametrize("post", [None, False, True])
 @pytest.mark.parametrize("pre", [None, False, True])
-def test_check(init_setup, detail_level, services_map, post, pre):
-    ops_service, resources = services_map
-    resources = " ".join(resources)
-    command = f"az iot ops check --as-object --detail-level {detail_level} --ops-service {ops_service} "\
-        f"--resources {resources}"
+def test_check_pre_post(init_setup, ops_service, post, pre):
+    command = f"az iot ops check --as-object --ops-service {ops_service} "
     if pre is not None:
         command += f" --pre {pre}"
     if post is not None:
@@ -63,4 +40,4 @@ def test_check(init_setup, detail_level, services_map, post, pre):
     assert bool(result.get("preDeployment")) == expected_pre
     assert bool(result.get("postDeployment")) == expected_post
 
-    # TODO: see how specific to get - for now keep it simple
+    # TODO: add in pre deployment asserts
