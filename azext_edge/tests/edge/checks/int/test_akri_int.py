@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List, Optional
 import pytest
 from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
@@ -13,7 +12,7 @@ from azext_edge.edge.providers.edge_api import (
     AkriResourceKinds, AKRI_API_V0
 )
 from .helpers import assert_enumerate_resources, assert_eval_core_service_runtime
-from ....helpers import get_custom_resource_kind_items, get_kubectl_workload_items, run
+from ....helpers import get_custom_resource_kind_items, run
 from ....generators import generate_names
 
 logger = get_logger(__name__)
