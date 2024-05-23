@@ -22,7 +22,7 @@ def filter_resources(
     kubectl_items: List[Dict[str, Any]],
     prefixes: Optional[Union[str, List[str]]] = None,
     resource_match: Optional[str] = None,
-):
+) -> Dict[str, Any]:
     def pass_conditions(item: Dict[str, Any]) -> bool:
         name = item["metadata"]["name"]
         if resource_match and not fnmatch(name, resource_match):
@@ -31,10 +31,10 @@ def filter_resources(
             return False
         return True
 
-    filtered = []
+    filtered = {}
     for item in kubectl_items["items"]:
         if pass_conditions(item):
-            filtered.append(item)
+            filtered[item["metadata"]["name"]] = item
     return filtered
 
 
@@ -57,7 +57,7 @@ def find_extra_or_missing_names(
         raise AssertionError('\n '.join(error_msg))
 
 
-def get_kubectl_items(
+def get_kubectl_workload_items(
     prefixes: Union[str, List[str]],
     service_type: str,
     namespace: Optional[str] = None,
@@ -69,12 +69,11 @@ def get_kubectl_items(
         prefixes = [prefixes]
     namespace_param = f"-n {namespace}" if namespace else "-A"
     kubectl_items = run(f"kubectl get {service_type}s {namespace_param} -o json")
-    filtered = filter_resources(
+    return filter_resources(
         kubectl_items=kubectl_items,
         prefixes=prefixes,
         resource_match=resource_match
     )
-    return filtered
 
 
 def get_custom_resource_kind_items(

@@ -13,7 +13,7 @@ from azext_edge.edge.providers.edge_api import (
     AkriResourceKinds, AKRI_API_V0
 )
 from .helpers import assert_enumerate_resources, assert_eval_core_service_runtime
-from ....helpers import get_custom_resource_kind_items, get_kubectl_items, run
+from ....helpers import get_custom_resource_kind_items, get_kubectl_workload_items, run
 from ....generators import generate_names
 
 logger = get_logger(__name__)
@@ -66,13 +66,13 @@ def test_check(init_setup, detail_level, resource_match, resource_kind):
     )
     assert_eval_configurations(
         post_deployment=post_deployment,
-        configurations=custom_resources["configurations"],
-        resource_kind_present=resource_kind == "configurations"
+        configurations=custom_resources[AkriResourceKinds.CONFIGURATION.value],
+        resource_kind_present=resource_kind in [None, AkriResourceKinds.CONFIGURATION.value]
     )
     assert_eval_instances(
         post_deployment=post_deployment,
-        instances=custom_resources["instances"],
-        resource_kind_present=resource_kind == "instances"
+        instances=custom_resources[AkriResourceKinds.INSTANCE.value],
+        resource_kind_present=resource_kind in [None, AkriResourceKinds.INSTANCE.value]
     )
 
 
@@ -82,29 +82,33 @@ def assert_eval_configurations(
     resource_kind_present: bool,
 ):
     status = "success"
-    if not configurations and resource_kind_present:
-        status = "skipped"
-    if not configurations and not resource_kind_present:
-        status = "error"
     resource = AkriResourceKinds.CONFIGURATION.value
     key = f"eval{resource.capitalize()}s"
+    if not resource_kind_present:
+        assert key not in post_deployment
+        return
+    elif not configurations:
+        status = "skipped"
     assert post_deployment[key]
     assert post_deployment[key]["description"] == f"Evaluate Akri {resource}s"
     assert post_deployment[key]["status"] == status
+    # TODO: add more as --as-object gets fixed
 
 
 def assert_eval_instances(
     post_deployment: dict,
     instances: dict,
-    resource_kind: Optional[str] = None,
+    resource_kind_present: bool,
 ):
-    status = "success"
-    if not instances and resource_kind:
-        status = "skipped"
-    if not instances and not resource_kind:
-        status = "error"
     resource = AkriResourceKinds.INSTANCE.value
     key = f"eval{resource.capitalize()}s"
+    status = "success"
+    if not resource_kind_present:
+        assert key not in post_deployment
+        return
+    elif not instances:
+        status = "skipped"
     assert post_deployment[key]
     assert post_deployment[key]["description"] == f"Evaluate Akri {resource}s"
     assert post_deployment[key]["status"] == status
+    # TODO: add more as --as-object gets fixed

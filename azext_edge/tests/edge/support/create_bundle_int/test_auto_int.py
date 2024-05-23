@@ -12,12 +12,12 @@ from azext_edge.edge.common import OpsServiceType
 from .helpers import (
     assert_file_names,
     check_workload_resource_files,
-    find_extra_or_missing_files,
     get_file_map,
     process_top_levels,
     run_bundle_command,
     BASE_ZIP_PATH
 )
+from ....helpers import find_extra_or_missing_names
 
 logger = get_logger(__name__)
 
@@ -84,7 +84,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             # make things easier if there is a different file
             auto_files = sorted(auto_walk_result[directory]["files"])
             ser_files = sorted(walk_result[directory]["files"])
-            find_extra_or_missing_files(
+            find_extra_or_missing_names(
                 f"auto bundle files not found in {ops_service} bundle", auto_files, ser_files, ignore_extras=True
             )
 

@@ -7,7 +7,7 @@
 from typing import Optional
 from azext_edge.edge.common import ListableEnum
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
-from ....helpers import find_extra_or_missing_names, get_kubectl_items
+from ....helpers import find_extra_or_missing_names, get_kubectl_workload_items
 
 
 def assert_enumerate_resources(
@@ -53,15 +53,16 @@ def assert_eval_core_service_runtime(
         namespace_status = "success"
         assert not runtime_resource[namespace]["conditions"]
         evals = runtime_resource[namespace]["evaluations"]
-        kubectl_pods = get_kubectl_items(
+        kubectl_pods = get_kubectl_workload_items(
             prefixes=pod_prefix,
             service_type="pod",
             resource_match=resource_match
         )
+        results = [pod["value"]["name"] for pod in evals]
         find_extra_or_missing_names(
             resource_type="pods",
-            result_names=[pod["value"]["name"] for pod in evals],
-            expected_names=[pod["name"] for pod in kubectl_pods]
+            result_names=results,
+            expected_names=kubectl_pods.keys()
         )
 
         for pod in evals:

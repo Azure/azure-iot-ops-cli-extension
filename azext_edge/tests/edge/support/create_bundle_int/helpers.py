@@ -12,7 +12,7 @@ from azure.cli.core.azclierror import CLIInternalError
 import pytest
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
-from ....helpers import find_extra_or_missing_names, get_kubectl_items, run
+from ....helpers import find_extra_or_missing_names, get_kubectl_workload_items, run
 
 
 logger = get_logger(__name__)
@@ -167,9 +167,8 @@ def check_workload_resource_files(
             if file["descriptor"] not in converted_file:
                 converted_file[file["descriptor"]] = False
 
-    expected_pods = get_kubectl_items(prefixes, service_type="pod")
-    expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
-    find_extra_or_missing_names("pod", file_pods.keys(), expected_pod_names)
+    expected_pods = get_kubectl_workload_items(prefixes, service_type="pod")
+    find_extra_or_missing_names("pod", file_pods.keys(), expected_pods.keys())
 
     for name, files in file_pods.items():
         for extension, value in files.items():
@@ -177,12 +176,11 @@ def check_workload_resource_files(
 
     # other
     for key in expected_workload_types:
-        expected_items = get_kubectl_items(prefixes, service_type=key)
-        expected_item_names = [item["metadata"]["name"] for item in expected_items]
+        expected_items = get_kubectl_workload_items(prefixes, service_type=key)
         for file in file_objs.get(key, []):
             assert file["extension"] == "yaml"
         present_names = [file["name"] for file in file_objs.get(key, [])]
-        find_extra_or_missing_names(key, present_names, expected_item_names)
+        find_extra_or_missing_names(key, present_names, expected_items.keys())
 
 
 def get_file_map(
