@@ -4,17 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from typing import Optional
 from azext_edge.edge.common import ListableEnum
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import find_extra_or_missing_names, get_kubectl_items
-
-
-def remap_post_deployment(post_deployment):
-    remap = {}
-    for cond in post_deployment:
-        name = cond.pop("name")
-        remap[name] = cond
-    return remap
 
 
 def assert_enumerate_resources(
@@ -50,7 +43,7 @@ def assert_eval_core_service_runtime(
     post_deployment: dict,
     description_name: str,
     pod_prefix: str,
-    resource_match: str = "*",
+    resource_match: Optional[str] = None,
 ):
     assert post_deployment["evalCoreServiceRuntime"]
     assert post_deployment["evalCoreServiceRuntime"]["description"] == f"Evaluate {description_name} core service"

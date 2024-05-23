@@ -116,7 +116,6 @@ def check_custom_resource_files(
         api_resources = api_resources[1:-1]
         plural_map = {line[-1].lower(): line[0] for line in api_resources}
     except CLIInternalError:
-        # fall back to python sdk if not possible
         pytest.skip("Cannot access resources via kubectl.")
 
     namespace = f"-n {namespace}" if namespace else "-A"

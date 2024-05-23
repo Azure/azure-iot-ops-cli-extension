@@ -11,8 +11,31 @@ from fnmatch import fnmatch
 from knack.log import get_logger
 from typing import Any, Dict, List, Optional, Union
 from azure.cli.core.azclierror import CLIInternalError
+import pytest
+
+from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 
 logger = get_logger(__name__)
+
+
+def filter_resources(
+    kubectl_items: List[Dict[str, Any]],
+    prefixes: Optional[Union[str, List[str]]] = None,
+    resource_match: Optional[str] = None,
+):
+    def pass_conditions(item: Dict[str, Any]) -> bool:
+        name = item["metadata"]["name"]
+        if resource_match and not fnmatch(name, resource_match):
+            return False
+        if prefixes and not any([name.startswith(prefix) for prefix in prefixes]):
+            return False
+        return True
+
+    filtered = []
+    for item in kubectl_items["items"]:
+        if pass_conditions(item):
+            filtered.append(item)
+    return filtered
 
 
 def find_extra_or_missing_names(
@@ -40,19 +63,48 @@ def get_kubectl_items(
     namespace: Optional[str] = None,
     resource_match: Optional[str] = None,
 ) -> Dict[str, Any]:
-    resource_match = resource_match or "*"
     if service_type == "pvc":
         service_type = "persistentvolumeclaim"
     if isinstance(prefixes, str):
         prefixes = [prefixes]
     namespace_param = f"-n {namespace}" if namespace else "-A"
     kubectl_items = run(f"kubectl get {service_type}s {namespace_param} -o json")
-    filtered = []
-    for item in kubectl_items["items"]:
-        for prefix in prefixes:
-            if item["metadata"]["name"].startswith(prefix) and fnmatch(item["metadata"]["name"], resource_match):
-                filtered.append(item)
+    filtered = filter_resources(
+        kubectl_items=kubectl_items,
+        prefixes=prefixes,
+        resource_match=resource_match
+    )
     return filtered
+
+
+def get_custom_resource_kind_items(
+    resource_api: EdgeResourceApi,
+    namespace: Optional[str] = None,
+    resource_match: Optional[str] = None,
+):
+    plural_map: Dict[str, str] = {}
+    try:
+        # prefer to use another tool to get resources
+        api_table = run(f"kubectl api-resources --api-group={resource_api.group}")
+        api_resources = [line.split() for line in api_table.split("\n")]
+        api_resources = api_resources[1:-1]
+        plural_map = {line[-1].lower(): line[0] for line in api_resources}
+    except CLIInternalError:
+        pytest.skip("Cannot access resources via kubectl.")
+
+    namespace = f"-n {namespace}" if namespace else "-A"
+    resource_map = {}
+    for kind in resource_api.kinds:
+        cluster_resources = {}
+        if plural_map.get(kind):
+            cluster_resources = run(
+                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
+            )
+        resource_map[kind] = filter_resources(
+            kubectl_items=cluster_resources,
+            resource_match=resource_match
+        )
+    return resource_map
 
 
 def parse_rest_command(rest_command: str) -> Dict[str, str]:
