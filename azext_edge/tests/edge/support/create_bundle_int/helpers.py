@@ -12,7 +12,7 @@ from azure.cli.core.azclierror import CLIInternalError
 import pytest
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
-from ....helpers import find_extra_or_missing_names, get_kubectl_workload_items, run
+from ....helpers import find_extra_or_missing_names, get_kubectl_custom_items, get_kubectl_workload_items, run
 
 
 logger = get_logger(__name__)
@@ -108,28 +108,15 @@ def check_custom_resource_files(
     resource_api: EdgeResourceApi,
     namespace: Optional[str] = None
 ):
-    plural_map: Dict[str, str] = {}
-    try:
-        # prefer to use another tool to get resources
-        api_table = run(f"kubectl api-resources --api-group={resource_api.group}")
-        api_resources = [line.split() for line in api_table.split("\n")]
-        api_resources = api_resources[1:-1]
-        plural_map = {line[-1].lower(): line[0] for line in api_resources}
-    except CLIInternalError:
-        pytest.skip("Cannot access resources via kubectl.")
-
-    namespace = f"-n {namespace}" if namespace else "-A"
+    resource_map = get_kubectl_custom_items(
+        resource_api=resource_api,
+        namespace=namespace,
+    )
     for kind in resource_api.kinds:
-        cluster_resources = {}
-        if plural_map.get(kind):
-            cluster_resources = run(
-                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
-            )
-
-        expected_names = [r["metadata"]["name"] for r in cluster_resources.get("items", [])]
-        assert len(expected_names) == len(file_objs.get(kind, []))
+        cluster_resources = resource_map[kind]
+        assert len(cluster_resources.keys()) == len(file_objs.get(kind, []))
         for resource in file_objs.get(kind, []):
-            assert resource["name"] in expected_names
+            assert resource["name"] in cluster_resources.keys()
             assert resource["version"] == resource_api.version
 
 

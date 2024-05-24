@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from typing import Any, Dict
 import pytest
 from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
@@ -11,8 +12,10 @@ from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
 from azext_edge.edge.providers.edge_api import (
     AkriResourceKinds, AKRI_API_V0
 )
-from .helpers import assert_enumerate_resources, assert_eval_core_service_runtime
-from ....helpers import get_custom_resource_kind_items, run
+from .helpers import (
+    assert_enumerate_resources, assert_eval_core_service_runtime, assert_general_eval_custom_resources
+)
+from ....helpers import get_kubectl_custom_items, run
 from ....generators import generate_names
 
 logger = get_logger(__name__)
@@ -22,7 +25,7 @@ logger = get_logger(__name__)
 @pytest.mark.parametrize("resource_kind", AkriResourceKinds.list() + [None])
 # TODO: figure out if name match should be a general test vs each service (minimize test runs)
 @pytest.mark.parametrize("resource_match", [None, "*otel*", "akri-opcua*", generate_names()])
-def test_check(init_setup, detail_level, resource_match, resource_kind):
+def test_akri_check(init_setup, detail_level, resource_match, resource_kind):
     try:
         aio_check = run(f"kubectl api-resources --api-group={AKRI_API_V0.group}")
         akri_present = AKRI_API_V0.group in aio_check
@@ -59,9 +62,10 @@ def test_check(init_setup, detail_level, resource_match, resource_kind):
     else:
         assert "evalCoreServiceRuntime" not in post_deployment
 
-    custom_resources = get_custom_resource_kind_items(
+    custom_resources = get_kubectl_custom_items(
         resource_api=AKRI_API_V0,
-        resource_match=resource_match
+        resource_match=resource_match,
+        include_plural=True
     )
     assert_eval_configurations(
         post_deployment=post_deployment,
@@ -76,38 +80,31 @@ def test_check(init_setup, detail_level, resource_match, resource_kind):
 
 
 def assert_eval_configurations(
-    post_deployment: dict,
-    configurations: dict,
+    post_deployment: Dict[str, Any],
+    configurations: Dict[str, Any],
     resource_kind_present: bool,
 ):
-    status = "success"
-    resource = AkriResourceKinds.CONFIGURATION.value
-    key = f"eval{resource.capitalize()}s"
-    if not resource_kind_present:
-        assert key not in post_deployment
-        return
-    elif not configurations:
-        status = "skipped"
-    assert post_deployment[key]
-    assert post_deployment[key]["description"] == f"Evaluate Akri {resource}s"
-    assert post_deployment[key]["status"] == status
-    # TODO: add more as --as-object gets fixed
+    assert_general_eval_custom_resources(
+        post_deployment=post_deployment,
+        items=configurations,
+        description_name="Akri",
+        resource_api=AKRI_API_V0,
+        resource_kind_present=resource_kind_present
+    )
+    # TODO: add more as --as-object gets fixed, such as success conditions
 
 
 def assert_eval_instances(
-    post_deployment: dict,
-    instances: dict,
+    post_deployment: Dict[str, Any],
+    instances: Dict[str, Any],
     resource_kind_present: bool,
 ):
-    resource = AkriResourceKinds.INSTANCE.value
-    key = f"eval{resource.capitalize()}s"
-    status = "success"
-    if not resource_kind_present:
-        assert key not in post_deployment
-        return
-    elif not instances:
-        status = "skipped"
-    assert post_deployment[key]
-    assert post_deployment[key]["description"] == f"Evaluate Akri {resource}s"
-    assert post_deployment[key]["status"] == status
-    # TODO: add more as --as-object gets fixed
+    assert_general_eval_custom_resources(
+        post_deployment=post_deployment,
+        items=instances,
+        description_name="Akri",
+        resource_api=AKRI_API_V0,
+        resource_kind_present=resource_kind_present,
+        include_all_namespace=True
+    )
+    # TODO: add more as --as-object gets fixed, such as success conditions

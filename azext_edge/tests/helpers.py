@@ -57,6 +57,46 @@ def find_extra_or_missing_names(
         raise AssertionError('\n '.join(error_msg))
 
 
+def get_plural_map(
+    api_group: str,
+) -> Dict[str, str]:
+    plural_map: Dict[str, str] = {}
+    try:
+        # prefer to use another tool to get resources
+        api_table = run(f"kubectl api-resources --api-group={api_group}")
+        api_resources = [line.split() for line in api_table.split("\n")]
+        api_resources = api_resources[1:-1]
+        plural_map = {line[-1].lower(): line[0] for line in api_resources}
+    except CLIInternalError:
+        pytest.skip("Cannot access resources via kubectl.")
+    return plural_map
+
+
+def get_kubectl_custom_items(
+    resource_api: EdgeResourceApi,
+    namespace: Optional[str] = None,
+    resource_match: Optional[str] = None,
+    include_plural: bool = False
+) -> Dict[str, Any]:
+    plural_map = get_plural_map(resource_api.group)
+
+    namespace = f"-n {namespace}" if namespace else "-A"
+    resource_map = {}
+    for kind in resource_api.kinds:
+        cluster_resources = {}
+        if plural_map.get(kind):
+            cluster_resources = run(
+                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
+            )
+        resource_map[kind] = filter_resources(
+            kubectl_items=cluster_resources,
+            resource_match=resource_match
+        )
+        if include_plural:
+            resource_map[kind]["_plural"] = plural_map[kind]
+    return resource_map
+
+
 def get_kubectl_workload_items(
     prefixes: Union[str, List[str]],
     service_type: str,
@@ -74,36 +114,6 @@ def get_kubectl_workload_items(
         prefixes=prefixes,
         resource_match=resource_match
     )
-
-
-def get_custom_resource_kind_items(
-    resource_api: EdgeResourceApi,
-    namespace: Optional[str] = None,
-    resource_match: Optional[str] = None,
-):
-    plural_map: Dict[str, str] = {}
-    try:
-        # prefer to use another tool to get resources
-        api_table = run(f"kubectl api-resources --api-group={resource_api.group}")
-        api_resources = [line.split() for line in api_table.split("\n")]
-        api_resources = api_resources[1:-1]
-        plural_map = {line[-1].lower(): line[0] for line in api_resources}
-    except CLIInternalError:
-        pytest.skip("Cannot access resources via kubectl.")
-
-    namespace = f"-n {namespace}" if namespace else "-A"
-    resource_map = {}
-    for kind in resource_api.kinds:
-        cluster_resources = {}
-        if plural_map.get(kind):
-            cluster_resources = run(
-                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
-            )
-        resource_map[kind] = filter_resources(
-            kubectl_items=cluster_resources,
-            resource_match=resource_match
-        )
-    return resource_map
 
 
 def parse_rest_command(rest_command: str) -> Dict[str, str]:

@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Optional
+from typing import Any, Dict, Optional
 from azext_edge.edge.common import ListableEnum
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import find_extra_or_missing_names, get_kubectl_workload_items
@@ -84,3 +84,56 @@ def assert_eval_core_service_runtime(
         assert runtime_resource[namespace]["status"] == namespace_status
 
     assert post_deployment["evalCoreServiceRuntime"]["status"] == overall_status
+
+
+def assert_general_eval_custom_resources(
+    post_deployment: Dict[str, Any],
+    items: Dict[str, Any],
+    description_name: str,
+    resource_api: EdgeResourceApi,
+    resource_kind_present: bool,
+    include_all_namespace: bool = False
+):
+    resource_plural = items["_plural"]
+    key = None
+    for possible_key in post_deployment:
+        if possible_key.lower() == f"eval{resource_plural}":
+            key = possible_key
+            break
+
+    if not resource_kind_present:
+        assert key is None
+        return
+    elif not items:
+        status = "skipped"
+    assert post_deployment[key]
+    assert post_deployment[key]["description"].startswith(f"Evaluate {description_name}")
+    # for the ones that have spaces
+    assert post_deployment[key]["description"].replace(" ", "").endswith(resource_plural)
+
+    # check the targets
+    sorted_configurations = sort_by_namespace(items, include_all=include_all_namespace)
+    target_key = f"{resource_plural}.{resource_api.group}"
+    assert target_key in post_deployment[key]["targets"]
+    namespace_dict = post_deployment[key]["targets"][target_key]
+    for namespace in sorted_configurations.keys():
+        assert namespace in namespace_dict
+
+
+def sort_by_namespace(
+    kubectl_items: Dict[str, Any],
+    include_all: bool = False
+) -> Dict[str, Dict[str, Any]]:
+    sorted_items = {}
+    if include_all:
+        sorted_items["_all_"] = {}
+    for name, item in kubectl_items.items():
+        if name == "_plural":
+            continue
+        namespace = item["metadata"]["namespace"]
+        if namespace not in sorted_items:
+            sorted_items[namespace] = {}
+        sorted_items[namespace][name] = item
+        if include_all:
+            sorted_items["_all_"][name] = item
+    return sorted_items
