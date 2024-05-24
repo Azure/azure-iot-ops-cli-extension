@@ -26,7 +26,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
     endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     asset_endpoint = run(
         f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} "
-        f"--crg {rg} --ta opc.tcp://opcplc-000000:50000"
+        f"--cg {rg} --ta opc.tcp://opcplc-000000:50000"
     )
     tracked_resources.append(asset_endpoint["id"])
 
@@ -34,7 +34,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
     data_source = generate_random_string()
     custom_attribute = f"{generate_random_string()}={generate_random_string()}"
     min_asset = run(
-        f"az iot ops asset create -n {min_asset_name} -g {rg} -c {cluster_name} --crg {rg} "
+        f"az iot ops asset create -n {min_asset_name} -g {rg} -c {cluster_name} --cg {rg} "
         f"--endpoint {endpoint_name} --data data_source={data_source} --custom-attribute {custom_attribute}"
     )
     tracked_resources.append(min_asset["id"])
@@ -104,7 +104,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
     }
     event_notifier = generate_random_string()
     command = f"az iot ops asset create -n {max_asset_name} -g {rg} --cl {custom_location} "\
-        f"--clrg {custom_location_rg} --endpoint {endpoint_name} --event event_notifier={event_notifier} "\
+        f"--clg {custom_location_rg} --endpoint {endpoint_name} --event event_notifier={event_notifier} "\
         "sampling_interval 10"
     for prop in asset_props:
         command += f" --{prop.replace('_', '-')} {asset_props[prop]}"
@@ -139,7 +139,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     # Create an endpoint profile
     endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     asset_endpoint = run(
-        f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} --crg {rg} "
+        f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} --cg {rg} "
         "--ta opc.tcp://opcplc-000000:50000"
     )
     tracked_resources.append(asset_endpoint["id"])
@@ -148,7 +148,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     data_source = generate_random_string()
     expected_data_points = [{"data_source": generate_random_string()}]
     asset = run(
-        f"az iot ops asset create -n {asset_name} -g {rg} -c {cluster_name} --crg {rg} "
+        f"az iot ops asset create -n {asset_name} -g {rg} -c {cluster_name} --cg {rg} "
         f"--endpoint {endpoint_name} --data data_source={expected_data_points[0]['data_source']}"
     )
     tracked_resources.append(asset["id"])
