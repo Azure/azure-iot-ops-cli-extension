@@ -7,7 +7,7 @@ permissions:
     id-token: 'write'
 jobs:
   int-test:
-      uses: azure/azure-iot-ops-cli-extension/.github/workflows/int_test.yml@dev
+      uses: c-ryan-k/azure-iot-ops-cli-extension/.github/workflows/int_test.yml@docker_test_updates
       with:
         resource-group: ops-cli-int-test-rg
         use-container: true
