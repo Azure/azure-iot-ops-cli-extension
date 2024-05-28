@@ -6,7 +6,19 @@ permissions:
     contents: 'read'
     id-token: 'write'
 jobs:
+  int-test:
+      uses: azure/azure-iot-ops-cli-extension/.github/workflows/int_test.yml@dev
+      with:
+        use-container: true
+      secrets:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AIO_SP_APP_ID: ${{ secrets.AIO_SP_APP_ID }}
+          AIO_SP_OBJECT_ID: ${{ secrets.AIO_SP_OBJECT_ID }}
+          AIO_SP_SECRET: ${{ secrets.AIO_SP_SECRET }}
   build-and-deploy:
+    needs: int-test
     environment: container_registry
     runs-on: ubuntu-latest
     steps:
