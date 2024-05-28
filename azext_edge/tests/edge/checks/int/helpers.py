@@ -4,10 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, Optional
-from azext_edge.edge.common import ListableEnum
+from typing import Any, Dict, Optional, Tuple
+from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
-from ....helpers import find_extra_or_missing_names, get_kubectl_workload_items
+from ....helpers import find_extra_or_missing_names, get_kubectl_workload_items, run
 
 
 def assert_enumerate_resources(
@@ -15,7 +15,7 @@ def assert_enumerate_resources(
     description_name: str,
     key_name: str,
     resource_api: EdgeResourceApi,
-    resource_kinds: ListableEnum,
+    resource_kinds: list,
     present: bool = True
 ):
     # TODO: see if description_name and key_name can be combined for services (OPCUA)
@@ -33,9 +33,9 @@ def assert_enumerate_resources(
     assert evaluation["status"] == status
     assert len(evaluation["evaluations"]) == 1
     assert evaluation["evaluations"][0]["status"] == status
-    assert len(evaluation["evaluations"][0]["value"]) == len(resource_kinds.list())
+    assert len(evaluation["evaluations"][0]["value"]) == len(resource_kinds)
     for kind in evaluation["evaluations"][0]["value"]:
-        assert kind.lower() in resource_kinds.list()
+        assert kind.lower() in resource_kinds
 
 
 # Used by Akri and OPCUA
@@ -112,12 +112,40 @@ def assert_general_eval_custom_resources(
     assert post_deployment[key]["description"].replace(" ", "").endswith(resource_plural)
 
     # check the targets
-    sorted_configurations = sort_by_namespace(items, include_all=include_all_namespace)
+    sorted_items = sort_by_namespace(items, include_all=include_all_namespace)
     target_key = f"{resource_plural}.{resource_api.group}"
     assert target_key in post_deployment[key]["targets"]
     namespace_dict = post_deployment[key]["targets"][target_key]
-    for namespace in sorted_configurations.keys():
+    import pdb; pdb.set_trace()
+    for namespace, kubectl_items in sorted_items.values():
         assert namespace in namespace_dict
+        check_names = [item["name"] for item in namespace_dict[namespace]["evaluations"]]
+        for name in kubectl_items:
+            assert name in check_names
+    raise AssertionError()
+
+
+def run_check_command(
+    detail_level: str,
+    ops_service: str,
+    resource_api: EdgeResourceApi,
+    resource_kind: str,
+    resource_match: str,
+) -> Tuple[Dict[str, Any], bool]:
+    try:
+        aio_check = run(f"kubectl api-resources --api-group={resource_api.group}")
+        service_present = resource_api.group in aio_check
+    except CLIInternalError:
+        service_present = resource_api.is_deployed()
+    # note that the text decoder really does not like the emojis
+    command = f"az iot ops check --as-object --ops-service {ops_service} --detail-level {detail_level} "
+    if resource_kind:
+        command += f"--resources {resource_kind} "
+    if resource_match:
+        command += f"--resource-name {resource_match} "
+    result = run(command)
+
+    return {cond["name"]: cond for cond in result["postDeployment"]}, service_present
 
 
 def sort_by_namespace(
