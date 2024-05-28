@@ -37,3 +37,7 @@ jobs:
       - name: Determine version from constants
         run: |
             echo VERSION=$(sed -n -e 's/^VERSION = "\(.*\)"/\1/p' ./azext_edge/constants.py) >> $GITHUB_ENV
+      - name: Build, tag, and push container image to registry
+        run: |
+          base="aziotops/cli-extension-tests"
+          az acr build -t $base:latest -t $base:${{ github.sha }} -t $base:${{ env.VERSION }} -r aziotops .
