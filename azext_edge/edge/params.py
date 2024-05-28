@@ -590,6 +590,7 @@ def load_iotops_arguments(self, _):
             options_list=["--custom-attribute", "--attr"],
             help="Space-separated key=value pairs corresponding to additional custom attributes for the asset.",
             nargs="+",
+            arg_group="Additional Info",
             action="extend",
         )
         context.argument(
@@ -599,7 +600,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "custom_location_resource_group",
-            options_list=["--custom-location-resource-group", "--clrg"],
+            options_list=["--custom-location-resource-group", "--clg"],
             help="Resource group for custom location.",
         )
         context.argument(
@@ -614,7 +615,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "cluster_resource_group",
-            options_list=["--cluster-resource-group", "--crg"],
+            options_list=["--cluster-resource-group", "--cg"],
             help="Resource group for cluster.",
         )
         context.argument(
@@ -806,6 +807,7 @@ def load_iotops_arguments(self, _):
             help="Space-separated key=value pairs corresponding to additional custom attributes for the asset. "
             "To remove a custom attribute, please set the attribute's value to \"\".",
             nargs="+",
+            arg_group="Additional Info",
             action="extend",
         )
 
@@ -966,7 +968,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "custom_location_resource_group",
-            options_list=["--custom-location-resource-group", "--clrg"],
+            options_list=["--custom-location-resource-group", "--clg"],
             help="Resource group for custom location.",
             arg_group="Associated Resources",
         )
@@ -984,7 +986,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "cluster_resource_group",
-            options_list=["--cluster-resource-group", "--crg"],
+            options_list=["--cluster-resource-group", "--cg"],
             help="Resource group for cluster.",
             arg_group="Associated Resources",
         )
