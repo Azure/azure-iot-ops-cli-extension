@@ -329,3 +329,6 @@ coverage.json
 
 # tox
 .tox/
+
+# test results / junit
+junit/

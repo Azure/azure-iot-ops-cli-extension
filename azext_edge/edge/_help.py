@@ -8,16 +8,17 @@ Help definitions for Digital Twins commands.
 """
 
 from knack.help_files import helps
+
 from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
+    COMPAT_AKRI_APIS,
+    COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DATA_PROCESSOR_APIS,
-    COMPAT_MQ_APIS,
+    COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_LNM_APIS,
+    COMPAT_MQ_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
-    COMPAT_DEVICEREGISTRY_APIS,
-    COMPAT_AKRI_APIS,
-    COMPAT_CLUSTER_CONFIG_APIS
 )
 
 
@@ -227,6 +228,31 @@ def load_iotops_help():
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29
             --sp-secret $SP_SECRET
+
+        - name: To customize configuration of the Key Vault CSI driver, --csi-config can be used. For example setting resource limits on the telegraf container dependency.
+          text: >
+            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d
+            --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m
+    """
+
+    helps[
+        "iot ops delete"
+    ] = """
+        type: command
+        short-summary: Delete IoT Operations from the cluster.
+        long-summary: The operation uses Azure Resource Graph to determine correlated resources.
+          Resource Graph being eventually consistent does not guarantee a synchronized state at the time of execution.
+
+        examples:
+        - name: Minimum input for complete deletion.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup
+        - name: Skip confirmation prompt and continue to deletion process. Useful for CI scenarios.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup -y
+        - name: Force deletion regardless of warnings. May lead to errors.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup --force
     """
 
     helps[
@@ -279,6 +305,11 @@ def load_iotops_help():
             --event-publish-int {event_publishing_interval} --event-queue-size {event_queue_size}
             --event-sample-int {event_sampling_interval} --event event_notifier={event_notifier}
 
+        - name: Create an asset with additional custom attributes.
+          text: >
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
+            --endpoint {endpoint} --custom-attribute {attribute_key}={attribute_value} --custom-attribute {attribute_key}={attribute_value}
+
         - name: Create an asset with custom asset type, description, documentation uri, external asset id, hardware revision,
                 product code, and software revision.
           text: >
@@ -312,6 +343,7 @@ def load_iotops_help():
             --documentation-uri www.help.com --external-asset-id 000-000-0000 --hardware-revision 10.0
             --product-code XXX100 --software-revision 0.1 --manufacturer Contoso
             --manufacturer-uri constoso.com --model AssetModel --serial-number 000-000-ABC10
+            --custom-attribute work_location=factory
     """
 
     helps[
@@ -364,14 +396,14 @@ def load_iotops_help():
             --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
             --product-code {product_code} --software-revision {software_revision}
 
-        - name: Update an asset's manufacturer, manufacturer uri, model, serial number.
+        - name: Update an asset's manufacturer, manufacturer uri, model, serial number, and custom attribute.
           text: >
             az iot ops asset update --name {asset_name} -g {resource_group} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
-            --serial-number {serial_number}
+            --serial-number {serial_number} --custom-attribute {attribute_key}={attribute_value}
 
-        - name: Disable an asset.
+        - name: Disable an asset and remove a custom attribute called "work_site".
           text: >
-            az iot ops asset update --name {asset_name} -g {resource_group} --disable
+            az iot ops asset update --name {asset_name} -g {resource_group} --disable --custom-attribute work_site=""
     """
 
     helps[
@@ -506,7 +538,7 @@ def load_iotops_help():
         - name: Add an event to an asset with the given pre-filled values.
           text: >
             az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId --name eventName
-            --capability-id tagId1 --observability-mode histogram --queue-size 2 --sampling-interval 500
+            --capability-id tagId1 --observability-mode log --queue-size 2 --sampling-interval 500
     """
 
     helps[
