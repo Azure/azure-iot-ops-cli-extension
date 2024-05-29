@@ -35,8 +35,10 @@ def support_bundle(
     log_age_seconds: int = 60 * 60 * 24,
     ops_service: str = OpsServiceType.auto.value,
     bundle_dir: Optional[str] = None,
+    include_arc_agents: Optional[bool] = None,
     include_mq_traces: Optional[bool] = None,
     context_name: Optional[str] = None,
+    resource_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.support_bundle import build_bundle
@@ -46,7 +48,9 @@ def support_bundle(
         ops_service=ops_service,
         bundle_path=str(bundle_path),
         log_age_seconds=log_age_seconds,
+        include_arc_agents=include_arc_agents,
         include_mq_traces=include_mq_traces,
+        resource_name=resource_name,
     )
 
 

@@ -42,7 +42,9 @@ def build_bundle(
     ops_service: str,
     bundle_path: str,
     log_age_seconds: Optional[int] = None,
+    include_arc_agents: Optional[bool] = None,
     include_mq_traces: Optional[bool] = None,
+    resource_name: Optional[str] = None,
 ):
     from rich.live import Live
     from rich.progress import Progress
@@ -58,6 +60,19 @@ def build_bundle(
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.otel import prepare_bundle as prepare_otel_bundle
+    from .support.arck8sagent.flux_log_agent import prepare_bundle as prepare_fluxlogagent_bundle
+    from .support.arck8sagent.meta_data_operator import prepare_bundle as prepare_metadataoperator_bundle
+    from .support.arck8sagent.controller_manager import prepare_bundle as prepare_controllermanager_bundle
+    from .support.arck8sagent.log_collector import prepare_bundle as prepare_logcollector_bundle
+    from .support.arck8sagent.cluster_identity_operator import prepare_bundle as prepare_clusteridentityoperator_bundle
+    from .support.arck8sagent.kube_aad_proxy import prepare_bundle as prepare_kubeaadproxy_bundle
+    from .support.arck8sagent.clusterconnect_agent import prepare_bundle as prepare_clusterconnectagent_bundle
+    from .support.arck8sagent.extension_events_collector import prepare_bundle as prepare_extensioneventscollector_bundle
+    from .support.arck8sagent.metrics_agent import prepare_bundle as prepare_metricsagent_bundle
+    from .support.arck8sagent.config_agent import prepare_bundle as prepare_configagent_bundle
+    from .support.arck8sagent.extension_manager import prepare_bundle as prepare_extensionmanager_bundle
+    from .support.arck8sagent.resource_sync_agent import prepare_bundle as prepare_resourcesyncagent_bundle
+    from .support.arck8sagents import prepare_bundle as prepare_arck8sagents_bundle
 
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
@@ -105,6 +120,22 @@ def build_bundle(
                     bundle = bundle_method(deployed_apis, log_age_seconds)
 
                 pending_work[service_moniker].update(bundle)
+    
+    # arc agent resources
+    if include_arc_agents:
+        # pending_work["fluxlogagent"] = prepare_fluxlogagent_bundle(log_age_seconds)
+        # pending_work["metadataoperator"] = prepare_metadataoperator_bundle(log_age_seconds)
+        # pending_work["controllermanager"] = prepare_controllermanager_bundle(log_age_seconds)
+        # pending_work["logcollector"] = prepare_logcollector_bundle(log_age_seconds)
+        # pending_work["clusteridentityoperator"] = prepare_clusteridentityoperator_bundle(log_age_seconds)
+        # pending_work["kubeaadproxy"] = prepare_kubeaadproxy_bundle(log_age_seconds)
+        # pending_work["clusterconnectagent"] = prepare_clusterconnectagent_bundle(log_age_seconds)
+        # pending_work["extensioneventscollector"] = prepare_extensioneventscollector_bundle(log_age_seconds)
+        # pending_work["metricsagnet"] = prepare_metricsagent_bundle(log_age_seconds)
+        # pending_work["configagent"] = prepare_configagent_bundle(log_age_seconds)
+        # pending_work["extensionmanager"] = prepare_extensionmanager_bundle(log_age_seconds)
+        # pending_work["resourcesyncagent"] = prepare_resourcesyncagent_bundle(log_age_seconds)
+        pending_work["arck8sagents"] = prepare_arck8sagents_bundle(log_age_seconds)
 
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):

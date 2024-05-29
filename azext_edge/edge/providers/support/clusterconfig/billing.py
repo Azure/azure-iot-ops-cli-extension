@@ -33,10 +33,9 @@ def fetch_pods(
 ):
     # capture billing pods for aio usage
     billing_pods = process_v1_pods(
-        moniker=CLUSTER_CONFIG_API_V1.moniker,
+        moniker=BILLING_RESOURCE_KIND,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
         since_seconds=since_seconds,
-        sub_group=BILLING_RESOURCE_KIND,
     )
 
     # capture billing pods for arc extension
@@ -54,9 +53,8 @@ def fetch_pods(
 
 def fetch_jobs():
     processed = process_jobs(
-        moniker=CLUSTER_CONFIG_API_V1.moniker,
+        moniker=BILLING_RESOURCE_KIND,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
-        sub_group=BILLING_RESOURCE_KIND,
     )
 
     return processed
@@ -64,9 +62,8 @@ def fetch_jobs():
 
 def fetch_cron_jobs():
     processed = process_cron_jobs(
-        moniker=CLUSTER_CONFIG_API_V1.moniker,
+        moniker=BILLING_RESOURCE_KIND,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
-        sub_group=BILLING_RESOURCE_KIND,
     )
 
     return processed

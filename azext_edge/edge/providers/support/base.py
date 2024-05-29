@@ -66,6 +66,7 @@ def process_v1_pods(
     capture_previous_logs: bool = True,
     include_metrics: bool = False,
     since_seconds: int = DAY_IN_SECONDS,
+    exclude_evicted_pod_log: bool = False,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
     pod_prefix_for_init_container_logs: Optional[List[str]] = None,
@@ -118,6 +119,10 @@ def process_v1_pods(
             if any(pod_name.startswith(prefix) for prefix in pod_prefix_for_init_container_logs):
                 init_pod_containers: List[V1Container] = pod_spec.init_containers
                 pod_containers.extend(init_pod_containers)
+
+        if exclude_evicted_pod_log and p.status.phase == "Failed" and p.status.reason == "Evicted":
+            logger.info(f"Pod {pod_name} in namespace {pod_namespace} is evicted. Skipping log capture.")
+            continue
 
         processed.extend(
             _capture_pod_container_logs(

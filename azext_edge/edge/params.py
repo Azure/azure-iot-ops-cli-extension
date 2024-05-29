@@ -74,6 +74,26 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Include mq traces in the support bundle. Usage may add considerable size to the produced bundle.",
         )
+        context.argument(
+            "include_arc_agents",
+            options_list=["--arc-agents"],
+            arg_type=get_three_state_flag(),
+            help="Include ARC agent resources in the support bundle. Note that logs from evicted "
+            "pod containers will not be captured, as they are inaccessible. For details on why "
+            "a pod was evicted, please refer to the related pod and node files. "
+            "Usage may add considerable size to the produced bundle.",
+        )
+        context.argument(
+            "resource_name",
+            options_list=["--resource-name", "--rn"],
+            help="Only capture for the specific resource name. "
+            "The name is case insensitive. "
+            "Glob patterns '*' and '?' are supported. "
+            "Note: Only alphanumeric characters, hyphens, '?' and '*' are allowed.",
+            validator=validate_resource_name,
+        ),
+
+
 
     with self.argument_context("iot ops check") as context:
         context.argument(
