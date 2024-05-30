@@ -94,6 +94,8 @@ def assert_general_eval_custom_resources(
     resource_kind_present: bool,
     include_all_namespace: bool = False
 ):
+    # this should check general shared attributes for different services.
+    # specific target checks should be in separate functions
     resource_plural = items["_plural"]
     key = None
     for possible_key in post_deployment:
@@ -111,18 +113,21 @@ def assert_general_eval_custom_resources(
     # for the ones that have spaces
     assert post_deployment[key]["description"].replace(" ", "").endswith(resource_plural)
 
-    # check the targets
+    # check the target exisitance
     sorted_items = sort_by_namespace(items, include_all=include_all_namespace)
     target_key = f"{resource_plural}.{resource_api.group}"
     assert target_key in post_deployment[key]["targets"]
     namespace_dict = post_deployment[key]["targets"][target_key]
-    import pdb; pdb.set_trace()
-    for namespace, kubectl_items in sorted_items.values():
+    for namespace, kubectl_items in sorted_items.items():
         assert namespace in namespace_dict
-        check_names = [item["name"] for item in namespace_dict[namespace]["evaluations"]]
-        for name in kubectl_items:
-            assert name in check_names
-    raise AssertionError()
+        check_names = []
+        for item in namespace_dict[namespace]["evaluations"]:
+            if item.get("name"):
+                check_names.append(item.get("names"))
+        # if using resource name filter, could have missing items
+        assert len(check_names) <= len(kubectl_items)
+        for name in check_names:
+            assert name in kubectl_items
 
 
 def run_check_command(

@@ -68,7 +68,6 @@ def get_plural_map(
         api_resources = api_resources[1:-1]
         plural_map = {line[-1].lower(): line[0] for line in api_resources}
     except CLIInternalError:
-        import pdb; pdb.set_trace()
         pytest.skip("Cannot access resources via kubectl.")
     return plural_map
 

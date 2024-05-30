@@ -68,7 +68,7 @@ def test_akri_check(init_setup, detail_level, resource_match, resource_kind):
     )
     assert_eval_instances(
         post_deployment=post_deployment,
-        instances=custom_resources,
+        custom_resources=custom_resources,
         resource_kind=resource_kind
     )
 
