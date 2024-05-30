@@ -27,7 +27,7 @@ def filter_resources(
         name = item["metadata"]["name"]
         if resource_match and not fnmatch(name, resource_match):
             return False
-        if prefixes and not any([name.startswith(prefix) for prefix in prefixes]):
+        if prefixes and not any(name.startswith(prefix) for prefix in prefixes):
             return False
         return True
 
