@@ -106,8 +106,6 @@ def assert_general_eval_custom_resources(
     if not resource_kind_present:
         assert key is None
         return
-    elif not items:
-        status = "skipped"
     assert post_deployment[key]
     assert post_deployment[key]["description"].startswith(f"Evaluate {description_name}")
     # for the ones that have spaces

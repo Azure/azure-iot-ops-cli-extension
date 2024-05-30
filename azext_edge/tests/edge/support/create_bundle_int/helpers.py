@@ -8,7 +8,6 @@ from knack.log import get_logger
 from typing import Dict, List, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
-from azure.cli.core.azclierror import CLIInternalError
 import pytest
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
