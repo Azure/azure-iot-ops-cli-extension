@@ -16,6 +16,11 @@ on:
         type: string
         required: false
         default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+      use-container:
+        description: Build container image for tests
+        type: boolean
+        required: false
+        default: false
       cleanup:
         description: Attempt to cleanup resources after testing
         type: boolean
@@ -45,6 +50,11 @@ on:
         type: string
         required: false
         default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+      use-container:
+        description: Build container image for tests
+        type: boolean
+        required: false
+        default: false
       cleanup:
         description: Attempt to cleanup resources after testing
         type: boolean
@@ -218,7 +228,7 @@ jobs:
         run: |
           sleep 2m
       - name: "Tox test environment setup"
-        if: ${{matrix.feature == 'default'}}
+        if: ${{matrix.feature == 'default' && !inputs.use-container}}
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           python -m pip install tox
@@ -241,7 +251,7 @@ jobs:
             sleep 240
           done &
       - name: "Tox Integration Tests"
-        if: ${{matrix.feature == 'default'}}
+        if: ${{matrix.feature == 'default' && !inputs.use-container}}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
@@ -249,6 +259,36 @@ jobs:
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-int --skip-pkg-install -- --durations=0
+      - name: "Containerized tests"
+        if: ${{matrix.feature == 'default' && inputs.use-container}}
+        env:
+          azext_edge_rg: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_skip_init: True
+        run: |
+          # volume mounts
+          azure_dir=$(realpath ~/.azure)
+          kubeconfig=$(realpath ~/.kube/config)
+          kubeconfig_mount=/root/.kube/config
+          tempLog=$(mktemp -d)
+
+          # env vars
+          envVars=()
+          envVars+=("-e" "azext_edge_cluster=$azext_edge_rg")
+          envVars+=("-e" "azext_edge_rg=$azext_edge_cluster")
+          envVars+=("-e" "azext_edge_skip_init=$azext_edge_skip_init")
+          envVars+=("-e" "KUBECONFIG=$kubeconfig_mount")
+
+          # Run tests
+          set +e
+          docker run \
+            --rm \
+            "${envVars[@]}" \
+            -v "$kubeconfig:$kubeconfig_mount:ro" \
+            -v "${azure_dir}:/root/.azure" \
+            -v "${tempLog}:/usr/src/azure-iot-ops/junit" \
+            --network host \
+            $(docker build ${{ env.EXTENSION_SOURCE_DIRECTORY }} -q)
       - name: "Az CLI login refresh"
         uses: azure/login@v2
         with:
