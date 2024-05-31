@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
@@ -12,6 +13,7 @@ from .helpers import check_custom_resource_files, check_workload_resource_files,
 logger = get_logger(__name__)
 
 
+@pytest.mark.skip(reason="re-enable billing once service is available post 0.6.0 release")
 def test_create_bundle_billing(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS billing."""
     ops_service = OpsServiceType.billing.value
