@@ -140,7 +140,8 @@ class OpsServiceType(ListableEnum):
     """
 
     auto = "auto"
-    billing = "billing"
+    # TODO: re-enable billing once service is available post 0.6.0 release
+    # billing = "billing"
     mq = "mq"
     lnm = "lnm"
     opcua = "opcua"
