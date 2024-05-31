@@ -44,6 +44,7 @@ from azext_edge.edge.providers.support.billing import (
     BILLING_RESOURCE_KIND,
 )
 from azext_edge.edge.providers.support.dataprocessor import (
+    DATA_PROCESSOR_FILE_PATH,
     DATA_PROCESSOR_INSTANCE_LABEL,
     DATA_PROCESSOR_LABEL,
     DATA_PROCESSOR_NAME_LABEL,
@@ -51,15 +52,17 @@ from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_ONEOFF_LABEL,
     DATA_PROCESSOR_PVC_APP_LABEL,
 )
-from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS
-from azext_edge.edge.providers.support.mq import MQ_LABEL, MQ_NAME_LABEL
+from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS, LNM_FILE_PATH
+from azext_edge.edge.providers.support.mq import MQ_FILE_PATH, MQ_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
+    OPC_FILE_PATH,
     OPC_NAME_LABEL,
     OPC_NAME_VAR_LABEL,
     OPCUA_NAME_LABEL,
 )
 from azext_edge.edge.providers.support.orc import (
+    ORC_FILE_PATH,
     ORC_APP_LABEL,
     ORC_CONTROLLER_LABEL,
 )
@@ -200,7 +203,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=MQ_LABEL,
-                file_path=MQ_API_V1B1.moniker,
+                file_path=MQ_FILE_PATH,
                 field_selector=f"metadata.name={AIO_MQ_OPERATOR}",
             )
             assert_list_pods(
@@ -208,7 +211,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=MQ_LABEL,
-                file_path=MQ_API_V1B1.moniker,
+                file_path=MQ_FILE_PATH,
                 since_seconds=since_seconds,
             )
             assert_list_pods(
@@ -216,43 +219,43 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=MQ_NAME_LABEL,
-                file_path=MQ_API_V1B1.moniker,
+                file_path=MQ_FILE_PATH,
                 since_seconds=since_seconds,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=MQ_LABEL,
-                file_path=MQ_API_V1B1.moniker
+                file_path=MQ_FILE_PATH
             )
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, file_path=MQ_API_V1B1.moniker
+                mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, file_path=MQ_FILE_PATH
             )
             assert_list_stateful_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=MQ_LABEL,
                 field_selector=None,
-                file_path=MQ_API_V1B1.moniker
+                file_path=MQ_FILE_PATH
             )
             assert_list_stateful_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=MQ_NAME_LABEL,
                 field_selector=None,
-                file_path=MQ_API_V1B1.moniker,
+                file_path=MQ_FILE_PATH,
             )
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=MQ_LABEL,
-                file_path=MQ_API_V1B1.moniker
+                file_path=MQ_FILE_PATH
             )
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=MQ_NAME_LABEL,
-                file_path=MQ_API_V1B1.moniker
+                file_path=MQ_FILE_PATH
             )
             assert_mq_stats(mocked_zipfile)
 
@@ -263,7 +266,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=OPC_APP_LABEL,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
                 since_seconds=since_seconds,
                 include_metrics=True,
             )
@@ -272,7 +275,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=OPC_NAME_LABEL,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
                 since_seconds=since_seconds,
                 include_metrics=True,
             )
@@ -281,7 +284,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=OPC_NAME_VAR_LABEL,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
                 since_seconds=since_seconds,
                 include_metrics=True,
             )
@@ -290,7 +293,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=OPCUA_NAME_LABEL,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
                 since_seconds=since_seconds,
                 include_metrics=True,
             )
@@ -298,64 +301,64 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=None,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
                 mock_names=["aio-opc-admission-controller", "aio-opc-supervisor", "aio-opc-opc", "opcplc-0000000"],
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=OPC_NAME_LABEL,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=OPCUA_NAME_LABEL,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=OPC_NAME_LABEL,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=OPC_APP_LABEL,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=OPCUA_NAME_LABEL,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
             )
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=None,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
                 mock_names=["opcplc-0000000"],
             )
             assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, file_path=OPCUA_API_V1.moniker
+                mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, file_path=OPC_FILE_PATH
             )
             assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=OPCUA_NAME_LABEL, file_path=OPCUA_API_V1.moniker
+                mocked_client, mocked_zipfile, label_selector=OPCUA_NAME_LABEL, file_path=OPC_FILE_PATH
             )
             # TODO: one-off field selector remove after label
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
                 field_selector="metadata.name==aio-opc-asset-discovery",
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
             )
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=OPCUA_NAME_LABEL,
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
             )
 
         if api in [DATA_PROCESSOR_API_V1]:
@@ -365,13 +368,13 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_LABEL,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
 
             assert_list_pods(
@@ -379,7 +382,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=DATA_PROCESSOR_LABEL,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
                 since_seconds=since_seconds,
                 pod_prefix_for_init_container_logs=["aio-"],
             )
@@ -388,7 +391,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
                 since_seconds=since_seconds,
                 pod_prefix_for_init_container_logs=["aio-"],
             )
@@ -397,76 +400,76 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_LABEL,
-                file_path=DATA_PROCESSOR_API_V1.moniker
+                file_path=DATA_PROCESSOR_FILE_PATH
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
 
             assert_list_stateful_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_LABEL,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
             assert_list_stateful_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
 
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_LABEL,
-                file_path=DATA_PROCESSOR_API_V1.moniker
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
 
             assert_list_persistent_volume_claims(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
             assert_list_persistent_volume_claims(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_PVC_APP_LABEL,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
             assert_list_persistent_volume_claims(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
             assert_list_persistent_volume_claims(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
             assert_list_persistent_volume_claims(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                file_path=DATA_PROCESSOR_API_V1.moniker,
+                file_path=DATA_PROCESSOR_FILE_PATH,
             )
 
         if api in [ORC_API_V1]:
@@ -476,20 +479,20 @@ def test_create_bundle(
                     mocked_zipfile,
                     mocked_list_pods,
                     label_selector=orc_label,
-                    file_path=ORC_API_V1.moniker,
+                    file_path=ORC_FILE_PATH,
                     since_seconds=since_seconds,
                 )
                 assert_list_deployments(
-                    mocked_client, mocked_zipfile, label_selector=orc_label, file_path=ORC_API_V1.moniker
+                    mocked_client, mocked_zipfile, label_selector=orc_label, file_path=ORC_FILE_PATH
                 )
                 assert_list_replica_sets(
-                    mocked_client, mocked_zipfile, label_selector=orc_label, file_path=ORC_API_V1.moniker
+                    mocked_client, mocked_zipfile, label_selector=orc_label, file_path=ORC_FILE_PATH
                 )
                 assert_list_services(
                     mocked_client,
                     mocked_zipfile,
                     label_selector=orc_label,
-                    file_path=ORC_API_V1.moniker
+                    file_path=ORC_FILE_PATH
                 )
 
         if api in [AKRI_API_V0]:
@@ -592,7 +595,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=NAME_LABEL_FORMAT.format(label=AKRI_AGENT_LABEL),
-                file_path=OPCUA_API_V1.moniker,
+                file_path=OPC_FILE_PATH,
             )
             assert_list_daemon_sets(
                 mocked_client,
@@ -608,7 +611,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=lnm_app_label,
-                file_path=LNM_API_V1B1.moniker,
+                file_path=LNM_FILE_PATH,
                 since_seconds=since_seconds,
             )
             assert_list_pods(
@@ -616,7 +619,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=None,
-                file_path=LNM_API_V1B1.moniker,
+                file_path=LNM_FILE_PATH,
                 since_seconds=since_seconds,
                 mock_names=["svclb-aio-lnm-operator"],
             )
@@ -624,21 +627,21 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=None,
-                file_path=LNM_API_V1B1.moniker,
+                file_path=LNM_FILE_PATH,
                 mock_names=["aio-lnm-operator"],
             )
             assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=lnm_app_label, file_path=LNM_API_V1B1.moniker
+                mocked_client, mocked_zipfile, label_selector=lnm_app_label, file_path=LNM_FILE_PATH
             )
             assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=lnm_app_label, file_path=LNM_API_V1B1.moniker
+                mocked_client, mocked_zipfile, label_selector=lnm_app_label, file_path=LNM_FILE_PATH
             )
             # TODO: test both without or with lnm instance
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=None,
-                file_path=LNM_API_V1B1.moniker,
+                file_path=LNM_FILE_PATH,
                 mock_names=["svclb-aio-lnm-operator"],
             )
 
@@ -710,7 +713,7 @@ def assert_list_deployments(
     field_selector: str = None,
     mock_names: List[str] = None,
 ):
-    if MQ_API_V1B1.moniker in file_path:
+    if MQ_FILE_PATH in file_path:
         # regardless of MQ API, MQ_ACTIVE_API.moniker is used for support/mq/fetch_diagnostic_metrics
         from unittest.mock import call
 
