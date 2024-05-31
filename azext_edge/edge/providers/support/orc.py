@@ -24,6 +24,7 @@ logger = get_logger(__name__)
 
 ORC_APP_LABEL = "app in (aio-orc-api, cert-manager, cainjector, webhook)"
 ORC_CONTROLLER_LABEL = "control-plane in (aio-orc-controller-manager)"
+ORC_FILE_PATH = ORC_API_V1.moniker
 
 # TODO: @jiacju - this label will be used near future for consistency
 # META_AIO_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations)"
@@ -34,7 +35,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
         processed.extend(
             process_v1_pods(
-                file_path=ORC_API_V1.moniker,
+                file_path=ORC_FILE_PATH,
                 label_selector=label,
                 since_seconds=since_seconds,
             )
@@ -46,7 +47,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 def fetch_deployments():
     processed = []
     for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
-        processed.extend(process_deployments(file_path=ORC_API_V1.moniker, label_selector=label))
+        processed.extend(process_deployments(file_path=ORC_FILE_PATH, label_selector=label))
 
     return processed
 
@@ -54,7 +55,7 @@ def fetch_deployments():
 def fetch_services():
     processed = []
     for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
-        processed.extend(process_services(file_path=ORC_API_V1.moniker, label_selector=label))
+        processed.extend(process_services(file_path=ORC_FILE_PATH, label_selector=label))
 
     return processed
 
@@ -62,7 +63,7 @@ def fetch_services():
 def fetch_replicasets():
     processed = []
     for label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
-        processed.extend(process_replicasets(file_path=ORC_API_V1.moniker, label_selector=label))
+        processed.extend(process_replicasets(file_path=ORC_FILE_PATH, label_selector=label))
 
     return processed
 

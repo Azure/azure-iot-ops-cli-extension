@@ -30,6 +30,7 @@ from azext_edge.edge.providers.edge_api import (
 from azext_edge.edge.providers.support.akri import (
     AKRI_AGENT_LABEL,
     AKRI_APP_LABEL,
+    AKRI_FILE_PATH,
     AKRI_INSTANCE_LABEL,
     AKRI_NAME_LABEL_V2,
     AKRI_SERVICE_LABEL,
@@ -497,7 +498,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=AKRI_INSTANCE_LABEL,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
                 since_seconds=since_seconds,
             )
             assert_list_pods(
@@ -505,7 +506,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=AKRI_APP_LABEL,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
                 since_seconds=since_seconds,
             )
             assert_list_pods(
@@ -513,7 +514,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=NAME_LABEL_FORMAT.format(label=f"{AKRI_AGENT_LABEL}, {AKRI_WEBHOOK_LABEL}"),
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
                 since_seconds=since_seconds,
             )
             assert_list_pods(
@@ -521,71 +522,71 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=AKRI_NAME_LABEL_V2,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
                 since_seconds=since_seconds,
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_INSTANCE_LABEL,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_APP_LABEL,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_NAME_LABEL_V2,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_INSTANCE_LABEL,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_APP_LABEL,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=NAME_LABEL_FORMAT.format(label=AKRI_WEBHOOK_LABEL),
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_NAME_LABEL_V2,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
             )
             assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=AKRI_SERVICE_LABEL, file_path=AKRI_API_V0.moniker
+                mocked_client, mocked_zipfile, label_selector=AKRI_SERVICE_LABEL, file_path=AKRI_FILE_PATH
             )
             assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=AKRI_INSTANCE_LABEL, file_path=AKRI_API_V0.moniker
+                mocked_client, mocked_zipfile, label_selector=AKRI_INSTANCE_LABEL, file_path=AKRI_FILE_PATH
             )
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=NAME_LABEL_FORMAT.format(label=AKRI_WEBHOOK_LABEL),
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
             )
             assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=AKRI_NAME_LABEL_V2, file_path=AKRI_API_V0.moniker
+                mocked_client, mocked_zipfile, label_selector=AKRI_NAME_LABEL_V2, file_path=AKRI_FILE_PATH
             )
             assert_list_daemon_sets(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_INSTANCE_LABEL,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
             )
             assert_list_daemon_sets(
                 mocked_client,
@@ -597,7 +598,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AKRI_NAME_LABEL_V2,
-                file_path=AKRI_API_V0.moniker,
+                file_path=AKRI_FILE_PATH,
             )
 
         if api in [LNM_API_V1B1]:

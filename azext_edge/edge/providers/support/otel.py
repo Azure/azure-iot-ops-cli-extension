@@ -19,22 +19,23 @@ OTEL_NAME_LABEL = NAME_LABEL_FORMAT.format(label=OTEL_EXTENSION_LABEL)
 
 # Defined here as this is not an IoT Operations API
 OTEL_API = EdgeResourceApi(group="otel", version="v1", moniker="otel")
+OTEL_FILE_PATH = OTEL_API.moniker
 
 
 def fetch_otel_pods(since_seconds: int = DAY_IN_SECONDS):
-    return process_v1_pods(file_path=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL, since_seconds=since_seconds)
+    return process_v1_pods(file_path=OTEL_FILE_PATH, label_selector=OTEL_NAME_LABEL, since_seconds=since_seconds)
 
 
 def fetch_otel_deployments():
-    return process_deployments(file_path=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL)
+    return process_deployments(file_path=OTEL_FILE_PATH, label_selector=OTEL_NAME_LABEL)
 
 
 def fetch_otel_replicasets():
-    return process_replicasets(file_path=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL)
+    return process_replicasets(file_path=OTEL_FILE_PATH, label_selector=OTEL_NAME_LABEL)
 
 
 def fetch_otel_services():
-    return process_services(file_path=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL)
+    return process_services(file_path=OTEL_FILE_PATH, label_selector=OTEL_NAME_LABEL)
 
 
 support_runtime_elements = {
