@@ -22,19 +22,19 @@ OTEL_API = EdgeResourceApi(group="otel", version="v1", moniker="otel")
 
 
 def fetch_otel_pods(since_seconds: int = DAY_IN_SECONDS):
-    return process_v1_pods(moniker=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL, since_seconds=since_seconds)
+    return process_v1_pods(file_path=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL, since_seconds=since_seconds)
 
 
 def fetch_otel_deployments():
-    return process_deployments(moniker=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL)
+    return process_deployments(file_path=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL)
 
 
 def fetch_otel_replicasets():
-    return process_replicasets(moniker=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL)
+    return process_replicasets(file_path=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL)
 
 
 def fetch_otel_services():
-    return process_services(moniker=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL)
+    return process_services(file_path=OTEL_API.moniker, label_selector=OTEL_NAME_LABEL)
 
 
 support_runtime_elements = {

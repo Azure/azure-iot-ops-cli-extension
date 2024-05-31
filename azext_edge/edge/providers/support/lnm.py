@@ -29,7 +29,7 @@ def fetch_replicasets():
     lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_APP_LABEL_TYPE)
 
     return process_replicasets(
-        moniker=LNM_API_V1B1.moniker,
+        file_path=LNM_API_V1B1.moniker,
         label_selector=lnm_labels,
     )
 
@@ -38,13 +38,13 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_APP_LABEL_TYPE)
 
     processed = process_v1_pods(
-        moniker=LNM_API_V1B1.moniker,
+        file_path=LNM_API_V1B1.moniker,
         label_selector=lnm_labels,
         since_seconds=since_seconds,
     )
     processed.extend(
         process_v1_pods(
-            moniker=LNM_API_V1B1.moniker,
+            file_path=LNM_API_V1B1.moniker,
             label_selector=None,
             prefix_names=[f"svclb-{LNM_LABEL_PREFIX}"],
             since_seconds=since_seconds,
@@ -57,19 +57,19 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 def fetch_services():
     lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_APP_LABEL_TYPE)
 
-    return process_services(moniker=LNM_API_V1B1.moniker, label_selector=lnm_labels)
+    return process_services(file_path=LNM_API_V1B1.moniker, label_selector=lnm_labels)
 
 
 def fetch_lnm_deployments():
     deployment_prefixes = [f"{LNM_LABEL_PREFIX}-{name}" for name in _fetch_lnm_instance_names()]
     deployment_prefixes.extend(LNM_APP_LABELS)
 
-    return process_deployments(moniker=LNM_API_V1B1.moniker, label_selector=None, prefix_names=deployment_prefixes)
+    return process_deployments(file_path=LNM_API_V1B1.moniker, label_selector=None, prefix_names=deployment_prefixes)
 
 
 def fetch_daemonsets():
     return process_daemonsets(
-        moniker=LNM_API_V1B1.moniker, label_selector=None, prefix_names=[f"svclb-{LNM_LABEL_PREFIX}"]
+        file_path=LNM_API_V1B1.moniker, label_selector=None, prefix_names=[f"svclb-{LNM_LABEL_PREFIX}"]
     )
 
 
