@@ -38,6 +38,7 @@ from ..k8s.config_map import get_config_map
 from .common import (
     ARC_CONFIG_MAP,
     ARC_NAMESPACE,
+    CUSTOM_LOCATIONS_RP_APP_ID,
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     EXTENDED_LOCATION_ROLE_BINDING,
     GRAPH_V1_APP_ENDPOINT,
@@ -551,13 +552,38 @@ def throw_if_iotops_deployed(connected_cluster: ConnectedCluster):
                 )
 
 
-def verify_custom_locations_enabled():
+def verify_custom_locations_enabled(cmd):
+    from azure.cli.core.util import send_raw_request
+
     target_bindings = get_bindings(field_selector=f"metadata.name=={EXTENDED_LOCATION_ROLE_BINDING}")
     if not target_bindings or (target_bindings and not target_bindings.get("items")):
         raise ValidationError(
             "The custom-locations feature is required but not enabled on the cluster. For guidance refer to:\n"
             "https://aka.ms/ArcK8sCustomLocationsDocsEnableFeature"
         )
+
+    # See if we can verify the RP OID.
+    try:
+        cl_sp_response = send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="GET",
+            url=f"{GRAPH_V1_SP_ENDPOINT}(appId='{CUSTOM_LOCATIONS_RP_APP_ID}')",
+        ).json()
+        cl_oid = cl_sp_response["id"].lower()
+    except Exception:
+        # If not, bail without throwing.
+        return
+
+    # We are expecting one binding. Field selector pattern is used due to AKS-EE issue.
+    target_binding = target_bindings["items"][0]
+    cl_oid_has_binding = False
+    for subject in target_binding.get("subjects", []):
+        if "name" in subject and subject["name"].lower() == cl_oid:
+            cl_oid_has_binding = True
+            break
+
+    if not cl_oid_has_binding:
+        raise ValidationError(f"Invalid OID used for custom locations feature enablement. Use '{cl_oid}'.")
 
 
 def verify_arc_cluster_config(connected_cluster: ConnectedCluster):
