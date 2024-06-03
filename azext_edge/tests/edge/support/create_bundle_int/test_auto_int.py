@@ -50,7 +50,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         )
 
     # Level 0 - top
-    namespace, _ = process_top_levels(walk_result, ops_service)
+    namespace, _, _ = process_top_levels(walk_result, ops_service)
 
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
