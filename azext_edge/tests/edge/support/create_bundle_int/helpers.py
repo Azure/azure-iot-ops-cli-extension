@@ -225,7 +225,7 @@ def get_file_map(
     mq_traces: bool = False
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    namespace, c_namespace = process_top_levels(walk_result, ops_service)
+    namespace, c_namespace, lnm_namespace = process_top_levels(walk_result, ops_service)
     walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
 
     # Level 2 and 3 - bottom
@@ -247,6 +247,12 @@ def get_file_map(
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
+    elif ops_service == "lnm":
+        assert len(walk_result) >= 1
+        ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
+        lnm_path = path.join(BASE_ZIP_PATH, lnm_namespace, ops_service)
+        file_map["lnm"] = convert_file_names(walk_result[lnm_path]["files"])
+        file_map["__namespaces__"]["lnm"] = lnm_namespace
     elif ops_service != "otel":
         assert len(walk_result) == 1
         assert not walk_result[ops_path]["folders"]
@@ -255,9 +261,46 @@ def get_file_map(
     return file_map
 
 
+# def get_lnm_file_map(
+#     walk_result: Dict[str, Dict[str, List[str]]],
+# ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
+#     # get all instances names
+#     instances = []
+#     kubectl_lnmz = run(f"kubectl get lnmz -A -o json")
+#     for item in kubectl_lnmz["items"]:
+#         instances.append(item["metadata"]["name"])
+
+#     for instance in instances:
+#         # the main namespace is the one which deployment file that contains the instance name
+#         namespace = None
+
+
+#     ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
+#     # separate namespaces
+#     file_map = {"__namespaces__": {}}
+#     if mq_traces and path.join(ops_path, "traces") in walk_result:
+#         # still possible for no traces if cluster is too new
+#         assert len(walk_result) == 2
+#         assert walk_result[ops_path]["folders"]
+#         assert not walk_result[path.join(ops_path, "traces")]["folders"]
+#         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
+#     elif ops_service == "billing":
+#         assert len(walk_result) == 2
+#         ops_path = path.join(BASE_ZIP_PATH, namespace, "clusterconfig", ops_service)
+#         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
+#         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
+#         file_map["__namespaces__"]["usage"] = c_namespace
+#     elif ops_service != "otel":
+#         assert len(walk_result) == 1
+#         assert not walk_result[ops_path]["folders"]
+#     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
+#     file_map["__namespaces__"]["aio"] = namespace
+#     return file_map
+
+
 def process_top_levels(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str
-) -> Tuple[str, str]:
+) -> Tuple[str, str, str]:
     level_0 = walk_result.pop(BASE_ZIP_PATH)
     for file in ["events.yaml", "nodes.yaml", "storage_classes.yaml"]:
         assert file in level_0["files"]
@@ -266,13 +309,17 @@ def process_top_levels(
     namespaces = level_0["folders"]
     namespace = namespaces[0]
     clusterconfig_namespace = None
+    lnm_namespace = None
     for name in namespaces:
         # determine which namespace belongs to aio vs billing
         level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, "clusterconfig", "billing"), {})
         files = [f for f in level_1.get("files", []) if f.startswith("deployment")]
+        lnm_files = [f for f in level_1.get("files", []) if ops_service == "lnm" and f.startswith("daemonset")]
         if files:
             # if there is a deployment, should be azure-extensions-usage-system
             clusterconfig_namespace = name
+        elif lnm_files:
+            lnm_namespace = name
         else:
             namespace = name
 
@@ -291,7 +338,7 @@ def process_top_levels(
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
 
-    return namespace, clusterconfig_namespace
+    return namespace, clusterconfig_namespace, lnm_namespace
 
 
 def run_bundle_command(
