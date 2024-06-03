@@ -28,7 +28,7 @@ def process_crd(
     version: str,
     kind: str,
     plural: str,
-    file_path: str,
+    directory_path: str,
     file_prefix: Optional[str] = None,
 ) -> List[dict]:
     result: dict = get_custom_objects(
@@ -48,14 +48,14 @@ def process_crd(
         name = r["metadata"]["name"]
         processed.append({
             "data": r,
-            "zinfo": f"{namespace}/{file_path}/{file_prefix}.{version}.{name}.yaml",
+            "zinfo": f"{namespace}/{directory_path}/{file_prefix}.{version}.{name}.yaml",
         })
 
     return processed
 
 
 def process_v1_pods(
-    file_path: str,
+    directory_path: str,
     capture_previous_logs: bool = True,
     include_metrics: bool = False,
     since_seconds: int = DAY_IN_SECONDS,
@@ -95,7 +95,7 @@ def process_v1_pods(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=p),
-                "zinfo": f"{pod_namespace}/{file_path}/pod.{pod_name}.yaml",
+                "zinfo": f"{pod_namespace}/{directory_path}/pod.{pod_name}.yaml",
             }
         )
         pod_spec: V1PodSpec = p.spec
@@ -109,7 +109,7 @@ def process_v1_pods(
 
         processed.extend(
             _capture_pod_container_logs(
-                file_path=file_path,
+                directory_path=directory_path,
                 pod_containers=pod_containers,
                 pod_name=pod_name,
                 pod_namespace=pod_namespace,
@@ -129,7 +129,7 @@ def process_v1_pods(
                     processed.append(
                         {
                             "data": metric,
-                            "zinfo": f"{pod_namespace}/{file_path}/pod.{pod_name}.metric.yaml"
+                            "zinfo": f"{pod_namespace}/{directory_path}/pod.{pod_name}.metric.yaml"
                         }
                     )
             except ApiException as e:
@@ -139,7 +139,7 @@ def process_v1_pods(
 
 
 def process_deployments(
-    file_path: str,
+    directory_path: str,
     return_namespaces: bool = False,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
@@ -154,7 +154,7 @@ def process_deployments(
     namespace_pods_work = {}
 
     processed = _process_kubernetes_resources(
-        file_path=file_path,
+        directory_path=directory_path,
         resources=deployments,
         prefix_names=prefix_names,
         kind=BundleResourceKind.deployment.value,
@@ -173,7 +173,7 @@ def process_deployments(
 
 
 def process_statefulset(
-    file_path: str,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
 ) -> List[dict]:
@@ -185,14 +185,14 @@ def process_statefulset(
     )
 
     return _process_kubernetes_resources(
-        file_path=file_path,
+        directory_path=directory_path,
         resources=statefulsets,
         kind=BundleResourceKind.statefulset.value,
     )
 
 
 def process_services(
-    file_path: str,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -205,7 +205,7 @@ def process_services(
     )
 
     return _process_kubernetes_resources(
-        file_path=file_path,
+        directory_path=directory_path,
         resources=services,
         prefix_names=prefix_names,
         kind=BundleResourceKind.service.value,
@@ -213,7 +213,7 @@ def process_services(
 
 
 def process_replicasets(
-    file_path: str,
+    directory_path: str,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
@@ -223,7 +223,7 @@ def process_replicasets(
     replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
 
     return _process_kubernetes_resources(
-        file_path=file_path,
+        directory_path=directory_path,
         resources=replicasets,
         prefix_names=prefix_names,
         kind=BundleResourceKind.replicaset.value,
@@ -231,7 +231,7 @@ def process_replicasets(
 
 
 def process_daemonsets(
-    file_path: str,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -244,7 +244,7 @@ def process_daemonsets(
     )
 
     return _process_kubernetes_resources(
-        file_path=file_path,
+        directory_path=directory_path,
         resources=daemonsets,
         prefix_names=prefix_names,
         kind=BundleResourceKind.daemonset.value,
@@ -298,7 +298,7 @@ def process_storage_classes() -> List[dict]:
 
 
 def process_persistent_volume_claims(
-    file_path: str,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -311,7 +311,7 @@ def process_persistent_volume_claims(
     )
 
     return _process_kubernetes_resources(
-        file_path=file_path,
+        directory_path=directory_path,
         resources=pvcs,
         prefix_names=prefix_names,
         kind=BundleResourceKind.pvc.value,
@@ -319,7 +319,7 @@ def process_persistent_volume_claims(
 
 
 def process_jobs(
-    file_path: str,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -332,7 +332,7 @@ def process_jobs(
     )
 
     return _process_kubernetes_resources(
-        file_path=file_path,
+        directory_path=directory_path,
         resources=jobs,
         prefix_names=prefix_names,
         kind=BundleResourceKind.job.value,
@@ -340,7 +340,7 @@ def process_jobs(
 
 
 def process_cron_jobs(
-    file_path: str,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -353,7 +353,7 @@ def process_cron_jobs(
     )
 
     return _process_kubernetes_resources(
-        file_path=file_path,
+        directory_path=directory_path,
         resources=cron_jobs,
         prefix_names=prefix_names,
         kind=BundleResourceKind.cronjob.value,
@@ -371,7 +371,7 @@ def assemble_crd_work(
     result = {}
     for api in apis:
         for kind in api.kinds:
-            file_path = api.moniker if not sub_group else f"{api.moniker}/{sub_group}"
+            directory_path = api.moniker if not sub_group else f"{api.moniker}/{sub_group}"
             file_prefix = file_prefix_map.get(kind)
             result[f"{api.moniker} {api.version} {kind}"] = partial(
                 process_crd,
@@ -379,7 +379,7 @@ def assemble_crd_work(
                 version=api.version,
                 kind=kind,
                 plural=api._kinds[kind],  # TODO: optimize
-                file_path=file_path,
+                directory_path=directory_path,
                 file_prefix=file_prefix,
             )
 
@@ -399,7 +399,7 @@ def default_bundle_name(system_name: str) -> str:
 
 
 def _capture_pod_container_logs(
-    file_path: str,
+    directory_path: str,
     pod_containers: List[V1Container],
     pod_name: str,
     pod_namespace: str,
@@ -427,7 +427,7 @@ def _capture_pod_container_logs(
                     previous=capture_previous,
                 )
                 zinfo_previous_segment = "previous." if capture_previous else ""
-                zinfo = f"{pod_namespace}/{file_path}/pod.{pod_name}.{container.name}.{zinfo_previous_segment}log"
+                zinfo = f"{pod_namespace}/{directory_path}/pod.{pod_name}.{container.name}.{zinfo_previous_segment}log"
                 processed.append(
                     {
                         "data": log,
@@ -441,7 +441,7 @@ def _capture_pod_container_logs(
 
 
 def _process_kubernetes_resources(
-    file_path: str,
+    directory_path: str,
     resources: object,
     kind: str,
     prefix_names: Optional[List[str]] = None,
@@ -474,7 +474,7 @@ def _process_kubernetes_resources(
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=r),
-                "zinfo": f"{resource_namespace}/{file_path}/{resource_type}.{resource_name}.yaml",
+                "zinfo": f"{resource_namespace}/{directory_path}/{resource_type}.{resource_name}.yaml",
             }
         )
 

@@ -33,7 +33,7 @@ AKRI_WEBHOOK_LABEL = "aio-akri-webhook-configuration"
 
 AKRI_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label=AKRI_API_V0.label)
 AKRI_POD_NAME_LABEL = NAME_LABEL_FORMAT.format(label=f"{AKRI_AGENT_LABEL}, {AKRI_WEBHOOK_LABEL}")
-AKRI_FILE_PATH = AKRI_API_V0.moniker
+AKRI_DIRECTORY_PATH = AKRI_API_V0.moniker
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
@@ -46,7 +46,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     for pod_name_label in pod_name_labels:
         processed.extend(
             process_v1_pods(
-                file_path=AKRI_FILE_PATH,
+                directory_path=AKRI_DIRECTORY_PATH,
                 label_selector=pod_name_label,
                 since_seconds=since_seconds,
             )
@@ -54,7 +54,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
     processed.extend(
         process_v1_pods(
-            file_path=AKRI_FILE_PATH,
+            directory_path=AKRI_DIRECTORY_PATH,
             label_selector=AKRI_NAME_LABEL_V2,
             since_seconds=since_seconds,
         )
@@ -72,14 +72,14 @@ def fetch_deployments():
     for deployment_name_label in deployment_name_labels:
         processed.extend(
             process_deployments(
-                file_path=AKRI_FILE_PATH,
+                directory_path=AKRI_DIRECTORY_PATH,
                 label_selector=deployment_name_label,
             )
         )
 
     processed.extend(
         process_deployments(
-            file_path=AKRI_FILE_PATH,
+            directory_path=AKRI_DIRECTORY_PATH,
             label_selector=AKRI_NAME_LABEL_V2,
         )
     )
@@ -95,13 +95,13 @@ def fetch_daemonsets():
     for daemonset_name_label in daemonset_name_labels:
         processed.extend(
             process_daemonsets(
-                file_path=AKRI_FILE_PATH,
+                directory_path=AKRI_DIRECTORY_PATH,
                 label_selector=daemonset_name_label,
             )
         )
 
     processed.extend(
-        process_daemonsets(file_path=AKRI_FILE_PATH, label_selector=AKRI_NAME_LABEL_V2)
+        process_daemonsets(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2)
     )
     return processed
 
@@ -116,13 +116,13 @@ def fetch_services():
     for service_name_label in service_name_labels:
         processed.extend(
             process_services(
-                file_path=AKRI_FILE_PATH,
+                directory_path=AKRI_DIRECTORY_PATH,
                 label_selector=service_name_label,
             )
         )
 
     processed.extend(
-        process_services(file_path=AKRI_FILE_PATH, label_selector=AKRI_NAME_LABEL_V2)
+        process_services(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2)
     )
     return processed
 
@@ -137,13 +137,13 @@ def fetch_replicasets():
     for replicaset_name_label in replicaset_name_labels:
         processed.extend(
             process_replicasets(
-                file_path=AKRI_FILE_PATH,
+                directory_path=AKRI_DIRECTORY_PATH,
                 label_selector=replicaset_name_label,
             )
         )
 
     processed.extend(
-        process_replicasets(file_path=AKRI_FILE_PATH, label_selector=AKRI_NAME_LABEL_V2)
+        process_replicasets(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2)
     )
     return processed
 

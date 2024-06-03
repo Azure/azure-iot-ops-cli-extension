@@ -50,12 +50,12 @@ DATA_PROCESSOR_PVC_APP_LABEL = f"app in ({','.join(DATA_PROCESSOR_PVC_APP_LABELS
 # TODO: @jiacju - will remove once the nats issue the fixed
 DATA_PROCESSOR_ONEOFF_LABEL = NAME_LABEL_FORMAT.format(label=DATA_PROCESSOR_NATS_APP_LABEL)
 DATA_PROCESSOR_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label=DATA_PROCESSOR_API_V1.label)
-DATA_PROCESSOR_FILE_PATH = DATA_PROCESSOR_API_V1.moniker
+DATA_PROCESSOR_DIRECTORY_PATH = DATA_PROCESSOR_API_V1.moniker
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     dataprocessor_pods = process_v1_pods(
-        file_path=DATA_PROCESSOR_FILE_PATH,
+        directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
         label_selector=DATA_PROCESSOR_LABEL,
         since_seconds=since_seconds,
         pod_prefix_for_init_container_logs=[
@@ -66,7 +66,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
     dataprocessor_pods.extend(
         process_v1_pods(
-            file_path=DATA_PROCESSOR_FILE_PATH,
+            directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
             label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
             since_seconds=since_seconds,
             pod_prefix_for_init_container_logs=[
@@ -80,9 +80,9 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
 
 def fetch_deployments():
-    processed = process_deployments(file_path=DATA_PROCESSOR_FILE_PATH, label_selector=DATA_PROCESSOR_LABEL)
+    processed = process_deployments(directory_path=DATA_PROCESSOR_DIRECTORY_PATH, label_selector=DATA_PROCESSOR_LABEL)
     processed.extend(
-        process_deployments(file_path=DATA_PROCESSOR_FILE_PATH, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
+        process_deployments(directory_path=DATA_PROCESSOR_DIRECTORY_PATH, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
     )
 
     return processed
@@ -90,12 +90,12 @@ def fetch_deployments():
 
 def fetch_statefulsets():
     processed = process_statefulset(
-        file_path=DATA_PROCESSOR_FILE_PATH,
+        directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
         label_selector=DATA_PROCESSOR_LABEL,
     )
     processed.extend(
         process_statefulset(
-            file_path=DATA_PROCESSOR_FILE_PATH,
+            directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
             label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
         )
     )
@@ -104,9 +104,9 @@ def fetch_statefulsets():
 
 
 def fetch_replicasets():
-    processed = process_replicasets(file_path=DATA_PROCESSOR_FILE_PATH, label_selector=DATA_PROCESSOR_LABEL)
+    processed = process_replicasets(directory_path=DATA_PROCESSOR_DIRECTORY_PATH, label_selector=DATA_PROCESSOR_LABEL)
     processed.extend(
-        process_replicasets(file_path=DATA_PROCESSOR_FILE_PATH, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
+        process_replicasets(directory_path=DATA_PROCESSOR_DIRECTORY_PATH, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
     )
 
     return processed
@@ -121,13 +121,13 @@ def fetch_services():
     for service_name_label in service_name_labels:
         processed.extend(
             process_services(
-                file_path=DATA_PROCESSOR_FILE_PATH,
+                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
                 label_selector=service_name_label,
             )
         )
 
     processed.extend(
-        process_services(file_path=DATA_PROCESSOR_FILE_PATH, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
+        process_services(directory_path=DATA_PROCESSOR_DIRECTORY_PATH, label_selector=DATA_PROCESSOR_NAME_LABEL_V2)
     )
 
     return processed
@@ -144,14 +144,14 @@ def fetch_persistent_volume_claims():
     for persistent_volume_claims_name_label in persistent_volume_claims_name_labels:
         processed.extend(
             process_persistent_volume_claims(
-                file_path=DATA_PROCESSOR_FILE_PATH,
+                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
                 label_selector=persistent_volume_claims_name_label,
             )
         )
 
     processed.extend(
         process_persistent_volume_claims(
-            file_path=DATA_PROCESSOR_FILE_PATH,
+            directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
             label_selector=DATA_PROCESSOR_NAME_LABEL_V2
         )
     )

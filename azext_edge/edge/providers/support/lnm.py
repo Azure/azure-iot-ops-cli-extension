@@ -23,14 +23,14 @@ LNM_APP_LABELS = [
 ]
 LNM_APP_LABEL_TYPE = 'app'
 LNM_LABEL_PREFIX = "aio-lnm"
-LNM_FILE_PATH = LNM_API_V1B1.moniker
+LNM_DIRECTORY_PATH = LNM_API_V1B1.moniker
 
 
 def fetch_replicasets():
     lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_APP_LABEL_TYPE)
 
     return process_replicasets(
-        file_path=LNM_FILE_PATH,
+        directory_path=LNM_DIRECTORY_PATH,
         label_selector=lnm_labels,
     )
 
@@ -39,13 +39,13 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_APP_LABEL_TYPE)
 
     processed = process_v1_pods(
-        file_path=LNM_FILE_PATH,
+        directory_path=LNM_DIRECTORY_PATH,
         label_selector=lnm_labels,
         since_seconds=since_seconds,
     )
     processed.extend(
         process_v1_pods(
-            file_path=LNM_FILE_PATH,
+            directory_path=LNM_DIRECTORY_PATH,
             label_selector=None,
             prefix_names=[f"svclb-{LNM_LABEL_PREFIX}"],
             since_seconds=since_seconds,
@@ -58,19 +58,19 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 def fetch_services():
     lnm_labels = _generate_lnm_labels(prefix=LNM_LABEL_PREFIX, label_type=LNM_APP_LABEL_TYPE)
 
-    return process_services(file_path=LNM_FILE_PATH, label_selector=lnm_labels)
+    return process_services(directory_path=LNM_DIRECTORY_PATH, label_selector=lnm_labels)
 
 
 def fetch_lnm_deployments():
     deployment_prefixes = [f"{LNM_LABEL_PREFIX}-{name}" for name in _fetch_lnm_instance_names()]
     deployment_prefixes.extend(LNM_APP_LABELS)
 
-    return process_deployments(file_path=LNM_FILE_PATH, label_selector=None, prefix_names=deployment_prefixes)
+    return process_deployments(directory_path=LNM_DIRECTORY_PATH, label_selector=None, prefix_names=deployment_prefixes)
 
 
 def fetch_daemonsets():
     return process_daemonsets(
-        file_path=LNM_FILE_PATH, label_selector=None, prefix_names=[f"svclb-{LNM_LABEL_PREFIX}"]
+        directory_path=LNM_DIRECTORY_PATH, label_selector=None, prefix_names=[f"svclb-{LNM_LABEL_PREFIX}"]
     )
 
 

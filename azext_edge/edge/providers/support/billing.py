@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 AIO_BILLING_USAGE_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations)"
 ARC_BILLING_EXTENSION_COMP_LABEL = "app.kubernetes.io/component in (billing-operator)"
 BILLING_RESOURCE_KIND = "billing"
-ARC_BILLING_FILE_PATH = f"{CLUSTER_CONFIG_API_V1.moniker}/{BILLING_RESOURCE_KIND}"
+ARC_BILLING_DIRECTORY_PATH = f"{CLUSTER_CONFIG_API_V1.moniker}/{BILLING_RESOURCE_KIND}"
 
 
 def fetch_pods(
@@ -34,7 +34,7 @@ def fetch_pods(
 ):
     # capture billing pods for aio usage
     billing_pods = process_v1_pods(
-        file_path=ARC_BILLING_FILE_PATH,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
         since_seconds=since_seconds,
     )
@@ -42,7 +42,7 @@ def fetch_pods(
     # capture billing pods for arc extension
     billing_pods.extend(
         process_v1_pods(
-            file_path=ARC_BILLING_FILE_PATH,
+            directory_path=ARC_BILLING_DIRECTORY_PATH,
             label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
             since_seconds=since_seconds,
         )
@@ -53,7 +53,7 @@ def fetch_pods(
 
 def fetch_jobs():
     processed = process_jobs(
-        file_path=ARC_BILLING_FILE_PATH,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
     )
 
@@ -62,7 +62,7 @@ def fetch_jobs():
 
 def fetch_cron_jobs():
     processed = process_cron_jobs(
-        file_path=ARC_BILLING_FILE_PATH,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
     )
 
@@ -71,7 +71,7 @@ def fetch_cron_jobs():
 
 def fetch_deployments():
     processed = process_deployments(
-        file_path=ARC_BILLING_FILE_PATH,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
     )
 
@@ -80,14 +80,14 @@ def fetch_deployments():
 
 def fetch_replicasets():
     return process_replicasets(
-        file_path=ARC_BILLING_FILE_PATH,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
     )
 
 
 def fetch_services():
     return process_services(
-        file_path=ARC_BILLING_FILE_PATH,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
     )
 
