@@ -23,7 +23,11 @@ OTEL_DIRECTORY_PATH = OTEL_API.moniker
 
 
 def fetch_otel_pods(since_seconds: int = DAY_IN_SECONDS):
-    return process_v1_pods(directory_path=OTEL_DIRECTORY_PATH, label_selector=OTEL_NAME_LABEL, since_seconds=since_seconds)
+    return process_v1_pods(
+        directory_path=OTEL_DIRECTORY_PATH,
+        label_selector=OTEL_NAME_LABEL,
+        since_seconds=since_seconds
+    )
 
 
 def fetch_otel_deployments():
