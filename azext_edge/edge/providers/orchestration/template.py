@@ -16,10 +16,6 @@ class TemplateVer(NamedTuple):
     content: dict
     moniker: str
 
-    @property
-    def component_vers(self) -> dict:
-        return self.content["variables"]["VERSIONS"]
-
     def get_component_vers(self, include_dp: bool = False) -> dict:
         # Don't need a deep copy here.
         component_copy = self.content["variables"]["VERSIONS"].copy()
@@ -31,10 +27,6 @@ class TemplateVer(NamedTuple):
     @property
     def parameters(self) -> dict:
         return self.content["parameters"]
-
-    @property
-    def content_vers(self):
-        return self.content["contentVersion"]
 
 
 V1_TEMPLATE = TemplateVer(
