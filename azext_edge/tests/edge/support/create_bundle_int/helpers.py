@@ -283,8 +283,8 @@ def process_top_levels(
         # determine which namespace belongs to aio vs billing
         billing_level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, "clusterconfig", "billing"), {})
         files = [f for f in billing_level_1.get("files", []) if f.startswith("deployment")]
-        lnm_level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, ops_service), {})
-        lnm_files = [f for f in lnm_level_1.get("files", []) if ops_service == "lnm" and f.startswith("daemonset")]
+        lnm_level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, "lnm"), {})
+        lnm_files = [f for f in lnm_level_1.get("files", []) if f.find("svclb-aio-lnm") > 0]
         if files:
             # if there is a deployment, should be azure-extensions-usage-system
             clusterconfig_namespace = name
