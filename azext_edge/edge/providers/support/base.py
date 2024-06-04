@@ -363,15 +363,16 @@ def process_cron_jobs(
 def assemble_crd_work(
     apis: Iterable[EdgeResourceApi],
     file_prefix_map: Optional[Dict[str, str]] = None,
-    sub_group: Optional[str] = None,
+    directory_path: Optional[str] = None,
 ) -> dict:
     if not file_prefix_map:
         file_prefix_map = {}
 
     result = {}
     for api in apis:
+        if not directory_path:
+            directory_path = api.moniker
         for kind in api.kinds:
-            directory_path = api.moniker if not sub_group else f"{api.moniker}/{sub_group}"
             file_prefix = file_prefix_map.get(kind)
             result[f"{api.moniker} {api.version} {kind}"] = partial(
                 process_crd,

@@ -106,7 +106,7 @@ def prepare_bundle(
     log_age_seconds: int = DAY_IN_SECONDS,
 ) -> dict:
     billing_to_run = {}
-    billing_to_run.update(assemble_crd_work(apis=apis, sub_group=BILLING_RESOURCE_KIND))
+    billing_to_run.update(assemble_crd_work(apis=apis, directory_path=ARC_BILLING_DIRECTORY_PATH))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     billing_to_run.update(support_runtime_elements)
