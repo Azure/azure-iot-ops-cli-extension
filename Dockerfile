@@ -1,8 +1,7 @@
 FROM mcr.microsoft.com/cbl-mariner/base/python:3
 
 # install ca-certificates for curl
-RUN \
- yum update -y && \
+RUN yum update -y && \
  yum -y install ca-certificates && \
  yum clean all
 
@@ -25,7 +24,7 @@ RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # tox setup
-RUN pip install tox
+RUN pip install tox==4.12.1 --no-cache-dir
 
 # run tests
 ENTRYPOINT ["tox", "r", "-vv", "-e", "python-int", "--", "--durations=0"]
