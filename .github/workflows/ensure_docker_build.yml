@@ -1,0 +1,10 @@
+name: "[auto] Docker Build"
+on:
+  pull_request:
+    paths:
+      - "Dockerfile"
+jobs:
+  ensure-docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: docker build --no-cache .
