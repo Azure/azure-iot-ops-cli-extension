@@ -48,7 +48,7 @@ def build_bundle(
     from rich.progress import Progress
     from rich.table import Table
 
-    from .support.clusterconfig.billing import prepare_bundle as prepare_billing_bundle
+    from .support.billing import prepare_bundle as prepare_billing_bundle
     from .support.dataprocessor import prepare_bundle as prepare_dataprocessor_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.lnm import prepare_bundle as prepare_lnm_bundle

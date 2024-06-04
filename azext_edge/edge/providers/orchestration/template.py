@@ -16,27 +16,27 @@ class TemplateVer(NamedTuple):
     content: dict
     moniker: str
 
-    @property
-    def component_vers(self) -> dict:
-        return self.content["variables"]["VERSIONS"]
+    def get_component_vers(self, include_dp: bool = False) -> dict:
+        # Don't need a deep copy here.
+        component_copy = self.content["variables"]["VERSIONS"].copy()
+        if not include_dp:
+            del component_copy["processor"]
+
+        return component_copy
 
     @property
     def parameters(self) -> dict:
         return self.content["parameters"]
 
-    @property
-    def content_vers(self):
-        return self.content["contentVersion"]
-
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="96256421fccda86328d82a0c2cf3fbef752f9da0",
-    moniker="v0.5.0-preview",
+    commit_id="6a6ce36417fce836dcc9b5b2bc525dcf92534b41",
+    moniker="v0.5.1-preview",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.26.170.59819", "templateHash": "5997715933122945541"},
+            "_generator": {"name": "bicep", "version": "0.27.1.19265", "templateHash": "16616801464074805120"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -75,6 +75,8 @@ V1_TEMPLATE = TemplateVer(
                 "defaultValue": "clusterIp",
                 "allowedValues": ["clusterIp", "loadBalancer", "nodePort"],
             },
+            "deployDataProcessor": {"type": "bool", "defaultValue": False},
+            "deployLayeredNetworking": {"type": "bool", "defaultValue": True},
             "dataProcessorSecrets": {
                 "type": "object",
                 "defaultValue": {
@@ -121,6 +123,19 @@ V1_TEMPLATE = TemplateVer(
                 "localUrl": "[format('mqtts://aio-mq-dmqtt-frontend.{0}:8883', variables('AIO_CLUSTER_RELEASE_NAMESPACE'))]",
                 "name": "aio-mq-dmqtt-frontend",
                 "satAudience": "aio-mq",
+                "mqInstanceName": "[parameters('mqInstanceName')]",
+                "mqBrokerName": "[parameters('mqBrokerName')]",
+                "mqListenerName": "[parameters('mqListenerName')]",
+                "mqAuthnName": "[parameters('mqAuthnName')]",
+                "mqFrontendServer": "[parameters('mqFrontendServer')]",
+                "mqFrontendReplicas": "[parameters('mqFrontendReplicas')]",
+                "mqFrontendWorkers": "[parameters('mqFrontendWorkers')]",
+                "mqBackendRedundancyFactor": "[parameters('mqBackendRedundancyFactor')]",
+                "mqBackendWorkers": "[parameters('mqBackendWorkers')]",
+                "mqBackendPartitions": "[parameters('mqBackendPartitions')]",
+                "mqMode": "[parameters('mqMode')]",
+                "mqMemoryProfile": "[parameters('mqMemoryProfile')]",
+                "mqServiceType": "[parameters('mqServiceType')]",
             },
             "DEFAULT_CONTAINER_REGISTRY": "mcr.microsoft.com/azureiotoperations",
             "CONTAINER_REGISTRY_DOMAINS": {
@@ -130,7 +145,7 @@ V1_TEMPLATE = TemplateVer(
             "VERSIONS": {
                 "mq": "0.4.0-preview",
                 "observability": "0.1.0-preview",
-                "aio": "0.5.0-preview",
+                "aio": "0.5.1-preview",
                 "layeredNetworking": "0.1.0-preview",
                 "processor": "0.2.1-preview",
                 "opcUaBroker": "0.4.0-preview",
@@ -347,6 +362,7 @@ V1_TEMPLATE = TemplateVer(
                 ],
             },
             {
+                "condition": "[parameters('deployDataProcessor')]",
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
@@ -439,6 +455,7 @@ V1_TEMPLATE = TemplateVer(
                 ],
             },
             {
+                "condition": "[parameters('deployLayeredNetworking')]",
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
@@ -464,12 +481,7 @@ V1_TEMPLATE = TemplateVer(
                     "hostResourceId": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
                     "namespace": "[variables('AIO_CLUSTER_RELEASE_NAMESPACE')]",
                     "displayName": "[parameters('customLocationName')]",
-                    "clusterExtensionIds": [
-                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
-                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('assets-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
-                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('processor-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
-                        "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('mq-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
-                    ],
+                    "clusterExtensionIds": "[union(createArray(extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))), extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('assets-{0}', variables('AIO_EXTENSION_SUFFIX'))), extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('mq-{0}', variables('AIO_EXTENSION_SUFFIX')))), if(parameters('deployDataProcessor'), createArray(extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('processor-{0}', variables('AIO_EXTENSION_SUFFIX')))), createArray()))]",
                 },
                 "dependsOn": [
                     "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
@@ -512,7 +524,7 @@ V1_TEMPLATE = TemplateVer(
                 ],
             },
             {
-                "condition": "[parameters('deployResourceSyncRules')]",
+                "condition": "[and(parameters('deployResourceSyncRules'), parameters('deployDataProcessor'))]",
                 "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                 "apiVersion": "2021-08-31-preview",
                 "name": "[format('{0}/{1}', parameters('customLocationName'), format('{0}-dp-sync', parameters('customLocationName')))]",
@@ -546,6 +558,7 @@ V1_TEMPLATE = TemplateVer(
                 ],
             },
             {
+                "condition": "[parameters('deployDataProcessor')]",
                 "type": "Microsoft.IoTOperationsDataProcessor/instances",
                 "apiVersion": "2023-10-04-preview",
                 "name": "[parameters('dataProcessorInstanceName')]",
@@ -737,6 +750,7 @@ V1_TEMPLATE = TemplateVer(
             },
         ],
         "outputs": {
+            "clusterName": {"type": "string", "value": "[parameters('clusterName')]"},
             "customLocationId": {
                 "type": "string",
                 "value": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -747,6 +761,31 @@ V1_TEMPLATE = TemplateVer(
             "aioNamespace": {"type": "string", "value": "[variables('AIO_CLUSTER_RELEASE_NAMESPACE')]"},
             "mq": {"type": "object", "value": "[variables('MQ_PROPERTIES')]"},
             "observability": {"type": "object", "value": "[variables('OBSERVABILITY')]"},
+            "clusterInfo": {
+                "type": "object",
+                "value": {
+                    "clusterName": "[parameters('clusterName')]",
+                    "aioNamespace": "[variables('AIO_CLUSTER_RELEASE_NAMESPACE')]",
+                },
+            },
+            "dataprocessor": {
+                "type": "object",
+                "value": {
+                    "enabled": "[parameters('deployDataProcessor')]",
+                    "name": "[parameters('dataProcessorInstanceName')]",
+                },
+            },
+            "lnm": {"type": "object", "value": {"enabled": "[parameters('deployLayeredNetworking')]"}},
+            "orchestrator": {"type": "object", "value": {"enabled": True, "targetName": "[parameters('targetName')]"}},
+            "customLocation": {
+                "type": "object",
+                "value": {
+                    "id": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                    "name": "[parameters('customLocationName')]",
+                    "resourceSyncRulesEnabled": "[parameters('deployResourceSyncRules')]",
+                    "resourceSyncRules": "[union(createArray(format('{0}-aio-sync', parameters('customLocationName')), format('{0}-adr-sync', parameters('customLocationName')), format('{0}-mq-sync', parameters('customLocationName'))), if(parameters('deployDataProcessor'), createArray(format('{0}-dp-sync', parameters('customLocationName'))), createArray()))]",
+                },
+            },
         },
     },
 )

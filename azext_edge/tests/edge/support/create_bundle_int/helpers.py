@@ -141,7 +141,8 @@ def check_custom_resource_files(
 def check_workload_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     expected_workload_types: List[str],
-    prefixes: Union[str, List[str]]
+    prefixes: Union[str, List[str]],
+    optional_workload_types: Optional[List[str]] = None,
 ):
     if "pod" in expected_workload_types:
         expected_workload_types.remove("pod")
@@ -180,14 +181,23 @@ def check_workload_resource_files(
         for extension, value in files.items():
             assert value, f"Pod {name} is missing {extension}."
 
+    def _check_non_pod_files(workload_types: List[str], required: bool = False):
+        for key in workload_types:
+            try:
+                expected_items = get_kubectl_items(prefixes, service_type=key)
+                expected_item_names = [item["metadata"]["name"] for item in expected_items]
+                for file in file_objs.get(key, []):
+                    assert file["extension"] == "yaml"
+                present_names = [file["name"] for file in file_objs.get(key, [])]
+                find_extra_or_missing_files(key, present_names, expected_item_names)
+            except CLIInternalError as e:
+                if required:
+                    raise e
+
     # other
-    for key in expected_workload_types:
-        expected_items = get_kubectl_items(prefixes, service_type=key)
-        expected_item_names = [item["metadata"]["name"] for item in expected_items]
-        for file in file_objs.get(key, []):
-            assert file["extension"] == "yaml"
-        present_names = [file["name"] for file in file_objs.get(key, [])]
-        find_extra_or_missing_files(key, present_names, expected_item_names)
+    _check_non_pod_files(expected_workload_types)
+    if optional_workload_types:
+        _check_non_pod_files(optional_workload_types, required=False)
 
 
 def find_extra_or_missing_files(

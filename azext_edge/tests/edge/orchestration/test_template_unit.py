@@ -18,17 +18,22 @@ from azext_edge.edge.providers.orchestration.template import (
 def test_current_template():
     assert CURRENT_TEMPLATE.commit_id
     assert CURRENT_TEMPLATE.moniker
-    assert CURRENT_TEMPLATE.content_vers
     assert CURRENT_TEMPLATE.content
     assert CURRENT_TEMPLATE.parameters
+
+    default_components = CURRENT_TEMPLATE.get_component_vers()
+    assert "processor" not in default_components
+    assert CURRENT_TEMPLATE.get_component_vers(True) == CURRENT_TEMPLATE.content["variables"]["VERSIONS"]
 
     deep_copy_template = get_current_template_copy()
 
     assert deep_copy_template.commit_id == CURRENT_TEMPLATE.commit_id
     assert deep_copy_template.moniker == CURRENT_TEMPLATE.moniker
-    assert deep_copy_template.content_vers == CURRENT_TEMPLATE.content_vers
     assert deep_copy_template.parameters == CURRENT_TEMPLATE.parameters
     assert deep_copy_template.content == CURRENT_TEMPLATE.content
+    assert deep_copy_template.get_component_vers() == CURRENT_TEMPLATE.get_component_vers()
+    assert deep_copy_template.get_component_vers(True) == CURRENT_TEMPLATE.get_component_vers(True)
+
     TestCase().assertDictEqual(CURRENT_TEMPLATE.content, deep_copy_template.content)
 
     assert id(CURRENT_TEMPLATE) != id(deep_copy_template)
@@ -56,7 +61,7 @@ def test_custom_template():
     assert custom_template.moniker == "custom"
     assert custom_template.content == expected_custom_template_content
     assert custom_template.parameters == expected_custom_template_content["parameters"]
-    assert custom_template.component_vers == expected_custom_template_content["variables"]["VERSIONS"]
-    assert custom_template.content_vers == expected_custom_template_content["contentVersion"]
+
+    assert custom_template.get_component_vers(True) == expected_custom_template_content["variables"]["VERSIONS"]
 
     to_consume_custom_template_path.unlink()
