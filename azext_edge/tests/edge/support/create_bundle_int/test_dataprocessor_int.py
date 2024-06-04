@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import DATA_PROCESSOR_API_V1
@@ -14,6 +15,8 @@ logger = get_logger(__name__)
 
 def test_create_bundle_dataprocessor(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS dataprocessor."""
+    if not DATA_PROCESSOR_API_V1.is_deployed():
+        pytest.skip("Data processor is not deployed on this cluster.")
     ops_service = OpsServiceType.dataprocessor.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
