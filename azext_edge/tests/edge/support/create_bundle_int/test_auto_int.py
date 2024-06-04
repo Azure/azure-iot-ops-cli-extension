@@ -19,6 +19,7 @@ from .helpers import (
     run_bundle_command,
     BASE_ZIP_PATH
 )
+from ....helpers import run
 
 logger = get_logger(__name__)
 
@@ -54,7 +55,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         )
 
     # Level 0 - top
-    namespace, _, lnm_namespace = process_top_levels(walk_result, ops_service)
+    namespace = process_top_levels(walk_result, ops_service).aio
 
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
@@ -74,8 +75,8 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
 
     # Level 2 and 3 - bottom
     actual_walk_result = (len(expected_services) + int("clusterconfig" in expected_services))
-    if lnm_namespace:
-        # when there is lnm instance deployed, more lnm resource will be under namespace kube-system
+    if ops_service in [OpsServiceType.auto.value, OpsServiceType.lnm.value] and namespace in run("kubectl get lnm -A"):
+        # when a lnm instance is deployed, more lnm resources will be under namespace kube-system
         actual_walk_result += 1
     assert len(walk_result) == actual_walk_result
     for directory in walk_result:

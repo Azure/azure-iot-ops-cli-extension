@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
 from azure.cli.core.azclierror import CLIInternalError
@@ -20,6 +20,12 @@ BASE_ZIP_PATH = "__root__"
 WORKLOAD_TYPES = [
     "cronjob", "daemonset", "deployment", "job", "pod", "podmetric", "pvc", "replicaset", "service", "statefulset"
 ]
+
+
+class NamespaceTuple(NamedTuple):
+    aio: str
+    usage_system: str
+    lmn_svclb: str
 
 
 def assert_file_names(files: List[str]):
@@ -107,7 +113,6 @@ def check_custom_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     resource_api: EdgeResourceApi,
     namespace: Optional[str] = None,
-    excluded_kinds: Optional[list] = None,
 ):
     plural_map: Dict[str, str] = {}
     try:
@@ -122,14 +127,15 @@ def check_custom_resource_files(
 
     namespace = f"-n {namespace}" if namespace else "-A"
 
-    excluded_kinds = set(excluded_kinds or [])
-    kinds = set(resource_api.kinds) - excluded_kinds
-    for kind in kinds:
+    for kind in resource_api.kinds:
         cluster_resources = {}
         if plural_map.get(kind):
             cluster_resources = run(
                 f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
             )
+        else:
+            # something like scales in lnm
+            continue
 
         expected_names = [r["metadata"]["name"] for r in cluster_resources.get("items", [])]
         assert len(expected_names) == len(file_objs.get(kind, []))
@@ -267,8 +273,8 @@ def get_file_map(
 
         if lnm_namespace:
             lnm_path = path.join(BASE_ZIP_PATH, lnm_namespace, ops_service)
-            file_map["lnm"] = convert_file_names(walk_result[lnm_path]["files"])
-            file_map["__namespaces__"]["lnm"] = lnm_namespace
+            file_map["svclb"] = convert_file_names(walk_result[lnm_path]["files"])
+            file_map["__namespaces__"]["svclb"] = lnm_namespace
     elif ops_service != "otel":
         assert len(walk_result) == 1
         assert not walk_result[ops_path]["folders"]
@@ -279,7 +285,7 @@ def get_file_map(
 
 def process_top_levels(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str
-) -> Tuple[str, str, str]:
+) -> NamespaceTuple:
     level_0 = walk_result.pop(BASE_ZIP_PATH)
     for file in ["events.yaml", "nodes.yaml", "storage_classes.yaml"]:
         assert file in level_0["files"]
@@ -289,24 +295,37 @@ def process_top_levels(
     namespace = namespaces[0]
     clusterconfig_namespace = None
     lnm_namespace = None
+
+    def _get_namespace_determinating_files(
+        name: str,
+        folder: str,
+        file_prefix: str
+    ) -> List[str]:
+        level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
+        print(path.join(BASE_ZIP_PATH, name, folder))
+        print(level1)
+        return [f for f in level1.get("files", []) if f.startswith(file_prefix)]
+    # import pdb; pdb.set_trace()
     for name in namespaces:
-        # determine which namespace belongs to aio vs billing
-        billing_level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, "clusterconfig", "billing"), {})
-        files = [f for f in billing_level_1.get("files", []) if f.startswith("deployment")]
-        lnm_level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, "lnm"), {})
-        lnm_files = [f for f in lnm_level_1.get("files", []) if f.find("svclb-aio-lnm") > 0]
-        if files:
+        # determine which namespace belongs to aio vs billing vs lnm
+        if _get_namespace_determinating_files(
+            name=name,
+            folder=path.join("clusterconfig", "billing"),
+            file_prefix="deployment"
+        ):
             # if there is a deployment, should be azure-extensions-usage-system
             clusterconfig_namespace = name
-        elif lnm_files:
+        elif _get_namespace_determinating_files(
+            name=name,
+            folder=OpsServiceType.lnm.value,
+            file_prefix="daemonset"
+        ):
+            # if there is a daemonset, should be kube-system
             lnm_namespace = name
         else:
             namespace = name
 
     if clusterconfig_namespace:
-        logger.debug("Determined the following namespaces:")
-        logger.debug(f"AIO namespace: {namespace}")
-        logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
         # remove empty billing related folders
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
         assert level_1["folders"] == ["clusterconfig"]
@@ -319,15 +338,21 @@ def process_top_levels(
         assert not level_2["files"]
 
     if lnm_namespace:
-        logger.debug("Determined the following namespaces:")
-        logger.debug(f"AIO namespace: {namespace}")
-        logger.debug(f"LNM svclb namespace: {lnm_namespace}")
         # remove empty lnm svclb related folders
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, lnm_namespace))
         assert level_1["folders"] == ["lnm"]
         assert not level_1["files"]
 
-    return namespace, clusterconfig_namespace, lnm_namespace
+    logger.debug("Determined the following namespaces:")
+    logger.debug(f"AIO namespace: {namespace}")
+    logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
+    logger.debug(f"LNM svclb namespace: {lnm_namespace}")
+
+    return NamespaceTuple(
+        aio=namespace,
+        usage_system=clusterconfig_namespace,
+        lmn_svclb=lnm_namespace
+    )
 
 
 def run_bundle_command(
