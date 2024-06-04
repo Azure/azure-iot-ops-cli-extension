@@ -21,6 +21,7 @@ def test_create_bundle_lnm(init_setup, tracked_files):
     file_map = get_file_map(walk_result, ops_service)
     lnm_present = file_map["__namespaces__"]["aio"] in run("kubectl get lnm -A")
 
+    # TODO: when adding scenarios - make sure one scenario is adding in an lnm instance
     # Note that this is structured by namespace folder instead of by if
     # AIO
     check_custom_resource_files(
