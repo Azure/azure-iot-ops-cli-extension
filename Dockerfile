@@ -18,11 +18,6 @@ COPY . .
 # create empty kubeconfig to mount later as a file
 RUN mkdir -p /root/.kube && touch /root/.kube/config 
 
-# venv
-ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
 # tox setup
 RUN pip install tox==4.12.1 --no-cache-dir
 
