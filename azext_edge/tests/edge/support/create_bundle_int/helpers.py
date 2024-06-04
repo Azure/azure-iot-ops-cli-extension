@@ -307,7 +307,7 @@ def process_top_levels(
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
-    
+
     if lnm_namespace:
         logger.debug("Determined the following namespaces:")
         logger.debug(f"AIO namespace: {namespace}")
@@ -316,7 +316,6 @@ def process_top_levels(
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, lnm_namespace))
         assert level_1["folders"] == ["lnm"]
         assert not level_1["files"]
-
 
     return namespace, clusterconfig_namespace, lnm_namespace
 

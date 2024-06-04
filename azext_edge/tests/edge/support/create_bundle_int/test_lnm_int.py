@@ -41,4 +41,3 @@ def test_create_bundle_lnm(init_setup, tracked_files):
         expected_workload_types = ["daemonset", "pod"]
         assert set(lnm_file_map.keys()).issubset(expected_workload_types)
         check_workload_resource_files(file_map["lnm"], expected_workload_types, ["svclb-aio-lnm"])
-
