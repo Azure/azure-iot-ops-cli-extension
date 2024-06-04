@@ -767,7 +767,7 @@ def test_work_order(
         assert result["deploymentState"]
         assert result["deploymentState"]["status"]
         assert result["deploymentState"]["correlationId"]
-        assert result["deploymentState"]["opsVersion"] == CURRENT_TEMPLATE.component_vers
+        assert result["deploymentState"]["opsVersion"] == CURRENT_TEMPLATE.get_component_vers()
         assert result["deploymentState"]["timestampUtc"]
         assert result["deploymentState"]["timestampUtc"]["started"]
         assert result["deploymentState"]["timestampUtc"]["ended"]

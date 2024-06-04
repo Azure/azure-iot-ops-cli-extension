@@ -259,7 +259,7 @@ class WorkManager:
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
                 if self._connected_cluster:
                     throw_if_iotops_deployed(self._connected_cluster)
-                    verify_custom_locations_enabled()
+                    verify_custom_locations_enabled(self._cmd)
                     verify_custom_location_namespace(
                         connected_cluster=self._connected_cluster,
                         custom_location_name=self._custom_location_name,
@@ -481,7 +481,9 @@ class WorkManager:
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
                 deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
                 deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
-                deployment_result["deploymentState"]["opsVersion"] = template.component_vers
+                deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers(
+                    self._kwargs.get("include_dp", False)
+                )
                 deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
                 deployment_result["deploymentState"]["resources"] = [
                     resource.id.split(
@@ -610,6 +612,7 @@ class WorkManager:
             ("mq_mode", "mqMode"),
             ("mq_memory_profile", "mqMemoryProfile"),
             ("mq_service_type", "mqServiceType"),
+            ("include_dp", "deployDataProcessor"),
         ]:
             if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
