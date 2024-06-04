@@ -576,14 +576,11 @@ def verify_custom_locations_enabled(cmd):
 
     # We are expecting one binding. Field selector pattern is used due to AKS-EE issue.
     target_binding = target_bindings["items"][0]
-    cl_oid_has_binding = False
     for subject in target_binding.get("subjects", []):
         if "name" in subject and subject["name"].lower() == cl_oid:
-            cl_oid_has_binding = True
-            break
+            return
 
-    if not cl_oid_has_binding:
-        raise ValidationError(f"Invalid OID used for custom locations feature enablement. Use '{cl_oid}'.")
+    raise ValidationError(f"Invalid OID used for custom locations feature enablement. Use '{cl_oid}'.")
 
 
 def verify_arc_cluster_config(connected_cluster: ConnectedCluster):
