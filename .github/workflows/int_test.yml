@@ -115,6 +115,7 @@ jobs:
           - feature: ca-certs
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
+            include-dp: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -224,6 +225,7 @@ jobs:
           kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
           csi-config: ${{ matrix.csi-config || ''}}
+          include-dp: ${{ matrix.include-dp }}
       - name: "Allow cluster to finish provisioning"
         run: |
           sleep 2m
@@ -333,6 +335,7 @@ jobs:
           kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
           csi-config: ${{ matrix.csi-config || ''}}
+          include-dp: ${{ matrix.include-dp }}
 
   # Optional cleanup job
   cleanup:
