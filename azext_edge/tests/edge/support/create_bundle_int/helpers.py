@@ -25,7 +25,7 @@ WORKLOAD_TYPES = [
 class NamespaceTuple(NamedTuple):
     aio: str
     usage_system: str
-    lmn_svclb: str
+    lnm_svclb: str
 
 
 def assert_file_names(files: List[str]):
@@ -302,10 +302,8 @@ def process_top_levels(
         file_prefix: str
     ) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
-        print(path.join(BASE_ZIP_PATH, name, folder))
-        print(level1)
         return [f for f in level1.get("files", []) if f.startswith(file_prefix)]
-    # import pdb; pdb.set_trace()
+
     for name in namespaces:
         # determine which namespace belongs to aio vs billing vs lnm
         if _get_namespace_determinating_files(
@@ -351,7 +349,7 @@ def process_top_levels(
     return NamespaceTuple(
         aio=namespace,
         usage_system=clusterconfig_namespace,
-        lmn_svclb=lnm_namespace
+        lnm_svclb=lnm_namespace
     )
 
 
