@@ -7,4 +7,6 @@ jobs:
   ensure-docker-build:
     runs-on: ubuntu-latest
     steps:
+      - name: "Checkout source"
+        uses: actions/checkout@v4
       - run: docker build --no-cache .
