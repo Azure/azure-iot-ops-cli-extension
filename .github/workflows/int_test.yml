@@ -208,7 +208,7 @@ jobs:
           ${{ env.template }}
           EOF
       - name: "AIO Deployment"
-        uses: c-ryan-k/azure-iot-ops-cli-extension/.github/actions/deploy-aio@int_test_dataproc_opt
+        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
         with:
           cluster: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
@@ -318,7 +318,7 @@ jobs:
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
       - name: "Test cluster redeployment"
         if: ${{matrix.feature == 'ca-certs'}}
-        uses: c-ryan-k/azure-iot-ops-cli-extension/.github/actions/deploy-aio@int_test_dataproc_opt
+        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
         with:
           cluster: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
