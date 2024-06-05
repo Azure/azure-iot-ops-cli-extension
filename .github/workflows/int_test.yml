@@ -115,6 +115,7 @@ jobs:
           - feature: ca-certs
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
+            include-dp: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:

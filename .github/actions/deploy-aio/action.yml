@@ -59,6 +59,8 @@ inputs:
     description: 'Optional Service Principal Secret to use for cluster operations.'
   csi-config:
     description: 'Customize configuration of the Key Vault CSI driver with space-separated key=value options.'
+  include-dp:
+    description: 'Include Data Processor in the IoT Operations deployment.'
   debug:
     description: 'Run `az iot ops init` with debugging output.'
 
@@ -112,6 +114,7 @@ runs:
         kv-spc-secret-name: ${{ inputs.kv-spc-secret-name && format('--kv-spc-secret-name "{0}"', inputs.kv-spc-secret-name) || '' }}
         template-file: ${{ inputs.template-file && format('--template-file "{0}"', inputs.template-file) || '' }}
         csi-config: ${{ inputs.csi-config && format('--csi-config {0}', inputs.csi-config) || '' }}
+        include-dp: ${{ inputs.include-dp == 'true' && '--include-dp' || '' }}
         debug: ${{ inputs.debug == 'true' && '--debug' || '' }}
       run: >-
           az iot ops init
@@ -135,6 +138,7 @@ runs:
           ${{ env.kv-spc-secret-name }}
           ${{ env.template-file }}
           ${{ env.csi-config }}
+          ${{ env.include-dp }}
           ${{ env.debug }}
           --no-progress
       shell: bash
