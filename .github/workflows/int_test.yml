@@ -208,7 +208,7 @@ jobs:
           ${{ env.template }}
           EOF
       - name: "AIO Deployment"
-        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
+        uses: c-ryan-k/azure-iot-ops-cli-extension/.github/actions/deploy-aio@int_test_dataproc_opt
         with:
           cluster: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
@@ -225,6 +225,7 @@ jobs:
           kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
           csi-config: ${{ matrix.csi-config || ''}}
+          include-dp: ${{ matrix.include-dp }}
       - name: "Allow cluster to finish provisioning"
         run: |
           sleep 2m
@@ -317,7 +318,7 @@ jobs:
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
       - name: "Test cluster redeployment"
         if: ${{matrix.feature == 'ca-certs'}}
-        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
+        uses: c-ryan-k/azure-iot-ops-cli-extension/.github/actions/deploy-aio@int_test_dataproc_opt
         with:
           cluster: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
@@ -334,6 +335,7 @@ jobs:
           kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
           csi-config: ${{ matrix.csi-config || ''}}
+          include-dp: ${{ matrix.include-dp }}
 
   # Optional cleanup job
   cleanup:
