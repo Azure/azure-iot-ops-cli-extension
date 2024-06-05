@@ -1,12 +1,6 @@
 name: "[auto] Docker Build"
 on:
   pull_request:
-    types: [
-      opened,
-      edited,
-      ready_for_review,
-      reopened,
-    ]
     paths:
       - "Dockerfile"
 jobs:

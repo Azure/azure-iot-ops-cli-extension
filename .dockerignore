@@ -45,7 +45,7 @@ env*/
 .dockerignore
 Dockerfile
 
-# github
+# git
 .git
 .gitignore
 .gitattributes
