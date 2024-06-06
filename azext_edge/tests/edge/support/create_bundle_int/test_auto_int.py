@@ -75,11 +75,9 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
 
     # Level 2 and 3 - bottom
     actual_walk_result = (len(expected_services) + int("clusterconfig" in expected_services))
-    lnm_instances = run("kubectl get lnm -A")
+    lnm_instances = run("kubectl get lnm -A") or []
 
-    if (ops_service in [OpsServiceType.auto.value, OpsServiceType.lnm.value]
-       and lnm_instances
-       and namespace in lnm_instances):
+    if ops_service in [OpsServiceType.auto.value, OpsServiceType.lnm.value] and namespace in lnm_instances:
         # when a lnm instance is deployed, more lnm resources will be under namespace kube-system
         actual_walk_result += 1
     assert len(walk_result) == actual_walk_result

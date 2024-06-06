@@ -19,8 +19,8 @@ def test_create_bundle_lnm(init_setup, tracked_files):
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
-    lnm_instances = run("kubectl get lnm -A")
-    lnm_present = lnm_instances and file_map["__namespaces__"]["aio"] in lnm_instances
+    lnm_instances = run("kubectl get lnm -A") or []
+    lnm_present = file_map["__namespaces__"]["aio"] in lnm_instances
 
     # TODO: when adding scenarios - make sure one scenario is adding in an lnm instance
     # Note that this is structured by namespace folder instead of by if
