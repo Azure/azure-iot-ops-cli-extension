@@ -68,6 +68,7 @@ from ...generators import generate_random_string
     mq_insecure,
     target_name,
     disable_rsync_rules,
+    include_dp,
     """,
     [
         pytest.param(
@@ -100,6 +101,7 @@ from ...generators import generate_random_string
             None,  # mq_insecure
             None,  # target_name
             None,  # disable_rsync_rules
+            None,  # include_dp
         ),
         pytest.param(
             generate_random_string(),  # cluster_name
@@ -131,6 +133,7 @@ from ...generators import generate_random_string
             None,  # mq_insecure
             generate_random_string(),  # target_name
             None,  # disable_rsync_rules
+            None,  # include_dp
         ),
         pytest.param(
             generate_random_string(),  # cluster_name
@@ -162,6 +165,7 @@ from ...generators import generate_random_string
             True,  # mq_insecure
             generate_random_string(),  # target_name
             True,  # disable_rsync_rules
+            True,  # include_dp
         ),
     ],
 )
@@ -198,6 +202,7 @@ def test_init_to_template_params(
     mq_insecure,
     target_name,
     disable_rsync_rules,
+    include_dp,
 ):
     kwargs = {}
 
@@ -229,6 +234,7 @@ def test_init_to_template_params(
         (mq_insecure, "mq_insecure"),
         (target_name, "target_name"),
         (disable_rsync_rules, "disable_rsync_rules"),
+        (include_dp, "include_dp"),
     ]
 
     for param_tuple in param_tuples:
@@ -306,6 +312,10 @@ def test_init_to_template_params(
 
     assert "deployResourceSyncRules" in parameters
     assert parameters["deployResourceSyncRules"] is not disable_rsync_rules
+
+    if include_dp:
+        assert "deployDataProcessor" in parameters
+        assert parameters["deployDataProcessor"]["value"] is True
 
     passthrough_value_tuples = [
         (container_runtime_socket, "containerRuntimeSocket", ""),
@@ -767,7 +777,7 @@ def test_work_order(
         assert result["deploymentState"]
         assert result["deploymentState"]["status"]
         assert result["deploymentState"]["correlationId"]
-        assert result["deploymentState"]["opsVersion"] == CURRENT_TEMPLATE.component_vers
+        assert result["deploymentState"]["opsVersion"] == CURRENT_TEMPLATE.get_component_vers()
         assert result["deploymentState"]["timestampUtc"]
         assert result["deploymentState"]["timestampUtc"]["started"]
         assert result["deploymentState"]["timestampUtc"]["ended"]

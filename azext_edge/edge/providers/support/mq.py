@@ -44,6 +44,7 @@ MQ_APP_LABELS = [
 MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
 
 MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_ACTIVE_API.label)
+MQ_DIRECTORY_PATH = MQ_ACTIVE_API.moniker
 
 
 def fetch_diagnostic_metrics(namespace: str):
@@ -52,7 +53,7 @@ def fetch_diagnostic_metrics(namespace: str):
         stats_raw = get_stats(namespace=namespace, raw_response=True)
         return {
             "data": stats_raw,
-            "zinfo": f"{namespace}/{MQ_ACTIVE_API.moniker}/diagnostic_metrics.txt",
+            "zinfo": f"{namespace}/{MQ_DIRECTORY_PATH}/diagnostic_metrics.txt",
         }
     except Exception:
         logger.debug(f"Unable to process diagnostics pod metrics against namespace {namespace}.")
@@ -67,7 +68,7 @@ def fetch_diagnostic_traces():
             if traces:
                 for trace in traces:
                     zinfo = ZipInfo(
-                        filename=f"{namespace}/{MQ_ACTIVE_API.moniker}/traces/{trace[0].filename}",
+                        filename=f"{namespace}/{MQ_DIRECTORY_PATH}/traces/{trace[0].filename}",
                         date_time=trace[0].date_time,
                     )
                     # Fixed in Py 3.9 https://github.com/python/cpython/issues/70373
@@ -88,16 +89,16 @@ def fetch_diagnostic_traces():
 
 def fetch_deployments():
     processed, namespaces = process_deployments(
-        resource_api=MQ_ACTIVE_API, label_selector=MQ_LABEL, return_namespaces=True
+        directory_path=MQ_DIRECTORY_PATH, label_selector=MQ_LABEL, return_namespaces=True
     )
     # aio-mq-operator deployment has no app label
     operators, operator_namespaces = process_deployments(
-        resource_api=MQ_ACTIVE_API, field_selector=f"metadata.name={AIO_MQ_OPERATOR}", return_namespaces=True
+        directory_path=MQ_DIRECTORY_PATH, field_selector=f"metadata.name={AIO_MQ_OPERATOR}", return_namespaces=True
     )
     processed.extend(operators)
 
     operators_v2, operator_namespaces_v2 = process_deployments(
-        resource_api=MQ_ACTIVE_API, label_selector=MQ_NAME_LABEL, return_namespaces=True
+        directory_path=MQ_DIRECTORY_PATH, label_selector=MQ_NAME_LABEL, return_namespaces=True
     )
     processed.extend(operators_v2)
 
@@ -122,12 +123,12 @@ def fetch_deployments():
 
 def fetch_statefulsets():
     processed = process_statefulset(
-        resource_api=MQ_ACTIVE_API,
+        directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_LABEL,
     )
     processed.extend(
         process_statefulset(
-            resource_api=MQ_ACTIVE_API,
+            directory_path=MQ_DIRECTORY_PATH,
             label_selector=MQ_NAME_LABEL,
         )
     )
@@ -144,7 +145,7 @@ def fetch_statefulsets():
     for connector in connectors:
         connector_name = connector.get("metadata", {}).get("name")
         stateful_set = process_statefulset(
-            resource_api=MQ_ACTIVE_API,
+            directory_path=MQ_DIRECTORY_PATH,
             field_selector=f"metadata.name={AIO_MQ_RESOURCE_PREFIX}{connector_name}",
         )
         processed.extend(stateful_set)
@@ -154,12 +155,12 @@ def fetch_statefulsets():
 
 def fetch_services():
     processed = process_services(
-        resource_api=MQ_ACTIVE_API,
+        directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_LABEL,
     )
     processed.extend(
         process_services(
-            resource_api=MQ_ACTIVE_API,
+            directory_path=MQ_DIRECTORY_PATH,
             label_selector=MQ_NAME_LABEL,
         )
     )
@@ -169,12 +170,12 @@ def fetch_services():
 
 def fetch_replicasets():
     processed = process_replicasets(
-        resource_api=MQ_ACTIVE_API,
+        directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_LABEL,
     )
     processed.extend(
         process_replicasets(
-            resource_api=MQ_ACTIVE_API,
+            directory_path=MQ_DIRECTORY_PATH,
             label_selector=MQ_NAME_LABEL,
         )
     )
@@ -184,13 +185,13 @@ def fetch_replicasets():
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     processed = process_v1_pods(
-        resource_api=MQ_ACTIVE_API,
+        directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_LABEL,
         since_seconds=since_seconds,
     )
     processed.extend(
         process_v1_pods(
-            resource_api=MQ_ACTIVE_API,
+            directory_path=MQ_DIRECTORY_PATH,
             label_selector=MQ_NAME_LABEL,
             since_seconds=since_seconds,
         )
