@@ -1,0 +1,56 @@
+# .env environment file
+.env
+
+# workflow files and folders
+.github/
+
+# builds
+build/
+dist/
+*.egg-info/
+
+# docs
+docs/
+
+# support bundles
+*.zip
+
+# tools
+tools/
+
+# non-code files
+*.md
+*.rst
+
+# tox
+.tox/
+
+# venv
+env*/
+
+# pycache
+**/__pycache__/
+*.pyc
+
+# pylint
+.pylintrc
+
+# coverage
+.coveragerc
+
+# devcontainer
+.devcontainer/
+
+# docker
+.dockerignore
+Dockerfile
+
+# git
+.git
+.gitignore
+.gitattributes
+.pre-commit-config.yaml
+
+# misc
+CredScanSuppressions.json
+pytest.ini.example

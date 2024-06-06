@@ -28,8 +28,7 @@ def process_crd(
     version: str,
     kind: str,
     plural: str,
-    api_moniker: str,
-    sub_group: Optional[str] = None,
+    directory_path: str,
     file_prefix: Optional[str] = None,
 ) -> List[dict]:
     result: dict = get_custom_objects(
@@ -47,22 +46,16 @@ def process_crd(
         namespace = r["metadata"]["namespace"]
         namespaces.append(namespace)
         name = r["metadata"]["name"]
-        zinfo = _process_zinfo(
-            prefix=f"{namespace}/{api_moniker}",
-            suffix=f"{file_prefix}.{version}.{name}.yaml",
-            sub_group=sub_group,
-        )
         processed.append({
             "data": r,
-            "zinfo": zinfo,
+            "zinfo": f"{namespace}/{directory_path}/{file_prefix}.{version}.{name}.yaml",
         })
 
     return processed
 
 
 def process_v1_pods(
-    moniker: str,
-    sub_group: Optional[str] = None,
+    directory_path: str,
     capture_previous_logs: bool = True,
     include_metrics: bool = False,
     since_seconds: int = DAY_IN_SECONDS,
@@ -100,15 +93,10 @@ def process_v1_pods(
         # TODO: Workaround
         p.api_version = pods.api_version
         p.kind = "Pod"
-        zinfo = _process_zinfo(
-            prefix=f"{pod_namespace}/{moniker}",
-            suffix=f"pod.{pod_name}.yaml",
-            sub_group=sub_group,
-        )
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=p),
-                "zinfo": zinfo,
+                "zinfo": f"{pod_namespace}/{directory_path}/pod.{pod_name}.yaml",
             }
         )
         pod_spec: V1PodSpec = p.spec
@@ -126,14 +114,13 @@ def process_v1_pods(
 
         processed.extend(
             _capture_pod_container_logs(
+                directory_path=directory_path,
                 pod_containers=pod_containers,
                 pod_name=pod_name,
                 pod_namespace=pod_namespace,
-                moniker=moniker,
                 v1_api=v1_api,
                 since_seconds=since_seconds,
                 capture_previous_logs=capture_previous_logs,
-                sub_group=sub_group,
             )
         )
 
@@ -144,15 +131,10 @@ def process_v1_pods(
                     "metrics.k8s.io", "v1beta1", pod_namespace, "pods", pod_name
                 )
                 if metric:
-                    zinfo = _process_zinfo(
-                        prefix=f"{pod_namespace}/{moniker}",
-                        suffix=f"pod.{pod_name}.metric.yaml",
-                        sub_group=sub_group,
-                    )
                     processed.append(
                         {
                             "data": metric,
-                            "zinfo": zinfo,
+                            "zinfo": f"{pod_namespace}/{directory_path}/pod.{pod_name}.metric.yaml"
                         }
                     )
             except ApiException as e:
@@ -162,8 +144,7 @@ def process_v1_pods(
 
 
 def process_deployments(
-    moniker: str,
-    sub_group: Optional[str] = None,
+    directory_path: str,
     return_namespaces: bool = False,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
@@ -178,9 +159,8 @@ def process_deployments(
     namespace_pods_work = {}
 
     processed = _process_kubernetes_resources(
-        sub_group=sub_group,
+        directory_path=directory_path,
         resources=deployments,
-        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.deployment.value,
     )
@@ -198,8 +178,7 @@ def process_deployments(
 
 
 def process_statefulset(
-    moniker: str,
-    sub_group: Optional[str] = None,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
 ) -> List[dict]:
@@ -211,16 +190,14 @@ def process_statefulset(
     )
 
     return _process_kubernetes_resources(
-        sub_group=sub_group,
+        directory_path=directory_path,
         resources=statefulsets,
-        moniker=moniker,
         kind=BundleResourceKind.statefulset.value,
     )
 
 
 def process_services(
-    moniker: str,
-    sub_group: Optional[str] = None,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -233,17 +210,15 @@ def process_services(
     )
 
     return _process_kubernetes_resources(
-        sub_group=sub_group,
+        directory_path=directory_path,
         resources=services,
-        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.service.value,
     )
 
 
 def process_replicasets(
-    moniker: str,
-    sub_group: Optional[str] = None,
+    directory_path: str,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
@@ -253,17 +228,15 @@ def process_replicasets(
     replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
 
     return _process_kubernetes_resources(
-        sub_group=sub_group,
+        directory_path=directory_path,
         resources=replicasets,
-        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.replicaset.value,
     )
 
 
 def process_daemonsets(
-    moniker: str,
-    sub_group: Optional[str] = None,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -276,9 +249,8 @@ def process_daemonsets(
     )
 
     return _process_kubernetes_resources(
-        sub_group=sub_group,
+        directory_path=directory_path,
         resources=daemonsets,
-        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.daemonset.value,
     )
@@ -331,8 +303,7 @@ def process_storage_classes() -> List[dict]:
 
 
 def process_persistent_volume_claims(
-    moniker: str,
-    sub_group: Optional[str] = None,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -345,17 +316,15 @@ def process_persistent_volume_claims(
     )
 
     return _process_kubernetes_resources(
-        sub_group=sub_group,
+        directory_path=directory_path,
         resources=pvcs,
-        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.pvc.value,
     )
 
 
 def process_jobs(
-    moniker: str,
-    sub_group: Optional[str] = None,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -368,17 +337,15 @@ def process_jobs(
     )
 
     return _process_kubernetes_resources(
-        sub_group=sub_group,
+        directory_path=directory_path,
         resources=jobs,
-        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.job.value,
     )
 
 
 def process_cron_jobs(
-    moniker: str,
-    sub_group: Optional[str] = None,
+    directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
@@ -391,9 +358,8 @@ def process_cron_jobs(
     )
 
     return _process_kubernetes_resources(
-        sub_group=sub_group,
+        directory_path=directory_path,
         resources=cron_jobs,
-        moniker=moniker,
         prefix_names=prefix_names,
         kind=BundleResourceKind.cronjob.value,
     )
@@ -401,24 +367,25 @@ def process_cron_jobs(
 
 def assemble_crd_work(
     apis: Iterable[EdgeResourceApi],
-    sub_group: Optional[str] = None,
     file_prefix_map: Optional[Dict[str, str]] = None,
+    directory_path: Optional[str] = None,
 ) -> dict:
     if not file_prefix_map:
         file_prefix_map = {}
 
     result = {}
     for api in apis:
+        if not directory_path:
+            directory_path = api.moniker
         for kind in api.kinds:
             file_prefix = file_prefix_map.get(kind)
             result[f"{api.moniker} {api.version} {kind}"] = partial(
                 process_crd,
-                sub_group=sub_group,
                 group=api.group,
                 version=api.version,
                 kind=kind,
                 plural=api._kinds[kind],  # TODO: optimize
-                api_moniker=api.moniker,
+                directory_path=directory_path,
                 file_prefix=file_prefix,
             )
 
@@ -438,14 +405,13 @@ def default_bundle_name(system_name: str) -> str:
 
 
 def _capture_pod_container_logs(
+    directory_path: str,
     pod_containers: List[V1Container],
     pod_name: str,
     pod_namespace: str,
-    moniker: str,
     v1_api: client.CoreV1Api,
     capture_previous_logs: bool = True,
     since_seconds: int = DAY_IN_SECONDS,
-    sub_group: Optional[str] = None,
 ) -> List[dict]:
 
     processed = []
@@ -467,11 +433,7 @@ def _capture_pod_container_logs(
                     previous=capture_previous,
                 )
                 zinfo_previous_segment = "previous." if capture_previous else ""
-                zinfo = _process_zinfo(
-                    prefix=f"{pod_namespace}/{moniker}",
-                    suffix=f"pod.{pod_name}.{container.name}.{zinfo_previous_segment}log",
-                    sub_group=sub_group,
-                )
+                zinfo = f"{pod_namespace}/{directory_path}/pod.{pod_name}.{container.name}.{zinfo_previous_segment}log"
                 processed.append(
                     {
                         "data": log,
@@ -485,10 +447,9 @@ def _capture_pod_container_logs(
 
 
 def _process_kubernetes_resources(
+    directory_path: str,
     resources: object,
-    moniker: str,
     kind: str,
-    sub_group: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
     processed = []
@@ -516,29 +477,11 @@ def _process_kubernetes_resources(
         else:
             resource_type = kind.lower()
 
-        zinfo = _process_zinfo(
-            prefix=f"{resource_namespace}/{moniker}",
-            suffix=f"{resource_type}.{resource_name}.yaml",
-            sub_group=sub_group,
-        )
         processed.append(
             {
                 "data": generic.sanitize_for_serialization(obj=r),
-                "zinfo": zinfo,
+                "zinfo": f"{resource_namespace}/{directory_path}/{resource_type}.{resource_name}.yaml",
             }
         )
 
     return processed
-
-
-def _process_zinfo(
-    prefix: str,
-    suffix: str,
-    sub_group: Optional[str] = None,
-) -> str:
-    if not sub_group:
-        sub_group = ""
-    else:
-        sub_group = f"{sub_group}/"
-
-    return f"{prefix}/{sub_group}{suffix}"

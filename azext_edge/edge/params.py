@@ -8,10 +8,16 @@
 CLI parameter definitions.
 """
 
+from azure.cli.core.commands.parameters import (
+    get_enum_type,
+    get_three_state_flag,
+    tags_type,
+)
 from knack.arguments import CaseInsensitiveList
-from azure.cli.core.commands.parameters import get_three_state_flag, get_enum_type, tags_type
 
-from .common import OpsServiceType, FileType
+from ._validators import validate_namespace, validate_resource_name
+from .common import FileType, OpsServiceType
+from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
     AkriResourceKinds,
     DataProcessorResourceKinds,
@@ -20,10 +26,12 @@ from .providers.edge_api import (
     MqResourceKinds,
     OpcuaResourceKinds,
 )
-from .providers.check.common import ResourceOutputDetailLevel
-from .providers.orchestration.common import MqMemoryProfile, MqMode, MqServiceType, KubernetesDistroType
-
-from ._validators import validate_namespace, validate_resource_name
+from .providers.orchestration.common import (
+    KubernetesDistroType,
+    MqMemoryProfile,
+    MqMode,
+    MqServiceType,
+)
 
 
 def load_iotops_arguments(self, _):
@@ -46,6 +54,24 @@ def load_iotops_arguments(self, _):
             "If no namespace is provided the kubeconfig current_context namespace will be used. "
             "If not defined, the fallback value `azure-iot-operations` will be used. ",
             validator=validate_namespace,
+        )
+        context.argument(
+            "confirm_yes",
+            options_list=["--yes", "-y"],
+            arg_type=get_three_state_flag(),
+            help="Confirm [y]es without a prompt. Useful for CI and automation scenarios.",
+        )
+        context.argument(
+            "no_progress",
+            options_list=["--no-progress"],
+            arg_type=get_three_state_flag(),
+            help="Disable visual representation of work.",
+        )
+        context.argument(
+            "force",
+            options_list=["--force"],
+            arg_type=get_three_state_flag(),
+            help="Force the operation to execute.",
         )
 
     with self.argument_context("iot ops support") as context:
@@ -275,12 +301,6 @@ def load_iotops_arguments(self, _):
             arg_group="Template",
         )
         context.argument(
-            "no_progress",
-            options_list=["--no-progress"],
-            arg_type=get_three_state_flag(),
-            help="Disable init progress bar.",
-        )
-        context.argument(
             "no_block",
             options_list=["--no-block"],
             arg_type=get_three_state_flag(),
@@ -302,13 +322,13 @@ def load_iotops_arguments(self, _):
             "disable_rsync_rules",
             options_list=["--disable-rsync-rules"],
             arg_type=get_three_state_flag(),
-            help="Resource sync rules will not be included in the deployment.",
+            help="Resource sync rules will not be included in the IoT Operations deployment.",
         )
         context.argument(
             "ensure_latest",
             options_list=["--ensure-latest"],
             arg_type=get_three_state_flag(),
-            help="Ensure the latest IoT Ops CLI is installed, raising an error if an upgrade is available.",
+            help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
         )
         # Akri
         context.argument(
@@ -344,9 +364,15 @@ def load_iotops_arguments(self, _):
         )
         # Data Processor
         context.argument(
+            "include_dp",
+            options_list=["--include-dp"],
+            arg_type=get_three_state_flag(),
+            help="Include Data Processor in the IoT Operations deployment. Default: false.",
+        )
+        context.argument(
             "dp_instance_name",
             options_list=["--dp-instance"],
-            help="Instance name for data processor. The default is in the form '{cluster_name}-ops-init-processor'.",
+            help="Instance name for Data Processor. The default is in the form '{cluster_name}-ops-init-processor'.",
             arg_group="Data Processor",
         )
         # MQ
@@ -484,8 +510,17 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "csi_driver_version",
-            options_list=["--csi-driver-ver"],
-            help="CSI driver version.",
+            options_list=["--csi-ver"],
+            help="CSI driver extension version.",
+            arg_group="Key Vault CSI Driver",
+        )
+        context.argument(
+            "csi_driver_config",
+            options_list=["--csi-config"],
+            nargs="+",
+            action="extend",
+            help="CSI driver extension custom configuration. Format is space-separated key=value pairs. "
+            "--csi-config can be used one or more times.",
             arg_group="Key Vault CSI Driver",
         )
         context.argument(
@@ -558,18 +593,11 @@ def load_iotops_arguments(self, _):
             deprecate_info=context.deprecate(hide=True),
         )
 
-    with self.argument_context("iot ops verify-host") as context:
+    with self.argument_context("iot ops delete") as context:
         context.argument(
-            "confirm_yes",
-            options_list=["--yes", "-y"],
-            arg_type=get_three_state_flag(),
-            help="Confirm [y]es without a prompt. Useful for CI and automation scenarios.",
-        )
-        context.argument(
-            "no_progress",
-            options_list=["--no-progress"],
-            arg_type=get_three_state_flag(),
-            help="Disable visual representation of work.",
+            "cluster_name",
+            options_list=["--cluster"],
+            help="Target cluster name for IoT Operations deletion.",
         )
 
     with self.argument_context("iot ops asset") as context:
@@ -584,13 +612,21 @@ def load_iotops_arguments(self, _):
             help="Asset endpoint name.",
         )
         context.argument(
+            "custom_attributes",
+            options_list=["--custom-attribute", "--attr"],
+            help="Space-separated key=value pairs corresponding to additional custom attributes for the asset.",
+            nargs="+",
+            arg_group="Additional Info",
+            action="extend",
+        )
+        context.argument(
             "custom_location_name",
             options_list=["--custom-location", "--cl"],
             help="Custom location used to associate asset with cluster.",
         )
         context.argument(
             "custom_location_resource_group",
-            options_list=["--custom-location-resource-group", "--clrg"],
+            options_list=["--custom-location-resource-group", "--clg"],
             help="Resource group for custom location.",
         )
         context.argument(
@@ -605,7 +641,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "cluster_resource_group",
-            options_list=["--cluster-resource-group", "--crg"],
+            options_list=["--cluster-resource-group", "--cg"],
             help="Resource group for cluster.",
         )
         context.argument(
@@ -663,7 +699,7 @@ def load_iotops_arguments(self, _):
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the event to create. "
             "The following key values are supported: `capability_id`, `event_notifier` (required), "
-            "`name`, `observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` "
+            "`name`, `observability_mode` (none or log), `sampling_interval` "
             "(int), `queue_size` (int). "
             "--event can be used 1 or more times. Review help examples for full parameter usage",
             arg_group="Additional Info",
@@ -759,11 +795,6 @@ def load_iotops_arguments(self, _):
             arg_type=tags_type,
         )
         context.argument(
-            "observability_mode",
-            options_list=["--observability-mode", "--om"],
-            help="Observability mode.",
-        )
-        context.argument(
             "queue_size",
             options_list=["--queue-size", "--qs"],
             help="Custom queue size.",
@@ -795,6 +826,17 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
 
+    with self.argument_context("iot ops asset update") as context:
+        context.argument(
+            "custom_attributes",
+            options_list=["--custom-attribute", "--attr"],
+            help="Space-separated key=value pairs corresponding to additional custom attributes for the asset. "
+            "To remove a custom attribute, please set the attribute's value to \"\".",
+            nargs="+",
+            arg_group="Additional Info",
+            action="extend",
+        )
+
     with self.argument_context("iot ops asset data-point") as context:
         context.argument(
             "asset_name",
@@ -815,6 +857,11 @@ def load_iotops_arguments(self, _):
             "data_source",
             options_list=["--data-source", "--ds"],
             help="Data source.",
+        )
+        context.argument(
+            "observability_mode",
+            options_list=["--observability-mode", "--om"],
+            help="Observability mode. Must be none, gauge, counter, histogram, or log.",
         )
 
     with self.argument_context("iot ops asset data-point export") as context:
@@ -860,6 +907,11 @@ def load_iotops_arguments(self, _):
             "event_notifier",
             options_list=["--event-notifier", "--en"],
             help="Event notifier.",
+        )
+        context.argument(
+            "observability_mode",
+            options_list=["--observability-mode", "--om"],
+            help="Observability mode. Must be none or log.",
         )
 
     with self.argument_context("iot ops asset event export") as context:
@@ -942,7 +994,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "custom_location_resource_group",
-            options_list=["--custom-location-resource-group", "--clrg"],
+            options_list=["--custom-location-resource-group", "--clg"],
             help="Resource group for custom location.",
             arg_group="Associated Resources",
         )
@@ -960,7 +1012,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "cluster_resource_group",
-            options_list=["--cluster-resource-group", "--crg"],
+            options_list=["--cluster-resource-group", "--cg"],
             help="Resource group for cluster.",
             arg_group="Associated Resources",
         )

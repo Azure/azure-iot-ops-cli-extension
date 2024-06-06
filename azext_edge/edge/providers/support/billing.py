@@ -9,8 +9,8 @@ from typing import Iterable
 
 from knack.log import get_logger
 
-from ...edge_api import CLUSTER_CONFIG_API_V1, EdgeResourceApi
-from ..base import (
+from ..edge_api import CLUSTER_CONFIG_API_V1, EdgeResourceApi
+from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
     process_cron_jobs,
@@ -26,6 +26,7 @@ logger = get_logger(__name__)
 AIO_BILLING_USAGE_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations)"
 ARC_BILLING_EXTENSION_COMP_LABEL = "app.kubernetes.io/component in (billing-operator)"
 BILLING_RESOURCE_KIND = "billing"
+ARC_BILLING_DIRECTORY_PATH = f"{CLUSTER_CONFIG_API_V1.moniker}/{BILLING_RESOURCE_KIND}"
 
 
 def fetch_pods(
@@ -33,7 +34,7 @@ def fetch_pods(
 ):
     # capture billing pods for aio usage
     billing_pods = process_v1_pods(
-        moniker=BILLING_RESOURCE_KIND,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
         since_seconds=since_seconds,
     )
@@ -41,10 +42,9 @@ def fetch_pods(
     # capture billing pods for arc extension
     billing_pods.extend(
         process_v1_pods(
-            moniker=CLUSTER_CONFIG_API_V1.moniker,
+            directory_path=ARC_BILLING_DIRECTORY_PATH,
             label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
             since_seconds=since_seconds,
-            sub_group=BILLING_RESOURCE_KIND,
         )
     )
 
@@ -53,7 +53,7 @@ def fetch_pods(
 
 def fetch_jobs():
     processed = process_jobs(
-        moniker=BILLING_RESOURCE_KIND,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
     )
 
@@ -62,7 +62,7 @@ def fetch_jobs():
 
 def fetch_cron_jobs():
     processed = process_cron_jobs(
-        moniker=BILLING_RESOURCE_KIND,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
     )
 
@@ -71,9 +71,8 @@ def fetch_cron_jobs():
 
 def fetch_deployments():
     processed = process_deployments(
-        moniker=CLUSTER_CONFIG_API_V1.moniker,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
-        sub_group=BILLING_RESOURCE_KIND,
     )
 
     return processed
@@ -81,17 +80,15 @@ def fetch_deployments():
 
 def fetch_replicasets():
     return process_replicasets(
-        moniker=CLUSTER_CONFIG_API_V1.moniker,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
-        sub_group=BILLING_RESOURCE_KIND,
     )
 
 
 def fetch_services():
     return process_services(
-        moniker=CLUSTER_CONFIG_API_V1.moniker,
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
         label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
-        sub_group=BILLING_RESOURCE_KIND,
     )
 
 
@@ -109,7 +106,7 @@ def prepare_bundle(
     log_age_seconds: int = DAY_IN_SECONDS,
 ) -> dict:
     billing_to_run = {}
-    billing_to_run.update(assemble_crd_work(apis=apis, sub_group=BILLING_RESOURCE_KIND))
+    billing_to_run.update(assemble_crd_work(apis=apis, directory_path=ARC_BILLING_DIRECTORY_PATH))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     billing_to_run.update(support_runtime_elements)

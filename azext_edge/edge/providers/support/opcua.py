@@ -29,6 +29,7 @@ OPC_PREFIX = "aio-opc-"
 OPC_APP_LABEL = "app in (aio-opc-supervisor, aio-opc-admission-controller)"
 OPC_NAME_LABEL = NAME_LABEL_FORMAT.format(label="aio-opc-opcua-connector, opcplc")
 OPC_NAME_VAR_LABEL = "name in (aio-opc-asset-discovery)"
+OPC_DIRECTORY_PATH = OPCUA_API_V1.moniker
 
 # TODO: once this label is stabled, we can remove the other labels
 OPCUA_NAME_LABEL = NAME_LABEL_FORMAT.format(label=OPCUA_API_V1.label)
@@ -44,7 +45,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     for pod_name_label in pod_name_labels:
         opcua_pods.extend(
             process_v1_pods(
-                moniker=OPCUA_API_V1.moniker,
+                directory_path=OPC_DIRECTORY_PATH,
                 label_selector=pod_name_label,
                 since_seconds=since_seconds,
                 include_metrics=True,
@@ -53,7 +54,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
     opcua_pods.extend(
         process_v1_pods(
-            moniker=OPCUA_API_V1.moniker,
+            directory_path=OPC_DIRECTORY_PATH,
             label_selector=OPCUA_NAME_LABEL,
             since_seconds=since_seconds,
             include_metrics=True,
@@ -63,34 +64,34 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
 
 def fetch_deployments():
-    processed = process_deployments(moniker=OPCUA_API_V1.moniker, prefix_names=[OPC_PREFIX, SIMULATOR_PREFIX])
-    processed.extend(process_deployments(moniker=OPCUA_API_V1.moniker, label_selector=OPC_NAME_LABEL))
-    processed.extend(process_deployments(moniker=OPCUA_API_V1.moniker, label_selector=OPCUA_NAME_LABEL))
+    processed = process_deployments(directory_path=OPC_DIRECTORY_PATH, prefix_names=[OPC_PREFIX, SIMULATOR_PREFIX])
+    processed.extend(process_deployments(directory_path=OPC_DIRECTORY_PATH, label_selector=OPC_NAME_LABEL))
+    processed.extend(process_deployments(directory_path=OPC_DIRECTORY_PATH, label_selector=OPCUA_NAME_LABEL))
     return processed
 
 
 def fetch_replicasets():
-    processed = process_replicasets(moniker=OPCUA_API_V1.moniker, label_selector=OPC_APP_LABEL)
-    processed.extend(process_replicasets(moniker=OPCUA_API_V1.moniker, label_selector=OPC_NAME_LABEL))
-    processed.extend(process_replicasets(moniker=OPCUA_API_V1.moniker, label_selector=OPCUA_NAME_LABEL))
+    processed = process_replicasets(directory_path=OPC_DIRECTORY_PATH, label_selector=OPC_APP_LABEL)
+    processed.extend(process_replicasets(directory_path=OPC_DIRECTORY_PATH, label_selector=OPC_NAME_LABEL))
+    processed.extend(process_replicasets(directory_path=OPC_DIRECTORY_PATH, label_selector=OPCUA_NAME_LABEL))
     return processed
 
 
 def fetch_services():
-    processed = process_services(moniker=OPCUA_API_V1.moniker, label_selector=OPC_APP_LABEL)
-    processed.extend(process_services(moniker=OPCUA_API_V1.moniker, prefix_names=[SIMULATOR_PREFIX]))
-    processed.extend(process_services(moniker=OPCUA_API_V1.moniker, label_selector=OPCUA_NAME_LABEL))
+    processed = process_services(directory_path=OPC_DIRECTORY_PATH, label_selector=OPC_APP_LABEL)
+    processed.extend(process_services(directory_path=OPC_DIRECTORY_PATH, prefix_names=[SIMULATOR_PREFIX]))
+    processed.extend(process_services(directory_path=OPC_DIRECTORY_PATH, label_selector=OPCUA_NAME_LABEL))
     return processed
 
 
 def fetch_daemonsets():
     processed = process_daemonsets(
-        moniker=OPCUA_API_V1.moniker,
+        directory_path=OPC_DIRECTORY_PATH,
         field_selector="metadata.name==aio-opc-asset-discovery",
     )
     processed.extend(
         process_daemonsets(
-            moniker=OPCUA_API_V1.moniker,
+            directory_path=OPC_DIRECTORY_PATH,
             label_selector=OPCUA_NAME_LABEL,
         )
     )

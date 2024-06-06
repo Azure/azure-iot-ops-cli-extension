@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+from typing import Optional
 from unittest.mock import Mock
 
 import pytest
@@ -81,12 +82,14 @@ def mocked_base_namespace_functions(mocker, request):
 @pytest.mark.parametrize("rotation_poll_interval", ["1h"])
 @pytest.mark.parametrize("extension_name", ["akvsecretsprovider"])
 @pytest.mark.parametrize("extension_version", [None, "1.5.1", "1.5.3"])
+@pytest.mark.parametrize("extension_config", [None, {"arc.enableMonitoring": "false", "a": "b"}])
 def test_provision_akv_csi_driver(
     mocked_resource_management_client,
     mocked_wait_for_terminal_state,
     rotation_poll_interval,
     extension_name,
     extension_version,
+    extension_config,
 ):
     from azext_edge.edge.providers.orchestration.base import (
         KEYVAULT_ARC_EXTENSION_VERSION,
@@ -103,6 +106,8 @@ def test_provision_akv_csi_driver(
     if extension_version:
         options["extension_version"] = extension_version
         expected_extension_version = extension_version
+    if extension_config:
+        options["extension_config"] = extension_config
 
     result = provision_akv_csi_driver(
         subscription_id=subscription_id,
@@ -131,11 +136,17 @@ def test_provision_akv_csi_driver(
     assert params["identity"] == {"type": "SystemAssigned"}
     assert params["properties"]["autoUpgradeMinorVersion"] is False
     assert params["properties"]["version"] == expected_extension_version
+
     assert params["properties"]["configurationProtectedSettings"] == {}
+
     config_settings = params["properties"]["configurationSettings"]
     assert config_settings["secrets-store-csi-driver.enableSecretRotation"] == enable_secret_rotation
     assert config_settings["secrets-store-csi-driver.rotationPollInterval"] == rotation_poll_interval
     assert config_settings["secrets-store-csi-driver.syncSecret.enabled"] == "false"
+
+    if extension_config:
+        for c in extension_config:
+            assert config_settings[c] == extension_config[c]
 
 
 @pytest.mark.parametrize(
@@ -736,6 +747,18 @@ def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions, mocked_cm
 
 
 @pytest.mark.parametrize(
+    "response_payload",
+    [
+        {
+            "id": "oid_1",
+        },
+        {
+            "id": "oid_2",
+        },
+        HTTPError(error_msg="Unauthorized", response=None),
+    ],
+)
+@pytest.mark.parametrize(
     "role_bindings",
     [
         None,
@@ -747,26 +770,58 @@ def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions, mocked_cm
         },
         {
             "apiVersion": "rbac.authorization.k8s.io/v1",
-            "items": [{"metadata": {"name": "AzureArc-Microsoft.ExtendedLocation-RP-RoleBinding", "namespace": "az"}}],
+            "items": [
+                {
+                    "metadata": {"name": "AzureArc-Microsoft.ExtendedLocation-RP-RoleBinding", "namespace": "az"},
+                    "subjects": [{"name": "oid_1"}],
+                }
+            ],
             "kind": "ClusterRoleBindingList",
             "metadata": {"resourceVersion": "2"},
         },
     ],
 )
-def test_verify_custom_locations_enabled(mocker, role_bindings):
+def test_verify_custom_locations_enabled(mocked_cmd: Mock, mocker, role_bindings: Optional[dict], response_payload):
     get_binding_patch = mocker.patch(f"{BASE_PATH}.get_bindings", return_value=role_bindings)
     from azext_edge.edge.providers.orchestration.base import (
+        CUSTOM_LOCATIONS_RP_APP_ID,
         verify_custom_locations_enabled,
     )
 
-    if not role_bindings or (role_bindings and not role_bindings["items"]):
-        with pytest.raises(ValidationError):
-            verify_custom_locations_enabled()
-            get_binding_patch.assert_called_once()
+    mocked_send_raw_request: Mock = mocker.patch("azure.cli.core.util.send_raw_request")
+
+    mismatched_oid = False
+    if issubclass(type(response_payload), Exception):
+        mocked_send_raw_request.side_effect = response_payload
+    else:
+        mocked_send_raw_request.return_value.json.return_value = response_payload
+        if response_payload["id"] == "oid_2" and (role_bindings and role_bindings["items"]):
+            mismatched_oid = True
+
+    if not role_bindings or (role_bindings and not role_bindings["items"]) or mismatched_oid:
+        with pytest.raises(ValidationError) as ve:
+            verify_custom_locations_enabled(mocked_cmd)
+        get_binding_patch.assert_called_once()
+
+        error_msg = str(ve.value)
+        if mismatched_oid:
+            assert error_msg == "Invalid OID used for custom locations feature enablement. Use 'oid_2'."
+        else:
+            assert error_msg == (
+                "The custom-locations feature is required but not enabled on the cluster. "
+                "For guidance refer to:\nhttps://aka.ms/ArcK8sCustomLocationsDocsEnableFeature"
+            )
+
         return
 
-    verify_custom_locations_enabled()
+    verify_custom_locations_enabled(mocked_cmd)
     get_binding_patch.assert_called_once()
+
+    mocked_send_raw_request.assert_called_once_with(
+        cli_ctx=mocked_cmd.cli_ctx,
+        method="GET",
+        url=f"https://graph.microsoft.com/v1.0/servicePrincipals(appId='{CUSTOM_LOCATIONS_RP_APP_ID}')",
+    )
 
 
 @pytest.mark.parametrize(

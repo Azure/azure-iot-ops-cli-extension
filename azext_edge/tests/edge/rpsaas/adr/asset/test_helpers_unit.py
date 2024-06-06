@@ -18,7 +18,10 @@ from azext_edge.edge.providers.rpsaas.adr.assets import (
     _convert_sub_points_from_csv,
     _convert_sub_points_to_csv,
     _process_asset_sub_points,
-    _update_properties
+    _process_custom_attributes,
+    _update_properties,
+    VALID_DATA_OBSERVABILITY_MODES,
+    VALID_EVENT_OBSERVABILITY_MODES
 )
 
 from .....generators import generate_random_string
@@ -28,7 +31,7 @@ from .....generators import generate_random_string
 @pytest.mark.parametrize("event_notifier", [None, generate_random_string()])
 @pytest.mark.parametrize("capability_id", [None, generate_random_string()])
 @pytest.mark.parametrize("name", [None, generate_random_string()])
-@pytest.mark.parametrize("observability_mode", [None, generate_random_string()])
+@pytest.mark.parametrize("observability_mode", [None, "log"])
 @pytest.mark.parametrize("queue_size", [None, 20])
 @pytest.mark.parametrize("sampling_interval", [None, 33])
 def test_build_asset_sub_point(
@@ -46,7 +49,7 @@ def test_build_asset_sub_point(
 
     assert result["capabilityId"] == (capability_id or name)
     assert result["name"] == name
-    assert result["observabilityMode"] == observability_mode
+    assert result["observabilityMode"] == (observability_mode or "none")
 
     custom_configuration = {}
     if data_source:
@@ -64,6 +67,34 @@ def test_build_asset_sub_point(
         sampling_interval if data_source or event_notifier else None
     )
     assert custom_configuration.get("queueSize") == (queue_size if data_source or event_notifier else None)
+
+
+def test_build_asset_sub_point_error():
+    for obs_mode in VALID_DATA_OBSERVABILITY_MODES:
+        result = _build_asset_sub_point(
+            data_source=generate_random_string(),
+            observability_mode=obs_mode,
+        )
+        assert result["observabilityMode"] == obs_mode
+
+    with pytest.raises(InvalidArgumentValueError):
+        result = _build_asset_sub_point(
+            data_source=generate_random_string(),
+            observability_mode=generate_random_string(),
+        )
+
+    for obs_mode in VALID_EVENT_OBSERVABILITY_MODES:
+        result = _build_asset_sub_point(
+            event_notifier=generate_random_string(),
+            observability_mode=obs_mode,
+        )
+        assert result["observabilityMode"] == obs_mode
+
+    with pytest.raises(InvalidArgumentValueError):
+        result = _build_asset_sub_point(
+            event_notifier=generate_random_string(),
+            observability_mode=generate_random_string(),
+        )
 
 
 @pytest.mark.parametrize("original_configuration", [
@@ -319,13 +350,13 @@ def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_p
             "queue_size=1000",
             f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
-            f"observability_mode={generate_random_string()}",
+            "observability_mode=none",
         ]
     ],
     [
         [
             f"name={generate_random_string()}",
-            f"observability_mode={generate_random_string()}",
+            "observability_mode=log",
         ]
     ],
     [
@@ -333,21 +364,21 @@ def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_p
             "sampling_interval=10",
             f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
-            f"observability_mode={generate_random_string()}",
+            "observability_mode=none",
         ],
         [
             "sampling_interval=10",
             "queue_size=1000",
             f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
-            f"observability_mode={generate_random_string()}",
+            "observability_mode=log",
         ],
         [
             "sampling_interval=10",
             "queue_size=1000",
             f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
-            f"observability_mode={generate_random_string()}",
+            "observability_mode=none",
         ]
     ],
 ])
@@ -396,10 +427,32 @@ def test_process_asset_sub_points_error(required_arg):
     assert f"does not support {invalid_arg}." in e.value.error_msg
 
 
+@pytest.mark.parametrize("current_attributes", [{}, {"example1": generate_random_string()}])
+@pytest.mark.parametrize("custom_attributes", [
+    [f"example1={generate_random_string()}", f"{generate_random_string()}={generate_random_string()}"],
+    ["example1=\"\"", f"{generate_random_string()}=\"\""],
+])
+def test_process_custom_attributes(current_attributes, custom_attributes):
+    original = deepcopy(current_attributes)
+    _process_custom_attributes(
+        current_attributes=current_attributes,
+        custom_attributes=custom_attributes
+    )
+
+    parsed_attributes = assemble_nargs_to_dict(custom_attributes)
+    original.update(parsed_attributes)
+    for key, value in parsed_attributes.items():
+        if value == "":
+            assert key not in current_attributes
+        else:
+            assert current_attributes[key] == value
+
+
 @pytest.mark.parametrize("properties", [
     {},
     {
         "assetType": generate_random_string(),
+        "attributes": {generate_random_string(): generate_random_string()},
         "defaultDataPointsConfiguration": "{\"publishingInterval\": \"100\", \"samplingInterval\""
         ": \"10\", \"queueSize\": \"2\"}",
         "defaultEventsConfiguration": "{\"publishingInterval\": \"200\", \"samplingInterval\": "
@@ -421,12 +474,19 @@ def test_process_asset_sub_points_error(required_arg):
 @pytest.mark.parametrize("req", [
     {},
     {
+        "custom_attributes": [
+            f"{generate_random_string()}={generate_random_string()}",
+            f"{generate_random_string()}={generate_random_string()}"
+        ],
         "disabled": False,
         "dp_queue_size": 4,
         "ev_publishing_interval": 200,
         "ev_sampling_interval": 123,
     },
     {
+        "custom_attributes": [
+            f"{generate_random_string()}={generate_random_string()}"
+        ],
         "asset_type": generate_random_string(),
         "description": generate_random_string(),
         "disabled": True,
@@ -449,7 +509,6 @@ def test_process_asset_sub_points_error(required_arg):
     }
 ])
 def test_update_properties(properties, req):
-    # lazy way of copying to avoid having to make sure we copy possible the lists
     original_properties = deepcopy(properties)
     _update_properties(
         properties=properties,
@@ -479,6 +538,13 @@ def test_update_properties(properties, req):
     assert properties.get("softwareRevision") == req.get(
         "software_revision", original_properties.get("softwareRevision")
     )
+
+    expected_attributes = deepcopy(original_properties.get("attributes", {}))
+    _process_custom_attributes(
+        current_attributes=expected_attributes,
+        custom_attributes=req.get("custom_attributes", [])
+    )
+    assert properties.get("attributes", {}) == expected_attributes
 
     expected_default_data_points = _build_default_configuration(
         original_configuration=properties.get("defaultDataPointsConfiguration", "{}"),

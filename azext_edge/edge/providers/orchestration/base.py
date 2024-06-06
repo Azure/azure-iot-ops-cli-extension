@@ -7,7 +7,7 @@
 import json
 import logging
 from time import sleep
-from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Tuple
 
 from azure.cli.core.azclierror import HTTPError, ValidationError
 from knack.log import get_logger
@@ -38,6 +38,7 @@ from ..k8s.config_map import get_config_map
 from .common import (
     ARC_CONFIG_MAP,
     ARC_NAMESPACE,
+    CUSTOM_LOCATIONS_RP_APP_ID,
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     EXTENDED_LOCATION_ROLE_BINDING,
     GRAPH_V1_APP_ENDPOINT,
@@ -80,9 +81,20 @@ def provision_akv_csi_driver(
     rotation_poll_interval: str = "1h",
     extension_name: str = "akvsecretsprovider",
     extension_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
+    extension_config: Optional[Dict[str, str]] = None,
     **kwargs,  # TODO: someday remove all kwargs from the smaller funcs
 ) -> dict:
     resource_client = get_resource_client(subscription_id=subscription_id)
+
+    base_config_settings: Dict[str, str] = {
+        "secrets-store-csi-driver.enableSecretRotation": enable_secret_rotation,
+        "secrets-store-csi-driver.rotationPollInterval": rotation_poll_interval,
+        "secrets-store-csi-driver.syncSecret.enabled": "false",
+    }
+
+    if extension_config:
+        base_config_settings.update(extension_config)
+
     return wait_for_terminal_state(
         resource_client.resources.begin_create_or_update_by_id(
             resource_id=f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
@@ -95,11 +107,7 @@ def provision_akv_csi_driver(
                     "autoUpgradeMinorVersion": False,
                     "version": extension_version,
                     "extensionType": "microsoft.azurekeyvaultsecretsprovider",
-                    "configurationSettings": {
-                        "secrets-store-csi-driver.enableSecretRotation": enable_secret_rotation,
-                        "secrets-store-csi-driver.rotationPollInterval": rotation_poll_interval,
-                        "secrets-store-csi-driver.syncSecret.enabled": "false",
-                    },
+                    "configurationSettings": base_config_settings,
                     "configurationProtectedSettings": {},
                 },
             },
@@ -544,13 +552,35 @@ def throw_if_iotops_deployed(connected_cluster: ConnectedCluster):
                 )
 
 
-def verify_custom_locations_enabled():
+def verify_custom_locations_enabled(cmd):
+    from azure.cli.core.util import send_raw_request
+
     target_bindings = get_bindings(field_selector=f"metadata.name=={EXTENDED_LOCATION_ROLE_BINDING}")
     if not target_bindings or (target_bindings and not target_bindings.get("items")):
         raise ValidationError(
             "The custom-locations feature is required but not enabled on the cluster. For guidance refer to:\n"
             "https://aka.ms/ArcK8sCustomLocationsDocsEnableFeature"
         )
+
+    # See if we can verify the RP OID.
+    try:
+        cl_sp_response = send_raw_request(
+            cli_ctx=cmd.cli_ctx,
+            method="GET",
+            url=f"{GRAPH_V1_SP_ENDPOINT}(appId='{CUSTOM_LOCATIONS_RP_APP_ID}')",
+        ).json()
+        cl_oid = cl_sp_response["id"].lower()
+    except Exception:
+        # If not, bail without throwing.
+        return
+
+    # We are expecting one binding. Field selector pattern is used due to AKS-EE issue.
+    target_binding = target_bindings["items"][0]
+    for subject in target_binding.get("subjects", []):
+        if "name" in subject and subject["name"].lower() == cl_oid:
+            return
+
+    raise ValidationError(f"Invalid OID used for custom locations feature enablement. Use '{cl_oid}'.")
 
 
 def verify_arc_cluster_config(connected_cluster: ConnectedCluster):

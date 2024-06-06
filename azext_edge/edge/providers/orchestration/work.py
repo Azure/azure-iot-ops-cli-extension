@@ -107,7 +107,8 @@ class WorkManager:
         if self._keyvault_resource_id:
             self._keyvault_name = self._keyvault_resource_id.split("/")[-1]
         self._keyvault_sat_secret_name = kwargs["keyvault_spc_secret_name"]
-        self._csi_driver_version = kwargs["csi_driver_version"]
+        self._csi_driver_version: str = kwargs["csi_driver_version"]
+        self._csi_driver_config: Optional[Dict[str, str]] = kwargs.get("csi_driver_config")
         self._sp_app_id = kwargs.get("service_principal_app_id")
         self._sp_obj_id = kwargs.get("service_principal_object_id")
         self._tls_ca_path = kwargs.get("tls_ca_path")
@@ -258,7 +259,7 @@ class WorkManager:
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
                 if self._connected_cluster:
                     throw_if_iotops_deployed(self._connected_cluster)
-                    verify_custom_locations_enabled()
+                    verify_custom_locations_enabled(self._cmd)
                     verify_custom_location_namespace(
                         connected_cluster=self._connected_cluster,
                         custom_location_name=self._custom_location_name,
@@ -354,7 +355,7 @@ class WorkManager:
                         vault_uri=vault_uri,
                         **self._kwargs,
                     )
-                    work_kpis["csiDriver"]["kvSatSecretName"] = keyvault_spc_secret_name
+                    work_kpis["csiDriver"]["kvSpcSecretName"] = keyvault_spc_secret_name
 
                     self.complete_step(
                         category=WorkCategoryKey.CSI_DRIVER,
@@ -379,15 +380,17 @@ class WorkManager:
                     # WorkStepKey.KV_CSI_DEPLOY
                     enable_secret_rotation = not self._kwargs.get("disable_secret_rotation", False)
                     enable_secret_rotation = "true" if enable_secret_rotation else "false"
-                    work_kpis["csiDriver"]["rotationPollInterval"] = self._kwargs.get("rotation_poll_interval")
-                    work_kpis["csiDriver"]["enableSecretRotation"] = enable_secret_rotation
 
                     akv_csi_driver_result = provision_akv_csi_driver(
                         enable_secret_rotation=enable_secret_rotation,
                         extension_version=self._csi_driver_version,
+                        extension_config=self._csi_driver_config,
                         **self._kwargs,
                     )
                     work_kpis["csiDriver"]["version"] = akv_csi_driver_result["properties"]["version"]
+                    work_kpis["csiDriver"]["configurationSettings"] = akv_csi_driver_result["properties"][
+                        "configurationSettings"
+                    ]
 
                     self.complete_step(
                         category=WorkCategoryKey.CSI_DRIVER,
@@ -478,7 +481,9 @@ class WorkManager:
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
                 deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
                 deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
-                deployment_result["deploymentState"]["opsVersion"] = template.component_vers
+                deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers(
+                    self._kwargs.get("include_dp", False)
+                )
                 deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
                 deployment_result["deploymentState"]["resources"] = [
                     resource.id.split(
@@ -574,7 +579,7 @@ class WorkManager:
     def stop_display(self):
         if self._render_progress and self._live.is_started:
             if self._progress_shown:
-                self._progress_bar.update(self._task_id, description="DONE!")
+                self._progress_bar.update(self._task_id, description="Done.")
                 sleep(0.5)
             self._live.stop()
 
@@ -607,6 +612,7 @@ class WorkManager:
             ("mq_mode", "mqMode"),
             ("mq_memory_profile", "mqMemoryProfile"),
             ("mq_service_type", "mqServiceType"),
+            ("include_dp", "deployDataProcessor"),
         ]:
             if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}

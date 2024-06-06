@@ -15,11 +15,14 @@ from azure.cli.core.azclierror import (
 )
 
 from .base import ADRBaseProvider
-from .user_strings import MISSING_DATA_EVENT_ERROR, ENDPOINT_NOT_FOUND_WARNING
+from .user_strings import MISSING_DATA_EVENT_ERROR, ENDPOINT_NOT_FOUND_WARNING, INVALID_OBSERVABILITY_MODE_ERROR
 from ....util import assemble_nargs_to_dict, build_query
 from ....common import FileType, ResourceTypeMapping
 
 logger = get_logger(__name__)
+
+VALID_DATA_OBSERVABILITY_MODES = ["none", "gauge", "counter", "histogram", "log"]
+VALID_EVENT_OBSERVABILITY_MODES = ["none", "log"]
 
 
 class AssetProvider(ADRBaseProvider):
@@ -38,6 +41,7 @@ class AssetProvider(ADRBaseProvider):
         cluster_name: Optional[str] = None,
         cluster_resource_group: Optional[str] = None,
         cluster_subscription: Optional[str] = None,
+        custom_attributes: Optional[List[str]] = None,
         custom_location_name: Optional[str] = None,
         custom_location_resource_group: Optional[str] = None,
         custom_location_subscription: Optional[str] = None,
@@ -89,6 +93,7 @@ class AssetProvider(ADRBaseProvider):
         _update_properties(
             properties,
             asset_type=asset_type,
+            custom_attributes=custom_attributes,
             description=description,
             display_name=display_name,
             disabled=disabled,
@@ -195,6 +200,7 @@ class AssetProvider(ADRBaseProvider):
         asset_name: str,
         resource_group_name: str,
         asset_type: Optional[str] = None,
+        custom_attributes: Optional[List[str]] = None,
         description: Optional[str] = None,
         disabled: Optional[bool] = None,
         display_name: Optional[str] = None,
@@ -232,6 +238,7 @@ class AssetProvider(ADRBaseProvider):
         _update_properties(
             properties,
             asset_type=asset_type,
+            custom_attributes=custom_attributes,
             description=description,
             disabled=disabled,
             documentation_uri=documentation_uri,
@@ -467,15 +474,26 @@ def _build_asset_sub_point(
     result = {
         "capabilityId": capability_id,
         "name": name,
-        "observabilityMode": observability_mode
     }
+    if not observability_mode:
+        observability_mode = "none"
 
     if data_source:
         result["dataSource"] = data_source
         result["dataPointConfiguration"] = json.dumps(custom_configuration)
+        if observability_mode not in VALID_DATA_OBSERVABILITY_MODES:
+            raise InvalidArgumentValueError(
+                INVALID_OBSERVABILITY_MODE_ERROR.format(data_source, ', '.join(VALID_DATA_OBSERVABILITY_MODES))
+            )
     elif event_notifier:
         result["eventNotifier"] = event_notifier
         result["eventConfiguration"] = json.dumps(custom_configuration)
+        if observability_mode not in VALID_EVENT_OBSERVABILITY_MODES:
+            raise InvalidArgumentValueError(
+                INVALID_OBSERVABILITY_MODE_ERROR.format(event_notifier, ', '.join(VALID_EVENT_OBSERVABILITY_MODES))
+            )
+
+    result["observabilityMode"] = observability_mode
     return result
 
 
@@ -600,9 +618,19 @@ def _process_asset_sub_points(required_arg: str, sub_points: Optional[List[str]]
     return processed_points
 
 
+def _process_custom_attributes(current_attributes: Dict[str, str], custom_attributes: List[str]):
+    custom_attributes = assemble_nargs_to_dict(custom_attributes)
+    for key, value in custom_attributes.items():
+        if value == "":
+            current_attributes.pop(key, None)
+        else:
+            current_attributes[key] = value
+
+
 def _update_properties(
     properties: Dict[str, Union[str, List[Dict[str, str]]]],
     asset_type: Optional[str] = None,
+    custom_attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
     display_name: Optional[str] = None,
@@ -648,6 +676,13 @@ def _update_properties(
         properties["serialNumber"] = serial_number
     if software_revision:
         properties["softwareRevision"] = software_revision
+
+    if custom_attributes:
+        if "attributes" not in properties:
+            properties["attributes"] = {}
+        _process_custom_attributes(
+            properties["attributes"], custom_attributes=custom_attributes
+        )
 
     # Defaults
     properties["defaultDataPointsConfiguration"] = _build_default_configuration(

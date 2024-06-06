@@ -11,21 +11,20 @@ from typing import Any, Dict, List, Optional, Union
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 
-
+from .common import OpsServiceType
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
-    MqMemoryProfile,
-    MqMode,
-    MqServiceType,
-    KubernetesDistroType,
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     DEFAULT_X509_CA_VALID_DAYS,
     KEYVAULT_ARC_EXTENSION_VERSION,
+    KubernetesDistroType,
+    MqMemoryProfile,
+    MqMode,
+    MqServiceType,
 )
 from .providers.support.base import get_bundle_path
-from .common import OpsServiceType
 
 logger = get_logger(__name__)
 
@@ -115,6 +114,7 @@ def init(
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
     no_block: Optional[bool] = None,
     no_progress: Optional[bool] = None,
+    include_dp: Optional[bool] = None,
     dp_instance_name: Optional[str] = None,
     mq_mode: str = MqMode.distributed.value,
     mq_memory_profile: str = MqMemoryProfile.medium.value,
@@ -134,6 +134,7 @@ def init(
     disable_secret_rotation: Optional[bool] = None,
     rotation_poll_interval: str = "1h",
     csi_driver_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
+    csi_driver_config: Optional[List[str]] = None,
     service_principal_app_id: Optional[str] = None,
     service_principal_object_id: Optional[str] = None,
     service_principal_secret: Optional[str] = None,
@@ -150,9 +151,14 @@ def init(
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
 ) -> Union[Dict[str, Any], None]:
-    from .providers.orchestration import deploy
-    from .util import url_safe_hash_phrase, is_env_flag_enabled
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
+    from .providers.orchestration import deploy
+    from .util import (
+        assemble_nargs_to_dict,
+        is_env_flag_enabled,
+        url_safe_hash_phrase,
+        url_safe_random_chars,
+    )
 
     no_preflight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
@@ -179,7 +185,7 @@ def init(
         mq_authn_name = "authn"
 
     if not custom_location_name:
-        custom_location_name = f"{cluster_name_lowered}-ops-init-cl"
+        custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
 
     if not custom_location_namespace:
         custom_location_namespace = cluster_namespace
@@ -205,6 +211,9 @@ def init(
         if not exists(tls_ca_key_path):
             raise InvalidArgumentValueError("Provided CA private key file does not exist.")
 
+    if csi_driver_config:
+        csi_driver_config = assemble_nargs_to_dict(csi_driver_config)
+
     return deploy(
         cmd=cmd,
         cluster_name=cluster_name,
@@ -225,6 +234,7 @@ def init(
         no_preflight=no_preflight,
         no_deploy=no_deploy,
         disable_rsync_rules=disable_rsync_rules,
+        include_dp=include_dp,
         dp_instance_name=dp_instance_name,
         mq_mode=str(mq_mode),
         mq_memory_profile=str(mq_memory_profile),
@@ -246,6 +256,7 @@ def init(
         disable_secret_rotation=disable_secret_rotation,
         rotation_poll_interval=str(rotation_poll_interval),
         csi_driver_version=str(csi_driver_version),
+        csi_driver_config=csi_driver_config,
         service_principal_app_id=service_principal_app_id,
         service_principal_object_id=service_principal_object_id,
         service_principal_secret=service_principal_secret,
@@ -255,4 +266,24 @@ def init(
         tls_ca_dir=tls_ca_dir,
         tls_ca_valid_days=int(tls_ca_valid_days),
         template_path=template_path,
+    )
+
+
+def delete(
+    cmd,
+    cluster_name: str,
+    resource_group_name: str,
+    confirm_yes: Optional[bool] = None,
+    no_progress: Optional[bool] = None,
+    force: Optional[bool] = None,
+):
+    from .providers.orchestration import delete_ops_resources
+
+    return delete_ops_resources(
+        cmd=cmd,
+        cluster_name=cluster_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
+        no_progress=no_progress,
+        force=force,
     )

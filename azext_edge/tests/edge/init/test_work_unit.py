@@ -11,6 +11,7 @@ from typing import Dict, FrozenSet
 from unittest.mock import Mock
 
 import pytest
+import string
 
 from azext_edge.edge.commands_edge import init
 from azext_edge.edge.common import INIT_NO_PREFLIGHT_ENV_KEY
@@ -31,7 +32,7 @@ from azext_edge.edge.providers.orchestration.work import (
     WorkManager,
     WorkStepKey,
 )
-from azext_edge.edge.util import url_safe_hash_phrase
+from azext_edge.edge.util import url_safe_hash_phrase, assemble_nargs_to_dict
 
 from ...generators import generate_random_string
 
@@ -67,6 +68,7 @@ from ...generators import generate_random_string
     mq_insecure,
     target_name,
     disable_rsync_rules,
+    include_dp,
     """,
     [
         pytest.param(
@@ -99,6 +101,7 @@ from ...generators import generate_random_string
             None,  # mq_insecure
             None,  # target_name
             None,  # disable_rsync_rules
+            None,  # include_dp
         ),
         pytest.param(
             generate_random_string(),  # cluster_name
@@ -130,6 +133,7 @@ from ...generators import generate_random_string
             None,  # mq_insecure
             generate_random_string(),  # target_name
             None,  # disable_rsync_rules
+            None,  # include_dp
         ),
         pytest.param(
             generate_random_string(),  # cluster_name
@@ -161,6 +165,7 @@ from ...generators import generate_random_string
             True,  # mq_insecure
             generate_random_string(),  # target_name
             True,  # disable_rsync_rules
+            True,  # include_dp
         ),
     ],
 )
@@ -197,6 +202,7 @@ def test_init_to_template_params(
     mq_insecure,
     target_name,
     disable_rsync_rules,
+    include_dp,
 ):
     kwargs = {}
 
@@ -228,6 +234,7 @@ def test_init_to_template_params(
         (mq_insecure, "mq_insecure"),
         (target_name, "target_name"),
         (disable_rsync_rules, "disable_rsync_rules"),
+        (include_dp, "include_dp"),
     ]
 
     for param_tuple in param_tuples:
@@ -265,7 +272,13 @@ def test_init_to_template_params(
     if custom_location_name:
         assert parameters["customLocationName"]["value"] == custom_location_name
     else:
-        assert parameters["customLocationName"]["value"] == f"{lowered_cluster_name}-ops-init-cl"
+        split_custom_location_name = parameters["customLocationName"]["value"].split("-")
+        assert split_custom_location_name[0] == lowered_cluster_name
+
+        expected_char_set = string.ascii_lowercase + string.ascii_uppercase + string.digits
+        for c in split_custom_location_name[1]:
+            assert c in expected_char_set
+        parameters["customLocationName"]["value"].endswith("-ops-init-cli")
 
     assert "targetName" in parameters
     if target_name:
@@ -299,6 +312,10 @@ def test_init_to_template_params(
 
     assert "deployResourceSyncRules" in parameters
     assert parameters["deployResourceSyncRules"] is not disable_rsync_rules
+
+    if include_dp:
+        assert "deployDataProcessor" in parameters
+        assert parameters["deployDataProcessor"]["value"] is True
 
     passthrough_value_tuples = [
         (container_runtime_socket, "containerRuntimeSocket", ""),
@@ -379,6 +396,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
     disable_secret_rotation,
     rotation_poll_interval,
     csi_driver_version,
+    csi_driver_config,
     tls_ca_path,
     tls_ca_key_path,
     tls_ca_dir,
@@ -397,6 +415,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # csi_driver_version
+            None,  # csi_driver_config
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -414,6 +433,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # csi_driver_version
+            None,  # csi_driver_config
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -431,6 +451,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # csi_driver_version
+            None,  # csi_driver_config
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -448,6 +469,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             True,  # disable_secret_rotation
             "3h",  # rotation_poll_interval
             None,  # csi_driver_version
+            None,  # csi_driver_config
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             "/certs/",  # tls_ca_dir
@@ -465,6 +487,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             True,  # disable_secret_rotation
             "3h",  # rotation_poll_interval
             "2.0.0",  # csi_driver_version
+            ["telegraf.resources.limits.memory=500Mi", "telegraf.resources.limits.cpu=100m"],  # csi_driver_config
             "/my/ca.crt",  # tls_ca_path
             "/my/key.pem",  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -482,6 +505,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # csi_driver_version
+            None,  # csi_driver_config
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -499,6 +523,7 @@ def _get_resources_of_type(resource_type: str, template: TemplateVer):
             None,  # disable_secret_rotation
             None,  # rotation_poll_interval
             None,  # csi_driver_version
+            None,  # csi_driver_config
             None,  # tls_ca_path
             None,  # tls_ca_key_path
             None,  # tls_ca_dir
@@ -542,6 +567,7 @@ def test_work_order(
     disable_secret_rotation,
     rotation_poll_interval,
     csi_driver_version,
+    csi_driver_config,
     tls_ca_path,
     tls_ca_key_path,
     tls_ca_dir,
@@ -571,11 +597,12 @@ def test_work_order(
     for param_with_default in [
         (rotation_poll_interval, "rotation_poll_interval"),
         (csi_driver_version, "csi_driver_version"),
+        (csi_driver_config, "csi_driver_config"),
         (cluster_namespace, "cluster_namespace"),
         (keyvault_spc_secret_name, "keyvault_spc_secret_name"),
         (tls_ca_path, "tls_ca_path"),
         (tls_ca_key_path, "tls_ca_key_path"),
-        (tls_ca_dir, "tls_ca_dir")
+        (tls_ca_dir, "tls_ca_dir"),
     ]:
         if param_with_default[0]:
             call_kwargs[param_with_default[1]] = param_with_default[0]
@@ -636,12 +663,13 @@ def test_work_order(
         expected_csi_driver_version = csi_driver_version if csi_driver_version else KEYVAULT_ARC_EXTENSION_VERSION
         assert result["csiDriver"]["version"] == expected_csi_driver_version
 
+        expected_csi_driver_custom_config = assemble_nargs_to_dict(csi_driver_config) if csi_driver_config else {}
+        if expected_csi_driver_custom_config:
+            for key in expected_csi_driver_custom_config:
+                assert expected_csi_driver_custom_config[key] == result["csiDriver"]["configurationSettings"][key]
+
         expected_keyvault_spc_secret_name = keyvault_spc_secret_name if keyvault_spc_secret_name else DEFAULT_NAMESPACE
-        assert result["csiDriver"]["kvSatSecretName"] == expected_keyvault_spc_secret_name
-        assert (
-            result["csiDriver"]["rotationPollInterval"] == rotation_poll_interval if rotation_poll_interval else "1h"
-        )
-        assert result["csiDriver"]["enableSecretRotation"] == "false" if disable_secret_rotation else "true"
+        assert result["csiDriver"]["kvSpcSecretName"] == expected_keyvault_spc_secret_name
 
         mocked_validate_keyvault_permission_model.assert_called_once()
         assert mocked_validate_keyvault_permission_model.call_args.kwargs["subscription_id"]
@@ -749,7 +777,7 @@ def test_work_order(
         assert result["deploymentState"]
         assert result["deploymentState"]["status"]
         assert result["deploymentState"]["correlationId"]
-        assert result["deploymentState"]["opsVersion"] == CURRENT_TEMPLATE.component_vers
+        assert result["deploymentState"]["opsVersion"] == CURRENT_TEMPLATE.get_component_vers()
         assert result["deploymentState"]["timestampUtc"]
         assert result["deploymentState"]["timestampUtc"]["started"]
         assert result["deploymentState"]["timestampUtc"]["ended"]

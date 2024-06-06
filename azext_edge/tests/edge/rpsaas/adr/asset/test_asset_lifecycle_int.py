@@ -9,6 +9,7 @@ import os
 from time import sleep
 from knack.log import get_logger
 from azext_edge.edge.common import FileType
+from azext_edge.edge.util.common import assemble_nargs_to_dict
 from .....generators import generate_random_string
 from .....helpers import run
 
@@ -18,27 +19,30 @@ logger = get_logger(__name__)
 def test_asset_lifecycle(require_init, tracked_resources):
     rg = require_init["resourceGroup"]
     custom_location = require_init["customLocation"]
+    custom_location_rg = require_init["customLocationResourceGroup"]
     cluster_name = require_init["clusterName"]
 
     # Create an endpoint profile
     endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     asset_endpoint = run(
         f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} "
-        "--ta opc.tcp://opcplc-000000:50000"
+        f"--cg {rg} --ta opc.tcp://opcplc-000000:50000"
     )
     tracked_resources.append(asset_endpoint["id"])
 
     min_asset_name = "test-asset-" + generate_random_string(force_lower=True)[:4]
     data_source = generate_random_string()
+    custom_attribute = f"{generate_random_string()}={generate_random_string()}"
     min_asset = run(
-        f"az iot ops asset create -n {min_asset_name} -g {rg} -c {cluster_name} --endpoint {endpoint_name} "
-        f"--data data_source={data_source}"
+        f"az iot ops asset create -n {min_asset_name} -g {rg} -c {cluster_name} --cg {rg} "
+        f"--endpoint {endpoint_name} --data data_source={data_source} --custom-attribute {custom_attribute}"
     )
     tracked_resources.append(min_asset["id"])
     assert_asset_props(
         result=min_asset,
         name=min_asset_name,
         cluster_name=cluster_name,
+        custom_attributes=custom_attribute,
         custom_location=custom_location,
         data_points=[{
             "data_source": data_source
@@ -58,13 +62,16 @@ def test_asset_lifecycle(require_init, tracked_resources):
         }]
     )
 
+    custom_attribute_key = custom_attribute.split("=")[0]
     update_asset = run(
-        f"az iot ops asset update -n {min_asset_name} -g {rg} --disable"
+        f"az iot ops asset update -n {min_asset_name} -g {rg} --disable "
+        f"--custom-attribute {custom_attribute_key}=\"\""
     )
     assert_asset_props(
         result=update_asset,
         name=min_asset_name,
         cluster_name=cluster_name,
+        custom_attributes=f"{custom_attribute_key}=\"\"",
         custom_location=custom_location,
         disable=True,
         data_points=[{
@@ -75,6 +82,8 @@ def test_asset_lifecycle(require_init, tracked_resources):
     max_asset_name = "test-asset-" + generate_random_string(force_lower=True)[:4]
     asset_props = {
         "asset_type": generate_random_string(),
+        "custom_attribute": f"{generate_random_string()}={generate_random_string()} "
+        f"{generate_random_string()}={generate_random_string()}",
         "description": generate_random_string(),
         "display_name": generate_random_string(),
         "documentation_uri": generate_random_string(),
@@ -95,7 +104,8 @@ def test_asset_lifecycle(require_init, tracked_resources):
     }
     event_notifier = generate_random_string()
     command = f"az iot ops asset create -n {max_asset_name} -g {rg} --cl {custom_location} "\
-        f"--endpoint {endpoint_name} --event event_notifier={event_notifier} sampling_interval 10"
+        f"--clg {custom_location_rg} --endpoint {endpoint_name} --event event_notifier={event_notifier} "\
+        "sampling_interval 10"
     for prop in asset_props:
         command += f" --{prop.replace('_', '-')} {asset_props[prop]}"
 
@@ -129,7 +139,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     # Create an endpoint profile
     endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     asset_endpoint = run(
-        f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} "
+        f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} --cg {rg} "
         "--ta opc.tcp://opcplc-000000:50000"
     )
     tracked_resources.append(asset_endpoint["id"])
@@ -138,8 +148,8 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     data_source = generate_random_string()
     expected_data_points = [{"data_source": generate_random_string()}]
     asset = run(
-        f"az iot ops asset create -n {asset_name} -g {rg} -c {cluster_name} --endpoint {endpoint_name} "
-        f"--data data_source={expected_data_points[0]['data_source']}"
+        f"az iot ops asset create -n {asset_name} -g {rg} -c {cluster_name} --cg {rg} "
+        f"--endpoint {endpoint_name} --data data_source={expected_data_points[0]['data_source']}"
     )
     tracked_resources.append(asset["id"])
     assert_asset_props(
@@ -254,11 +264,16 @@ def assert_asset_props(result, **expected):
     result_props = result["properties"]
     assert result_props["enabled"] is not expected.get("disable", False)
 
-    # if expected.get("data_points"):
-    #     data_points = expected["data_points"]
-
     if expected.get("asset_type"):
         assert result_props["assetType"] == expected["asset_type"]
+    if expected.get("custom_attributes"):
+        assert result_props["attributes"] is not None
+        expected_attributes = assemble_nargs_to_dict(expected["custom_attributes"].split())
+        for key, value in expected_attributes.items():
+            if value == '""':
+                assert key not in result_props["attributes"]
+            else:
+                assert result_props["attributes"][key] == value
     if expected.get("description"):
         assert result_props["description"] == expected["description"]
     if expected.get("documentation_uri"):
@@ -286,7 +301,8 @@ def assert_sub_point(result, **expected):
     assert result.get("dataSource") == expected.get("data_source")
     assert result.get("eventNotifier") == expected.get("event_notifier")
     assert result.get("name") == expected.get("name")
-    assert result.get("observabilityMode") == expected.get("observability_mode", "none")
+    # service is weird - sometimes it sets empty observability sometimes not
+    assert result.get("observabilityMode", "none") == expected.get("observability_mode", "none")
 
     key = "dataPointConfiguration"
     if expected.get("event_notifier"):
