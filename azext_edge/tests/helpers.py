@@ -32,7 +32,7 @@ def filter_resources(
         return True
 
     filtered = {}
-    for item in kubectl_items["items"]:
+    for item in kubectl_items.get("items", []):
         if pass_conditions(item):
             filtered[item["metadata"]["name"]] = item
     return filtered

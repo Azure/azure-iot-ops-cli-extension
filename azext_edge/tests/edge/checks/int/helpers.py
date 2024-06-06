@@ -71,15 +71,15 @@ def assert_eval_core_service_runtime(
             assert name == pod["value"]["name"]
             assert pod["value"]["status.phase"] == kubectl_pods[name]["status"]["phase"]
             expected_status = "success"
-            if pod["value"]["status.phase"] == "Failed":
-                expected_status = "error"
-                namespace_status = overall_status = "error"
-            elif pod["value"]["status.phase"] in ["Pending", "Unknown"]:
+            if pod["value"]["status.phase"] in ["Pending", "Unknown"]:
                 expected_status = "warning"
+                namespace_status = overall_status = expected_status
+            elif pod["value"]["status.phase"] == "Failed":
+                expected_status = "error"
                 if namespace_status == "success":
-                    namespace_status = "warning"
+                    namespace_status = expected_status
                 if overall_status == "success":
-                    overall_status = "warning"
+                    overall_status = expected_status
             assert pod["status"] == expected_status
         assert runtime_resource[namespace]["status"] == namespace_status
 
