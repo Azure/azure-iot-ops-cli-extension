@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
 import pytest
+from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import find_extra_or_missing_names, get_kubectl_custom_items, get_kubectl_workload_items, run
@@ -161,61 +162,22 @@ def check_workload_resource_files(
         for extension, value in files.items():
             assert value, f"Pod {name} is missing {extension}."
 
+    # other
     def _check_non_pod_files(workload_types: List[str], required: bool = False):
         for key in workload_types:
             try:
-                expected_items = get_kubectl_items(prefixes, service_type=key)
-                expected_item_names = [item["metadata"]["name"] for item in expected_items]
+                expected_items = get_kubectl_workload_items(prefixes, service_type=key)
                 for file in file_objs.get(key, []):
                     assert file["extension"] == "yaml"
                 present_names = [file["name"] for file in file_objs.get(key, [])]
-                find_extra_or_missing_files(key, present_names, expected_item_names)
+                find_extra_or_missing_names(key, present_names, expected_items.keys())
             except CLIInternalError as e:
                 if required:
                     raise e
 
-    for key in expected_workload_types:
-        expected_items = get_kubectl_workload_items(prefixes, service_type=key)
-        for file in file_objs.get(key, []):
-            assert file["extension"] == "yaml"
-        present_names = [file["name"] for file in file_objs.get(key, [])]
-        find_extra_or_missing_names(key, present_names, expected_items.keys())
     _check_non_pod_files(expected_workload_types)
     if optional_workload_types:
         _check_non_pod_files(optional_workload_types, required=False)
-
-
-def find_extra_or_missing_files(
-    resource_type: str, bundle_names: List[str], expected_names: List[str], ignore_extras: bool = False
-):
-    error_msg = []
-    extra_names = [name for name in bundle_names if name not in expected_names]
-    if extra_names:
-        msg = f"Extra {resource_type} files: {', '.join(extra_names)}."
-        if ignore_extras:
-            logger.warning(msg)
-        else:
-            error_msg.append(msg)
-    missing_files = [name for name in expected_names if name not in bundle_names]
-    if missing_files:
-        error_msg.append(f"Missing {resource_type} files: {', '.join(missing_files)}.")
-
-    if error_msg:
-        raise AssertionError('\n '.join(error_msg))
-
-
-def get_kubectl_items(prefixes: Union[str, List[str]], service_type: str) -> Dict[str, Any]:
-    if service_type == "pvc":
-        service_type = "persistentvolumeclaim"
-    if isinstance(prefixes, str):
-        prefixes = [prefixes]
-    kubectl_items = run(f"kubectl get {service_type}s -A -o json")
-    filtered = []
-    for item in kubectl_items["items"]:
-        for prefix in prefixes:
-            if item["metadata"]["name"].startswith(prefix):
-                filtered.append(item)
-    return filtered
 
 
 def get_file_map(

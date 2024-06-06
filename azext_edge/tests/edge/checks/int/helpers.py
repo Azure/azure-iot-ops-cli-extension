@@ -111,7 +111,7 @@ def assert_general_eval_custom_resources(
     # for the ones that have spaces
     assert post_deployment[key]["description"].replace(" ", "").endswith(resource_plural)
 
-    # check the target exisitance
+    # check the target existence
     sorted_items = sort_by_namespace(items, include_all=include_all_namespace)
     target_key = f"{resource_plural}.{resource_api.group}"
     assert target_key in post_deployment[key]["targets"]
