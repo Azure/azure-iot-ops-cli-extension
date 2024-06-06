@@ -24,7 +24,6 @@ ARC_AGENTS = [
     ("clusteridentityoperator", "cluster-identity-operator", False), # (sub_group, component_label, has_services)
     ("clusterconnectagent", "clusterconnect-agent", False),
     ("configagent", "config-agent", False),
-    ("controllermanager", "controller-manager", False),
     ("extensioneventscollector", "extension-events-collector", True),
     ("extensionmanager", "extension-manager", True),
     ("kubeaadproxy", "kube-aad-proxy",  True),
