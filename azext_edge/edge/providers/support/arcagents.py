@@ -21,22 +21,21 @@ logger = get_logger(__name__)
 
 MONIKER = "arcagents"
 ARC_AGENTS = [
-    ("clusteridentityoperator", "cluster-identity-operator", False), # (sub_group, component_label, has_services)
-    ("clusterconnectagent", "clusterconnect-agent", False),
-    ("configagent", "config-agent", False),
-    ("extensioneventscollector", "extension-events-collector", True),
-    ("extensionmanager", "extension-manager", True),
-    ("kubeaadproxy", "kube-aad-proxy",  True),
-    ("clustermetadataoperator", "cluster-metadata-operator", False),
-    ("metricsagent", "metrics-agent", False),
-    ("resourcesyncagent", "resource-sync-agent", False),
+    ("cluster-identity-operator", False), # (component, has_services)
+    ("clusterconnect-agent", False),
+    ("config-agent", False),
+    ("extension-events-collector", True),
+    ("extension-manager", True),
+    ("kube-aad-proxy",  True),
+    ("cluster-metadata-operator", False),
+    ("metrics-agent", False),
+    ("resource-sync-agent", False),
 ]
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     processed = fetch_resources(
         func=process_v1_pods,
-        exclude_evicted_pod_log=True,
         since_seconds=since_seconds
     )
     return processed
@@ -63,20 +62,18 @@ def fetch_services():
     return processed
 
 
-def fetch_resources(func: callable, since_seconds: int = None, exclude_evicted_pod_log: bool = None) -> list:
+def fetch_resources(func: callable, since_seconds: int = None) -> list:
     resources = []
-    for agent_name, component_label, has_service in ARC_AGENTS:
+    for component, has_service in ARC_AGENTS:
         kwargs: dict = {
-            'moniker': MONIKER,
-            'sub_group': agent_name,
-            'label_selector': f"app.kubernetes.io/component in ({component_label})"
+            'directory_path': f"{MONIKER}/{component}",
+            'label_selector': f"app.kubernetes.io/component in ({component})"
         }
-        if since_seconds and exclude_evicted_pod_log:
-            kwargs['exclude_evicted_pod_log'] = exclude_evicted_pod_log
+        if since_seconds:
             kwargs['since_seconds'] = since_seconds
         if has_service and func==process_services:
             kwargs['label_selector'] = "app.kubernetes.io/managed-by in (Helm)"
-            kwargs['prefix_names'] = [component_label]
+            kwargs['prefix_names'] = [component]
 
         resources.extend(func(**kwargs))
     return resources

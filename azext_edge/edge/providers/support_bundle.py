@@ -60,7 +60,7 @@ def build_bundle(
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.otel import prepare_bundle as prepare_otel_bundle
-    from .support.arck8sagents import prepare_bundle as prepare_arck8sagents_bundle
+    from .support.arcagents import prepare_bundle as prepare_arck8sagents_bundle
 
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
@@ -111,7 +111,7 @@ def build_bundle(
     
     # arc agent resources
     if include_arc_agents:
-        pending_work["arck8sagents"] = prepare_arck8sagents_bundle(log_age_seconds)
+        pending_work["arcagents"] = prepare_arck8sagents_bundle(log_age_seconds)
 
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):
