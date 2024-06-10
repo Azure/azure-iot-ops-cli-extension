@@ -44,7 +44,6 @@ def build_bundle(
     log_age_seconds: Optional[int] = None,
     include_arc_agents: Optional[bool] = None,
     include_mq_traces: Optional[bool] = None,
-    resource_name: Optional[str] = None,
 ):
     from rich.live import Live
     from rich.progress import Progress
