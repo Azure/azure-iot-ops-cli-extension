@@ -5,14 +5,14 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Any, Dict, List, NamedTuple, Optional, Union
+from typing import Dict, List, NamedTuple, Optional, Union
 from os import path
 from zipfile import ZipFile
-from azure.cli.core.azclierror import CLIInternalError
 import pytest
+from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
-from ....helpers import run
+from ....helpers import find_extra_or_missing_names, get_kubectl_custom_items, get_kubectl_workload_items, run
 
 
 logger = get_logger(__name__)
@@ -114,33 +114,15 @@ def check_custom_resource_files(
     resource_api: EdgeResourceApi,
     namespace: Optional[str] = None,
 ):
-    plural_map: Dict[str, str] = {}
-    try:
-        # prefer to use another tool to get resources
-        api_table = run(f"kubectl api-resources --api-group={resource_api.group}")
-        api_resources = [line.split() for line in api_table.split("\n")]
-        api_resources = api_resources[1:-1]
-        plural_map = {line[-1].lower(): line[0] for line in api_resources}
-    except CLIInternalError:
-        # fall back to python sdk if not possible
-        pytest.skip("Cannot access resources via kubectl.")
-
-    namespace = f"-n {namespace}" if namespace else "-A"
-
+    resource_map = get_kubectl_custom_items(
+        resource_api=resource_api,
+        namespace=namespace,
+    )
     for kind in resource_api.kinds:
-        cluster_resources = {}
-        if plural_map.get(kind):
-            cluster_resources = run(
-                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
-            )
-        else:
-            # something like scales in lnm
-            continue
-
-        expected_names = [r["metadata"]["name"] for r in cluster_resources.get("items", [])]
-        assert len(expected_names) == len(file_objs.get(kind, []))
+        cluster_resources = resource_map[kind]
+        assert len(cluster_resources.keys()) == len(file_objs.get(kind, []))
         for resource in file_objs.get(kind, []):
-            assert resource["name"] in expected_names
+            assert resource["name"] in cluster_resources.keys()
             assert resource["version"] == resource_api.version
 
 
@@ -179,64 +161,29 @@ def check_workload_resource_files(
             if file["descriptor"] not in converted_file:
                 converted_file[file["descriptor"]] = False
 
-    expected_pods = get_kubectl_items(prefixes, service_type="pod")
-    expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
-    find_extra_or_missing_files("pod", file_pods.keys(), expected_pod_names)
+    expected_pods = get_kubectl_workload_items(prefixes, service_type="pod")
+    find_extra_or_missing_names("pod", file_pods.keys(), expected_pods.keys())
 
     for name, files in file_pods.items():
         for extension, value in files.items():
             assert value, f"Pod {name} is missing {extension}."
 
+    # other
     def _check_non_pod_files(workload_types: List[str], required: bool = False):
         for key in workload_types:
             try:
-                expected_items = get_kubectl_items(prefixes, service_type=key)
-                expected_item_names = [item["metadata"]["name"] for item in expected_items]
+                expected_items = get_kubectl_workload_items(prefixes, service_type=key)
                 for file in file_objs.get(key, []):
                     assert file["extension"] == "yaml"
                 present_names = [file["name"] for file in file_objs.get(key, [])]
-                find_extra_or_missing_files(key, present_names, expected_item_names)
+                find_extra_or_missing_names(key, present_names, expected_items.keys())
             except CLIInternalError as e:
                 if required:
                     raise e
 
-    # other
     _check_non_pod_files(expected_workload_types)
     if optional_workload_types:
         _check_non_pod_files(optional_workload_types, required=False)
-
-
-def find_extra_or_missing_files(
-    resource_type: str, bundle_names: List[str], expected_names: List[str], ignore_extras: bool = False
-):
-    error_msg = []
-    extra_names = [name for name in bundle_names if name not in expected_names]
-    if extra_names:
-        msg = f"Extra {resource_type} files: {', '.join(extra_names)}."
-        if ignore_extras:
-            logger.warning(msg)
-        else:
-            error_msg.append(msg)
-    missing_files = [name for name in expected_names if name not in bundle_names]
-    if missing_files:
-        error_msg.append(f"Missing {resource_type} files: {', '.join(missing_files)}.")
-
-    if error_msg:
-        raise AssertionError('\n '.join(error_msg))
-
-
-def get_kubectl_items(prefixes: Union[str, List[str]], service_type: str) -> Dict[str, Any]:
-    if service_type == "pvc":
-        service_type = "persistentvolumeclaim"
-    if isinstance(prefixes, str):
-        prefixes = [prefixes]
-    kubectl_items = run(f"kubectl get {service_type}s -A -o json")
-    filtered = []
-    for item in kubectl_items["items"]:
-        for prefix in prefixes:
-            if item["metadata"]["name"].startswith(prefix):
-                filtered.append(item)
-    return filtered
 
 
 def get_file_map(

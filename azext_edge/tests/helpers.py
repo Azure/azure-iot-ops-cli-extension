@@ -7,11 +7,113 @@
 import json
 import os
 import shutil
+from fnmatch import fnmatch
 from knack.log import get_logger
-from typing import Dict
+from typing import Any, Dict, List, Optional, Union
 from azure.cli.core.azclierror import CLIInternalError
+import pytest
+
+from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 
 logger = get_logger(__name__)
+
+
+def filter_resources(
+    kubectl_items: List[Dict[str, Any]],
+    prefixes: Optional[Union[str, List[str]]] = None,
+    resource_match: Optional[str] = None,
+) -> Dict[str, Any]:
+    def pass_conditions(item: Dict[str, Any]) -> bool:
+        name = item["metadata"]["name"]
+        if resource_match and not fnmatch(name, resource_match):
+            return False
+        if prefixes and not any(name.startswith(prefix) for prefix in prefixes):
+            return False
+        return True
+
+    filtered = {}
+    for item in kubectl_items.get("items", []):
+        if pass_conditions(item):
+            filtered[item["metadata"]["name"]] = item
+    return filtered
+
+
+def find_extra_or_missing_names(
+    resource_type: str, result_names: List[str], expected_names: List[str], ignore_extras: bool = False
+):
+    error_msg = []
+    extra_names = [name for name in result_names if name not in expected_names]
+    if extra_names:
+        msg = f"Extra {resource_type} names: {', '.join(extra_names)}."
+        if ignore_extras:
+            logger.warning(msg)
+        else:
+            error_msg.append(msg)
+    missing_names = [name for name in expected_names if name not in result_names]
+    if missing_names:
+        error_msg.append(f"Missing {resource_type} names: {', '.join(missing_names)}.")
+
+    if error_msg:
+        raise AssertionError('\n '.join(error_msg))
+
+
+def get_plural_map(
+    api_group: str,
+) -> Dict[str, str]:
+    plural_map: Dict[str, str] = {}
+    try:
+        # prefer to use another tool to get resources
+        api_table = run(f"kubectl api-resources --api-group={api_group}")
+        api_resources = [line.split() for line in api_table.split("\n")]
+        api_resources = api_resources[1:-1]
+        plural_map = {line[-1].lower(): line[0] for line in api_resources}
+    except CLIInternalError:
+        pytest.skip("Cannot access resources via kubectl.")
+    return plural_map
+
+
+def get_kubectl_custom_items(
+    resource_api: EdgeResourceApi,
+    namespace: Optional[str] = None,
+    resource_match: Optional[str] = None,
+    include_plural: bool = False
+) -> Dict[str, Any]:
+    plural_map = get_plural_map(resource_api.group)
+
+    namespace = f"-n {namespace}" if namespace else "-A"
+    resource_map = {}
+    for kind in resource_api.kinds:
+        cluster_resources = {}
+        if plural_map.get(kind):
+            cluster_resources = run(
+                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
+            )
+        resource_map[kind] = filter_resources(
+            kubectl_items=cluster_resources,
+            resource_match=resource_match
+        )
+        if include_plural:
+            resource_map[kind]["_plural"] = plural_map[kind]
+    return resource_map
+
+
+def get_kubectl_workload_items(
+    prefixes: Union[str, List[str]],
+    service_type: str,
+    namespace: Optional[str] = None,
+    resource_match: Optional[str] = None,
+) -> Dict[str, Any]:
+    if service_type == "pvc":
+        service_type = "persistentvolumeclaim"
+    if isinstance(prefixes, str):
+        prefixes = [prefixes]
+    namespace_param = f"-n {namespace}" if namespace else "-A"
+    kubectl_items = run(f"kubectl get {service_type}s {namespace_param} -o json")
+    return filter_resources(
+        kubectl_items=kubectl_items,
+        prefixes=prefixes,
+        resource_match=resource_match
+    )
 
 
 def parse_rest_command(rest_command: str) -> Dict[str, str]:
@@ -46,7 +148,9 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
     """
     import subprocess
 
-    result = subprocess.run(command, check=False, shell=shell_mode, text=True, capture_output=True)
+    result = subprocess.run(
+        command, check=False, shell=shell_mode, text=True, capture_output=True, encoding="utf-8", errors="replace"
+    )
     if expect_failure and result.returncode == 0:
         raise CLIInternalError(f"Command `{command}` did not fail as expected.")
     elif not expect_failure and result.returncode != 0:
