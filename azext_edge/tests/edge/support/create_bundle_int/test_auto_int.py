@@ -18,7 +18,7 @@ from .helpers import (
     run_bundle_command,
     BASE_ZIP_PATH
 )
-from ....helpers import find_extra_or_missing_names
+from ....helpers import find_extra_or_missing_names, run
 
 logger = get_logger(__name__)
 
@@ -54,7 +54,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         )
 
     # Level 0 - top
-    namespace, _ = process_top_levels(walk_result, ops_service)
+    namespace = process_top_levels(walk_result, ops_service).aio
 
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
@@ -73,7 +73,13 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             walk_result[path.join(BASE_ZIP_PATH, namespace, "mq")]["folders"] = []
 
     # Level 2 and 3 - bottom
-    assert len(walk_result) == (len(expected_services) + int("clusterconfig" in expected_services))
+    actual_walk_result = (len(expected_services) + int("clusterconfig" in expected_services))
+    lnm_instances = run("kubectl get lnm -A") or []
+
+    if ops_service in [OpsServiceType.auto.value, OpsServiceType.lnm.value] and namespace in lnm_instances:
+        # when a lnm instance is deployed, more lnm resources will be under namespace kube-system
+        actual_walk_result += 1
+    assert len(walk_result) == actual_walk_result
     for directory in walk_result:
         assert not walk_result[directory]["folders"]
         assert_file_names(walk_result[directory]["files"])
