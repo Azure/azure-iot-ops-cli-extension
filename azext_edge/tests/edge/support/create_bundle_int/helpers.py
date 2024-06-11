@@ -12,7 +12,13 @@ import pytest
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
-from ....helpers import PLURAL_KEY, find_extra_or_missing_names, get_kubectl_custom_items, get_kubectl_workload_items, run
+from ....helpers import (
+    PLURAL_KEY,
+    find_extra_or_missing_names,
+    get_kubectl_custom_items,
+    get_kubectl_workload_items,
+    run
+)
 
 
 logger = get_logger(__name__)

@@ -7,7 +7,13 @@
 from typing import Any, Dict, Optional, Tuple
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
-from ....helpers import PLURAL_KEY, find_extra_or_missing_names, get_kubectl_workload_items, run, sort_kubectl_items_by_namespace
+from ....helpers import (
+    PLURAL_KEY,
+    find_extra_or_missing_names,
+    get_kubectl_workload_items,
+    run,
+    sort_kubectl_items_by_namespace
+)
 
 
 def assert_enumerate_resources(

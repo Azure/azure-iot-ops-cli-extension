@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 @pytest.mark.parametrize("post", [None, False, True])
 @pytest.mark.parametrize("pre", [None, False, True])
 def test_check_pre_post(init_setup, post, pre):
-    command = f"az iot ops check --as-object "
+    command = "az iot ops check --as-object "
     if pre is not None:
         command += f" --pre {pre}"
     if post is not None:
