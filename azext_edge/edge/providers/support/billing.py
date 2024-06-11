@@ -25,7 +25,7 @@ from .base import (
 
 logger = get_logger(__name__)
 
-AIO_BILLING_USAGE_NAME_LABEL = COMPONENT_LABEL_FORMAT.format(label="microsoft-iotoperations")
+AIO_BILLING_USAGE_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations")
 ARC_BILLING_EXTENSION_COMP_LABEL = COMPONENT_LABEL_FORMAT.format(label="billing-operator")
 BILLING_RESOURCE_KIND = "billing"
 ARC_BILLING_DIRECTORY_PATH = f"{CLUSTER_CONFIG_API_V1.moniker}/{BILLING_RESOURCE_KIND}"
