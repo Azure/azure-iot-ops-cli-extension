@@ -36,7 +36,7 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_SERVICE_LABEL,
     AKRI_WEBHOOK_LABEL,
 )
-from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, ARC_AGENTS_SERVICE_LABEL, MONIKER
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
@@ -68,7 +68,7 @@ from azext_edge.edge.providers.support.orc import (
     ORC_CONTROLLER_LABEL,
 )
 from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
-from azext_edge.edge.providers.support.shared import NAME_LABEL_FORMAT
+from azext_edge.edge.providers.support.shared import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
 from ...generators import generate_random_string
@@ -1170,27 +1170,27 @@ def test_create_bundle_arc_agents(
             mocked_client,
             mocked_zipfile,
             mocked_list_pods,
-            label_selector=f"app.kubernetes.io/component in ({component})",
+            label_selector=COMPONENT_LABEL_FORMAT.format(label=component),
             directory_path=f"{MONIKER}/{component}",
             since_seconds=since_seconds
         )
         assert_list_replica_sets(
             mocked_client,
             mocked_zipfile,
-            label_selector=f"app.kubernetes.io/component in ({component})",
+            label_selector=COMPONENT_LABEL_FORMAT.format(label=component),
             directory_path=f"{MONIKER}/{component}"
         )
         assert_list_deployments(
             mocked_client,
             mocked_zipfile,
-            label_selector=f"app.kubernetes.io/component in ({component})",
+            label_selector=COMPONENT_LABEL_FORMAT.format(label=component),
             directory_path=f"{MONIKER}/{component}"
         )
         if has_service:
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
-                label_selector="app.kubernetes.io/managed-by in (Helm)",
+                label_selector=ARC_AGENTS_SERVICE_LABEL,
                 directory_path=f"{MONIKER}/{component}",
                 mock_names=[f"{component}"]
             )

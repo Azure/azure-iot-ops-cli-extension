@@ -9,6 +9,8 @@ from typing import Iterable
 
 from knack.log import get_logger
 
+from azext_edge.edge.providers.support.shared import COMPONENT_LABEL_FORMAT
+
 from .base import (
     DAY_IN_SECONDS,
     process_deployments,
@@ -20,6 +22,7 @@ from .base import (
 logger = get_logger(__name__)
 
 MONIKER = "arcagents"
+ARC_AGENTS_SERVICE_LABEL = "app.kubernetes.io/managed-by in (Helm)"
 ARC_AGENTS = [
     ("cluster-identity-operator", False), # (component, has_services)
     ("clusterconnect-agent", False),
@@ -67,14 +70,14 @@ def fetch_resources(func: callable, since_seconds: int = None) -> list:
     for component, has_service in ARC_AGENTS:
         kwargs: dict = {
             'directory_path': f"{MONIKER}/{component}",
-            'label_selector': f"app.kubernetes.io/component in ({component})"
+            'label_selector': COMPONENT_LABEL_FORMAT.format(label=component),
         }
         if since_seconds:
             kwargs['since_seconds'] = since_seconds
         if func==process_services:
             if not has_service:
                 continue
-            kwargs['label_selector'] = "app.kubernetes.io/managed-by in (Helm)"
+            kwargs['label_selector'] = ARC_AGENTS_SERVICE_LABEL
             kwargs['prefix_names'] = [component]
 
         resources.extend(func(**kwargs))

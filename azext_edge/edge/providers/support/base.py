@@ -109,7 +109,7 @@ def process_v1_pods(
 
         # exclude evicted pods from log capture since they are not accessible
         pod_status = pod.status
-        if pod_status and pod_status.get("phase", "") == "Failed" and pod_status.get("reason", "") == "Evicted":
+        if pod_status and pod_status.phase == "Failed" and pod_status.reason == "Evicted":
                 logger.info(f"Pod {pod_name} in namespace {pod_namespace} is evicted. Skipping log capture.")
         else:
             processed.extend(
