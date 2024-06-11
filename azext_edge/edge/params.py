@@ -108,15 +108,6 @@ def load_iotops_arguments(self, _):
             "pod containers will not be captured, as they are inaccessible. For details on why "
             "a pod was evicted, please refer to the related pod and node files. "
             "Usage may add considerable size to the produced bundle.",
-        )
-        context.argument(
-            "resource_name",
-            options_list=["--resource-name", "--rn"],
-            help="Only capture for the specific resource name. "
-            "The name is case insensitive. "
-            "Glob patterns '*' and '?' are supported. "
-            "Note: Only alphanumeric characters, hyphens, '?' and '*' are allowed.",
-            validator=validate_resource_name,
         ),
 
 

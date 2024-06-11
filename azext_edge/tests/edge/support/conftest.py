@@ -6,6 +6,8 @@
 
 from functools import partial
 from typing import List
+
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from ...generators import generate_random_string
 
 import pytest
@@ -29,7 +31,7 @@ def add_pod_to_mocked_pods(
     for pod_name in mock_names:
         container_name = generate_random_string()
         spec = V1PodSpec(containers=[V1Container(name=container_name)])
-        pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
+        pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec, status={"phase": "Running"})
 
         if mock_init_containers:
             pod.spec.init_containers = [V1Container(name="mock-init-container")]
@@ -199,9 +201,20 @@ def mocked_list_pods(mocked_client):
         for pod_name in pod_names:
             container_name = generate_random_string()
             spec = V1PodSpec(containers=[V1Container(name=container_name)])
-            pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
+            pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec, status={"phase": "Running"})
             pods.append(pod)
             expected_pod_map[namespace][pod_name] = {container_name: mock_log}
+        
+        # add evicted pod for testing
+        evicted_pod_name = "evicted_pod"
+        evicted_pod_spec = V1PodSpec(containers=[V1Container(name=generate_random_string())])
+        evicted_pod = V1Pod(
+            metadata=V1ObjectMeta(namespace=namespace, name=evicted_pod_name),
+            spec=evicted_pod_spec,
+            status={"phase": "Failed", "reason": "Evicted"}
+        )
+        pods.append(evicted_pod)
+        expected_pod_map[namespace][evicted_pod_name] = {evicted_pod.spec.containers[0].name: mock_log}
 
     pods_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
@@ -473,3 +486,20 @@ def mocked_mq_get_traces(mocker):
     patched_get_traces = mocker.patch("azext_edge.edge.providers.support.mq.get_traces")
     patched_get_traces.return_value = [(test_zipinfo, "trace_data")]
     yield patched_get_traces
+
+
+@pytest.fixture
+def mocked_get_arc_services(mocked_client):
+    from kubernetes.client.models import V1ServiceList, V1Service, V1ObjectMeta
+
+    def _handle_list_arc_services(*args, **kwargs):
+        service_list = []
+        for name, _ in ARC_AGENTS:
+            service_list.append(V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        service_list = V1ServiceList(items=service_list)
+
+        return service_list
+
+    mocked_client.CoreV1Api().list_service_for_all_namespaces.side_effect = _handle_list_arc_services
+
+    yield mocked_client

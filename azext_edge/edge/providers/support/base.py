@@ -108,21 +108,21 @@ def process_v1_pods(
                 pod_containers.extend(init_pod_containers)
 
         # exclude evicted pods from log capture since they are not accessible
-        if p.status.phase == "Failed" and p.status.reason == "Evicted":
-            logger.info(f"Pod {pod_name} in namespace {pod_namespace} is evicted. Skipping log capture.")
-            continue
-
-        processed.extend(
-            _capture_pod_container_logs(
-                directory_path=directory_path,
-                pod_containers=pod_containers,
-                pod_name=pod_name,
-                pod_namespace=pod_namespace,
-                v1_api=v1_api,
-                since_seconds=since_seconds,
-                capture_previous_logs=capture_previous_logs,
+        pod_status = pod.status
+        if pod_status and pod_status.get("phase", "") == "Failed" and pod_status.get("reason", "") == "Evicted":
+                logger.info(f"Pod {pod_name} in namespace {pod_namespace} is evicted. Skipping log capture.")
+        else:
+            processed.extend(
+                _capture_pod_container_logs(
+                    directory_path=directory_path,
+                    pod_containers=pod_containers,
+                    pod_name=pod_name,
+                    pod_namespace=pod_namespace,
+                    v1_api=v1_api,
+                    since_seconds=since_seconds,
+                    capture_previous_logs=capture_previous_logs,
+                )
             )
-        )
 
         if include_metrics:
             try:

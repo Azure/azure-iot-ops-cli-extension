@@ -71,7 +71,9 @@ def fetch_resources(func: callable, since_seconds: int = None) -> list:
         }
         if since_seconds:
             kwargs['since_seconds'] = since_seconds
-        if has_service and func==process_services:
+        if func==process_services:
+            if not has_service:
+                continue
             kwargs['label_selector'] = "app.kubernetes.io/managed-by in (Helm)"
             kwargs['prefix_names'] = [component]
 

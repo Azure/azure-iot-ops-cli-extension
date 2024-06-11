@@ -36,6 +36,7 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_SERVICE_LABEL,
     AKRI_WEBHOOK_LABEL,
 )
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
@@ -81,15 +82,15 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
     [
         [],
         [MQ_API_V1B1],
-        # [MQ_API_V1B1, MQ_ACTIVE_API],
-        # [MQ_API_V1B1, OPCUA_API_V1],
-        # [MQ_API_V1B1, DATA_PROCESSOR_API_V1],
-        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
-        # [MQ_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
-        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
-        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1],
-        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1, CLUSTER_CONFIG_API_V1],
+        [MQ_API_V1B1, MQ_ACTIVE_API],
+        [MQ_API_V1B1, OPCUA_API_V1],
+        [MQ_API_V1B1, DATA_PROCESSOR_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1, CLUSTER_CONFIG_API_V1],
     ],
     indirect=True,
 )
@@ -800,7 +801,12 @@ def assert_list_pods(
                     f"kind: Pod\nmetadata:\n  name: {pod_name}\n  namespace: {namespace}\nspec:\n  "
                     f"containers:\n  - name: {container_name}\n"
                 )
-                data += init_data
+                if pod_name == "evicted_pod":
+                    status = "status:\n  phase: Failed\n  reason: Evicted\n"
+                else:
+                    status = "status:\n  phase: Running\n"
+
+                data += f"{init_data}{status}"
 
                 assert_zipfile_write(
                     mocked_zipfile,
@@ -810,20 +816,26 @@ def assert_list_pods(
 
                 if "since_seconds" in kwargs:
                     for previous_logs in [False, True]:
-                        mocked_client.CoreV1Api().read_namespaced_pod_log.assert_any_call(
-                            name=pod_name,
-                            namespace=namespace,
-                            since_seconds=kwargs["since_seconds"],
-                            container=container_name,
-                            previous=previous_logs,
-                        )
                         previous_segment = ".previous" if previous_logs else ""
-                        assert_zipfile_write(
-                            mocked_zipfile,
-                            zinfo=f"{namespace}/{directory_path}/"
-                            f"pod.{pod_name}.{container_name}{previous_segment}.log",
-                            data=pods_with_container[namespace][pod_name][container_name],
-                        )
+
+                        try:
+                            mocked_client.CoreV1Api().read_namespaced_pod_log.assert_any_call(
+                                name=pod_name,
+                                namespace=namespace,
+                                since_seconds=kwargs["since_seconds"],
+                                container=container_name,
+                                previous=previous_logs,
+                            )
+                            assert_zipfile_write(
+                                mocked_zipfile,
+                                zinfo=f"{namespace}/{directory_path}/"
+                                f"pod.{pod_name}.{container_name}{previous_segment}.log",
+                                data=pods_with_container[namespace][pod_name][container_name],
+                            )
+                        except AssertionError:
+                            # if pod is evicted, no logs are available
+                            assert "evicted_pod" in pod_name
+                            
 
 
 def assert_list_replica_sets(
@@ -1104,3 +1116,81 @@ def test_create_bundle_mq_traces(
     test_zipinfo.file_size = 0
     test_zipinfo.compress_size = 0
     assert_zipfile_write(mocked_zipfile, zinfo=test_zipinfo, data="trace_data")
+
+
+@pytest.mark.parametrize(
+    "mocked_cluster_resources",
+    [
+        [],
+        [MQ_API_V1B1],
+        [MQ_API_V1B1, MQ_ACTIVE_API],
+        [MQ_API_V1B1, OPCUA_API_V1],
+        [MQ_API_V1B1, DATA_PROCESSOR_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1, CLUSTER_CONFIG_API_V1],
+    ],
+    indirect=True,
+)
+def test_create_bundle_arc_agents(
+    mocked_client,
+    mocked_cluster_resources,
+    mocked_config,
+    mocked_os_makedirs,
+    mocked_zipfile,
+    mocked_get_custom_objects,
+    mocked_list_cron_jobs,
+    mocked_list_jobs,
+    mocked_list_deployments,
+    mocked_list_persistent_volume_claims,
+    mocked_list_pods,
+    mocked_list_replicasets,
+    mocked_list_statefulsets,
+    mocked_list_daemonsets,
+    mocked_list_nodes,
+    mocked_list_cluster_events,
+    mocked_list_storage_classes,
+    mocked_get_stats,
+    mocked_root_logger,
+    mocked_mq_active_api,
+    mocked_namespaced_custom_objects,
+    mocked_get_arc_services
+):
+    since_seconds = random.randint(86400, 172800)
+    result = support_bundle(None, bundle_dir=a_bundle_dir, include_arc_agents=True, log_age_seconds=since_seconds)
+
+    assert "bundlePath" in result
+    assert a_bundle_dir in result["bundlePath"]
+    
+    for component, has_service in ARC_AGENTS:
+        assert_list_pods(
+            mocked_client,
+            mocked_zipfile,
+            mocked_list_pods,
+            label_selector=f"app.kubernetes.io/component in ({component})",
+            directory_path=f"{MONIKER}/{component}",
+            since_seconds=since_seconds
+        )
+        assert_list_replica_sets(
+            mocked_client,
+            mocked_zipfile,
+            label_selector=f"app.kubernetes.io/component in ({component})",
+            directory_path=f"{MONIKER}/{component}"
+        )
+        assert_list_deployments(
+            mocked_client,
+            mocked_zipfile,
+            label_selector=f"app.kubernetes.io/component in ({component})",
+            directory_path=f"{MONIKER}/{component}"
+        )
+        if has_service:
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector="app.kubernetes.io/managed-by in (Helm)",
+                directory_path=f"{MONIKER}/{component}",
+                mock_names=[f"{component}"]
+            )
