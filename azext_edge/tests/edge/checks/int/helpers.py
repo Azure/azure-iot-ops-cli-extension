@@ -7,7 +7,7 @@
 from typing import Any, Dict, Optional, Tuple
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
-from ....helpers import find_extra_or_missing_names, get_kubectl_workload_items, run
+from ....helpers import PLURAL_KEY, find_extra_or_missing_names, get_kubectl_workload_items, run, sort_kubectl_items_by_namespace
 
 
 def assert_enumerate_resources(
@@ -18,7 +18,6 @@ def assert_enumerate_resources(
     resource_kinds: list,
     present: bool = True
 ):
-    # TODO: see if description_name and key_name can be combined for services (OPCUA)
     key = f"enumerate{key_name}Api"
     status = "success" if present else "skipped"
     assert post_deployment[key]
@@ -96,7 +95,7 @@ def assert_general_eval_custom_resources(
 ):
     # this should check general shared attributes for different services.
     # specific target checks should be in separate functions
-    resource_plural = items["_plural"]
+    resource_plural = items[PLURAL_KEY]
     key = None
     for possible_key in post_deployment:
         if possible_key.lower() == f"eval{resource_plural}":
@@ -112,7 +111,7 @@ def assert_general_eval_custom_resources(
     assert post_deployment[key]["description"].replace(" ", "").endswith(resource_plural)
 
     # check the target existence
-    sorted_items = sort_by_namespace(items, include_all=include_all_namespace)
+    sorted_items = sort_kubectl_items_by_namespace(items, include_all=include_all_namespace)
     target_key = f"{resource_plural}.{resource_api.group}"
     assert target_key in post_deployment[key]["targets"]
     namespace_dict = post_deployment[key]["targets"][target_key]
@@ -149,22 +148,3 @@ def run_check_command(
     result = run(command)
 
     return {cond["name"]: cond for cond in result["postDeployment"]}, service_present
-
-
-def sort_by_namespace(
-    kubectl_items: Dict[str, Any],
-    include_all: bool = False
-) -> Dict[str, Dict[str, Any]]:
-    sorted_items = {}
-    if include_all:
-        sorted_items["_all_"] = {}
-    for name, item in kubectl_items.items():
-        if name == "_plural":
-            continue
-        namespace = item["metadata"]["namespace"]
-        if namespace not in sorted_items:
-            sorted_items[namespace] = {}
-        sorted_items[namespace][name] = item
-        if include_all:
-            sorted_items["_all_"][name] = item
-    return sorted_items

@@ -12,7 +12,7 @@ import pytest
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
-from ....helpers import find_extra_or_missing_names, get_kubectl_custom_items, get_kubectl_workload_items, run
+from ....helpers import PLURAL_KEY, find_extra_or_missing_names, get_kubectl_custom_items, get_kubectl_workload_items, run
 
 
 logger = get_logger(__name__)
@@ -117,13 +117,16 @@ def check_custom_resource_files(
     resource_map = get_kubectl_custom_items(
         resource_api=resource_api,
         namespace=namespace,
+        include_plural=True
     )
     for kind in resource_api.kinds:
         cluster_resources = resource_map[kind]
-        assert len(cluster_resources.keys()) == len(file_objs.get(kind, []))
-        for resource in file_objs.get(kind, []):
-            assert resource["name"] in cluster_resources.keys()
-            assert resource["version"] == resource_api.version
+        # subresources like scale will not have a plural
+        if cluster_resources.get(PLURAL_KEY):
+            assert len(cluster_resources.keys()) - 1 == len(file_objs.get(kind, []))
+            for resource in file_objs.get(kind, []):
+                assert resource["name"] in cluster_resources.keys()
+                assert resource["version"] == resource_api.version
 
 
 def check_workload_resource_files(

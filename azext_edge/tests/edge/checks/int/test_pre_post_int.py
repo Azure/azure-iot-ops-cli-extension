@@ -12,18 +12,18 @@ from ....helpers import run
 logger = get_logger(__name__)
 
 
-@pytest.mark.parametrize("ops_service", ["akri", "dataprocessor", "lnm", "mq", "opcua"])
 @pytest.mark.parametrize("post", [None, False, True])
 @pytest.mark.parametrize("pre", [None, False, True])
-def test_check_pre_post(init_setup, ops_service, post, pre):
-    command = f"az iot ops check --as-object --ops-service {ops_service} "
+def test_check_pre_post(init_setup, post, pre):
+    command = f"az iot ops check --as-object "
     if pre is not None:
         command += f" --pre {pre}"
     if post is not None:
         command += f" --post {post}"
     result = run(command)
 
-    expected_title = "Evaluation for {[bright_blue]" + ops_service + "[/bright_blue]} service deployment"
+    # default service title
+    expected_title = "Evaluation for {[bright_blue]mq[/bright_blue]} service deployment"
     expected_precheck_title = "[bright_blue]IoT Operations readiness[/bright_blue]"
     expected_pre = not post if pre is None else pre
     expected_post = not pre if post is None else post

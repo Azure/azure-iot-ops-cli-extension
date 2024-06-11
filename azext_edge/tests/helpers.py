@@ -17,24 +17,25 @@ from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 
 logger = get_logger(__name__)
 
+PLURAL_KEY = "_plural_"
+
 
 def filter_resources(
     kubectl_items: List[Dict[str, Any]],
     prefixes: Optional[Union[str, List[str]]] = None,
     resource_match: Optional[str] = None,
 ) -> Dict[str, Any]:
-    def pass_conditions(item: Dict[str, Any]) -> bool:
-        name = item["metadata"]["name"]
-        if resource_match and not fnmatch(name, resource_match):
-            return False
-        if prefixes and not any(name.startswith(prefix) for prefix in prefixes):
-            return False
-        return True
-
     filtered = {}
     for item in kubectl_items.get("items", []):
-        if pass_conditions(item):
-            filtered[item["metadata"]["name"]] = item
+        name = item["metadata"]["name"]
+        # resources should not be added if
+        if not any([
+            # there is no valid resource match when looking for one
+            resource_match and not fnmatch(name, resource_match),
+            # or there is no valid prefix when looking for one
+            prefixes and not any(name.startswith(prefix) for prefix in prefixes)
+        ]):
+            filtered[name] = item
     return filtered
 
 
@@ -60,12 +61,11 @@ def find_extra_or_missing_names(
 def get_plural_map(
     api_group: str,
 ) -> Dict[str, str]:
+    """Returns a mapping of resource type to it's plural value."""
     plural_map: Dict[str, str] = {}
     try:
-        # prefer to use another tool to get resources
-        api_table = run(f"kubectl api-resources --api-group={api_group}")
-        api_resources = [line.split() for line in api_table.split("\n")]
-        api_resources = api_resources[1:-1]
+        api_table = run(f"kubectl api-resources --api-group={api_group} --no-headers=true")
+        api_resources = [line.split() for line in api_table.strip().split("\n")]
         plural_map = {line[-1].lower(): line[0] for line in api_resources}
     except CLIInternalError:
         pytest.skip("Cannot access resources via kubectl.")
@@ -78,22 +78,36 @@ def get_kubectl_custom_items(
     resource_match: Optional[str] = None,
     include_plural: bool = False
 ) -> Dict[str, Any]:
-    plural_map = get_plural_map(resource_api.group)
+    """
+    Gets all kubectl custom items for a resource api and sorts it by type.
+    Dictionary keys are resource api kinds and the values are the unchanged items.
+    """
+    plural_map = {}
+    if include_plural:
+        plural_map = get_plural_map(resource_api.group)
 
     namespace = f"-n {namespace}" if namespace else "-A"
     resource_map = {}
     for kind in resource_api.kinds:
         cluster_resources = {}
-        if plural_map.get(kind):
+        try:
             cluster_resources = run(
-                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
+                f"kubectl get {kind}.{resource_api.version}.{resource_api.group} {namespace} -o json"
             )
+        except CLIInternalError:
+            # sub resource like lnm scales
+            pass
+        # if plural_map.get(kind):
+        #     cluster_resources = run(
+        #         f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
+        #     )
         resource_map[kind] = filter_resources(
             kubectl_items=cluster_resources,
             resource_match=resource_match
         )
-        if include_plural:
-            resource_map[kind]["_plural"] = plural_map[kind]
+
+        if plural_map.get(kind):
+            resource_map[kind][PLURAL_KEY] = plural_map[kind]
     return resource_map
 
 
@@ -103,12 +117,13 @@ def get_kubectl_workload_items(
     namespace: Optional[str] = None,
     resource_match: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """Gets workload kubectl items for a specific type (ex: pods)."""
     if service_type == "pvc":
         service_type = "persistentvolumeclaim"
     if isinstance(prefixes, str):
         prefixes = [prefixes]
     namespace_param = f"-n {namespace}" if namespace else "-A"
-    kubectl_items = run(f"kubectl get {service_type}s {namespace_param} -o json")
+    kubectl_items = run(f"kubectl get {service_type} {namespace_param} -o json")
     return filter_resources(
         kubectl_items=kubectl_items,
         prefixes=prefixes,
@@ -149,7 +164,7 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
     import subprocess
 
     result = subprocess.run(
-        command, check=False, shell=shell_mode, text=True, capture_output=True, encoding="utf-8", errors="replace"
+        command, check=False, shell=shell_mode, text=True, capture_output=True
     )
     if expect_failure and result.returncode == 0:
         raise CLIInternalError(f"Command `{command}` did not fail as expected.")
@@ -161,3 +176,26 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
             return json.loads(result.stdout)
         except json.JSONDecodeError:
             return result.stdout
+
+
+def sort_kubectl_items_by_namespace(
+    kubectl_items: Dict[str, Any],
+    include_all: bool = False
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Transforms a list of kubectl items into a dictionary for easier access.
+    The keys are the names and the values are the unchanged items.
+    """
+    sorted_items = {}
+    if include_all:
+        sorted_items["_all_"] = {}
+    for name, item in kubectl_items.items():
+        if name == PLURAL_KEY:
+            continue
+        namespace = item["metadata"]["namespace"]
+        if namespace not in sorted_items:
+            sorted_items[namespace] = {}
+        sorted_items[namespace][name] = item
+        if include_all:
+            sorted_items["_all_"][name] = item
+    return sorted_items
