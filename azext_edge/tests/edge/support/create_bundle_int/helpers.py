@@ -182,6 +182,7 @@ def check_workload_resource_files(
                 converted_file[file["descriptor"]] = False
 
     expected_pods = get_kubectl_items(prefixes, service_type="pod")
+    check_log_for_evicted_pods(expected_pods, file_objs.get("pod", []))
     expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
     find_extra_or_missing_files("pod", file_pods.keys(), expected_pod_names)
 
@@ -225,6 +226,16 @@ def find_extra_or_missing_files(
 
     if error_msg:
         raise AssertionError('\n '.join(error_msg))
+
+
+def check_log_for_evicted_pods(expected_pods: List[Dict[str, Any]], file_pods: List[Dict[str, str]]):
+    for pod in expected_pods:
+        pod_status = pod["status"]["phase"]
+        status_reason = pod["status"].get("reason")
+        if pod_status == "Failed" and status_reason == "Evicted":
+            # no pod file should found both have pod["metadata"]["name"] and log extension
+            pod_files = [file["name"] for file in file_pods if file["name"] == pod["metadata"]["name"] and file["extension"] == "log"]
+            assert not pod_files, f"Evicted pod {pod['metadata']['name']} log found in bundle."         
 
 
 def get_kubectl_items(prefixes: Union[str, List[str]], service_type: str) -> Dict[str, Any]:
