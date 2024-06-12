@@ -312,7 +312,7 @@ jobs:
           az iot ops mq get-password-hash -p test
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
           az iot ops verify-host
-      - name: "Test cluster deletion"
+      - name: "Delete Cluster for redeployment"
         if: ${{matrix.feature == 'ca-certs'}}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
@@ -336,7 +336,9 @@ jobs:
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
           csi-config: ${{ matrix.csi-config || ''}}
           include-dp: ${{ matrix.include-dp }}
-
+      - name: "Delete cluster resources"
+        run: |
+          az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
   # Optional cleanup job
   cleanup:
     needs: [test]
