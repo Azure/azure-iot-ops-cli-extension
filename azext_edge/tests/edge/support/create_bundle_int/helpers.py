@@ -12,6 +12,7 @@ from azure.cli.core.azclierror import CLIInternalError
 import pytest
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from ....helpers import run
 
 
@@ -244,46 +245,59 @@ def get_file_map(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
     mq_traces: bool = False,
+    include_arc_agents: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    arc_namespace, namespace, c_namespace, lnm_namespace = process_top_levels(walk_result, ops_service)
-    walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
+    arc_namespace, aio_namespace, c_namespace, lnm_namespace = process_top_levels(walk_result, ops_service)
+
+    if aio_namespace:
+        walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
+        ops_path = path.join(BASE_ZIP_PATH, aio_namespace, ops_service)
 
     # Level 2 and 3 - bottom
     if ops_service == OpsServiceType.dataprocessor.value and not walk_result:
         return
 
-    ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
     # separate namespaces
     file_map = {"__namespaces__": {}}
+    expected_arc_walk_result = len(ARC_AGENTS) if include_arc_agents else 0
+
+    if arc_namespace:
+        file_map["arc"] = {}
+        file_map["__namespaces__"]["arc"] = arc_namespace
+        for agent, _ in ARC_AGENTS:
+            agent_path = path.join(BASE_ZIP_PATH, arc_namespace, "arcagents", agent)
+            file_map["arc"][agent] = convert_file_names(walk_result[agent_path]["files"])
+
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
-        assert len(walk_result) == 2
+        assert len(walk_result) == 2 + expected_arc_walk_result
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
     elif ops_service == "billing":
-        assert len(walk_result) == 2
-        ops_path = path.join(BASE_ZIP_PATH, namespace, "clusterconfig", ops_service)
+        assert len(walk_result) == 2 + expected_arc_walk_result
+        ops_path = path.join(BASE_ZIP_PATH, aio_namespace, "clusterconfig", ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "lnm":
-        assert len(walk_result) >= 1
-        ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
+        assert len(walk_result) >= 1 + expected_arc_walk_result
+        ops_path = path.join(BASE_ZIP_PATH, aio_namespace, ops_service)
 
         if lnm_namespace:
             lnm_path = path.join(BASE_ZIP_PATH, lnm_namespace, ops_service)
             file_map["svclb"] = convert_file_names(walk_result[lnm_path]["files"])
             file_map["__namespaces__"]["svclb"] = lnm_namespace
+    elif ops_service == "deviceregistry":
+        # expect not resource in aio namespace
+        assert len(walk_result) == expected_arc_walk_result
+        return file_map
     elif ops_service != "otel":
-        if arc_namespace:
-            arc_path = path.join(BASE_ZIP_PATH, arc_namespace, "arcagents")
-            file_map["arc"] = convert_file_names(walk_result[arc_path]["files"])
-        assert len(walk_result) == 1
+        assert len(walk_result) == 1 + expected_arc_walk_result
         assert not walk_result[ops_path]["folders"]
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
-    file_map["__namespaces__"]["aio"] = namespace
+    file_map["__namespaces__"]["aio"] = aio_namespace
     return file_map
 
 
@@ -297,7 +311,7 @@ def process_top_levels(
     if not level_0["folders"]:
         pytest.skip(f"No bundles created for {ops_service}.")
     namespaces = level_0["folders"]
-    namespace = namespaces[0]
+    namespace = None
     clusterconfig_namespace = None
     lnm_namespace = None
     arc_namespace = None
@@ -328,8 +342,8 @@ def process_top_levels(
             lnm_namespace = name
         elif _get_namespace_determinating_files(
             name=name,
-            folder="arcagents",
-            file_prefix=""
+            folder=path.join("arcagents", ARC_AGENTS[0][0]),
+            file_prefix=f"pod"
         ):
             arc_namespace = name
         else:
@@ -356,8 +370,11 @@ def process_top_levels(
     if arc_namespace:
         # remove empty arc related folders
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace))
-        assert level_1["folders"] == ["arc"]
+        assert level_1["folders"] == ["arcagents"]
         assert not level_1["files"]
+        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))
+        assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS]
+        assert not level_2["files"]
 
     logger.debug("Determined the following namespaces:")
     logger.debug(f"AIO namespace: {namespace}")

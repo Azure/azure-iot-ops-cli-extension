@@ -17,17 +17,27 @@ from .helpers import (
 
 logger = get_logger(__name__)
 
+AGENT_RESOURCE_PREFIXES = {
+    "cluster-identity-operator": "clusteridentityoperator",
+    "clusterconnect-agent": "clusterconnect-agent",
+    "config-agent": "config-agent",
+    "extension-events-collector": "extension-events-collector",
+    "extension-manager": "extension-manager",
+    "kube-aad-proxy": "kube-aad-proxy",
+    "cluster-metadata-operator": "cluster-metadata-operator",
+    "metrics-agent": "metrics-agent",
+    "resource-sync-agent": "resource-sync-agent"
+}
 
-@pytest.mark.parametrize("ops_service", [
-    OpsServiceType.mq.value,
-])
+
+@pytest.mark.parametrize("ops_service", OpsServiceType.list()[1:])
 @pytest.mark.parametrize("include_arc_agents", [False, True])
 def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents, ops_service):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
 
-    command = f"az iot ops support create-bundle --ops-service {ops_service.value} --arc {include_arc_agents}"
+    command = f"az iot ops support create-bundle --ops-service {ops_service} --arc {include_arc_agents}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
-    files = get_file_map(walk_result, ops_service)
+    files = get_file_map(walk_result=walk_result, ops_service=ops_service, include_arc_agents=include_arc_agents)
 
     if not include_arc_agents:
         # No arc agents should be included
@@ -44,4 +54,4 @@ def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents, 
             expected_workload_types.append("service")
 
         assert set(file_map.keys()).issubset(set(expected_workload_types))
-        check_workload_resource_files(file_map, expected_workload_types, agent)
+        check_workload_resource_files(file_map, expected_workload_types, AGENT_RESOURCE_PREFIXES[agent])
