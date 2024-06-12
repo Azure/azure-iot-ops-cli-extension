@@ -97,10 +97,6 @@ def get_kubectl_custom_items(
         except CLIInternalError:
             # sub resource like lnm scales
             pass
-        # if plural_map.get(kind):
-        #     cluster_resources = run(
-        #         f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
-        #     )
         resource_map[kind] = filter_resources(
             kubectl_items=cluster_resources,
             resource_match=resource_match
