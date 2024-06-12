@@ -21,14 +21,21 @@ logger = get_logger(__name__)
 @pytest.mark.parametrize("ops_service", [
     OpsServiceType.mq.value,
 ])
-@pytest.mark.parametrize("include_arc_agents", [True])
+@pytest.mark.parametrize("include_arc_agents", [False, True])
 def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents, ops_service):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
 
     command = f"az iot ops support create-bundle --ops-service {ops_service.value} --arc {include_arc_agents}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
-    agents_file_map = get_file_map(walk_result, ops_service)["arc"]
+    files = get_file_map(walk_result, ops_service)
+
+    if not include_arc_agents:
+        # No arc agents should be included
+        assert not hasattr(files, "arc")
+        return
     
+    agents_file_map = files["arc"]
+
     for agent, has_service in ARC_AGENTS:
         file_map = agents_file_map[agent]
         expected_workload_types = ["deployment", "pod", "replicaset"]
