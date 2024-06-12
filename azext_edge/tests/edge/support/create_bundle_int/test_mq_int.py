@@ -12,7 +12,7 @@ from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
-    get_kubectl_items,
+    get_kubectl_workload_items,
     run_bundle_command
 )
 
@@ -50,7 +50,7 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
 
     if traces:
         # one trace should have two files - grab by id
-        expected_pods = get_kubectl_items("aio-mq", service_type="pod")
+        expected_pods = get_kubectl_workload_items("aio-mq", service_type="pod")
         expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
         id_check = {}
         for file in traces["trace"]:
