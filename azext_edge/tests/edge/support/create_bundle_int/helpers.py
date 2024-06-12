@@ -246,7 +246,7 @@ def get_file_map(
     mq_traces: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    namespace, c_namespace, lnm_namespace, arc_namespace = process_top_levels(walk_result, ops_service)
+    arc_namespace, namespace, c_namespace, lnm_namespace = process_top_levels(walk_result, ops_service)
     walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
 
     # Level 2 and 3 - bottom
