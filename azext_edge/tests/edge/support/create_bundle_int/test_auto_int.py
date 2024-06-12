@@ -10,6 +10,7 @@ from os import mkdir, path
 from knack.log import get_logger
 from typing import Dict, List, Optional, Tuple
 from azext_edge.edge.common import OpsServiceType
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from .helpers import (
     assert_file_names,
     check_workload_resource_files,
