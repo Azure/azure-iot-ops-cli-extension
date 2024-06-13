@@ -28,4 +28,11 @@ def test_create_bundle_orc(init_setup, tracked_files):
     expected_types = set(expected_workload_types).union(ORC_API_V1.kinds)
     assert set(file_map.keys()).issubset(expected_types)
 
-    check_workload_resource_files(file_map, expected_workload_types, ["aio-cert", "aio-orc"])
+    # find bundle path from tracked_files that with .zip extension
+    bundle_path = next((file for file in tracked_files if file.endswith(".zip")), None)
+    check_workload_resource_files(
+        file_objs=file_map,
+        expected_workload_types=expected_workload_types,
+        prefixes=["aio-cert", "aio-orc"],
+        bundle_path=bundle_path
+    )

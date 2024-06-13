@@ -28,9 +28,13 @@ def test_create_bundle_opcua(init_setup, tracked_files):
     optional_workload_types = ["podmetric"]
     expected_types = set(expected_workload_types + optional_workload_types).union(OPCUA_API_V1.kinds)
     assert set(file_map.keys()).issubset(expected_types)
+
+    # find bundle path from tracked_files that with .zip extension
+    bundle_path = next((file for file in tracked_files if file.endswith(".zip")), None)
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,
         prefixes=["aio-opc", "opcplc"],
+        bundle_path=bundle_path,
         optional_workload_types=optional_workload_types
     )

@@ -111,7 +111,15 @@ def test_create_bundle_otel(init_setup, tracked_files):
 
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     assert set(file_map.keys()).issubset(set(expected_workload_types))
-    check_workload_resource_files(file_map, expected_workload_types, "aio-otel")
+
+    # find bundle path from tracked_files that with .zip extension
+    bundle_path = next((file for file in tracked_files if file.endswith(".zip")), None)
+    check_workload_resource_files(
+        file_objs=file_map,
+        expected_workload_types=expected_workload_types,
+        prefixes="aio-otel",
+        bundle_path=bundle_path
+    )
 
 
 def _get_expected_services(

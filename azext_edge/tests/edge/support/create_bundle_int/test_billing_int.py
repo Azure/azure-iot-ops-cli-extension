@@ -18,6 +18,8 @@ def test_create_bundle_billing(init_setup, tracked_files):
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
+    # find bundle path from tracked_files that with .zip extension
+    bundle_path = next((file for file in tracked_files if file.endswith(".zip")), None)
 
     # AIO
     check_custom_resource_files(
@@ -28,7 +30,12 @@ def test_create_bundle_billing(init_setup, tracked_files):
     expected_workload_types = ["cronjob", "job", "pod"]
     expected_types = set(expected_workload_types).union(CLUSTER_CONFIG_API_V1.kinds)
     assert set(file_map["aio"].keys()).issubset(set(expected_types))
-    check_workload_resource_files(file_map["aio"], expected_workload_types, ["aio-usage"])
+    check_workload_resource_files(
+        file_objs=file_map["aio"],
+        expected_workload_types=expected_workload_types,
+        prefixes=["aio-usage"],
+        bundle_path=bundle_path
+    )
 
     # USAGE
     check_custom_resource_files(
@@ -39,4 +46,9 @@ def test_create_bundle_billing(init_setup, tracked_files):
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     expected_types = set(expected_workload_types).union(CLUSTER_CONFIG_API_V1.kinds)
     assert set(file_map["usage"].keys()).issubset(expected_types)
-    check_workload_resource_files(file_map["usage"], expected_workload_types, ["billing-operator"])
+    check_workload_resource_files(
+        file_objs=file_map["usage"],
+        expected_workload_types=expected_workload_types,
+        prefixes=["billing-operator"],
+        bundle_path=bundle_path
+    )
