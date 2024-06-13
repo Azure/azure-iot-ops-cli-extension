@@ -303,13 +303,13 @@ def load_iotops_arguments(self, _):
             "disable_rsync_rules",
             options_list=["--disable-rsync-rules"],
             arg_type=get_three_state_flag(),
-            help="Resource sync rules will not be included in the deployment.",
+            help="Resource sync rules will not be included in the IoT Operations deployment.",
         )
         context.argument(
             "ensure_latest",
             options_list=["--ensure-latest"],
             arg_type=get_three_state_flag(),
-            help="Ensure the latest IoT Ops CLI is installed, raising an error if an upgrade is available.",
+            help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
         )
         # Akri
         context.argument(
@@ -345,9 +345,15 @@ def load_iotops_arguments(self, _):
         )
         # Data Processor
         context.argument(
+            "include_dp",
+            options_list=["--include-dp"],
+            arg_type=get_three_state_flag(),
+            help="Include Data Processor in the IoT Operations deployment. Default: false.",
+        )
+        context.argument(
             "dp_instance_name",
             options_list=["--dp-instance"],
-            help="Instance name for data processor. The default is in the form '{cluster_name}-ops-init-processor'.",
+            help="Instance name for Data Processor. The default is in the form '{cluster_name}-ops-init-processor'.",
             arg_group="Data Processor",
         )
         # MQ

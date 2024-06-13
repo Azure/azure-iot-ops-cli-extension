@@ -5,14 +5,20 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, NamedTuple, Optional, Union
 from os import path
 from zipfile import ZipFile
-from azure.cli.core.azclierror import CLIInternalError
 import pytest
+from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
-from ....helpers import run
+from ....helpers import (
+    PLURAL_KEY,
+    find_extra_or_missing_names,
+    get_kubectl_custom_items,
+    get_kubectl_workload_items,
+    run
+)
 
 
 logger = get_logger(__name__)
@@ -20,6 +26,12 @@ BASE_ZIP_PATH = "__root__"
 WORKLOAD_TYPES = [
     "cronjob", "daemonset", "deployment", "job", "pod", "podmetric", "pvc", "replicaset", "service", "statefulset"
 ]
+
+
+class NamespaceTuple(NamedTuple):
+    aio: str
+    usage_system: str
+    lnm_svclb: str
 
 
 def assert_file_names(files: List[str]):
@@ -106,38 +118,28 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
 def check_custom_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     resource_api: EdgeResourceApi,
-    namespace: Optional[str] = None
+    namespace: Optional[str] = None,
 ):
-    plural_map: Dict[str, str] = {}
-    try:
-        # prefer to use another tool to get resources
-        api_table = run(f"kubectl api-resources --api-group={resource_api.group}")
-        api_resources = [line.split() for line in api_table.split("\n")]
-        api_resources = api_resources[1:-1]
-        plural_map = {line[-1].lower(): line[0] for line in api_resources}
-    except CLIInternalError:
-        # fall back to python sdk if not possible
-        pytest.skip("Cannot access resources via kubectl.")
-
-    namespace = f"-n {namespace}" if namespace else "-A"
+    resource_map = get_kubectl_custom_items(
+        resource_api=resource_api,
+        namespace=namespace,
+        include_plural=True
+    )
     for kind in resource_api.kinds:
-        cluster_resources = {}
-        if plural_map.get(kind):
-            cluster_resources = run(
-                f"kubectl get {plural_map[kind]}.{resource_api.version}.{resource_api.group} {namespace} -o json"
-            )
-
-        expected_names = [r["metadata"]["name"] for r in cluster_resources.get("items", [])]
-        assert len(expected_names) == len(file_objs.get(kind, []))
-        for resource in file_objs.get(kind, []):
-            assert resource["name"] in expected_names
-            assert resource["version"] == resource_api.version
+        cluster_resources = resource_map[kind]
+        # subresources like scale will not have a plural
+        if cluster_resources.get(PLURAL_KEY):
+            assert len(cluster_resources.keys()) - 1 == len(file_objs.get(kind, []))
+            for resource in file_objs.get(kind, []):
+                assert resource["name"] in cluster_resources.keys()
+                assert resource["version"] == resource_api.version
 
 
 def check_workload_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     expected_workload_types: List[str],
-    prefixes: Union[str, List[str]]
+    prefixes: Union[str, List[str]],
+    optional_workload_types: Optional[List[str]] = None,
 ):
     if "pod" in expected_workload_types:
         expected_workload_types.remove("pod")
@@ -168,55 +170,29 @@ def check_workload_resource_files(
             if file["descriptor"] not in converted_file:
                 converted_file[file["descriptor"]] = False
 
-    expected_pods = get_kubectl_items(prefixes, service_type="pod")
-    expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
-    find_extra_or_missing_files("pod", file_pods.keys(), expected_pod_names)
+    expected_pods = get_kubectl_workload_items(prefixes, service_type="pod")
+    find_extra_or_missing_names("pod", file_pods.keys(), expected_pods.keys())
 
     for name, files in file_pods.items():
         for extension, value in files.items():
             assert value, f"Pod {name} is missing {extension}."
 
     # other
-    for key in expected_workload_types:
-        expected_items = get_kubectl_items(prefixes, service_type=key)
-        expected_item_names = [item["metadata"]["name"] for item in expected_items]
-        for file in file_objs.get(key, []):
-            assert file["extension"] == "yaml"
-        present_names = [file["name"] for file in file_objs.get(key, [])]
-        find_extra_or_missing_files(key, present_names, expected_item_names)
+    def _check_non_pod_files(workload_types: List[str], required: bool = False):
+        for key in workload_types:
+            try:
+                expected_items = get_kubectl_workload_items(prefixes, service_type=key)
+                for file in file_objs.get(key, []):
+                    assert file["extension"] == "yaml"
+                present_names = [file["name"] for file in file_objs.get(key, [])]
+                find_extra_or_missing_names(key, present_names, expected_items.keys())
+            except CLIInternalError as e:
+                if required:
+                    raise e
 
-
-def find_extra_or_missing_files(
-    resource_type: str, bundle_names: List[str], expected_names: List[str], ignore_extras: bool = False
-):
-    error_msg = []
-    extra_names = [name for name in bundle_names if name not in expected_names]
-    if extra_names:
-        msg = f"Extra {resource_type} files: {', '.join(extra_names)}."
-        if ignore_extras:
-            logger.warning(msg)
-        else:
-            error_msg.append(msg)
-    missing_files = [name for name in expected_names if name not in bundle_names]
-    if missing_files:
-        error_msg.append(f"Missing {resource_type} files: {', '.join(missing_files)}.")
-
-    if error_msg:
-        raise AssertionError('\n '.join(error_msg))
-
-
-def get_kubectl_items(prefixes: Union[str, List[str]], service_type: str) -> Dict[str, Any]:
-    if service_type == "pvc":
-        service_type = "persistentvolumeclaim"
-    if isinstance(prefixes, str):
-        prefixes = [prefixes]
-    kubectl_items = run(f"kubectl get {service_type}s -A -o json")
-    filtered = []
-    for item in kubectl_items["items"]:
-        for prefix in prefixes:
-            if item["metadata"]["name"].startswith(prefix):
-                filtered.append(item)
-    return filtered
+    _check_non_pod_files(expected_workload_types)
+    if optional_workload_types:
+        _check_non_pod_files(optional_workload_types, required=False)
 
 
 def get_file_map(
@@ -225,7 +201,7 @@ def get_file_map(
     mq_traces: bool = False
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    namespace, c_namespace = process_top_levels(walk_result, ops_service)
+    namespace, c_namespace, lnm_namespace = process_top_levels(walk_result, ops_service)
     walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
 
     # Level 2 and 3 - bottom
@@ -247,6 +223,14 @@ def get_file_map(
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
+    elif ops_service == "lnm":
+        assert len(walk_result) >= 1
+        ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
+
+        if lnm_namespace:
+            lnm_path = path.join(BASE_ZIP_PATH, lnm_namespace, ops_service)
+            file_map["svclb"] = convert_file_names(walk_result[lnm_path]["files"])
+            file_map["__namespaces__"]["svclb"] = lnm_namespace
     elif ops_service != "otel":
         assert len(walk_result) == 1
         assert not walk_result[ops_path]["folders"]
@@ -257,7 +241,7 @@ def get_file_map(
 
 def process_top_levels(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str
-) -> Tuple[str, str]:
+) -> NamespaceTuple:
     level_0 = walk_result.pop(BASE_ZIP_PATH)
     for file in ["events.yaml", "nodes.yaml", "storage_classes.yaml"]:
         assert file in level_0["files"]
@@ -266,20 +250,36 @@ def process_top_levels(
     namespaces = level_0["folders"]
     namespace = namespaces[0]
     clusterconfig_namespace = None
+    lnm_namespace = None
+
+    def _get_namespace_determinating_files(
+        name: str,
+        folder: str,
+        file_prefix: str
+    ) -> List[str]:
+        level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
+        return [f for f in level1.get("files", []) if f.startswith(file_prefix)]
+
     for name in namespaces:
-        # determine which namespace belongs to aio vs billing
-        level_1 = walk_result.get(path.join(BASE_ZIP_PATH, name, "clusterconfig", "billing"), {})
-        files = [f for f in level_1.get("files", []) if f.startswith("deployment")]
-        if files:
+        # determine which namespace belongs to aio vs billing vs lnm
+        if _get_namespace_determinating_files(
+            name=name,
+            folder=path.join("clusterconfig", "billing"),
+            file_prefix="deployment"
+        ):
             # if there is a deployment, should be azure-extensions-usage-system
             clusterconfig_namespace = name
+        elif _get_namespace_determinating_files(
+            name=name,
+            folder=OpsServiceType.lnm.value,
+            file_prefix="daemonset"
+        ):
+            # if there is a daemonset, should be kube-system
+            lnm_namespace = name
         else:
             namespace = name
 
     if clusterconfig_namespace:
-        logger.debug("Determined the following namespaces:")
-        logger.debug(f"AIO namespace: {namespace}")
-        logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
         # remove empty billing related folders
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
         assert level_1["folders"] == ["clusterconfig"]
@@ -291,7 +291,22 @@ def process_top_levels(
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
 
-    return namespace, clusterconfig_namespace
+    if lnm_namespace:
+        # remove empty lnm svclb related folders
+        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, lnm_namespace))
+        assert level_1["folders"] == ["lnm"]
+        assert not level_1["files"]
+
+    logger.debug("Determined the following namespaces:")
+    logger.debug(f"AIO namespace: {namespace}")
+    logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
+    logger.debug(f"LNM svclb namespace: {lnm_namespace}")
+
+    return NamespaceTuple(
+        aio=namespace,
+        usage_system=clusterconfig_namespace,
+        lnm_svclb=lnm_namespace
+    )
 
 
 def run_bundle_command(

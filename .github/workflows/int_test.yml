@@ -21,11 +21,6 @@ on:
         type: boolean
         required: false
         default: false
-      cleanup:
-        description: Attempt to cleanup resources after testing
-        type: boolean
-        required: false
-        default: false
     secrets:
       # required for az login
       AZURE_CLIENT_ID:
@@ -52,11 +47,6 @@ on:
         default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
       use-container:
         description: Build container image for tests
-        type: boolean
-        required: false
-        default: false
-      cleanup:
-        description: Attempt to cleanup resources after testing
         type: boolean
         required: false
         default: false
@@ -115,6 +105,7 @@ jobs:
           - feature: ca-certs
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
+            include-dp: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -224,6 +215,7 @@ jobs:
           kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
           csi-config: ${{ matrix.csi-config || ''}}
+          include-dp: ${{ matrix.include-dp }}
       - name: "Allow cluster to finish provisioning"
         run: |
           sleep 2m
@@ -310,7 +302,7 @@ jobs:
           az iot ops mq get-password-hash -p test
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
           az iot ops verify-host
-      - name: "Test cluster deletion"
+      - name: "Delete Cluster for redeployment"
         if: ${{matrix.feature == 'ca-certs'}}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
@@ -333,14 +325,10 @@ jobs:
           kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
           csi-config: ${{ matrix.csi-config || ''}}
-
-  # Optional cleanup job
-  cleanup:
-    needs: [test]
-    if: ${{ github.event.inputs.cleanup == 'true' }}
-    uses: './.github/workflows/cluster_cleanup.yml'
-    with:
-      cluster_prefix: ${{ needs.test.outputs.CLUSTER_PREFIX }}
-      resource_group: ${{ needs.test.outputs.RESOURCE_GROUP }}
-      keyvault_prefix: ${{ needs.test.outputs.KV_NAME }}
-    secrets: inherit
+          include-dp: ${{ matrix.include-dp }}
+      - name: "Delete AIO resources"
+        run: |
+          az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
+      - name: "Delete connected cluster"
+        run: |
+          az connectedk8s delete --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y

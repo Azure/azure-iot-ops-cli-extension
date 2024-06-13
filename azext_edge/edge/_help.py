@@ -195,9 +195,12 @@ def load_iotops_help():
         "iot ops init"
     ] = """
         type: command
-        short-summary: Bootstrap, configure and deploy IoT Operations to the target arc-enabled cluster.
-        long-summary: For additional resources including how to arc-enable a cluster see
+        short-summary: Bootstrap, configure and deploy IoT Operations to the target Arc-enabled cluster.
+        long-summary: |
+                      For additional resources including how to Arc-enable a cluster see
                       https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
+
+                      Note: Data Processor is not deployed by default. Use --include-dp to add it.
 
         examples:
         - name: Minimum input for complete setup. This includes Key Vault configuration, CSI driver deployment, TLS config and deployment of IoT Operations.
