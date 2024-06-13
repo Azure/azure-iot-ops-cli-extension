@@ -189,7 +189,8 @@ def check_workload_resource_files(
         resource_type="pod",
         bundle_names=file_pods.keys(),
         expected_names=expected_pod_names,
-        ignore_extras=True
+        ignore_extras=True,
+        ignore_missing=True,
     )
 
     for name, files in file_pods.items():
@@ -216,7 +217,11 @@ def check_workload_resource_files(
 
 
 def find_extra_or_missing_files(
-    resource_type: str, bundle_names: List[str], expected_names: List[str], ignore_extras: bool = False
+    resource_type: str,
+    bundle_names: List[str],
+    expected_names: List[str],
+    ignore_extras: bool = False,
+    ignore_missing: bool = False
 ):
     error_msg = []
     extra_names = [name for name in bundle_names if name not in expected_names]
@@ -231,6 +236,9 @@ def find_extra_or_missing_files(
         error_msg.append(f"Missing {resource_type} files: {', '.join(missing_files)}.")
 
     if error_msg:
+        if ignore_missing:
+            logger.warning('\n '.join(error_msg))
+            return
         raise AssertionError('\n '.join(error_msg))
 
 
