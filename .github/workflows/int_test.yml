@@ -326,6 +326,9 @@ jobs:
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
           csi-config: ${{ matrix.csi-config || ''}}
           include-dp: ${{ matrix.include-dp }}
-      - name: "Delete cluster resources"
+      - name: "Delete AIO resources"
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
+      - name: "Delete connected cluster"
+        run: |
+          az connectedk8s delete --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
