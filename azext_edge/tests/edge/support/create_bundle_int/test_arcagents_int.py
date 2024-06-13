@@ -36,7 +36,7 @@ def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents, 
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
 
     command = f"az iot ops support create-bundle --ops-service {ops_service} --arc {include_arc_agents}"
-    walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
+    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     files = get_file_map(walk_result=walk_result, ops_service=ops_service, include_arc_agents=include_arc_agents)
 
     if not include_arc_agents:
@@ -54,4 +54,11 @@ def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents, 
             expected_workload_types.append("service")
 
         assert set(file_map.keys()).issubset(set(expected_workload_types))
-        check_workload_resource_files(file_map, expected_workload_types, AGENT_RESOURCE_PREFIXES[agent], bundle_path)
+        # find bundle path from tracked_files that with .zip extension
+        bundle_path = next((file for file in tracked_files if file.endswith(".zip")), None)
+        check_workload_resource_files(
+            file_objs=file_map,
+            expected_workload_types=expected_workload_types,
+            prefixes=AGENT_RESOURCE_PREFIXES[agent],
+            bundle_path=bundle_path
+        )

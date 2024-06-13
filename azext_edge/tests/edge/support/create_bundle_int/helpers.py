@@ -150,7 +150,7 @@ def check_workload_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     expected_workload_types: List[str],
     prefixes: Union[str, List[str]],
-    bundle_dir: str,
+    bundle_path: str,
     optional_workload_types: Optional[List[str]] = None,
 ):
     if "pod" in expected_workload_types:
@@ -183,9 +183,14 @@ def check_workload_resource_files(
                 converted_file[file["descriptor"]] = False
 
     expected_pods = get_kubectl_items(prefixes, service_type="pod")
-    check_log_for_evicted_pods(file_objs.get("pod", []), bundle_dir)
+    check_log_for_evicted_pods(file_objs.get("pod", []), bundle_path)
     expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
-    find_extra_or_missing_files("pod", file_pods.keys(), expected_pod_names)
+    find_extra_or_missing_files(
+        resource_type="pod",
+        bundle_names=file_pods.keys(),
+        expected_names=expected_pod_names,
+        ignore_extras=True
+    )
 
     for name, files in file_pods.items():
         for extension, value in files.items():
@@ -233,28 +238,14 @@ def check_log_for_evicted_pods(file_pods: List[Dict[str, str]], bundle_dir: str)
     # open the file using bundle_dir and check for evicted pods
     name_extension_pair = list(set([(file["name"], file["extension"]) for file in file_pods]))
     with ZipFile(bundle_dir, 'r') as zip:
+        file_names = zip.namelist()
         for name, extension in name_extension_pair:
             if extension == "log":
-                with zip.open("pod." + name + ".yaml", 'r') as pod_content:
+                # find file path in file_names that has name and extension
+                file_path = next((file for file in file_names if file.endswith(name + ".log")), None)
+                with zip.open(file_path) as pod_content:
                     log_content = pod_content.read().decode("utf-8")
-                    assert "Evicted" not in log_content, f"Evicted pod {name} log found in bundle."
-
-    # for pod in expected_pods:
-    #     pod_status = pod["status"]["phase"]
-    #     status_reason = pod["status"].get("reason", "")
-    #     if pod_status == "Failed" and status_reason == "Evicted":
-    #         filtered_pair = [(name, extension) for name, extension in name_extension_pair if name == pod["metadata"]["name"]]
-    #         # no pod file should found both have pod["metadata"]["name"] and log extension
-    #         # pod_files = [file["name"] for file in file_pods if file["name"] == pod["metadata"]["name"] and file["extension"] == "log"]
-    #         pod_files = [name for name, extension in filtered_pair if name == pod["metadata"]["name"] and extension == "log"]
-    #         # if there is pod_files, try to get pod snapshot again to check before failing
-    #         if pod_files:
-    #             pod = get_kubectl_items(pod["metadata"]["name"], service_type="pod")[0]
-    #             pod_status = pod["status"]["phase"]
-    #             status_reason = pod["status"].get("reason", "")
-    #             # if it's still evicted, then fail
-    #             if pod_status == "Failed" and status_reason == "Evicted":
-    #                 assert not pod_files, f"Evicted pod {pod['metadata']['name']} log found in bundle."         
+                    assert "Evicted" not in log_content, f"Evicted pod {name} log found in bundle."   
 
 
 def get_kubectl_items(prefixes: Union[str, List[str]], service_type: str) -> Dict[str, Any]:
@@ -459,4 +450,4 @@ def run_bundle_command(
             # lastly add in the file (with the correct seperators)
             walk_result[built_path]["files"].append(file_name)
 
-    return walk_result, result["bundlePath"]
+    return walk_result
