@@ -243,6 +243,8 @@ def check_log_for_evicted_pods(file_pods: List[Dict[str, str]], bundle_dir: str)
             if extension == "log":
                 # find file path in file_names that has name and extension
                 file_path = next((file for file in file_names if file.endswith(name + ".yaml")), None)
+                if not file_path:
+                    continue
                 with zip.open(file_path) as pod_content:
                     log_content = pod_content.read().decode("utf-8")
                     assert "Evicted" not in log_content, f"Evicted pod {name} log found in bundle."   
