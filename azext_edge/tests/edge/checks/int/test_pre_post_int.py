@@ -9,6 +9,7 @@ from knack.log import get_logger
 from kubernetes.utils import parse_quantity
 from azure.cli.core.azclierror import CLIInternalError
 from ....helpers import run
+from .helpers import combine_statuses, expected_status
 from azext_edge.edge.providers.check.common import (
     AIO_SUPPORTED_ARCHITECTURES,
     MIN_NODE_MEMORY,
@@ -81,7 +82,10 @@ def test_check_pre_post(init_setup, post, pre):
     node_count_target = node_result["targets"]["cluster/nodes"]["_all_"]
     assert node_count_target["conditions"] == ["len(cluster/nodes)>=1"]
     assert node_count_target["evaluations"][0]["value"] == len(kubectl_nodes)
-    final_status = expected_status(len(kubectl_nodes) >= 1)
+    final_status = expected_status(
+        success_or_fail=len(kubectl_nodes) >= 1,
+        success_or_warning=len(kubectl_nodes) == 1
+    )
     assert node_count_target["evaluations"][0]["status"] == node_count_target["status"] == final_status
 
     # node eval
@@ -114,26 +118,18 @@ def test_check_pre_post(init_setup, post, pre):
 
         node_memory = node_target["evaluations"][2]["value"]["condition.memory"]
         assert node_memory == int(parse_quantity(node_capacity["memory"]))
-        assert node_target["evaluations"][1]["status"] == expected_status(
+        assert node_target["evaluations"][2]["status"] == expected_status(
             node_memory >= parse_quantity(MIN_NODE_MEMORY)
         )
 
         node_storage = node_target["evaluations"][3]["value"]["condition.ephemeral-storage"]
         assert node_storage == int(parse_quantity(node_capacity["ephemeral-storage"]))
-        assert node_target["evaluations"][1]["status"] == expected_status(
+        assert node_target["evaluations"][3]["status"] == expected_status(
             node_storage >= parse_quantity(MIN_NODE_STORAGE)
         )
 
-        node_status = expected_status(
-            all([cond["status"] == "success" for cond in node_target["evaluations"]])
-        )
+        node_status = combine_statuses([cond["status"] for cond in node_target["evaluations"]])
         assert node_status == node_target["status"]
-        final_status = expected_status(
-            (final_status == "success") and (node_status == "success")
-        )
+        final_status = combine_statuses([final_status, node_status])
 
     assert final_status == node_result["status"]
-
-
-def expected_status(success_condition: bool):
-    return "success" if success_condition else "error"
