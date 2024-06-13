@@ -159,7 +159,6 @@ def expected_status(
     return status
 
 
-
 def run_check_command(
     detail_level: str,
     ops_service: str,
