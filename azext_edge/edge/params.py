@@ -105,7 +105,7 @@ def load_iotops_arguments(self, _):
             options_list=["--arc"],
             arg_type=get_three_state_flag(),
             help="Include ARC agents resources in the support bundle. Note that logs from evicted "
-            "pod containers will not be captured, as they are inaccessible. For details on why "
+            "pod will not be captured, as they are inaccessible. For details on why "
             "a pod was evicted, please refer to the related pod and node files. "
             "Usage may add considerable size to the produced bundle.",
         ),

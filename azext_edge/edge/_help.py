@@ -78,6 +78,10 @@ def load_iotops_help():
         - name: Include mq traces in the support bundle. This is an alias for stats trace fetch capability.
           text: >
             az iot ops support create-bundle --ops-service mq --mq-traces
+        
+        - name: Include resources under azure-arc namespace in the support bundle.
+          text: >
+            az iot ops support create-bundle --arc
     """
 
     helps[
