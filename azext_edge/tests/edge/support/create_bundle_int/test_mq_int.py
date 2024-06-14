@@ -11,8 +11,9 @@ from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
+    get_bundle_path,
     get_file_map,
-    get_kubectl_items,
+    get_kubectl_workload_items,
     run_bundle_command
 )
 
@@ -50,7 +51,7 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
 
     if traces:
         # one trace should have two files - grab by id
-        expected_pods = get_kubectl_items("aio-mq", service_type="pod")
+        expected_pods = get_kubectl_workload_items("aio-mq", service_type="pod")
         expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
         id_check = {}
         for file in traces["trace"]:
@@ -70,8 +71,7 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
             assert extension_dict.get("json")
             assert extension_dict.get("pb")
 
-    # find bundle path from tracked_files that with .zip extension
-    bundle_path = next((file for file in tracked_files if file.endswith(".zip")), None)
+    bundle_path = get_bundle_path(tracked_files)
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,

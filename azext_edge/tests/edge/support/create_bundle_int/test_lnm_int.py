@@ -7,7 +7,13 @@
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import LNM_API_V1B1
-from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
+from .helpers import (
+    check_custom_resource_files,
+    check_workload_resource_files,
+    get_bundle_path,
+    get_file_map,
+    run_bundle_command
+)
 from ....helpers import run
 
 logger = get_logger(__name__)
@@ -21,9 +27,7 @@ def test_create_bundle_lnm(init_setup, tracked_files):
     file_map = get_file_map(walk_result, ops_service)
     lnm_instances = run("kubectl get lnm -A") or []
     lnm_present = file_map["__namespaces__"]["aio"] in lnm_instances
-
-    # find bundle path from tracked_files that with .zip extension
-    bundle_path = next((file for file in tracked_files if file.endswith(".zip")), None)
+    bundle_path = get_bundle_path(tracked_files)
 
     # TODO: when adding scenarios - make sure one scenario is adding in an lnm instance
     # Note that this is structured by namespace folder instead of by if

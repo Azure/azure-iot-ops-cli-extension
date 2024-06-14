@@ -7,7 +7,13 @@
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import OPCUA_API_V1
-from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
+from .helpers import (
+    check_custom_resource_files,
+    check_workload_resource_files,
+    get_bundle_path,
+    get_file_map,
+    run_bundle_command
+)
 
 logger = get_logger(__name__)
 
@@ -29,8 +35,7 @@ def test_create_bundle_opcua(init_setup, tracked_files):
     expected_types = set(expected_workload_types + optional_workload_types).union(OPCUA_API_V1.kinds)
     assert set(file_map.keys()).issubset(expected_types)
 
-    # find bundle path from tracked_files that with .zip extension
-    bundle_path = next((file for file in tracked_files if file.endswith(".zip")), None)
+    bundle_path = get_bundle_path(tracked_files)
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,

@@ -11,6 +11,7 @@ from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from .helpers import (
     check_workload_resource_files,
+    get_bundle_path,
     get_file_map,
     run_bundle_command
 )
@@ -55,8 +56,7 @@ def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents, 
 
         assert set(file_map.keys()).issubset(set(expected_workload_types))
 
-        # find bundle path from tracked_files that with .zip extension
-        bundle_path = next((file for file in tracked_files if file.endswith(".zip")), None)
+        bundle_path = get_bundle_path(tracked_files)
         check_workload_resource_files(
             file_objs=file_map,
             expected_workload_types=expected_workload_types,

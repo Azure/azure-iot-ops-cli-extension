@@ -14,13 +14,13 @@ from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from .helpers import (
     assert_file_names,
     check_workload_resource_files,
-    find_extra_or_missing_files,
+    get_bundle_path,
     get_file_map,
     process_top_levels,
     run_bundle_command,
     BASE_ZIP_PATH
 )
-from ....helpers import run
+from ....helpers import find_extra_or_missing_names, run
 
 logger = get_logger(__name__)
 
@@ -96,9 +96,9 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             # make things easier if there is a different file
             auto_files = sorted(auto_walk_result[directory]["files"])
             ser_files = sorted(walk_result[directory]["files"])
-            find_extra_or_missing_files(
+            find_extra_or_missing_names(
                 resource_type=f"auto bundle files not found in {ops_service} bundle",
-                bundle_names=auto_files,
+                result_names=auto_files,
                 expected_names=ser_files,
                 ignore_extras=True,
                 ignore_missing=True
@@ -116,8 +116,7 @@ def test_create_bundle_otel(init_setup, tracked_files):
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     assert set(file_map.keys()).issubset(set(expected_workload_types))
 
-    # find bundle path from tracked_files that with .zip extension
-    bundle_path = next((file for file in tracked_files if file.endswith(".zip")), None)
+    bundle_path = get_bundle_path(tracked_files)
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,
