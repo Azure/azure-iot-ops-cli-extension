@@ -120,7 +120,7 @@ def _get_expected_services(
         # these should always be generated
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
-        expected_services.remove(OpsServiceType.billing.value)
+        # expected_services.remove(OpsServiceType.billing.value)
         expected_services.append("otel")
         if not DATA_PROCESSOR_API_V1.is_deployed():
             expected_services.remove(OpsServiceType.dataprocessor.value)
@@ -130,7 +130,7 @@ def _get_expected_services(
         if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value)):
             expected_services.remove(OpsServiceType.deviceregistry.value)
         expected_services.sort()
-    elif ops_service == OpsServiceType.billing.value:
-        expected_services.remove(OpsServiceType.billing.value)
-        expected_services.append("clusterconfig")
+    # elif ops_service == OpsServiceType.billing.value:
+    #     expected_services.remove(OpsServiceType.billing.value)
+    #     expected_services.append("clusterconfig")
     return expected_services
