@@ -78,8 +78,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "ops_service",
             options_list=["--ops-service", "--svc"],
-            # TODO: re-enable billing once service is available post 0.6.0 release
-            choices=CaseInsensitiveList(OpsServiceType.list()[:-1]),
+            choices=CaseInsensitiveList(OpsServiceType.list()),
             help="The IoT Operations service the support bundle creation should apply to. "
             "If auto is selected, the operation will detect which services are available.",
         )
