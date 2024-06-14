@@ -107,7 +107,7 @@ def build_bundle(
                     bundle = bundle_method(deployed_apis, log_age_seconds)
 
                 pending_work[service_moniker].update(bundle)
-    
+
     # arc agent resources
     if include_arc_agents:
         pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)

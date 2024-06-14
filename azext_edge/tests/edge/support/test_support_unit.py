@@ -835,7 +835,6 @@ def assert_list_pods(
                         except AssertionError:
                             # if pod is evicted, no logs are available
                             assert "evicted_pod" in pod_name
-                            
 
 
 def assert_list_replica_sets(
@@ -1164,7 +1163,7 @@ def test_create_bundle_arc_agents(
 
     assert "bundlePath" in result
     assert a_bundle_dir in result["bundlePath"]
-    
+
     for component, has_service in ARC_AGENTS:
         assert_list_pods(
             mocked_client,

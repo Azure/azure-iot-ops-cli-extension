@@ -7,7 +7,6 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from .helpers import (
     check_workload_resource_files,
@@ -44,7 +43,7 @@ def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents, 
         # No arc agents should be included
         assert not hasattr(files, "arc")
         return
-    
+
     agents_file_map = files["arc"]
 
     for agent, has_service in ARC_AGENTS:

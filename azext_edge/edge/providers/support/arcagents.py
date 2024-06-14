@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable
 
 from knack.log import get_logger
 
@@ -24,12 +23,12 @@ logger = get_logger(__name__)
 MONIKER = "arcagents"
 ARC_AGENTS_SERVICE_LABEL = "app.kubernetes.io/managed-by in (Helm)"
 ARC_AGENTS = [
-    ("cluster-identity-operator", False), # (component, has_services)
+    ("cluster-identity-operator", False),  # (component, has_services)
     ("clusterconnect-agent", False),
     ("config-agent", False),
     ("extension-events-collector", True),
     ("extension-manager", True),
-    ("kube-aad-proxy",  True),
+    ("kube-aad-proxy", True),
     ("cluster-metadata-operator", False),
     ("metrics-agent", False),
     ("resource-sync-agent", False),
@@ -74,7 +73,7 @@ def fetch_resources(func: callable, since_seconds: int = None) -> list:
         }
         if since_seconds:
             kwargs['since_seconds'] = since_seconds
-        if func==process_services:
+        if func == process_services:
             if not has_service:
                 continue
             kwargs['label_selector'] = ARC_AGENTS_SERVICE_LABEL
@@ -82,7 +81,6 @@ def fetch_resources(func: callable, since_seconds: int = None) -> list:
 
         resources.extend(func(**kwargs))
     return resources
-
 
 
 def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS) -> dict:

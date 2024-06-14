@@ -110,8 +110,6 @@ def load_iotops_arguments(self, _):
             "Usage may add considerable size to the produced bundle.",
         ),
 
-
-
     with self.argument_context("iot ops check") as context:
         context.argument(
             "pre_deployment_checks",
