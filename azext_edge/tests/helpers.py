@@ -44,6 +44,7 @@ def find_extra_or_missing_names(
     result_names: List[str],
     expected_names: List[str],
     ignore_extras: bool = False,
+    # TODO: remove once dynamic pods check logic is implemented
     ignore_missing: bool = False
 ):
     error_msg = []
