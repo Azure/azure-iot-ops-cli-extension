@@ -116,6 +116,7 @@ def _get_expected_services(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str , namespace: str
 ) -> List[str]:
     expected_services = [ops_service]
+    # TODO: re-enable billing once service is available post 0.6.0 release
     if ops_service == OpsServiceType.auto.value:
         # these should always be generated
         expected_services = OpsServiceType.list()
