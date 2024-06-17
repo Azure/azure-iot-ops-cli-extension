@@ -10,7 +10,6 @@ from azext_edge.edge.providers.edge_api import LNM_API_V1B1
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
-    get_bundle_path,
     get_file_map,
     run_bundle_command
 )
@@ -23,11 +22,10 @@ def test_create_bundle_lnm(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS lnm."""
     ops_service = OpsServiceType.lnm.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
-    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
+    walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
     lnm_instances = run("kubectl get lnm -A") or []
     lnm_present = file_map["__namespaces__"]["aio"] in lnm_instances
-    bundle_path = get_bundle_path(tracked_files)
 
     # TODO: when adding scenarios - make sure one scenario is adding in an lnm instance
     # Note that this is structured by namespace folder instead of by if

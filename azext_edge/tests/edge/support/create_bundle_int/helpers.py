@@ -174,7 +174,7 @@ def check_workload_resource_files(
                 converted_file[file["descriptor"]] = False
 
     expected_pods = get_kubectl_workload_items(prefixes, service_type="pod")
-    check_log_for_evicted_pods(file_objs.get("pod", []), bundle_path)
+    check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))
     find_extra_or_missing_names(
         resource_type="pod",
         result_names=file_pods.keys(),
@@ -205,9 +205,10 @@ def check_workload_resource_files(
         _check_non_pod_files(optional_workload_types, required=False)
 
 
-def check_log_for_evicted_pods(file_pods: List[Dict[str, str]], bundle_dir: str):
+def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]]):
     # open the file using bundle_dir and check for evicted pods
     name_extension_pair = list(set([(file["name"], file["extension"]) for file in file_pods]))
+    # TODO: upcoming fix will get file content earlier
     with ZipFile(bundle_dir, 'r') as zip:
         file_names = zip.namelist()
         for name, extension in name_extension_pair:
@@ -409,11 +410,4 @@ def run_bundle_command(
             # lastly add in the file (with the correct seperators)
             walk_result[built_path]["files"].append(file_name)
 
-    return walk_result
-
-
-def get_bundle_path(
-    tracked_files: List[str],
-) -> str:
-    # find bundle path from tracked_files that with .zip extension
-    return next((file for file in tracked_files if file.endswith(".zip")), None)
+    return walk_result, result["bundlePath"]

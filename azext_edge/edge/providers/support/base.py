@@ -8,7 +8,7 @@ from pathlib import PurePath
 from typing import List, Dict, Optional, Iterable, Union
 from functools import partial
 
-from azext_edge.edge.common import BundleResourceKind
+from azext_edge.edge.common import BundleResourceKind, PodState
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import V1Container, V1ObjectMeta, V1PodSpec
@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 generic = client.ApiClient()
 
 DAY_IN_SECONDS: int = 60 * 60 * 24
+POD_STATUS_FAILED_EVICTED: str = "Evicted"
 
 
 def process_crd(
@@ -109,7 +110,7 @@ def process_v1_pods(
 
         # exclude evicted pods from log capture since they are not accessible
         pod_status = pod.status
-        if pod_status and pod_status.phase == "Failed" and pod_status.reason == "Evicted":
+        if pod_status and pod_status.phase == PodState.failed.value and pod_status.reason == POD_STATUS_FAILED_EVICTED:
             logger.info(f"Pod {pod_name} in namespace {pod_namespace} is evicted. Skipping log capture.")
         else:
             processed.extend(

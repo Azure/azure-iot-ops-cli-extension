@@ -10,7 +10,6 @@ from azext_edge.edge.providers.edge_api import ORC_API_V1
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
-    get_bundle_path,
     get_file_map,
     run_bundle_command
 )
@@ -22,7 +21,7 @@ def test_create_bundle_orc(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS orc."""
     ops_service = OpsServiceType.orc.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
-    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
+    walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)["aio"]
 
     check_custom_resource_files(
@@ -34,7 +33,6 @@ def test_create_bundle_orc(init_setup, tracked_files):
     expected_types = set(expected_workload_types).union(ORC_API_V1.kinds)
     assert set(file_map.keys()).issubset(expected_types)
 
-    bundle_path = get_bundle_path(tracked_files)
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,

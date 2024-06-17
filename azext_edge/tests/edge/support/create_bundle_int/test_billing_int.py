@@ -10,7 +10,6 @@ from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
-    get_bundle_path,
     get_file_map,
     run_bundle_command
 )
@@ -22,9 +21,8 @@ def test_create_bundle_billing(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS billing."""
     ops_service = OpsServiceType.billing.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
-    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
+    walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
-    bundle_path = get_bundle_path(tracked_files)
 
     # AIO
     check_custom_resource_files(

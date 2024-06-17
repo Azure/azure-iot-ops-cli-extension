@@ -10,7 +10,6 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from .helpers import (
     check_workload_resource_files,
-    get_bundle_path,
     get_file_map,
     run_bundle_command
 )
@@ -30,13 +29,13 @@ AGENT_RESOURCE_PREFIXES = {
 }
 
 
-@pytest.mark.parametrize("ops_service", OpsServiceType.list()[1:])
 @pytest.mark.parametrize("include_arc_agents", [False, True])
-def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents, ops_service):
+def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
+    ops_service = OpsServiceType.deviceregistry.value
 
     command = f"az iot ops support create-bundle --ops-service {ops_service} --arc {include_arc_agents}"
-    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
+    walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     files = get_file_map(walk_result=walk_result, ops_service=ops_service, include_arc_agents=include_arc_agents)
 
     if not include_arc_agents:
@@ -55,7 +54,6 @@ def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents, 
 
         assert set(file_map.keys()).issubset(set(expected_workload_types))
 
-        bundle_path = get_bundle_path(tracked_files)
         check_workload_resource_files(
             file_objs=file_map,
             expected_workload_types=expected_workload_types,

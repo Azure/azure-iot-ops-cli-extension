@@ -13,7 +13,6 @@ from azext_edge.edge.common import OpsServiceType
 from .helpers import (
     assert_file_names,
     check_workload_resource_files,
-    get_bundle_path,
     get_file_map,
     process_top_levels,
     run_bundle_command,
@@ -46,10 +45,10 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             tracked_files.append(bundle_dir)
         except FileExistsError:
             pass
-    walk_result = run_bundle_command(command=command.format(ops_service), tracked_files=tracked_files)
+    walk_result, _ = run_bundle_command(command=command.format(ops_service), tracked_files=tracked_files)
     # generate second bundle as close as possible
     if ops_service != OpsServiceType.auto.value:
-        auto_walk_result = run_bundle_command(
+        auto_walk_result, _ = run_bundle_command(
             command=command.format(OpsServiceType.auto.value),
             tracked_files=tracked_files
         )
@@ -109,13 +108,12 @@ def test_create_bundle_otel(init_setup, tracked_files):
     # dir for unpacked files
     ops_service = OpsServiceType.auto.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
-    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
+    walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, "otel")["aio"]
 
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     assert set(file_map.keys()).issubset(set(expected_workload_types))
 
-    bundle_path = get_bundle_path(tracked_files)
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,
