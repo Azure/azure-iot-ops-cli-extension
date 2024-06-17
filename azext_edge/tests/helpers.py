@@ -40,7 +40,12 @@ def filter_resources(
 
 
 def find_extra_or_missing_names(
-    resource_type: str, result_names: List[str], expected_names: List[str], ignore_extras: bool = False
+    resource_type: str,
+    result_names: List[str],
+    expected_names: List[str],
+    ignore_extras: bool = False,
+    # TODO: remove once dynamic pods check logic is implemented
+    ignore_missing: bool = False
 ):
     error_msg = []
     extra_names = [name for name in result_names if name not in expected_names]
@@ -55,7 +60,10 @@ def find_extra_or_missing_names(
         error_msg.append(f"Missing {resource_type} names: {', '.join(missing_names)}.")
 
     if error_msg:
-        raise AssertionError('\n '.join(error_msg))
+        if ignore_missing:
+            logger.warning('\n '.join(error_msg))
+        else:
+            raise AssertionError('\n '.join(error_msg))
 
 
 def get_plural_map(

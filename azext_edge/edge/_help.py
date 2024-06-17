@@ -61,6 +61,9 @@ def load_iotops_help():
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
 
+            Note: logs from evicted pod will not be captured, as they are inaccessible. For details
+            on why a pod was evicted, please refer to the related pod and node files.
+
         examples:
         - name: Basic usage with default options. This form of the command will auto detect IoT Operations APIs and build a suitable bundle
                 capturing the last 24 hours of container logs. The bundle will be produced in the current working directory.
@@ -78,6 +81,10 @@ def load_iotops_help():
         - name: Include mq traces in the support bundle. This is an alias for stats trace fetch capability.
           text: >
             az iot ops support create-bundle --ops-service mq --mq-traces
+
+        - name: Include resources under azure-arc namespace in the support bundle.
+          text: >
+            az iot ops support create-bundle --arc
     """
 
     helps[

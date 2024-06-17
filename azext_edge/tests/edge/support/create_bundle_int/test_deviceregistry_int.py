@@ -17,7 +17,7 @@ def test_create_bundle_deviceregistry(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS deviceregistry."""
     ops_service = OpsServiceType.deviceregistry.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
-    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
+    walk_result, _ = run_bundle_command(command=command, tracked_files=tracked_files)
     if not walk_result[BASE_ZIP_PATH]["folders"]:
         pytest.skip(f"No bundles created for {ops_service}.")
     file_map = get_file_map(walk_result, ops_service)["aio"]

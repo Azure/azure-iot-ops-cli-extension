@@ -7,7 +7,12 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
-from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
+from .helpers import (
+    check_custom_resource_files,
+    check_workload_resource_files,
+    get_file_map,
+    run_bundle_command
+)
 
 logger = get_logger(__name__)
 
@@ -19,7 +24,7 @@ def test_create_bundle_billing(init_setup, tracked_files):
     # ops_service = OpsServiceType.billing.value
     ops_service = "billing"
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
-    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
+    walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
 
     # AIO
@@ -31,7 +36,12 @@ def test_create_bundle_billing(init_setup, tracked_files):
     expected_workload_types = ["cronjob", "job", "pod"]
     expected_types = set(expected_workload_types).union(CLUSTER_CONFIG_API_V1.kinds)
     assert set(file_map["aio"].keys()).issubset(set(expected_types))
-    check_workload_resource_files(file_map["aio"], expected_workload_types, ["aio-usage"])
+    check_workload_resource_files(
+        file_objs=file_map["aio"],
+        expected_workload_types=expected_workload_types,
+        prefixes=["aio-usage"],
+        bundle_path=bundle_path
+    )
 
     # USAGE
     check_custom_resource_files(
@@ -42,4 +52,9 @@ def test_create_bundle_billing(init_setup, tracked_files):
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     expected_types = set(expected_workload_types).union(CLUSTER_CONFIG_API_V1.kinds)
     assert set(file_map["usage"].keys()).issubset(expected_types)
-    check_workload_resource_files(file_map["usage"], expected_workload_types, ["billing-operator"])
+    check_workload_resource_files(
+        file_objs=file_map["usage"],
+        expected_workload_types=expected_workload_types,
+        prefixes=["billing-operator"],
+        bundle_path=bundle_path
+    )

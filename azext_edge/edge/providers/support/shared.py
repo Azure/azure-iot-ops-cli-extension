@@ -7,6 +7,7 @@
 from knack.log import get_logger
 from .base import process_nodes, process_events, process_storage_classes
 
+COMPONENT_LABEL_FORMAT = "app.kubernetes.io/component in ({label})"
 NAME_LABEL_FORMAT = "app.kubernetes.io/name in ({label})"
 
 logger = get_logger(__name__)

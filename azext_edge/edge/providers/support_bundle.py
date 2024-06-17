@@ -42,6 +42,7 @@ def build_bundle(
     ops_service: str,
     bundle_path: str,
     log_age_seconds: Optional[int] = None,
+    include_arc_agents: Optional[bool] = None,
     include_mq_traces: Optional[bool] = None,
 ):
     from rich.live import Live
@@ -57,6 +58,7 @@ def build_bundle(
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.otel import prepare_bundle as prepare_otel_bundle
+    from .support.arcagents import prepare_bundle as prepare_arcagents_bundle
 
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
@@ -105,6 +107,10 @@ def build_bundle(
                     bundle = bundle_method(deployed_apis, log_age_seconds)
 
                 pending_work[service_moniker].update(bundle)
+
+    # arc agent resources
+    if include_arc_agents:
+        pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
 
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):
