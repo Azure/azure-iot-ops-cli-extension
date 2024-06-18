@@ -168,6 +168,7 @@ def tracked_keyvault(request, tracked_resources, settings):
 
 @pytest.fixture(scope="session")
 def cluster_setup(settings):
+    from urllib3.exceptions import MaxRetryError
     from kubernetes.client.rest import ApiException
     from ..settings import EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.context_name.value)
@@ -184,6 +185,8 @@ def cluster_setup(settings):
         # Check for cluster access
         client.VersionApi().get_code()
         yield
+    except MaxRetryError:
+        raise CLIInternalError("Cluster is not connected.")
     except ApiException:
         raise NotImplementedError("Local cluster creation for testing not fully implemented yet.")
 
@@ -197,6 +200,6 @@ def init_setup(request, cluster_setup, settings):
     run("az iot ops verify-host")
     yield {
         "clusterName": settings.env.azext_edge_cluster,
-        "resourceGroup": settings.env.azext_edge_rg
+        "resourceGroup": settings.env.azext_edge_rg,
     }
     return
