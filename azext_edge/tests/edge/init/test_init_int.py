@@ -48,7 +48,7 @@ def cluster_cleanup(cluster_setup, settings, tracked_files):
 
 
 @pytest.mark.parametrize("scenario", [
-    # pytest.param({"simulate_plc": True}, id="simualte plc"),
+    pytest.param({"simulate_plc": True}, id="simualte plc"),
     pytest.param({
         "include_dp": True, "dp_instance": f"processor-{generate_names(max_length=5).lower()}"
     }, id="data processor")
