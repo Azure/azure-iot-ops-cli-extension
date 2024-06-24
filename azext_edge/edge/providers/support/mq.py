@@ -13,7 +13,7 @@ from knack.log import get_logger
 from azext_edge.edge.common import AIO_MQ_OPERATOR, AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api.mq import MqResourceKinds
 
-from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
+from ..edge_api import MQ_ACTIVE_API,  MQTT_BROKER_API_V1B1, EdgeResourceApi
 from ..stats import get_stats, get_traces
 from .base import (
     DAY_IN_SECONDS,
@@ -42,9 +42,10 @@ MQ_APP_LABELS = [
 ]
 
 MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
+MQ_CURRENT_API = MQ_ACTIVE_API if MQ_ACTIVE_API.is_deployed else MQTT_BROKER_API_V1B1
 
-MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_ACTIVE_API.label)
-MQ_DIRECTORY_PATH = MQ_ACTIVE_API.moniker
+MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_CURRENT_API.label)
+MQ_DIRECTORY_PATH = MQ_CURRENT_API.moniker
 
 
 def fetch_diagnostic_metrics(namespace: str):
@@ -140,7 +141,7 @@ def fetch_statefulsets():
         MqResourceKinds.KAFKA_CONNECTOR,
         MqResourceKinds.MQTT_BRIDGE_CONNECTOR,
     ]:
-        connectors.extend(MQ_ACTIVE_API.get_resources(kind=kind).get("items", []))
+        connectors.extend(MQ_CURRENT_API.get_resources(kind=kind).get("items", []))
 
     for connector in connectors:
         connector_name = connector.get("metadata", {}).get("name")
