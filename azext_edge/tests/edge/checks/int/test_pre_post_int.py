@@ -31,8 +31,8 @@ def test_check_pre_post(init_setup, post, pre):
     result = run(command)
 
     # default service title
-    expected_title = "Evaluation for {mq} service deployment"
-    expected_precheck_title = "IoT Operations readiness"
+    expected_title = "Evaluation for {[bright_blue]mq[/bright_blue]} service deployment"
+    expected_precheck_title = "[bright_blue]IoT Operations readiness[/bright_blue]"
     expected_pre = not post if pre is None else pre
     expected_post = not pre if post is None else post
     assert result["title"] == expected_title if expected_post else expected_precheck_title
