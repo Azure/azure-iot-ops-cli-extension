@@ -38,9 +38,11 @@ def assert_enumerate_resources(
     assert evaluation["status"] == status
     assert len(evaluation["evaluations"]) == 1
     assert evaluation["evaluations"][0]["status"] == status
-    assert len(evaluation["evaluations"][0]["value"]) == len(resource_kinds)
-    for kind in evaluation["evaluations"][0]["value"]:
-        assert kind.lower() in resource_kinds
+
+    if present:
+        assert len(evaluation["evaluations"][0]["value"]) == len(resource_kinds)
+        for kind in evaluation["evaluations"][0]["value"]:
+            assert kind.lower() in resource_kinds
 
 
 # Used by Akri and OPCUA

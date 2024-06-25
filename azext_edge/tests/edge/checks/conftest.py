@@ -100,6 +100,12 @@ def mock_opcua_get_namespaced_pods_by_prefix(mocker):
 
 
 @pytest.fixture
+def mock_get_cluster_custom_api(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.base.resource.get_cluster_custom_api")
+    yield patched
+
+
+@pytest.fixture
 def mock_resource_types(mocker, ops_service):
     patched = mocker.patch("azext_edge.edge.providers.check.base.deployment.enumerate_ops_service_resources")
 
