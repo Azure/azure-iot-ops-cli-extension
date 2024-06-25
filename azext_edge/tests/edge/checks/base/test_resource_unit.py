@@ -18,6 +18,7 @@ from azext_edge.edge.providers.edge_api import (
     OpcuaResourceKinds,
 )
 from azext_edge.tests.edge.checks.conftest import generate_api_resource_list
+# TODO: Add more test for resource.py
 
 
 @pytest.mark.parametrize(
