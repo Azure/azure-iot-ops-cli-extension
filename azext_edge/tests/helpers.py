@@ -127,17 +127,6 @@ def get_kubectl_workload_items(
     )
 
 
-def parse_rest_command(rest_command: str) -> Dict[str, str]:
-    """Simple az rest command parsing."""
-    assert rest_command.startswith("rest")
-    rest_list = rest_command.split("--")[1:]
-    result = {}
-    for rest_input in rest_list:
-        key, value = rest_input.split(maxsplit=1)
-        result[key] = value.strip()
-    return result
-
-
 def remove_file_or_folder(file_path):
     if os.path.isfile(file_path):
         try:

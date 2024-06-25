@@ -147,27 +147,8 @@ def tracked_resources():
 
 
 @pytest.fixture(scope="session")
-def tracked_keyvault(request, tracked_resources, settings):
-    # TODO: clean up env variables later
-    from ..settings import convert_flag, EnvironmentVariables
-    settings.add_to_config(EnvironmentVariables.rg.value)
-    settings.add_to_config(EnvironmentVariables.kv.value)
-    settings.add_to_config(EnvironmentVariables.skip_init.value, conversion=convert_flag)
-    if settings.env.azext_edge_skip_init:
-        # kv only needed for init for now
-        kv = None
-    elif settings.env.azext_edge_kv:
-        kv = run(f"az keyvault show -n {settings.env.azext_edge_kv} -g {settings.env.azext_edge_rg}")
-    else:
-        run_id = id(request.session)
-        kv_name = f"opstestkv-{run_id}"
-        kv = run(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_rg}")
-        tracked_resources.append(kv["id"])
-    yield kv
-
-
-@pytest.fixture(scope="session")
-def cluster_setup(settings):
+def cluster_connection(settings):
+    """Fixture to ensure that the cluster is connected."""
     from urllib3.exceptions import MaxRetryError
     from kubernetes.client.rest import ApiException
     from ..settings import EnvironmentVariables
@@ -191,8 +172,9 @@ def cluster_setup(settings):
         raise NotImplementedError("Local cluster creation for testing not fully implemented yet.")
 
 
+# TODO: change the check/support bundle tests to point to cluster connection instead
 @pytest.fixture(scope="session")
-def init_setup(request, cluster_setup, settings):
+def init_setup(request, cluster_connection, settings):
     from ..settings import EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.cluster.value)

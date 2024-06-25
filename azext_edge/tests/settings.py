@@ -17,7 +17,8 @@ class EnvironmentVariables(Enum):
     kv = "azext_edge_kv"
     sp_app_id = "azext_edge_sp_app_id"
     sp_object_id = "azext_edge_sp_object_id"
-    skip_init = "azext_edge_skip_init"
+    init_args = "azext_edge_init_args"
+    skip_init = "azext_edge_skip_init"  # TODO: not used
     skip_cluster_check = "azext_edge_skip_cluster_check"
 
 
