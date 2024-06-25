@@ -25,7 +25,7 @@ def assert_enumerate_resources(
     present: bool = True
 ):
     key = f"enumerate{key_name}Api"
-    status = "success" if present else "skipped"
+    status = "success" if present else "error"
     assert post_deployment[key]
     assert post_deployment[key]["status"] == status
     assert post_deployment[key]["description"] == f"Enumerate {description_name} API resources"
