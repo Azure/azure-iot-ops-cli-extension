@@ -89,8 +89,7 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1],
-        # TODO: re-enable billing once service is available post 0.6.0 release
-        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1, CLUSTER_CONFIG_API_V1],
+        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1, CLUSTER_CONFIG_API_V1],
     ],
     indirect=True,
 )

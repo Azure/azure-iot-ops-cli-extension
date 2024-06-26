@@ -91,21 +91,16 @@ jobs:
         include:
           # default / limited options
           - feature: default
-            ca-valid-days: 3
-            kv-spc-secret-name: test-kv-secret
+            init-args: "--ca-valid-days 3 --kv-spc-secret-name test-kv-secret ${{ inputs.runtime-init-args }}"
           # test --mq-insecure deployment
           - feature: mq-insecure
-            mq-insecure: true
-            no-preflight: true
-            csi-config: 'telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m'
+            init-args: "--mq-insecure --no-preflight --csi-config 'telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m' ${{ inputs.runtime-init-args }}"
           # test disabling custom sync rules
           - feature: no-syncrules
-            disable-rsync-rules: true
+            init-args: "--no-syncrules ${{ inputs.runtime-init-args }}"
           # test custom ca files
           - feature: ca-certs
-            ca-file: 'test-ca.pem'
-            ca-key-file: 'test-ca-key.pem'
-            include-dp: true
+            init-args: "--ca-file test-ca.pem --ca-key-file test-ca-key.pem --include-dp ${{ inputs.runtime-init-args }}"
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -168,6 +163,7 @@ jobs:
         run: |
           KV_ID=$(az keyvault show -n ${{env.KV_NAME}} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
           echo "KV_ID=$KV_ID" >> $GITHUB_ENV
+          echo "KV_ID=$KV_ID" >> $GITHUB_OUTPUT
       - name: "Create CA certificates"
         if: ${{matrix.feature == 'ca-certs'}}
         run: |
@@ -189,38 +185,47 @@ jobs:
           openssl ecparam -name prime256v1 -genkey -noout -out ${{ matrix.ca-key-file }}
           openssl req -new -x509 -key ${{ matrix.ca-key-file }} -days 30 -config ca.conf -out ${{ matrix.ca-file }}
           rm ca.conf
-      - name: "Create local template file"
-        if: ${{ inputs.template-content }}
+      # - name: "Create local template file"
+      #   if: ${{ inputs.template-content }}
+      #   env:
+      #     template: "${{ inputs.template-content }}"
+      #   run: |
+      #     >custom-template.json cat <<-'EOF'
+      #     ${{ env.template }}
+      #     EOF
+      - name: "Tox INIT Integration Tests"
         env:
-          template: "${{ inputs.template-content }}"
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_kv: ${{ steps.env_out.KV_ID }}
+          azext_edge_init_args: ${{ matrix.init-args }}
+          azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
+          azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
+          azext_edge_sp_secret: ${{ secrets.AIO_SP_SECRET || '' }}
         run: |
-          >custom-template.json cat <<-'EOF'
-          ${{ env.template }}
-          EOF
-      - name: "AIO Deployment"
-        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
-        with:
-          cluster: ${{ env.CLUSTER_NAME }}
-          resource-group: ${{ env.RESOURCE_GROUP }}
-          keyvault-id: ${{ env.KV_ID }}
-          sp-app-id: ${{ secrets.AIO_SP_APP_ID || '' }}
-          sp-object-id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
-          sp-secret: ${{ secrets.AIO_SP_SECRET || '' }}
-          no-preflight: ${{ matrix.no-preflight }}
-          mq-insecure: ${{ matrix.mq-insecure }}
-          disable-rsync-rules: ${{ matrix.disable-rsync-rules }}
-          ca-valid-days: ${{ matrix.ca-valid-days || '' }}
-          ca-file: ${{ matrix.ca-file || '' }}
-          ca-key-file: ${{ matrix.ca-key-file || '' }}
-          kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
-          template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
-          csi-config: ${{ matrix.csi-config || ''}}
-          include-dp: ${{ matrix.include-dp }}
-      - name: "Allow cluster to finish provisioning"
-        run: |
-          sleep 2m
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          tox r -e python-init-int --skip-pkg-install -- --durations=0
+      # - name: "AIO Deployment"
+      #   uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
+      #   with:
+      #     cluster: ${{ env.CLUSTER_NAME }}
+      #     resource-group: ${{ env.RESOURCE_GROUP }}
+      #     keyvault-id: ${{ env.KV_ID }}
+      #     sp-app-id: ${{ secrets.AIO_SP_APP_ID || '' }}
+      #     sp-object-id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
+      #     sp-secret: ${{ secrets.AIO_SP_SECRET || '' }}
+      #     no-preflight: ${{ matrix.no-preflight }}
+      #     mq-insecure: ${{ matrix.mq-insecure }}
+      #     disable-rsync-rules: ${{ matrix.disable-rsync-rules }}
+      #     ca-valid-days: ${{ matrix.ca-valid-days || '' }}
+      #     ca-file: ${{ matrix.ca-file || '' }}
+      #     ca-key-file: ${{ matrix.ca-key-file || '' }}
+      #     kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
+      #     template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
+      #     csi-config: ${{ matrix.csi-config || ''}}
+      #     include-dp: ${{ matrix.include-dp }}
       - name: "Tox test environment setup"
-        if: ${{matrix.feature == 'default' && !inputs.use-container}}
+        if: ${{!inputs.use-container && matrix.feature == 'default' || matrix.feature == 'init-test'}}
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           python -m pip install tox
