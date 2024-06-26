@@ -141,7 +141,6 @@ class OpsServiceType(ListableEnum):
 
     auto = "auto"
     mq = "mq"
-    lnm = "lnm"
     opcua = "opcua"
     dataprocessor = "dataprocessor"
     orc = "orc"

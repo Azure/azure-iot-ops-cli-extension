@@ -363,7 +363,7 @@ def evaluate_asset_endpoint_profiles(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalAssetEndpointProfiles", check_desc="Evaluate Asset Endpoint Profiles")
 
-    lnm_namespace_conditions = ["spec.uuid"]
+    endpoint_namespace_conditions = ["spec.uuid"]
 
     all_asset_endpoint_profiles = get_resources_by_name(
         api_info=DEVICEREGISTRY_API_V1,
@@ -384,7 +384,7 @@ def evaluate_asset_endpoint_profiles(
         return check_manager.as_dict(as_list)
 
     for (namespace, asset_endpoint_profiles) in get_resources_grouped_by_namespace(all_asset_endpoint_profiles):
-        check_manager.add_target(target_name=target_asset_endpoint_profiles, namespace=namespace, conditions=lnm_namespace_conditions)
+        check_manager.add_target(target_name=target_asset_endpoint_profiles, namespace=namespace, conditions=endpoint_namespace_conditions)
         check_manager.add_display(
             target_name=target_asset_endpoint_profiles,
             namespace=namespace,
