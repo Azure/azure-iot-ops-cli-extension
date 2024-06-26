@@ -11,7 +11,7 @@ from rich.console import Console
 
 from ..common import ListableEnum, OpsServiceType
 from .check.base import check_pre_deployment, display_as_list
-from .check.common import ResourceOutputDetailLevel
+from .check.common import COLOR_STR_FORMAT, ResourceOutputDetailLevel
 from .check.dataprocessor import check_dataprocessor_deployment
 from .check.deviceregistry import check_deviceregistry_deployment
 from .check.lnm import check_lnm_deployment
@@ -48,10 +48,11 @@ def run_checks(
 
         sleep(0.5)
 
+        color = COLOR_STR_FORMAT.format(color="bright_blue", value="{text}") if as_list else "{text}"
         title_subject = (
-            f"{{[bright_blue]{ops_service}[/bright_blue]}} service deployment"
+            f"{{{color.format(text=ops_service)}}} service deployment"
             if post_deployment
-            else "[bright_blue]IoT Operations readiness[/bright_blue]"
+            else color.format(text="IoT Operations readiness")
         )
         result["title"] = f"Evaluation for {title_subject}"
 

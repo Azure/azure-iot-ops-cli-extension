@@ -25,7 +25,7 @@ def assert_enumerate_resources(
     present: bool = True
 ):
     key = f"enumerate{key_name}Api"
-    status = "success" if present else "skipped"
+    status = "success" if present else "error"
     assert post_deployment[key]
     assert post_deployment[key]["status"] == status
     assert post_deployment[key]["description"] == f"Enumerate {description_name} API resources"
@@ -38,9 +38,11 @@ def assert_enumerate_resources(
     assert evaluation["status"] == status
     assert len(evaluation["evaluations"]) == 1
     assert evaluation["evaluations"][0]["status"] == status
-    assert len(evaluation["evaluations"][0]["value"]) == len(resource_kinds)
-    for kind in evaluation["evaluations"][0]["value"]:
-        assert kind.lower() in resource_kinds
+
+    if present:
+        assert len(evaluation["evaluations"][0]["value"]) == len(resource_kinds)
+        for kind in evaluation["evaluations"][0]["value"]:
+            assert kind.lower() in resource_kinds
 
 
 # Used by Akri and OPCUA

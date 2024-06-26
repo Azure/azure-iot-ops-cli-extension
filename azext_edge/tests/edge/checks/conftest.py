@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 import pytest
-from kubernetes.client import V1Pod, V1ObjectMeta, V1PodStatus, V1PodCondition
+from kubernetes.client import V1Pod, V1ObjectMeta, V1PodStatus, V1PodCondition, V1APIResourceList, V1APIResource
 from typing import List, Dict, Any
 from azext_edge.edge.providers.checks import run_checks
 from azext_edge.edge.providers.check.common import CoreServiceResourceKinds
@@ -96,6 +96,12 @@ def mock_generate_opcua_target_resources(mocker):
 @pytest.fixture
 def mock_opcua_get_namespaced_pods_by_prefix(mocker):
     patched = mocker.patch("azext_edge.edge.providers.check.opcua.get_namespaced_pods_by_prefix", return_value=[])
+    yield patched
+
+
+@pytest.fixture
+def mock_get_cluster_custom_api(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.base.resource.get_cluster_custom_api")
     yield patched
 
 
@@ -218,6 +224,15 @@ def generate_pod_stub(
     pod_status = V1PodStatus(phase=phase, conditions=condition_list)
     pod = V1Pod(metadata=metadata, status=pod_status)
     return pod
+
+
+def generate_api_resource_list(
+    api_version: str,
+    group_version: str,
+    resources: List[Dict[str, Any]],
+):
+    resources = [V1APIResource(**resource) for resource in resources]
+    return V1APIResourceList(api_version=api_version, group_version=group_version, resources=resources)
 
 
 def assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup):
