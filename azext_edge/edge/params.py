@@ -86,7 +86,6 @@ def load_iotops_arguments(self, _):
             help="Use to visualize the IoT Operations deployment against the backing cluster.",
         )
 
-
     with self.argument_context("iot ops support") as context:
         context.argument(
             "ops_service",

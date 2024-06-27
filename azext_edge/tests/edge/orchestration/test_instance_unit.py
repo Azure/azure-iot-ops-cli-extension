@@ -25,7 +25,8 @@ def get_mock_instance_record(
             f"/providers/Microsoft.ExtendedLocation/customLocations/{cl_name}",
             "type": "CustomLocation",
         },
-        "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}/providers/{QUALIFIED_RESOURCE_TYPE}/{name}",
+        "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
+        f"/providers/{QUALIFIED_RESOURCE_TYPE}/{name}",
         "location": "northeurope",
         "name": name,
         "properties": {"description": "AIO Instance description.", "provisioningState": "Succeeded"},
