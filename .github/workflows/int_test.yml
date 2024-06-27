@@ -211,7 +211,7 @@ jobs:
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_kv: ${{ steps.env_out.KV_ID }}
+          azext_edge_kv: ${{ steps.env_out.outputs.KV_ID }}
           azext_edge_init_args: ${{ matrix.init-args }}
           azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
           azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
@@ -330,6 +330,7 @@ jobs:
           az connectedk8s delete --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
 
   delete_kv:
+    needs: [test]
     runs-on: ubuntu-22.04
     steps:
     - name: "Az CLI login"
