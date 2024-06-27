@@ -16,7 +16,6 @@ from ..providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
     DATA_PROCESSOR_API_V1,
     MQ_API_V1B1,
-    LNM_API_V1B1,
     OPCUA_API_V1,
     ORC_API_V1,
     AKRI_API_V0,
@@ -34,7 +33,6 @@ COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DATA_PROCESSOR_APIS = EdgeApiManager(resource_apis=[DATA_PROCESSOR_API_V1])
 COMPAT_ORC_APIS = EdgeApiManager(resource_apis=[ORC_API_V1])
 COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
-COMPAT_LNM_APIS = EdgeApiManager(resource_apis=[LNM_API_V1B1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 
 
@@ -50,7 +48,6 @@ def build_bundle(
 
     from .support.dataprocessor import prepare_bundle as prepare_dataprocessor_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
-    from .support.lnm import prepare_bundle as prepare_lnm_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.orc import prepare_bundle as prepare_symphony_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
@@ -76,10 +73,6 @@ def build_bundle(
         OpsServiceType.orc.value: {
             "apis": COMPAT_ORC_APIS,
             "prepare_bundle": prepare_symphony_bundle,
-        },
-        OpsServiceType.lnm.value: {
-            "apis": COMPAT_LNM_APIS,
-            "prepare_bundle": prepare_lnm_bundle,
         },
         OpsServiceType.akri.value: {"apis": COMPAT_AKRI_APIS, "prepare_bundle": prepare_akri_bundle},
         OpsServiceType.deviceregistry.value: {

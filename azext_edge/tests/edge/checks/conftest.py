@@ -61,25 +61,10 @@ def mock_evaluate_opcua_pod_health(mocker):
 
 
 @pytest.fixture
-def mock_get_namespaced_pods_by_prefix(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.lnm.get_namespaced_pods_by_prefix", return_value=[])
-    yield patched
-
-
-@pytest.fixture
 def mock_generate_deviceregistry_asset_target_resources(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.check.deviceregistry.generate_target_resource_name",
         return_value="deviceregistry.microsoft.com"
-    )
-    yield patched
-
-
-@pytest.fixture
-def mock_generate_lnm_target_resources(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.check.lnm.generate_target_resource_name",
-        return_value="lnmz.layerednetworkmgmt.iotoperations.azure.com"
     )
     yield patched
 
@@ -127,13 +112,6 @@ def mock_resource_types(mocker, ops_service):
                 "Dataset": [{}],
                 "Instance": [{}],
                 "Pipeline": [{}]
-            }
-        )
-    elif ops_service == "lnm":
-        patched.return_value = (
-            {},
-            {
-                "Lnm": [{}]
             }
         )
     elif ops_service == "akri":

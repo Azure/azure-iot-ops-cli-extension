@@ -36,26 +36,26 @@ def test_decorate_pod_phase(phase, expected):
     "pods",
     [
         [],
-        [generate_pod_stub(name="lnm-operator-1", phase="Running")],
-        [generate_pod_stub(name="lnm-operator-1", phase="Pending")],
-        [generate_pod_stub(name="lnm-operator-1", phase="Failed")],
+        [generate_pod_stub(name="mq-operator-1", phase="Running")],
+        [generate_pod_stub(name="mq-operator-1", phase="Pending")],
+        [generate_pod_stub(name="mq-operator-1", phase="Failed")],
         [
             generate_pod_stub(
-                name="lnm-operator-1",
+                name="akri-operator-1",
                 phase="Running",
             ),
             generate_pod_stub(
-                name="lnm-operator-2",
+                name="akri-operator-2",
                 phase="Pending",
             ),
         ],
         [
             generate_pod_stub(
-                name="lnm-operator-1",
+                name="opcua-operator-1",
                 phase="Running",
             ),
             generate_pod_stub(
-                name="lnm-operator-3",
+                name="opcua-operator-3",
                 phase="Failed",
             ),
         ],
@@ -323,7 +323,7 @@ def test_evaluate_pod_health(
         None
     )
 ])
-def test_lnm_process_pod_status(
+def test_process_pod_status(
     conditions,
     detail_level,
     eval_status,
