@@ -71,6 +71,8 @@ env:
 jobs:
   create_kv:
     runs-on: ubuntu-22.04
+    outputs:
+      KV_ID: ${{ steps.create-keyvault.outputs.KV_ID }}
     steps:
     - name: "Az CLI login"
       uses: azure/login@v2
@@ -79,7 +81,10 @@ jobs:
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     - name: "Create Key Vault for clusters"
-      run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false
+      id: create-keyvault
+      run: |
+          KV_ID=$(az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false -o tsv --query id)
+          echo "KV_ID=$KV_ID" >> $GITHUB_OUTPUT
 
   test:
     needs: [create_kv]
@@ -170,11 +175,6 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
-      - name: "Get Keyvault ID"
-        run: |
-          KV_ID=$(az keyvault show -n ${{env.KV_NAME}} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
-          echo "KV_ID=$KV_ID" >> $GITHUB_ENV
-          echo "KV_ID=$KV_ID" >> $GITHUB_OUTPUT
       - name: "Create CA certificates"
         if: ${{ matrix.feature == 'ca-certs'}}
         run: |
@@ -214,7 +214,7 @@ jobs:
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_kv: ${{ steps.env_out.outputs.KV_ID }}
+          azext_edge_kv: ${{ needs.create_kv.outputs.KV_ID }}
           azext_edge_init_args: ${{ matrix.init-args }}
           azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
           azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
@@ -301,26 +301,19 @@ jobs:
         if: ${{matrix.feature == 'ca-certs'}}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
-      - name: "Test cluster redeployment"
+      - name: "Redeploy cluster via tox"
         if: ${{matrix.feature == 'ca-certs'}}
-        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
-        with:
-          cluster: ${{ env.CLUSTER_NAME }}
-          resource-group: ${{ env.RESOURCE_GROUP }}
-          keyvault-id: ${{ env.KV_ID }}
-          sp-app-id: ${{ secrets.AIO_SP_APP_ID || '' }}
-          sp-object-id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
-          sp-secret: ${{ secrets.AIO_SP_SECRET || '' }}
-          no-preflight: ${{ matrix.no-preflight }}
-          mq-insecure: ${{ matrix.mq-insecure }}
-          disable-rsync-rules: ${{ matrix.disable-rsync-rules }}
-          ca-valid-days: ${{ matrix.ca-valid-days || '' }}
-          ca-file: ${{ matrix.ca-file || '' }}
-          ca-key-file: ${{ matrix.ca-key-file || '' }}
-          kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
-          template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
-          csi-config: ${{ matrix.csi-config || ''}}
-          include-dp: ${{ matrix.include-dp }}
+        env:
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_kv: ${{ needs.create_kv.outputs.KV_ID }}
+          azext_edge_init_args: ${{ matrix.init-args }}
+          azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
+          azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
+          azext_edge_sp_secret: ${{ secrets.AIO_SP_SECRET || '' }}
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          tox r -e python-init-int --skip-pkg-install -- --durations=0
       - name: "Delete AIO resources"
         if: ${{ always() }}
         run: |
