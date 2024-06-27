@@ -283,3 +283,18 @@ def delete(
         no_progress=no_progress,
         force=force,
     )
+
+
+def show_instance(cmd, instance_name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> dict:
+    from .providers.orchestration import Instances
+
+    return Instances(cmd).show(name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree)
+
+
+def list_instances(
+    cmd,
+    resource_group_name: Optional[str] = None,
+) -> dict:
+    from .providers.orchestration import Instances
+
+    return Instances(cmd).list(resource_group_name)

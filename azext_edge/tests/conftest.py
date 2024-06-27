@@ -6,6 +6,7 @@
 
 import pytest
 import os
+import sys
 
 
 # Sets current working directory to the directory of the executing file
@@ -24,7 +25,17 @@ def mocked_get_subscription_id(mocker):
 
 
 @pytest.fixture
-def mocked_cmd(mocker, mocked_get_subscription_id):
+def mocked_azcli_cred_get_token(mocker):
+    from unittest.mock import PropertyMock
+    patched = mocker.patch(
+        "azure.identity._credentials.azure_cli.AzureCliCredential.get_token",
+    )
+    type(patched()).expires_on = PropertyMock(return_value=sys.maxsize)
+    yield patched
+
+
+@pytest.fixture
+def mocked_cmd(mocker, mocked_get_subscription_id, mocked_azcli_cred_get_token):
     az_cli_mock = mocker.patch("azure.cli.core.AzCli", autospec=True)
     config = {"cli_ctx": az_cli_mock}
     patched = mocker.patch("azure.cli.core.commands.AzCliCommand", autospec=True, **config)
@@ -50,6 +61,7 @@ def mocked_send_raw_request(request, mocker):
 @pytest.fixture(scope="module")
 def tracked_files():
     from .helpers import remove_file_or_folder
+
     result = []
     yield result
     for file in result:
