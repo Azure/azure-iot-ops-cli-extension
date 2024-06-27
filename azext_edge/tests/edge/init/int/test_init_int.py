@@ -28,8 +28,10 @@ def init_test_setup(cluster_connection, settings):
     settings.add_to_config(EnvironmentVariables.aio_cleanup.value)
 
     if not all([settings.env.azext_edge_cluster, settings.env.azext_edge_rg, settings.env.azext_edge_kv]):
-        raise AssertionError("Cannot run init tests without a connected cluster, resource group, and precreated keyvault.")
-
+        raise AssertionError(
+            "Cannot run init tests without a connected cluster, resource group, and precreated keyvault. "
+            f"Current settings: {settings}"
+        )
     yield {
         "clusterName": settings.env.azext_edge_cluster,
         "resourceGroup": settings.env.azext_edge_rg,

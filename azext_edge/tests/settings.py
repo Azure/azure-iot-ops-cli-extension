@@ -64,3 +64,6 @@ class DynamoSettings(object):
                     raise RuntimeError(
                         "{} environment variables required.".format(",".join(env_set))
                     )
+
+    def __repr__(self):
+        return " \n".join([f"{key}: {value}" for key, value in vars(self.env).items()])
