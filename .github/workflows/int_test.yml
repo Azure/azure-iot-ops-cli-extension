@@ -201,7 +201,6 @@ jobs:
           ${{ env.template }}
           EOF
       - name: "Tox test environment setup"
-        if: ${{!inputs.use-container && matrix.feature == 'default'}}
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           python -m pip install tox
