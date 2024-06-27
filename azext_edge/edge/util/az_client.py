@@ -162,7 +162,11 @@ class AzMicroMgmtClient:
             resource_group_segment = f"resourceGroups/{resource_group_name}/"
         qualified_resource_type_segment = f"providers/{qualified_resource_type}"
         resources_path = f"{sub_segment}{resource_group_segment}{qualified_resource_type_segment}"
+        print(self.resource_client.resources)
+        print(self.resource_client.resources.list)
+        print(dir(self.resource_client.resources.list))
         self.resource_client.resources.list.metadata["url"] = resources_path
+
         model_iterator = self.resource_client.resources.list(
             cls=self._enumerate_models,
             api_version=api_version,

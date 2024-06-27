@@ -28,7 +28,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("init", "init")
         cmd_group.command("delete", "delete")
         cmd_group.command("verify-host", "verify_host")
-        cmd_group.command("show", "show_instance")
+        cmd_group.show_command("show", "show_instance")
         cmd_group.command("list", "list_instances")
 
     with self.command_group(
