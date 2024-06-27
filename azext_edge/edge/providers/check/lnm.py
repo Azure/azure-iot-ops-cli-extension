@@ -6,7 +6,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from azext_edge.edge.providers.check.base.pod import evaluate_detailed_pod_health
+from azext_edge.edge.providers.check.base.pod import process_pod_status
 
 from ..base import get_namespaced_pods_by_prefix
 from .base import (
@@ -278,17 +278,15 @@ def evaluate_lnms(
 
             lnm_label = f"app in ({','.join(lnm_app_labels)})"
             pods = get_namespaced_pods_by_prefix(prefix=AIO_LNM_PREFIX, namespace="", label_selector=lnm_label)
-
-            for pod in pods:
-                evaluate_detailed_pod_health(
-                    check_manager=check_manager,
-                    target=target_lnms,
-                    target_service_pod=f"pod/{AIO_LNM_PREFIX}",
-                    pod=pod,
-                    display_padding=padding + PADDING_SIZE,
-                    namespace=namespace,
-                    detail_level=detail_level,
-                )
+            process_pod_status(
+                check_manager=check_manager,
+                target=target_lnms,
+                target_service_pod=f"pod/{AIO_LNM_PREFIX}",
+                pods=pods,
+                display_padding=padding + PADDING_SIZE,
+                namespace=namespace,
+                detail_level=detail_level,
+            )
 
     # evaluate lnm svclb pod in other namespace
     _process_lnm_pods(
@@ -338,13 +336,12 @@ def _process_lnm_pods(
             )
         )
 
-        for pod in pods:
-            evaluate_detailed_pod_health(
-                check_manager=check_manager,
-                target=target,
-                target_service_pod=f"pod/{prefix}",
-                pod=pod,
-                display_padding=padding + PADDING_SIZE,
-                namespace=namespace,
-                detail_level=detail_level,
-            )
+        process_pod_status(
+            check_manager=check_manager,
+            target=target,
+            target_service_pod=f"pod/{prefix}",
+            pods=pods,
+            display_padding=padding + PADDING_SIZE,
+            namespace=namespace,
+            detail_level=detail_level,
+        )

@@ -326,6 +326,9 @@ AIO_MQ_HEALTH_MANAGER = "aio-mq-dmqtt-health-manager"
 # Lnm runtime attributes
 AIO_LNM_PREFIX = "aio-lnm"
 
+# OPCUA runtime attributes
+AIO_OPCUA_PREFIX = "aio-opc-"
+
 # Pre-deployment KPIs
 
 MIN_K8S_VERSION = "1.20"
