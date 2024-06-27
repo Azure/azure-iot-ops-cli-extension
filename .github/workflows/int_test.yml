@@ -15,10 +15,6 @@ on:
         description: Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments).
         type: string
         required: false
-      removemekeyvault:
-        description: Keyvault.
-        type: string
-        required: false
       custom-locations-oid:
         description: Custom Locations OID
         type: string
@@ -171,7 +167,6 @@ jobs:
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
       - name: "Get Keyvault ID"
-        if: ${{ !inputs.removemekeyvault }}
         run: |
           KV_ID=$(az keyvault show -n ${{env.KV_NAME}} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
           echo "KV_ID=$KV_ID" >> $GITHUB_ENV
@@ -205,11 +200,18 @@ jobs:
           >custom-template.json cat <<-'EOF'
           ${{ env.template }}
           EOF
+      - name: "Tox test environment setup"
+        if: ${{!inputs.use-container && matrix.feature == 'default'}}
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          python -m pip install tox
+          tox r -vv -e python-int --notest
+          tox r -vv -e python-init-int --notest
       - name: "Tox INIT Integration Tests"
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_kv: ${{ inputs.removemekeyvault || steps.env_out.KV_ID }}
+          azext_edge_kv: ${{ steps.env_out.KV_ID }}
           azext_edge_init_args: ${{ matrix.init-args }}
           azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
           azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
@@ -217,12 +219,6 @@ jobs:
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-init-int --skip-pkg-install -- --durations=0
-      - name: "Tox test environment setup"
-        if: ${{!inputs.use-container && matrix.feature == 'default'}}
-        run: |
-          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-          python -m pip install tox
-          tox r -vv -e python-int --notest
       - name: "Az CLI login refresh"
         if: ${{matrix.feature == 'default'}}
         uses: azure/login@v2
@@ -310,7 +306,7 @@ jobs:
         with:
           cluster: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
-          keyvault-id: ${{ inputs.removemekeyvault || env.KV_ID }}
+          keyvault-id: ${{ env.KV_ID }}
           sp-app-id: ${{ secrets.AIO_SP_APP_ID || '' }}
           sp-object-id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
           sp-secret: ${{ secrets.AIO_SP_SECRET || '' }}
@@ -332,3 +328,15 @@ jobs:
         if: ${{ always() }}
         run: |
           az connectedk8s delete --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
+
+  delete_kv:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: "Az CLI login"
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    - name: "Delete Key Vault for clusters"
+      run: az keyvault delete -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --no-wait
