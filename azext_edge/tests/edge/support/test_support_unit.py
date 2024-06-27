@@ -20,7 +20,6 @@ from azext_edge.edge.providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
     DATA_PROCESSOR_API_V1,
     DEVICEREGISTRY_API_V1,
-    LNM_API_V1B1,
     MQ_ACTIVE_API,
     MQ_API_V1B1,
     OPCUA_API_V1,
@@ -52,7 +51,6 @@ from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_ONEOFF_LABEL,
     DATA_PROCESSOR_PVC_APP_LABEL,
 )
-from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS, LNM_DIRECTORY_PATH
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
@@ -88,9 +86,8 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQ_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
         [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
-        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1],
         # TODO: re-enable billing once service is available post 0.6.0 release
-        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1, CLUSTER_CONFIG_API_V1],
+        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
     ],
     indirect=True,
 )
@@ -605,47 +602,6 @@ def test_create_bundle(
                 directory_path=AKRI_DIRECTORY_PATH,
             )
 
-        if api in [LNM_API_V1B1]:
-            lnm_app_label = f"app in ({','.join(LNM_APP_LABELS)})"
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=lnm_app_label,
-                directory_path=LNM_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=None,
-                directory_path=LNM_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-                mock_names=["svclb-aio-lnm-operator"],
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=None,
-                directory_path=LNM_DIRECTORY_PATH,
-                mock_names=["aio-lnm-operator"],
-            )
-            assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=lnm_app_label, directory_path=LNM_DIRECTORY_PATH
-            )
-            assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=lnm_app_label, directory_path=LNM_DIRECTORY_PATH
-            )
-            # TODO: test both without or with lnm instance
-            assert_list_daemon_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=None,
-                directory_path=LNM_DIRECTORY_PATH,
-                mock_names=["svclb-aio-lnm-operator"],
-            )
-
     if expected_resources:
         assert_otel_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
 
@@ -659,7 +615,6 @@ def asset_raises_not_found_error(mocked_cluster_resources):
         (OPCUA_API_V1, "opcua"),
         (DATA_PROCESSOR_API_V1, "dataprocessor"),
         (ORC_API_V1, "orc"),
-        (LNM_API_V1B1, "lnm"),
         (DEVICEREGISTRY_API_V1, "deviceregistry"),
         (AKRI_API_V0, "akri"),
     ]:
@@ -732,7 +687,6 @@ def assert_list_deployments(
             label_selector=label_selector, field_selector=field_selector
         )
 
-    # @jiacju - no label for lnm
     mock_names = mock_names or ["mock_deployment"]
     for name in mock_names:
         assert_zipfile_write(

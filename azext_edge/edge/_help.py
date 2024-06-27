@@ -15,7 +15,6 @@ from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DATA_PROCESSOR_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
-    COMPAT_LNM_APIS,
     COMPAT_MQ_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
@@ -57,7 +56,6 @@ def load_iotops_help():
             - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_ORC_APIS.as_str()}
             - {COMPAT_AKRI_APIS.as_str()}
-            - {COMPAT_LNM_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
 
@@ -93,7 +91,6 @@ def load_iotops_help():
             - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
-            - {COMPAT_LNM_APIS.as_str()}
             - {COMPAT_MQ_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
 

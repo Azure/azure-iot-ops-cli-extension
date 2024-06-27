@@ -90,7 +90,6 @@ def mocked_cluster_resources(request, mocker):
         DATA_PROCESSOR_API_V1,
         ORC_API_V1,
         AKRI_API_V0,
-        LNM_API_V1B1,
         DEVICEREGISTRY_API_V1,
         CLUSTER_CONFIG_API_V1,
     )
@@ -150,9 +149,6 @@ def mocked_cluster_resources(request, mocker):
         if r == AKRI_API_V0:
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Configuration"))
-
-        if r == LNM_API_V1B1:
-            v1_resources.append(_get_api_resource("Lnm"))
 
         if r == DEVICEREGISTRY_API_V1:
             v1_resources.append(_get_api_resource("Asset"))
@@ -283,11 +279,9 @@ def mocked_list_deployments(mocked_client):
 
     def _handle_list_deployments(*args, **kwargs):
         names = ["mock_deployment"]
-        # @jiacju - currently no unique label for lnm
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
             names.extend(
                 [
-                    "aio-lnm-operator",
                     "aio-opc-admission-controller",
                     "aio-opc-supervisor",
                     "aio-opc-opc",
@@ -419,11 +413,7 @@ def mocked_list_daemonsets(mocked_client):
     from kubernetes.client.models import V1DaemonSetList, V1DaemonSet, V1ObjectMeta
 
     def _handle_list_daemonsets(*args, **kwargs):
-        # @jiacju - currently no unique label for lnm
         daemonset_names = ["mock_daemonset"]
-        if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            daemonset_names.extend(["svclb-aio-lnm-operator"])
-
         daemonset_list = []
         for name in daemonset_names:
             daemonset_list.append(V1DaemonSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
