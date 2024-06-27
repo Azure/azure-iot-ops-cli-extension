@@ -26,8 +26,9 @@ def init_test_setup(cluster_connection, settings):
     settings.add_to_config(EnvironmentVariables.sp_secret.value)
     settings.add_to_config(EnvironmentVariables.init_args.value)
     settings.add_to_config(EnvironmentVariables.aio_cleanup.value)
+
     if not all([settings.env.azext_edge_cluster, settings.env.azext_edge_rg, settings.env.azext_edge_kv]):
-        pytest.skip("Cannot run init tests without a connected cluster, resource group, and precreated keyvault.")
+        raise AssertionError("Cannot run init tests without a connected cluster, resource group, and precreated keyvault.")
 
     yield {
         "clusterName": settings.env.azext_edge_cluster,

@@ -49,6 +49,10 @@ on:
         type: string
         required: false
         default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+      runtime-init-args:
+        description: Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments).
+        type: string
+        required: false
       use-container:
         description: Build container image for tests
         type: boolean
@@ -240,7 +244,6 @@ jobs:
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_skip_init: True
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-int --skip-pkg-install -- --durations=0
@@ -249,7 +252,6 @@ jobs:
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_cluster: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
-          azext_edge_skip_init: True
         run: |
           # volume mounts
           azure_dir=$(realpath ~/.azure)
@@ -329,6 +331,7 @@ jobs:
           az connectedk8s delete --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
 
   delete_kv:
+    if: ${{ always() }}
     needs: [test]
     runs-on: ubuntu-22.04
     steps:
