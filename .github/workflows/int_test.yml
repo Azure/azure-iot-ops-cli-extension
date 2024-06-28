@@ -71,8 +71,6 @@ env:
 jobs:
   create_kv:
     runs-on: ubuntu-22.04
-    outputs:
-      KV_ID: ${{ steps.create-keyvault.outputs.KV_ID }}
     steps:
     - name: "Az CLI login"
       uses: azure/login@v2
@@ -82,9 +80,8 @@ jobs:
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     - name: "Create Key Vault for clusters"
       id: create-keyvault
-      run: |
-          KV_ID=$(az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false -o tsv --query id)
-          echo "KV_ID=$KV_ID" >> $GITHUB_OUTPUT
+      run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false
+
 
   test:
     needs: [create_kv]
@@ -97,7 +94,6 @@ jobs:
       CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
       EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
       K3S_VERSION: "v1.28.5+k3s1"
-      KV_ID: ${{ needs.create_kv.outputs.KV_ID }}
     strategy:
       fail-fast: false
       matrix:
@@ -209,17 +205,29 @@ jobs:
           EOF
       - name: "Tox test environment setup"
         run: |
-          echo ${{ needs.create_kv.outputs.KV_ID }}
-          echo ${{ env.KV_ID }}
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           python -m pip install tox
           tox r -vv -e python-int --notest
           tox r -vv -e python-init-int --notest
+      - name: "Get Keyvault ID"
+        run: |
+          KV_ID=$(az keyvault show -n ${{env.KV_NAME}} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
+          echo "KV_ID=$KV_ID" >> $GITHUB_ENV
+      - name: "OIDC Token exchange service"
+        run: |
+          while true; do
+            token_request=$ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            token_uri=$ACTIONS_ID_TOKEN_REQUEST_URL
+            token=$(curl -H "Authorization: bearer $token_request" "${token_uri}&audience=api://AzureADTokenExchange" | jq .value -r)
+            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -t ${{ secrets.AZURE_TENANT_ID }} --federated-token $token --output none
+            # Sleep for 4 minutes
+            sleep 240
+          done &
       - name: "Tox INIT Integration Tests"
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_kv: ${{ needs.create_kv.outputs.KV_ID }}
+          azext_edge_kv: ${{ env.KV_ID }}
           azext_edge_init_args: ${{ matrix.init-args }}
           azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
           azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
@@ -234,16 +242,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "OIDC Token exchange service"
-        run: |
-          while true; do
-            token_request=$ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            token_uri=$ACTIONS_ID_TOKEN_REQUEST_URL
-            token=$(curl -H "Authorization: bearer $token_request" "${token_uri}&audience=api://AzureADTokenExchange" | jq .value -r)
-            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -t ${{ secrets.AZURE_TENANT_ID }} --federated-token $token --output none
-            # Sleep for 4 minutes
-            sleep 240
-          done &
       - name: "Tox Integration Tests"
         if: ${{matrix.feature == 'default' && !inputs.use-container}}
         env:
@@ -311,7 +309,7 @@ jobs:
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_kv: ${{ needs.create_kv.outputs.KV_ID }}
+          azext_edge_kv: ${{ env.KV_ID }}
           azext_edge_init_args: ${{ matrix.init-args }}
           azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
           azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
