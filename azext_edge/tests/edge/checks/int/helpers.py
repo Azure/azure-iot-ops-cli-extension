@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import (
@@ -176,6 +176,32 @@ def assert_general_eval_custom_resources(
         assert len(check_names) <= len(kubectl_items)
         for name in check_names:
             assert name in kubectl_items
+
+
+def combine_statuses(
+    status_list: List[str]
+):
+    final_status = "success"
+    for status in status_list:
+        if final_status == "success" and status in ["warning", "error", "skipped"]:
+            final_status = status
+        elif final_status in ["warning", "skipped"] and status == "error":
+            final_status = status
+    return final_status
+
+
+def expected_status(
+    success_or_fail: bool,
+    success_or_warning: Optional[bool] = None,
+    warning_or_fail: Optional[bool] = None
+):
+    status = "success" if success_or_fail else "error"
+    if any([
+        status == "success" and success_or_warning is False,
+        status == "error" and warning_or_fail is True
+    ]):
+        status = "warning"
+    return status
 
 
 def run_check_command(
