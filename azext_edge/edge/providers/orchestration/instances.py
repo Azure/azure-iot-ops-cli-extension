@@ -9,7 +9,7 @@ from typing import List, Optional
 from knack.log import get_logger
 from rich import print
 
-from ...util.az_client import AzMicroMgmtClient
+from ...util.az_client import get_iotops_mgmt_client, parse_resource_id
 from ...util.queryable import Queryable
 
 logger = get_logger(__name__)
@@ -33,14 +33,12 @@ QUALIFIED_RESOURCE_TYPE = "Private.IoTOperations/instances"
 class Instances(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
-        self.micro_client = AzMicroMgmtClient(subscription_id=self.default_subscription_id, base_url=BASE_URL)
+        self.iotops_mgmt_client = get_iotops_mgmt_client(
+            subscription_id=self.default_subscription_id, endpoint=BASE_URL, api_version=INSTANCES_API_VERSION
+        )
 
     def show(self, name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> Optional[dict]:
-        result = self.micro_client.get_resource_by_id(
-            resource_id=f"/subscriptions/{self.default_subscription_id}/resourceGroups/{resource_group_name}"
-            f"/providers/{QUALIFIED_RESOURCE_TYPE}/{name}",
-            api_version=INSTANCES_API_VERSION,
-        )
+        result = self.iotops_mgmt_client.instance.get(instance_name=name, resource_group_name=resource_group_name)
 
         if show_tree:
             self._show_tree(result)
@@ -49,15 +47,16 @@ class Instances(Queryable):
         return result
 
     def list(self, resource_group_name: Optional[str] = None) -> List[dict]:
-        return self.micro_client.list_resources(
-            qualified_resource_type=QUALIFIED_RESOURCE_TYPE,
-            api_version=INSTANCES_API_VERSION,
-            resource_group_name=resource_group_name,
-        )
+        if resource_group_name:
+            return list(
+                self.iotops_mgmt_client.instance.list_by_resource_group(resource_group_name=resource_group_name)
+            )
+
+        return list(self.iotops_mgmt_client.instance.list_by_subscription())
 
     def _show_tree(self, instance: dict):
         custom_location = self._get_associated_cl(instance)
-        resource_id_container = self.micro_client.parse_resource_id(custom_location["properties"]["hostResourceId"])
+        resource_id_container = parse_resource_id(custom_location["properties"]["hostResourceId"])
 
         # Currently resource map will query cluster state upon init
         # therefore we only use it when necessary to save cycles.

@@ -4,9 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import json
 from time import sleep
-from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, NamedTuple, Tuple
 
 from knack.log import get_logger
 
@@ -20,6 +19,8 @@ from azure.identity import AzureCliCredential, ClientSecretCredential
 from azure.mgmt.authorization import AuthorizationManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 
+from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
+
 AZURE_CLI_CREDENTIAL = AzureCliCredential()
 
 POLL_RETRIES = 240
@@ -31,6 +32,18 @@ logger = get_logger(__name__)
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
     from azure.mgmt.resource.resources.models import GenericResource
+
+
+def get_iotops_mgmt_client(subscription_id: str, **kwargs):
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return MicrosoftIoTOperationsManagementService(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
 
 
 def get_resource_client(subscription_id: str, api_version="2022-09-01", **kwargs) -> ResourceManagementClient:
@@ -107,69 +120,14 @@ class ResourceIdContainer(NamedTuple):
     resource_name: str
 
 
-class AzMicroMgmtClient:
-    def __init__(self, subscription_id: str, **kwargs):
-        self.resource_client = get_resource_client(subscription_id, **kwargs)
+def parse_resource_id(resource_id: str) -> ResourceIdContainer:
+    parts = resource_id.split("/")
 
-    def _get_response_body_text(self, response, _, *args, **kwargs) -> str:
-        """
-        Apply when requiring the raw response body, to avoid set model deserialization.
-        """
-        return response.http_response.text()
+    # Extract the subscription, resource group, and resource name
+    subscription_id = parts[2]
+    resource_group_name = parts[4]
+    resource_name = parts[-1]
 
-    def _enumerate_models(self, models: list, *args, **kwargs) -> List[dict]:
-        unpacked = []
-        for model in models:
-            m: dict = model.as_dict()
-
-            # TODO - digimaun
-            if "extended_location" in m:
-                m["extendedLocation"] = m.pop("extended_location")
-
-            m.update(model.additional_properties)
-            unpacked.append(m)
-
-        return unpacked
-
-    @classmethod
-    def parse_resource_id(self, resource_id: str) -> ResourceIdContainer:
-        parts = resource_id.split("/")
-
-        # Extract the subscription, resource group, and resource name
-        subscription_id = parts[2]
-        resource_group_name = parts[4]
-        resource_name = parts[-1]
-
-        return ResourceIdContainer(
-            subscription_id=subscription_id, resource_group_name=resource_group_name, resource_name=resource_name
-        )
-
-    def get_resource_by_id(self, resource_id: str, api_version: str) -> dict:
-        text = self.resource_client.resources.get_by_id(
-            resource_id=resource_id,
-            api_version=api_version,
-            cls=self._get_response_body_text,
-        )
-        return json.loads(text)
-
-    def list_resources(
-        self, qualified_resource_type: str, api_version: str, resource_group_name: Optional[str] = None
-    ) -> List[dict]:
-        # resource client covers {subscriptionId}
-        sub_segment = "/subscriptions/{subscriptionId}/"
-        resource_group_segment = ""
-        if resource_group_name:
-            resource_group_segment = f"resourceGroups/{resource_group_name}/"
-        qualified_resource_type_segment = f"providers/{qualified_resource_type}"
-        resources_path = f"{sub_segment}{resource_group_segment}{qualified_resource_type_segment}"
-        print(self.resource_client.resources)
-        print(self.resource_client.resources.list)
-        print(dir(self.resource_client.resources.list))
-        self.resource_client.resources.list.metadata["url"] = resources_path
-
-        model_iterator = self.resource_client.resources.list(
-            cls=self._enumerate_models,
-            api_version=api_version,
-        )
-        # Enumerate models
-        return list(model_iterator)
+    return ResourceIdContainer(
+        subscription_id=subscription_id, resource_group_name=resource_group_name, resource_name=resource_name
+    )
