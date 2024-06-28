@@ -18,7 +18,7 @@ from .helpers import (
     run_bundle_command,
     BASE_ZIP_PATH
 )
-from ....helpers import find_extra_or_missing_names, run
+from ....helpers import find_extra_or_missing_names
 
 logger = get_logger(__name__)
 
