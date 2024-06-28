@@ -59,7 +59,7 @@ def test_init_scenario(
         # --simualte-plc vs --dp-instance dp_name
         if len(arg) == 1 and arg[0]:
             arg_dict[arg[0]] = True
-        else:
+        elif len(arg) == 2:
             arg_dict[arg[0]] = arg[1]
 
     if "ca_dir" in arg_dict:
