@@ -15,6 +15,7 @@ from .common import OpsServiceType
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
+from .providers.orchestration import Instances
 from .providers.orchestration.common import (
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     DEFAULT_X509_CA_VALID_DAYS,
@@ -286,15 +287,8 @@ def delete(
 
 
 def show_instance(cmd, instance_name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> dict:
-    from .providers.orchestration import Instances
-
     return Instances(cmd).show(name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree)
 
 
-def list_instances(
-    cmd,
-    resource_group_name: Optional[str] = None,
-) -> dict:
-    from .providers.orchestration import Instances
-
+def list_instances(cmd, resource_group_name: Optional[str] = None) -> List[dict]:
     return Instances(cmd).list(resource_group_name)
