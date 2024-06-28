@@ -5,33 +5,57 @@
 # ----------------------------------------------------------------------------------------------
 
 from time import sleep
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, NamedTuple, Tuple
+
+from knack.log import get_logger
 
 from ...constants import USER_AGENT
 from .common import ensure_azure_namespace_path
 
 ensure_azure_namespace_path()
 
-from azure.core.pipeline.policies import UserAgentPolicy
+from azure.core.pipeline.policies import HttpLoggingPolicy, UserAgentPolicy
 from azure.identity import AzureCliCredential, ClientSecretCredential
 from azure.mgmt.authorization import AuthorizationManagementClient
 from azure.mgmt.resource import ResourceManagementClient
+
+from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
 
 AZURE_CLI_CREDENTIAL = AzureCliCredential()
 
 POLL_RETRIES = 240
 POLL_WAIT_SEC = 15
 
+logger = get_logger(__name__)
+
+
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
     from azure.mgmt.resource.resources.models import GenericResource
 
 
-def get_resource_client(subscription_id: str) -> ResourceManagementClient:
+def get_iotops_mgmt_client(subscription_id: str, **kwargs):
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return MicrosoftIoTOperationsManagementService(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
+
+
+def get_resource_client(subscription_id: str, api_version="2022-09-01", **kwargs) -> ResourceManagementClient:
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
     return ResourceManagementClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        api_version=api_version,
+        **kwargs,
     )
 
 
@@ -79,3 +103,31 @@ def get_tenant_id() -> str:
     profile = Profile()
     sub = profile.get_subscription()
     return sub["tenantId"]
+
+
+def get_default_logging_policy() -> HttpLoggingPolicy:
+    http_logging_policy = HttpLoggingPolicy(logger=logger)
+    http_logging_policy.allowed_query_params.add("api-version")
+    http_logging_policy.allowed_query_params.add("$filter")
+    http_logging_policy.allowed_query_params.add("$expand")
+
+    return http_logging_policy
+
+
+class ResourceIdContainer(NamedTuple):
+    subscription_id: str
+    resource_group_name: str
+    resource_name: str
+
+
+def parse_resource_id(resource_id: str) -> ResourceIdContainer:
+    parts = resource_id.split("/")
+
+    # Extract the subscription, resource group, and resource name
+    subscription_id = parts[2]
+    resource_group_name = parts[4]
+    resource_name = parts[-1]
+
+    return ResourceIdContainer(
+        subscription_id=subscription_id, resource_group_name=resource_group_name, resource_name=resource_name
+    )

@@ -68,7 +68,7 @@ class TestFileHeaders(object):
                         contents = None
                         with open(entry.path, "rt", encoding="utf-8") as f:
                             contents = f.read()
-                        if contents and not contents.startswith(header):
+                        if contents and not contents.startswith(header) and "vendor" not in entry.path:
                             files_missing_header.append(entry.path)
 
         _validate_directory(EXTENSION_ROOT)
