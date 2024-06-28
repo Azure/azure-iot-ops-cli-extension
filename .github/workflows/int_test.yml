@@ -97,6 +97,7 @@ jobs:
       CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
       EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
       K3S_VERSION: "v1.28.5+k3s1"
+      KV_ID: ${{ needs.create_kv.outputs.KV_ID }}
     strategy:
       fail-fast: false
       matrix:
@@ -113,6 +114,8 @@ jobs:
             init-args: "--disable-rsync-rules  ${{ inputs.runtime-init-args || '' }}"
           # test custom ca files
           - feature: ca-certs
+            ca-file: 'test-ca.pem'
+            ca-key-file: 'test-ca-key.pem'
             init-args: "--ca-file test-ca.pem --ca-key-file test-ca-key.pem --include-dp ${{ inputs.runtime-init-args || '' }}"
           # test custom template
           - feature: use-custom-template
@@ -206,6 +209,8 @@ jobs:
           EOF
       - name: "Tox test environment setup"
         run: |
+          echo ${{ needs.create_kv.outputs.KV_ID }}
+          echo ${{ env.KV_ID }}
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           python -m pip install tox
           tox r -vv -e python-int --notest
