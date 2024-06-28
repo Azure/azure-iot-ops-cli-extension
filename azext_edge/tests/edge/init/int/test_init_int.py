@@ -57,7 +57,7 @@ def test_init_scenario(
     for arg in additional_args.split("--"):
         arg = arg.replace("-", "_").strip().split(" ", maxsplit=1)
         # --simualte-plc vs --dp-instance dp_name
-        if len(arg) == 1:
+        if len(arg) == 1 and arg[0]:
             arg_dict[arg[0]] = True
         else:
             arg_dict[arg[0]] = arg[1]

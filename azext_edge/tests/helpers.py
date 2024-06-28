@@ -154,6 +154,8 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
     if expect_failure and result.returncode == 0:
         raise CLIInternalError(f"Command `{command}` did not fail as expected.")
     elif not expect_failure and result.returncode != 0:
+        # logger since pytest can cut off long commands
+        logger.error(f"Command `{command}` failed.")
         raise CLIInternalError(result.stderr)
 
     if result.stdout:

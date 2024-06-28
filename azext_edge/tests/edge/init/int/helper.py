@@ -19,7 +19,7 @@ class ResourceKeys(Enum):
 
 
 def assert_init_result(
-    result: Dict[str, Any], 
+    result: Dict[str, Any],
     cluster_name: str,
     key_vault: str,
     resource_group: str,
@@ -37,10 +37,12 @@ def assert_init_result(
     assert result["deploymentLink"].endswith(result["deploymentName"])
 
     # CSI driver
+    print(result["csiDriver"])
+    print(arg_dict)
     assert result["csiDriver"]["keyVaultId"] == key_vault
     assert result["csiDriver"]["kvSpcSecretName"] == arg_dict.get("kv_spc_secret_name", "azure-iot-operations")
     assert result["csiDriver"]["version"] == arg_dict.get("csi_ver", KEYVAULT_ARC_EXTENSION_VERSION)
-    
+
     if sp_app_id:
         assert result["csiDriver"]["spAppId"] == sp_app_id
     if sp_object_id:
@@ -61,7 +63,7 @@ def assert_init_result(
         resource_group=resource_group,
         **arg_dict
     )
-    
+
     # Tls
     assert result["tls"]["aioTrustConfigMap"]
     assert result["tls"]["aioTrustSecretName"]
@@ -92,6 +94,7 @@ def _assert_aio_versions(aio_versions: Dict[str, str], include_dp: bool = False)
 
 def _assert_deployment_resources(resources: List[str], cluster_name: str, resource_group: str, **arg_dict):
     # only check the custom location + connected cluster resources
+    print("\n".join(resources))
     resources.sort()
     ext_loc_resources = [res for res in resources if res.startswith(ResourceKeys.custom_location.value)]
     custom_loc_name = ext_loc_resources[0].split("/")[-1]
