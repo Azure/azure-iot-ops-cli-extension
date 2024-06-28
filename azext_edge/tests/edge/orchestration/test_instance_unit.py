@@ -102,5 +102,5 @@ def test_instance_list(mocked_cmd, resource_group_name: str, records: int):
     from azext_edge.edge.providers.orchestration.instances import Instances
 
     instances = Instances(mocked_cmd)
-    result = instances.list(resource_group_name=resource_group_name)
+    result = list(instances.list(resource_group_name=resource_group_name))
     assert result == mock_instance_records["value"]

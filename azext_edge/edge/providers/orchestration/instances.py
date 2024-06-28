@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List, Optional
+from typing import Iterable, Optional
 
 from knack.log import get_logger
 from rich import print
@@ -46,13 +46,11 @@ class Instances(Queryable):
 
         return result
 
-    def list(self, resource_group_name: Optional[str] = None) -> List[dict]:
+    def list(self, resource_group_name: Optional[str] = None) -> Iterable[dict]:
         if resource_group_name:
-            return list(
-                self.iotops_mgmt_client.instance.list_by_resource_group(resource_group_name=resource_group_name)
-            )
+            return self.iotops_mgmt_client.instance.list_by_resource_group(resource_group_name=resource_group_name)
 
-        return list(self.iotops_mgmt_client.instance.list_by_subscription())
+        return self.iotops_mgmt_client.instance.list_by_subscription()
 
     def _show_tree(self, instance: dict):
         custom_location = self._get_associated_cl(instance)
