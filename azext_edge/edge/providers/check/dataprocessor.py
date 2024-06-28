@@ -211,7 +211,8 @@ def evaluate_instances(
                     pod=pod,
                     display_padding=12,
                     service_label=DATA_PROCESSOR_NAME_LABEL_V2,
-                    namespace=namespace
+                    namespace=namespace,
+                    detail_level=detail_level,
                 )
 
             # TODO: remove once the new label is stabled
@@ -221,7 +222,8 @@ def evaluate_instances(
                 pod=DATA_PROCESSOR_NATS_PREFIX,
                 display_padding=12,
                 service_label=DATA_PROCESSOR_ONEOFF_LABEL,
-                namespace=namespace
+                namespace=namespace,
+                detail_level=detail_level,
             )
 
     return check_manager.as_dict(as_list)

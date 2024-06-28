@@ -157,6 +157,7 @@ def process_cloud_connector(
             target=connector_target,
             namespace=namespace,
             connectors=connector_list,
+            detail_level=detail_level,
         )
     # only show invalid topic maps in other namespaces in non-summary detail-levels
     if detail_level != ResourceOutputDetailLevel.summary.value:
@@ -234,6 +235,7 @@ def _display_connector_runtime_health(
     connectors: Optional[List[Dict[str, Any]]] = None,
     prefix: str = AIO_MQ_RESOURCE_PREFIX,
     padding: int = 8,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
 ):
     if connectors:
         check_manager.add_display(
@@ -256,6 +258,7 @@ def _display_connector_runtime_health(
                 pod=pod,
                 display_padding=padding,
                 service_label=MQ_LABEL,
+                detail_level=detail_level,
             )
 
 
