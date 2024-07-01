@@ -15,12 +15,7 @@ from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DATA_PROCESSOR_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
-<<<<<<< HEAD
-    COMPAT_MQ_APIS,
-=======
-    COMPAT_LNM_APIS,
     COMPAT_MQTT_BROKER_APIS,
->>>>>>> e8af49f (add tests)
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
 )
