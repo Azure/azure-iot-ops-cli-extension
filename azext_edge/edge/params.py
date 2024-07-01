@@ -77,6 +77,17 @@ def load_iotops_arguments(self, _):
             options_list=["--name", "-n"],
             help="IoT Operations instance name.",
         )
+        context.argument(
+            "tags",
+            options_list=["--tags"],
+            arg_type=tags_type,
+            help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d",
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description of the instance.",
+        )
 
     with self.argument_context("iot ops show") as context:
         context.argument(
@@ -270,13 +281,6 @@ def load_iotops_arguments(self, _):
             options_list=["--custom-location"],
             help="The custom location name corresponding to the IoT Operations deployment. "
             "The default is in the form '{cluster_name}-ops-init-cl'.",
-        )
-        context.argument(
-            "custom_location_namespace",
-            options_list=["--custom-location-namespace", "--cln"],
-            help="The namespace associated with the custom location mapped to the cluster. Must be lowercase. "
-            "If not provided cluster namespace will be used.",
-            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "location",
