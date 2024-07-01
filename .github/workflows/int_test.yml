@@ -105,7 +105,7 @@ jobs:
           # test --mq-insecure deployment
           - feature: mq-insecure
             no-preflight: True
-            init-args: "--mq-insecure --csi-config 'telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m' ${{ inputs.runtime-init-args || '' }}"
+            init-args: "--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m ${{ inputs.runtime-init-args || '' }}"
           # test disabling custom sync rules
           - feature: no-syncrules
             init-args: "--disable-rsync-rules  ${{ inputs.runtime-init-args || '' }}"

@@ -37,8 +37,6 @@ def assert_init_result(
     assert result["deploymentLink"].endswith(result["deploymentName"])
 
     # CSI driver
-    print(result["csiDriver"])
-    print(arg_dict)
     assert result["csiDriver"]["keyVaultId"] == key_vault
     assert result["csiDriver"]["kvSpcSecretName"] == arg_dict.get("kv_spc_secret_name", "azure-iot-operations")
     assert result["csiDriver"]["version"] == arg_dict.get("csi_ver", KEYVAULT_ARC_EXTENSION_VERSION)
@@ -98,9 +96,13 @@ def _assert_deployment_resources(resources: List[str], cluster_name: str, resour
     resources.sort()
     ext_loc_resources = [res for res in resources if res.startswith(ResourceKeys.custom_location.value)]
     custom_loc_name = ext_loc_resources[0].split("/")[-1]
-    expected_rules = ['adr', 'aio', 'mq']
-    if arg_dict.get("include_dp"):
-        expected_rules.append("dp")
+
+    expected_rules = []
+    if not arg_dict.get("disable_rsync_rules"):
+        expected_rules = ['adr', 'aio', 'mq']
+        if arg_dict.get("include_dp"):
+            expected_rules.append("dp")
+
     custom_loc_obj = get_resource_from_partial_id(ext_loc_resources[0], resource_group)
     assert custom_loc_obj["properties"]["hostResourceId"].endswith(cluster_name)
     extensions = custom_loc_obj["properties"]["clusterExtensionIds"]

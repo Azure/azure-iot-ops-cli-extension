@@ -54,15 +54,14 @@ def test_init_scenario(
 ):
     additional_args = init_test_setup["additionalArgs"]
     arg_dict = {}
-    for arg in additional_args.split("--"):
+    for arg in additional_args.split("--")[1:]:
         arg = arg.strip().split(" ", maxsplit=1)
-        # --simualte-plc vs --dp-instance dp_name
-        if arg[0]:
-            arg[0] = arg[0].replace("-", "_")
-            if len(arg) == 1:
-                arg_dict[arg[0]] = True
-            else:
-                arg_dict[arg[0]] = arg[1]
+        # --simualte-plc vs --dp-instance dp-name
+        arg[0] = arg[0].replace("-", "_")
+        if len(arg) == 1:
+            arg_dict[arg[0]] = True
+        else:
+            arg_dict[arg[0]] = arg[1]
 
     if "ca_dir" in arg_dict:
         try:
@@ -70,10 +69,7 @@ def test_init_scenario(
             tracked_files.append(arg_dict["ca_dir"])
         except FileExistsError:
             pass
-    elif all([
-        "ca_key_file" not in arg_dict,
-        "ca_file" not in arg_dict
-    ]):
+    elif all(["ca_key_file" not in arg_dict, "ca_file" not in arg_dict]):
         tracked_files.append("aio-test-ca.crt")
         tracked_files.append("aio-test-private.key")
 
