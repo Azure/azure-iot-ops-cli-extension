@@ -94,7 +94,7 @@ def mock_get_cluster_custom_api(mocker):
 def mock_resource_types(mocker, ops_service):
     patched = mocker.patch("azext_edge.edge.providers.check.base.deployment.enumerate_ops_service_resources")
 
-    if ops_service == "mq":
+    if ops_service == "mqttbroker":
         patched.return_value = (
             {},
             {
