@@ -92,16 +92,15 @@ def _assert_aio_versions(aio_versions: Dict[str, str], include_dp: bool = False)
 
 def _assert_deployment_resources(resources: List[str], cluster_name: str, resource_group: str, **arg_dict):
     # only check the custom location + connected cluster resources
-    print("\n".join(resources))
     resources.sort()
     ext_loc_resources = [res for res in resources if res.startswith(ResourceKeys.custom_location.value)]
     custom_loc_name = ext_loc_resources[0].split("/")[-1]
 
-    expected_rules = []
-    if not arg_dict.get("disable_rsync_rules"):
-        expected_rules = ['adr', 'aio', 'mq']
-        if arg_dict.get("include_dp"):
-            expected_rules.append("dp")
+    # expected_rules = []
+    # if not arg_dict.get("disable_rsync_rules"):
+    expected_rules = ['adr', 'aio', 'mq']
+    if arg_dict.get("include_dp"):
+        expected_rules.append("dp")
 
     custom_loc_obj = get_resource_from_partial_id(ext_loc_resources[0], resource_group)
     assert custom_loc_obj["properties"]["hostResourceId"].endswith(cluster_name)
@@ -109,7 +108,7 @@ def _assert_deployment_resources(resources: List[str], cluster_name: str, resour
     # should be the same number of extensions vs resource sync rules
     assert len(extensions) == len(expected_rules)
 
-    assert len(ext_loc_resources) - 1 == len(expected_rules)
+    assert len(ext_loc_resources) - 1 == (0 if arg_dict.get("disable_rsync_rules") else len(expected_rules))
     for res in ext_loc_resources[1:]:
         assert custom_loc_name in res
         assert "resourceSyncRules" in res
