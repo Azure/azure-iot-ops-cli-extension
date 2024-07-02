@@ -97,27 +97,32 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # feature: [default, mq-insecure, no-syncrules, ca-certs]
+        feature: [default, mq-insecure, no-syncrules, ca-certs]
+        useCustomTemplate: ${{ inputs.template-content }}
         include:
           # default / limited options
-          # - feature: default
-          #   init-args: "--ca-valid-days 3 --kv-spc-secret-name test-kv-secret ${{ inputs.runtime-init-args || '' }}"
-          # # test --mq-insecure deployment
-          # - feature: mq-insecure
-          #   no-preflight: True
-          #   init-args: "--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m ${{ inputs.runtime-init-args || '' }}"
-          # # test disabling custom sync rules
-          # - feature: no-syncrules
-          #   init-args: "--disable-rsync-rules  ${{ inputs.runtime-init-args || '' }}"
+          - feature: default
+            useCustomTemplate: null
+            init-args: "--ca-valid-days 3 --kv-spc-secret-name test-kv-secret ${{ inputs.runtime-init-args || '' }}"
+          # test --mq-insecure deployment
+          - feature: mq-insecure
+            useCustomTemplate: null
+            no-preflight: True
+            init-args: "--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m ${{ inputs.runtime-init-args || '' }}"
+          # test disabling custom sync rules
+          - feature: no-syncrules
+            useCustomTemplate: null
+            init-args: "--disable-rsync-rules  ${{ inputs.runtime-init-args || '' }}"
           # test custom ca files
           - feature: ca-certs
+            useCustomTemplate: null
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
             init-args: "--ca-file \"test-ca.pem\" --ca-key-file \"test-ca-key.pem\" --include-dp ${{ inputs.runtime-init-args || '' }}"
-          # # test custom template
-          # - feature: use-custom-template
-          #   if: ${{ inputs.template-content }}
-          #   init-args: "--template custom-template.json"
+          # test custom template
+          - feature: use-custom-template
+            useCustomTemplate: ${{ inputs.template-content }}
+            init-args: "--template custom-template.json"
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -194,7 +199,6 @@ jobs:
         if: ${{ matrix.feature == 'ca-certs'}}
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-          pwd
           >ca.conf cat <<-EOF
           [ req ]
           distinguished_name = req_distinguished_name
@@ -217,16 +221,6 @@ jobs:
         run: |
           KV_ID=$(az keyvault show -n ${{env.KV_NAME}} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
           echo "KV_ID=$KV_ID" >> $GITHUB_ENV
-      - name: "OIDC Token exchange service"
-        run: |
-          while true; do
-            token_request=$ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            token_uri=$ACTIONS_ID_TOKEN_REQUEST_URL
-            token=$(curl -H "Authorization: bearer $token_request" "${token_uri}&audience=api://AzureADTokenExchange" | jq .value -r)
-            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -t ${{ secrets.AZURE_TENANT_ID }} --federated-token $token --output none
-            # Sleep for 4 minutes
-            sleep 240
-          done &
       - name: "Tox INIT Integration Tests"
         env:
           AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ matrix.no-preflight }}
@@ -247,6 +241,16 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "OIDC Token exchange service"
+        run: |
+          while true; do
+            token_request=$ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            token_uri=$ACTIONS_ID_TOKEN_REQUEST_URL
+            token=$(curl -H "Authorization: bearer $token_request" "${token_uri}&audience=api://AzureADTokenExchange" | jq .value -r)
+            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -t ${{ secrets.AZURE_TENANT_ID }} --federated-token $token --output none
+            # Sleep for 4 minutes
+            sleep 240
+          done &
       - name: "Tox Integration Tests"
         if: ${{matrix.feature == 'default' && !inputs.use-container}}
         env:
