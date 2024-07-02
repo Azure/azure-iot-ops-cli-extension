@@ -5,14 +5,34 @@
 # ----------------------------------------------------------------------------------------------
 
 
+import json
+from typing import Optional
+
 import pytest
 import responses
 
-from azext_edge.edge.providers.orchestration.instances import BASE_URL, INSTANCES_API_VERSION, QUALIFIED_RESOURCE_TYPE
+from azext_edge.edge.providers.orchestration.instances import (
+    BASE_URL,
+    INSTANCES_API_VERSION,
+    QUALIFIED_RESOURCE_TYPE,
+    Instances,
+)
 
 from ...generators import generate_random_string, get_zeroed_subscription
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
+
+
+def get_instance_endpoint(resource_group_name: Optional[str] = None, instance_name: Optional[str] = None):
+    expected_endpoint = f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}"
+    if resource_group_name:
+        expected_endpoint += f"/resourceGroups/{resource_group_name}"
+    expected_endpoint += f"/providers/{QUALIFIED_RESOURCE_TYPE}"
+    if instance_name:
+        expected_endpoint += f"/{instance_name}"
+    expected_endpoint += f"?api-version={INSTANCES_API_VERSION}"
+
+    return expected_endpoint
 
 
 def get_mock_instance_record(
@@ -43,26 +63,23 @@ def get_mock_instance_record(
     }
 
 
-@responses.activate
-def test_instance_show(mocked_cmd):
+def test_instance_show(mocked_cmd, mocked_responses: responses):
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
 
     mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
-    responses.add(
+    mocked_responses.add(
         method=responses.GET,
-        url=f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}/"
-        f"providers/{QUALIFIED_RESOURCE_TYPE}/{instance_name}?api-version={INSTANCES_API_VERSION}",
+        url=get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name),
         json=mock_instance_record,
         status=200,
         content_type="application/json",
     )
 
-    from azext_edge.edge.providers.orchestration.instances import Instances
-
     instances = Instances(mocked_cmd)
     result = instances.show(name=instance_name, resource_group_name=resource_group_name)
     assert result == mock_instance_record
+    assert len(mocked_responses.calls) == 1
 
 
 @pytest.mark.parametrize(
@@ -73,10 +90,8 @@ def test_instance_show(mocked_cmd):
     "records",
     [0, 2],
 )
-@responses.activate
-def test_instance_list(mocked_cmd, resource_group_name: str, records: int):
+def test_instance_list(mocked_cmd, mocked_responses: responses, resource_group_name: str, records: int):
     instance_name = generate_random_string()
-    resource_group_name = generate_random_string()
 
     # If no resource_group_name, oh well
     mock_instance_records = {
@@ -86,21 +101,66 @@ def test_instance_list(mocked_cmd, resource_group_name: str, records: int):
         ]
     }
 
-    expected_list_url = f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}"
-    if resource_group_name:
-        expected_list_url += f"/resourceGroups/{resource_group_name}"
-    expected_list_url += f"/providers/{QUALIFIED_RESOURCE_TYPE}?api-version={INSTANCES_API_VERSION}"
-
-    responses.add(
+    mocked_responses.add(
         method=responses.GET,
-        url=expected_list_url,
+        url=get_instance_endpoint(resource_group_name=resource_group_name),
         json=mock_instance_records,
         status=200,
         content_type="application/json",
     )
 
-    from azext_edge.edge.providers.orchestration.instances import Instances
-
     instances = Instances(mocked_cmd)
     result = list(instances.list(resource_group_name=resource_group_name))
     assert result == mock_instance_records["value"]
+    assert len(mocked_responses.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "description",
+    [None, generate_random_string()],
+)
+@pytest.mark.parametrize(
+    "tags",
+    [None, {"a": "b", "c": "d"}],
+)
+def test_instance_update(mocked_cmd, mocked_responses: responses, description: Optional[str], tags: Optional[dict]):
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
+
+    mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
+    mocked_responses.add(
+        method=responses.GET,
+        url=instance_endpoint,
+        json=mock_instance_record,
+        status=200,
+        content_type="application/json",
+    )
+    mocked_responses.add(
+        method=responses.PUT,
+        url=instance_endpoint,
+        json=mock_instance_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    instances = Instances(mocked_cmd)
+    result = instances.update(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        tags=tags,
+        description=description,
+        wait_sec=0.5,
+    )
+    assert result == mock_instance_record
+    assert len(mocked_responses.calls) == 2
+
+    update_request = json.loads(mocked_responses.calls[1].request.body)
+    if description:
+        assert update_request["properties"]["description"] == description
+
+    if tags:
+        assert update_request["tags"] == tags
+
+    if not any([description, tags]):
+        assert update_request == mock_instance_record
