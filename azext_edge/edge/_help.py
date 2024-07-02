@@ -301,10 +301,10 @@ def load_iotops_help():
         examples:
         - name: Update instance tags.
           text: >
-            az iot ops update --tags a=b c=d
+            az iot ops update --name myinstance -g myresourcegroup --tags a=b c=d
         - name: Update the instance description.
           text: >
-            az iot ops update --desc "Fabrikam Widget Factory B42"
+            az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
     """
 
     helps[
