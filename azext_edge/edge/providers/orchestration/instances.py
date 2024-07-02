@@ -35,7 +35,9 @@ class Instances(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.default_subscription_id, endpoint=BASE_URL, api_version=INSTANCES_API_VERSION
+            subscription_id=self.default_subscription_id,
+            endpoint=BASE_URL,
+            api_version=INSTANCES_API_VERSION,
         )
         self.console = Console()
 
@@ -75,7 +77,12 @@ class Instances(Queryable):
         )
 
     def update(
-        self, name: str, resource_group_name: str, tags: Optional[dict] = None, description: Optional[str] = None
+        self,
+        name: str,
+        resource_group_name: str,
+        tags: Optional[dict] = None,
+        description: Optional[str] = None,
+        **kwargs: dict,
     ) -> dict:
         instance = self.show(name=name, resource_group_name=resource_group_name)
 
@@ -87,6 +94,8 @@ class Instances(Queryable):
 
         with self.console.status("Working..."):
             poller = self.iotops_mgmt_client.instance.begin_create_or_update(
-                instance_name=name, resource_group_name=resource_group_name, resource=instance
+                instance_name=name,
+                resource_group_name=resource_group_name,
+                resource=instance,
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)

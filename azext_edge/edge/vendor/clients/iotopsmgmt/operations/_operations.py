@@ -48,7 +48,7 @@ def build_operations_list_request(**kwargs: Any) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -67,7 +67,7 @@ def build_instance_list_by_subscription_request(subscription_id: str, **kwargs: 
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -93,7 +93,7 @@ def build_instance_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -124,7 +124,7 @@ def build_instance_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -157,7 +157,7 @@ def build_instance_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -192,7 +192,7 @@ def build_instance_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -226,7 +226,7 @@ def build_instance_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -258,7 +258,7 @@ def build_broker_list_by_instance_resource_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -290,7 +290,7 @@ def build_broker_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -326,7 +326,7 @@ def build_broker_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -357,51 +357,13 @@ def build_broker_create_or_update_request(
     return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_broker_update_request(
-    resource_group_name: str, instance_name: str, broker_name: str, subscription_id: str, **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/brokers/{brokerName}"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "instanceName": _SERIALIZER.url(
-            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
-        ),
-        "brokerName": _SERIALIZER.url(
-            "broker_name", broker_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
-        ),
-    }
-
-    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    if content_type is not None:
-        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="PATCH", url=_url, params=_params, headers=_headers, **kwargs)
-
-
 def build_broker_delete_request(
     resource_group_name: str, instance_name: str, broker_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -436,7 +398,7 @@ def build_broker_authentication_list_by_broker_resource_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -476,7 +438,7 @@ def build_broker_authentication_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -525,7 +487,7 @@ def build_broker_authentication_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -564,57 +526,6 @@ def build_broker_authentication_create_or_update_request(
     return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_broker_authentication_update_request(
-    resource_group_name: str,
-    instance_name: str,
-    broker_name: str,
-    authentication_name: str,
-    subscription_id: str,
-    **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/brokers/{brokerName}/authentications/{authenticationName}"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "instanceName": _SERIALIZER.url(
-            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
-        ),
-        "brokerName": _SERIALIZER.url(
-            "broker_name", broker_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
-        ),
-        "authenticationName": _SERIALIZER.url(
-            "authentication_name",
-            authentication_name,
-            "str",
-            max_length=63,
-            min_length=3,
-            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
-        ),
-    }
-
-    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    if content_type is not None:
-        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="PATCH", url=_url, params=_params, headers=_headers, **kwargs)
-
-
 def build_broker_authentication_delete_request(
     resource_group_name: str,
     instance_name: str,
@@ -626,7 +537,7 @@ def build_broker_authentication_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -669,7 +580,7 @@ def build_broker_authorization_list_by_broker_resource_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -709,7 +620,7 @@ def build_broker_authorization_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -758,7 +669,7 @@ def build_broker_authorization_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -797,57 +708,6 @@ def build_broker_authorization_create_or_update_request(
     return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_broker_authorization_update_request(
-    resource_group_name: str,
-    instance_name: str,
-    broker_name: str,
-    authorization_name: str,
-    subscription_id: str,
-    **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/brokers/{brokerName}/authorizations/{authorizationName}"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "instanceName": _SERIALIZER.url(
-            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
-        ),
-        "brokerName": _SERIALIZER.url(
-            "broker_name", broker_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
-        ),
-        "authorizationName": _SERIALIZER.url(
-            "authorization_name",
-            authorization_name,
-            "str",
-            max_length=63,
-            min_length=3,
-            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
-        ),
-    }
-
-    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    if content_type is not None:
-        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="PATCH", url=_url, params=_params, headers=_headers, **kwargs)
-
-
 def build_broker_authorization_delete_request(
     resource_group_name: str,
     instance_name: str,
@@ -859,7 +719,7 @@ def build_broker_authorization_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -902,7 +762,7 @@ def build_broker_listener_list_by_broker_resource_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -942,7 +802,7 @@ def build_broker_listener_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -986,7 +846,7 @@ def build_broker_listener_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1020,7 +880,7 @@ def build_broker_listener_create_or_update_request(
     return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_broker_listener_update_request(
+def build_broker_listener_delete_request(
     resource_group_name: str,
     instance_name: str,
     broker_name: str,
@@ -1031,8 +891,7 @@ def build_broker_listener_update_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1059,29 +918,22 @@ def build_broker_listener_update_request(
     _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
 
     # Construct headers
-    if content_type is not None:
-        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
     _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
 
-    return HttpRequest(method="PATCH", url=_url, params=_params, headers=_headers, **kwargs)
+    return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_broker_listener_delete_request(
-    resource_group_name: str,
-    instance_name: str,
-    broker_name: str,
-    listener_name: str,
-    subscription_id: str,
-    **kwargs: Any
+def build_data_flow_endpoint_list_by_instance_resource_request(
+    resource_group_name: str, instance_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-06-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/brokers/{brokerName}/listeners/{listenerName}"  # pylint: disable=line-too-long
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowEndpoints"  # pylint: disable=line-too-long
     path_format_arguments = {
         "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
         "resourceGroupName": _SERIALIZER.url(
@@ -1090,11 +942,470 @@ def build_broker_listener_delete_request(
         "instanceName": _SERIALIZER.url(
             "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
         ),
-        "brokerName": _SERIALIZER.url(
-            "broker_name", broker_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_endpoint_get_request(
+    resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowEndpoints/{dataflowEndpointName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
         ),
-        "listenerName": _SERIALIZER.url(
-            "listener_name", listener_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "dataflowEndpointName": _SERIALIZER.url(
+            "dataflow_endpoint_name",
+            dataflow_endpoint_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_endpoint_create_or_update_request(
+    resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowEndpoints/{dataflowEndpointName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "dataflowEndpointName": _SERIALIZER.url(
+            "dataflow_endpoint_name",
+            dataflow_endpoint_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    if content_type is not None:
+        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_endpoint_delete_request(
+    resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowEndpoints/{dataflowEndpointName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "dataflowEndpointName": _SERIALIZER.url(
+            "dataflow_endpoint_name",
+            dataflow_endpoint_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_profile_list_by_instance_resource_request(
+    resource_group_name: str, instance_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowProfiles"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_profile_get_request(
+    resource_group_name: str, instance_name: str, dataflow_profile_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowProfiles/{dataflowProfileName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "dataflowProfileName": _SERIALIZER.url(
+            "dataflow_profile_name",
+            dataflow_profile_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_profile_create_or_update_request(
+    resource_group_name: str, instance_name: str, dataflow_profile_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowProfiles/{dataflowProfileName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "dataflowProfileName": _SERIALIZER.url(
+            "dataflow_profile_name",
+            dataflow_profile_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    if content_type is not None:
+        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_profile_delete_request(
+    resource_group_name: str, instance_name: str, dataflow_profile_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowProfiles/{dataflowProfileName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "dataflowProfileName": _SERIALIZER.url(
+            "dataflow_profile_name",
+            dataflow_profile_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_list_by_profile_resource_request(
+    resource_group_name: str, instance_name: str, dataflow_profile_name: str, subscription_id: str, **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowProfiles/{dataflowProfileName}/dataflows"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "dataflowProfileName": _SERIALIZER.url(
+            "dataflow_profile_name",
+            dataflow_profile_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_get_request(
+    resource_group_name: str,
+    instance_name: str,
+    dataflow_profile_name: str,
+    dataflow_name: str,
+    subscription_id: str,
+    **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowProfiles/{dataflowProfileName}/dataflows/{dataflowName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "dataflowProfileName": _SERIALIZER.url(
+            "dataflow_profile_name",
+            dataflow_profile_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+        "dataflowName": _SERIALIZER.url(
+            "dataflow_name", dataflow_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_create_or_update_request(
+    resource_group_name: str,
+    instance_name: str,
+    dataflow_profile_name: str,
+    dataflow_name: str,
+    subscription_id: str,
+    **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowProfiles/{dataflowProfileName}/dataflows/{dataflowName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "dataflowProfileName": _SERIALIZER.url(
+            "dataflow_profile_name",
+            dataflow_profile_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+        "dataflowName": _SERIALIZER.url(
+            "dataflow_name", dataflow_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+    }
+
+    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
+
+    # Construct parameters
+    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
+
+    # Construct headers
+    if content_type is not None:
+        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
+    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
+
+    return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
+
+
+def build_data_flow_delete_request(
+    resource_group_name: str,
+    instance_name: str,
+    dataflow_profile_name: str,
+    dataflow_name: str,
+    subscription_id: str,
+    **kwargs: Any
+) -> HttpRequest:
+    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
+
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    accept = _headers.pop("Accept", "application/json")
+
+    # Construct URL
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Private.IoTOperations/instances/{instanceName}/dataflowProfiles/{dataflowProfileName}/dataflows/{dataflowName}"  # pylint: disable=line-too-long
+    path_format_arguments = {
+        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
+        "resourceGroupName": _SERIALIZER.url(
+            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
+        ),
+        "instanceName": _SERIALIZER.url(
+            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+        ),
+        "dataflowProfileName": _SERIALIZER.url(
+            "dataflow_profile_name",
+            dataflow_profile_name,
+            "str",
+            max_length=63,
+            min_length=3,
+            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+        ),
+        "dataflowName": _SERIALIZER.url(
+            "dataflow_name", dataflow_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
         ),
     }
 
@@ -1643,6 +1954,9 @@ class InstanceOperations:
                 deserialized = None
 
         if response.status_code == 201:
+            response_headers["Azure-AsyncOperation"] = self._deserialize(
+                "str", response.headers.get("Azure-AsyncOperation")
+            )
             response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
 
             if response.content:
@@ -2431,7 +2745,6 @@ class BrokerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -2442,6 +2755,8 @@ class BrokerOperations:
                                   a client's Keep Alive, in seconds.
                                 "maxMessageExpirySeconds": 0,  # Optional. Upper
                                   bound of Message Expiry Interval, in seconds.
+                                "maxPacketSizeBytes": 0,  # Optional. Max message
+                                  size for a packet in Bytes.
                                 "maxReceiveMaximum": 0,  # Optional. Upper bound of
                                   Receive Maximum that a client can request in the CONNECT packet.
                                 "maxSessionExpirySeconds": 0,  # Optional. Upper
@@ -2472,14 +2787,6 @@ class BrokerOperations:
                                 "renewBefore": "str"  # When to begin renewing
                                   certificate. Must be specified using a Go time.Duration format
                                   (h|m|s). E.g. 240h for 240 hours and 45m for 45 minutes. Required.
-                            },
-                            "tolerations": {
-                                "effect": "str",  # Toleration effect. Required.
-                                "key": "str",  # Toleration key. Required.
-                                "operator": "str",  # Toleration operator like
-                                  'Exists', 'Equal' etc. Required. Known values are: "Equal" and
-                                  "Exists".
-                                "value": "str"  # Toleration Value. Required.
                             }
                         },
                         "cardinality": {
@@ -2500,32 +2807,30 @@ class BrokerOperations:
                         },
                         "diagnostics": {
                             "logs": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the logs to the open telemetry
-                                  collector.
-                                "exportLogLevel": "error",  # Optional. Default value
-                                  is "error". The level of logs to export.
                                 "level": "info",  # Optional. Default value is
                                   "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
                                   'trace'.
-                                "openTelemetryCollectorAddress": "str"  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
                             },
                             "metrics": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable metrics. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "prometheusPort": 9600,  # Optional. Default value is
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
                                   9600. The prometheus port to expose the metrics.
-                                "stalenessTimeSeconds": 600,  # Optional. Default
-                                  value is 600. The time used to determine if a metric is stale and
-                                  drop from the metrics cache.
-                                "updateIntervalSeconds": 30  # Optional. Default
-                                  value is 30. How often to refresh the metrics.
                             },
                             "selfCheck": {
                                 "intervalSeconds": 30,  # Optional. Default value is
@@ -2539,13 +2844,15 @@ class BrokerOperations:
                             "traces": {
                                 "cacheSizeMegabytes": 16,  # Optional. Default value
                                   is 16. The cache size in megabytes.
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
                                 "mode": "str",  # Optional. The toggle to
                                   enable/disable traces. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
                                 "selfTracing": {
                                     "intervalSeconds": 30,  # Optional. Default
                                       value is 30. The self tracing interval.
@@ -2587,10 +2894,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -2667,10 +2977,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -2752,9 +3065,6 @@ class BrokerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -2851,7 +3161,6 @@ class BrokerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -2862,6 +3171,8 @@ class BrokerOperations:
                                   a client's Keep Alive, in seconds.
                                 "maxMessageExpirySeconds": 0,  # Optional. Upper
                                   bound of Message Expiry Interval, in seconds.
+                                "maxPacketSizeBytes": 0,  # Optional. Max message
+                                  size for a packet in Bytes.
                                 "maxReceiveMaximum": 0,  # Optional. Upper bound of
                                   Receive Maximum that a client can request in the CONNECT packet.
                                 "maxSessionExpirySeconds": 0,  # Optional. Upper
@@ -2892,14 +3203,6 @@ class BrokerOperations:
                                 "renewBefore": "str"  # When to begin renewing
                                   certificate. Must be specified using a Go time.Duration format
                                   (h|m|s). E.g. 240h for 240 hours and 45m for 45 minutes. Required.
-                            },
-                            "tolerations": {
-                                "effect": "str",  # Toleration effect. Required.
-                                "key": "str",  # Toleration key. Required.
-                                "operator": "str",  # Toleration operator like
-                                  'Exists', 'Equal' etc. Required. Known values are: "Equal" and
-                                  "Exists".
-                                "value": "str"  # Toleration Value. Required.
                             }
                         },
                         "cardinality": {
@@ -2920,32 +3223,30 @@ class BrokerOperations:
                         },
                         "diagnostics": {
                             "logs": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the logs to the open telemetry
-                                  collector.
-                                "exportLogLevel": "error",  # Optional. Default value
-                                  is "error". The level of logs to export.
                                 "level": "info",  # Optional. Default value is
                                   "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
                                   'trace'.
-                                "openTelemetryCollectorAddress": "str"  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
                             },
                             "metrics": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable metrics. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "prometheusPort": 9600,  # Optional. Default value is
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
                                   9600. The prometheus port to expose the metrics.
-                                "stalenessTimeSeconds": 600,  # Optional. Default
-                                  value is 600. The time used to determine if a metric is stale and
-                                  drop from the metrics cache.
-                                "updateIntervalSeconds": 30  # Optional. Default
-                                  value is 30. How often to refresh the metrics.
                             },
                             "selfCheck": {
                                 "intervalSeconds": 30,  # Optional. Default value is
@@ -2959,13 +3260,15 @@ class BrokerOperations:
                             "traces": {
                                 "cacheSizeMegabytes": 16,  # Optional. Default value
                                   is 16. The cache size in megabytes.
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
                                 "mode": "str",  # Optional. The toggle to
                                   enable/disable traces. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
                                 "selfTracing": {
                                     "intervalSeconds": 30,  # Optional. Default
                                       value is 30. The self tracing interval.
@@ -3007,10 +3310,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -3087,10 +3393,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -3172,9 +3481,6 @@ class BrokerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -3283,6 +3589,9 @@ class BrokerOperations:
                 deserialized = None
 
         if response.status_code == 201:
+            response_headers["Azure-AsyncOperation"] = self._deserialize(
+                "str", response.headers.get("Azure-AsyncOperation")
+            )
             response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
 
             if response.content:
@@ -3340,7 +3649,6 @@ class BrokerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -3351,6 +3659,8 @@ class BrokerOperations:
                                   a client's Keep Alive, in seconds.
                                 "maxMessageExpirySeconds": 0,  # Optional. Upper
                                   bound of Message Expiry Interval, in seconds.
+                                "maxPacketSizeBytes": 0,  # Optional. Max message
+                                  size for a packet in Bytes.
                                 "maxReceiveMaximum": 0,  # Optional. Upper bound of
                                   Receive Maximum that a client can request in the CONNECT packet.
                                 "maxSessionExpirySeconds": 0,  # Optional. Upper
@@ -3381,14 +3691,6 @@ class BrokerOperations:
                                 "renewBefore": "str"  # When to begin renewing
                                   certificate. Must be specified using a Go time.Duration format
                                   (h|m|s). E.g. 240h for 240 hours and 45m for 45 minutes. Required.
-                            },
-                            "tolerations": {
-                                "effect": "str",  # Toleration effect. Required.
-                                "key": "str",  # Toleration key. Required.
-                                "operator": "str",  # Toleration operator like
-                                  'Exists', 'Equal' etc. Required. Known values are: "Equal" and
-                                  "Exists".
-                                "value": "str"  # Toleration Value. Required.
                             }
                         },
                         "cardinality": {
@@ -3409,32 +3711,30 @@ class BrokerOperations:
                         },
                         "diagnostics": {
                             "logs": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the logs to the open telemetry
-                                  collector.
-                                "exportLogLevel": "error",  # Optional. Default value
-                                  is "error". The level of logs to export.
                                 "level": "info",  # Optional. Default value is
                                   "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
                                   'trace'.
-                                "openTelemetryCollectorAddress": "str"  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
                             },
                             "metrics": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable metrics. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "prometheusPort": 9600,  # Optional. Default value is
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
                                   9600. The prometheus port to expose the metrics.
-                                "stalenessTimeSeconds": 600,  # Optional. Default
-                                  value is 600. The time used to determine if a metric is stale and
-                                  drop from the metrics cache.
-                                "updateIntervalSeconds": 30  # Optional. Default
-                                  value is 30. How often to refresh the metrics.
                             },
                             "selfCheck": {
                                 "intervalSeconds": 30,  # Optional. Default value is
@@ -3448,13 +3748,15 @@ class BrokerOperations:
                             "traces": {
                                 "cacheSizeMegabytes": 16,  # Optional. Default value
                                   is 16. The cache size in megabytes.
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
                                 "mode": "str",  # Optional. The toggle to
                                   enable/disable traces. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
                                 "selfTracing": {
                                     "intervalSeconds": 30,  # Optional. Default
                                       value is 30. The self tracing interval.
@@ -3496,10 +3798,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -3576,10 +3881,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -3661,9 +3969,6 @@ class BrokerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -3675,7 +3980,6 @@ class BrokerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -3686,6 +3990,8 @@ class BrokerOperations:
                                   a client's Keep Alive, in seconds.
                                 "maxMessageExpirySeconds": 0,  # Optional. Upper
                                   bound of Message Expiry Interval, in seconds.
+                                "maxPacketSizeBytes": 0,  # Optional. Max message
+                                  size for a packet in Bytes.
                                 "maxReceiveMaximum": 0,  # Optional. Upper bound of
                                   Receive Maximum that a client can request in the CONNECT packet.
                                 "maxSessionExpirySeconds": 0,  # Optional. Upper
@@ -3716,14 +4022,6 @@ class BrokerOperations:
                                 "renewBefore": "str"  # When to begin renewing
                                   certificate. Must be specified using a Go time.Duration format
                                   (h|m|s). E.g. 240h for 240 hours and 45m for 45 minutes. Required.
-                            },
-                            "tolerations": {
-                                "effect": "str",  # Toleration effect. Required.
-                                "key": "str",  # Toleration key. Required.
-                                "operator": "str",  # Toleration operator like
-                                  'Exists', 'Equal' etc. Required. Known values are: "Equal" and
-                                  "Exists".
-                                "value": "str"  # Toleration Value. Required.
                             }
                         },
                         "cardinality": {
@@ -3744,32 +4042,30 @@ class BrokerOperations:
                         },
                         "diagnostics": {
                             "logs": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the logs to the open telemetry
-                                  collector.
-                                "exportLogLevel": "error",  # Optional. Default value
-                                  is "error". The level of logs to export.
                                 "level": "info",  # Optional. Default value is
                                   "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
                                   'trace'.
-                                "openTelemetryCollectorAddress": "str"  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
                             },
                             "metrics": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable metrics. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "prometheusPort": 9600,  # Optional. Default value is
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
                                   9600. The prometheus port to expose the metrics.
-                                "stalenessTimeSeconds": 600,  # Optional. Default
-                                  value is 600. The time used to determine if a metric is stale and
-                                  drop from the metrics cache.
-                                "updateIntervalSeconds": 30  # Optional. Default
-                                  value is 30. How often to refresh the metrics.
                             },
                             "selfCheck": {
                                 "intervalSeconds": 30,  # Optional. Default value is
@@ -3783,13 +4079,15 @@ class BrokerOperations:
                             "traces": {
                                 "cacheSizeMegabytes": 16,  # Optional. Default value
                                   is 16. The cache size in megabytes.
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
                                 "mode": "str",  # Optional. The toggle to
                                   enable/disable traces. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
                                 "selfTracing": {
                                     "intervalSeconds": 30,  # Optional. Default
                                       value is 30. The self tracing interval.
@@ -3831,10 +4129,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -3911,10 +4212,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -3996,9 +4300,6 @@ class BrokerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -4050,7 +4351,6 @@ class BrokerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -4061,6 +4361,8 @@ class BrokerOperations:
                                   a client's Keep Alive, in seconds.
                                 "maxMessageExpirySeconds": 0,  # Optional. Upper
                                   bound of Message Expiry Interval, in seconds.
+                                "maxPacketSizeBytes": 0,  # Optional. Max message
+                                  size for a packet in Bytes.
                                 "maxReceiveMaximum": 0,  # Optional. Upper bound of
                                   Receive Maximum that a client can request in the CONNECT packet.
                                 "maxSessionExpirySeconds": 0,  # Optional. Upper
@@ -4091,14 +4393,6 @@ class BrokerOperations:
                                 "renewBefore": "str"  # When to begin renewing
                                   certificate. Must be specified using a Go time.Duration format
                                   (h|m|s). E.g. 240h for 240 hours and 45m for 45 minutes. Required.
-                            },
-                            "tolerations": {
-                                "effect": "str",  # Toleration effect. Required.
-                                "key": "str",  # Toleration key. Required.
-                                "operator": "str",  # Toleration operator like
-                                  'Exists', 'Equal' etc. Required. Known values are: "Equal" and
-                                  "Exists".
-                                "value": "str"  # Toleration Value. Required.
                             }
                         },
                         "cardinality": {
@@ -4119,32 +4413,30 @@ class BrokerOperations:
                         },
                         "diagnostics": {
                             "logs": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the logs to the open telemetry
-                                  collector.
-                                "exportLogLevel": "error",  # Optional. Default value
-                                  is "error". The level of logs to export.
                                 "level": "info",  # Optional. Default value is
                                   "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
                                   'trace'.
-                                "openTelemetryCollectorAddress": "str"  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
                             },
                             "metrics": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable metrics. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "prometheusPort": 9600,  # Optional. Default value is
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
                                   9600. The prometheus port to expose the metrics.
-                                "stalenessTimeSeconds": 600,  # Optional. Default
-                                  value is 600. The time used to determine if a metric is stale and
-                                  drop from the metrics cache.
-                                "updateIntervalSeconds": 30  # Optional. Default
-                                  value is 30. How often to refresh the metrics.
                             },
                             "selfCheck": {
                                 "intervalSeconds": 30,  # Optional. Default value is
@@ -4158,13 +4450,15 @@ class BrokerOperations:
                             "traces": {
                                 "cacheSizeMegabytes": 16,  # Optional. Default value
                                   is 16. The cache size in megabytes.
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
                                 "mode": "str",  # Optional. The toggle to
                                   enable/disable traces. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
                                 "selfTracing": {
                                     "intervalSeconds": 30,  # Optional. Default
                                       value is 30. The self tracing interval.
@@ -4206,10 +4500,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -4286,10 +4583,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -4371,9 +4671,6 @@ class BrokerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -4418,7 +4715,6 @@ class BrokerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -4429,6 +4725,8 @@ class BrokerOperations:
                                   a client's Keep Alive, in seconds.
                                 "maxMessageExpirySeconds": 0,  # Optional. Upper
                                   bound of Message Expiry Interval, in seconds.
+                                "maxPacketSizeBytes": 0,  # Optional. Max message
+                                  size for a packet in Bytes.
                                 "maxReceiveMaximum": 0,  # Optional. Upper bound of
                                   Receive Maximum that a client can request in the CONNECT packet.
                                 "maxSessionExpirySeconds": 0,  # Optional. Upper
@@ -4459,14 +4757,6 @@ class BrokerOperations:
                                 "renewBefore": "str"  # When to begin renewing
                                   certificate. Must be specified using a Go time.Duration format
                                   (h|m|s). E.g. 240h for 240 hours and 45m for 45 minutes. Required.
-                            },
-                            "tolerations": {
-                                "effect": "str",  # Toleration effect. Required.
-                                "key": "str",  # Toleration key. Required.
-                                "operator": "str",  # Toleration operator like
-                                  'Exists', 'Equal' etc. Required. Known values are: "Equal" and
-                                  "Exists".
-                                "value": "str"  # Toleration Value. Required.
                             }
                         },
                         "cardinality": {
@@ -4487,32 +4777,30 @@ class BrokerOperations:
                         },
                         "diagnostics": {
                             "logs": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the logs to the open telemetry
-                                  collector.
-                                "exportLogLevel": "error",  # Optional. Default value
-                                  is "error". The level of logs to export.
                                 "level": "info",  # Optional. Default value is
                                   "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
                                   'trace'.
-                                "openTelemetryCollectorAddress": "str"  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
                             },
                             "metrics": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable metrics. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "prometheusPort": 9600,  # Optional. Default value is
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
                                   9600. The prometheus port to expose the metrics.
-                                "stalenessTimeSeconds": 600,  # Optional. Default
-                                  value is 600. The time used to determine if a metric is stale and
-                                  drop from the metrics cache.
-                                "updateIntervalSeconds": 30  # Optional. Default
-                                  value is 30. How often to refresh the metrics.
                             },
                             "selfCheck": {
                                 "intervalSeconds": 30,  # Optional. Default value is
@@ -4526,13 +4814,15 @@ class BrokerOperations:
                             "traces": {
                                 "cacheSizeMegabytes": 16,  # Optional. Default value
                                   is 16. The cache size in megabytes.
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
                                 "mode": "str",  # Optional. The toggle to
                                   enable/disable traces. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
                                 "selfTracing": {
                                     "intervalSeconds": 30,  # Optional. Default
                                       value is 30. The self tracing interval.
@@ -4574,10 +4864,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -4654,10 +4947,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -4739,9 +5035,6 @@ class BrokerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -4753,7 +5046,6 @@ class BrokerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -4764,6 +5056,8 @@ class BrokerOperations:
                                   a client's Keep Alive, in seconds.
                                 "maxMessageExpirySeconds": 0,  # Optional. Upper
                                   bound of Message Expiry Interval, in seconds.
+                                "maxPacketSizeBytes": 0,  # Optional. Max message
+                                  size for a packet in Bytes.
                                 "maxReceiveMaximum": 0,  # Optional. Upper bound of
                                   Receive Maximum that a client can request in the CONNECT packet.
                                 "maxSessionExpirySeconds": 0,  # Optional. Upper
@@ -4794,14 +5088,6 @@ class BrokerOperations:
                                 "renewBefore": "str"  # When to begin renewing
                                   certificate. Must be specified using a Go time.Duration format
                                   (h|m|s). E.g. 240h for 240 hours and 45m for 45 minutes. Required.
-                            },
-                            "tolerations": {
-                                "effect": "str",  # Toleration effect. Required.
-                                "key": "str",  # Toleration key. Required.
-                                "operator": "str",  # Toleration operator like
-                                  'Exists', 'Equal' etc. Required. Known values are: "Equal" and
-                                  "Exists".
-                                "value": "str"  # Toleration Value. Required.
                             }
                         },
                         "cardinality": {
@@ -4822,32 +5108,30 @@ class BrokerOperations:
                         },
                         "diagnostics": {
                             "logs": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the logs to the open telemetry
-                                  collector.
-                                "exportLogLevel": "error",  # Optional. Default value
-                                  is "error". The level of logs to export.
                                 "level": "info",  # Optional. Default value is
                                   "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
                                   'trace'.
-                                "openTelemetryCollectorAddress": "str"  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
                             },
                             "metrics": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable metrics. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "prometheusPort": 9600,  # Optional. Default value is
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
                                   9600. The prometheus port to expose the metrics.
-                                "stalenessTimeSeconds": 600,  # Optional. Default
-                                  value is 600. The time used to determine if a metric is stale and
-                                  drop from the metrics cache.
-                                "updateIntervalSeconds": 30  # Optional. Default
-                                  value is 30. How often to refresh the metrics.
                             },
                             "selfCheck": {
                                 "intervalSeconds": 30,  # Optional. Default value is
@@ -4861,13 +5145,15 @@ class BrokerOperations:
                             "traces": {
                                 "cacheSizeMegabytes": 16,  # Optional. Default value
                                   is 16. The cache size in megabytes.
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
                                 "mode": "str",  # Optional. The toggle to
                                   enable/disable traces. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
                                 "selfTracing": {
                                     "intervalSeconds": 30,  # Optional. Default
                                       value is 30. The self tracing interval.
@@ -4909,10 +5195,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -4989,10 +5278,13 @@ class BrokerOperations:
                                       resource being referenced. Required.
                                     "name": "str",  # Name is the name of
                                       resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
+                                    "apiGroup": "str",  # Optional. APIGroup is
                                       the group for the resource being referenced. If APIGroup is not
                                       specified, the specified Kind must be in the core API group. For
                                       any other third-party types, APIGroup is required.
+                                    "namespace": "str"  # Optional. Namespace is
+                                      the namespace of the resource being referenced. This field is
+                                      required when the resource has a namespace.
                                 },
                                 "resources": {
                                     "limits": {
@@ -5074,9 +5366,6 @@ class BrokerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -5130,1174 +5419,6 @@ class BrokerOperations:
                 deserialization_callback=get_long_running_output,
             )
         return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
-
-    @overload
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        properties: JSON,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param properties: The resource properties to be updated. Required.
-        :type properties: JSON
-        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                properties = {
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    }
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "advanced": {
-                            "clients": {
-                                "maxKeepAliveSeconds": 0,  # Optional. Upper bound of
-                                  a client's Keep Alive, in seconds.
-                                "maxMessageExpirySeconds": 0,  # Optional. Upper
-                                  bound of Message Expiry Interval, in seconds.
-                                "maxReceiveMaximum": 0,  # Optional. Upper bound of
-                                  Receive Maximum that a client can request in the CONNECT packet.
-                                "maxSessionExpirySeconds": 0,  # Optional. Upper
-                                  bound of Session Expiry Interval, in seconds.
-                                "subscriberQueueLimit": {
-                                    "length": 0,  # Optional. The maximum length
-                                      of the queue before messages start getting dropped.
-                                    "strategy": "str"  # Optional. The strategy
-                                      to use for dropping messages from the queue. Known values are:
-                                      "None" and "DropOldest".
-                                }
-                            },
-                            "encryptInternalTraffic": "str",  # Optional. The setting to
-                              enable or disable encryption of internal Traffic. Known values are:
-                              "Enabled" and "Disabled".
-                            "internalCerts": {
-                                "duration": "str",  # Lifetime of certificate. Must
-                                  be specified using a Go time.Duration format (h|m|s). E.g. 240h for
-                                  240 hours and 45m for 45 minutes. Required.
-                                "privateKey": {
-                                    "algorithm": "str",  # algorithm for private
-                                      key. Required. Known values are: "Ec256", "Ec384", "Ec521",
-                                      "Ed25519", "Rsa2048", "Rsa4096", and "Rsa8192".
-                                    "rotationPolicy": "str"  # cert-manager
-                                      private key rotationPolicy. Required. Known values are: "Always"
-                                      and "Never".
-                                },
-                                "renewBefore": "str"  # When to begin renewing
-                                  certificate. Must be specified using a Go time.Duration format
-                                  (h|m|s). E.g. 240h for 240 hours and 45m for 45 minutes. Required.
-                            },
-                            "tolerations": {
-                                "effect": "str",  # Toleration effect. Required.
-                                "key": "str",  # Toleration key. Required.
-                                "operator": "str",  # Toleration operator like
-                                  'Exists', 'Equal' etc. Required. Known values are: "Equal" and
-                                  "Exists".
-                                "value": "str"  # Toleration Value. Required.
-                            }
-                        },
-                        "cardinality": {
-                            "backendChain": {
-                                "partitions": 0,  # The desired number of physical
-                                  backend partitions. Required.
-                                "redundancyFactor": 0,  # The desired numbers of
-                                  backend replicas (pods) in a physical partition. Required.
-                                "workers": 1  # Optional. Default value is 1. Number
-                                  of logical backend workers per replica (pod).
-                            },
-                            "frontend": {
-                                "replicas": 0,  # The desired number of frontend
-                                  instances (pods). Required.
-                                "workers": 2  # Optional. Default value is 2. Number
-                                  of logical frontend workers per instance (pod).
-                            }
-                        },
-                        "diagnostics": {
-                            "logs": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the logs to the open telemetry
-                                  collector.
-                                "exportLogLevel": "error",  # Optional. Default value
-                                  is "error". The level of logs to export.
-                                "level": "info",  # Optional. Default value is
-                                  "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
-                                  'trace'.
-                                "openTelemetryCollectorAddress": "str"  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                            },
-                            "metrics": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable metrics. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "prometheusPort": 9600,  # Optional. Default value is
-                                  9600. The prometheus port to expose the metrics.
-                                "stalenessTimeSeconds": 600,  # Optional. Default
-                                  value is 600. The time used to determine if a metric is stale and
-                                  drop from the metrics cache.
-                                "updateIntervalSeconds": 30  # Optional. Default
-                                  value is 30. How often to refresh the metrics.
-                            },
-                            "selfCheck": {
-                                "intervalSeconds": 30,  # Optional. Default value is
-                                  30. The self check interval.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable self check. Known values are: "Enabled" and
-                                  "Disabled".
-                                "timeoutSeconds": 15  # Optional. Default value is
-                                  15. The timeout for self check.
-                            },
-                            "traces": {
-                                "cacheSizeMegabytes": 16,  # Optional. Default value
-                                  is 16. The cache size in megabytes.
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable traces. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "selfTracing": {
-                                    "intervalSeconds": 30,  # Optional. Default
-                                      value is 30. The self tracing interval.
-                                    "mode": "str"  # Optional. The toggle to
-                                      enable/disable self tracing. Known values are: "Enabled" and
-                                      "Disabled".
-                                },
-                                "spanChannelCapacity": 1000  # Optional. Default
-                                  value is 1000. The span channel capacity.
-                            }
-                        },
-                        "diskBackedMessageBuffer": {
-                            "maxSize": "str",  # The max size of the message buffer on
-                              disk. If a PVC template is specified using one of
-                              ephemeralVolumeClaimSpec or persistentVolumeClaimSpec, then this size is
-                              used as the request and limit sizes of that template. If neither
-                              ephemeralVolumeClaimSpec nor persistentVolumeClaimSpec are specified,
-                              then an emptyDir volume is mounted with this size as its limit. See
-                              https://kubernetes.io/docs/concepts/storage/volumes/#emptydir for
-                              details. Required.
-                            "ephemeralVolumeClaimSpec": {
-                                "accessModes": [
-                                    "str"  # Optional. AccessModes contains the
-                                      desired access modes the volume should have. More info:
-                                      https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1.
-                                ],
-                                "dataSource": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "dataSourceRef": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "resources": {
-                                    "limits": {
-                                        "str": "str"  # Optional. Limits
-                                          describes the maximum amount of compute resources allowed.
-                                          More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    },
-                                    "requests": {
-                                        "str": "str"  # Optional. Requests
-                                          describes the minimum amount of compute resources required.
-                                          If Requests is omitted for a container, it defaults to Limits
-                                          if that is explicitly specified, otherwise to an
-                                          implementation-defined value. More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    }
-                                },
-                                "selector": {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "str",  # key is the
-                                              label key that the selector applies to. Required.
-                                            "operator": "str",  #
-                                              operator represents a key's relationship to a set of
-                                              values. Valid operators are In, NotIn, Exists and
-                                              DoesNotExist. Required. Known values are: "In", "NotIn",
-                                              "Exists", and "DoesNotExist".
-                                            "values": [
-                                                "str"  # Optional.
-                                                  values is an array of string values. If the operator
-                                                  is In or NotIn, the values array must be non-empty.
-                                                  If the operator is Exists or DoesNotExist, the values
-                                                  array must be empty. This array is replaced during a
-                                                  strategic merge patch.
-                                            ]
-                                        }
-                                    ],
-                                    "matchLabels": {
-                                        "str": "str"  # Optional. MatchLabels
-                                          is a map of {key,value} pairs. A single {key,value} in the
-                                          matchLabels map is equivalent to an element of
-                                          matchExpressions, whose key field is "key", the operator is
-                                          "In", and the values array contains only "value". The
-                                          requirements are ANDed.
-                                    }
-                                },
-                                "storageClassName": "str",  # Optional. Name of the
-                                  StorageClass required by the claim. More info:
-                                  https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1.
-                                "volumeMode": "str",  # Optional. volumeMode defines
-                                  what type of volume is required by the claim. Value of Filesystem is
-                                  implied when not included in claim spec. This is a beta feature.
-                                "volumeName": "str"  # Optional. VolumeName is the
-                                  binding reference to the PersistentVolume backing this claim.
-                            },
-                            "persistentVolumeClaimSpec": {
-                                "accessModes": [
-                                    "str"  # Optional. AccessModes contains the
-                                      desired access modes the volume should have. More info:
-                                      https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1.
-                                ],
-                                "dataSource": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "dataSourceRef": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "resources": {
-                                    "limits": {
-                                        "str": "str"  # Optional. Limits
-                                          describes the maximum amount of compute resources allowed.
-                                          More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    },
-                                    "requests": {
-                                        "str": "str"  # Optional. Requests
-                                          describes the minimum amount of compute resources required.
-                                          If Requests is omitted for a container, it defaults to Limits
-                                          if that is explicitly specified, otherwise to an
-                                          implementation-defined value. More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    }
-                                },
-                                "selector": {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "str",  # key is the
-                                              label key that the selector applies to. Required.
-                                            "operator": "str",  #
-                                              operator represents a key's relationship to a set of
-                                              values. Valid operators are In, NotIn, Exists and
-                                              DoesNotExist. Required. Known values are: "In", "NotIn",
-                                              "Exists", and "DoesNotExist".
-                                            "values": [
-                                                "str"  # Optional.
-                                                  values is an array of string values. If the operator
-                                                  is In or NotIn, the values array must be non-empty.
-                                                  If the operator is Exists or DoesNotExist, the values
-                                                  array must be empty. This array is replaced during a
-                                                  strategic merge patch.
-                                            ]
-                                        }
-                                    ],
-                                    "matchLabels": {
-                                        "str": "str"  # Optional. MatchLabels
-                                          is a map of {key,value} pairs. A single {key,value} in the
-                                          matchLabels map is equivalent to an element of
-                                          matchExpressions, whose key field is "key", the operator is
-                                          "In", and the values array contains only "value". The
-                                          requirements are ANDed.
-                                    }
-                                },
-                                "storageClassName": "str",  # Optional. Name of the
-                                  StorageClass required by the claim. More info:
-                                  https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1.
-                                "volumeMode": "str",  # Optional. volumeMode defines
-                                  what type of volume is required by the claim. Value of Filesystem is
-                                  implied when not included in claim spec. This is a beta feature.
-                                "volumeName": "str"  # Optional. VolumeName is the
-                                  binding reference to the PersistentVolume backing this claim.
-                            }
-                        },
-                        "generateResourceLimits": {
-                            "cpu": "str"  # Optional. The toggle to enable/disable cpu
-                              resource limits. Known values are: "Enabled" and "Disabled".
-                        },
-                        "memoryProfile": "str",  # Optional. Memory profile of Broker. Known
-                          values are: "Tiny", "Low", "Medium", and "High".
-                        "provisioningState": "str"  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @overload
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        properties: IO,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param properties: The resource properties to be updated. Required.
-        :type properties: IO
-        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "advanced": {
-                            "clients": {
-                                "maxKeepAliveSeconds": 0,  # Optional. Upper bound of
-                                  a client's Keep Alive, in seconds.
-                                "maxMessageExpirySeconds": 0,  # Optional. Upper
-                                  bound of Message Expiry Interval, in seconds.
-                                "maxReceiveMaximum": 0,  # Optional. Upper bound of
-                                  Receive Maximum that a client can request in the CONNECT packet.
-                                "maxSessionExpirySeconds": 0,  # Optional. Upper
-                                  bound of Session Expiry Interval, in seconds.
-                                "subscriberQueueLimit": {
-                                    "length": 0,  # Optional. The maximum length
-                                      of the queue before messages start getting dropped.
-                                    "strategy": "str"  # Optional. The strategy
-                                      to use for dropping messages from the queue. Known values are:
-                                      "None" and "DropOldest".
-                                }
-                            },
-                            "encryptInternalTraffic": "str",  # Optional. The setting to
-                              enable or disable encryption of internal Traffic. Known values are:
-                              "Enabled" and "Disabled".
-                            "internalCerts": {
-                                "duration": "str",  # Lifetime of certificate. Must
-                                  be specified using a Go time.Duration format (h|m|s). E.g. 240h for
-                                  240 hours and 45m for 45 minutes. Required.
-                                "privateKey": {
-                                    "algorithm": "str",  # algorithm for private
-                                      key. Required. Known values are: "Ec256", "Ec384", "Ec521",
-                                      "Ed25519", "Rsa2048", "Rsa4096", and "Rsa8192".
-                                    "rotationPolicy": "str"  # cert-manager
-                                      private key rotationPolicy. Required. Known values are: "Always"
-                                      and "Never".
-                                },
-                                "renewBefore": "str"  # When to begin renewing
-                                  certificate. Must be specified using a Go time.Duration format
-                                  (h|m|s). E.g. 240h for 240 hours and 45m for 45 minutes. Required.
-                            },
-                            "tolerations": {
-                                "effect": "str",  # Toleration effect. Required.
-                                "key": "str",  # Toleration key. Required.
-                                "operator": "str",  # Toleration operator like
-                                  'Exists', 'Equal' etc. Required. Known values are: "Equal" and
-                                  "Exists".
-                                "value": "str"  # Toleration Value. Required.
-                            }
-                        },
-                        "cardinality": {
-                            "backendChain": {
-                                "partitions": 0,  # The desired number of physical
-                                  backend partitions. Required.
-                                "redundancyFactor": 0,  # The desired numbers of
-                                  backend replicas (pods) in a physical partition. Required.
-                                "workers": 1  # Optional. Default value is 1. Number
-                                  of logical backend workers per replica (pod).
-                            },
-                            "frontend": {
-                                "replicas": 0,  # The desired number of frontend
-                                  instances (pods). Required.
-                                "workers": 2  # Optional. Default value is 2. Number
-                                  of logical frontend workers per instance (pod).
-                            }
-                        },
-                        "diagnostics": {
-                            "logs": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the logs to the open telemetry
-                                  collector.
-                                "exportLogLevel": "error",  # Optional. Default value
-                                  is "error". The level of logs to export.
-                                "level": "info",  # Optional. Default value is
-                                  "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
-                                  'trace'.
-                                "openTelemetryCollectorAddress": "str"  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                            },
-                            "metrics": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable metrics. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "prometheusPort": 9600,  # Optional. Default value is
-                                  9600. The prometheus port to expose the metrics.
-                                "stalenessTimeSeconds": 600,  # Optional. Default
-                                  value is 600. The time used to determine if a metric is stale and
-                                  drop from the metrics cache.
-                                "updateIntervalSeconds": 30  # Optional. Default
-                                  value is 30. How often to refresh the metrics.
-                            },
-                            "selfCheck": {
-                                "intervalSeconds": 30,  # Optional. Default value is
-                                  30. The self check interval.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable self check. Known values are: "Enabled" and
-                                  "Disabled".
-                                "timeoutSeconds": 15  # Optional. Default value is
-                                  15. The timeout for self check.
-                            },
-                            "traces": {
-                                "cacheSizeMegabytes": 16,  # Optional. Default value
-                                  is 16. The cache size in megabytes.
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable traces. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "selfTracing": {
-                                    "intervalSeconds": 30,  # Optional. Default
-                                      value is 30. The self tracing interval.
-                                    "mode": "str"  # Optional. The toggle to
-                                      enable/disable self tracing. Known values are: "Enabled" and
-                                      "Disabled".
-                                },
-                                "spanChannelCapacity": 1000  # Optional. Default
-                                  value is 1000. The span channel capacity.
-                            }
-                        },
-                        "diskBackedMessageBuffer": {
-                            "maxSize": "str",  # The max size of the message buffer on
-                              disk. If a PVC template is specified using one of
-                              ephemeralVolumeClaimSpec or persistentVolumeClaimSpec, then this size is
-                              used as the request and limit sizes of that template. If neither
-                              ephemeralVolumeClaimSpec nor persistentVolumeClaimSpec are specified,
-                              then an emptyDir volume is mounted with this size as its limit. See
-                              https://kubernetes.io/docs/concepts/storage/volumes/#emptydir for
-                              details. Required.
-                            "ephemeralVolumeClaimSpec": {
-                                "accessModes": [
-                                    "str"  # Optional. AccessModes contains the
-                                      desired access modes the volume should have. More info:
-                                      https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1.
-                                ],
-                                "dataSource": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "dataSourceRef": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "resources": {
-                                    "limits": {
-                                        "str": "str"  # Optional. Limits
-                                          describes the maximum amount of compute resources allowed.
-                                          More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    },
-                                    "requests": {
-                                        "str": "str"  # Optional. Requests
-                                          describes the minimum amount of compute resources required.
-                                          If Requests is omitted for a container, it defaults to Limits
-                                          if that is explicitly specified, otherwise to an
-                                          implementation-defined value. More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    }
-                                },
-                                "selector": {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "str",  # key is the
-                                              label key that the selector applies to. Required.
-                                            "operator": "str",  #
-                                              operator represents a key's relationship to a set of
-                                              values. Valid operators are In, NotIn, Exists and
-                                              DoesNotExist. Required. Known values are: "In", "NotIn",
-                                              "Exists", and "DoesNotExist".
-                                            "values": [
-                                                "str"  # Optional.
-                                                  values is an array of string values. If the operator
-                                                  is In or NotIn, the values array must be non-empty.
-                                                  If the operator is Exists or DoesNotExist, the values
-                                                  array must be empty. This array is replaced during a
-                                                  strategic merge patch.
-                                            ]
-                                        }
-                                    ],
-                                    "matchLabels": {
-                                        "str": "str"  # Optional. MatchLabels
-                                          is a map of {key,value} pairs. A single {key,value} in the
-                                          matchLabels map is equivalent to an element of
-                                          matchExpressions, whose key field is "key", the operator is
-                                          "In", and the values array contains only "value". The
-                                          requirements are ANDed.
-                                    }
-                                },
-                                "storageClassName": "str",  # Optional. Name of the
-                                  StorageClass required by the claim. More info:
-                                  https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1.
-                                "volumeMode": "str",  # Optional. volumeMode defines
-                                  what type of volume is required by the claim. Value of Filesystem is
-                                  implied when not included in claim spec. This is a beta feature.
-                                "volumeName": "str"  # Optional. VolumeName is the
-                                  binding reference to the PersistentVolume backing this claim.
-                            },
-                            "persistentVolumeClaimSpec": {
-                                "accessModes": [
-                                    "str"  # Optional. AccessModes contains the
-                                      desired access modes the volume should have. More info:
-                                      https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1.
-                                ],
-                                "dataSource": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "dataSourceRef": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "resources": {
-                                    "limits": {
-                                        "str": "str"  # Optional. Limits
-                                          describes the maximum amount of compute resources allowed.
-                                          More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    },
-                                    "requests": {
-                                        "str": "str"  # Optional. Requests
-                                          describes the minimum amount of compute resources required.
-                                          If Requests is omitted for a container, it defaults to Limits
-                                          if that is explicitly specified, otherwise to an
-                                          implementation-defined value. More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    }
-                                },
-                                "selector": {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "str",  # key is the
-                                              label key that the selector applies to. Required.
-                                            "operator": "str",  #
-                                              operator represents a key's relationship to a set of
-                                              values. Valid operators are In, NotIn, Exists and
-                                              DoesNotExist. Required. Known values are: "In", "NotIn",
-                                              "Exists", and "DoesNotExist".
-                                            "values": [
-                                                "str"  # Optional.
-                                                  values is an array of string values. If the operator
-                                                  is In or NotIn, the values array must be non-empty.
-                                                  If the operator is Exists or DoesNotExist, the values
-                                                  array must be empty. This array is replaced during a
-                                                  strategic merge patch.
-                                            ]
-                                        }
-                                    ],
-                                    "matchLabels": {
-                                        "str": "str"  # Optional. MatchLabels
-                                          is a map of {key,value} pairs. A single {key,value} in the
-                                          matchLabels map is equivalent to an element of
-                                          matchExpressions, whose key field is "key", the operator is
-                                          "In", and the values array contains only "value". The
-                                          requirements are ANDed.
-                                    }
-                                },
-                                "storageClassName": "str",  # Optional. Name of the
-                                  StorageClass required by the claim. More info:
-                                  https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1.
-                                "volumeMode": "str",  # Optional. volumeMode defines
-                                  what type of volume is required by the claim. Value of Filesystem is
-                                  implied when not included in claim spec. This is a beta feature.
-                                "volumeName": "str"  # Optional. VolumeName is the
-                                  binding reference to the PersistentVolume backing this claim.
-                            }
-                        },
-                        "generateResourceLimits": {
-                            "cpu": "str"  # Optional. The toggle to enable/disable cpu
-                              resource limits. Known values are: "Enabled" and "Disabled".
-                        },
-                        "memoryProfile": "str",  # Optional. Memory profile of Broker. Known
-                          values are: "Tiny", "Low", "Medium", and "High".
-                        "provisioningState": "str"  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @distributed_trace
-    def update(
-        self, resource_group_name: str, instance_name: str, broker_name: str, properties: Union[JSON, IO], **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param properties: The resource properties to be updated. Is either a JSON type or a IO type.
-         Required.
-        :type properties: JSON or IO
-        :keyword content_type: Body Parameter content-type. Known values are: 'application/json'.
-         Default value is None.
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                properties = {
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    }
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "advanced": {
-                            "clients": {
-                                "maxKeepAliveSeconds": 0,  # Optional. Upper bound of
-                                  a client's Keep Alive, in seconds.
-                                "maxMessageExpirySeconds": 0,  # Optional. Upper
-                                  bound of Message Expiry Interval, in seconds.
-                                "maxReceiveMaximum": 0,  # Optional. Upper bound of
-                                  Receive Maximum that a client can request in the CONNECT packet.
-                                "maxSessionExpirySeconds": 0,  # Optional. Upper
-                                  bound of Session Expiry Interval, in seconds.
-                                "subscriberQueueLimit": {
-                                    "length": 0,  # Optional. The maximum length
-                                      of the queue before messages start getting dropped.
-                                    "strategy": "str"  # Optional. The strategy
-                                      to use for dropping messages from the queue. Known values are:
-                                      "None" and "DropOldest".
-                                }
-                            },
-                            "encryptInternalTraffic": "str",  # Optional. The setting to
-                              enable or disable encryption of internal Traffic. Known values are:
-                              "Enabled" and "Disabled".
-                            "internalCerts": {
-                                "duration": "str",  # Lifetime of certificate. Must
-                                  be specified using a Go time.Duration format (h|m|s). E.g. 240h for
-                                  240 hours and 45m for 45 minutes. Required.
-                                "privateKey": {
-                                    "algorithm": "str",  # algorithm for private
-                                      key. Required. Known values are: "Ec256", "Ec384", "Ec521",
-                                      "Ed25519", "Rsa2048", "Rsa4096", and "Rsa8192".
-                                    "rotationPolicy": "str"  # cert-manager
-                                      private key rotationPolicy. Required. Known values are: "Always"
-                                      and "Never".
-                                },
-                                "renewBefore": "str"  # When to begin renewing
-                                  certificate. Must be specified using a Go time.Duration format
-                                  (h|m|s). E.g. 240h for 240 hours and 45m for 45 minutes. Required.
-                            },
-                            "tolerations": {
-                                "effect": "str",  # Toleration effect. Required.
-                                "key": "str",  # Toleration key. Required.
-                                "operator": "str",  # Toleration operator like
-                                  'Exists', 'Equal' etc. Required. Known values are: "Equal" and
-                                  "Exists".
-                                "value": "str"  # Toleration Value. Required.
-                            }
-                        },
-                        "cardinality": {
-                            "backendChain": {
-                                "partitions": 0,  # The desired number of physical
-                                  backend partitions. Required.
-                                "redundancyFactor": 0,  # The desired numbers of
-                                  backend replicas (pods) in a physical partition. Required.
-                                "workers": 1  # Optional. Default value is 1. Number
-                                  of logical backend workers per replica (pod).
-                            },
-                            "frontend": {
-                                "replicas": 0,  # The desired number of frontend
-                                  instances (pods). Required.
-                                "workers": 2  # Optional. Default value is 2. Number
-                                  of logical frontend workers per instance (pod).
-                            }
-                        },
-                        "diagnostics": {
-                            "logs": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the logs to the open telemetry
-                                  collector.
-                                "exportLogLevel": "error",  # Optional. Default value
-                                  is "error". The level of logs to export.
-                                "level": "info",  # Optional. Default value is
-                                  "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
-                                  'trace'.
-                                "openTelemetryCollectorAddress": "str"  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                            },
-                            "metrics": {
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable metrics. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "prometheusPort": 9600,  # Optional. Default value is
-                                  9600. The prometheus port to expose the metrics.
-                                "stalenessTimeSeconds": 600,  # Optional. Default
-                                  value is 600. The time used to determine if a metric is stale and
-                                  drop from the metrics cache.
-                                "updateIntervalSeconds": 30  # Optional. Default
-                                  value is 30. How often to refresh the metrics.
-                            },
-                            "selfCheck": {
-                                "intervalSeconds": 30,  # Optional. Default value is
-                                  30. The self check interval.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable self check. Known values are: "Enabled" and
-                                  "Disabled".
-                                "timeoutSeconds": 15  # Optional. Default value is
-                                  15. The timeout for self check.
-                            },
-                            "traces": {
-                                "cacheSizeMegabytes": 16,  # Optional. Default value
-                                  is 16. The cache size in megabytes.
-                                "exportIntervalSeconds": 30,  # Optional. Default
-                                  value is 30. How often to export the metrics to the open telemetry
-                                  collector.
-                                "mode": "str",  # Optional. The toggle to
-                                  enable/disable traces. Known values are: "Enabled" and "Disabled".
-                                "openTelemetryCollectorAddress": "str",  # Optional.
-                                  The open telemetry collector endpoint to export to.
-                                "selfTracing": {
-                                    "intervalSeconds": 30,  # Optional. Default
-                                      value is 30. The self tracing interval.
-                                    "mode": "str"  # Optional. The toggle to
-                                      enable/disable self tracing. Known values are: "Enabled" and
-                                      "Disabled".
-                                },
-                                "spanChannelCapacity": 1000  # Optional. Default
-                                  value is 1000. The span channel capacity.
-                            }
-                        },
-                        "diskBackedMessageBuffer": {
-                            "maxSize": "str",  # The max size of the message buffer on
-                              disk. If a PVC template is specified using one of
-                              ephemeralVolumeClaimSpec or persistentVolumeClaimSpec, then this size is
-                              used as the request and limit sizes of that template. If neither
-                              ephemeralVolumeClaimSpec nor persistentVolumeClaimSpec are specified,
-                              then an emptyDir volume is mounted with this size as its limit. See
-                              https://kubernetes.io/docs/concepts/storage/volumes/#emptydir for
-                              details. Required.
-                            "ephemeralVolumeClaimSpec": {
-                                "accessModes": [
-                                    "str"  # Optional. AccessModes contains the
-                                      desired access modes the volume should have. More info:
-                                      https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1.
-                                ],
-                                "dataSource": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "dataSourceRef": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "resources": {
-                                    "limits": {
-                                        "str": "str"  # Optional. Limits
-                                          describes the maximum amount of compute resources allowed.
-                                          More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    },
-                                    "requests": {
-                                        "str": "str"  # Optional. Requests
-                                          describes the minimum amount of compute resources required.
-                                          If Requests is omitted for a container, it defaults to Limits
-                                          if that is explicitly specified, otherwise to an
-                                          implementation-defined value. More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    }
-                                },
-                                "selector": {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "str",  # key is the
-                                              label key that the selector applies to. Required.
-                                            "operator": "str",  #
-                                              operator represents a key's relationship to a set of
-                                              values. Valid operators are In, NotIn, Exists and
-                                              DoesNotExist. Required. Known values are: "In", "NotIn",
-                                              "Exists", and "DoesNotExist".
-                                            "values": [
-                                                "str"  # Optional.
-                                                  values is an array of string values. If the operator
-                                                  is In or NotIn, the values array must be non-empty.
-                                                  If the operator is Exists or DoesNotExist, the values
-                                                  array must be empty. This array is replaced during a
-                                                  strategic merge patch.
-                                            ]
-                                        }
-                                    ],
-                                    "matchLabels": {
-                                        "str": "str"  # Optional. MatchLabels
-                                          is a map of {key,value} pairs. A single {key,value} in the
-                                          matchLabels map is equivalent to an element of
-                                          matchExpressions, whose key field is "key", the operator is
-                                          "In", and the values array contains only "value". The
-                                          requirements are ANDed.
-                                    }
-                                },
-                                "storageClassName": "str",  # Optional. Name of the
-                                  StorageClass required by the claim. More info:
-                                  https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1.
-                                "volumeMode": "str",  # Optional. volumeMode defines
-                                  what type of volume is required by the claim. Value of Filesystem is
-                                  implied when not included in claim spec. This is a beta feature.
-                                "volumeName": "str"  # Optional. VolumeName is the
-                                  binding reference to the PersistentVolume backing this claim.
-                            },
-                            "persistentVolumeClaimSpec": {
-                                "accessModes": [
-                                    "str"  # Optional. AccessModes contains the
-                                      desired access modes the volume should have. More info:
-                                      https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1.
-                                ],
-                                "dataSource": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "dataSourceRef": {
-                                    "kind": "str",  # Kind is the type of
-                                      resource being referenced. Required.
-                                    "name": "str",  # Name is the name of
-                                      resource being referenced. Required.
-                                    "apiGroup": "str"  # Optional. APIGroup is
-                                      the group for the resource being referenced. If APIGroup is not
-                                      specified, the specified Kind must be in the core API group. For
-                                      any other third-party types, APIGroup is required.
-                                },
-                                "resources": {
-                                    "limits": {
-                                        "str": "str"  # Optional. Limits
-                                          describes the maximum amount of compute resources allowed.
-                                          More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    },
-                                    "requests": {
-                                        "str": "str"  # Optional. Requests
-                                          describes the minimum amount of compute resources required.
-                                          If Requests is omitted for a container, it defaults to Limits
-                                          if that is explicitly specified, otherwise to an
-                                          implementation-defined value. More info:
-                                          https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/.
-                                    }
-                                },
-                                "selector": {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "str",  # key is the
-                                              label key that the selector applies to. Required.
-                                            "operator": "str",  #
-                                              operator represents a key's relationship to a set of
-                                              values. Valid operators are In, NotIn, Exists and
-                                              DoesNotExist. Required. Known values are: "In", "NotIn",
-                                              "Exists", and "DoesNotExist".
-                                            "values": [
-                                                "str"  # Optional.
-                                                  values is an array of string values. If the operator
-                                                  is In or NotIn, the values array must be non-empty.
-                                                  If the operator is Exists or DoesNotExist, the values
-                                                  array must be empty. This array is replaced during a
-                                                  strategic merge patch.
-                                            ]
-                                        }
-                                    ],
-                                    "matchLabels": {
-                                        "str": "str"  # Optional. MatchLabels
-                                          is a map of {key,value} pairs. A single {key,value} in the
-                                          matchLabels map is equivalent to an element of
-                                          matchExpressions, whose key field is "key", the operator is
-                                          "In", and the values array contains only "value". The
-                                          requirements are ANDed.
-                                    }
-                                },
-                                "storageClassName": "str",  # Optional. Name of the
-                                  StorageClass required by the claim. More info:
-                                  https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1.
-                                "volumeMode": "str",  # Optional. volumeMode defines
-                                  what type of volume is required by the claim. Value of Filesystem is
-                                  implied when not included in claim spec. This is a beta feature.
-                                "volumeName": "str"  # Optional. VolumeName is the
-                                  binding reference to the PersistentVolume backing this claim.
-                            }
-                        },
-                        "generateResourceLimits": {
-                            "cpu": "str"  # Optional. The toggle to enable/disable cpu
-                              resource limits. Known values are: "Enabled" and "Disabled".
-                        },
-                        "memoryProfile": "str",  # Optional. Memory profile of Broker. Known
-                          values are: "Tiny", "Low", "Medium", and "High".
-                        "provisioningState": "str"  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = kwargs.pop("params", {}) or {}
-
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        content_type = content_type or "application/json"
-        _json = None
-        _content = None
-        if isinstance(properties, (IOBase, bytes)):
-            _content = properties
-        else:
-            _json = properties
-
-        request = build_broker_update_request(
-            resource_group_name=resource_group_name,
-            instance_name=instance_name,
-            broker_name=broker_name,
-            subscription_id=self._config.subscription_id,
-            content_type=content_type,
-            api_version=self._config.api_version,
-            json=_json,
-            content=_content,
-            headers=_headers,
-            params=_params,
-        )
-        request.url = self._client.format_url(request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        if response.content:
-            deserialized = response.json()
-        else:
-            deserialized = None
-
-        if cls:
-            return cls(pipeline_response, cast(JSON, deserialized), {})
-
-        return cast(JSON, deserialized)
 
     def _delete_initial(  # pylint: disable=inconsistent-return-statements
         self, resource_group_name: str, instance_name: str, broker_name: str, **kwargs: Any
@@ -6453,25 +5574,24 @@ class BrokerAuthenticationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "authenticationMethods": [
                             {
+                                "method": "str",  # Custom authentication
+                                  configuration. Required. Known values are: "Custom",
+                                  "ServiceAccountToken", and "X509Credentials".
                                 "custom": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
                                         "x509": {
-                                            "secretName": "str",  #
+                                            "secretRef": "str"  #
                                               Kubernetes secret containing an X.509 client certificate.
                                               This is a reference to the secret through an identifying
                                               name, not the secret itself. Required.
-                                            "secretNamespace": "str"  #
-                                              Optional. Certificate K8S namespace. Omit to use current
-                                              namespace.
                                         }
                                     },
                                     "caCertConfigMap": "str",  # Optional.
@@ -6482,13 +5602,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "sat": {
+                                "serviceAccountToken": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509": {
+                                "x509Credentials": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -6524,9 +5644,6 @@ class BrokerAuthenticationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -6628,25 +5745,24 @@ class BrokerAuthenticationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "authenticationMethods": [
                             {
+                                "method": "str",  # Custom authentication
+                                  configuration. Required. Known values are: "Custom",
+                                  "ServiceAccountToken", and "X509Credentials".
                                 "custom": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
                                         "x509": {
-                                            "secretName": "str",  #
+                                            "secretRef": "str"  #
                                               Kubernetes secret containing an X.509 client certificate.
                                               This is a reference to the secret through an identifying
                                               name, not the secret itself. Required.
-                                            "secretNamespace": "str"  #
-                                              Optional. Certificate K8S namespace. Omit to use current
-                                              namespace.
                                         }
                                     },
                                     "caCertConfigMap": "str",  # Optional.
@@ -6657,13 +5773,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "sat": {
+                                "serviceAccountToken": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509": {
+                                "x509Credentials": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -6699,9 +5815,6 @@ class BrokerAuthenticationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -6818,6 +5931,9 @@ class BrokerAuthenticationOperations:
                 deserialized = None
 
         if response.status_code == 201:
+            response_headers["Azure-AsyncOperation"] = self._deserialize(
+                "str", response.headers.get("Azure-AsyncOperation")
+            )
             response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
 
             if response.content:
@@ -6878,25 +5994,24 @@ class BrokerAuthenticationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "authenticationMethods": [
                             {
+                                "method": "str",  # Custom authentication
+                                  configuration. Required. Known values are: "Custom",
+                                  "ServiceAccountToken", and "X509Credentials".
                                 "custom": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
                                         "x509": {
-                                            "secretName": "str",  #
+                                            "secretRef": "str"  #
                                               Kubernetes secret containing an X.509 client certificate.
                                               This is a reference to the secret through an identifying
                                               name, not the secret itself. Required.
-                                            "secretNamespace": "str"  #
-                                              Optional. Certificate K8S namespace. Omit to use current
-                                              namespace.
                                         }
                                     },
                                     "caCertConfigMap": "str",  # Optional.
@@ -6907,13 +6022,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "sat": {
+                                "serviceAccountToken": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509": {
+                                "x509Credentials": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -6949,9 +6064,6 @@ class BrokerAuthenticationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -6963,25 +6075,24 @@ class BrokerAuthenticationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "authenticationMethods": [
                             {
+                                "method": "str",  # Custom authentication
+                                  configuration. Required. Known values are: "Custom",
+                                  "ServiceAccountToken", and "X509Credentials".
                                 "custom": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
                                         "x509": {
-                                            "secretName": "str",  #
+                                            "secretRef": "str"  #
                                               Kubernetes secret containing an X.509 client certificate.
                                               This is a reference to the secret through an identifying
                                               name, not the secret itself. Required.
-                                            "secretNamespace": "str"  #
-                                              Optional. Certificate K8S namespace. Omit to use current
-                                              namespace.
                                         }
                                     },
                                     "caCertConfigMap": "str",  # Optional.
@@ -6992,13 +6103,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "sat": {
+                                "serviceAccountToken": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509": {
+                                "x509Credentials": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -7034,9 +6145,6 @@ class BrokerAuthenticationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -7091,25 +6199,24 @@ class BrokerAuthenticationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "authenticationMethods": [
                             {
+                                "method": "str",  # Custom authentication
+                                  configuration. Required. Known values are: "Custom",
+                                  "ServiceAccountToken", and "X509Credentials".
                                 "custom": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
                                         "x509": {
-                                            "secretName": "str",  #
+                                            "secretRef": "str"  #
                                               Kubernetes secret containing an X.509 client certificate.
                                               This is a reference to the secret through an identifying
                                               name, not the secret itself. Required.
-                                            "secretNamespace": "str"  #
-                                              Optional. Certificate K8S namespace. Omit to use current
-                                              namespace.
                                         }
                                     },
                                     "caCertConfigMap": "str",  # Optional.
@@ -7120,13 +6227,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "sat": {
+                                "serviceAccountToken": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509": {
+                                "x509Credentials": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -7162,9 +6269,6 @@ class BrokerAuthenticationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -7217,25 +6321,24 @@ class BrokerAuthenticationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "authenticationMethods": [
                             {
+                                "method": "str",  # Custom authentication
+                                  configuration. Required. Known values are: "Custom",
+                                  "ServiceAccountToken", and "X509Credentials".
                                 "custom": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
                                         "x509": {
-                                            "secretName": "str",  #
+                                            "secretRef": "str"  #
                                               Kubernetes secret containing an X.509 client certificate.
                                               This is a reference to the secret through an identifying
                                               name, not the secret itself. Required.
-                                            "secretNamespace": "str"  #
-                                              Optional. Certificate K8S namespace. Omit to use current
-                                              namespace.
                                         }
                                     },
                                     "caCertConfigMap": "str",  # Optional.
@@ -7246,13 +6349,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "sat": {
+                                "serviceAccountToken": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509": {
+                                "x509Credentials": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -7288,9 +6391,6 @@ class BrokerAuthenticationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -7302,25 +6402,24 @@ class BrokerAuthenticationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "authenticationMethods": [
                             {
+                                "method": "str",  # Custom authentication
+                                  configuration. Required. Known values are: "Custom",
+                                  "ServiceAccountToken", and "X509Credentials".
                                 "custom": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
                                         "x509": {
-                                            "secretName": "str",  #
+                                            "secretRef": "str"  #
                                               Kubernetes secret containing an X.509 client certificate.
                                               This is a reference to the secret through an identifying
                                               name, not the secret itself. Required.
-                                            "secretNamespace": "str"  #
-                                              Optional. Certificate K8S namespace. Omit to use current
-                                              namespace.
                                         }
                                     },
                                     "caCertConfigMap": "str",  # Optional.
@@ -7331,13 +6430,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "sat": {
+                                "serviceAccountToken": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509": {
+                                "x509Credentials": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -7373,9 +6472,6 @@ class BrokerAuthenticationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -7430,439 +6526,6 @@ class BrokerAuthenticationOperations:
                 deserialization_callback=get_long_running_output,
             )
         return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
-
-    @overload
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        authentication_name: str,
-        properties: JSON,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerAuthenticationResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param authentication_name: Name of Instance broker authentication resource. Required.
-        :type authentication_name: str
-        :param properties: The resource properties to be updated. Required.
-        :type properties: JSON
-        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                properties = {
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    }
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "authenticationMethods": [
-                            {
-                                "custom": {
-                                    "endpoint": "str",  # Endpoint of the custom
-                                      authentication server. Must be an HTTPS endpoint. Required.
-                                    "auth": {
-                                        "x509": {
-                                            "secretName": "str",  #
-                                              Kubernetes secret containing an X.509 client certificate.
-                                              This is a reference to the secret through an identifying
-                                              name, not the secret itself. Required.
-                                            "secretNamespace": "str"  #
-                                              Optional. Certificate K8S namespace. Omit to use current
-                                              namespace.
-                                        }
-                                    },
-                                    "caCertConfigMap": "str",  # Optional.
-                                      Optional CA certificate for validating the custom authentication
-                                      server's certificate.
-                                    "headers": {
-                                        "str": "str"  # Optional. Additional
-                                          HTTP headers to pass to the custom authentication server.
-                                    }
-                                },
-                                "sat": {
-                                    "audiences": [
-                                        "str"  # List of allowed audience.
-                                          Required.
-                                    ]
-                                },
-                                "x509": {
-                                    "authorizationAttributes": {
-                                        "str": {
-                                            "attributes": {
-                                                "str": "str"  #
-                                                  Attributes object. Required.
-                                            },
-                                            "subject": "str"  # Subject
-                                              of the X509 attribute. Required.
-                                        }
-                                    },
-                                    "trustedClientCaCert": "client-ca"  #
-                                      Optional. Default value is "client-ca". Name of the trusted
-                                      client ca cert resource.
-                                }
-                            }
-                        ],
-                        "provisioningState": "str"  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @overload
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        authentication_name: str,
-        properties: IO,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerAuthenticationResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param authentication_name: Name of Instance broker authentication resource. Required.
-        :type authentication_name: str
-        :param properties: The resource properties to be updated. Required.
-        :type properties: IO
-        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "authenticationMethods": [
-                            {
-                                "custom": {
-                                    "endpoint": "str",  # Endpoint of the custom
-                                      authentication server. Must be an HTTPS endpoint. Required.
-                                    "auth": {
-                                        "x509": {
-                                            "secretName": "str",  #
-                                              Kubernetes secret containing an X.509 client certificate.
-                                              This is a reference to the secret through an identifying
-                                              name, not the secret itself. Required.
-                                            "secretNamespace": "str"  #
-                                              Optional. Certificate K8S namespace. Omit to use current
-                                              namespace.
-                                        }
-                                    },
-                                    "caCertConfigMap": "str",  # Optional.
-                                      Optional CA certificate for validating the custom authentication
-                                      server's certificate.
-                                    "headers": {
-                                        "str": "str"  # Optional. Additional
-                                          HTTP headers to pass to the custom authentication server.
-                                    }
-                                },
-                                "sat": {
-                                    "audiences": [
-                                        "str"  # List of allowed audience.
-                                          Required.
-                                    ]
-                                },
-                                "x509": {
-                                    "authorizationAttributes": {
-                                        "str": {
-                                            "attributes": {
-                                                "str": "str"  #
-                                                  Attributes object. Required.
-                                            },
-                                            "subject": "str"  # Subject
-                                              of the X509 attribute. Required.
-                                        }
-                                    },
-                                    "trustedClientCaCert": "client-ca"  #
-                                      Optional. Default value is "client-ca". Name of the trusted
-                                      client ca cert resource.
-                                }
-                            }
-                        ],
-                        "provisioningState": "str"  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @distributed_trace
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        authentication_name: str,
-        properties: Union[JSON, IO],
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerAuthenticationResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param authentication_name: Name of Instance broker authentication resource. Required.
-        :type authentication_name: str
-        :param properties: The resource properties to be updated. Is either a JSON type or a IO type.
-         Required.
-        :type properties: JSON or IO
-        :keyword content_type: Body Parameter content-type. Known values are: 'application/json'.
-         Default value is None.
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                properties = {
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    }
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "authenticationMethods": [
-                            {
-                                "custom": {
-                                    "endpoint": "str",  # Endpoint of the custom
-                                      authentication server. Must be an HTTPS endpoint. Required.
-                                    "auth": {
-                                        "x509": {
-                                            "secretName": "str",  #
-                                              Kubernetes secret containing an X.509 client certificate.
-                                              This is a reference to the secret through an identifying
-                                              name, not the secret itself. Required.
-                                            "secretNamespace": "str"  #
-                                              Optional. Certificate K8S namespace. Omit to use current
-                                              namespace.
-                                        }
-                                    },
-                                    "caCertConfigMap": "str",  # Optional.
-                                      Optional CA certificate for validating the custom authentication
-                                      server's certificate.
-                                    "headers": {
-                                        "str": "str"  # Optional. Additional
-                                          HTTP headers to pass to the custom authentication server.
-                                    }
-                                },
-                                "sat": {
-                                    "audiences": [
-                                        "str"  # List of allowed audience.
-                                          Required.
-                                    ]
-                                },
-                                "x509": {
-                                    "authorizationAttributes": {
-                                        "str": {
-                                            "attributes": {
-                                                "str": "str"  #
-                                                  Attributes object. Required.
-                                            },
-                                            "subject": "str"  # Subject
-                                              of the X509 attribute. Required.
-                                        }
-                                    },
-                                    "trustedClientCaCert": "client-ca"  #
-                                      Optional. Default value is "client-ca". Name of the trusted
-                                      client ca cert resource.
-                                }
-                            }
-                        ],
-                        "provisioningState": "str"  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = kwargs.pop("params", {}) or {}
-
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        content_type = content_type or "application/json"
-        _json = None
-        _content = None
-        if isinstance(properties, (IOBase, bytes)):
-            _content = properties
-        else:
-            _json = properties
-
-        request = build_broker_authentication_update_request(
-            resource_group_name=resource_group_name,
-            instance_name=instance_name,
-            broker_name=broker_name,
-            authentication_name=authentication_name,
-            subscription_id=self._config.subscription_id,
-            content_type=content_type,
-            api_version=self._config.api_version,
-            json=_json,
-            content=_content,
-            headers=_headers,
-            params=_params,
-        )
-        request.url = self._client.format_url(request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        if response.content:
-            deserialized = response.json()
-        else:
-            deserialized = None
-
-        if cls:
-            return cls(pipeline_response, cast(JSON, deserialized), {})
-
-        return cast(JSON, deserialized)
 
     def _delete_initial(  # pylint: disable=inconsistent-return-statements
         self, resource_group_name: str, instance_name: str, broker_name: str, authentication_name: str, **kwargs: Any
@@ -8022,7 +6685,6 @@ class BrokerAuthorizationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -8035,7 +6697,7 @@ class BrokerAuthorizationOperations:
                                     "brokerResources": [
                                         {
                                             "method": "str",  # Give
-                                              access for a MQTT method (i.e., Connect, Subscribe, or
+                                              access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
                                             "topics": [
@@ -8112,9 +6774,6 @@ class BrokerAuthorizationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -8216,7 +6875,6 @@ class BrokerAuthorizationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -8229,7 +6887,7 @@ class BrokerAuthorizationOperations:
                                     "brokerResources": [
                                         {
                                             "method": "str",  # Give
-                                              access for a MQTT method (i.e., Connect, Subscribe, or
+                                              access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
                                             "topics": [
@@ -8306,9 +6964,6 @@ class BrokerAuthorizationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -8425,6 +7080,9 @@ class BrokerAuthorizationOperations:
                 deserialized = None
 
         if response.status_code == 201:
+            response_headers["Azure-AsyncOperation"] = self._deserialize(
+                "str", response.headers.get("Azure-AsyncOperation")
+            )
             response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
 
             if response.content:
@@ -8485,7 +7143,6 @@ class BrokerAuthorizationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -8498,7 +7155,7 @@ class BrokerAuthorizationOperations:
                                     "brokerResources": [
                                         {
                                             "method": "str",  # Give
-                                              access for a MQTT method (i.e., Connect, Subscribe, or
+                                              access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
                                             "topics": [
@@ -8575,9 +7232,6 @@ class BrokerAuthorizationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -8589,7 +7243,6 @@ class BrokerAuthorizationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -8602,7 +7255,7 @@ class BrokerAuthorizationOperations:
                                     "brokerResources": [
                                         {
                                             "method": "str",  # Give
-                                              access for a MQTT method (i.e., Connect, Subscribe, or
+                                              access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
                                             "topics": [
@@ -8679,9 +7332,6 @@ class BrokerAuthorizationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -8736,7 +7386,6 @@ class BrokerAuthorizationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -8749,7 +7398,7 @@ class BrokerAuthorizationOperations:
                                     "brokerResources": [
                                         {
                                             "method": "str",  # Give
-                                              access for a MQTT method (i.e., Connect, Subscribe, or
+                                              access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
                                             "topics": [
@@ -8826,9 +7475,6 @@ class BrokerAuthorizationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -8881,7 +7527,6 @@ class BrokerAuthorizationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -8894,7 +7539,7 @@ class BrokerAuthorizationOperations:
                                     "brokerResources": [
                                         {
                                             "method": "str",  # Give
-                                              access for a MQTT method (i.e., Connect, Subscribe, or
+                                              access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
                                             "topics": [
@@ -8971,9 +7616,6 @@ class BrokerAuthorizationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -8985,7 +7627,6 @@ class BrokerAuthorizationOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -8998,7 +7639,7 @@ class BrokerAuthorizationOperations:
                                     "brokerResources": [
                                         {
                                             "method": "str",  # Give
-                                              access for a MQTT method (i.e., Connect, Subscribe, or
+                                              access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
                                             "topics": [
@@ -9075,9 +7716,6 @@ class BrokerAuthorizationOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -9132,496 +7770,6 @@ class BrokerAuthorizationOperations:
                 deserialization_callback=get_long_running_output,
             )
         return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
-
-    @overload
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        authorization_name: str,
-        properties: JSON,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerAuthorizationResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param authorization_name: Name of Instance broker authorization resource. Required.
-        :type authorization_name: str
-        :param properties: The resource properties to be updated. Required.
-        :type properties: JSON
-        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                properties = {
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    }
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "authorizationPolicies": {
-                            "cache": "str",  # Optional. Enable caching of the
-                              authorization rules. Known values are: "Enabled" and "Disabled".
-                            "rules": [
-                                {
-                                    "brokerResources": [
-                                        {
-                                            "method": "str",  # Give
-                                              access for a MQTT method (i.e., Connect, Subscribe, or
-                                              Publish). Required. Known values are: "Connect",
-                                              "Publish", and "Subscribe".
-                                            "topics": [
-                                                "str"  # Optional. A
-                                                  list of topics or topic patterns that match the
-                                                  topics that the clients can publish or subscribe to.
-                                                  This subfield is required if the method is Publish or
-                                                  Subscribe.
-                                            ]
-                                        }
-                                    ],
-                                    "principals": {
-                                        "attributes": [
-                                            {
-                                                "str": "str"  #
-                                                  Optional. A list of key-value pairs that match the
-                                                  attributes of the clients. The attributes are
-                                                  case-sensitive and must match the attributes provided
-                                                  by the clients during authentication.
-                                            }
-                                        ],
-                                        "clientIds": [
-                                            "str"  # Optional. A list of
-                                              client IDs that match the clients. The client IDs are
-                                              case-sensitive and must match the client IDs provided by
-                                              the clients during connection.
-                                        ],
-                                        "usernames": [
-                                            "str"  # Optional. A list of
-                                              usernames that match the clients. The usernames are
-                                              case-sensitive and must match the usernames provided by
-                                              the clients during authentication.
-                                        ]
-                                    },
-                                    "stateStoreResources": [
-                                        {
-                                            "keyType": "str",  # Allowed
-                                              keyTypes pattern, string, binary. The key type used for
-                                              matching, for example pattern tries to match the key to a
-                                              glob-style pattern and string checks key is equal to
-                                              value provided in keys. Required. Known values are:
-                                              "Pattern", "String", and "Binary".
-                                            "keys": [
-                                                "str"  # Give access
-                                                  to state store keys for the corresponding principals
-                                                  defined. When key type is pattern set glob-style
-                                                  pattern (e.g., '"" *', 'clients/*"" '). Required.
-                                            ],
-                                            "method": "str"  # Give
-                                              access for ``Read``"" , ``Write`` and ``ReadWrite``
-                                              access level. Required. Known values are: "Read",
-                                              "Write", and "ReadWrite".
-                                        }
-                                    ]
-                                }
-                            ]
-                        },
-                        "provisioningState": "str"  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @overload
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        authorization_name: str,
-        properties: IO,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerAuthorizationResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param authorization_name: Name of Instance broker authorization resource. Required.
-        :type authorization_name: str
-        :param properties: The resource properties to be updated. Required.
-        :type properties: IO
-        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "authorizationPolicies": {
-                            "cache": "str",  # Optional. Enable caching of the
-                              authorization rules. Known values are: "Enabled" and "Disabled".
-                            "rules": [
-                                {
-                                    "brokerResources": [
-                                        {
-                                            "method": "str",  # Give
-                                              access for a MQTT method (i.e., Connect, Subscribe, or
-                                              Publish). Required. Known values are: "Connect",
-                                              "Publish", and "Subscribe".
-                                            "topics": [
-                                                "str"  # Optional. A
-                                                  list of topics or topic patterns that match the
-                                                  topics that the clients can publish or subscribe to.
-                                                  This subfield is required if the method is Publish or
-                                                  Subscribe.
-                                            ]
-                                        }
-                                    ],
-                                    "principals": {
-                                        "attributes": [
-                                            {
-                                                "str": "str"  #
-                                                  Optional. A list of key-value pairs that match the
-                                                  attributes of the clients. The attributes are
-                                                  case-sensitive and must match the attributes provided
-                                                  by the clients during authentication.
-                                            }
-                                        ],
-                                        "clientIds": [
-                                            "str"  # Optional. A list of
-                                              client IDs that match the clients. The client IDs are
-                                              case-sensitive and must match the client IDs provided by
-                                              the clients during connection.
-                                        ],
-                                        "usernames": [
-                                            "str"  # Optional. A list of
-                                              usernames that match the clients. The usernames are
-                                              case-sensitive and must match the usernames provided by
-                                              the clients during authentication.
-                                        ]
-                                    },
-                                    "stateStoreResources": [
-                                        {
-                                            "keyType": "str",  # Allowed
-                                              keyTypes pattern, string, binary. The key type used for
-                                              matching, for example pattern tries to match the key to a
-                                              glob-style pattern and string checks key is equal to
-                                              value provided in keys. Required. Known values are:
-                                              "Pattern", "String", and "Binary".
-                                            "keys": [
-                                                "str"  # Give access
-                                                  to state store keys for the corresponding principals
-                                                  defined. When key type is pattern set glob-style
-                                                  pattern (e.g., '"" *', 'clients/*"" '). Required.
-                                            ],
-                                            "method": "str"  # Give
-                                              access for ``Read``"" , ``Write`` and ``ReadWrite``
-                                              access level. Required. Known values are: "Read",
-                                              "Write", and "ReadWrite".
-                                        }
-                                    ]
-                                }
-                            ]
-                        },
-                        "provisioningState": "str"  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @distributed_trace
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        authorization_name: str,
-        properties: Union[JSON, IO],
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerAuthorizationResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param authorization_name: Name of Instance broker authorization resource. Required.
-        :type authorization_name: str
-        :param properties: The resource properties to be updated. Is either a JSON type or a IO type.
-         Required.
-        :type properties: JSON or IO
-        :keyword content_type: Body Parameter content-type. Known values are: 'application/json'.
-         Default value is None.
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                properties = {
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    }
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "authorizationPolicies": {
-                            "cache": "str",  # Optional. Enable caching of the
-                              authorization rules. Known values are: "Enabled" and "Disabled".
-                            "rules": [
-                                {
-                                    "brokerResources": [
-                                        {
-                                            "method": "str",  # Give
-                                              access for a MQTT method (i.e., Connect, Subscribe, or
-                                              Publish). Required. Known values are: "Connect",
-                                              "Publish", and "Subscribe".
-                                            "topics": [
-                                                "str"  # Optional. A
-                                                  list of topics or topic patterns that match the
-                                                  topics that the clients can publish or subscribe to.
-                                                  This subfield is required if the method is Publish or
-                                                  Subscribe.
-                                            ]
-                                        }
-                                    ],
-                                    "principals": {
-                                        "attributes": [
-                                            {
-                                                "str": "str"  #
-                                                  Optional. A list of key-value pairs that match the
-                                                  attributes of the clients. The attributes are
-                                                  case-sensitive and must match the attributes provided
-                                                  by the clients during authentication.
-                                            }
-                                        ],
-                                        "clientIds": [
-                                            "str"  # Optional. A list of
-                                              client IDs that match the clients. The client IDs are
-                                              case-sensitive and must match the client IDs provided by
-                                              the clients during connection.
-                                        ],
-                                        "usernames": [
-                                            "str"  # Optional. A list of
-                                              usernames that match the clients. The usernames are
-                                              case-sensitive and must match the usernames provided by
-                                              the clients during authentication.
-                                        ]
-                                    },
-                                    "stateStoreResources": [
-                                        {
-                                            "keyType": "str",  # Allowed
-                                              keyTypes pattern, string, binary. The key type used for
-                                              matching, for example pattern tries to match the key to a
-                                              glob-style pattern and string checks key is equal to
-                                              value provided in keys. Required. Known values are:
-                                              "Pattern", "String", and "Binary".
-                                            "keys": [
-                                                "str"  # Give access
-                                                  to state store keys for the corresponding principals
-                                                  defined. When key type is pattern set glob-style
-                                                  pattern (e.g., '"" *', 'clients/*"" '). Required.
-                                            ],
-                                            "method": "str"  # Give
-                                              access for ``Read``"" , ``Write`` and ``ReadWrite``
-                                              access level. Required. Known values are: "Read",
-                                              "Write", and "ReadWrite".
-                                        }
-                                    ]
-                                }
-                            ]
-                        },
-                        "provisioningState": "str"  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = kwargs.pop("params", {}) or {}
-
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        content_type = content_type or "application/json"
-        _json = None
-        _content = None
-        if isinstance(properties, (IOBase, bytes)):
-            _content = properties
-        else:
-            _json = properties
-
-        request = build_broker_authorization_update_request(
-            resource_group_name=resource_group_name,
-            instance_name=instance_name,
-            broker_name=broker_name,
-            authorization_name=authorization_name,
-            subscription_id=self._config.subscription_id,
-            content_type=content_type,
-            api_version=self._config.api_version,
-            json=_json,
-            content=_content,
-            headers=_headers,
-            params=_params,
-        )
-        request.url = self._client.format_url(request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        if response.content:
-            deserialized = response.json()
-        else:
-            deserialized = None
-
-        if cls:
-            return cls(pipeline_response, cast(JSON, deserialized), {})
-
-        return cast(JSON, deserialized)
 
     def _delete_initial(  # pylint: disable=inconsistent-return-statements
         self, resource_group_name: str, instance_name: str, broker_name: str, authorization_name: str, **kwargs: Any
@@ -9781,7 +7929,6 @@ class BrokerListenerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -9802,10 +7949,14 @@ class BrokerListenerOperations:
                                 "protocol": "str",  # Optional. Protocol to use for
                                   client connections. Known values are: "Mqtt" and "WebSockets".
                                 "tls": {
+                                    "mode": "str",  # Mode of TLS server
+                                      certificate management. Required. Known values are: "Automatic"
+                                      and "Manual".
                                     "automatic": {
                                         "issuerRef": {
-                                            "group": "cert-manager.io",
-                                              # Default value is "cert-manager.io". group of issuer.
+                                            "apiGroup":
+                                              "cert-manager.io",  # Default value is "cert-manager.io".
+                                              group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -9839,20 +7990,16 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretName": "str",  # Optional.
+                                        "secretRef": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     },
                                     "manual": {
-                                        "secretName": "str",  # Kubernetes
+                                        "secretRef": "str"  # Kubernetes
                                           secret containing an X.509 client certificate. This is a
                                           reference to the secret through an identifying name, not the
                                           secret itself. Required.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     }
                                 }
                             }
@@ -9880,9 +8027,6 @@ class BrokerListenerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -9984,7 +8128,6 @@ class BrokerListenerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -10005,10 +8148,14 @@ class BrokerListenerOperations:
                                 "protocol": "str",  # Optional. Protocol to use for
                                   client connections. Known values are: "Mqtt" and "WebSockets".
                                 "tls": {
+                                    "mode": "str",  # Mode of TLS server
+                                      certificate management. Required. Known values are: "Automatic"
+                                      and "Manual".
                                     "automatic": {
                                         "issuerRef": {
-                                            "group": "cert-manager.io",
-                                              # Default value is "cert-manager.io". group of issuer.
+                                            "apiGroup":
+                                              "cert-manager.io",  # Default value is "cert-manager.io".
+                                              group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -10042,20 +8189,16 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretName": "str",  # Optional.
+                                        "secretRef": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     },
                                     "manual": {
-                                        "secretName": "str",  # Kubernetes
+                                        "secretRef": "str"  # Kubernetes
                                           secret containing an X.509 client certificate. This is a
                                           reference to the secret through an identifying name, not the
                                           secret itself. Required.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     }
                                 }
                             }
@@ -10083,9 +8226,6 @@ class BrokerListenerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -10202,6 +8342,9 @@ class BrokerListenerOperations:
                 deserialized = None
 
         if response.status_code == 201:
+            response_headers["Azure-AsyncOperation"] = self._deserialize(
+                "str", response.headers.get("Azure-AsyncOperation")
+            )
             response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
 
             if response.content:
@@ -10262,7 +8405,6 @@ class BrokerListenerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -10283,10 +8425,14 @@ class BrokerListenerOperations:
                                 "protocol": "str",  # Optional. Protocol to use for
                                   client connections. Known values are: "Mqtt" and "WebSockets".
                                 "tls": {
+                                    "mode": "str",  # Mode of TLS server
+                                      certificate management. Required. Known values are: "Automatic"
+                                      and "Manual".
                                     "automatic": {
                                         "issuerRef": {
-                                            "group": "cert-manager.io",
-                                              # Default value is "cert-manager.io". group of issuer.
+                                            "apiGroup":
+                                              "cert-manager.io",  # Default value is "cert-manager.io".
+                                              group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -10320,20 +8466,16 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretName": "str",  # Optional.
+                                        "secretRef": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     },
                                     "manual": {
-                                        "secretName": "str",  # Kubernetes
+                                        "secretRef": "str"  # Kubernetes
                                           secret containing an X.509 client certificate. This is a
                                           reference to the secret through an identifying name, not the
                                           secret itself. Required.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     }
                                 }
                             }
@@ -10361,9 +8503,6 @@ class BrokerListenerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -10375,7 +8514,6 @@ class BrokerListenerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -10396,10 +8534,14 @@ class BrokerListenerOperations:
                                 "protocol": "str",  # Optional. Protocol to use for
                                   client connections. Known values are: "Mqtt" and "WebSockets".
                                 "tls": {
+                                    "mode": "str",  # Mode of TLS server
+                                      certificate management. Required. Known values are: "Automatic"
+                                      and "Manual".
                                     "automatic": {
                                         "issuerRef": {
-                                            "group": "cert-manager.io",
-                                              # Default value is "cert-manager.io". group of issuer.
+                                            "apiGroup":
+                                              "cert-manager.io",  # Default value is "cert-manager.io".
+                                              group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -10433,20 +8575,16 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretName": "str",  # Optional.
+                                        "secretRef": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     },
                                     "manual": {
-                                        "secretName": "str",  # Kubernetes
+                                        "secretRef": "str"  # Kubernetes
                                           secret containing an X.509 client certificate. This is a
                                           reference to the secret through an identifying name, not the
                                           secret itself. Required.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     }
                                 }
                             }
@@ -10474,9 +8612,6 @@ class BrokerListenerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -10531,7 +8666,6 @@ class BrokerListenerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -10552,10 +8686,14 @@ class BrokerListenerOperations:
                                 "protocol": "str",  # Optional. Protocol to use for
                                   client connections. Known values are: "Mqtt" and "WebSockets".
                                 "tls": {
+                                    "mode": "str",  # Mode of TLS server
+                                      certificate management. Required. Known values are: "Automatic"
+                                      and "Manual".
                                     "automatic": {
                                         "issuerRef": {
-                                            "group": "cert-manager.io",
-                                              # Default value is "cert-manager.io". group of issuer.
+                                            "apiGroup":
+                                              "cert-manager.io",  # Default value is "cert-manager.io".
+                                              group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -10589,20 +8727,16 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretName": "str",  # Optional.
+                                        "secretRef": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     },
                                     "manual": {
-                                        "secretName": "str",  # Kubernetes
+                                        "secretRef": "str"  # Kubernetes
                                           secret containing an X.509 client certificate. This is a
                                           reference to the secret through an identifying name, not the
                                           secret itself. Required.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     }
                                 }
                             }
@@ -10630,9 +8764,6 @@ class BrokerListenerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -10685,7 +8816,6 @@ class BrokerListenerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -10706,10 +8836,14 @@ class BrokerListenerOperations:
                                 "protocol": "str",  # Optional. Protocol to use for
                                   client connections. Known values are: "Mqtt" and "WebSockets".
                                 "tls": {
+                                    "mode": "str",  # Mode of TLS server
+                                      certificate management. Required. Known values are: "Automatic"
+                                      and "Manual".
                                     "automatic": {
                                         "issuerRef": {
-                                            "group": "cert-manager.io",
-                                              # Default value is "cert-manager.io". group of issuer.
+                                            "apiGroup":
+                                              "cert-manager.io",  # Default value is "cert-manager.io".
+                                              group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -10743,20 +8877,16 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretName": "str",  # Optional.
+                                        "secretRef": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     },
                                     "manual": {
-                                        "secretName": "str",  # Kubernetes
+                                        "secretRef": "str"  # Kubernetes
                                           secret containing an X.509 client certificate. This is a
                                           reference to the secret through an identifying name, not the
                                           secret itself. Required.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     }
                                 }
                             }
@@ -10784,9 +8914,6 @@ class BrokerListenerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -10798,7 +8925,6 @@ class BrokerListenerOperations:
                         "name": "str",  # The name of the extended location. Required.
                         "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
                     },
-                    "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
@@ -10819,10 +8945,14 @@ class BrokerListenerOperations:
                                 "protocol": "str",  # Optional. Protocol to use for
                                   client connections. Known values are: "Mqtt" and "WebSockets".
                                 "tls": {
+                                    "mode": "str",  # Mode of TLS server
+                                      certificate management. Required. Known values are: "Automatic"
+                                      and "Manual".
                                     "automatic": {
                                         "issuerRef": {
-                                            "group": "cert-manager.io",
-                                              # Default value is "cert-manager.io". group of issuer.
+                                            "apiGroup":
+                                              "cert-manager.io",  # Default value is "cert-manager.io".
+                                              group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -10856,20 +8986,16 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretName": "str",  # Optional.
+                                        "secretRef": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     },
                                     "manual": {
-                                        "secretName": "str",  # Kubernetes
+                                        "secretRef": "str"  # Kubernetes
                                           secret containing an X.509 client certificate. This is a
                                           reference to the secret through an identifying name, not the
                                           secret itself. Required.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
                                     }
                                 }
                             }
@@ -10897,9 +9023,6 @@ class BrokerListenerOperations:
                         "lastModifiedByType": "str"  # Optional. The type of identity that
                           last modified the resource. Known values are: "User", "Application",
                           "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
                     },
                     "type": "str"  # Optional. The type of the resource. E.g.
                       "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
@@ -10954,523 +9077,6 @@ class BrokerListenerOperations:
                 deserialization_callback=get_long_running_output,
             )
         return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
-
-    @overload
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        listener_name: str,
-        properties: JSON,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerListenerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param listener_name: Name of Instance broker listener resource. Required.
-        :type listener_name: str
-        :param properties: The resource properties to be updated. Required.
-        :type properties: JSON
-        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                properties = {
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    }
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "brokerRef": "str",  # Broker associated with this listener.
-                          Required.
-                        "ports": [
-                            {
-                                "port": 0,  # TCP port for accepting client
-                                  connections. Required.
-                                "authenticationRef": "str",  # Optional. Reference to
-                                  client authentication settings. Omit to disable authentication.
-                                "authorizationRef": "str",  # Optional. Reference to
-                                  client authorization settings. Omit to disable authorization.
-                                "nodePort": 0,  # Optional. Kubernetes node port.
-                                  Only relevant when this port is associated with a ``NodePort``
-                                  listener.
-                                "protocol": "str",  # Optional. Protocol to use for
-                                  client connections. Known values are: "Mqtt" and "WebSockets".
-                                "tls": {
-                                    "automatic": {
-                                        "issuerRef": {
-                                            "group": "cert-manager.io",
-                                              # Default value is "cert-manager.io". group of issuer.
-                                            "kind": "str",  # kind of
-                                              issuer (Issuer or ClusterIssuer). Required. Known values
-                                              are: "Issuer" and "ClusterIssuer".
-                                            "name": "str"  # name of
-                                              issuer. Required.
-                                        },
-                                        "duration": "str",  # Optional.
-                                          Lifetime of certificate. Must be specified using a Go
-                                          time.Duration format (h|m|s). E.g. 240h for 240 hours and 45m
-                                          for 45 minutes.
-                                        "privateKey": {
-                                            "algorithm": "str",  #
-                                              algorithm for private key. Required. Known values are:
-                                              "Ec256", "Ec384", "Ec521", "Ed25519", "Rsa2048",
-                                              "Rsa4096", and "Rsa8192".
-                                            "rotationPolicy": "str"  #
-                                              cert-manager private key rotationPolicy. Required. Known
-                                              values are: "Always" and "Never".
-                                        },
-                                        "renewBefore": "str",  # Optional.
-                                          When to begin renewing certificate. Must be specified using a
-                                          Go time.Duration format (h|m|s). E.g. 240h for 240 hours and
-                                          45m for 45 minutes.
-                                        "san": {
-                                            "dns": [
-                                                "str"  # DNS SANs.
-                                                  Required.
-                                            ],
-                                            "ip": [
-                                                "str"  # IP address
-                                                  SANs. Required.
-                                            ]
-                                        },
-                                        "secretName": "str",  # Optional.
-                                          Secret for storing server certificate. Any existing data will
-                                          be overwritten. This is a reference to the secret through an
-                                          identifying name, not the secret itself.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
-                                    },
-                                    "manual": {
-                                        "secretName": "str",  # Kubernetes
-                                          secret containing an X.509 client certificate. This is a
-                                          reference to the secret through an identifying name, not the
-                                          secret itself. Required.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
-                                    }
-                                }
-                            }
-                        ],
-                        "provisioningState": "str",  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "serviceName": "aio-mq-dmqtt-frontend",  # Optional. Default value is
-                          "aio-mq-dmqtt-frontend". Kubernetes Service name of this listener.
-                        "serviceType": "str"  # Optional. Kubernetes Service type of this
-                          listener. Known values are: "ClusterIp", "LoadBalancer", and "NodePort".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @overload
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        listener_name: str,
-        properties: IO,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerListenerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param listener_name: Name of Instance broker listener resource. Required.
-        :type listener_name: str
-        :param properties: The resource properties to be updated. Required.
-        :type properties: IO
-        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "brokerRef": "str",  # Broker associated with this listener.
-                          Required.
-                        "ports": [
-                            {
-                                "port": 0,  # TCP port for accepting client
-                                  connections. Required.
-                                "authenticationRef": "str",  # Optional. Reference to
-                                  client authentication settings. Omit to disable authentication.
-                                "authorizationRef": "str",  # Optional. Reference to
-                                  client authorization settings. Omit to disable authorization.
-                                "nodePort": 0,  # Optional. Kubernetes node port.
-                                  Only relevant when this port is associated with a ``NodePort``
-                                  listener.
-                                "protocol": "str",  # Optional. Protocol to use for
-                                  client connections. Known values are: "Mqtt" and "WebSockets".
-                                "tls": {
-                                    "automatic": {
-                                        "issuerRef": {
-                                            "group": "cert-manager.io",
-                                              # Default value is "cert-manager.io". group of issuer.
-                                            "kind": "str",  # kind of
-                                              issuer (Issuer or ClusterIssuer). Required. Known values
-                                              are: "Issuer" and "ClusterIssuer".
-                                            "name": "str"  # name of
-                                              issuer. Required.
-                                        },
-                                        "duration": "str",  # Optional.
-                                          Lifetime of certificate. Must be specified using a Go
-                                          time.Duration format (h|m|s). E.g. 240h for 240 hours and 45m
-                                          for 45 minutes.
-                                        "privateKey": {
-                                            "algorithm": "str",  #
-                                              algorithm for private key. Required. Known values are:
-                                              "Ec256", "Ec384", "Ec521", "Ed25519", "Rsa2048",
-                                              "Rsa4096", and "Rsa8192".
-                                            "rotationPolicy": "str"  #
-                                              cert-manager private key rotationPolicy. Required. Known
-                                              values are: "Always" and "Never".
-                                        },
-                                        "renewBefore": "str",  # Optional.
-                                          When to begin renewing certificate. Must be specified using a
-                                          Go time.Duration format (h|m|s). E.g. 240h for 240 hours and
-                                          45m for 45 minutes.
-                                        "san": {
-                                            "dns": [
-                                                "str"  # DNS SANs.
-                                                  Required.
-                                            ],
-                                            "ip": [
-                                                "str"  # IP address
-                                                  SANs. Required.
-                                            ]
-                                        },
-                                        "secretName": "str",  # Optional.
-                                          Secret for storing server certificate. Any existing data will
-                                          be overwritten. This is a reference to the secret through an
-                                          identifying name, not the secret itself.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
-                                    },
-                                    "manual": {
-                                        "secretName": "str",  # Kubernetes
-                                          secret containing an X.509 client certificate. This is a
-                                          reference to the secret through an identifying name, not the
-                                          secret itself. Required.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
-                                    }
-                                }
-                            }
-                        ],
-                        "provisioningState": "str",  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "serviceName": "aio-mq-dmqtt-frontend",  # Optional. Default value is
-                          "aio-mq-dmqtt-frontend". Kubernetes Service name of this listener.
-                        "serviceType": "str"  # Optional. Kubernetes Service type of this
-                          listener. Known values are: "ClusterIp", "LoadBalancer", and "NodePort".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @distributed_trace
-    def update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        broker_name: str,
-        listener_name: str,
-        properties: Union[JSON, IO],
-        **kwargs: Any
-    ) -> JSON:
-        """Update a BrokerListenerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param broker_name: Name of broker. Required.
-        :type broker_name: str
-        :param listener_name: Name of Instance broker listener resource. Required.
-        :type listener_name: str
-        :param properties: The resource properties to be updated. Is either a JSON type or a IO type.
-         Required.
-        :type properties: JSON or IO
-        :keyword content_type: Body Parameter content-type. Known values are: 'application/json'.
-         Default value is None.
-        :paramtype content_type: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                properties = {
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    }
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "brokerRef": "str",  # Broker associated with this listener.
-                          Required.
-                        "ports": [
-                            {
-                                "port": 0,  # TCP port for accepting client
-                                  connections. Required.
-                                "authenticationRef": "str",  # Optional. Reference to
-                                  client authentication settings. Omit to disable authentication.
-                                "authorizationRef": "str",  # Optional. Reference to
-                                  client authorization settings. Omit to disable authorization.
-                                "nodePort": 0,  # Optional. Kubernetes node port.
-                                  Only relevant when this port is associated with a ``NodePort``
-                                  listener.
-                                "protocol": "str",  # Optional. Protocol to use for
-                                  client connections. Known values are: "Mqtt" and "WebSockets".
-                                "tls": {
-                                    "automatic": {
-                                        "issuerRef": {
-                                            "group": "cert-manager.io",
-                                              # Default value is "cert-manager.io". group of issuer.
-                                            "kind": "str",  # kind of
-                                              issuer (Issuer or ClusterIssuer). Required. Known values
-                                              are: "Issuer" and "ClusterIssuer".
-                                            "name": "str"  # name of
-                                              issuer. Required.
-                                        },
-                                        "duration": "str",  # Optional.
-                                          Lifetime of certificate. Must be specified using a Go
-                                          time.Duration format (h|m|s). E.g. 240h for 240 hours and 45m
-                                          for 45 minutes.
-                                        "privateKey": {
-                                            "algorithm": "str",  #
-                                              algorithm for private key. Required. Known values are:
-                                              "Ec256", "Ec384", "Ec521", "Ed25519", "Rsa2048",
-                                              "Rsa4096", and "Rsa8192".
-                                            "rotationPolicy": "str"  #
-                                              cert-manager private key rotationPolicy. Required. Known
-                                              values are: "Always" and "Never".
-                                        },
-                                        "renewBefore": "str",  # Optional.
-                                          When to begin renewing certificate. Must be specified using a
-                                          Go time.Duration format (h|m|s). E.g. 240h for 240 hours and
-                                          45m for 45 minutes.
-                                        "san": {
-                                            "dns": [
-                                                "str"  # DNS SANs.
-                                                  Required.
-                                            ],
-                                            "ip": [
-                                                "str"  # IP address
-                                                  SANs. Required.
-                                            ]
-                                        },
-                                        "secretName": "str",  # Optional.
-                                          Secret for storing server certificate. Any existing data will
-                                          be overwritten. This is a reference to the secret through an
-                                          identifying name, not the secret itself.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
-                                    },
-                                    "manual": {
-                                        "secretName": "str",  # Kubernetes
-                                          secret containing an X.509 client certificate. This is a
-                                          reference to the secret through an identifying name, not the
-                                          secret itself. Required.
-                                        "secretNamespace": "str"  # Optional.
-                                          Certificate K8S namespace. Omit to use current namespace.
-                                    }
-                                }
-                            }
-                        ],
-                        "provisioningState": "str",  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "serviceName": "aio-mq-dmqtt-frontend",  # Optional. Default value is
-                          "aio-mq-dmqtt-frontend". Kubernetes Service name of this listener.
-                        "serviceType": "str"  # Optional. Kubernetes Service type of this
-                          listener. Known values are: "ClusterIp", "LoadBalancer", and "NodePort".
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = kwargs.pop("params", {}) or {}
-
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        content_type = content_type or "application/json"
-        _json = None
-        _content = None
-        if isinstance(properties, (IOBase, bytes)):
-            _content = properties
-        else:
-            _json = properties
-
-        request = build_broker_listener_update_request(
-            resource_group_name=resource_group_name,
-            instance_name=instance_name,
-            broker_name=broker_name,
-            listener_name=listener_name,
-            subscription_id=self._config.subscription_id,
-            content_type=content_type,
-            api_version=self._config.api_version,
-            json=_json,
-            content=_content,
-            headers=_headers,
-            params=_params,
-        )
-        request.url = self._client.format_url(request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        if response.content:
-            deserialized = response.json()
-        else:
-            deserialized = None
-
-        if cls:
-            return cls(pipeline_response, cast(JSON, deserialized), {})
-
-        return cast(JSON, deserialized)
 
     def _delete_initial(  # pylint: disable=inconsistent-return-statements
         self, resource_group_name: str, instance_name: str, broker_name: str, listener_name: str, **kwargs: Any
@@ -11558,6 +9164,4303 @@ class BrokerListenerOperations:
                 instance_name=instance_name,
                 broker_name=broker_name,
                 listener_name=listener_name,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):  # pylint: disable=inconsistent-return-statements
+            if cls:
+                return cls(pipeline_response, None, {})
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "location"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller.from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
+
+
+class DataFlowEndpointOperations:
+    """
+    .. warning::
+        **DO NOT** instantiate this class directly.
+
+        Instead, you should access the following operations through
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :attr:`data_flow_endpoint` attribute.
+    """
+
+    def __init__(self, *args, **kwargs):
+        input_args = list(args)
+        self._client = input_args.pop(0) if input_args else kwargs.pop("client")
+        self._config = input_args.pop(0) if input_args else kwargs.pop("config")
+        self._serialize = input_args.pop(0) if input_args else kwargs.pop("serializer")
+        self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
+
+    @distributed_trace
+    def list_by_instance_resource(self, resource_group_name: str, instance_name: str, **kwargs: Any) -> Iterable[JSON]:
+        """List DataFlowEndpointResource resources by InstanceResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :return: An iterator like instance of JSON object
+        :rtype: ~azure.core.paging.ItemPaged[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "authentication": {
+                            "method": "str",  # Mode of Authentication. Required. Known
+                              values are: "SystemAssignedManagedIdentity",
+                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
+                              "X509Credentials".
+                            "accessTokenSecretRef": "str",  # Optional. SAS token
+                              authentication.
+                            "saslSettings": {
+                                "saslType": "str",  # Type of SASL authentication.
+                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
+                                  are: "Plain", "ScramSha256", and "ScramSha512".
+                                "tokenSecretRef": "str"  # Token secret name.
+                                  Required.
+                            },
+                            "serviceAccountTokenSettings": {
+                                "audience": "str"  # Audience of the service account.
+                                  Optional, defaults to the broker internal service account audience.
+                                  Required.
+                            },
+                            "systemAssignedManagedIdentitySettings": {
+                                "audience": "str"  # Audience of the service to
+                                  authenticate against. Optional; defaults to the audience for Service
+                                  host configuration. Required.
+                            },
+                            "userAssignedManagedIdentitySettings": {
+                                "audience": "str",  # Resource identifier
+                                  (application ID URI) of the resource, affixed with the .default
+                                  suffix. Required.
+                                "clientId": "str",  # Client ID for the user-assigned
+                                  managed identity. Required.
+                                "tenantId": "str"  # Tenant ID. Required.
+                            },
+                            "x509CredentialsSettings": {
+                                "secretRef": "str"  # Secret reference of the X.509
+                                  certificate. Required.
+                            }
+                        },
+                        "endpointType": "str",  # Endpoint Type. Required. Known values are:
+                          "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
+                          and "Mqtt".
+                        "dataExplorerSettings": {
+                            "database": "str",  # Database name. Required.
+                            "host": "str",  # Host of the Azure Data Explorer in the form
+                              of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "dataLakeStorageSettings": {
+                            "host": "str",  # Host of the Azure Data Lake in the form of
+                              :code:`<account>`.blob.core.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "fabricOneLakeSettings": {
+                            "host": "str",  # Host of the Microsoft Fabric in the form of
+                              https://:code:`<host>`.fabric.microsoft.com. Required.
+                            "names": {
+                                "lakehouseName": "str",  # Lakehouse name. Required.
+                                "workspaceName": "str"  # Workspace name. Required.
+                            },
+                            "oneLakePathType": "str",  # Type of location of the data in
+                              the workspace. Can be either tables or files. Required. Known values are:
+                              "Files" and "Tables".
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "kafkaSettings": {
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            },
+                            "batching": {
+                                "latencyMs": 5,  # Optional. Default value is 5.
+                                  Batching latency in milliseconds.
+                                "maxBytes": 1000000,  # Optional. Default value is
+                                  1000000. Maximum number of bytes in a batch.
+                                "maxMessages": 100000,  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                                "mode": "str"  # Optional. Mode for batching. Known
+                                  values are: "Enabled" and "Disabled".
+                            },
+                            "compression": "str",  # Optional. Compression. Can be none,
+                              gzip, lz4, or snappy. No effect if the endpoint is used as a source.
+                              Known values are: "None", "Gzip", "Snappy", and "Lz4".
+                            "consumerGroupId": "str",  # Optional. Consumer group ID.
+                            "copyMqttProperties": "str",  # Optional. Copy Broker
+                              properties. No effect if the endpoint is used as a source or if the
+                              dataflow doesn't have an Broker source. Known values are: "Enabled" and
+                              "Disabled".
+                            "host": "str",  # Optional. Kafka endpoint host.
+                            "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
+                              or zero. No effect if the endpoint is used as a source. Known values are:
+                              "Zero", "One", and "All".
+                            "partitionStrategy": "str"  # Optional. Partition handling
+                              strategy. Can be default or static. No effect if the endpoint is used as
+                              a source. Known values are: "Default", "Static", "Topic", and "Property".
+                        },
+                        "localStorageSettings": {
+                            "persistentVolumeClaimRef": "str"  # Persistent volume claim
+                              name. Required.
+                        },
+                        "mqttSettings": {
+                            "clientIdPrefix": "str",  # Optional. Client ID prefix.
+                              Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
+                              prefix if omitted.
+                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                              :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
+                              omitted.
+                            "keepAliveSeconds": 60,  # Optional. Default value is 60.
+                              Broker KeepAlive for connection in seconds.
+                            "maxInflightMessages": 100,  # Optional. Default value is
+                              100. The max number of messages to keep in flight. For subscribe, this is
+                              the receive maximum. For publish, this is the maximum number of messages
+                              to send before waiting for an ack.
+                            "protocol": "str",  # Optional. Enable or disable websockets.
+                              Known values are: "Mqtt" and "WebSockets".
+                            "qos": 1,  # Optional. Default value is 1. Qos for Broker
+                              connection.
+                            "retain": "str",  # Optional. Whether or not to keep the
+                              retain setting. Known values are: "Keep" and "Never".
+                            "sessionExpirySeconds": 3600,  # Optional. Default value is
+                              3600. Session expiry in seconds.
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
+                        },
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        def prepare_request(next_link=None):
+            if not next_link:
+
+                request = build_data_flow_endpoint_list_by_instance_resource_request(
+                    resource_group_name=resource_group_name,
+                    instance_name=instance_name,
+                    subscription_id=self._config.subscription_id,
+                    api_version=self._config.api_version,
+                    headers=_headers,
+                    params=_params,
+                )
+                request.url = self._client.format_url(request.url)
+
+            else:
+                # make call to next link with the client's api-version
+                _parsed_next_link = urllib.parse.urlparse(next_link)
+                _next_request_params = case_insensitive_dict(
+                    {
+                        key: [urllib.parse.quote(v) for v in value]
+                        for key, value in urllib.parse.parse_qs(_parsed_next_link.query).items()
+                    }
+                )
+                _next_request_params["api-version"] = self._config.api_version
+                request = HttpRequest(
+                    "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
+                )
+                request.url = self._client.format_url(request.url)
+
+            return request
+
+        def extract_data(pipeline_response):
+            deserialized = pipeline_response.http_response.json()
+            list_of_elem = deserialized["value"]
+            if cls:
+                list_of_elem = cls(list_of_elem)  # type: ignore
+            return deserialized.get("nextLink") or None, iter(list_of_elem)
+
+        def get_next(next_link=None):
+            request = prepare_request(next_link)
+
+            _stream = False
+            pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+                request, stream=_stream, **kwargs
+            )
+            response = pipeline_response.http_response
+
+            if response.status_code not in [200]:
+                map_error(status_code=response.status_code, response=response, error_map=error_map)
+                raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+            return pipeline_response
+
+        return ItemPaged(get_next, extract_data)
+
+    @distributed_trace
+    def get(self, resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, **kwargs: Any) -> JSON:
+        """Get a DataFlowEndpointResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_endpoint_name: Name of Instance dataflowEndpoint resource. Required.
+        :type dataflow_endpoint_name: str
+        :return: JSON object
+        :rtype: JSON
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "authentication": {
+                            "method": "str",  # Mode of Authentication. Required. Known
+                              values are: "SystemAssignedManagedIdentity",
+                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
+                              "X509Credentials".
+                            "accessTokenSecretRef": "str",  # Optional. SAS token
+                              authentication.
+                            "saslSettings": {
+                                "saslType": "str",  # Type of SASL authentication.
+                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
+                                  are: "Plain", "ScramSha256", and "ScramSha512".
+                                "tokenSecretRef": "str"  # Token secret name.
+                                  Required.
+                            },
+                            "serviceAccountTokenSettings": {
+                                "audience": "str"  # Audience of the service account.
+                                  Optional, defaults to the broker internal service account audience.
+                                  Required.
+                            },
+                            "systemAssignedManagedIdentitySettings": {
+                                "audience": "str"  # Audience of the service to
+                                  authenticate against. Optional; defaults to the audience for Service
+                                  host configuration. Required.
+                            },
+                            "userAssignedManagedIdentitySettings": {
+                                "audience": "str",  # Resource identifier
+                                  (application ID URI) of the resource, affixed with the .default
+                                  suffix. Required.
+                                "clientId": "str",  # Client ID for the user-assigned
+                                  managed identity. Required.
+                                "tenantId": "str"  # Tenant ID. Required.
+                            },
+                            "x509CredentialsSettings": {
+                                "secretRef": "str"  # Secret reference of the X.509
+                                  certificate. Required.
+                            }
+                        },
+                        "endpointType": "str",  # Endpoint Type. Required. Known values are:
+                          "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
+                          and "Mqtt".
+                        "dataExplorerSettings": {
+                            "database": "str",  # Database name. Required.
+                            "host": "str",  # Host of the Azure Data Explorer in the form
+                              of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "dataLakeStorageSettings": {
+                            "host": "str",  # Host of the Azure Data Lake in the form of
+                              :code:`<account>`.blob.core.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "fabricOneLakeSettings": {
+                            "host": "str",  # Host of the Microsoft Fabric in the form of
+                              https://:code:`<host>`.fabric.microsoft.com. Required.
+                            "names": {
+                                "lakehouseName": "str",  # Lakehouse name. Required.
+                                "workspaceName": "str"  # Workspace name. Required.
+                            },
+                            "oneLakePathType": "str",  # Type of location of the data in
+                              the workspace. Can be either tables or files. Required. Known values are:
+                              "Files" and "Tables".
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "kafkaSettings": {
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            },
+                            "batching": {
+                                "latencyMs": 5,  # Optional. Default value is 5.
+                                  Batching latency in milliseconds.
+                                "maxBytes": 1000000,  # Optional. Default value is
+                                  1000000. Maximum number of bytes in a batch.
+                                "maxMessages": 100000,  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                                "mode": "str"  # Optional. Mode for batching. Known
+                                  values are: "Enabled" and "Disabled".
+                            },
+                            "compression": "str",  # Optional. Compression. Can be none,
+                              gzip, lz4, or snappy. No effect if the endpoint is used as a source.
+                              Known values are: "None", "Gzip", "Snappy", and "Lz4".
+                            "consumerGroupId": "str",  # Optional. Consumer group ID.
+                            "copyMqttProperties": "str",  # Optional. Copy Broker
+                              properties. No effect if the endpoint is used as a source or if the
+                              dataflow doesn't have an Broker source. Known values are: "Enabled" and
+                              "Disabled".
+                            "host": "str",  # Optional. Kafka endpoint host.
+                            "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
+                              or zero. No effect if the endpoint is used as a source. Known values are:
+                              "Zero", "One", and "All".
+                            "partitionStrategy": "str"  # Optional. Partition handling
+                              strategy. Can be default or static. No effect if the endpoint is used as
+                              a source. Known values are: "Default", "Static", "Topic", and "Property".
+                        },
+                        "localStorageSettings": {
+                            "persistentVolumeClaimRef": "str"  # Persistent volume claim
+                              name. Required.
+                        },
+                        "mqttSettings": {
+                            "clientIdPrefix": "str",  # Optional. Client ID prefix.
+                              Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
+                              prefix if omitted.
+                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                              :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
+                              omitted.
+                            "keepAliveSeconds": 60,  # Optional. Default value is 60.
+                              Broker KeepAlive for connection in seconds.
+                            "maxInflightMessages": 100,  # Optional. Default value is
+                              100. The max number of messages to keep in flight. For subscribe, this is
+                              the receive maximum. For publish, this is the maximum number of messages
+                              to send before waiting for an ack.
+                            "protocol": "str",  # Optional. Enable or disable websockets.
+                              Known values are: "Mqtt" and "WebSockets".
+                            "qos": 1,  # Optional. Default value is 1. Qos for Broker
+                              connection.
+                            "retain": "str",  # Optional. Whether or not to keep the
+                              retain setting. Known values are: "Keep" and "Never".
+                            "sessionExpirySeconds": 3600,  # Optional. Default value is
+                              3600. Session expiry in seconds.
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
+                        },
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        request = build_data_flow_endpoint_get_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_endpoint_name=dataflow_endpoint_name,
+            subscription_id=self._config.subscription_id,
+            api_version=self._config.api_version,
+            headers=_headers,
+            params=_params,
+        )
+        request.url = self._client.format_url(request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        if response.content:
+            deserialized = response.json()
+        else:
+            deserialized = None
+
+        if cls:
+            return cls(pipeline_response, cast(JSON, deserialized), {})
+
+        return cast(JSON, deserialized)
+
+    def _create_or_update_initial(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_endpoint_name: str,
+        resource: Union[JSON, IO],
+        **kwargs: Any
+    ) -> JSON:
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = kwargs.pop("params", {}) or {}
+
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        content_type = content_type or "application/json"
+        _json = None
+        _content = None
+        if isinstance(resource, (IOBase, bytes)):
+            _content = resource
+        else:
+            _json = resource
+
+        request = build_data_flow_endpoint_create_or_update_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_endpoint_name=dataflow_endpoint_name,
+            subscription_id=self._config.subscription_id,
+            content_type=content_type,
+            api_version=self._config.api_version,
+            json=_json,
+            content=_content,
+            headers=_headers,
+            params=_params,
+        )
+        request.url = self._client.format_url(request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200, 201]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        response_headers = {}
+        if response.status_code == 200:
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+
+        if response.status_code == 201:
+            response_headers["Azure-AsyncOperation"] = self._deserialize(
+                "str", response.headers.get("Azure-AsyncOperation")
+            )
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+
+        if cls:
+            return cls(pipeline_response, cast(JSON, deserialized), response_headers)  # type: ignore
+
+        return cast(JSON, deserialized)  # type: ignore
+
+    @overload
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_endpoint_name: str,
+        resource: JSON,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        """Create a DataFlowEndpointResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_endpoint_name: Name of Instance dataflowEndpoint resource. Required.
+        :type dataflow_endpoint_name: str
+        :param resource: Resource create parameters. Required.
+        :type resource: JSON
+        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # JSON input template you can fill out and use as your body input.
+                resource = {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "authentication": {
+                            "method": "str",  # Mode of Authentication. Required. Known
+                              values are: "SystemAssignedManagedIdentity",
+                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
+                              "X509Credentials".
+                            "accessTokenSecretRef": "str",  # Optional. SAS token
+                              authentication.
+                            "saslSettings": {
+                                "saslType": "str",  # Type of SASL authentication.
+                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
+                                  are: "Plain", "ScramSha256", and "ScramSha512".
+                                "tokenSecretRef": "str"  # Token secret name.
+                                  Required.
+                            },
+                            "serviceAccountTokenSettings": {
+                                "audience": "str"  # Audience of the service account.
+                                  Optional, defaults to the broker internal service account audience.
+                                  Required.
+                            },
+                            "systemAssignedManagedIdentitySettings": {
+                                "audience": "str"  # Audience of the service to
+                                  authenticate against. Optional; defaults to the audience for Service
+                                  host configuration. Required.
+                            },
+                            "userAssignedManagedIdentitySettings": {
+                                "audience": "str",  # Resource identifier
+                                  (application ID URI) of the resource, affixed with the .default
+                                  suffix. Required.
+                                "clientId": "str",  # Client ID for the user-assigned
+                                  managed identity. Required.
+                                "tenantId": "str"  # Tenant ID. Required.
+                            },
+                            "x509CredentialsSettings": {
+                                "secretRef": "str"  # Secret reference of the X.509
+                                  certificate. Required.
+                            }
+                        },
+                        "endpointType": "str",  # Endpoint Type. Required. Known values are:
+                          "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
+                          and "Mqtt".
+                        "dataExplorerSettings": {
+                            "database": "str",  # Database name. Required.
+                            "host": "str",  # Host of the Azure Data Explorer in the form
+                              of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "dataLakeStorageSettings": {
+                            "host": "str",  # Host of the Azure Data Lake in the form of
+                              :code:`<account>`.blob.core.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "fabricOneLakeSettings": {
+                            "host": "str",  # Host of the Microsoft Fabric in the form of
+                              https://:code:`<host>`.fabric.microsoft.com. Required.
+                            "names": {
+                                "lakehouseName": "str",  # Lakehouse name. Required.
+                                "workspaceName": "str"  # Workspace name. Required.
+                            },
+                            "oneLakePathType": "str",  # Type of location of the data in
+                              the workspace. Can be either tables or files. Required. Known values are:
+                              "Files" and "Tables".
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "kafkaSettings": {
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            },
+                            "batching": {
+                                "latencyMs": 5,  # Optional. Default value is 5.
+                                  Batching latency in milliseconds.
+                                "maxBytes": 1000000,  # Optional. Default value is
+                                  1000000. Maximum number of bytes in a batch.
+                                "maxMessages": 100000,  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                                "mode": "str"  # Optional. Mode for batching. Known
+                                  values are: "Enabled" and "Disabled".
+                            },
+                            "compression": "str",  # Optional. Compression. Can be none,
+                              gzip, lz4, or snappy. No effect if the endpoint is used as a source.
+                              Known values are: "None", "Gzip", "Snappy", and "Lz4".
+                            "consumerGroupId": "str",  # Optional. Consumer group ID.
+                            "copyMqttProperties": "str",  # Optional. Copy Broker
+                              properties. No effect if the endpoint is used as a source or if the
+                              dataflow doesn't have an Broker source. Known values are: "Enabled" and
+                              "Disabled".
+                            "host": "str",  # Optional. Kafka endpoint host.
+                            "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
+                              or zero. No effect if the endpoint is used as a source. Known values are:
+                              "Zero", "One", and "All".
+                            "partitionStrategy": "str"  # Optional. Partition handling
+                              strategy. Can be default or static. No effect if the endpoint is used as
+                              a source. Known values are: "Default", "Static", "Topic", and "Property".
+                        },
+                        "localStorageSettings": {
+                            "persistentVolumeClaimRef": "str"  # Persistent volume claim
+                              name. Required.
+                        },
+                        "mqttSettings": {
+                            "clientIdPrefix": "str",  # Optional. Client ID prefix.
+                              Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
+                              prefix if omitted.
+                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                              :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
+                              omitted.
+                            "keepAliveSeconds": 60,  # Optional. Default value is 60.
+                              Broker KeepAlive for connection in seconds.
+                            "maxInflightMessages": 100,  # Optional. Default value is
+                              100. The max number of messages to keep in flight. For subscribe, this is
+                              the receive maximum. For publish, this is the maximum number of messages
+                              to send before waiting for an ack.
+                            "protocol": "str",  # Optional. Enable or disable websockets.
+                              Known values are: "Mqtt" and "WebSockets".
+                            "qos": 1,  # Optional. Default value is 1. Qos for Broker
+                              connection.
+                            "retain": "str",  # Optional. Whether or not to keep the
+                              retain setting. Known values are: "Keep" and "Never".
+                            "sessionExpirySeconds": 3600,  # Optional. Default value is
+                              3600. Session expiry in seconds.
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
+                        },
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "authentication": {
+                            "method": "str",  # Mode of Authentication. Required. Known
+                              values are: "SystemAssignedManagedIdentity",
+                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
+                              "X509Credentials".
+                            "accessTokenSecretRef": "str",  # Optional. SAS token
+                              authentication.
+                            "saslSettings": {
+                                "saslType": "str",  # Type of SASL authentication.
+                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
+                                  are: "Plain", "ScramSha256", and "ScramSha512".
+                                "tokenSecretRef": "str"  # Token secret name.
+                                  Required.
+                            },
+                            "serviceAccountTokenSettings": {
+                                "audience": "str"  # Audience of the service account.
+                                  Optional, defaults to the broker internal service account audience.
+                                  Required.
+                            },
+                            "systemAssignedManagedIdentitySettings": {
+                                "audience": "str"  # Audience of the service to
+                                  authenticate against. Optional; defaults to the audience for Service
+                                  host configuration. Required.
+                            },
+                            "userAssignedManagedIdentitySettings": {
+                                "audience": "str",  # Resource identifier
+                                  (application ID URI) of the resource, affixed with the .default
+                                  suffix. Required.
+                                "clientId": "str",  # Client ID for the user-assigned
+                                  managed identity. Required.
+                                "tenantId": "str"  # Tenant ID. Required.
+                            },
+                            "x509CredentialsSettings": {
+                                "secretRef": "str"  # Secret reference of the X.509
+                                  certificate. Required.
+                            }
+                        },
+                        "endpointType": "str",  # Endpoint Type. Required. Known values are:
+                          "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
+                          and "Mqtt".
+                        "dataExplorerSettings": {
+                            "database": "str",  # Database name. Required.
+                            "host": "str",  # Host of the Azure Data Explorer in the form
+                              of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "dataLakeStorageSettings": {
+                            "host": "str",  # Host of the Azure Data Lake in the form of
+                              :code:`<account>`.blob.core.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "fabricOneLakeSettings": {
+                            "host": "str",  # Host of the Microsoft Fabric in the form of
+                              https://:code:`<host>`.fabric.microsoft.com. Required.
+                            "names": {
+                                "lakehouseName": "str",  # Lakehouse name. Required.
+                                "workspaceName": "str"  # Workspace name. Required.
+                            },
+                            "oneLakePathType": "str",  # Type of location of the data in
+                              the workspace. Can be either tables or files. Required. Known values are:
+                              "Files" and "Tables".
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "kafkaSettings": {
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            },
+                            "batching": {
+                                "latencyMs": 5,  # Optional. Default value is 5.
+                                  Batching latency in milliseconds.
+                                "maxBytes": 1000000,  # Optional. Default value is
+                                  1000000. Maximum number of bytes in a batch.
+                                "maxMessages": 100000,  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                                "mode": "str"  # Optional. Mode for batching. Known
+                                  values are: "Enabled" and "Disabled".
+                            },
+                            "compression": "str",  # Optional. Compression. Can be none,
+                              gzip, lz4, or snappy. No effect if the endpoint is used as a source.
+                              Known values are: "None", "Gzip", "Snappy", and "Lz4".
+                            "consumerGroupId": "str",  # Optional. Consumer group ID.
+                            "copyMqttProperties": "str",  # Optional. Copy Broker
+                              properties. No effect if the endpoint is used as a source or if the
+                              dataflow doesn't have an Broker source. Known values are: "Enabled" and
+                              "Disabled".
+                            "host": "str",  # Optional. Kafka endpoint host.
+                            "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
+                              or zero. No effect if the endpoint is used as a source. Known values are:
+                              "Zero", "One", and "All".
+                            "partitionStrategy": "str"  # Optional. Partition handling
+                              strategy. Can be default or static. No effect if the endpoint is used as
+                              a source. Known values are: "Default", "Static", "Topic", and "Property".
+                        },
+                        "localStorageSettings": {
+                            "persistentVolumeClaimRef": "str"  # Persistent volume claim
+                              name. Required.
+                        },
+                        "mqttSettings": {
+                            "clientIdPrefix": "str",  # Optional. Client ID prefix.
+                              Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
+                              prefix if omitted.
+                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                              :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
+                              omitted.
+                            "keepAliveSeconds": 60,  # Optional. Default value is 60.
+                              Broker KeepAlive for connection in seconds.
+                            "maxInflightMessages": 100,  # Optional. Default value is
+                              100. The max number of messages to keep in flight. For subscribe, this is
+                              the receive maximum. For publish, this is the maximum number of messages
+                              to send before waiting for an ack.
+                            "protocol": "str",  # Optional. Enable or disable websockets.
+                              Known values are: "Mqtt" and "WebSockets".
+                            "qos": 1,  # Optional. Default value is 1. Qos for Broker
+                              connection.
+                            "retain": "str",  # Optional. Whether or not to keep the
+                              retain setting. Known values are: "Keep" and "Never".
+                            "sessionExpirySeconds": 3600,  # Optional. Default value is
+                              3600. Session expiry in seconds.
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
+                        },
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+
+    @overload
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_endpoint_name: str,
+        resource: IO,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        """Create a DataFlowEndpointResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_endpoint_name: Name of Instance dataflowEndpoint resource. Required.
+        :type dataflow_endpoint_name: str
+        :param resource: Resource create parameters. Required.
+        :type resource: IO
+        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "authentication": {
+                            "method": "str",  # Mode of Authentication. Required. Known
+                              values are: "SystemAssignedManagedIdentity",
+                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
+                              "X509Credentials".
+                            "accessTokenSecretRef": "str",  # Optional. SAS token
+                              authentication.
+                            "saslSettings": {
+                                "saslType": "str",  # Type of SASL authentication.
+                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
+                                  are: "Plain", "ScramSha256", and "ScramSha512".
+                                "tokenSecretRef": "str"  # Token secret name.
+                                  Required.
+                            },
+                            "serviceAccountTokenSettings": {
+                                "audience": "str"  # Audience of the service account.
+                                  Optional, defaults to the broker internal service account audience.
+                                  Required.
+                            },
+                            "systemAssignedManagedIdentitySettings": {
+                                "audience": "str"  # Audience of the service to
+                                  authenticate against. Optional; defaults to the audience for Service
+                                  host configuration. Required.
+                            },
+                            "userAssignedManagedIdentitySettings": {
+                                "audience": "str",  # Resource identifier
+                                  (application ID URI) of the resource, affixed with the .default
+                                  suffix. Required.
+                                "clientId": "str",  # Client ID for the user-assigned
+                                  managed identity. Required.
+                                "tenantId": "str"  # Tenant ID. Required.
+                            },
+                            "x509CredentialsSettings": {
+                                "secretRef": "str"  # Secret reference of the X.509
+                                  certificate. Required.
+                            }
+                        },
+                        "endpointType": "str",  # Endpoint Type. Required. Known values are:
+                          "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
+                          and "Mqtt".
+                        "dataExplorerSettings": {
+                            "database": "str",  # Database name. Required.
+                            "host": "str",  # Host of the Azure Data Explorer in the form
+                              of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "dataLakeStorageSettings": {
+                            "host": "str",  # Host of the Azure Data Lake in the form of
+                              :code:`<account>`.blob.core.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "fabricOneLakeSettings": {
+                            "host": "str",  # Host of the Microsoft Fabric in the form of
+                              https://:code:`<host>`.fabric.microsoft.com. Required.
+                            "names": {
+                                "lakehouseName": "str",  # Lakehouse name. Required.
+                                "workspaceName": "str"  # Workspace name. Required.
+                            },
+                            "oneLakePathType": "str",  # Type of location of the data in
+                              the workspace. Can be either tables or files. Required. Known values are:
+                              "Files" and "Tables".
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "kafkaSettings": {
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            },
+                            "batching": {
+                                "latencyMs": 5,  # Optional. Default value is 5.
+                                  Batching latency in milliseconds.
+                                "maxBytes": 1000000,  # Optional. Default value is
+                                  1000000. Maximum number of bytes in a batch.
+                                "maxMessages": 100000,  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                                "mode": "str"  # Optional. Mode for batching. Known
+                                  values are: "Enabled" and "Disabled".
+                            },
+                            "compression": "str",  # Optional. Compression. Can be none,
+                              gzip, lz4, or snappy. No effect if the endpoint is used as a source.
+                              Known values are: "None", "Gzip", "Snappy", and "Lz4".
+                            "consumerGroupId": "str",  # Optional. Consumer group ID.
+                            "copyMqttProperties": "str",  # Optional. Copy Broker
+                              properties. No effect if the endpoint is used as a source or if the
+                              dataflow doesn't have an Broker source. Known values are: "Enabled" and
+                              "Disabled".
+                            "host": "str",  # Optional. Kafka endpoint host.
+                            "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
+                              or zero. No effect if the endpoint is used as a source. Known values are:
+                              "Zero", "One", and "All".
+                            "partitionStrategy": "str"  # Optional. Partition handling
+                              strategy. Can be default or static. No effect if the endpoint is used as
+                              a source. Known values are: "Default", "Static", "Topic", and "Property".
+                        },
+                        "localStorageSettings": {
+                            "persistentVolumeClaimRef": "str"  # Persistent volume claim
+                              name. Required.
+                        },
+                        "mqttSettings": {
+                            "clientIdPrefix": "str",  # Optional. Client ID prefix.
+                              Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
+                              prefix if omitted.
+                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                              :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
+                              omitted.
+                            "keepAliveSeconds": 60,  # Optional. Default value is 60.
+                              Broker KeepAlive for connection in seconds.
+                            "maxInflightMessages": 100,  # Optional. Default value is
+                              100. The max number of messages to keep in flight. For subscribe, this is
+                              the receive maximum. For publish, this is the maximum number of messages
+                              to send before waiting for an ack.
+                            "protocol": "str",  # Optional. Enable or disable websockets.
+                              Known values are: "Mqtt" and "WebSockets".
+                            "qos": 1,  # Optional. Default value is 1. Qos for Broker
+                              connection.
+                            "retain": "str",  # Optional. Whether or not to keep the
+                              retain setting. Known values are: "Keep" and "Never".
+                            "sessionExpirySeconds": 3600,  # Optional. Default value is
+                              3600. Session expiry in seconds.
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
+                        },
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+
+    @distributed_trace
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_endpoint_name: str,
+        resource: Union[JSON, IO],
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        """Create a DataFlowEndpointResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_endpoint_name: Name of Instance dataflowEndpoint resource. Required.
+        :type dataflow_endpoint_name: str
+        :param resource: Resource create parameters. Is either a JSON type or a IO type. Required.
+        :type resource: JSON or IO
+        :keyword content_type: Body Parameter content-type. Known values are: 'application/json'.
+         Default value is None.
+        :paramtype content_type: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # JSON input template you can fill out and use as your body input.
+                resource = {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "authentication": {
+                            "method": "str",  # Mode of Authentication. Required. Known
+                              values are: "SystemAssignedManagedIdentity",
+                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
+                              "X509Credentials".
+                            "accessTokenSecretRef": "str",  # Optional. SAS token
+                              authentication.
+                            "saslSettings": {
+                                "saslType": "str",  # Type of SASL authentication.
+                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
+                                  are: "Plain", "ScramSha256", and "ScramSha512".
+                                "tokenSecretRef": "str"  # Token secret name.
+                                  Required.
+                            },
+                            "serviceAccountTokenSettings": {
+                                "audience": "str"  # Audience of the service account.
+                                  Optional, defaults to the broker internal service account audience.
+                                  Required.
+                            },
+                            "systemAssignedManagedIdentitySettings": {
+                                "audience": "str"  # Audience of the service to
+                                  authenticate against. Optional; defaults to the audience for Service
+                                  host configuration. Required.
+                            },
+                            "userAssignedManagedIdentitySettings": {
+                                "audience": "str",  # Resource identifier
+                                  (application ID URI) of the resource, affixed with the .default
+                                  suffix. Required.
+                                "clientId": "str",  # Client ID for the user-assigned
+                                  managed identity. Required.
+                                "tenantId": "str"  # Tenant ID. Required.
+                            },
+                            "x509CredentialsSettings": {
+                                "secretRef": "str"  # Secret reference of the X.509
+                                  certificate. Required.
+                            }
+                        },
+                        "endpointType": "str",  # Endpoint Type. Required. Known values are:
+                          "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
+                          and "Mqtt".
+                        "dataExplorerSettings": {
+                            "database": "str",  # Database name. Required.
+                            "host": "str",  # Host of the Azure Data Explorer in the form
+                              of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "dataLakeStorageSettings": {
+                            "host": "str",  # Host of the Azure Data Lake in the form of
+                              :code:`<account>`.blob.core.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "fabricOneLakeSettings": {
+                            "host": "str",  # Host of the Microsoft Fabric in the form of
+                              https://:code:`<host>`.fabric.microsoft.com. Required.
+                            "names": {
+                                "lakehouseName": "str",  # Lakehouse name. Required.
+                                "workspaceName": "str"  # Workspace name. Required.
+                            },
+                            "oneLakePathType": "str",  # Type of location of the data in
+                              the workspace. Can be either tables or files. Required. Known values are:
+                              "Files" and "Tables".
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "kafkaSettings": {
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            },
+                            "batching": {
+                                "latencyMs": 5,  # Optional. Default value is 5.
+                                  Batching latency in milliseconds.
+                                "maxBytes": 1000000,  # Optional. Default value is
+                                  1000000. Maximum number of bytes in a batch.
+                                "maxMessages": 100000,  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                                "mode": "str"  # Optional. Mode for batching. Known
+                                  values are: "Enabled" and "Disabled".
+                            },
+                            "compression": "str",  # Optional. Compression. Can be none,
+                              gzip, lz4, or snappy. No effect if the endpoint is used as a source.
+                              Known values are: "None", "Gzip", "Snappy", and "Lz4".
+                            "consumerGroupId": "str",  # Optional. Consumer group ID.
+                            "copyMqttProperties": "str",  # Optional. Copy Broker
+                              properties. No effect if the endpoint is used as a source or if the
+                              dataflow doesn't have an Broker source. Known values are: "Enabled" and
+                              "Disabled".
+                            "host": "str",  # Optional. Kafka endpoint host.
+                            "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
+                              or zero. No effect if the endpoint is used as a source. Known values are:
+                              "Zero", "One", and "All".
+                            "partitionStrategy": "str"  # Optional. Partition handling
+                              strategy. Can be default or static. No effect if the endpoint is used as
+                              a source. Known values are: "Default", "Static", "Topic", and "Property".
+                        },
+                        "localStorageSettings": {
+                            "persistentVolumeClaimRef": "str"  # Persistent volume claim
+                              name. Required.
+                        },
+                        "mqttSettings": {
+                            "clientIdPrefix": "str",  # Optional. Client ID prefix.
+                              Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
+                              prefix if omitted.
+                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                              :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
+                              omitted.
+                            "keepAliveSeconds": 60,  # Optional. Default value is 60.
+                              Broker KeepAlive for connection in seconds.
+                            "maxInflightMessages": 100,  # Optional. Default value is
+                              100. The max number of messages to keep in flight. For subscribe, this is
+                              the receive maximum. For publish, this is the maximum number of messages
+                              to send before waiting for an ack.
+                            "protocol": "str",  # Optional. Enable or disable websockets.
+                              Known values are: "Mqtt" and "WebSockets".
+                            "qos": 1,  # Optional. Default value is 1. Qos for Broker
+                              connection.
+                            "retain": "str",  # Optional. Whether or not to keep the
+                              retain setting. Known values are: "Keep" and "Never".
+                            "sessionExpirySeconds": 3600,  # Optional. Default value is
+                              3600. Session expiry in seconds.
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
+                        },
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "authentication": {
+                            "method": "str",  # Mode of Authentication. Required. Known
+                              values are: "SystemAssignedManagedIdentity",
+                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
+                              "X509Credentials".
+                            "accessTokenSecretRef": "str",  # Optional. SAS token
+                              authentication.
+                            "saslSettings": {
+                                "saslType": "str",  # Type of SASL authentication.
+                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
+                                  are: "Plain", "ScramSha256", and "ScramSha512".
+                                "tokenSecretRef": "str"  # Token secret name.
+                                  Required.
+                            },
+                            "serviceAccountTokenSettings": {
+                                "audience": "str"  # Audience of the service account.
+                                  Optional, defaults to the broker internal service account audience.
+                                  Required.
+                            },
+                            "systemAssignedManagedIdentitySettings": {
+                                "audience": "str"  # Audience of the service to
+                                  authenticate against. Optional; defaults to the audience for Service
+                                  host configuration. Required.
+                            },
+                            "userAssignedManagedIdentitySettings": {
+                                "audience": "str",  # Resource identifier
+                                  (application ID URI) of the resource, affixed with the .default
+                                  suffix. Required.
+                                "clientId": "str",  # Client ID for the user-assigned
+                                  managed identity. Required.
+                                "tenantId": "str"  # Tenant ID. Required.
+                            },
+                            "x509CredentialsSettings": {
+                                "secretRef": "str"  # Secret reference of the X.509
+                                  certificate. Required.
+                            }
+                        },
+                        "endpointType": "str",  # Endpoint Type. Required. Known values are:
+                          "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
+                          and "Mqtt".
+                        "dataExplorerSettings": {
+                            "database": "str",  # Database name. Required.
+                            "host": "str",  # Host of the Azure Data Explorer in the form
+                              of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "dataLakeStorageSettings": {
+                            "host": "str",  # Host of the Azure Data Lake in the form of
+                              :code:`<account>`.blob.core.windows.net . Required.
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "fabricOneLakeSettings": {
+                            "host": "str",  # Host of the Microsoft Fabric in the form of
+                              https://:code:`<host>`.fabric.microsoft.com. Required.
+                            "names": {
+                                "lakehouseName": "str",  # Lakehouse name. Required.
+                                "workspaceName": "str"  # Workspace name. Required.
+                            },
+                            "oneLakePathType": "str",  # Type of location of the data in
+                              the workspace. Can be either tables or files. Required. Known values are:
+                              "Files" and "Tables".
+                            "batching": {
+                                "latencySeconds": 60,  # Optional. Default value is
+                                  60. Batching latency in seconds.
+                                "maxMessages": 100000  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                            }
+                        },
+                        "kafkaSettings": {
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            },
+                            "batching": {
+                                "latencyMs": 5,  # Optional. Default value is 5.
+                                  Batching latency in milliseconds.
+                                "maxBytes": 1000000,  # Optional. Default value is
+                                  1000000. Maximum number of bytes in a batch.
+                                "maxMessages": 100000,  # Optional. Default value is
+                                  100000. Maximum number of messages in a batch.
+                                "mode": "str"  # Optional. Mode for batching. Known
+                                  values are: "Enabled" and "Disabled".
+                            },
+                            "compression": "str",  # Optional. Compression. Can be none,
+                              gzip, lz4, or snappy. No effect if the endpoint is used as a source.
+                              Known values are: "None", "Gzip", "Snappy", and "Lz4".
+                            "consumerGroupId": "str",  # Optional. Consumer group ID.
+                            "copyMqttProperties": "str",  # Optional. Copy Broker
+                              properties. No effect if the endpoint is used as a source or if the
+                              dataflow doesn't have an Broker source. Known values are: "Enabled" and
+                              "Disabled".
+                            "host": "str",  # Optional. Kafka endpoint host.
+                            "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
+                              or zero. No effect if the endpoint is used as a source. Known values are:
+                              "Zero", "One", and "All".
+                            "partitionStrategy": "str"  # Optional. Partition handling
+                              strategy. Can be default or static. No effect if the endpoint is used as
+                              a source. Known values are: "Default", "Static", "Topic", and "Property".
+                        },
+                        "localStorageSettings": {
+                            "persistentVolumeClaimRef": "str"  # Persistent volume claim
+                              name. Required.
+                        },
+                        "mqttSettings": {
+                            "clientIdPrefix": "str",  # Optional. Client ID prefix.
+                              Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
+                              prefix if omitted.
+                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                              :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
+                              omitted.
+                            "keepAliveSeconds": 60,  # Optional. Default value is 60.
+                              Broker KeepAlive for connection in seconds.
+                            "maxInflightMessages": 100,  # Optional. Default value is
+                              100. The max number of messages to keep in flight. For subscribe, this is
+                              the receive maximum. For publish, this is the maximum number of messages
+                              to send before waiting for an ack.
+                            "protocol": "str",  # Optional. Enable or disable websockets.
+                              Known values are: "Mqtt" and "WebSockets".
+                            "qos": 1,  # Optional. Default value is 1. Qos for Broker
+                              connection.
+                            "retain": "str",  # Optional. Whether or not to keep the
+                              retain setting. Known values are: "Keep" and "Never".
+                            "sessionExpirySeconds": 3600,  # Optional. Default value is
+                              3600. Session expiry in seconds.
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
+                        },
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = kwargs.pop("params", {}) or {}
+
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._create_or_update_initial(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_endpoint_name=dataflow_endpoint_name,
+                resource=resource,
+                content_type=content_type,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):
+            response = pipeline_response.http_response
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+            if cls:
+                return cls(pipeline_response, deserialized, {})  # type: ignore
+            return deserialized
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "azure-async-operation"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller.from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
+
+    def _delete_initial(  # pylint: disable=inconsistent-return-statements
+        self, resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, **kwargs: Any
+    ) -> None:
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[None] = kwargs.pop("cls", None)
+
+        request = build_data_flow_endpoint_delete_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_endpoint_name=dataflow_endpoint_name,
+            subscription_id=self._config.subscription_id,
+            api_version=self._config.api_version,
+            headers=_headers,
+            params=_params,
+        )
+        request.url = self._client.format_url(request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [202, 204]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        response_headers = {}
+        if response.status_code == 202:
+            response_headers["Location"] = self._deserialize("str", response.headers.get("Location"))
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
+        if cls:
+            return cls(pipeline_response, None, response_headers)
+
+    @distributed_trace
+    def begin_delete(
+        self, resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, **kwargs: Any
+    ) -> LROPoller[None]:
+        """Delete a DataFlowEndpointResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_endpoint_name: Name of Instance dataflowEndpoint resource. Required.
+        :type dataflow_endpoint_name: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns None
+        :rtype: ~azure.core.polling.LROPoller[None]
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[None] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._delete_initial(  # type: ignore
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_endpoint_name=dataflow_endpoint_name,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):  # pylint: disable=inconsistent-return-statements
+            if cls:
+                return cls(pipeline_response, None, {})
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "location"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller.from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
+
+
+class DataFlowProfileOperations:
+    """
+    .. warning::
+        **DO NOT** instantiate this class directly.
+
+        Instead, you should access the following operations through
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :attr:`data_flow_profile` attribute.
+    """
+
+    def __init__(self, *args, **kwargs):
+        input_args = list(args)
+        self._client = input_args.pop(0) if input_args else kwargs.pop("client")
+        self._config = input_args.pop(0) if input_args else kwargs.pop("config")
+        self._serialize = input_args.pop(0) if input_args else kwargs.pop("serializer")
+        self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
+
+    @distributed_trace
+    def list_by_instance_resource(self, resource_group_name: str, instance_name: str, **kwargs: Any) -> Iterable[JSON]:
+        """List DataFlowProfileResource resources by InstanceResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :return: An iterator like instance of JSON object
+        :rtype: ~azure.core.paging.ItemPaged[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "diagnostics": {
+                            "logs": {
+                                "level": "info",  # Optional. Default value is
+                                  "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
+                                  'trace'.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
+                            },
+                            "metrics": {
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
+                                  9600. The prometheus port to expose the metrics.
+                            }
+                        },
+                        "instanceCount": 0,  # Optional. To manually scale the dataflow
+                          profile, specify the maximum number of instances you want to run.
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        def prepare_request(next_link=None):
+            if not next_link:
+
+                request = build_data_flow_profile_list_by_instance_resource_request(
+                    resource_group_name=resource_group_name,
+                    instance_name=instance_name,
+                    subscription_id=self._config.subscription_id,
+                    api_version=self._config.api_version,
+                    headers=_headers,
+                    params=_params,
+                )
+                request.url = self._client.format_url(request.url)
+
+            else:
+                # make call to next link with the client's api-version
+                _parsed_next_link = urllib.parse.urlparse(next_link)
+                _next_request_params = case_insensitive_dict(
+                    {
+                        key: [urllib.parse.quote(v) for v in value]
+                        for key, value in urllib.parse.parse_qs(_parsed_next_link.query).items()
+                    }
+                )
+                _next_request_params["api-version"] = self._config.api_version
+                request = HttpRequest(
+                    "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
+                )
+                request.url = self._client.format_url(request.url)
+
+            return request
+
+        def extract_data(pipeline_response):
+            deserialized = pipeline_response.http_response.json()
+            list_of_elem = deserialized["value"]
+            if cls:
+                list_of_elem = cls(list_of_elem)  # type: ignore
+            return deserialized.get("nextLink") or None, iter(list_of_elem)
+
+        def get_next(next_link=None):
+            request = prepare_request(next_link)
+
+            _stream = False
+            pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+                request, stream=_stream, **kwargs
+            )
+            response = pipeline_response.http_response
+
+            if response.status_code not in [200]:
+                map_error(status_code=response.status_code, response=response, error_map=error_map)
+                raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+            return pipeline_response
+
+        return ItemPaged(get_next, extract_data)
+
+    @distributed_trace
+    def get(self, resource_group_name: str, instance_name: str, dataflow_profile_name: str, **kwargs: Any) -> JSON:
+        """Get a DataFlowProfileResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :return: JSON object
+        :rtype: JSON
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "diagnostics": {
+                            "logs": {
+                                "level": "info",  # Optional. Default value is
+                                  "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
+                                  'trace'.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
+                            },
+                            "metrics": {
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
+                                  9600. The prometheus port to expose the metrics.
+                            }
+                        },
+                        "instanceCount": 0,  # Optional. To manually scale the dataflow
+                          profile, specify the maximum number of instances you want to run.
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        request = build_data_flow_profile_get_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_profile_name=dataflow_profile_name,
+            subscription_id=self._config.subscription_id,
+            api_version=self._config.api_version,
+            headers=_headers,
+            params=_params,
+        )
+        request.url = self._client.format_url(request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        if response.content:
+            deserialized = response.json()
+        else:
+            deserialized = None
+
+        if cls:
+            return cls(pipeline_response, cast(JSON, deserialized), {})
+
+        return cast(JSON, deserialized)
+
+    def _create_or_update_initial(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        resource: Union[JSON, IO],
+        **kwargs: Any
+    ) -> JSON:
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = kwargs.pop("params", {}) or {}
+
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        content_type = content_type or "application/json"
+        _json = None
+        _content = None
+        if isinstance(resource, (IOBase, bytes)):
+            _content = resource
+        else:
+            _json = resource
+
+        request = build_data_flow_profile_create_or_update_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_profile_name=dataflow_profile_name,
+            subscription_id=self._config.subscription_id,
+            content_type=content_type,
+            api_version=self._config.api_version,
+            json=_json,
+            content=_content,
+            headers=_headers,
+            params=_params,
+        )
+        request.url = self._client.format_url(request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200, 201]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        response_headers = {}
+        if response.status_code == 200:
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+
+        if response.status_code == 201:
+            response_headers["Azure-AsyncOperation"] = self._deserialize(
+                "str", response.headers.get("Azure-AsyncOperation")
+            )
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+
+        if cls:
+            return cls(pipeline_response, cast(JSON, deserialized), response_headers)  # type: ignore
+
+        return cast(JSON, deserialized)  # type: ignore
+
+    @overload
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        resource: JSON,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        """Create a DataFlowProfileResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :param resource: Resource create parameters. Required.
+        :type resource: JSON
+        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # JSON input template you can fill out and use as your body input.
+                resource = {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "diagnostics": {
+                            "logs": {
+                                "level": "info",  # Optional. Default value is
+                                  "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
+                                  'trace'.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
+                            },
+                            "metrics": {
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
+                                  9600. The prometheus port to expose the metrics.
+                            }
+                        },
+                        "instanceCount": 0,  # Optional. To manually scale the dataflow
+                          profile, specify the maximum number of instances you want to run.
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "diagnostics": {
+                            "logs": {
+                                "level": "info",  # Optional. Default value is
+                                  "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
+                                  'trace'.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
+                            },
+                            "metrics": {
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
+                                  9600. The prometheus port to expose the metrics.
+                            }
+                        },
+                        "instanceCount": 0,  # Optional. To manually scale the dataflow
+                          profile, specify the maximum number of instances you want to run.
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+
+    @overload
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        resource: IO,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        """Create a DataFlowProfileResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :param resource: Resource create parameters. Required.
+        :type resource: IO
+        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "diagnostics": {
+                            "logs": {
+                                "level": "info",  # Optional. Default value is
+                                  "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
+                                  'trace'.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
+                            },
+                            "metrics": {
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
+                                  9600. The prometheus port to expose the metrics.
+                            }
+                        },
+                        "instanceCount": 0,  # Optional. To manually scale the dataflow
+                          profile, specify the maximum number of instances you want to run.
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+
+    @distributed_trace
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        resource: Union[JSON, IO],
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        """Create a DataFlowProfileResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :param resource: Resource create parameters. Is either a JSON type or a IO type. Required.
+        :type resource: JSON or IO
+        :keyword content_type: Body Parameter content-type. Known values are: 'application/json'.
+         Default value is None.
+        :paramtype content_type: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # JSON input template you can fill out and use as your body input.
+                resource = {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "diagnostics": {
+                            "logs": {
+                                "level": "info",  # Optional. Default value is
+                                  "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
+                                  'trace'.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
+                            },
+                            "metrics": {
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
+                                  9600. The prometheus port to expose the metrics.
+                            }
+                        },
+                        "instanceCount": 0,  # Optional. To manually scale the dataflow
+                          profile, specify the maximum number of instances you want to run.
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "diagnostics": {
+                            "logs": {
+                                "level": "info",  # Optional. Default value is
+                                  "info". The log level. Examples - 'debug', 'info', 'warn', 'error',
+                                  'trace'.
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30,  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                    "level": "error"  # Optional. Default value
+                                      is "error". The log level. Examples - 'debug', 'info', 'warn',
+                                      'error', 'trace'.
+                                }
+                            },
+                            "metrics": {
+                                "opentelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "str",  # The open
+                                      telemetry collector endpoint to export to. Required.
+                                    "intervalSeconds": 30  # Optional. Default
+                                      value is 30. How often to export the metrics to the open
+                                      telemetry collector.
+                                },
+                                "prometheusPort": 9600  # Optional. Default value is
+                                  9600. The prometheus port to expose the metrics.
+                            }
+                        },
+                        "instanceCount": 0,  # Optional. To manually scale the dataflow
+                          profile, specify the maximum number of instances you want to run.
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = kwargs.pop("params", {}) or {}
+
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._create_or_update_initial(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_profile_name=dataflow_profile_name,
+                resource=resource,
+                content_type=content_type,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):
+            response = pipeline_response.http_response
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+            if cls:
+                return cls(pipeline_response, deserialized, {})  # type: ignore
+            return deserialized
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "azure-async-operation"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller.from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
+
+    def _delete_initial(  # pylint: disable=inconsistent-return-statements
+        self, resource_group_name: str, instance_name: str, dataflow_profile_name: str, **kwargs: Any
+    ) -> None:
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[None] = kwargs.pop("cls", None)
+
+        request = build_data_flow_profile_delete_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_profile_name=dataflow_profile_name,
+            subscription_id=self._config.subscription_id,
+            api_version=self._config.api_version,
+            headers=_headers,
+            params=_params,
+        )
+        request.url = self._client.format_url(request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [202, 204]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        response_headers = {}
+        if response.status_code == 202:
+            response_headers["Location"] = self._deserialize("str", response.headers.get("Location"))
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
+        if cls:
+            return cls(pipeline_response, None, response_headers)
+
+    @distributed_trace
+    def begin_delete(
+        self, resource_group_name: str, instance_name: str, dataflow_profile_name: str, **kwargs: Any
+    ) -> LROPoller[None]:
+        """Delete a DataFlowProfileResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns None
+        :rtype: ~azure.core.polling.LROPoller[None]
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[None] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._delete_initial(  # type: ignore
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_profile_name=dataflow_profile_name,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):  # pylint: disable=inconsistent-return-statements
+            if cls:
+                return cls(pipeline_response, None, {})
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "location"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller.from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
+
+
+class DataFlowOperations:
+    """
+    .. warning::
+        **DO NOT** instantiate this class directly.
+
+        Instead, you should access the following operations through
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :attr:`data_flow` attribute.
+    """
+
+    def __init__(self, *args, **kwargs):
+        input_args = list(args)
+        self._client = input_args.pop(0) if input_args else kwargs.pop("client")
+        self._config = input_args.pop(0) if input_args else kwargs.pop("config")
+        self._serialize = input_args.pop(0) if input_args else kwargs.pop("serializer")
+        self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
+
+    @distributed_trace
+    def list_by_profile_resource(
+        self, resource_group_name: str, instance_name: str, dataflow_profile_name: str, **kwargs: Any
+    ) -> Iterable[JSON]:
+        """List DataFlowResource resources by DataFlowProfileResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :return: An iterator like instance of JSON object
+        :rtype: ~azure.core.paging.ItemPaged[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "operations": [
+                            {
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "operationType": "str",  # Type of operation.
+                                  Required. Known values are: "Source", "Destination", and
+                                  "BuiltInTransformation".
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                },
+                                "builtInTransformationSettings": {
+                                    "datasets": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for enriching from the Broker State Store.
+                                                  Required.
+                                            ],
+                                            "key": "str",  # The key of
+                                              the dataset. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              dataset.
+                                            "expression": "str",  #
+                                              Optional. Condition to enrich data from Broker State
+                                              Store. Example: $1 < 0 || $1 > $2 (Assuming inputs
+                                              section $1 and $2 are provided).
+                                            "schemaRef": "str"  #
+                                              Optional. The reference to the schema that describes the
+                                              dataset. Allowed: JSON Schema/draft-7.
+                                        }
+                                    ],
+                                    "filter": [
+                                        {
+                                            "expression": "str",  #
+                                              Condition to filter data. Can reference input fields with
+                                              {n} where n is the index of the input field starting from
+                                              1. Example: $1 < 0 || $1 > $2 (Assuming inputs section $1
+                                              and $2 are provided). Required.
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for filtering in JSON path expression.
+                                                  Required.
+                                            ],
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              filter.
+                                            "type": "str"  # Optional.
+                                              The type of dataflow operation. "Filter"
+                                        }
+                                    ],
+                                    "map": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for mapping in JSON path expression. Required.
+                                            ],
+                                            "output": "str",  # Where and
+                                              how the input fields to be organized in the output
+                                              record. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              mapping function.
+                                            "expression": "str",  #
+                                              Optional. Modify the inputs field(s) to the final output
+                                              field. Example: $1 * 2.2 (Assuming inputs section $1 is
+                                              provided).
+                                            "type": "str"  # Optional.
+                                              Type of transformation. Known values are:
+                                              "NewProperties", "Rename", "Compute", "PassThrough", and
+                                              "BuiltInFunction".
+                                        }
+                                    ],
+                                    "schemaRef": "str",  # Optional. Reference to
+                                      the schema that describes the output of the transformation.
+                                    "serializationFormat": "str"  # Optional.
+                                      Serialization format. Optional; defaults to JSON. Allowed value
+                                      JSON Schema/draft-7, Parquet. Default: Json. Known values are:
+                                      "Delta", "Json", and "Parquet".
+                                },
+                                "name": "str"  # Optional. Optional user provided
+                                  name of the transformation.
+                            }
+                        ],
+                        "profileRef": "str",  # Reference to the DataflowProfile CR.
+                          Required.
+                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                          Enabled. Known values are: "Enabled" and "Disabled".
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        def prepare_request(next_link=None):
+            if not next_link:
+
+                request = build_data_flow_list_by_profile_resource_request(
+                    resource_group_name=resource_group_name,
+                    instance_name=instance_name,
+                    dataflow_profile_name=dataflow_profile_name,
+                    subscription_id=self._config.subscription_id,
+                    api_version=self._config.api_version,
+                    headers=_headers,
+                    params=_params,
+                )
+                request.url = self._client.format_url(request.url)
+
+            else:
+                # make call to next link with the client's api-version
+                _parsed_next_link = urllib.parse.urlparse(next_link)
+                _next_request_params = case_insensitive_dict(
+                    {
+                        key: [urllib.parse.quote(v) for v in value]
+                        for key, value in urllib.parse.parse_qs(_parsed_next_link.query).items()
+                    }
+                )
+                _next_request_params["api-version"] = self._config.api_version
+                request = HttpRequest(
+                    "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
+                )
+                request.url = self._client.format_url(request.url)
+
+            return request
+
+        def extract_data(pipeline_response):
+            deserialized = pipeline_response.http_response.json()
+            list_of_elem = deserialized["value"]
+            if cls:
+                list_of_elem = cls(list_of_elem)  # type: ignore
+            return deserialized.get("nextLink") or None, iter(list_of_elem)
+
+        def get_next(next_link=None):
+            request = prepare_request(next_link)
+
+            _stream = False
+            pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+                request, stream=_stream, **kwargs
+            )
+            response = pipeline_response.http_response
+
+            if response.status_code not in [200]:
+                map_error(status_code=response.status_code, response=response, error_map=error_map)
+                raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+            return pipeline_response
+
+        return ItemPaged(get_next, extract_data)
+
+    @distributed_trace
+    def get(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        dataflow_name: str,
+        **kwargs: Any
+    ) -> JSON:
+        """Get a DataFlowResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :param dataflow_name: Name of Instance dataflowProfile dataflow resource. Required.
+        :type dataflow_name: str
+        :return: JSON object
+        :rtype: JSON
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "operations": [
+                            {
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "operationType": "str",  # Type of operation.
+                                  Required. Known values are: "Source", "Destination", and
+                                  "BuiltInTransformation".
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                },
+                                "builtInTransformationSettings": {
+                                    "datasets": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for enriching from the Broker State Store.
+                                                  Required.
+                                            ],
+                                            "key": "str",  # The key of
+                                              the dataset. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              dataset.
+                                            "expression": "str",  #
+                                              Optional. Condition to enrich data from Broker State
+                                              Store. Example: $1 < 0 || $1 > $2 (Assuming inputs
+                                              section $1 and $2 are provided).
+                                            "schemaRef": "str"  #
+                                              Optional. The reference to the schema that describes the
+                                              dataset. Allowed: JSON Schema/draft-7.
+                                        }
+                                    ],
+                                    "filter": [
+                                        {
+                                            "expression": "str",  #
+                                              Condition to filter data. Can reference input fields with
+                                              {n} where n is the index of the input field starting from
+                                              1. Example: $1 < 0 || $1 > $2 (Assuming inputs section $1
+                                              and $2 are provided). Required.
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for filtering in JSON path expression.
+                                                  Required.
+                                            ],
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              filter.
+                                            "type": "str"  # Optional.
+                                              The type of dataflow operation. "Filter"
+                                        }
+                                    ],
+                                    "map": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for mapping in JSON path expression. Required.
+                                            ],
+                                            "output": "str",  # Where and
+                                              how the input fields to be organized in the output
+                                              record. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              mapping function.
+                                            "expression": "str",  #
+                                              Optional. Modify the inputs field(s) to the final output
+                                              field. Example: $1 * 2.2 (Assuming inputs section $1 is
+                                              provided).
+                                            "type": "str"  # Optional.
+                                              Type of transformation. Known values are:
+                                              "NewProperties", "Rename", "Compute", "PassThrough", and
+                                              "BuiltInFunction".
+                                        }
+                                    ],
+                                    "schemaRef": "str",  # Optional. Reference to
+                                      the schema that describes the output of the transformation.
+                                    "serializationFormat": "str"  # Optional.
+                                      Serialization format. Optional; defaults to JSON. Allowed value
+                                      JSON Schema/draft-7, Parquet. Default: Json. Known values are:
+                                      "Delta", "Json", and "Parquet".
+                                },
+                                "name": "str"  # Optional. Optional user provided
+                                  name of the transformation.
+                            }
+                        ],
+                        "profileRef": "str",  # Reference to the DataflowProfile CR.
+                          Required.
+                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                          Enabled. Known values are: "Enabled" and "Disabled".
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        request = build_data_flow_get_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_profile_name=dataflow_profile_name,
+            dataflow_name=dataflow_name,
+            subscription_id=self._config.subscription_id,
+            api_version=self._config.api_version,
+            headers=_headers,
+            params=_params,
+        )
+        request.url = self._client.format_url(request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        if response.content:
+            deserialized = response.json()
+        else:
+            deserialized = None
+
+        if cls:
+            return cls(pipeline_response, cast(JSON, deserialized), {})
+
+        return cast(JSON, deserialized)
+
+    def _create_or_update_initial(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        dataflow_name: str,
+        resource: Union[JSON, IO],
+        **kwargs: Any
+    ) -> JSON:
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = kwargs.pop("params", {}) or {}
+
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+
+        content_type = content_type or "application/json"
+        _json = None
+        _content = None
+        if isinstance(resource, (IOBase, bytes)):
+            _content = resource
+        else:
+            _json = resource
+
+        request = build_data_flow_create_or_update_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_profile_name=dataflow_profile_name,
+            dataflow_name=dataflow_name,
+            subscription_id=self._config.subscription_id,
+            content_type=content_type,
+            api_version=self._config.api_version,
+            json=_json,
+            content=_content,
+            headers=_headers,
+            params=_params,
+        )
+        request.url = self._client.format_url(request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [200, 201]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        response_headers = {}
+        if response.status_code == 200:
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+
+        if response.status_code == 201:
+            response_headers["Azure-AsyncOperation"] = self._deserialize(
+                "str", response.headers.get("Azure-AsyncOperation")
+            )
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+
+        if cls:
+            return cls(pipeline_response, cast(JSON, deserialized), response_headers)  # type: ignore
+
+        return cast(JSON, deserialized)  # type: ignore
+
+    @overload
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        dataflow_name: str,
+        resource: JSON,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        """Create a DataFlowResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :param dataflow_name: Name of Instance dataflowProfile dataflow resource. Required.
+        :type dataflow_name: str
+        :param resource: Resource create parameters. Required.
+        :type resource: JSON
+        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # JSON input template you can fill out and use as your body input.
+                resource = {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "operations": [
+                            {
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "operationType": "str",  # Type of operation.
+                                  Required. Known values are: "Source", "Destination", and
+                                  "BuiltInTransformation".
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                },
+                                "builtInTransformationSettings": {
+                                    "datasets": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for enriching from the Broker State Store.
+                                                  Required.
+                                            ],
+                                            "key": "str",  # The key of
+                                              the dataset. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              dataset.
+                                            "expression": "str",  #
+                                              Optional. Condition to enrich data from Broker State
+                                              Store. Example: $1 < 0 || $1 > $2 (Assuming inputs
+                                              section $1 and $2 are provided).
+                                            "schemaRef": "str"  #
+                                              Optional. The reference to the schema that describes the
+                                              dataset. Allowed: JSON Schema/draft-7.
+                                        }
+                                    ],
+                                    "filter": [
+                                        {
+                                            "expression": "str",  #
+                                              Condition to filter data. Can reference input fields with
+                                              {n} where n is the index of the input field starting from
+                                              1. Example: $1 < 0 || $1 > $2 (Assuming inputs section $1
+                                              and $2 are provided). Required.
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for filtering in JSON path expression.
+                                                  Required.
+                                            ],
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              filter.
+                                            "type": "str"  # Optional.
+                                              The type of dataflow operation. "Filter"
+                                        }
+                                    ],
+                                    "map": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for mapping in JSON path expression. Required.
+                                            ],
+                                            "output": "str",  # Where and
+                                              how the input fields to be organized in the output
+                                              record. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              mapping function.
+                                            "expression": "str",  #
+                                              Optional. Modify the inputs field(s) to the final output
+                                              field. Example: $1 * 2.2 (Assuming inputs section $1 is
+                                              provided).
+                                            "type": "str"  # Optional.
+                                              Type of transformation. Known values are:
+                                              "NewProperties", "Rename", "Compute", "PassThrough", and
+                                              "BuiltInFunction".
+                                        }
+                                    ],
+                                    "schemaRef": "str",  # Optional. Reference to
+                                      the schema that describes the output of the transformation.
+                                    "serializationFormat": "str"  # Optional.
+                                      Serialization format. Optional; defaults to JSON. Allowed value
+                                      JSON Schema/draft-7, Parquet. Default: Json. Known values are:
+                                      "Delta", "Json", and "Parquet".
+                                },
+                                "name": "str"  # Optional. Optional user provided
+                                  name of the transformation.
+                            }
+                        ],
+                        "profileRef": "str",  # Reference to the DataflowProfile CR.
+                          Required.
+                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                          Enabled. Known values are: "Enabled" and "Disabled".
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "operations": [
+                            {
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "operationType": "str",  # Type of operation.
+                                  Required. Known values are: "Source", "Destination", and
+                                  "BuiltInTransformation".
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                },
+                                "builtInTransformationSettings": {
+                                    "datasets": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for enriching from the Broker State Store.
+                                                  Required.
+                                            ],
+                                            "key": "str",  # The key of
+                                              the dataset. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              dataset.
+                                            "expression": "str",  #
+                                              Optional. Condition to enrich data from Broker State
+                                              Store. Example: $1 < 0 || $1 > $2 (Assuming inputs
+                                              section $1 and $2 are provided).
+                                            "schemaRef": "str"  #
+                                              Optional. The reference to the schema that describes the
+                                              dataset. Allowed: JSON Schema/draft-7.
+                                        }
+                                    ],
+                                    "filter": [
+                                        {
+                                            "expression": "str",  #
+                                              Condition to filter data. Can reference input fields with
+                                              {n} where n is the index of the input field starting from
+                                              1. Example: $1 < 0 || $1 > $2 (Assuming inputs section $1
+                                              and $2 are provided). Required.
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for filtering in JSON path expression.
+                                                  Required.
+                                            ],
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              filter.
+                                            "type": "str"  # Optional.
+                                              The type of dataflow operation. "Filter"
+                                        }
+                                    ],
+                                    "map": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for mapping in JSON path expression. Required.
+                                            ],
+                                            "output": "str",  # Where and
+                                              how the input fields to be organized in the output
+                                              record. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              mapping function.
+                                            "expression": "str",  #
+                                              Optional. Modify the inputs field(s) to the final output
+                                              field. Example: $1 * 2.2 (Assuming inputs section $1 is
+                                              provided).
+                                            "type": "str"  # Optional.
+                                              Type of transformation. Known values are:
+                                              "NewProperties", "Rename", "Compute", "PassThrough", and
+                                              "BuiltInFunction".
+                                        }
+                                    ],
+                                    "schemaRef": "str",  # Optional. Reference to
+                                      the schema that describes the output of the transformation.
+                                    "serializationFormat": "str"  # Optional.
+                                      Serialization format. Optional; defaults to JSON. Allowed value
+                                      JSON Schema/draft-7, Parquet. Default: Json. Known values are:
+                                      "Delta", "Json", and "Parquet".
+                                },
+                                "name": "str"  # Optional. Optional user provided
+                                  name of the transformation.
+                            }
+                        ],
+                        "profileRef": "str",  # Reference to the DataflowProfile CR.
+                          Required.
+                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                          Enabled. Known values are: "Enabled" and "Disabled".
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+
+    @overload
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        dataflow_name: str,
+        resource: IO,
+        *,
+        content_type: str = "application/json",
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        """Create a DataFlowResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :param dataflow_name: Name of Instance dataflowProfile dataflow resource. Required.
+        :type dataflow_name: str
+        :param resource: Resource create parameters. Required.
+        :type resource: IO
+        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
+         Default value is "application/json".
+        :paramtype content_type: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "operations": [
+                            {
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "operationType": "str",  # Type of operation.
+                                  Required. Known values are: "Source", "Destination", and
+                                  "BuiltInTransformation".
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                },
+                                "builtInTransformationSettings": {
+                                    "datasets": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for enriching from the Broker State Store.
+                                                  Required.
+                                            ],
+                                            "key": "str",  # The key of
+                                              the dataset. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              dataset.
+                                            "expression": "str",  #
+                                              Optional. Condition to enrich data from Broker State
+                                              Store. Example: $1 < 0 || $1 > $2 (Assuming inputs
+                                              section $1 and $2 are provided).
+                                            "schemaRef": "str"  #
+                                              Optional. The reference to the schema that describes the
+                                              dataset. Allowed: JSON Schema/draft-7.
+                                        }
+                                    ],
+                                    "filter": [
+                                        {
+                                            "expression": "str",  #
+                                              Condition to filter data. Can reference input fields with
+                                              {n} where n is the index of the input field starting from
+                                              1. Example: $1 < 0 || $1 > $2 (Assuming inputs section $1
+                                              and $2 are provided). Required.
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for filtering in JSON path expression.
+                                                  Required.
+                                            ],
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              filter.
+                                            "type": "str"  # Optional.
+                                              The type of dataflow operation. "Filter"
+                                        }
+                                    ],
+                                    "map": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for mapping in JSON path expression. Required.
+                                            ],
+                                            "output": "str",  # Where and
+                                              how the input fields to be organized in the output
+                                              record. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              mapping function.
+                                            "expression": "str",  #
+                                              Optional. Modify the inputs field(s) to the final output
+                                              field. Example: $1 * 2.2 (Assuming inputs section $1 is
+                                              provided).
+                                            "type": "str"  # Optional.
+                                              Type of transformation. Known values are:
+                                              "NewProperties", "Rename", "Compute", "PassThrough", and
+                                              "BuiltInFunction".
+                                        }
+                                    ],
+                                    "schemaRef": "str",  # Optional. Reference to
+                                      the schema that describes the output of the transformation.
+                                    "serializationFormat": "str"  # Optional.
+                                      Serialization format. Optional; defaults to JSON. Allowed value
+                                      JSON Schema/draft-7, Parquet. Default: Json. Known values are:
+                                      "Delta", "Json", and "Parquet".
+                                },
+                                "name": "str"  # Optional. Optional user provided
+                                  name of the transformation.
+                            }
+                        ],
+                        "profileRef": "str",  # Reference to the DataflowProfile CR.
+                          Required.
+                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                          Enabled. Known values are: "Enabled" and "Disabled".
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+
+    @distributed_trace
+    def begin_create_or_update(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        dataflow_name: str,
+        resource: Union[JSON, IO],
+        **kwargs: Any
+    ) -> LROPoller[JSON]:
+        """Create a DataFlowResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :param dataflow_name: Name of Instance dataflowProfile dataflow resource. Required.
+        :type dataflow_name: str
+        :param resource: Resource create parameters. Is either a JSON type or a IO type. Required.
+        :type resource: JSON or IO
+        :keyword content_type: Body Parameter content-type. Known values are: 'application/json'.
+         Default value is None.
+        :paramtype content_type: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns JSON object
+        :rtype: ~azure.core.polling.LROPoller[JSON]
+        :raises ~azure.core.exceptions.HttpResponseError:
+
+        Example:
+            .. code-block:: python
+
+                # JSON input template you can fill out and use as your body input.
+                resource = {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "operations": [
+                            {
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "operationType": "str",  # Type of operation.
+                                  Required. Known values are: "Source", "Destination", and
+                                  "BuiltInTransformation".
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                },
+                                "builtInTransformationSettings": {
+                                    "datasets": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for enriching from the Broker State Store.
+                                                  Required.
+                                            ],
+                                            "key": "str",  # The key of
+                                              the dataset. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              dataset.
+                                            "expression": "str",  #
+                                              Optional. Condition to enrich data from Broker State
+                                              Store. Example: $1 < 0 || $1 > $2 (Assuming inputs
+                                              section $1 and $2 are provided).
+                                            "schemaRef": "str"  #
+                                              Optional. The reference to the schema that describes the
+                                              dataset. Allowed: JSON Schema/draft-7.
+                                        }
+                                    ],
+                                    "filter": [
+                                        {
+                                            "expression": "str",  #
+                                              Condition to filter data. Can reference input fields with
+                                              {n} where n is the index of the input field starting from
+                                              1. Example: $1 < 0 || $1 > $2 (Assuming inputs section $1
+                                              and $2 are provided). Required.
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for filtering in JSON path expression.
+                                                  Required.
+                                            ],
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              filter.
+                                            "type": "str"  # Optional.
+                                              The type of dataflow operation. "Filter"
+                                        }
+                                    ],
+                                    "map": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for mapping in JSON path expression. Required.
+                                            ],
+                                            "output": "str",  # Where and
+                                              how the input fields to be organized in the output
+                                              record. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              mapping function.
+                                            "expression": "str",  #
+                                              Optional. Modify the inputs field(s) to the final output
+                                              field. Example: $1 * 2.2 (Assuming inputs section $1 is
+                                              provided).
+                                            "type": "str"  # Optional.
+                                              Type of transformation. Known values are:
+                                              "NewProperties", "Rename", "Compute", "PassThrough", and
+                                              "BuiltInFunction".
+                                        }
+                                    ],
+                                    "schemaRef": "str",  # Optional. Reference to
+                                      the schema that describes the output of the transformation.
+                                    "serializationFormat": "str"  # Optional.
+                                      Serialization format. Optional; defaults to JSON. Allowed value
+                                      JSON Schema/draft-7, Parquet. Default: Json. Known values are:
+                                      "Delta", "Json", and "Parquet".
+                                },
+                                "name": "str"  # Optional. Optional user provided
+                                  name of the transformation.
+                            }
+                        ],
+                        "profileRef": "str",  # Reference to the DataflowProfile CR.
+                          Required.
+                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                          Enabled. Known values are: "Enabled" and "Disabled".
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+
+                # response body for status code(s): 200, 201
+                response == {
+                    "extendedLocation": {
+                        "name": "str",  # The name of the extended location. Required.
+                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
+                    },
+                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
+                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "name": "str",  # Optional. The name of the resource.
+                    "properties": {
+                        "operations": [
+                            {
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "operationType": "str",  # Type of operation.
+                                  Required. Known values are: "Source", "Destination", and
+                                  "BuiltInTransformation".
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                },
+                                "builtInTransformationSettings": {
+                                    "datasets": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for enriching from the Broker State Store.
+                                                  Required.
+                                            ],
+                                            "key": "str",  # The key of
+                                              the dataset. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              dataset.
+                                            "expression": "str",  #
+                                              Optional. Condition to enrich data from Broker State
+                                              Store. Example: $1 < 0 || $1 > $2 (Assuming inputs
+                                              section $1 and $2 are provided).
+                                            "schemaRef": "str"  #
+                                              Optional. The reference to the schema that describes the
+                                              dataset. Allowed: JSON Schema/draft-7.
+                                        }
+                                    ],
+                                    "filter": [
+                                        {
+                                            "expression": "str",  #
+                                              Condition to filter data. Can reference input fields with
+                                              {n} where n is the index of the input field starting from
+                                              1. Example: $1 < 0 || $1 > $2 (Assuming inputs section $1
+                                              and $2 are provided). Required.
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for filtering in JSON path expression.
+                                                  Required.
+                                            ],
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              filter.
+                                            "type": "str"  # Optional.
+                                              The type of dataflow operation. "Filter"
+                                        }
+                                    ],
+                                    "map": [
+                                        {
+                                            "inputs": [
+                                                "str"  # List of
+                                                  fields for mapping in JSON path expression. Required.
+                                            ],
+                                            "output": "str",  # Where and
+                                              how the input fields to be organized in the output
+                                              record. Required.
+                                            "description": "str",  #
+                                              Optional. A user provided optional description of the
+                                              mapping function.
+                                            "expression": "str",  #
+                                              Optional. Modify the inputs field(s) to the final output
+                                              field. Example: $1 * 2.2 (Assuming inputs section $1 is
+                                              provided).
+                                            "type": "str"  # Optional.
+                                              Type of transformation. Known values are:
+                                              "NewProperties", "Rename", "Compute", "PassThrough", and
+                                              "BuiltInFunction".
+                                        }
+                                    ],
+                                    "schemaRef": "str",  # Optional. Reference to
+                                      the schema that describes the output of the transformation.
+                                    "serializationFormat": "str"  # Optional.
+                                      Serialization format. Optional; defaults to JSON. Allowed value
+                                      JSON Schema/draft-7, Parquet. Default: Json. Known values are:
+                                      "Delta", "Json", and "Parquet".
+                                },
+                                "name": "str"  # Optional. Optional user provided
+                                  name of the transformation.
+                            }
+                        ],
+                        "profileRef": "str",  # Reference to the DataflowProfile CR.
+                          Required.
+                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                          Enabled. Known values are: "Enabled" and "Disabled".
+                        "provisioningState": "str"  # Optional. The status of the last
+                          operation. Known values are: "Succeeded", "Failed", "Canceled",
+                          "Provisioning", "Updating", "Deleting", and "Accepted".
+                    },
+                    "systemData": {
+                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
+                          resource creation (UTC).
+                        "createdBy": "str",  # Optional. The identity that created the
+                          resource.
+                        "createdByType": "str",  # Optional. The type of identity that
+                          created the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
+                          of resource last modification (UTC).
+                        "lastModifiedBy": "str",  # Optional. The identity that last modified
+                          the resource.
+                        "lastModifiedByType": "str"  # Optional. The type of identity that
+                          last modified the resource. Known values are: "User", "Application",
+                          "ManagedIdentity", and "Key".
+                    },
+                    "type": "str"  # Optional. The type of the resource. E.g.
+                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                }
+        """
+        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
+        _params = kwargs.pop("params", {}) or {}
+
+        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
+        cls: ClsType[JSON] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._create_or_update_initial(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_profile_name=dataflow_profile_name,
+                dataflow_name=dataflow_name,
+                resource=resource,
+                content_type=content_type,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):
+            response = pipeline_response.http_response
+            if response.content:
+                deserialized = response.json()
+            else:
+                deserialized = None
+            if cls:
+                return cls(pipeline_response, deserialized, {})  # type: ignore
+            return deserialized
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "azure-async-operation"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller.from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
+
+    def _delete_initial(  # pylint: disable=inconsistent-return-statements
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        dataflow_name: str,
+        **kwargs: Any
+    ) -> None:
+        error_map = {
+            401: ClientAuthenticationError,
+            404: ResourceNotFoundError,
+            409: ResourceExistsError,
+            304: ResourceNotModifiedError,
+        }
+        error_map.update(kwargs.pop("error_map", {}) or {})
+
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[None] = kwargs.pop("cls", None)
+
+        request = build_data_flow_delete_request(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_profile_name=dataflow_profile_name,
+            dataflow_name=dataflow_name,
+            subscription_id=self._config.subscription_id,
+            api_version=self._config.api_version,
+            headers=_headers,
+            params=_params,
+        )
+        request.url = self._client.format_url(request.url)
+
+        _stream = False
+        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
+            request, stream=_stream, **kwargs
+        )
+
+        response = pipeline_response.http_response
+
+        if response.status_code not in [202, 204]:
+            map_error(status_code=response.status_code, response=response, error_map=error_map)
+            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
+
+        response_headers = {}
+        if response.status_code == 202:
+            response_headers["Location"] = self._deserialize("str", response.headers.get("Location"))
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
+        if cls:
+            return cls(pipeline_response, None, response_headers)
+
+    @distributed_trace
+    def begin_delete(
+        self,
+        resource_group_name: str,
+        instance_name: str,
+        dataflow_profile_name: str,
+        dataflow_name: str,
+        **kwargs: Any
+    ) -> LROPoller[None]:
+        """Delete a DataFlowResource.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param instance_name: Name of instance. Required.
+        :type instance_name: str
+        :param dataflow_profile_name: Name of Instance dataflowProfile resource. Required.
+        :type dataflow_profile_name: str
+        :param dataflow_name: Name of Instance dataflowProfile dataflow resource. Required.
+        :type dataflow_name: str
+        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
+        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
+         operation to not poll, or pass in your own initialized polling object for a personal polling
+         strategy.
+        :paramtype polling: bool or ~azure.core.polling.PollingMethod
+        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
+         Retry-After header is present.
+        :return: An instance of LROPoller that returns None
+        :rtype: ~azure.core.polling.LROPoller[None]
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[None] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._delete_initial(  # type: ignore
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_profile_name=dataflow_profile_name,
+                dataflow_name=dataflow_name,
                 cls=lambda x, y, z: x,
                 headers=_headers,
                 params=_params,
