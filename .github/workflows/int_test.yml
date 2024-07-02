@@ -180,6 +180,7 @@ jobs:
         if: ${{ matrix.feature == 'ca-certs'}}
         run: |
           ls .
+          ls azure-iot-ops-cli-extension
           >ca.conf cat <<-EOF
           [ req ]
           distinguished_name = req_distinguished_name
