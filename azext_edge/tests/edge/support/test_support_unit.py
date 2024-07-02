@@ -14,7 +14,7 @@ import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
 from azext_edge.edge.commands_edge import support_bundle
-from azext_edge.edge.common import AIO_MQ_OPERATOR, AIO_MQ_RESOURCE_PREFIX
+from azext_edge.edge.common import AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api import (
     AKRI_API_V0,
     CLUSTER_CONFIG_API_V1,

@@ -10,7 +10,7 @@ from zipfile import ZipInfo
 
 from knack.log import get_logger
 
-from azext_edge.edge.common import AIO_MQ_OPERATOR, AIO_MQ_RESOURCE_PREFIX
+from azext_edge.edge.common import AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api.mq import MqResourceKinds
 
 from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
@@ -108,7 +108,7 @@ def fetch_statefulsets():
         )
         processed.extend(stateful_set)
         metrics_namespaces.extend(connector_namespaces)
-    
+
     for namespace in metrics_namespaces:
         metrics = fetch_diagnostic_metrics(namespace)
         if metrics:
