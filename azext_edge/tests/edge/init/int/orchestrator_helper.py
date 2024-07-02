@@ -20,7 +20,7 @@ def assert_orchestrator_args(
 ):
     resources = [res for res in init_resources if res.startswith(ResourceKeys.orchestrator.value)]
     assert len(resources) == 1
-    
+
     expected_name = target or (f"{cluster_name}-ops-init-target")
     assert resources[0].endswith(expected_name)
 

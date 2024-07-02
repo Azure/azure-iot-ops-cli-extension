@@ -61,7 +61,9 @@ def assert_mq_args(
     assert mq_resources[3].split("/")[-1] == (mq_listener or "listener")
     listener_obj = get_resource_from_partial_id(mq_resources[3], resource_group)
     assert listener_obj["properties"]["serviceType"] == (mq_service_type or "clusterIp")
-    assert listener_obj["properties"]["tls"]["automatic"]["issuerRef"]["name"] == (mq_frontend_server or "mq-dmqtt-frontend")
+    assert listener_obj["properties"]["tls"]["automatic"]["issuerRef"]["name"] == (
+        mq_frontend_server or "mq-dmqtt-frontend"
+    )
 
     if mq_insecure:
         assert mq_resources[4].split("/")[-1] == "non-tls-listener"

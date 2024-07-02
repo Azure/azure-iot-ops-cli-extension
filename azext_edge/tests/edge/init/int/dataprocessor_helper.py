@@ -21,7 +21,7 @@ def assert_dataprocessor_args(
     assert bool(resources) is include_dp
     if not include_dp:
         return
-    
+
     expected_name = dp_instance or (f"{cluster_name}-ops-init-processor")
     assert len(resources) == 1
     assert resources[0].endswith(expected_name)

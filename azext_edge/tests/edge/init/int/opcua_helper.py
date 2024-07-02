@@ -15,7 +15,7 @@ def assert_simulate_plc_args(
 ):
     if not simulate_plc:
         simulate_plc = False
-    # note that the simulator may take a bit 
+    # note that the simulator may take a bit
     query_result = run(f"az iot ops asset query --cl {custom_location}")
     assert bool(query_result) is simulate_plc
     query_result = run(f"az iot ops asset endpoint query --cl {custom_location}")

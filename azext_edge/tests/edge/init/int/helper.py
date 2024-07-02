@@ -76,7 +76,8 @@ def get_resource_from_partial_id(
     resource_name = split_id[-1]
     resource_type = split_id[-2]
     namespace = split_id[0]
-    command = f"az resource show -g {resource_group} -n {resource_name} --resource-type {resource_type} --namespace {namespace}"
+    command = f"az resource show -g {resource_group} -n {resource_name} --resource-type {resource_type} "\
+        f"--namespace {namespace}"
     command += f" --api-version {api_version}" if api_version else " -v"
     if len(split_id) > 3:
         command += f" --parent {'/'.join(split_id[1:-2])}"

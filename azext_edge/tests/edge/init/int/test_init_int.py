@@ -89,7 +89,6 @@ def test_init_scenario(
     if sp_secret:
         command += f"--sp-secret {sp_secret} "
 
-
     result = run(command)
     assert_init_result(
         result=result,
@@ -102,7 +101,6 @@ def test_init_scenario(
     )
 
     custom_location = sorted(result["deploymentState"]["resources"])[0]
-
     for assertion in [
         assert_dataprocessor_args,
         assert_simulate_plc_args,
