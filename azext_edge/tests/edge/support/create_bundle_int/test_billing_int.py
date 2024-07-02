@@ -17,9 +17,8 @@ def test_create_bundle_billing(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS billing."""
     ops_service = OpsServiceType.billing.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
-    try:
-        walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
-    except AssertionError:
+    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
+    if not walk_result:
         pytest.skip("No billing bundle created.")
     file_map = get_file_map(walk_result, ops_service)
 

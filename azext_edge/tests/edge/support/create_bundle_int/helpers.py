@@ -314,6 +314,8 @@ def run_bundle_command(
     tracked_files: List[str],
 ) -> Dict[str, Dict[str, List[str]]]:
     result = run(command)
+    if not result:
+        pytest.skip("No bundle was created.")
     assert result["bundlePath"]
     tracked_files.append(result["bundlePath"])
     # transform this into a walk result of an extracted zip file

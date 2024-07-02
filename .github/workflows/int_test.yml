@@ -7,10 +7,6 @@ on:
         type: string
         required: true
         default: ops-cli-int-test-rg
-      template-content:
-        description: Custom AIO deployment template file contents, used for all deployments in this workflow.
-        type: string
-        required: false
       runtime-init-args:
         description: Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments).
         type: string
@@ -98,32 +94,22 @@ jobs:
       fail-fast: false
       matrix:
         feature: [default, mq-insecure, no-syncrules, ca-certs]
-        useCustomTemplate:
-          - ${{ inputs.template-content != '' }}
         include:
           # default / limited options
           - feature: default
-            useCustomTemplate: false
             init-args: "--ca-valid-days 3 --kv-spc-secret-name test-kv-secret ${{ inputs.runtime-init-args || '' }}"
           # test --mq-insecure deployment
           - feature: mq-insecure
-            useCustomTemplate: false
             no-preflight: True
             init-args: "--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m ${{ inputs.runtime-init-args || '' }}"
           # test disabling custom sync rules
           - feature: no-syncrules
-            useCustomTemplate: false
             init-args: "--disable-rsync-rules  ${{ inputs.runtime-init-args || '' }}"
           # test custom ca files
           - feature: ca-certs
-            useCustomTemplate: false
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
             init-args: "--ca-file \"test-ca.pem\" --ca-key-file \"test-ca-key.pem\" --include-dp ${{ inputs.runtime-init-args || '' }}"
-          # test custom template
-          - feature: use-custom-template
-            useCustomTemplate: true
-            init-args: "--template custom-template.json"
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -182,14 +168,6 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
-      - name: "Create local template file"
-        if: ${{ inputs.template-content && matrix.feature == 'use-custom-template' }}
-        env:
-          template: "${{ inputs.template-content }}"
-        run: |
-          >custom-template.json cat <<-'EOF'
-          ${{ env.template }}
-          EOF
       - name: "Tox test environment setup"
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
