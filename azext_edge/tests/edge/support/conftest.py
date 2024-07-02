@@ -87,7 +87,6 @@ def mocked_cluster_resources(request, mocker):
         MQ_API_V1B1,
         MQ_ACTIVE_API,
         OPCUA_API_V1,
-        DATA_PROCESSOR_API_V1,
         ORC_API_V1,
         AKRI_API_V0,
         DEVICEREGISTRY_API_V1,
@@ -135,11 +134,6 @@ def mocked_cluster_resources(request, mocker):
 
         if r == OPCUA_API_V1:
             v1_resources.append(_get_api_resource("AssetType"))
-
-        if r == DATA_PROCESSOR_API_V1:
-            v1_resources.append(_get_api_resource("Dataset"))
-            v1_resources.append(_get_api_resource("Instance"))
-            v1_resources.append(_get_api_resource("Pipeline"))
 
         if r == ORC_API_V1:
             v1_resources.append(_get_api_resource("Instance"))

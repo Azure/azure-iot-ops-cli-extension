@@ -20,7 +20,6 @@ from .common import FileType, OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
     AkriResourceKinds,
-    DataProcessorResourceKinds,
     DeviceRegistryResourceKinds,
     MqResourceKinds,
     OpcuaResourceKinds,
@@ -148,7 +147,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "ops_service",
             options_list=["--ops-service", "--svc"],
-            choices=CaseInsensitiveList(["akri", "dataprocessor", "deviceregistry", "mq", "opcua"]),
+            choices=CaseInsensitiveList(["akri", "deviceregistry", "mq", "opcua"]),
             help="The IoT Operations service deployment that will be evaluated.",
         )
         context.argument(
@@ -158,9 +157,6 @@ def load_iotops_arguments(self, _):
             choices=CaseInsensitiveList(
                 set(
                     [
-                        DataProcessorResourceKinds.DATASET.value,
-                        DataProcessorResourceKinds.PIPELINE.value,
-                        DataProcessorResourceKinds.INSTANCE.value,
                         DeviceRegistryResourceKinds.ASSET.value,
                         DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value,
                         MqResourceKinds.BROKER.value,

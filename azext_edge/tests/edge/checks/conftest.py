@@ -49,12 +49,6 @@ def mock_evaluate_cloud_connector_pod_health(mocker):
 
 
 @pytest.fixture
-def mock_evaluate_dataprocessor_pod_health(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.dataprocessor.evaluate_pod_health", return_value={})
-    yield patched
-
-
-@pytest.fixture
 def mock_evaluate_opcua_pod_health(mocker):
     patched = mocker.patch("azext_edge.edge.providers.check.opcua.get_namespaced_pods_by_prefix", return_value={})
     yield patched
@@ -103,15 +97,6 @@ def mock_resource_types(mocker, ops_service):
                 "DiagnosticService": [{}],
                 "MqttBridgeConnector": [{}],
                 "DataLakeConnector": [{}]
-            }
-        )
-    elif ops_service == "dataprocessor":
-        patched.return_value = (
-            {},
-            {
-                "Dataset": [{}],
-                "Instance": [{}],
-                "Pipeline": [{}]
             }
         )
     elif ops_service == "akri":

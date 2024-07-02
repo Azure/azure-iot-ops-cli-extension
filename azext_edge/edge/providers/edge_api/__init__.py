@@ -7,7 +7,6 @@
 from .base import EdgeResourceApi, EdgeApiManager
 from .clusterconfig import CLUSTER_CONFIG_API_V1
 from .mq import MQ_ACTIVE_API, MQ_API_V1B1, MqResourceKinds
-from .dataprocessor import DATA_PROCESSOR_API_V1, DataProcessorResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
 from .orc import ORC_API_V1, OrcResourceKinds
 from .akri import AKRI_API_V0, AkriResourceKinds
@@ -16,8 +15,6 @@ from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
 
 __all__ = [
     "CLUSTER_CONFIG_API_V1",
-    "DataProcessorResourceKinds",
-    "DATA_PROCESSOR_API_V1",
     "EdgeResourceApi",
     "EdgeApiManager",
     "MqResourceKinds",
