@@ -5,21 +5,34 @@
 # ----------------------------------------------------------------------------------------------
 
 
+import json
 from typing import Optional
 
 import pytest
-import json
 import responses
 
 from azext_edge.edge.providers.orchestration.instances import (
     BASE_URL,
     INSTANCES_API_VERSION,
     QUALIFIED_RESOURCE_TYPE,
+    Instances,
 )
 
 from ...generators import generate_random_string, get_zeroed_subscription
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
+
+
+def get_instance_endpoint(resource_group_name: Optional[str] = None, instance_name: Optional[str] = None):
+    expected_endpoint = f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}"
+    if resource_group_name:
+        expected_endpoint += f"/resourceGroups/{resource_group_name}"
+    expected_endpoint += f"/providers/{QUALIFIED_RESOURCE_TYPE}"
+    if instance_name:
+        expected_endpoint += f"/{instance_name}"
+    expected_endpoint += f"?api-version={INSTANCES_API_VERSION}"
+
+    return expected_endpoint
 
 
 def get_mock_instance_record(
@@ -57,14 +70,11 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
     mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
     mocked_responses.add(
         method=responses.GET,
-        url=f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}/"
-        f"providers/{QUALIFIED_RESOURCE_TYPE}/{instance_name}?api-version={INSTANCES_API_VERSION}",
+        url=get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name),
         json=mock_instance_record,
         status=200,
         content_type="application/json",
     )
-
-    from azext_edge.edge.providers.orchestration.instances import Instances
 
     instances = Instances(mocked_cmd)
     result = instances.show(name=instance_name, resource_group_name=resource_group_name)
@@ -91,20 +101,13 @@ def test_instance_list(mocked_cmd, mocked_responses: responses, resource_group_n
         ]
     }
 
-    expected_list_url = f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}"
-    if resource_group_name:
-        expected_list_url += f"/resourceGroups/{resource_group_name}"
-    expected_list_url += f"/providers/{QUALIFIED_RESOURCE_TYPE}?api-version={INSTANCES_API_VERSION}"
-
     mocked_responses.add(
         method=responses.GET,
-        url=expected_list_url,
+        url=get_instance_endpoint(resource_group_name=resource_group_name),
         json=mock_instance_records,
         status=200,
         content_type="application/json",
     )
-
-    from azext_edge.edge.providers.orchestration.instances import Instances
 
     instances = Instances(mocked_cmd)
     result = list(instances.list(resource_group_name=resource_group_name))
@@ -123,26 +126,23 @@ def test_instance_list(mocked_cmd, mocked_responses: responses, resource_group_n
 def test_instance_update(mocked_cmd, mocked_responses: responses, description: Optional[str], tags: Optional[dict]):
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
+    instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
 
     mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
     mocked_responses.add(
         method=responses.GET,
-        url=f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}/"
-        f"providers/{QUALIFIED_RESOURCE_TYPE}/{instance_name}?api-version={INSTANCES_API_VERSION}",
+        url=instance_endpoint,
         json=mock_instance_record,
         status=200,
         content_type="application/json",
     )
     mocked_responses.add(
         method=responses.PUT,
-        url=f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}/"
-        f"providers/{QUALIFIED_RESOURCE_TYPE}/{instance_name}?api-version={INSTANCES_API_VERSION}",
+        url=instance_endpoint,
         json=mock_instance_record,
         status=200,
         content_type="application/json",
     )
-
-    from azext_edge.edge.providers.orchestration.instances import Instances
 
     instances = Instances(mocked_cmd)
     result = instances.update(
