@@ -656,7 +656,7 @@ def assert_list_deployments(
     mock_names: List[str] = None,
 ):
     if MQ_DIRECTORY_PATH in directory_path:
-        # regardless of MQ API, MQ_ACTIVE_API.moniker is used for support/mqttbroker/fetch_diagnostic_metrics
+        # regardless of MQ API, MQ_ACTIVE_API.moniker is used for support/broker/fetch_diagnostic_metrics
         from unittest.mock import call
 
         mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_has_calls(
@@ -864,7 +864,7 @@ def assert_list_daemon_sets(
 
 
 def assert_mq_stats(mocked_zipfile):
-    assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/mqttbroker/diagnostic_metrics.txt", data="metrics")
+    assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/broker/diagnostic_metrics.txt", data="metrics")
 
 
 def assert_otel_kpis(
@@ -1041,7 +1041,7 @@ def test_create_bundle_mq_traces(
 
     assert get_trace_kwargs["namespace"] == "mock_namespace"  # TODO: Not my favorite
     assert get_trace_kwargs["trace_ids"] == ["!support_bundle!"]  # TODO: Magic string
-    test_zipinfo = ZipInfo("mock_namespace/mqttbroker/traces/trace_key")
+    test_zipinfo = ZipInfo("mock_namespace/broker/traces/trace_key")
     test_zipinfo.file_size = 0
     test_zipinfo.compress_size = 0
     assert_zipfile_write(mocked_zipfile, zinfo=test_zipinfo, data="trace_data")
