@@ -82,13 +82,11 @@ def fetch_diagnostic_traces():
 
 
 def fetch_statefulsets():
-    metrics_namespaces = []
     processed, namespaces = process_statefulset(
         directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_NAME_LABEL,
         return_namespaces=True,
     )
-    metrics_namespaces.extend(namespaces)
 
     # bridge connector stateful sets have no labels
     connectors = []
@@ -101,15 +99,13 @@ def fetch_statefulsets():
 
     for connector in connectors:
         connector_name = connector.get("metadata", {}).get("name")
-        stateful_set, connector_namespaces = process_statefulset(
+        stateful_set = process_statefulset(
             directory_path=MQ_DIRECTORY_PATH,
             field_selector=f"metadata.name={AIO_MQ_RESOURCE_PREFIX}{connector_name}",
-            return_namespaces=True,
         )
         processed.extend(stateful_set)
-        metrics_namespaces.extend(connector_namespaces)
 
-    for namespace in metrics_namespaces:
+    for namespace in namespaces:
         metrics = fetch_diagnostic_metrics(namespace)
         if metrics:
             processed.append(metrics)
