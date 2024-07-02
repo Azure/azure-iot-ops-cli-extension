@@ -174,6 +174,7 @@ def process_deployments(
 
 def process_statefulset(
     directory_path: str,
+    return_namespaces: bool = False,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
 ) -> List[dict]:
@@ -183,12 +184,24 @@ def process_statefulset(
     statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
     )
+    namespace_pods_work = {}
 
-    return _process_kubernetes_resources(
+    processed = _process_kubernetes_resources(
         directory_path=directory_path,
         resources=statefulsets,
         kind=BundleResourceKind.statefulset.value,
     )
+
+    for statefulset in statefulsets.items:
+        statefulset_namespace: str = statefulset.metadata.namespace
+
+        if statefulset_namespace not in namespace_pods_work:
+            namespace_pods_work[statefulset_namespace] = True
+
+    if return_namespaces:
+        return processed, namespace_pods_work
+
+    return processed
 
 
 def process_services(

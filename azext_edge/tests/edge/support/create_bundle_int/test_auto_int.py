@@ -64,13 +64,13 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
 
     # Check and take out mq traces:
     if mq_traces and ops_service in [OpsServiceType.auto.value, OpsServiceType.mq.value]:
-        mq_level = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, "mq", "traces"), {})
+        mq_level = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value, "traces"), {})
         if mq_level:
             assert not mq_level["folders"]
             assert_file_names(mq_level["files"])
             # make sure level 2 doesnt get messed up
-            assert walk_result[path.join(BASE_ZIP_PATH, namespace, "mq")]["folders"] == ["traces"]
-            walk_result[path.join(BASE_ZIP_PATH, namespace, "mq")]["folders"] = []
+            assert walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] == ["traces"]
+            walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] = []
 
     # Level 2 and 3 - bottom
     actual_walk_result = (len(expected_services) + int("clusterconfig" in expected_services))

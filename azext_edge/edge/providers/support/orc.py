@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 
 
 ORC_APP_LABEL = "app in (aio-orc-api, cert-manager, cainjector, webhook)"
-ORC_CONTROLLER_LABEL = "control-plane in (aio-orc-controller-manager)"
+ORC_CONTROLLER_LABEL = "control-plane in (aio-plat-controller-manager)"
 ORC_DIRECTORY_PATH = ORC_API_V1.moniker
 
 # TODO: @jiacju - this label will be used near future for consistency

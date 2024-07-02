@@ -10,7 +10,7 @@ from zipfile import ZipInfo
 
 from knack.log import get_logger
 
-from azext_edge.edge.common import AIO_MQ_OPERATOR, AIO_MQ_RESOURCE_PREFIX
+from azext_edge.edge.common import AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api.mq import MqResourceKinds
 
 from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
@@ -19,7 +19,6 @@ from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
     get_mq_namespaces,
-    process_deployments,
     process_replicasets,
     process_services,
     process_statefulset,
@@ -31,14 +30,9 @@ logger = get_logger(__name__)
 
 # TODO: @jiacju - will remove old labels once new labels are stabled
 MQ_APP_LABELS = [
-    "broker",  # aio-mq-dmqtt-frontend, aio-mq-dmqtt-backend, aio-mq-dmqtt-authentication
-    "diagnostics",  # aio-mq-diagnostics-service
-    "health-manager",  # aio-mq-dmqtt-health-manager
-    "aio-mq-operator",
     "aio-mq-mqttbridge",
     "aio-mq-datalake",
     "aio-mq-kafka-connector",
-    "aio-mq-iothub-connector",
 ]
 
 MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
@@ -87,51 +81,14 @@ def fetch_diagnostic_traces():
     return result
 
 
-def fetch_deployments():
-    processed, namespaces = process_deployments(
-        directory_path=MQ_DIRECTORY_PATH, label_selector=MQ_LABEL, return_namespaces=True
-    )
-    # aio-mq-operator deployment has no app label
-    operators, operator_namespaces = process_deployments(
-        directory_path=MQ_DIRECTORY_PATH, field_selector=f"metadata.name={AIO_MQ_OPERATOR}", return_namespaces=True
-    )
-    processed.extend(operators)
-
-    operators_v2, operator_namespaces_v2 = process_deployments(
-        directory_path=MQ_DIRECTORY_PATH, label_selector=MQ_NAME_LABEL, return_namespaces=True
-    )
-    processed.extend(operators_v2)
-
-    for namespace in {**namespaces, **operator_namespaces, **operator_namespaces_v2}:
-        metrics: dict = fetch_diagnostic_metrics(namespace)
-        if metrics:
-            processed.append(metrics)
-
-        # TODO: @digimaun - enable after support for disabling check polling UX.
-        # try:
-        #     checks = run_checks(namespace=namespace)
-        #     checks_data = {
-        #         "data": checks,
-        #         "zinfo": f"{MQ_ACTIVE_API.moniker}/{namespace}/checks.yaml",
-        #     }
-        #     processed.append(checks_data)
-        # except Exception:
-        #     logger.debug(f"Unable to run checks against namespace {namespace}.")
-
-    return processed
-
-
 def fetch_statefulsets():
-    processed = process_statefulset(
+    metrics_namespaces = []
+    processed, namespaces = process_statefulset(
         directory_path=MQ_DIRECTORY_PATH,
-        label_selector=MQ_LABEL,
+        label_selector=MQ_NAME_LABEL,
+        return_namespaces=True,
     )
-    processed.extend(
-        process_statefulset(
-            directory_path=MQ_DIRECTORY_PATH,
-            label_selector=MQ_NAME_LABEL,
-        )
-    )
+    metrics_namespaces.extend(namespaces)
 
     # bridge connector stateful sets have no labels
     connectors = []
@@ -144,11 +101,18 @@ def fetch_statefulsets():
 
     for connector in connectors:
         connector_name = connector.get("metadata", {}).get("name")
-        stateful_set = process_statefulset(
+        stateful_set, connector_namespaces = process_statefulset(
             directory_path=MQ_DIRECTORY_PATH,
             field_selector=f"metadata.name={AIO_MQ_RESOURCE_PREFIX}{connector_name}",
+            return_namespaces=True,
         )
         processed.extend(stateful_set)
+        metrics_namespaces.extend(connector_namespaces)
+
+    for namespace in metrics_namespaces:
+        metrics = fetch_diagnostic_metrics(namespace)
+        if metrics:
+            processed.append(metrics)
 
     return processed
 
@@ -204,7 +168,6 @@ support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
-    "deployments": fetch_deployments,
 }
 
 

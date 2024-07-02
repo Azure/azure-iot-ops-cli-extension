@@ -57,7 +57,7 @@ from ...generators import generate_random_string
         ],
     ],
 )
-@pytest.mark.parametrize("ops_service", ["mq"])
+@pytest.mark.parametrize("ops_service", ["mqttbroker"])
 def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
         MqResourceKinds.BROKER.value: "azext_edge.edge.providers.check.mq.evaluate_brokers",
