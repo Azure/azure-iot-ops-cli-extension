@@ -99,30 +99,30 @@ jobs:
       matrix:
         feature: [default, mq-insecure, no-syncrules, ca-certs]
         useCustomTemplate:
-          - ${{ inputs.template-content }}
+          - ${{ inputs.template-content != '' }}
         include:
           # default / limited options
           - feature: default
-            useCustomTemplate: ''
+            useCustomTemplate: false
             init-args: "--ca-valid-days 3 --kv-spc-secret-name test-kv-secret ${{ inputs.runtime-init-args || '' }}"
           # test --mq-insecure deployment
           - feature: mq-insecure
-            useCustomTemplate: ''
+            useCustomTemplate: false
             no-preflight: True
             init-args: "--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m ${{ inputs.runtime-init-args || '' }}"
           # test disabling custom sync rules
           - feature: no-syncrules
-            useCustomTemplate: ''
+            useCustomTemplate: false
             init-args: "--disable-rsync-rules  ${{ inputs.runtime-init-args || '' }}"
           # test custom ca files
           - feature: ca-certs
-            useCustomTemplate: ''
+            useCustomTemplate: false
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
             init-args: "--ca-file \"test-ca.pem\" --ca-key-file \"test-ca-key.pem\" --include-dp ${{ inputs.runtime-init-args || '' }}"
           # test custom template
           - feature: use-custom-template
-            useCustomTemplate: ${{ inputs.template-content }}
+            useCustomTemplate: true
             init-args: "--template custom-template.json"
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
