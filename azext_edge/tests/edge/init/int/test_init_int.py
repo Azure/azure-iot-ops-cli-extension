@@ -52,7 +52,7 @@ def init_test_setup(cluster_connection, settings):
 def test_init_scenario(
     init_test_setup, tracked_files
 ):
-    run("pwd")
+    print(run("pwd"))
     additional_args = init_test_setup["additionalArgs"]
     arg_dict = {}
     for arg in additional_args.split("--")[1:]:
