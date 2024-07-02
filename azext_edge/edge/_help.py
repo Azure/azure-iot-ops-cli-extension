@@ -292,6 +292,22 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops update"
+    ] = """
+        type: command
+        short-summary: Update an IoT Operations instance.
+        long-summary: Currently instance tags and description can be updated.
+
+        examples:
+        - name: Update instance tags.
+          text: >
+            az iot ops update --tags a=b c=d
+        - name: Update the instance description.
+          text: >
+            az iot ops update --desc "Fabrikam Widget Factory B42"
+    """
+
+    helps[
         "iot ops asset"
     ] = """
         type: group
