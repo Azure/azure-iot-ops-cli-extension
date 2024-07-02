@@ -597,7 +597,7 @@ def test_create_bundle(
 
 def asset_raises_not_found_error(mocked_cluster_resources):
     for api, moniker in [
-        (MQTT_BROKER_API_V1B1, "mqttbroker"),
+        (MQTT_BROKER_API_V1B1, "broker"),
         (OPCUA_API_V1, "opcua"),
         (DATA_PROCESSOR_API_V1, "dataprocessor"),
         (ORC_API_V1, "orc"),
@@ -980,7 +980,7 @@ def test_mq_list_stateful_sets(
     # mock MQ support bundle to return connectors
     mocked_mq_support_active_api = mocker.patch("azext_edge.edge.providers.support.mq.MQ_ACTIVE_API")
     mocked_mq_support_active_api.get_resources.return_value = custom_objects
-    result = support_bundle(None, bundle_dir=a_bundle_dir, ops_service="mqttbroker")
+    result = support_bundle(None, bundle_dir=a_bundle_dir, ops_service="broker")
     assert result
 
     # assert initial call to list stateful sets

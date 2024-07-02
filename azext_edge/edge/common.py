@@ -140,7 +140,7 @@ class OpsServiceType(ListableEnum):
     """
 
     auto = "auto"
-    mq = "mqttbroker"
+    mq = "broker"
     opcua = "opcua"
     dataprocessor = "dataprocessor"
     orc = "orc"

@@ -137,7 +137,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "ops_service",
             options_list=["--ops-service", "--svc"],
-            choices=CaseInsensitiveList(["akri", "dataprocessor", "deviceregistry", "mqttbroker", "opcua"]),
+            choices=CaseInsensitiveList(["akri", "dataprocessor", "deviceregistry", "broker", "opcua"]),
             help="The IoT Operations service deployment that will be evaluated.",
         )
         context.argument(
