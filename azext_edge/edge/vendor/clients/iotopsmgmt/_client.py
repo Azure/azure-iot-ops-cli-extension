@@ -19,6 +19,9 @@ from .operations import (
     BrokerAuthorizationOperations,
     BrokerListenerOperations,
     BrokerOperations,
+    DataFlowEndpointOperations,
+    DataFlowOperations,
+    DataFlowProfileOperations,
     InstanceOperations,
     Operations,
 )
@@ -28,7 +31,7 @@ if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
 
 
-class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts-api-version-keyword
+class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts-api-version-keyword,too-many-instance-attributes
     """Microsoft.IoTOperations Resource Provider management API.
 
     :ivar operations: Operations operations
@@ -43,13 +46,19 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
     :vartype broker_authorization: aziotops.mgmt.operations.BrokerAuthorizationOperations
     :ivar broker_listener: BrokerListenerOperations operations
     :vartype broker_listener: aziotops.mgmt.operations.BrokerListenerOperations
+    :ivar data_flow_endpoint: DataFlowEndpointOperations operations
+    :vartype data_flow_endpoint: aziotops.mgmt.operations.DataFlowEndpointOperations
+    :ivar data_flow_profile: DataFlowProfileOperations operations
+    :vartype data_flow_profile: aziotops.mgmt.operations.DataFlowProfileOperations
+    :ivar data_flow: DataFlowOperations operations
+    :vartype data_flow: aziotops.mgmt.operations.DataFlowOperations
     :param subscription_id: The ID of the target subscription. The value must be an UUID. Required.
     :type subscription_id: str
     :param credential: Credential needed for the client to connect to Azure. Required.
     :type credential: ~azure.core.credentials.TokenCredential
     :keyword endpoint: Service URL. Default value is "https://management.azure.com".
     :paramtype endpoint: str
-    :keyword api_version: Api Version. Default value is "2024-06-01-preview". Note that overriding
+    :keyword api_version: Api Version. Default value is "2024-07-01-preview". Note that overriding
      this default value may result in unsupported behavior.
     :paramtype api_version: str
     :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
@@ -82,6 +91,13 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
             self._client, self._config, self._serialize, self._deserialize
         )
         self.broker_listener = BrokerListenerOperations(self._client, self._config, self._serialize, self._deserialize)
+        self.data_flow_endpoint = DataFlowEndpointOperations(
+            self._client, self._config, self._serialize, self._deserialize
+        )
+        self.data_flow_profile = DataFlowProfileOperations(
+            self._client, self._config, self._serialize, self._deserialize
+        )
+        self.data_flow = DataFlowOperations(self._client, self._config, self._serialize, self._deserialize)
 
     def send_request(self, request: HttpRequest, **kwargs: Any) -> HttpResponse:
         """Runs the network request through the client's chained policies.

@@ -7,6 +7,7 @@
 import pytest
 import os
 import sys
+import responses
 
 
 # Sets current working directory to the directory of the executing file
@@ -66,3 +67,9 @@ def tracked_files():
     yield result
     for file in result:
         remove_file_or_folder(file)
+
+
+@pytest.fixture
+def mocked_responses():
+    with responses.RequestsMock() as rsps:
+        yield rsps
