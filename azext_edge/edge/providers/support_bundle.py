@@ -46,6 +46,7 @@ def build_bundle(
     from rich.progress import Progress
     from rich.table import Table
 
+    from .support.billing import prepare_bundle as prepare_billing_bundle
     from .support.dataprocessor import prepare_bundle as prepare_dataprocessor_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
@@ -59,9 +60,8 @@ def build_bundle(
     pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
-        # TODO: re-enable billing once service is available post 0.6.0 release
-        # OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
         OpsServiceType.mq.value: {"apis": COMPAT_MQTT_BROKER_APIS, "prepare_bundle": prepare_mq_bundle},
+        OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,

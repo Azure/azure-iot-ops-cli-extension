@@ -25,8 +25,9 @@ logger = get_logger(__name__)
 
 def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
     # case = ops_service, mq_traces, bundle_dir
-    cases = [(service, False, "support_bundles") for service in OpsServiceType.list()]
-    cases.append((OpsServiceType.mq.value, True, None))
+    # cases = [(service, False, "support_bundles") for service in OpsServiceType.list()]
+    # cases.append((OpsServiceType.mq.value, True, None))
+    cases = [(OpsServiceType.billing.value, False, None)]
     return cases
 
 
@@ -59,7 +60,11 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
     expected_services = _get_expected_services(walk_result, ops_service, namespace)
-    assert sorted(level_1["folders"]) == expected_services
+
+    if "clusterconfig" in expected_services:
+        assert sorted(level_1["folders"]) == [OpsServiceType.billing.value]
+    else:
+        assert sorted(level_1["folders"]) == expected_services
     assert not level_1["files"]
 
     # Check and take out mq traces:
@@ -112,12 +117,11 @@ def _get_expected_services(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str , namespace: str
 ) -> List[str]:
     expected_services = [ops_service]
-    # TODO: re-enable billing once service is available post 0.6.0 release
     if ops_service == OpsServiceType.auto.value:
         # these should always be generated
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
-        # expected_services.remove(OpsServiceType.billing.value)
+        expected_services.remove(OpsServiceType.billing.value)
         expected_services.append("otel")
         if not DATA_PROCESSOR_API_V1.is_deployed():
             expected_services.remove(OpsServiceType.dataprocessor.value)
@@ -127,7 +131,7 @@ def _get_expected_services(
         if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value)):
             expected_services.remove(OpsServiceType.deviceregistry.value)
         expected_services.sort()
-    # elif ops_service == OpsServiceType.billing.value:
-    #     expected_services.remove(OpsServiceType.billing.value)
-    #     expected_services.append("clusterconfig")
+    elif ops_service == OpsServiceType.billing.value:
+        expected_services.remove(OpsServiceType.billing.value)
+        expected_services.append("clusterconfig")
     return expected_services

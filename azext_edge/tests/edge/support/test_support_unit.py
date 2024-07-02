@@ -86,8 +86,7 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
-        # TODO: re-enable billing once service is available post 0.6.0 release
-        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
     ],
     indirect=True,
 )
@@ -160,6 +159,14 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
+                label_selector=AIO_BILLING_USAGE_NAME_LABEL,
+                directory_path=BILLING_RESOURCE_KIND,
+                since_seconds=since_seconds,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
                 label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
                 directory_path=ARC_BILLING_DIRECTORY_PATH,
                 since_seconds=since_seconds,
@@ -168,7 +175,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AIO_BILLING_USAGE_NAME_LABEL,
-                directory_path=ARC_BILLING_DIRECTORY_PATH,
+                directory_path=BILLING_RESOURCE_KIND,
             )
             assert_list_deployments(
                 mocked_client,
@@ -180,7 +187,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AIO_BILLING_USAGE_NAME_LABEL,
-                directory_path=ARC_BILLING_DIRECTORY_PATH,
+                directory_path=BILLING_RESOURCE_KIND,
             )
             assert_list_replica_sets(
                 mocked_client,
