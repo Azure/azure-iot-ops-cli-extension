@@ -127,17 +127,6 @@ def get_kubectl_workload_items(
     )
 
 
-def parse_rest_command(rest_command: str) -> Dict[str, str]:
-    """Simple az rest command parsing."""
-    assert rest_command.startswith("rest")
-    rest_list = rest_command.split("--")[1:]
-    result = {}
-    for rest_input in rest_list:
-        key, value = rest_input.split(maxsplit=1)
-        result[key] = value.strip()
-    return result
-
-
 def remove_file_or_folder(file_path):
     if os.path.isfile(file_path):
         try:
@@ -165,6 +154,8 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
     if expect_failure and result.returncode == 0:
         raise CLIInternalError(f"Command `{command}` did not fail as expected.")
     elif not expect_failure and result.returncode != 0:
+        # logger since pytest can cut off long commands
+        logger.error(f"Command `{command}` failed.")
         raise CLIInternalError(result.stderr)
 
     if result.stdout:

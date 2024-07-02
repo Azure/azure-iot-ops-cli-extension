@@ -15,8 +15,12 @@ class EnvironmentVariables(Enum):
     cluster = "azext_edge_cluster"
     context_name = "azext_edge_context_name"
     kv = "azext_edge_kv"
-    skip_init = "azext_edge_skip_init"
+    sp_app_id = "azext_edge_sp_app_id"
+    sp_object_id = "azext_edge_sp_object_id"
+    sp_secret = "azext_edge_sp_secret"
+    init_args = "azext_edge_init_args"
     skip_cluster_check = "azext_edge_skip_cluster_check"
+    aio_cleanup = "azext_edge_aio_cleanup"
 
 
 class Setting(object):
@@ -60,3 +64,6 @@ class DynamoSettings(object):
                     raise RuntimeError(
                         "{} environment variables required.".format(",".join(env_set))
                     )
+
+    def __repr__(self):
+        return " \n".join([f"{key}: {value}" for key, value in vars(self.env).items()])
