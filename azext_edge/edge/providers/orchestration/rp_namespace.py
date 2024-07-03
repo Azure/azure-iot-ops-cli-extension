@@ -17,7 +17,6 @@ RP_NAMESPACE_SET = frozenset(
     [
         "Microsoft.IoTOperationsOrchestrator",
         "Microsoft.IoTOperationsMQ",
-        "Microsoft.IoTOperationsDataProcessor",
         "Microsoft.DeviceRegistry",
     ]
 )

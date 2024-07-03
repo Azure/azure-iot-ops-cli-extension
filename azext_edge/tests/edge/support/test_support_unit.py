@@ -18,7 +18,6 @@ from azext_edge.edge.common import AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api import (
     AKRI_API_V0,
     CLUSTER_CONFIG_API_V1,
-    DATA_PROCESSOR_API_V1,
     DEVICEREGISTRY_API_V1,
     MQ_ACTIVE_API,
     MQTT_BROKER_API_V1B1,
@@ -43,15 +42,6 @@ from azext_edge.edge.providers.support.billing import (
     ARC_BILLING_DIRECTORY_PATH,
     BILLING_RESOURCE_KIND,
 )
-from azext_edge.edge.providers.support.dataprocessor import (
-    DATA_PROCESSOR_DIRECTORY_PATH,
-    DATA_PROCESSOR_INSTANCE_LABEL,
-    DATA_PROCESSOR_LABEL,
-    DATA_PROCESSOR_NAME_LABEL,
-    DATA_PROCESSOR_NAME_LABEL_V2,
-    DATA_PROCESSOR_ONEOFF_LABEL,
-    DATA_PROCESSOR_PVC_APP_LABEL,
-)
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
@@ -70,7 +60,6 @@ from azext_edge.edge.providers.support.shared import COMPONENT_LABEL_FORMAT, NAM
 from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
 
 from ...generators import generate_random_string
-from .conftest import add_pod_to_mocked_pods
 
 a_bundle_dir = f"support_test_{generate_random_string()}"
 
@@ -82,13 +71,11 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQTT_BROKER_API_V1B1],
         [MQTT_BROKER_API_V1B1, MQ_ACTIVE_API],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1],
-        [MQTT_BROKER_API_V1B1, DATA_PROCESSOR_API_V1],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, AKRI_API_V0],
         # TODO: re-enable billing once service is available post 0.6.0 release
-        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
+        # [MQ_API_V1B1, OPCUA_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
     ],
     indirect=True,
 )
@@ -124,14 +111,6 @@ def test_create_bundle(
         mocked_root_logger.warning.assert_called_once_with("No known IoT Operations services discovered on cluster.")
         assert auto_result_no_resources is None
         return
-
-    if DATA_PROCESSOR_API_V1 in mocked_cluster_resources["param"]:
-        add_pod_to_mocked_pods(
-            mocked_client=mocked_client,
-            expected_pod_map=mocked_list_pods,
-            mock_names=["aio-runner"],
-            mock_init_containers=True,
-        )
 
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(None, bundle_dir=a_bundle_dir, log_age_seconds=since_seconds)
@@ -346,117 +325,6 @@ def test_create_bundle(
                 directory_path=OPC_DIRECTORY_PATH,
             )
 
-        if api in [DATA_PROCESSOR_API_V1]:
-
-            # Assert runtime resources
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_LABEL,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=DATA_PROCESSOR_LABEL,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-                pod_prefix_for_init_container_logs=["aio-"],
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-                pod_prefix_for_init_container_logs=["aio-"],
-            )
-
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_LABEL,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH
-            )
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-
-            assert_list_stateful_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_LABEL,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-            assert_list_stateful_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_LABEL,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_NAME_LABEL,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-
-            assert_list_persistent_volume_claims(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_INSTANCE_LABEL,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-            assert_list_persistent_volume_claims(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_PVC_APP_LABEL,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-            assert_list_persistent_volume_claims(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_NAME_LABEL,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-            assert_list_persistent_volume_claims(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_ONEOFF_LABEL,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-            assert_list_persistent_volume_claims(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATA_PROCESSOR_NAME_LABEL_V2,
-                directory_path=DATA_PROCESSOR_DIRECTORY_PATH,
-            )
-
         if api in [ORC_API_V1]:
             for orc_label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
                 assert_list_pods(
@@ -600,7 +468,6 @@ def asset_raises_not_found_error(mocked_cluster_resources):
     for api, moniker in [
         (MQTT_BROKER_API_V1B1, "broker"),
         (OPCUA_API_V1, "opcua"),
-        (DATA_PROCESSOR_API_V1, "dataprocessor"),
         (ORC_API_V1, "orc"),
         (DEVICEREGISTRY_API_V1, "deviceregistry"),
         (AKRI_API_V0, "akri"),

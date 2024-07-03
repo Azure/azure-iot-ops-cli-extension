@@ -20,7 +20,6 @@ from .common import FileType, OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
     AkriResourceKinds,
-    DataProcessorResourceKinds,
     DeviceRegistryResourceKinds,
     MqResourceKinds,
     OpcuaResourceKinds,
@@ -165,9 +164,6 @@ def load_iotops_arguments(self, _):
             choices=CaseInsensitiveList(
                 set(
                     [
-                        DataProcessorResourceKinds.DATASET.value,
-                        DataProcessorResourceKinds.PIPELINE.value,
-                        DataProcessorResourceKinds.INSTANCE.value,
                         DeviceRegistryResourceKinds.ASSET.value,
                         DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value,
                         MqResourceKinds.BROKER.value,
