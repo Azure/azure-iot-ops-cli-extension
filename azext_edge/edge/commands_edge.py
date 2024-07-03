@@ -57,7 +57,7 @@ def check(
     post_deployment_checks: Optional[bool] = None,
     as_object=None,
     context_name=None,
-    ops_service: str = "mq",
+    ops_service: str = OpsServiceType.mq.value,
     resource_kinds: List[str] = None,
     resource_name: str = None,
 ) -> Union[Dict[str, Any], None]:
