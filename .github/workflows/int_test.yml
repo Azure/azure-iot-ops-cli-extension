@@ -76,7 +76,6 @@ jobs:
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     - name: "Create Key Vault for clusters"
-      id: create-keyvault
       run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false
 
 
@@ -108,7 +107,7 @@ jobs:
           # test --mq-insecure deployment
           - feature: mq-insecure
             no-preflight: true
-            runtime-args: true
+            runtime-args: false
             init-args: "--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m"
           # test disabling custom sync rules
           - feature: no-syncrules
@@ -120,6 +119,8 @@ jobs:
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
             init-args: "--ca-file \"test-ca.pem\" --ca-key-file \"test-ca-key.pem\" --include-dp"
+        exclude:
+          - runtime-args: false
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -178,11 +179,16 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
-      - name: "Tox test environment setup"
+      - name: "Tox test environment setup for init"
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           python -m pip install tox
           tox r -vv -e python-init-int --notest
+      - name: "Tox test environment setup for integration tests"
+        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          tox r -vv -e python-int --notest
       - name: "Create CA certificates"
         if: ${{ matrix.feature == 'ca-certs' }}
         run: |
@@ -270,7 +276,7 @@ jobs:
           set +e
           docker run \
             --rm \
-            "${ envVars[@]}" \
+            "${envVars[@]}" \
             -v "$kubeconfig:$kubeconfig_mount:ro" \
             -v "${azure_dir}:/root/.azure" \
             -v "${tempLog}:/usr/src/azure-iot-ops/junit" \

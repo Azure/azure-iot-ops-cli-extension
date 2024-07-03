@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from typing import Dict, Union
 import pytest
 from os import mkdir
 
@@ -52,15 +53,7 @@ def test_init_scenario(
     init_test_setup, tracked_files
 ):
     additional_args = init_test_setup["additionalArgs"]
-    arg_dict = {}
-    for arg in additional_args.split("--")[1:]:
-        arg = arg.strip().split(" ", maxsplit=1)
-        # --simualte-plc vs --dp-instance dp-name
-        arg[0] = arg[0].replace("-", "_")
-        if len(arg) == 1:
-            arg_dict[arg[0]] = True
-        else:
-            arg_dict[arg[0]] = arg[1]
+    arg_dict = _process_additional_args(additional_args)
 
     if "ca_dir" in arg_dict:
         try:
@@ -113,3 +106,18 @@ def test_init_scenario(
             init_resources=result["deploymentState"]["resources"],
             **arg_dict
         )
+
+
+def _process_additional_args(additional_args: str) -> Dict[str, Union[str, bool]]:
+    arg_dict = {}
+    for arg in additional_args.split("--")[1:]:
+        arg = arg.strip().split(" ", maxsplit=1)
+        # --simualte-plc vs --dp-instance dp-name
+        arg[0] = arg[0].replace("-", "_")
+        if len(arg) == 1 or arg[1].lower() == "true":
+            arg_dict[arg[0]] = True
+        elif arg[1].lower() == "false":
+            arg_dict[arg[0]] = False
+        else:
+            arg_dict[arg[0]] = arg[1]
+    return arg_dict
