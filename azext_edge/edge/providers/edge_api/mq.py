@@ -21,12 +21,13 @@ class MqResourceKinds(ListableEnum):
     DATALAKE_CONNECTOR_TOPIC_MAP = "datalakeconnectortopicmap"
     KAFKA_CONNECTOR = "kafkaconnector"
     KAFKA_CONNECTOR_TOPIC_MAP = "kafkaconnectortopicmap"
-    IOT_HUB_CONNECTOR = "iothubconnector"
-    IOT_HUB_CONNECTOR_ROUTE_MAP = "iothubconnectorroutesmap"
 
 
-MQ_API_V1B1 = EdgeResourceApi(
-    group="mq.iotoperations.azure.com", version="v1beta1", moniker="mq", label="microsoft-iotoperations-mq"
+MQTT_BROKER_API_V1B1 = EdgeResourceApi(
+    group="mqttbroker.iotoperations.azure.com",
+    version="v1beta1",
+    moniker="broker",
+    label="microsoft-iotoperations-mq",
 )
 
-MQ_ACTIVE_API = MQ_API_V1B1
+MQ_ACTIVE_API = MQTT_BROKER_API_V1B1
