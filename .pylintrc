@@ -14,7 +14,7 @@ ignore=CVS
 ignore-patterns=
 
 # Match against paths supporting python regex.
-ignore-paths=^azext_edge/sdk/.*$
+ignore-paths=^azext_edge/edge/vendor/.*$
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
