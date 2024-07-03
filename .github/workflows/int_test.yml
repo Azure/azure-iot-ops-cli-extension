@@ -95,6 +95,8 @@ jobs:
       matrix:
         runtime-args:
           - ${{ inputs.runtime-init-args != '' }}
+        exclude:
+          - runtime-args: ${{ inputs.runtime-init-args != '' }}
         include:
           # no inputs aside from custom
           - feature: custom-inputs
@@ -119,9 +121,6 @@ jobs:
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
             init-args: "--ca-file \"test-ca.pem\" --ca-key-file \"test-ca-key.pem\" --include-dp"
-        exclude:
-          - runtime-args: false
-          - runtime-args: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
