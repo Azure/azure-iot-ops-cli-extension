@@ -153,7 +153,6 @@ class OpsServiceType(ListableEnum):
         return [
             cls.mq.value,
             cls.opcua.value,
-            cls.dataprocessor.value,
             cls.akri.value,
             cls.deviceregistry.value,
         ]
