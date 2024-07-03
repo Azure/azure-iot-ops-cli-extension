@@ -12,11 +12,9 @@ from rich.console import Console
 from ..common import ListableEnum, OpsServiceType
 from .check.base import check_pre_deployment, display_as_list
 from .check.common import COLOR_STR_FORMAT, ResourceOutputDetailLevel
-from .check.dataprocessor import check_dataprocessor_deployment
 from .check.deviceregistry import check_deviceregistry_deployment
 from .check.mq import check_mq_deployment
 from .check.opcua import check_opcua_deployment
-from .edge_api.dataprocessor import DataProcessorResourceKinds
 from .edge_api.deviceregistry import DeviceRegistryResourceKinds
 from .edge_api.mq import MqResourceKinds
 from .check.akri import check_akri_deployment
@@ -61,7 +59,6 @@ def run_checks(
             service_check_dict = {
                 OpsServiceType.akri.value: check_akri_deployment,
                 OpsServiceType.mq.value: check_mq_deployment,
-                OpsServiceType.dataprocessor.value: check_dataprocessor_deployment,
                 OpsServiceType.deviceregistry.value: check_deviceregistry_deployment,
                 OpsServiceType.opcua.value: check_opcua_deployment,
             }
@@ -81,7 +78,6 @@ def run_checks(
 def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: List[str]) -> None:
     service_kinds_dict: Dict[str, ListableEnum] = {
         OpsServiceType.akri.value: AkriResourceKinds,
-        OpsServiceType.dataprocessor.value: DataProcessorResourceKinds,
         OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
         OpsServiceType.opcua.value: OpcuaResourceKinds,
