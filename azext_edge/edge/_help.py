@@ -71,11 +71,11 @@ def load_iotops_help():
 
         - name: Specify a custom container log age in seconds.
           text: >
-            az iot ops support create-bundle --ops-service mq --log-age 172800
+            az iot ops support create-bundle --ops-service broker --log-age 172800
 
-        - name: Include mq traces in the support bundle. This is an alias for stats trace fetch capability.
+        - name: Include broker traces in the support bundle. This is an alias for stats trace fetch capability.
           text: >
-            az iot ops support create-bundle --ops-service mq --mq-traces
+            az iot ops support create-bundle --ops-service broker --broker-traces
     """
 
     helps[
@@ -95,11 +95,11 @@ def load_iotops_help():
             - {COMPAT_OPCUA_APIS.as_str()}
 
         examples:
-        - name: Basic usage. Checks `mq` health with summary output.
+        - name: Basic usage. Checks `broker` health with summary output.
           text: >
             az iot ops check
 
-        - name: Evaluates `mq` like prior example, however output is optimized for CI.
+        - name: Evaluates `broker` like prior example, however output is optimized for CI.
           text: >
             az iot ops check --as-object
 
@@ -184,8 +184,6 @@ def load_iotops_help():
         long-summary: |
                       For additional resources including how to Arc-enable a cluster see
                       https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
-
-                      Note: Data Processor is not deployed by default. Use --include-dp to add it.
 
         examples:
         - name: Minimum input for complete setup. This includes Key Vault configuration, CSI driver deployment, TLS config and deployment of IoT Operations.
