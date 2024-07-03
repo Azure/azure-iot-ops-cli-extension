@@ -125,7 +125,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "include_arc_agents",
-            options_list=["--arc"],
+            options_list=["--arc-agents"],
             arg_type=get_three_state_flag(),
             help="Include ARC agents resources in the support bundle. "
             "Usage may add considerable size to the produced bundle.",
