@@ -142,7 +142,6 @@ class OpsServiceType(ListableEnum):
     auto = "auto"
     mq = "broker"
     opcua = "opcua"
-    dataprocessor = "dataprocessor"
     orc = "orc"
     akri = "akri"
     deviceregistry = "deviceregistry"
@@ -153,7 +152,6 @@ class OpsServiceType(ListableEnum):
         return [
             cls.mq.value,
             cls.opcua.value,
-            cls.dataprocessor.value,
             cls.akri.value,
             cls.deviceregistry.value,
         ]

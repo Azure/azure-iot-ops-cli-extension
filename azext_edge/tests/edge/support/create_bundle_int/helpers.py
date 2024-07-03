@@ -10,7 +10,6 @@ from os import path
 from zipfile import ZipFile
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
-from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import (
     PLURAL_KEY,
@@ -202,10 +201,6 @@ def get_file_map(
     # Remove all files that will not be checked
     namespace, c_namespace = process_top_levels(walk_result, ops_service)
     walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
-
-    # Level 2 and 3 - bottom
-    if ops_service == OpsServiceType.dataprocessor.value and not walk_result:
-        return
 
     ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
     # separate namespaces
