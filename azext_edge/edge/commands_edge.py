@@ -101,7 +101,6 @@ def init(
     resource_group_name: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     keyvault_spc_secret_name: str = DEFAULT_NAMESPACE,
-    custom_location_namespace: Optional[str] = None,
     custom_location_name: Optional[str] = None,
     location: Optional[str] = None,
     show_template: Optional[bool] = None,
@@ -184,9 +183,6 @@ def init(
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
 
-    if not custom_location_namespace:
-        custom_location_namespace = cluster_namespace
-
     if not dp_instance_name:
         dp_instance_name = f"{cluster_name_lowered}-ops-init-processor"
         dp_instance_name = dp_instance_name.replace("_", "-")
@@ -217,7 +213,6 @@ def init(
         cluster_namespace=cluster_namespace,
         cluster_location=None,  # Effectively always fetch connected cluster location
         custom_location_name=custom_location_name,
-        custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
         location=location,
         show_template=show_template,
@@ -292,3 +287,11 @@ def show_instance(cmd, instance_name: str, resource_group_name: str, show_tree: 
 
 def list_instances(cmd, resource_group_name: Optional[str] = None) -> List[dict]:
     return Instances(cmd).list(resource_group_name)
+
+
+def update_instance(
+    cmd, instance_name: str, resource_group_name: str, tags: Optional[str] = None, description: Optional[str] = None
+) -> dict:
+    return Instances(cmd).update(
+        name=instance_name, resource_group_name=resource_group_name, tags=tags, description=description
+    )

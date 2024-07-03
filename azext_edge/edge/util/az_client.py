@@ -72,11 +72,11 @@ def get_token_from_sp_credential(tenant_id: str, client_id: str, client_secret: 
     return client_secret_cred.get_token(scope).token
 
 
-def wait_for_terminal_state(poller: "LROPoller") -> "GenericResource":
+def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC) -> "GenericResource":
     # resource client does not handle sigint well
     counter = 0
     while counter < POLL_RETRIES:
-        sleep(POLL_WAIT_SEC)
+        sleep(wait_sec)
         counter = counter + 1
         if poller.done():
             break
