@@ -14,15 +14,14 @@ import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
 from azext_edge.edge.commands_edge import support_bundle
-from azext_edge.edge.common import AIO_MQ_OPERATOR, AIO_MQ_RESOURCE_PREFIX
+from azext_edge.edge.common import AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api import (
     AKRI_API_V0,
     CLUSTER_CONFIG_API_V1,
     DATA_PROCESSOR_API_V1,
     DEVICEREGISTRY_API_V1,
-    LNM_API_V1B1,
     MQ_ACTIVE_API,
-    MQ_API_V1B1,
+    MQTT_BROKER_API_V1B1,
     OPCUA_API_V1,
     ORC_API_V1,
     EdgeResourceApi,
@@ -53,7 +52,6 @@ from azext_edge.edge.providers.support.dataprocessor import (
     DATA_PROCESSOR_ONEOFF_LABEL,
     DATA_PROCESSOR_PVC_APP_LABEL,
 )
-from azext_edge.edge.providers.support.lnm import LNM_APP_LABELS, LNM_DIRECTORY_PATH
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
@@ -69,7 +67,7 @@ from azext_edge.edge.providers.support.orc import (
 )
 from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
 from azext_edge.edge.providers.support.shared import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT
-from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
+from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
 
 from ...generators import generate_random_string
 from .conftest import add_pod_to_mocked_pods
@@ -81,16 +79,16 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
     "mocked_cluster_resources",
     [
         [],
-        [MQ_API_V1B1],
-        [MQ_API_V1B1, MQ_ACTIVE_API],
-        [MQ_API_V1B1, OPCUA_API_V1],
-        [MQ_API_V1B1, DATA_PROCESSOR_API_V1],
-        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
-        [MQ_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
-        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
-        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1],
-        [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, LNM_API_V1B1, CLUSTER_CONFIG_API_V1],
+        [MQTT_BROKER_API_V1B1],
+        [MQTT_BROKER_API_V1B1, MQ_ACTIVE_API],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1],
+        [MQTT_BROKER_API_V1B1, DATA_PROCESSOR_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, AKRI_API_V0],
+        # TODO: re-enable billing once service is available post 0.6.0 release
+        # [MQ_API_V1B1, OPCUA_API_V1, DATA_PROCESSOR_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
     ],
     indirect=True,
 )
@@ -198,15 +196,8 @@ def test_create_bundle(
                 directory_path=ARC_BILLING_DIRECTORY_PATH,
             )
 
-        if api in COMPAT_MQ_APIS.resource_apis:
+        if api in COMPAT_MQTT_BROKER_APIS.resource_apis:
             # Assert runtime resources
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=MQ_LABEL,
-                directory_path=MQ_DIRECTORY_PATH,
-                field_selector=f"metadata.name={AIO_MQ_OPERATOR}",
-            )
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
@@ -231,13 +222,6 @@ def test_create_bundle(
             )
             assert_list_replica_sets(
                 mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, directory_path=MQ_DIRECTORY_PATH
-            )
-            assert_list_stateful_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=MQ_LABEL,
-                field_selector=None,
-                directory_path=MQ_DIRECTORY_PATH
             )
             assert_list_stateful_sets(
                 mocked_client,
@@ -605,47 +589,6 @@ def test_create_bundle(
                 directory_path=AKRI_DIRECTORY_PATH,
             )
 
-        if api in [LNM_API_V1B1]:
-            lnm_app_label = f"app in ({','.join(LNM_APP_LABELS)})"
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=lnm_app_label,
-                directory_path=LNM_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=None,
-                directory_path=LNM_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-                mock_names=["svclb-aio-lnm-operator"],
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=None,
-                directory_path=LNM_DIRECTORY_PATH,
-                mock_names=["aio-lnm-operator"],
-            )
-            assert_list_replica_sets(
-                mocked_client, mocked_zipfile, label_selector=lnm_app_label, directory_path=LNM_DIRECTORY_PATH
-            )
-            assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=lnm_app_label, directory_path=LNM_DIRECTORY_PATH
-            )
-            # TODO: test both without or with lnm instance
-            assert_list_daemon_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=None,
-                directory_path=LNM_DIRECTORY_PATH,
-                mock_names=["svclb-aio-lnm-operator"],
-            )
-
     if expected_resources:
         assert_otel_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
 
@@ -655,11 +598,10 @@ def test_create_bundle(
 
 def asset_raises_not_found_error(mocked_cluster_resources):
     for api, moniker in [
-        (MQ_API_V1B1, "mq"),
+        (MQTT_BROKER_API_V1B1, "broker"),
         (OPCUA_API_V1, "opcua"),
         (DATA_PROCESSOR_API_V1, "dataprocessor"),
         (ORC_API_V1, "orc"),
-        (LNM_API_V1B1, "lnm"),
         (DEVICEREGISTRY_API_V1, "deviceregistry"),
         (AKRI_API_V0, "akri"),
     ]:
@@ -715,7 +657,7 @@ def assert_list_deployments(
     mock_names: List[str] = None,
 ):
     if MQ_DIRECTORY_PATH in directory_path:
-        # regardless of MQ API, MQ_ACTIVE_API.moniker is used for support/mq/fetch_diagnostic_metrics
+        # regardless of MQ API, MQ_ACTIVE_API.moniker is used for support/broker/fetch_diagnostic_metrics
         from unittest.mock import call
 
         mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_has_calls(
@@ -732,7 +674,6 @@ def assert_list_deployments(
             label_selector=label_selector, field_selector=field_selector
         )
 
-    # @jiacju - no label for lnm
     mock_names = mock_names or ["mock_deployment"]
     for name in mock_names:
         assert_zipfile_write(
@@ -934,7 +875,7 @@ def assert_list_daemon_sets(
 
 
 def assert_mq_stats(mocked_zipfile):
-    assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/mq/diagnostic_metrics.txt", data="metrics")
+    assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/broker/diagnostic_metrics.txt", data="metrics")
 
 
 def assert_otel_kpis(
@@ -1016,7 +957,7 @@ def test_get_bundle_path(mocked_os_makedirs):
 # MQ connector stateful sets need labels based on connector names
 @pytest.mark.parametrize(
     "mocked_cluster_resources",
-    [[MQ_API_V1B1]],
+    [[MQTT_BROKER_API_V1B1]],
     indirect=True,
 )
 @pytest.mark.parametrize(
@@ -1050,12 +991,12 @@ def test_mq_list_stateful_sets(
     # mock MQ support bundle to return connectors
     mocked_mq_support_active_api = mocker.patch("azext_edge.edge.providers.support.mq.MQ_ACTIVE_API")
     mocked_mq_support_active_api.get_resources.return_value = custom_objects
-    result = support_bundle(None, bundle_dir=a_bundle_dir, ops_service="mq")
+    result = support_bundle(None, bundle_dir=a_bundle_dir, ops_service="broker")
     assert result
 
     # assert initial call to list stateful sets
     mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
-        label_selector=MQ_LABEL, field_selector=None
+        label_selector=MQ_NAME_LABEL, field_selector=None
     )
 
     # TODO - assert zipfile write of generic statefulset
@@ -1078,7 +1019,7 @@ def test_mq_list_stateful_sets(
 @pytest.mark.parametrize(
     "mocked_cluster_resources",
     [
-        [MQ_API_V1B1],
+        [MQTT_BROKER_API_V1B1],
     ],
     indirect=True,
 )
@@ -1111,7 +1052,7 @@ def test_create_bundle_mq_traces(
 
     assert get_trace_kwargs["namespace"] == "mock_namespace"  # TODO: Not my favorite
     assert get_trace_kwargs["trace_ids"] == ["!support_bundle!"]  # TODO: Magic string
-    test_zipinfo = ZipInfo("mock_namespace/mq/traces/trace_key")
+    test_zipinfo = ZipInfo("mock_namespace/broker/traces/trace_key")
     test_zipinfo.file_size = 0
     test_zipinfo.compress_size = 0
     assert_zipfile_write(mocked_zipfile, zinfo=test_zipinfo, data="trace_data")

@@ -15,6 +15,7 @@ from .common import OpsServiceType
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
+from .providers.orchestration import Instances
 from .providers.orchestration.common import (
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     DEFAULT_X509_CA_VALID_DAYS,
@@ -58,7 +59,7 @@ def check(
     post_deployment_checks: Optional[bool] = None,
     as_object=None,
     context_name=None,
-    ops_service: str = "mq",
+    ops_service: str = OpsServiceType.mq.value,
     resource_kinds: List[str] = None,
     resource_name: str = None,
 ) -> Union[Dict[str, Any], None]:
@@ -102,7 +103,6 @@ def init(
     resource_group_name: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     keyvault_spc_secret_name: str = DEFAULT_NAMESPACE,
-    custom_location_namespace: Optional[str] = None,
     custom_location_name: Optional[str] = None,
     location: Optional[str] = None,
     show_template: Optional[bool] = None,
@@ -185,9 +185,6 @@ def init(
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
 
-    if not custom_location_namespace:
-        custom_location_namespace = cluster_namespace
-
     if not dp_instance_name:
         dp_instance_name = f"{cluster_name_lowered}-ops-init-processor"
         dp_instance_name = dp_instance_name.replace("_", "-")
@@ -218,7 +215,6 @@ def init(
         cluster_namespace=cluster_namespace,
         cluster_location=None,  # Effectively always fetch connected cluster location
         custom_location_name=custom_location_name,
-        custom_location_namespace=custom_location_namespace,
         resource_group_name=resource_group_name,
         location=location,
         show_template=show_template,
@@ -284,4 +280,20 @@ def delete(
         confirm_yes=confirm_yes,
         no_progress=no_progress,
         force=force,
+    )
+
+
+def show_instance(cmd, instance_name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> dict:
+    return Instances(cmd).show(name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree)
+
+
+def list_instances(cmd, resource_group_name: Optional[str] = None) -> List[dict]:
+    return Instances(cmd).list(resource_group_name)
+
+
+def update_instance(
+    cmd, instance_name: str, resource_group_name: str, tags: Optional[str] = None, description: Optional[str] = None
+) -> dict:
+    return Instances(cmd).update(
+        name=instance_name, resource_group_name=resource_group_name, tags=tags, description=description
     )

@@ -15,8 +15,7 @@ from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DATA_PROCESSOR_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
-    COMPAT_LNM_APIS,
-    COMPAT_MQ_APIS,
+    COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
 )
@@ -52,12 +51,11 @@ def load_iotops_help():
         short-summary: Creates a standard support bundle zip archive for use in troubleshooting and diagnostics.
         long-summary: |
             {{Supported service APIs}}
-            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_ORC_APIS.as_str()}
             - {COMPAT_AKRI_APIS.as_str()}
-            - {COMPAT_LNM_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
 
@@ -100,8 +98,7 @@ def load_iotops_help():
             - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
-            - {COMPAT_LNM_APIS.as_str()}
-            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
 
         examples:
@@ -263,6 +260,58 @@ def load_iotops_help():
         - name: Force deletion regardless of warnings. May lead to errors.
           text: >
             az iot ops delete --cluster mycluster -g myresourcegroup --force
+    """
+
+    helps[
+        "iot ops show"
+    ] = """
+        type: command
+        short-summary: Show an IoT Operations instance.
+        long-summary: Optionally the command can output a tree structure of associated resources representing
+          the IoT Operations deployment against the backing cluster.
+
+        examples:
+        - name: Basic usage to show an instance.
+          text: >
+            az iot ops show --name myinstance -g myresourcegroup
+        - name: Output a tree structure of associated resources representing the IoT Operations deployment.
+          text: >
+            az iot ops show --name myinstance -g myresourcegroup --tree
+    """
+
+    helps[
+        "iot ops list"
+    ] = """
+        type: command
+        short-summary: List IoT Operations instances.
+        long-summary: Use --query with desired JMESPath syntax to query the result.
+
+        examples:
+        - name: List all instances in the subscription.
+          text: >
+            az iot ops list
+        - name: List all instances of a particular resource group.
+          text: >
+            az iot ops list -g myresourcegroup
+        - name: List the instances in the subscription that have a particular tag value.
+          text: >
+            az iot ops list -g myresourcegroup --query "[?tags.env == 'prod']"
+    """
+
+    helps[
+        "iot ops update"
+    ] = """
+        type: command
+        short-summary: Update an IoT Operations instance.
+        long-summary: Currently instance tags and description can be updated.
+
+        examples:
+        - name: Update instance tags.
+          text: >
+            az iot ops update --name myinstance -g myresourcegroup --tags a=b c=d
+        - name: Update the instance description.
+          text: >
+            az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
     """
 
     helps[

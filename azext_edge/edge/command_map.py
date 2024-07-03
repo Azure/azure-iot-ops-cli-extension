@@ -28,6 +28,9 @@ def load_iotops_commands(self, _):
         cmd_group.command("init", "init")
         cmd_group.command("delete", "delete")
         cmd_group.command("verify-host", "verify_host")
+        cmd_group.show_command("show", "show_instance")
+        cmd_group.command("list", "list_instances")
+        cmd_group.command("update", "update_instance")
 
     with self.command_group(
         "iot ops support",

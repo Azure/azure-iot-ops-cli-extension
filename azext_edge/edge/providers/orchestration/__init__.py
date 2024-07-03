@@ -7,5 +7,12 @@
 from .work import deploy
 from .deletion import delete_ops_resources
 from .host import run_host_verify
+from .instances import Instances
 
-__all__ = ["deploy", "delete_ops_resources", "run_host_verify"]
+
+__all__ = [
+    "deploy",
+    "delete_ops_resources",
+    "run_host_verify",
+    "Instances",
+]

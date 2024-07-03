@@ -22,7 +22,6 @@ from .providers.edge_api import (
     AkriResourceKinds,
     DataProcessorResourceKinds,
     DeviceRegistryResourceKinds,
-    LnmResourceKinds,
     MqResourceKinds,
     OpcuaResourceKinds,
 )
@@ -72,6 +71,30 @@ def load_iotops_arguments(self, _):
             options_list=["--force"],
             arg_type=get_three_state_flag(),
             help="Force the operation to execute.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--name", "-n"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "tags",
+            options_list=["--tags"],
+            arg_type=tags_type,
+            help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d",
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description of the instance.",
+        )
+
+    with self.argument_context("iot ops show") as context:
+        context.argument(
+            "show_tree",
+            options_list=["--tree"],
+            arg_type=get_three_state_flag(),
+            help="Use to visualize the IoT Operations deployment against the backing cluster.",
         )
 
     with self.argument_context("iot ops support") as context:
@@ -132,7 +155,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "ops_service",
             options_list=["--ops-service", "--svc"],
-            choices=CaseInsensitiveList(["akri", "dataprocessor", "deviceregistry", "lnm", "mq", "opcua"]),
+            choices=CaseInsensitiveList(OpsServiceType.list_check_services()),
             help="The IoT Operations service deployment that will be evaluated.",
         )
         context.argument(
@@ -147,7 +170,6 @@ def load_iotops_arguments(self, _):
                         DataProcessorResourceKinds.INSTANCE.value,
                         DeviceRegistryResourceKinds.ASSET.value,
                         DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value,
-                        LnmResourceKinds.LNM.value,
                         MqResourceKinds.BROKER.value,
                         MqResourceKinds.BROKER_LISTENER.value,
                         MqResourceKinds.DIAGNOSTIC_SERVICE.value,
@@ -266,13 +288,6 @@ def load_iotops_arguments(self, _):
             options_list=["--custom-location"],
             help="The custom location name corresponding to the IoT Operations deployment. "
             "The default is in the form '{cluster_name}-ops-init-cl'.",
-        )
-        context.argument(
-            "custom_location_namespace",
-            options_list=["--custom-location-namespace", "--cln"],
-            help="The namespace associated with the custom location mapped to the cluster. Must be lowercase. "
-            "If not provided cluster namespace will be used.",
-            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "location",

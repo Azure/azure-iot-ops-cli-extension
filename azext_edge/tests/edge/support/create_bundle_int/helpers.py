@@ -33,7 +33,6 @@ class NamespaceTuple(NamedTuple):
     arc: str
     aio: str
     usage_system: str
-    lnm_svclb: str
 
 
 def assert_file_names(files: List[str]):
@@ -229,7 +228,7 @@ def get_file_map(
     include_arc_agents: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    arc_namespace, aio_namespace, c_namespace, lnm_namespace = process_top_levels(walk_result, ops_service)
+    arc_namespace, aio_namespace, c_namespace = process_top_levels(walk_result, ops_service)
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -262,14 +261,6 @@ def get_file_map(
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
-    elif ops_service == "lnm":
-        assert len(walk_result) >= 1 + expected_arc_walk_result
-        ops_path = path.join(BASE_ZIP_PATH, aio_namespace, ops_service)
-
-        if lnm_namespace:
-            lnm_path = path.join(BASE_ZIP_PATH, lnm_namespace, ops_service)
-            file_map["svclb"] = convert_file_names(walk_result[lnm_path]["files"])
-            file_map["__namespaces__"]["svclb"] = lnm_namespace
     elif ops_service == "deviceregistry":
         # expect not resource in aio namespace
         assert len(walk_result) == expected_arc_walk_result
@@ -294,7 +285,6 @@ def process_top_levels(
     namespaces = level_0["folders"]
     namespace = None
     clusterconfig_namespace = None
-    lnm_namespace = None
     arc_namespace = None
 
     def _get_namespace_determinating_files(
@@ -306,7 +296,7 @@ def process_top_levels(
         return [f for f in level1.get("files", []) if f.startswith(file_prefix)]
 
     for name in namespaces:
-        # determine which namespace belongs to aio vs billing vs lnm
+        # determine which namespace belongs to aio vs billing
         if _get_namespace_determinating_files(
             name=name,
             folder=path.join("clusterconfig", "billing"),
@@ -314,13 +304,6 @@ def process_top_levels(
         ):
             # if there is a deployment, should be azure-extensions-usage-system
             clusterconfig_namespace = name
-        elif _get_namespace_determinating_files(
-            name=name,
-            folder=OpsServiceType.lnm.value,
-            file_prefix="daemonset"
-        ):
-            # if there is a daemonset, should be kube-system
-            lnm_namespace = name
         elif _get_namespace_determinating_files(
             name=name,
             folder=path.join("arcagents", ARC_AGENTS[0][0]),
@@ -342,12 +325,6 @@ def process_top_levels(
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
 
-    if lnm_namespace:
-        # remove empty lnm svclb related folders
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, lnm_namespace))
-        assert level_1["folders"] == ["lnm"]
-        assert not level_1["files"]
-
     if arc_namespace:
         # remove empty arc related folders
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace))
@@ -360,14 +337,12 @@ def process_top_levels(
     logger.debug("Determined the following namespaces:")
     logger.debug(f"AIO namespace: {namespace}")
     logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
-    logger.debug(f"LNM svclb namespace: {lnm_namespace}")
     logger.debug(f"ARC namespace: {arc_namespace}")
 
     return NamespaceTuple(
         arc=arc_namespace,
         aio=namespace,
         usage_system=clusterconfig_namespace,
-        lnm_svclb=lnm_namespace,
     )
 
 

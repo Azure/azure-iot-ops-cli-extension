@@ -264,7 +264,8 @@ def evaluate_diagnostics_service(
                     target=target_service_deployed,
                     pod=AIO_MQ_DIAGNOSTICS_SERVICE,
                     display_padding=12,
-                    service_label=MQ_NAME_LABEL
+                    service_label=MQ_NAME_LABEL,
+                    detail_level=detail_level,
                 )
 
     return check_manager.as_dict(as_list)
@@ -769,7 +770,8 @@ def evaluate_brokers(
                     namespace=namespace,
                     pod=pod,
                     display_padding=12,
-                    service_label=MQ_NAME_LABEL
+                    service_label=MQ_NAME_LABEL,
+                    detail_level=detail_level,
                 )
 
     return check_manager.as_dict(as_list)
