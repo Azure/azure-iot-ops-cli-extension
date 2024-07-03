@@ -49,6 +49,7 @@ on:
         description: Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments).
         type: string
         required: false
+        default: null
       use-container:
         description: Build container image for tests
         type: boolean
@@ -93,31 +94,39 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [default, mq-insecure, no-syncrules, ca-certs]
+        runtime-args: ${{ inputs.runtime-init-args != '' }}
         include:
+          # no inputs aside from custom
+          - feature: custom-inputs
+            runtime-args: true
+            init-args: "${{ inputs.runtime-init-args }}"
           # default / limited options
           - feature: default
-            init-args: "--ca-valid-days 3 --kv-spc-secret-name test-kv-secret ${{ inputs.runtime-init-args || '' }}"
+            runtime-args: false
+            init-args: "--ca-valid-days 3 --kv-spc-secret-name test-kv-secret"
           # test --mq-insecure deployment
           - feature: mq-insecure
-            no-preflight: True
-            init-args: "--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m ${{ inputs.runtime-init-args || '' }}"
+            no-preflight: true
+            runtime-args: true
+            init-args: "--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m"
           # test disabling custom sync rules
           - feature: no-syncrules
-            init-args: "--disable-rsync-rules  ${{ inputs.runtime-init-args || '' }}"
+            runtime-args: false
+            init-args: "--disable-rsync-rules "
           # test custom ca files
           - feature: ca-certs
+            runtime-args: false
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
-            init-args: "--ca-file \"test-ca.pem\" --ca-key-file \"test-ca-key.pem\" --include-dp ${{ inputs.runtime-init-args || '' }}"
+            init-args: "--ca-file \"test-ca.pem\" --ca-key-file \"test-ca-key.pem\" --include-dp"
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
       - name: "Output variables for future steps"
         id: "env_out"
         run: |
-          echo "RESOURCE_GROUP=${{env.RESOURCE_GROUP}}" >> $GITHUB_OUTPUT
-          echo "CLUSTER_NAME=${{env.CLUSTER_NAME}}" >> $GITHUB_OUTPUT
+          echo "RESOURCE_GROUP=${{ env.RESOURCE_GROUP }}" >> $GITHUB_OUTPUT
+          echo "CLUSTER_NAME=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
       - name: "Setup python"
         uses: actions/setup-python@v5
         with:
@@ -172,10 +181,9 @@ jobs:
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           python -m pip install tox
-          tox r -vv -e python-int --notest
           tox r -vv -e python-init-int --notest
       - name: "Create CA certificates"
-        if: ${{ matrix.feature == 'ca-certs'}}
+        if: ${{ matrix.feature == 'ca-certs' }}
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           >ca.conf cat <<-EOF
@@ -198,7 +206,7 @@ jobs:
           rm ca.conf
       - name: "Get Keyvault ID"
         run: |
-          KV_ID=$(az keyvault show -n ${{env.KV_NAME}} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
+          KV_ID=$(az keyvault show -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
           echo "KV_ID=$KV_ID" >> $GITHUB_ENV
       - name: "Tox INIT Integration Tests"
         env:
@@ -214,7 +222,7 @@ jobs:
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-init-int --skip-pkg-install -- --durations=0
       - name: "Az CLI login refresh"
-        if: ${{matrix.feature == 'default'}}
+        if: ${{ matrix.feature == 'default' }}
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -231,7 +239,7 @@ jobs:
             sleep 240
           done &
       - name: "Tox Integration Tests"
-        if: ${{matrix.feature == 'default' && !inputs.use-container}}
+        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
@@ -239,7 +247,7 @@ jobs:
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-int --skip-pkg-install -- --durations=0
       - name: "Containerized tests"
-        if: ${{matrix.feature == 'default' && inputs.use-container}}
+        if: ${{ matrix.feature == 'default' && inputs.use-container }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_cluster: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
@@ -261,7 +269,7 @@ jobs:
           set +e
           docker run \
             --rm \
-            "${envVars[@]}" \
+            "${ envVars[@]}" \
             -v "$kubeconfig:$kubeconfig_mount:ro" \
             -v "${azure_dir}:/root/.azure" \
             -v "${tempLog}:/usr/src/azure-iot-ops/junit" \
@@ -289,11 +297,11 @@ jobs:
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
           az iot ops verify-host
       - name: "Delete Cluster for redeployment"
-        if: ${{matrix.feature == 'ca-certs'}}
+        if: ${{ matrix.feature == 'ca-certs' }}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
       - name: "Redeploy cluster via tox"
-        if: ${{matrix.feature == 'ca-certs'}}
+        if: ${{ matrix.feature == 'ca-certs' }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}

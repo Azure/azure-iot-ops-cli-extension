@@ -8,7 +8,6 @@ import pytest
 from os import mkdir
 
 from ....helpers import run
-from .dataprocessor_helper import assert_dataprocessor_args
 from .mq_helper import assert_mq_args
 from .opcua_helper import assert_simulate_plc_args
 from .orchestrator_helper import assert_orchestrator_args
@@ -21,16 +20,16 @@ def init_test_setup(cluster_connection, settings):
     settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.kv.value)
     settings.add_to_config(EnvironmentVariables.cluster.value)
-    settings.add_to_config(EnvironmentVariables.sp_app_id.value)
-    settings.add_to_config(EnvironmentVariables.sp_object_id.value)
-    settings.add_to_config(EnvironmentVariables.sp_secret.value)
+    settings.add_to_config(EnvironmentVariables.sp_app_id.value, is_secret=True)
+    settings.add_to_config(EnvironmentVariables.sp_object_id.value, is_secret=True)
+    settings.add_to_config(EnvironmentVariables.sp_secret.value, is_secret=True)
     settings.add_to_config(EnvironmentVariables.init_args.value)
     settings.add_to_config(EnvironmentVariables.aio_cleanup.value)
 
     if not all([settings.env.azext_edge_cluster, settings.env.azext_edge_rg, settings.env.azext_edge_kv]):
         raise AssertionError(
             "Cannot run init tests without a connected cluster, resource group, and precreated keyvault. "
-            f"Current settings: {settings}"
+            f"Current settings:\n {settings}"
         )
     yield {
         "clusterName": settings.env.azext_edge_cluster,
@@ -102,7 +101,6 @@ def test_init_scenario(
 
     custom_location = sorted(result["deploymentState"]["resources"])[0]
     for assertion in [
-        assert_dataprocessor_args,
         assert_simulate_plc_args,
         assert_mq_args,
         assert_orchestrator_args

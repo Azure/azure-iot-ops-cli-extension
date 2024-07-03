@@ -41,6 +41,8 @@ class DynamoSettings(object):
             raise TypeError("req_env_set must be a list")
 
         self.env = Setting()
+        # Settings to mask during repr
+        self._secret_settings = []
         self._build_config(req_env_set)
 
         if opt_env_set:
@@ -48,13 +50,15 @@ class DynamoSettings(object):
                 raise TypeError("opt_env_set must be a list")
             self._build_config(opt_env_set, optional=True)
 
-    def add_to_config(self, key: str, conversion: Optional[Callable] = None):
+    def add_to_config(self, key: str, conversion: Optional[Callable] = None, is_secret: bool = False):
         value = environ.get(key)
         if value and (value == "sentinel" or value.startswith("$(azext")):
             value = None
         if value and conversion:
             value = conversion(value)
         setattr(self.env, key, value)
+        if is_secret:
+            self._secret_settings.append(key)
         return value
 
     def _build_config(self, env_set: List[str], optional: Optional[bool] = False):
@@ -66,4 +70,9 @@ class DynamoSettings(object):
                     )
 
     def __repr__(self):
-        return " \n".join([f"{key}: {value}" for key, value in vars(self.env).items()])
+        repr_str = ""
+        for key, value in vars(self.env).items():
+            if key in self._secret_settings and value:
+                value = "****"
+            repr_str += f"{key}: {value}\n"
+        return repr_str
