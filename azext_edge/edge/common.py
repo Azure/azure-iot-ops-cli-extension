@@ -140,7 +140,7 @@ class OpsServiceType(ListableEnum):
     """
 
     auto = "auto"
-    mq = "mq"
+    mq = "broker"
     opcua = "opcua"
     dataprocessor = "dataprocessor"
     orc = "orc"
@@ -148,6 +148,16 @@ class OpsServiceType(ListableEnum):
     deviceregistry = "deviceregistry"
     # TODO: re-enable billing once service is available post 0.6.0 release
     # billing = "billing"
+
+    @classmethod
+    def list_check_services(cls):
+        return [
+            cls.mq.value,
+            cls.opcua.value,
+            cls.dataprocessor.value,
+            cls.akri.value,
+            cls.deviceregistry.value,
+        ]
 
 
 class ResourceProviderMapping(ListableEnum):
