@@ -59,7 +59,6 @@ from azext_edge.edge.providers.support.shared import NAME_LABEL_FORMAT
 from azext_edge.edge.providers.support_bundle import COMPAT_MQ_APIS
 
 from ...generators import generate_random_string
-from .conftest import add_pod_to_mocked_pods
 
 a_bundle_dir = f"support_test_{generate_random_string()}"
 
