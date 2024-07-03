@@ -119,8 +119,6 @@ jobs:
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
             init-args: "--ca-file \"test-ca.pem\" --ca-key-file \"test-ca-key.pem\" --include-dp"
-        exclude:
-          - runtime-args: false
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -291,13 +289,13 @@ jobs:
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle --svc auto
-          az iot ops support create-bundle --svc mq --mq-traces
+          az iot ops support create-bundle --svc broker --mq-traces
           az iot ops check
           az iot ops check --pre
           az iot ops check --post
           az iot ops check --as-object
           az iot ops check --svc dataprocessor
-          az iot ops check --svc mq --resources broker brokerlistener diagnosticservice
+          az iot ops check --svc broker --resources broker brokerlistener diagnosticservice
           az iot ops mq stats
           az iot ops mq stats --raw
           az iot ops mq get-password-hash -p test

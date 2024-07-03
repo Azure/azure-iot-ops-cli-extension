@@ -6,6 +6,8 @@
 
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
+
+import pytest
 from azext_edge.edge.providers.orchestration.common import KEYVAULT_ARC_EXTENSION_VERSION
 from ....helpers import run
 
@@ -54,7 +56,11 @@ def assert_init_result(
     # deployment state
     assert result["deploymentState"]["correlationId"]
     assert result["deploymentState"]["timestampUtc"]
-    _assert_aio_versions(result["deploymentState"]["opsVersion"], arg_dict.get("include_dp", False))
+
+    # TODO: remove once include-dp is removed:
+    if arg_dict.get("include_dp"):
+        pytest.skip("Parameter --include-dp will be removed and thus the init tests assert if it is not present.")
+    _assert_aio_versions(result["deploymentState"]["opsVersion"])
     _assert_deployment_resources(
         resources=result["deploymentState"]["resources"],
         cluster_name=cluster_name,
@@ -84,9 +90,9 @@ def get_resource_from_partial_id(
     return run(command)
 
 
-def _assert_aio_versions(aio_versions: Dict[str, str], include_dp: bool = False):
+def _assert_aio_versions(aio_versions: Dict[str, str]):
     from azext_edge.edge.providers.orchestration.template import CURRENT_TEMPLATE
-    template_versions = CURRENT_TEMPLATE.get_component_vers(include_dp=include_dp)
+    template_versions = CURRENT_TEMPLATE.get_component_vers()
     for key, value in aio_versions.items():
         assert value == template_versions[key]
 
@@ -97,11 +103,7 @@ def _assert_deployment_resources(resources: List[str], cluster_name: str, resour
     ext_loc_resources = [res for res in resources if res.startswith(ResourceKeys.custom_location.value)]
     custom_loc_name = ext_loc_resources[0].split("/")[-1]
 
-    # expected_rules = []
-    # if not arg_dict.get("disable_rsync_rules"):
     expected_rules = ['adr', 'aio', 'mq']
-    if arg_dict.get("include_dp"):
-        expected_rules.append("dp")
 
     custom_loc_obj = get_resource_from_partial_id(ext_loc_resources[0], resource_group)
     assert custom_loc_obj["properties"]["hostResourceId"].endswith(cluster_name)
@@ -121,8 +123,6 @@ def _assert_deployment_resources(resources: List[str], cluster_name: str, resour
     # connected cluster resources
     con_clus_resources = [res for res in resources if res.startswith(ResourceKeys.connected_cluster.value)]
     expected_extensions = ["akri", "assets", "azure-iot-operations", "layered-networking", "mq", "opc-ua-broker"]
-    if arg_dict.get("include_dp"):
-        expected_extensions.append("processor")
     assert len(expected_extensions) == len(con_clus_resources)
     keyhash = con_clus_resources[0].rsplit("-")[-1]
     for res in con_clus_resources:
