@@ -120,7 +120,8 @@ def load_iotops_arguments(self, _):
             "include_mq_traces",
             options_list=["--broker-traces"],
             arg_type=get_three_state_flag(),
-            help="Include mqtt broker traces in the support bundle. Usage may add considerable size to the produced bundle.",
+            help="Include mqtt broker traces in the support bundle. "
+            "Usage may add considerable size to the produced bundle.",
         )
 
     with self.argument_context("iot ops check") as context:
