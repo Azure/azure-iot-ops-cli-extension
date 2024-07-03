@@ -94,7 +94,7 @@ jobs:
       fail-fast: false
       matrix:
         runtime-args:
-          - ${{ inputs.runtime-init-args }}
+          - ${{ inputs.runtime-init-args == '' }}
         include:
           # no inputs aside from custom
           - feature: custom-inputs
