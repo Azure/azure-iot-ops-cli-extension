@@ -96,6 +96,8 @@ jobs:
         feature: [custom-input, default, mq-insecure, no-syncrules, ca-certs]
         runtime-args:
           - ${{ inputs.runtime-init-args != '' }}
+        exclude:
+          - runtime-args: ${{ inputs.runtime-init-args == '' }}
         include:
           # no inputs aside from custom
           - feature: custom-input
@@ -103,16 +105,20 @@ jobs:
             init-args: "${{ inputs.runtime-init-args }}"
           # default / limited options
           - feature: default
+            runtime-args: false
             init-args: "--ca-valid-days 3 --kv-spc-secret-name test-kv-secret"
           # test --mq-insecure deployment
           - feature: mq-insecure
             no-preflight: true
+            runtime-args: false
             init-args: "--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m"
           # test disabling custom sync rules
           - feature: no-syncrules
+            runtime-args: false
             init-args: "--disable-rsync-rules "
           # test custom ca files
           - feature: ca-certs
+            runtime-args: false
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
             init-args: "--ca-file \"test-ca.pem\" --ca-key-file \"test-ca-key.pem\" --include-dp"
