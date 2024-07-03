@@ -110,7 +110,7 @@ def test_create_bundle(
         mocked_root_logger.warning.assert_called_once_with("No known IoT Operations services discovered on cluster.")
         assert auto_result_no_resources is None
         return
-    
+
     if CLUSTER_CONFIG_API_V1 in mocked_cluster_resources["param"]:
         add_pod_to_mocked_pods(
             mocked_client=mocked_client,
@@ -619,7 +619,7 @@ def assert_list_pods(
                     "creationTimestamp: '0000-00-00T00:00:00Z'\n  name: mock_custom_object\n  "
                     "namespace: namespace\ntimestamp: '0000-00-00T00:00:00Z'\n",
                 )
-            
+
             if "prefix_names" in kwargs:
                 if pod_name not in kwargs["prefix_names"]:
                     continue
