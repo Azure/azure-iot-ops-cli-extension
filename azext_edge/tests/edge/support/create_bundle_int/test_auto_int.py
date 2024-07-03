@@ -18,7 +18,7 @@ from .helpers import (
     run_bundle_command,
     BASE_ZIP_PATH
 )
-from ....helpers import find_extra_or_missing_names, run
+from ....helpers import find_extra_or_missing_names
 
 logger = get_logger(__name__)
 
@@ -64,21 +64,17 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
 
     # Check and take out mq traces:
     if mq_traces and ops_service in [OpsServiceType.auto.value, OpsServiceType.mq.value]:
-        mq_level = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, "mq", "traces"), {})
+        mq_level = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value, "traces"), {})
         if mq_level:
             assert not mq_level["folders"]
             assert_file_names(mq_level["files"])
             # make sure level 2 doesnt get messed up
-            assert walk_result[path.join(BASE_ZIP_PATH, namespace, "mq")]["folders"] == ["traces"]
-            walk_result[path.join(BASE_ZIP_PATH, namespace, "mq")]["folders"] = []
+            assert walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] == ["traces"]
+            walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] = []
 
     # Level 2 and 3 - bottom
     actual_walk_result = (len(expected_services) + int("clusterconfig" in expected_services))
-    lnm_instances = run("kubectl get lnm -A") or []
 
-    if ops_service in [OpsServiceType.auto.value, OpsServiceType.lnm.value] and namespace in lnm_instances:
-        # when a lnm instance is deployed, more lnm resources will be under namespace kube-system
-        actual_walk_result += 1
     assert len(walk_result) == actual_walk_result
     for directory in walk_result:
         assert not walk_result[directory]["folders"]
@@ -116,11 +112,12 @@ def _get_expected_services(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str , namespace: str
 ) -> List[str]:
     expected_services = [ops_service]
+    # TODO: re-enable billing once service is available post 0.6.0 release
     if ops_service == OpsServiceType.auto.value:
         # these should always be generated
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
-        expected_services.remove(OpsServiceType.billing.value)
+        # expected_services.remove(OpsServiceType.billing.value)
         expected_services.append("otel")
         if not DATA_PROCESSOR_API_V1.is_deployed():
             expected_services.remove(OpsServiceType.dataprocessor.value)
@@ -130,7 +127,7 @@ def _get_expected_services(
         if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value)):
             expected_services.remove(OpsServiceType.deviceregistry.value)
         expected_services.sort()
-    elif ops_service == OpsServiceType.billing.value:
-        expected_services.remove(OpsServiceType.billing.value)
-        expected_services.append("clusterconfig")
+    # elif ops_service == OpsServiceType.billing.value:
+    #     expected_services.remove(OpsServiceType.billing.value)
+    #     expected_services.append("clusterconfig")
     return expected_services

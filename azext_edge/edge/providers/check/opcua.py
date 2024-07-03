@@ -15,13 +15,14 @@ from .base import (
     filter_resources_by_name,
     generate_target_resource_name,
     get_resources_by_name,
-    process_pods_status,
+    process_pod_status,
     get_resources_grouped_by_namespace,
 )
 
 from ...common import CheckTaskStatus
 
 from .common import (
+    AIO_OPCUA_PREFIX,
     PADDING_SIZE,
     CoreServiceResourceKinds,
     ResourceOutputDetailLevel,
@@ -99,13 +100,14 @@ def evaluate_core_service_runtime(
             )
         )
 
-        process_pods_status(
+        process_pod_status(
             check_manager=check_manager,
-            target_service_pod="",
+            target_service_pod=f"pod/{AIO_OPCUA_PREFIX}",
             target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
-            pods=list(pods),
+            pods=pods,
             namespace=namespace,
             display_padding=padding + PADDING_SIZE,
+            detail_level=detail_level,
         )
 
     return check_manager.as_dict(as_list)
