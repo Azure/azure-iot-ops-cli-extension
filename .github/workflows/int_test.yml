@@ -96,7 +96,7 @@ jobs:
         runtime-args:
           - ${{ inputs.runtime-init-args != '' }}
         exclude:
-          - runtime-args: ${{ inputs.runtime-init-args != '' }}
+          - runtime-args: ${{ inputs.runtime-init-args == '' }}
         include:
           # no inputs aside from custom
           - feature: custom-inputs
