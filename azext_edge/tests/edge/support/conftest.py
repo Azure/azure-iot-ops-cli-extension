@@ -459,7 +459,7 @@ def mocked_mq_get_traces(mocker):
     test_zipinfo.file_size = 0
     test_zipinfo.compress_size = 0
 
-    # Supports --mq-traces
+    # Supports --broker-traces
     patched_get_traces = mocker.patch("azext_edge.edge.providers.support.mq.get_traces")
     patched_get_traces.return_value = [(test_zipinfo, "trace_data")]
     yield patched_get_traces

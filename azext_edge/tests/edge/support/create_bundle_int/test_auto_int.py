@@ -37,7 +37,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     if ops_service == OpsServiceType.dataprocessor.value and not DATA_PROCESSOR_API_V1.is_deployed():
         pytest.skip("Data processor is not deployed on this cluster.")
 
-    command = f"az iot ops support create-bundle --mq-traces {mq_traces} " + "--ops-service {0}"
+    command = f"az iot ops support create-bundle --broker-traces {mq_traces} " + "--ops-service {0}"
     if bundle_dir:
         command += f" --bundle-dir {bundle_dir}"
         try:
