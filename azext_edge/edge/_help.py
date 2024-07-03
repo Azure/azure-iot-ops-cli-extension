@@ -73,7 +73,7 @@ def load_iotops_help():
           text: >
             az iot ops support create-bundle --ops-service broker --log-age 172800
 
-        - name: Include broker traces in the support bundle. This is an alias for stats trace fetch capability.
+        - name: Include mqtt broker traces in the support bundle. This is an alias for stats trace fetch capability.
           text: >
             az iot ops support create-bundle --ops-service broker --broker-traces
     """
