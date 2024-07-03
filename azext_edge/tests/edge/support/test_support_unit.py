@@ -130,6 +130,14 @@ def test_create_bundle(
             mock_names=["aio-runner"],
             mock_init_containers=True,
         )
+    
+    if CLUSTER_CONFIG_API_V1 in mocked_cluster_resources["param"]:
+        add_pod_to_mocked_pods(
+            mocked_client=mocked_client,
+            expected_pod_map=mocked_list_pods,
+            mock_names=["aio-usage"],
+            mock_init_containers=True,
+        )
 
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(None, bundle_dir=a_bundle_dir, log_age_seconds=since_seconds)
@@ -162,6 +170,7 @@ def test_create_bundle(
                 label_selector=AIO_BILLING_USAGE_NAME_LABEL,
                 directory_path=BILLING_RESOURCE_KIND,
                 since_seconds=since_seconds,
+                prefix_names=["aio-usage"],
             )
             assert_list_pods(
                 mocked_client,
@@ -742,6 +751,10 @@ def assert_list_pods(
                     "creationTimestamp: '0000-00-00T00:00:00Z'\n  name: mock_custom_object\n  "
                     "namespace: namespace\ntimestamp: '0000-00-00T00:00:00Z'\n",
                 )
+            
+            if "prefix_names" in kwargs:
+                if pod_name not in kwargs["prefix_names"]:
+                    continue
 
             for container_name in pods_with_container[namespace][pod_name]:
                 data = (
