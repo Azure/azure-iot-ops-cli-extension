@@ -164,7 +164,7 @@ def process_statefulset(
     return_namespaces: bool = False,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
-) -> Union[Tuple, List[dict]]:
+) -> Union[Tuple[List[dict], dict], List[dict]]:
     from kubernetes.client.models import V1StatefulSetList
 
     v1_apps = client.AppsV1Api()
