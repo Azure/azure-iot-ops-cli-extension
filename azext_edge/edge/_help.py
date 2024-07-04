@@ -13,7 +13,6 @@ from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
     COMPAT_AKRI_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
-    COMPAT_DATA_PROCESSOR_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
@@ -53,7 +52,6 @@ def load_iotops_help():
             {{Supported service APIs}}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
-            - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_ORC_APIS.as_str()}
             - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
@@ -89,7 +87,6 @@ def load_iotops_help():
 
             {{Supported service APIs}}
             - {COMPAT_AKRI_APIS.as_str()}
-            - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
@@ -103,25 +100,17 @@ def load_iotops_help():
           text: >
             az iot ops check --as-object
 
-        - name: Checks `dataprocessor` health and configuration with detailed output.
+        - name: Checks `opcua` health and configuration with detailed output.
           text: >
-            az iot ops check --svc dataprocessor --detail-level 1
+            az iot ops check --svc opcua --detail-level 1
 
-        - name: Same as prior example, except constraining results to the `pipeline` resource.
+        - name: Checks 'deviceregistry' health, but constrains results to `asset` resources.
           text: >
-            az iot ops check --svc dataprocessor --detail-level 1 --resources pipeline
+            az iot ops check --svc deviceregistry --detail-level 1 --resources asset
 
-        - name: Use resource name to constrain results to `pipeline` resource exactly matching name `pipeline`.
+        - name: Use resource name to constrain results to `asset` resources with `my-asset-` name prefix
           text: >
-            az iot ops check --svc dataprocessor  --resources pipeline --resource-name pipeline
-
-        - name: Use resource name to constrain results to resource names that start with `pipeline-name`.
-          text: >
-            az iot ops check --svc dataprocessor --detail-level 1 --resource-name pipeline-name*
-
-        - name: Use '?' glob pattern to constrain results to resource names that contain `pipeline` and end with a single character.
-          text: >
-            az iot ops check --svc dataprocessor --detail-level 1 --resource-name pipeline?
+            az iot ops check --svc deviceregistry --resources asset --resource-name 'my-asset-*'
     """
 
     helps[
