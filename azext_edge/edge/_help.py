@@ -78,9 +78,9 @@ def load_iotops_help():
           text: >
             az iot ops support create-bundle --ops-service mq --mq-traces
 
-        - name: Include resources under azure-arc namespace in the support bundle.
+        - name: Include arc agents resources in the support bundle.
           text: >
-            az iot ops support create-bundle --arc
+            az iot ops support create-bundle --arc-agents
     """
 
     helps[
