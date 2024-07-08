@@ -97,6 +97,16 @@ jobs:
         runtime-args:
           - ${{ inputs.runtime-init-args != '' }}
         exclude:
+          - feature: custom-input
+            runtime-args: false
+          - feature: default
+            runtime-args: true
+          - feature: mq-insecure
+            runtime-args: true
+          - feature: no-syncrules
+            runtime-args: true
+          - feature: ca-certs
+            runtime-args: true
           - runtime-args: ${{ inputs.runtime-init-args == '' }}
         include:
           # no inputs aside from custom
