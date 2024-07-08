@@ -4,30 +4,28 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from time import sleep
 from typing import Optional
-from ....helpers import run
-
-# args to wait for --simulate-plc
-MAX_TRIES = 10
-SLEEP_INTERVAL = 60
+from azext_edge.edge.providers.edge_api import (
+    OPCUA_API_V1, OpcuaResourceKinds, DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
+)
+from ....helpers import get_kubectl_custom_items, get_kubectl_workload_items
 
 
 def assert_simulate_plc_args(
-    custom_location: str,
+    namespace: str,
     simulate_plc: Optional[bool] = None,
     **_
 ):
     if not simulate_plc:
         simulate_plc = False
-    # note that the simulator may take a bit
-    query_result = run(f"az iot ops asset query --cl {custom_location}")
-    tries = 0
-    while simulate_plc and not query_result and tries < MAX_TRIES:
-        sleep(SLEEP_INTERVAL)
-        query_result = run(f"az iot ops asset query --cl {custom_location}")
-        tries += 1
-    assert bool(query_result) is simulate_plc
 
-    query_result = run(f"az iot ops asset endpoint query --cl {custom_location}")
-    assert bool(query_result) is simulate_plc
+    simulator_pod = get_kubectl_workload_items(
+        prefixes="opcplc-00000", service_type="pod", namespace=namespace
+    )
+    assert bool(simulator_pod) is simulate_plc
+
+    resource_map = get_kubectl_custom_items(resource_api=OPCUA_API_V1, namespace=namespace)
+    resource_map.update(get_kubectl_custom_items(resource_api=DEVICEREGISTRY_API_V1, namespace=namespace))
+    assert bool(resource_map[OpcuaResourceKinds.ASSET_TYPE.value]) is simulate_plc
+    assert bool(resource_map[DeviceRegistryResourceKinds.ASSET.value]) is simulate_plc
+    assert bool(resource_map[DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value]) is simulate_plc
