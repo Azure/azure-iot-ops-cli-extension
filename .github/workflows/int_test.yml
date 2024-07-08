@@ -107,7 +107,6 @@ jobs:
             runtime-args: true
           - feature: ca-certs
             runtime-args: true
-          - runtime-args: ${{ inputs.runtime-init-args == '' }}
         include:
           # no inputs aside from custom
           - feature: custom-input

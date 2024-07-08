@@ -12,6 +12,11 @@ from azext_edge.edge.providers.orchestration.base import KEYVAULT_ARC_EXTENSION_
 from azext_edge.edge.util import get_timestamp_now_utc
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "init_scenario_test: mark tests that will run az iot ops init"
+    )
+
 @pytest.fixture
 def mocked_deploy(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.deploy", autospec=True)

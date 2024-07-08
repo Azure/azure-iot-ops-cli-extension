@@ -16,11 +16,8 @@ from .helper import assert_init_result
 
 
 @pytest.fixture(scope="function")
-def init_test_setup(cluster_connection, config, settings):
+def init_test_setup(cluster_connection, settings):
     from ....settings import EnvironmentVariables
-    config.addinivalue_line(
-        "markers", "init_scenario_test: mark tests that will run az iot ops init"
-    )
 
     settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.kv.value)
