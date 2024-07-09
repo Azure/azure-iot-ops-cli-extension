@@ -310,14 +310,6 @@ def load_iotops_arguments(self, _):
         )
         # Akri
         context.argument(
-            "opcua_discovery_endpoint",
-            options_list=["--opcua-discovery-url"],
-            help="Configures an OPC-UA server endpoint for Akri discovery handlers. If not provided "
-            "and --simulate-plc is set, this value becomes "
-            "'opc.tcp://opcplc-000000.{cluster_namespace}:50000'.",
-            arg_group="Akri",
-        )
-        context.argument(
             "container_runtime_socket",
             options_list=["--runtime-socket"],
             help="The default node path of the container runtime socket. If not provided (default), the "
@@ -340,26 +332,7 @@ def load_iotops_arguments(self, _):
             help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
             arg_group="OPC-UA Broker",
         )
-        # Data Processor
-        context.argument(
-            "include_dp",
-            options_list=["--include-dp"],
-            arg_type=get_three_state_flag(),
-            help="Include Data Processor in the IoT Operations deployment. Default: false.",
-        )
-        context.argument(
-            "dp_instance_name",
-            options_list=["--dp-instance"],
-            help="Instance name for Data Processor. The default is in the form '{cluster_name}-ops-init-processor'.",
-            arg_group="Data Processor",
-        )
         # MQ
-        context.argument(
-            "mq_instance_name",
-            options_list=["--mq-instance"],
-            help="The mq instance name. The default is in the form 'init-{hash}-mq-instance'.",
-            arg_group="MQ",
-        )
         context.argument(
             "mq_frontend_server_name",
             options_list=["--mq-frontend-server"],
@@ -430,13 +403,6 @@ def load_iotops_arguments(self, _):
             arg_group="MQ Cardinality",
         )
         context.argument(
-            "mq_mode",
-            arg_type=get_enum_type(MqMode),
-            options_list=["--mq-mode"],
-            help="MQ mode of operation.",
-            arg_group="MQ",
-        )
-        context.argument(
             "mq_memory_profile",
             arg_type=get_enum_type(MqMemoryProfile),
             options_list=["--mq-mem-profile"],
@@ -449,13 +415,6 @@ def load_iotops_arguments(self, _):
             options_list=["--mq-service-type"],
             help="MQ service type.",
             arg_group="MQ",
-        )
-        # Symphony
-        context.argument(
-            "target_name",
-            options_list=["--target"],
-            help="Target name for ops orchestrator. The default is in the form '{cluster_name}-ops-init-target'.",
-            arg_group="Orchestration",
         )
         # AKV CSI Driver
         context.argument(

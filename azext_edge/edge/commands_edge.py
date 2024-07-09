@@ -105,14 +105,10 @@ def init(
     location: Optional[str] = None,
     show_template: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
-    opcua_discovery_endpoint: Optional[str] = None,
     container_runtime_socket: str = "",
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
     no_block: Optional[bool] = None,
     no_progress: Optional[bool] = None,
-    include_dp: Optional[bool] = None,
-    dp_instance_name: Optional[str] = None,
-    mq_mode: str = MqMode.distributed.value,
     mq_memory_profile: str = MqMemoryProfile.medium.value,
     mq_service_type: str = MqServiceType.cluster_ip.value,
     mq_backend_partitions: int = 2,
@@ -121,12 +117,10 @@ def init(
     mq_frontend_workers: int = 2,
     mq_frontend_replicas: int = 2,
     mq_frontend_server_name: Optional[str] = None,
-    mq_instance_name: Optional[str] = None,
     mq_listener_name: Optional[str] = None,
     mq_broker_name: Optional[str] = None,
     mq_authn_name: Optional[str] = None,
     mq_insecure: Optional[bool] = None,
-    target_name: Optional[str] = None,
     disable_secret_rotation: Optional[bool] = None,
     rotation_poll_interval: str = "1h",
     csi_driver_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
@@ -169,8 +163,6 @@ def init(
     cluster_name_lowered = cluster_name.lower()
 
     hashed_cluster_slug = url_safe_hash_phrase(cluster_name)[:5]
-    if not mq_instance_name:
-        mq_instance_name = f"init-{hashed_cluster_slug}-mq-instance"
     if not mq_frontend_server_name:
         mq_frontend_server_name = "mq-dmqtt-frontend"
     if not mq_listener_name:
@@ -182,17 +174,6 @@ def init(
 
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
-
-    if not dp_instance_name:
-        dp_instance_name = f"{cluster_name_lowered}-ops-init-processor"
-        dp_instance_name = dp_instance_name.replace("_", "-")
-
-    if not target_name:
-        target_name = f"{cluster_name_lowered}-ops-init-target"
-        target_name = target_name.replace("_", "-")
-
-    if simulate_plc and not opcua_discovery_endpoint:
-        opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
 
     if tls_ca_path:
         if not tls_ca_key_path:
@@ -216,7 +197,6 @@ def init(
         resource_group_name=resource_group_name,
         location=location,
         show_template=show_template,
-        opcua_discovery_endpoint=opcua_discovery_endpoint,
         container_runtime_socket=str(container_runtime_socket),
         kubernetes_distro=str(kubernetes_distro),
         simulate_plc=simulate_plc,
@@ -226,9 +206,6 @@ def init(
         no_preflight=no_preflight,
         no_deploy=no_deploy,
         disable_rsync_rules=disable_rsync_rules,
-        include_dp=include_dp,
-        dp_instance_name=dp_instance_name,
-        mq_mode=str(mq_mode),
         mq_memory_profile=str(mq_memory_profile),
         mq_service_type=str(mq_service_type),
         mq_backend_partitions=int(mq_backend_partitions),
@@ -236,13 +213,11 @@ def init(
         mq_backend_redundancy_factor=int(mq_backend_redundancy_factor),
         mq_frontend_replicas=int(mq_frontend_replicas),
         mq_frontend_workers=int(mq_frontend_workers),
-        mq_instance_name=mq_instance_name,
         mq_frontend_server_name=mq_frontend_server_name,
         mq_listener_name=mq_listener_name,
         mq_broker_name=mq_broker_name,
         mq_authn_name=mq_authn_name,
         mq_insecure=mq_insecure,
-        target_name=target_name,
         keyvault_resource_id=keyvault_resource_id,
         keyvault_spc_secret_name=str(keyvault_spc_secret_name),
         disable_secret_rotation=disable_secret_rotation,

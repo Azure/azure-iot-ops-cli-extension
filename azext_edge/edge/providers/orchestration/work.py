@@ -126,8 +126,9 @@ class WorkManager:
         self._cluster_secret_ref = CLUSTER_SECRET_REF
         self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
         # TODO: Make cluster target with KPIs
-        self._cluster_namespace = kwargs["cluster_namespace"]
-        self._custom_location_name = kwargs["custom_location_name"]
+        self._cluster_name: str = kwargs["cluster_name"]
+        self._cluster_namespace: str = kwargs["cluster_namespace"]
+        self._custom_location_name: str = kwargs["custom_location_name"]
         self._deploy_rsync_rules = not kwargs.get("disable_rsync_rules", False)
         self._connected_cluster = None
         self._kwargs = kwargs
@@ -594,10 +595,8 @@ class WorkManager:
             ("cluster_location", "clusterLocation"),
             ("custom_location_name", "customLocationName"),
             ("simulate_plc", "simulatePLC"),
-            ("opcua_discovery_endpoint", "opcuaDiscoveryEndpoint"),
             ("container_runtime_socket", "containerRuntimeSocket"),
             ("kubernetes_distro", "kubernetesDistro"),
-            ("target_name", "targetName"),
             ("dp_instance_name", "dataProcessorInstanceName"),
             ("mq_instance_name", "mqInstanceName"),
             ("mq_frontend_server_name", "mqFrontendServer"),
@@ -609,21 +608,13 @@ class WorkManager:
             ("mq_backend_redundancy_factor", "mqBackendRedundancyFactor"),
             ("mq_backend_workers", "mqBackendWorkers"),
             ("mq_backend_partitions", "mqBackendPartitions"),
-            ("mq_mode", "mqMode"),
             ("mq_memory_profile", "mqMemoryProfile"),
             ("mq_service_type", "mqServiceType"),
-            ("include_dp", "deployDataProcessor"),
         ]:
             if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
 
-        parameters["dataProcessorSecrets"] = {
-            "value": {
-                "enabled": True,
-                "secretProviderClassName": self._cluster_secret_class_name,
-                "servicePrincipalSecretRef": self._cluster_secret_ref,
-            }
-        }
+
         parameters["mqSecrets"] = {
             "value": {
                 "enabled": True,
@@ -638,6 +629,10 @@ class WorkManager:
 
         # Covers cluster_namespace
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
+
+        # digimaun
+        safe_cluster_name = self._cluster_name.replace("_", "-")
+        template.content["variables"]["OBSERVABILITY"]["targetName"] = f"{safe_cluster_name}-observability"
 
         tls_map = work_kpis.get("tls", {})
         if "aioTrustConfigMap" in tls_map:
