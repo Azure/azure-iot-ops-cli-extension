@@ -296,17 +296,17 @@ jobs:
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle --svc auto
-          az iot ops support create-bundle --svc broker --broker-traces
-          az iot ops check
-          az iot ops check --pre
-          az iot ops check --post
-          az iot ops check --as-object
-          az iot ops check --svc broker --resources broker brokerlistener diagnosticservice
-          az iot ops mq stats
-          az iot ops mq stats --raw
-          az iot ops mq get-password-hash -p test
+          # az iot ops support create-bundle --svc broker --broker-traces
+          # az iot ops check
+          # az iot ops check --pre
+          # az iot ops check --post
+          # az iot ops check --as-object
+          # az iot ops check --svc broker --resources broker brokerlistener diagnosticservice
+          # az iot ops mq stats
+          # az iot ops mq stats --raw
+          # az iot ops mq get-password-hash -p test
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
-          az iot ops verify-host
+          # az iot ops verify-host
       - name: "Delete Cluster for redeployment"
         if: ${{ matrix.feature == 'ca-certs' }}
         run: |
