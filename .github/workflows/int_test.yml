@@ -90,6 +90,8 @@ jobs:
       CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
       EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
       K3S_VERSION: "v1.28.5+k3s1"
+      CA_FILE: "test-ca.pem"
+      CA_KEY_FILE: "test-ca-key.pem"
     strategy:
       fail-fast: false
       matrix:
@@ -97,6 +99,7 @@ jobs:
         runtime-args:
           - ${{ inputs.runtime-init-args != '' }}
         exclude:
+          - runtime-args: ${{ inputs.runtime-init-args == '' }}
           - feature: custom-input
             runtime-args: false
           - feature: default
@@ -107,33 +110,23 @@ jobs:
             runtime-args: true
           - feature: ca-certs
             runtime-args: true
-        include:
-          # no inputs aside from custom
-          - feature: custom-input
-            runtime-args: true
-            init-args: "${{ inputs.runtime-init-args }}"
-          # default / limited options
-          - feature: default
-            runtime-args: false
-            init-args: "--ca-valid-days 3 --kv-spc-secret-name test-kv-secret"
-          # test --mq-insecure deployment
-          - feature: mq-insecure
-            no-preflight: true
-            runtime-args: false
-            init-args: "--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m"
-          # test disabling custom sync rules
-          - feature: no-syncrules
-            runtime-args: false
-            init-args: "--disable-rsync-rules "
-          # test custom ca files
-          - feature: ca-certs
-            runtime-args: false
-            ca-file: 'test-ca.pem'
-            ca-key-file: 'test-ca-key.pem'
-            init-args: "--ca-file \"test-ca.pem\" --ca-key-file \"test-ca-key.pem\" --include-dp"
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
+      - name: "Determine Init Args"
+        id: "init"
+        run: |
+          if [[ ${{ matrix.feature }} == "default" ]]; then
+            echo "ARG=\"--ca-valid-days 3 --kv-spc-secret-name test-kv-secret\"" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} == "mq-insecure" ]]; then
+            echo "ARG=\"--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m\"" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} == "default" ]]; then
+            echo "ARG=\"--disable-rsync-rules\"" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} == "default" ]]; then
+            echo "ARG=\"--ca-file \"${{ env.CA_FILE }}\" --ca-key-file \"${{ env.CA_KEY_FILE }}\"\"" >> $GITHUB_OUTPUT
+          else
+            echo "ARG=\"${{ inputs.runtime-init-args }}\"" >> $GITHUB_OUTPUT
+          fi
       - name: "Output variables for future steps"
         id: "env_out"
         run: |
@@ -218,8 +211,8 @@ jobs:
           subjectKeyIdentifier = hash
           authorityKeyIdentifier = keyid
           EOF
-          openssl ecparam -name prime256v1 -genkey -noout -out ${{ matrix.ca-key-file }}
-          openssl req -new -x509 -key ${{ matrix.ca-key-file }} -days 30 -config ca.conf -out ${{ matrix.ca-file }}
+          openssl ecparam -name prime256v1 -genkey -noout -out ${{ env.CA_KEY_FILE }}
+          openssl req -new -x509 -key ${{ env.CA_KEY_FILE }} -days 30 -config ca.conf -out ${{ env.CA_FILE }}
           rm ca.conf
       - name: "Get Keyvault ID"
         run: |
