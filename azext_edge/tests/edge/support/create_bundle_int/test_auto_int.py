@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from azext_edge.edge.providers.edge_api.dataprocessor import DATA_PROCESSOR_API_V1
 import pytest
 from os import mkdir, path
 from knack.log import get_logger
@@ -34,10 +33,7 @@ def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
 def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
     """Test to focus on ops_service param."""
 
-    if ops_service == OpsServiceType.dataprocessor.value and not DATA_PROCESSOR_API_V1.is_deployed():
-        pytest.skip("Data processor is not deployed on this cluster.")
-
-    command = f"az iot ops support create-bundle --mq-traces {mq_traces} " + "--ops-service {0}"
+    command = f"az iot ops support create-bundle --broker-traces {mq_traces} " + "--ops-service {0}"
     if bundle_dir:
         command += f" --bundle-dir {bundle_dir}"
         try:
@@ -119,8 +115,6 @@ def _get_expected_services(
         expected_services.remove(OpsServiceType.auto.value)
         # expected_services.remove(OpsServiceType.billing.value)
         expected_services.append("otel")
-        if not DATA_PROCESSOR_API_V1.is_deployed():
-            expected_services.remove(OpsServiceType.dataprocessor.value)
         if walk_result.get(path.join(BASE_ZIP_PATH, namespace, "clusterconfig", "billing")):
             expected_services.append("clusterconfig")
         # device registry folder will not be created if there are no device registry resources

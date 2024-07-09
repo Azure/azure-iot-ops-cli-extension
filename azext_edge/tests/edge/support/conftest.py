@@ -87,7 +87,6 @@ def mocked_cluster_resources(request, mocker):
         MQ_ACTIVE_API,
         MQTT_BROKER_API_V1B1,
         OPCUA_API_V1,
-        DATA_PROCESSOR_API_V1,
         ORC_API_V1,
         AKRI_API_V0,
         DEVICEREGISTRY_API_V1,
@@ -135,11 +134,6 @@ def mocked_cluster_resources(request, mocker):
 
         if r == OPCUA_API_V1:
             v1_resources.append(_get_api_resource("AssetType"))
-
-        if r == DATA_PROCESSOR_API_V1:
-            v1_resources.append(_get_api_resource("Dataset"))
-            v1_resources.append(_get_api_resource("Instance"))
-            v1_resources.append(_get_api_resource("Pipeline"))
 
         if r == ORC_API_V1:
             v1_resources.append(_get_api_resource("Instance"))
@@ -459,7 +453,7 @@ def mocked_mq_get_traces(mocker):
     test_zipinfo.file_size = 0
     test_zipinfo.compress_size = 0
 
-    # Supports --mq-traces
+    # Supports --broker-traces
     patched_get_traces = mocker.patch("azext_edge.edge.providers.support.mq.get_traces")
     patched_get_traces.return_value = [(test_zipinfo, "trace_data")]
     yield patched_get_traces

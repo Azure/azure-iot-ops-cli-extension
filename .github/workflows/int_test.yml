@@ -302,7 +302,6 @@ jobs:
           az iot ops check --pre
           az iot ops check --post
           az iot ops check --as-object
-          az iot ops check --svc dataprocessor
           az iot ops check --svc broker --resources broker brokerlistener diagnosticservice
           az iot ops mq stats
           az iot ops mq stats --raw
