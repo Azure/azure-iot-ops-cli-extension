@@ -185,3 +185,14 @@ def is_env_flag_enabled(env_flag_key: str) -> bool:
     from os import getenv
 
     return getenv(env_flag_key, "false").lower() in ["true", "1", "y"]
+
+
+def is_enabled_str(value: Optional[str]) -> bool:
+    """
+    Converts an intended property str value (such as from k8s enum) to bool
+    """
+
+    if isinstance(value, str):
+        return value.lower() == "enabled"
+
+    return False
