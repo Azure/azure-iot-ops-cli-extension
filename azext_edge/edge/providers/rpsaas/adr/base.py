@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-
 from ..base_provider import RPSaaSBaseProvider
 from ....common import ClusterExtensionsMapping, ResourceProviderMapping
 
