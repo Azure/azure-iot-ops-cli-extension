@@ -116,10 +116,12 @@ jobs:
       - name: "Determine Init Args"
         id: "init"
         run: |
+          echo "NO_PREFLIGHT=false" >> $GITHUB_OUTPUT
           if [[ ${{ matrix.feature }} == "default" ]]; then
             echo "ARG=\"--ca-valid-days 3 --kv-spc-secret-name test-kv-secret\"" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "mq-insecure" ]]; then
             echo "ARG=\"--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m\"" >> $GITHUB_OUTPUT
+            echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "default" ]]; then
             echo "ARG=\"--disable-rsync-rules\"" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "default" ]]; then
@@ -215,16 +217,17 @@ jobs:
           openssl req -new -x509 -key ${{ env.CA_KEY_FILE }} -days 30 -config ca.conf -out ${{ env.CA_FILE }}
           rm ca.conf
       - name: "Get Keyvault ID"
+        id: "keyvault_id"
         run: |
           KV_ID=$(az keyvault show -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
-          echo "KV_ID=$KV_ID" >> $GITHUB_ENV
+          echo "KV_ID=$KV_ID" >> $GITHUB_OUTPUT
       - name: "Tox INIT Integration Tests"
         env:
-          AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ matrix.no-preflight }}
+          AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_kv: ${{ env.KV_ID }}
-          azext_edge_init_args: ${{ matrix.init-args }}
+          azext_edge_kv: ${{ steps.keyvault_id.outputs.KV_ID }}
+          azext_edge_init_args: ${{ steps.init.outputs.ARG }}
           azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
           azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
           azext_edge_sp_secret: ${{ secrets.AIO_SP_SECRET || '' }}
@@ -315,8 +318,8 @@ jobs:
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_kv: ${{ env.KV_ID }}
-          azext_edge_init_args: ${{ matrix.init-args }}
+          azext_edge_kv: ${{ steps.keyvault_id.outputs.KV_ID }}
+          azext_edge_init_args: ${{ steps.init.outputs.ARG }}
           azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
           azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
           azext_edge_sp_secret: ${{ secrets.AIO_SP_SECRET || '' }}
