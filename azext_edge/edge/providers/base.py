@@ -22,7 +22,7 @@ from kubernetes.client.models import (
 )
 
 from ..common import K8sSecretType
-from ..util import is_enabled
+from ..util import is_enabled_str
 
 DEFAULT_NAMESPACE: str = "azure-iot-operations"
 
@@ -217,7 +217,7 @@ def portforward_socket(namespace: str, pod_name: str, pod_port: str) -> Iterator
 
     if broker and broker["spec"]:
         encrypt_internal_traffic = broker["spec"].get("advanced", {}).get("encryptInternalTraffic")
-        if is_enabled(encrypt_internal_traffic):
+        if is_enabled_str(encrypt_internal_traffic):
             internal_tls = True
 
     if internal_tls:

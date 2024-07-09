@@ -9,7 +9,7 @@ from .common import (
     build_query,
     generate_secret,
     get_timestamp_now_utc,
-    is_enabled,
+    is_enabled_str,
     is_env_flag_enabled,
     set_log_level,
     url_safe_hash_phrase,
@@ -36,6 +36,6 @@ __all__ = [
     "dump_content_to_file",
     "normalize_dir",
     "is_env_flag_enabled",
-    "is_enabled",
+    "is_enabled_str",
     "url_safe_random_chars",
 ]
