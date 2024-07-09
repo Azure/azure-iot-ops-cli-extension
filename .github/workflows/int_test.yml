@@ -49,7 +49,7 @@ on:
         description: Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments).
         type: string
         required: false
-        default: null
+        default: ''
       use-container:
         description: Build container image for tests
         type: boolean
@@ -96,9 +96,9 @@ jobs:
       matrix:
         feature: [custom-input, default, mq-insecure, no-syncrules, ca-certs]
         runtime-args:
-          - ${{ inputs.runtime-init-args != null }}
+          - ${{ inputs.runtime-init-args != '' }}
         exclude:
-          - runtime-args: ${{ inputs.runtime-init-args == null }}
+          - runtime-args: ${{ inputs.runtime-init-args == '' }}
           - feature: custom-input
             runtime-args: false
           - feature: default
