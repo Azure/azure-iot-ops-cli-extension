@@ -58,7 +58,7 @@ def test_check_cluster_and_custom_location(
     from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
     extension_key = generate_random_string()
     ext_result = mocker.Mock()
-    ext_result.as_dict.return_value =  {
+    ext_result.as_dict.return_value = {
         "properties": {
             "configurationSettings": {f"{extension_key}.enabled": "true"},
             "extensionType": "microsoft.iotoperations"
@@ -236,7 +236,7 @@ def test_check_cluster_and_custom_location_no_extension_error(
     from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
     extension_key = generate_random_string()
     ext_result = mocker.Mock()
-    ext_result.as_dict.return_value =  {
+    ext_result.as_dict.return_value = {
         "properties": {
             "configurationSettings": {f"{extension_key}.enabled": str(extension_enabled).lower()},
             "extensionType": generate_random_string() if extension_enabled else "microsoft.iotoperations"
