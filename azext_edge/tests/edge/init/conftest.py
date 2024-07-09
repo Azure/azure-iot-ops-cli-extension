@@ -17,6 +17,7 @@ def pytest_configure(config):
         "markers", "init_scenario_test: mark tests that will run az iot ops init"
     )
 
+
 @pytest.fixture
 def mocked_deploy(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.deploy", autospec=True)
