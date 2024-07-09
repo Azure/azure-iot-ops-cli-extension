@@ -78,7 +78,6 @@ jobs:
     - name: "Create Key Vault for clusters"
       run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false
 
-
   test:
     needs: [create_kv]
     outputs:
@@ -97,9 +96,9 @@ jobs:
       matrix:
         feature: [custom-input, default, mq-insecure, no-syncrules, ca-certs]
         runtime-args:
-          - ${{ inputs.runtime-init-args != '' }}
+          - ${{ inputs.runtime-init-args != null }}
         exclude:
-          - runtime-args: ${{ inputs.runtime-init-args == '' }}
+          - runtime-args: ${{ inputs.runtime-init-args == null }}
           - feature: custom-input
             runtime-args: false
           - feature: default
