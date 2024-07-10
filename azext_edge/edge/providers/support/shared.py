@@ -24,7 +24,7 @@ def process_arc_kpis():
         result.append(
             {
                 "data": connect_config_map,
-                "zinfo": "azure_clusterconfig.yaml",
+                "zinfo": f"{ARC_CONFIG_MAP}.yaml",
             }
         )
     return result

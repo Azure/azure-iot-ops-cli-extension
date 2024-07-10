@@ -768,12 +768,12 @@ def assert_shared_kpis(mocked_client, mocked_zipfile):
     mocked_client.StorageV1Api().list_storage_class.assert_called_once()
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo="storage_classes.yaml",
+        zinfo="storage-classes.yaml",
         data="items:\n- metadata:\n    name: mock_storage_class\n  provisioner: mock_provisioner\n",
     )
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo="azure_clusterconfig.yaml",
+        zinfo="azure-clusterconfig.yaml",
         data='configkey: configvalue\n',
     )
 
