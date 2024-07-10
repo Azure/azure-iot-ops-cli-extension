@@ -27,6 +27,47 @@ There are, however, some prerequisites and caveats that users should be made awa
 
   Our tests use `az-iot-ops-test-cluster` prefixes for cluster resources and `opskv` for keyvaults.
 
+- #### Understanding the matrix
+  This section is to resolve any confusion caused by the matrix and it's format. The goal for the matrix is to have either one job or four jobs run during `Run Cluster Tests`.
+
+  If you provide `runtime-init-args`, only one job (custom-input) will run, which will include an init test with your specified runtime init arguments. We do not run the other jobs since the runtime-init-args can conflict with their preset values.
+
+  If you do *not* provide `runtime-init-args`, four jobs will run with pre-set init arguments (default, mq-insecure, no-syncrules, ca-certs). We do not run the other job since it will just be `az iot ops init` with no additional parameters.
+
+  To achieve this, exclude is needed for the matrix. In this matrix, we have 5 options for features (what test to run) and 2 options for runtime-args (is `runtime-init-args` populated). This results in 10 possibilities, illustrated by the table below.
+
+  Feature | runtime-init-args present | runtime-init-args not present |
+  |---|---|---|
+  custom-input | | |
+  default | | |
+  mq-insecure | | |
+  no-syncrules | | |
+  ca-certs | | |
+
+  Next, we want to exclude the options we do not want. First we exclude the opposite of our runtime-arg. In the case of runtime-arg being false, we want to eliminate the entire runtime-init-args present column. Eliminated values are denoted by X.
+
+  Feature | runtime-init-args present | runtime-init-args not present |
+  |---|:---:|---|
+  custom-input | X | |
+  default | X | |
+  mq-insecure | X | |
+  no-syncrules | X | |
+  ca-certs | X | |
+
+  Then, we eliminate nonsense combinations (custom-input + no runtime-args; default + runtime-args, mq-insecure + runtime-args, no-syncrules + runtime-args, ca-certs + runtime-args).
+
+  Feature | runtime-init-args present | runtime-init-args not present |
+  |---|:---:|:---:|
+  custom-input | X | X |
+  default | X | |
+  mq-insecure | X | |
+  no-syncrules | X | |
+  ca-certs | X | |
+
+  Thus not providing runtime-args leaves us with 4 combinations: default + no runtime-args;  mq-insecure + no runtime-args, no-syncrules + no runtime-args, ca-certs + no runtime-args. Thus, only the default, mq-insecure, no-syncrules, and ca-certs jobs are run.
+
+  The same exercise can be followed to determine that providing runtime-args leaves us with one combination: custom-input + runtime-args. Thus, only custom-input is run.
+
 ### Inputs
 
 #### In order to run our integration test pipline from your repo, you must provide the following secrets to our workflow in order to use the federated Azure login action:
@@ -48,6 +89,8 @@ There are, however, some prerequisites and caveats that users should be made awa
 |---|---|
 **resource-group** | *The resource group to run tests in*
 **custom-locations-oid** | *Custom Locations Object ID - used to enable cluster-connect feature.*
+**runtime-init-args** | *Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments)*
+**use-container** | *Build container image for tests*
 
 ### Example workflow
 
@@ -61,7 +104,7 @@ on:
         type: string
         default: my-aio-resource-group
 
-permissions: 
+permissions:
     id-token: write
     contents: read
 

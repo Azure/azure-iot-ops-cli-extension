@@ -11,6 +11,7 @@ on:
         description: Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments).
         type: string
         required: false
+        default: ''
       custom-locations-oid:
         description: Custom Locations OID
         type: string
@@ -98,7 +99,6 @@ jobs:
         runtime-args:
           - ${{ inputs.runtime-init-args != '' }}
         exclude:
-          - runtime-args: ${{ inputs.runtime-init-args == '' }}
           - feature: custom-input
             runtime-args: false
           - feature: default

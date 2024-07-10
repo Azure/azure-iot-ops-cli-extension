@@ -16,10 +16,14 @@
 - ### [Tox tests](tox.yml)
 Run unit tests and linter
 - ### [Integration tests](int_test.yml)
-Run tests (including AIO deployment) against a live cluster.
+Run tests (including AIO deployment) against a live cluster. Cluster name, key-vault, and service
+principal arguments will be auto-populated during the workflow run.
   - Inputs:
     - `resource_group`: `string` - Resource Group to test in
-    - `cleanup`: `bool` - Attempt to clean up test resources after integration tests complete
+    - `custom-locations-oid`: `string` - Custom Locations OID
+    - `runtime-init-args`: `string` - Additional init arguments (beyond cluster name, resource group,
+      key vault, and service principal arguments)
+    - `use-container`: `bool` - Build container image for tests
 - ### [Cluster Cleanup](cluster_cleanup.yml)
 Used to clean up a resource group after AIO deployment testing.
   - Inputs:
@@ -28,7 +32,7 @@ Used to clean up a resource group after AIO deployment testing.
     - `keyvault_prefix`: `string` - Prefix of keyvault resources to delete
 - ### [CI Build and Test](ci_workflow.yml)
 CI checks to ensure build / unit test success
-  - Jobs: 
+  - Jobs:
     - [Build](ci_build.yml)
     - [Tox Test](tox.yml)
     - [AZDev Linter](azdev_linter.yml)
