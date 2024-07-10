@@ -19,6 +19,7 @@ from ..providers.edge_api import (
     ORC_API_V1,
     AKRI_API_V0,
     DEVICEREGISTRY_API_V1,
+    DATAFLOW_API_V1B1,
     EdgeApiManager,
 )
 
@@ -32,6 +33,7 @@ COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_ORC_APIS = EdgeApiManager(resource_apis=[ORC_API_V1])
 COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
+COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
 
 
 def build_bundle(
@@ -47,6 +49,7 @@ def build_bundle(
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.orc import prepare_bundle as prepare_symphony_bundle
+    from .support.dataflow import prepare_bundle as prepare_dataflow_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
@@ -72,6 +75,7 @@ def build_bundle(
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,
         },
+        OpsServiceType.dataflow.value: {"apis": COMPAT_DATAFLOW_APIS, "prepare_bundle": prepare_dataflow_bundle},
     }
 
     raise_on_404 = not (ops_service == OpsServiceType.auto.value)
