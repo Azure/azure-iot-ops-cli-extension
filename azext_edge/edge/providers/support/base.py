@@ -290,7 +290,7 @@ def process_storage_classes() -> List[dict]:
     storage_class_content.append(
         {
             "data": generic.sanitize_for_serialization(obj=storage_v1_api.list_storage_class()),
-            "zinfo": "storage_classes.yaml",
+            "zinfo": "storage-classes.yaml",
         }
     )
 
