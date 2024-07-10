@@ -12,6 +12,7 @@ from .orc import ORC_API_V1, OrcResourceKinds
 from .akri import AKRI_API_V0, AkriResourceKinds
 from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
 from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
+from .dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
 
 __all__ = [
     "CLUSTER_CONFIG_API_V1",
@@ -30,4 +31,6 @@ __all__ = [
     "KEYVAULT_API_V1",
     "DeviceRegistryResourceKinds",
     "DEVICEREGISTRY_API_V1",
+    "DATAFLOW_API_V1B1",
+    "DataflowResourceKinds",
 ]

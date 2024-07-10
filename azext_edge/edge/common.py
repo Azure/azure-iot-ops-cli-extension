@@ -145,6 +145,7 @@ class OpsServiceType(ListableEnum):
     orc = "orc"
     akri = "akri"
     deviceregistry = "deviceregistry"
+    dataflow = "dataflow"
     # TODO: re-enable billing once service is available post 0.6.0 release
     # billing = "billing"
 

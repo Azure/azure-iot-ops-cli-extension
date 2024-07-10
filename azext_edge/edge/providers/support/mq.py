@@ -36,6 +36,7 @@ MQ_APP_LABELS = [
 ]
 
 MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
+MQ_K8S_LABEL = "k8s-app in (aio-mq-fluent-bit)"
 
 MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_ACTIVE_API.label)
 MQ_DIRECTORY_PATH = MQ_ACTIVE_API.moniker
@@ -153,6 +154,15 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
         process_v1_pods(
             directory_path=MQ_DIRECTORY_PATH,
             label_selector=MQ_NAME_LABEL,
+            since_seconds=since_seconds,
+        )
+    )
+
+    # TODO: @jiacju - will remove once label decision is finalized
+    processed.extend(
+        process_v1_pods(
+            directory_path=MQ_DIRECTORY_PATH,
+            label_selector=MQ_K8S_LABEL,
             since_seconds=since_seconds,
         )
     )
