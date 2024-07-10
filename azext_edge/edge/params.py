@@ -161,7 +161,6 @@ def load_iotops_arguments(self, _):
                         DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value,
                         MqResourceKinds.BROKER.value,
                         MqResourceKinds.BROKER_LISTENER.value,
-                        MqResourceKinds.DIAGNOSTIC_SERVICE.value,
                         MqResourceKinds.MQTT_BRIDGE_CONNECTOR.value,
                         MqResourceKinds.DATALAKE_CONNECTOR.value,
                         MqResourceKinds.KAFKA_CONNECTOR.value,

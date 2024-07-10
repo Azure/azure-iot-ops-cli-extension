@@ -7,6 +7,7 @@
 from typing import Any, Dict, List, Optional, Union
 from enum import Enum
 
+from azext_edge.edge.providers.check.base.resource import process_resource_properties
 from azext_edge.edge.providers.check.cloud_connectors import process_cloud_connector
 from .base import (
     CheckManager,
@@ -33,6 +34,7 @@ from .common import (
     AIO_MQ_BACKEND_PREFIX,
     AIO_MQ_AUTH_PREFIX,
     AIO_MQ_HEALTH_MANAGER,
+    BROKER_DIAGNOSTICS_PROPERTIES,
     PADDING_SIZE,
     DataLakeConnectorTargetType,
     KafkaTopicMapRouteType,
@@ -58,7 +60,6 @@ def check_mq_deployment(
     evaluate_funcs = {
         MqResourceKinds.BROKER: evaluate_brokers,
         MqResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
-        MqResourceKinds.DIAGNOSTIC_SERVICE: evaluate_diagnostics_service,
         MqResourceKinds.MQTT_BRIDGE_CONNECTOR: evaluate_mqtt_bridge_connectors,
         MqResourceKinds.DATALAKE_CONNECTOR: evaluate_datalake_connectors,
         MqResourceKinds.KAFKA_CONNECTOR: evaluate_kafka_connectors,
@@ -75,200 +76,6 @@ def check_mq_deployment(
         resource_kinds=resource_kinds,
         resource_name=resource_name,
     )
-
-
-def evaluate_diagnostics_service(
-    as_list: bool = False,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
-    resource_name: str = None,
-) -> Dict[str, Any]:
-    check_manager = CheckManager(
-        check_name="evalBrokerDiag",
-        check_desc="Evaluate MQ Diagnostics Service",
-    )
-    all_diagnostic_services = get_resources_by_name(
-        api_info=MQ_ACTIVE_API,
-        kind=MqResourceKinds.DIAGNOSTIC_SERVICE,
-        resource_name=resource_name,
-    )
-    target_diagnostic_service = "diagnosticservices.mq.iotoperations.azure.com"
-
-    if not all_diagnostic_services:
-        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
-        fetch_diagnostics_services_error = f"Unable to fetch {MqResourceKinds.DIAGNOSTIC_SERVICE.value}s in any namespace."
-        check_manager.add_target(
-            target_name=target_diagnostic_service
-        )
-        check_manager.add_target_eval(
-            target_name=target_diagnostic_service,
-            status=status,
-            value=fetch_diagnostics_services_error,
-        )
-        check_manager.add_display(
-            target_name=target_diagnostic_service,
-            display=Padding(fetch_diagnostics_services_error, (0, 0, 0, 8)),
-        )
-        return check_manager.as_dict(as_list)
-
-    for (namespace, diagnostic_services) in get_resources_grouped_by_namespace(all_diagnostic_services):
-        check_manager.add_target(
-            target_name=target_diagnostic_service,
-            namespace=namespace,
-            conditions=["len(diagnosticservices)==1", "spec"],
-        )
-        check_manager.add_display(
-            target_name=target_diagnostic_service,
-            namespace=namespace,
-            display=Padding(
-                f"Diagnostic Service Resources in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, 8)
-            )
-        )
-        diagnostic_services = list(diagnostic_services)
-        diagnostic_service_count = len(diagnostic_services)
-        diagnostics_count_text = "- Expecting [bright_blue]1[/bright_blue] diagnostics service resource per namespace. {}."
-
-        service_count_status = CheckTaskStatus.success.value
-        service_status_color = "green"
-
-        # warn if we have <0, >1 diagnostic service resources
-        if diagnostic_service_count != 1:
-            service_count_status = CheckTaskStatus.warning.value
-            service_status_color = "yellow"
-
-        diagnostics_count_text = diagnostics_count_text.format(
-            f"[{service_status_color}]Detected {diagnostic_service_count}[/{service_status_color}]"
-        )
-
-        check_manager.add_target_eval(
-            target_name=target_diagnostic_service,
-            namespace=namespace,
-            status=service_count_status,
-            value=diagnostic_service_count,
-        )
-        check_manager.add_display(
-            target_name=target_diagnostic_service,
-            namespace=namespace,
-            display=Padding(diagnostics_count_text, (0, 0, 0, 8)),
-        )
-
-        for diag_service_resource in diagnostic_services:
-            diag_service_resource_name = diag_service_resource["metadata"]["name"]
-            diag_service_resource_spec: dict = diag_service_resource["spec"]
-
-            check_manager.add_display(
-                target_name=target_diagnostic_service,
-                namespace=namespace,
-                display=Padding(
-                    f"\n- Diagnostic service resource {{[bright_blue]{diag_service_resource_name}[/bright_blue]}}.",
-                    (0, 0, 0, 8),
-                ),
-            )
-
-            for (key, label, suffix) in [
-                ("dataExportFrequencySeconds", "Data Export Frequency", " seconds"),
-                ("logFormat", "Log Format", None),
-                ("logLevel", "Log Level", None),
-                ("maxDataStorageSize", "Max Data Storage Size", None),
-                ("metricsPort", "Metrics Port", None),
-                ("staleDataTimeoutSeconds", "Stale Data Timeout", " seconds"),
-            ]:
-                val = diag_service_resource_spec.get(key)
-                if detail_level != ResourceOutputDetailLevel.summary.value:
-                    check_manager.add_display(
-                        target_name=target_diagnostic_service,
-                        namespace=namespace,
-                        display=Padding(
-                            f"{label}: [bright_blue]{val}[/bright_blue]{suffix or ''}",
-                            (0, 0, 0, 12),
-                        ),
-                    )
-            check_manager.add_target_eval(
-                target_name=target_diagnostic_service,
-                namespace=namespace,
-                status=CheckTaskStatus.success.value,
-                value={"spec": diag_service_resource_spec},
-            )
-
-            target_service_deployed = f"service/{AIO_MQ_DIAGNOSTICS_SERVICE}"
-            check_manager.add_target(target_name=target_service_deployed, namespace=namespace, conditions=["spec.clusterIP", "spec.ports"])
-            check_manager.add_display(
-                target_name=target_service_deployed,
-                namespace=namespace,
-                display=Padding(
-                    "Service Status",
-                    (0, 0, 0, 8),
-                ),
-            )
-
-            diagnostics_service = get_namespaced_service(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True)
-            if not diagnostics_service:
-                check_manager.add_target_eval(
-                    target_name=target_service_deployed,
-                    namespace=namespace,
-                    status=CheckTaskStatus.error.value,
-                    value=None,
-                )
-                diag_service_desc_suffix = "[red]not detected[/red]."
-                diag_service_desc = (
-                    f"Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
-                )
-                check_manager.add_display(
-                    target_name=target_service_deployed,
-                    namespace=namespace,
-                    display=Padding(
-                        diag_service_desc,
-                        (0, 0, 0, 12),
-                    ),
-                )
-            else:
-                clusterIP = diagnostics_service.get("spec", {}).get("clusterIP")
-                ports: List[dict] = diagnostics_service.get("spec", {}).get("ports", [])
-
-                check_manager.add_target_eval(
-                    target_name=target_service_deployed,
-                    namespace=namespace,
-                    status=CheckTaskStatus.success.value,
-                    value={"spec": {"clusterIP": clusterIP, "ports": ports}},
-                    resource_name=diagnostics_service["metadata"]["name"],
-                )
-                diag_service_desc_suffix = "[green]detected[/green]."
-                diag_service_desc = (
-                    f"Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
-                )
-                check_manager.add_display(
-                    target_name=target_service_deployed,
-                    namespace=namespace,
-                    display=Padding(
-                        diag_service_desc,
-                        (0, 0, 0, 12),
-                    ),
-                )
-                if ports and detail_level != ResourceOutputDetailLevel.summary.value:
-                    for port in ports:
-                        check_manager.add_display(
-                            target_name=target_service_deployed,
-                            namespace=namespace,
-                            display=Padding(
-                                f"[cyan]{port.get('name')}[/cyan] "
-                                f"port [bright_blue]{port.get('port')}[/bright_blue] "
-                                f"protocol [cyan]{port.get('protocol')}[/cyan]",
-                                (0, 0, 0, 16),
-                            ),
-                        )
-                    check_manager.add_display(target_name=target_service_deployed, namespace=namespace, display=NewLine())
-
-                evaluate_pod_health(
-                    check_manager=check_manager,
-                    namespace=namespace,
-                    target=target_service_deployed,
-                    pod=AIO_MQ_DIAGNOSTICS_SERVICE,
-                    display_padding=12,
-                    service_label=MQ_NAME_LABEL,
-                    detail_level=detail_level,
-                )
-
-    return check_manager.as_dict(as_list)
 
 
 def evaluate_broker_listeners(
@@ -365,29 +172,26 @@ def evaluate_broker_listeners(
             listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}. {ref_display}"
             check_manager.add_display(target_name=target_listeners, namespace=namespace, display=Padding(listener_desc, (0, 0, 0, 8)))
             if detail_level != ResourceOutputDetailLevel.summary.value:
-                for (label, val) in [
-                    ("Port", 'port'),
-                    ("AuthN enabled", 'authenticationEnabled'),
-                    ("AuthZ enabled", 'authorizationEnabled')
-                ]:
-                    check_manager.add_display(
-                        target_name=target_listeners,
-                        namespace=namespace,
-                        display=Padding(
-                            f"{label}: [bright_blue]{listener_spec.get(val)}[/bright_blue]",
-                            (0, 0, 0, 12),
-                        ),
-                    )
-                node_port = listener_spec.get("nodePort")
-                if node_port:
-                    check_manager.add_display(
-                        target_name=target_listeners,
-                        namespace=namespace,
-                        display=Padding(
-                            f"Node Port: [bright_blue]{node_port}[/bright_blue]",
-                            (0, 0, 0, 12),
-                        ),
-                    )
+                ports = listener_spec.get("ports", [])
+
+                for port in ports:
+                    for (label, val) in [
+                        ("Port", 'port'),
+                        ("AuthN", 'authenticationRef'),
+                        ("AuthZ", 'authorizationRef'),
+                        ("Node Port", 'nodePort'),
+                    ]:
+                        val = port.get(val)
+
+                        if val:
+                            check_manager.add_display(
+                                target_name=target_listeners,
+                                namespace=namespace,
+                                display=Padding(
+                                    f"{label}: [bright_blue]{val}[/bright_blue]",
+                                    (0, 0, 0, 12),
+                                ),
+                            )
 
             if listener_spec_service_name not in processed_services:
                 target_listener_service = f"service/{listener_spec_service_name}"
@@ -436,7 +240,7 @@ def evaluate_broker_listeners(
                             ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
 
                             service_status = associated_service.get("status", {})
-                            load_balancer = service_status.get("loadBalancer", {})
+                            load_balancer = service_status.get("c", {})
                             ingress_rules: List[dict] = load_balancer.get("ingress", [])
 
                             if not ingress_rules:
@@ -580,7 +384,6 @@ def evaluate_brokers(
             broker_name = b["metadata"]["name"]
             broker_spec: dict = b["spec"]
             broker_diagnostics = broker_spec["diagnostics"]
-            broker_mode = broker_spec.get("mode")
             broker_status_state = b.get("status", {})
             broker_status = broker_status_state.get("status", "N/A")
             broker_status_desc = broker_status_state.get("statusDescription")
@@ -591,7 +394,7 @@ def evaluate_brokers(
                 status_display_text = f"{status_display_text} {broker_status_desc}."
 
             target_broker_text = (
-                f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}} mode [bright_blue]{broker_mode}[/bright_blue]."
+                f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}}"
             )
             check_manager.add_display(
                 target_name=target_brokers,
@@ -608,115 +411,144 @@ def evaluate_brokers(
                 display=Padding(status_display_text, (0, 0, 0, 12)),
             )
 
-            if broker_mode == "distributed":
-                if not added_distributed_conditions:
-                    # TODO - conditional evaluations
-                    broker_conditions.append("spec.cardinality")
-                    broker_conditions.append("spec.cardinality.backendChain.partitions>=1")
-                    broker_conditions.append("spec.cardinality.backendChain.redundancyFactor>=1")
-                    broker_conditions.append("spec.cardinality.backendChain.workers>=1")
-                    broker_conditions.append("spec.cardinality.frontend.replicas>=1")
-                    added_distributed_conditions = True
+            if not added_distributed_conditions:
+                # TODO - conditional evaluations
+                broker_conditions.append("spec.cardinality")
+                broker_conditions.append("spec.cardinality.backendChain.partitions>=1")
+                broker_conditions.append("spec.cardinality.backendChain.redundancyFactor>=1")
+                broker_conditions.append("spec.cardinality.backendChain.workers>=1")
+                broker_conditions.append("spec.cardinality.frontend.replicas>=1")
+                added_distributed_conditions = True
 
-                check_manager.set_target_conditions(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
-                broker_cardinality: dict = broker_spec.get("cardinality")
-                broker_eval_value["spec.cardinality"] = broker_cardinality
-                broker_eval_value["spec.mode"] = broker_mode
-                if not broker_cardinality:
+            check_manager.set_target_conditions(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
+            broker_cardinality: dict = broker_spec.get("cardinality")
+            broker_eval_value["spec.cardinality"] = broker_cardinality
+            if not broker_cardinality:
+                broker_eval_status = CheckTaskStatus.error.value
+                # show cardinality display (regardless of detail level) if it's missing
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    display=Padding("\nCardinality", (0, 0, 0, 12)),
+                )
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    display=Padding(
+                        "[magenta]spec.cardinality is undefined![/magenta]",
+                        (0, 0, 0, 16),
+                    ),
+                )
+            else:
+                backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
+                backend_redundancy_desc = "- Expecting backend redundancy factor [bright_blue]>=1[/bright_blue]. {}"
+                backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
+                frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
+
+                backend_chain = broker_cardinality.get("backendChain", {})
+                backend_partition_count: Optional[int] = backend_chain.get("partitions")
+                backend_redundancy: Optional[int] = backend_chain.get("redundancyFactor")
+                backend_workers: Optional[int] = backend_chain.get("workers")
+                frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
+
+                if backend_partition_count and backend_partition_count >= 1:
+                    backend_chain_count_colored = f"[green]Actual {backend_partition_count}[/green]."
+                else:
+                    backend_chain_count_colored = f"[red]Actual {backend_partition_count}[/red]."
                     broker_eval_status = CheckTaskStatus.error.value
-                    # show cardinality display (regardless of detail level) if it's missing
+
+                if backend_redundancy and backend_redundancy >= 1:
+                    backend_replicas_colored = f"[green]Actual {backend_redundancy}[/green]."
+                else:
+                    backend_replicas_colored = f"[red]Actual {backend_redundancy}[/red]."
+                    broker_eval_status = CheckTaskStatus.error.value
+
+                if backend_workers and backend_workers >= 1:
+                    backend_workers_colored = f"[green]Actual {backend_workers}[/green]."
+                else:
+                    backend_workers_colored = f"[red]Actual {backend_workers}[/red]."
+                    broker_eval_status = CheckTaskStatus.error.value
+
+                if frontend_replicas and frontend_replicas >= 1:
+                    frontend_replicas_colored = f"[green]Actual {frontend_replicas}[/green]."
+                else:
+                    frontend_replicas_colored = f"[red]Actual {frontend_replicas}[/red]."
+
+                # show cardinality display on non-summary detail_levels
+                if detail_level != ResourceOutputDetailLevel.summary.value:
                     check_manager.add_display(
                         target_name=target_brokers,
                         namespace=namespace,
                         display=Padding("\nCardinality", (0, 0, 0, 12)),
                     )
-                    check_manager.add_display(
-                        target_name=target_brokers,
-                        namespace=namespace,
-                        display=Padding(
-                            "[magenta]spec.cardinality is undefined![/magenta]",
-                            (0, 0, 0, 16),
-                        ),
-                    )
-                else:
-                    backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
-                    backend_redundancy_desc = "- Expecting backend redundancy factor [bright_blue]>=1[/bright_blue]. {}"
-                    backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
-                    frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
 
-                    backend_chain = broker_cardinality.get("backendChain", {})
-                    backend_partition_count: Optional[int] = backend_chain.get("partitions")
-                    backend_redundancy: Optional[int] = backend_chain.get("redundancyFactor")
-                    backend_workers: Optional[int] = backend_chain.get("workers")
-                    frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
-
-                    if backend_partition_count and backend_partition_count >= 1:
-                        backend_chain_count_colored = f"[green]Actual {backend_partition_count}[/green]."
-                    else:
-                        backend_chain_count_colored = f"[red]Actual {backend_partition_count}[/red]."
-                        broker_eval_status = CheckTaskStatus.error.value
-
-                    if backend_redundancy and backend_redundancy >= 1:
-                        backend_replicas_colored = f"[green]Actual {backend_redundancy}[/green]."
-                    else:
-                        backend_replicas_colored = f"[red]Actual {backend_redundancy}[/red]."
-                        broker_eval_status = CheckTaskStatus.error.value
-
-                    if backend_workers and backend_workers >= 1:
-                        backend_workers_colored = f"[green]Actual {backend_workers}[/green]."
-                    else:
-                        backend_workers_colored = f"[red]Actual {backend_workers}[/red]."
-                        broker_eval_status = CheckTaskStatus.error.value
-
-                    if frontend_replicas and frontend_replicas >= 1:
-                        frontend_replicas_colored = f"[green]Actual {frontend_replicas}[/green]."
-                    else:
-                        frontend_replicas_colored = f"[red]Actual {frontend_replicas}[/red]."
-
-                    # show cardinality display on non-summary detail_levels
-                    if detail_level != ResourceOutputDetailLevel.summary.value:
+                    for display in [
+                        backend_cardinality_desc.format(backend_chain_count_colored),
+                        backend_redundancy_desc.format(backend_replicas_colored),
+                        backend_workers_desc.format(backend_workers_colored),
+                        frontend_cardinality_desc.format(frontend_replicas_colored)
+                    ]:
                         check_manager.add_display(
                             target_name=target_brokers,
                             namespace=namespace,
-                            display=Padding("\nCardinality", (0, 0, 0, 12)),
+                            display=Padding(display, (0, 0, 0, 16)),
                         )
 
-                        for display in [
-                            backend_cardinality_desc.format(backend_chain_count_colored),
-                            backend_redundancy_desc.format(backend_replicas_colored),
-                            backend_workers_desc.format(backend_workers_colored),
-                            frontend_cardinality_desc.format(frontend_replicas_colored)
-                        ]:
-                            check_manager.add_display(
-                                target_name=target_brokers,
-                                namespace=namespace,
-                                display=Padding(display, (0, 0, 0, 16)),
-                            )
-
             diagnostic_detail_padding = (0, 0, 0, 16)
-            # show diagnostics display only on verbose detail_level
-            if broker_diagnostics and detail_level == ResourceOutputDetailLevel.verbose.value:
+            if broker_diagnostics and detail_level != ResourceOutputDetailLevel.summary.value:
                 check_manager.add_display(
                     target_name=target_brokers,
                     namespace=namespace,
                     display=Padding("\nBroker Diagnostics", (0, 0, 0, 12)),
                 )
-                for (key, label) in [
-                    ("enableMetrics", "Enable Metrics"),
-                    ("enableSelfCheck", "Enable Self-Check"),
-                    ("enableTracing", "Enable Tracing"),
-                    ("metricUpdateFrequencySeconds", "Update Frequency (s)"),
-                    ("logLevel", "Log Level"),
-                ]:
-                    val = broker_diagnostics.get(key)
-                    check_manager.add_display(
-                        target_name=target_brokers,
-                        namespace=namespace,
-                        display=Padding(
-                            f"{label}: [cyan]{val}[/cyan]",
-                            diagnostic_detail_padding,
-                        ),
-                    )
+                # for (key, label) in [
+                #     ("metrics", "Enable Metrics"),
+                #     ("selfCheck", "Enable Self-Check"),
+                #     ("traces", "Enable Tracing"),
+                # ]:
+                #     diagnostic_method = broker_diagnostics.get(key)
+                #     mode = diagnostic_method.get("mode")
+                #     check_manager.add_display(
+                #         target_name=target_brokers,
+                #         namespace=namespace,
+                #         display=Padding(
+                #             f"{label}: [cyan]{mode}[/cyan]",
+                #             diagnostic_detail_padding,
+                #         ),
+                #     )
+
+                #     if key == "metrics":
+                #         update_frequency = diagnostic_method.get("updateIntervalSeconds")
+                #         check_manager.add_display(
+                #             target_name=target_brokers,
+                #             namespace=namespace,
+                #             display=Padding(
+                #                 f"Update Frequency (s): [cyan]{update_frequency}[/cyan]",
+                #                 diagnostic_detail_padding,
+                #             ),
+                #         )
+
+                # log_level = broker_diagnostics.get("logs", {}).get("level")
+
+                # if log_level:
+                #     check_manager.add_display(
+                #         target_name=target_brokers,
+                #         namespace=namespace,
+                #         display=Padding(
+                #             f"Log Level: [cyan]{log_level}[/cyan]",
+                #             diagnostic_detail_padding,
+                #         ),
+                #     )
+                process_resource_properties(
+                    check_manager=check_manager,
+                    detail_level=detail_level,
+                    target_name=target_brokers,
+                    prop_value=broker_diagnostics,
+                    properties=BROKER_DIAGNOSTICS_PROPERTIES,
+                    namespace=namespace,
+                    padding=diagnostic_detail_padding,
+                )
+
             # show broker diagnostics error regardless of detail_level
             elif not broker_diagnostics:
                 check_manager.add_target_eval(
@@ -746,6 +578,63 @@ def evaluate_brokers(
                 value=broker_eval_value,
                 resource_name=broker_name,
             )
+        
+            diagnostics_service = get_namespaced_service(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True)
+            if not diagnostics_service:
+                check_manager.add_target_eval(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    status=CheckTaskStatus.error.value,
+                    value=None,
+                )
+                diag_service_desc_suffix = "[red]not detected[/red]."
+                diag_service_desc = (
+                    f"Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+                )
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    display=Padding(
+                        diag_service_desc,
+                        (0, 0, 0, 12),
+                    ),
+                )
+            else:
+                clusterIP = diagnostics_service.get("spec", {}).get("clusterIP")
+                ports: List[dict] = diagnostics_service.get("spec", {}).get("ports", [])
+
+                check_manager.add_target_eval(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    status=CheckTaskStatus.success.value,
+                    value={"spec": {"clusterIP": clusterIP, "ports": ports}},
+                    resource_name=diagnostics_service["metadata"]["name"],
+                )
+                diag_service_desc_suffix = "[green]detected[/green]."
+                diag_service_desc = (
+                    f"\nService {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+                )
+                check_manager.add_display(
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    display=Padding(
+                        diag_service_desc,
+                        (0, 0, 0, 12),
+                    ),
+                )
+                if ports and detail_level != ResourceOutputDetailLevel.summary.value:
+                    for port in ports:
+                        check_manager.add_display(
+                            target_name=target_brokers,
+                            namespace=namespace,
+                            display=Padding(
+                                f"[cyan]{port.get('name')}[/cyan] "
+                                f"port [bright_blue]{port.get('port')}[/bright_blue] "
+                                f"protocol [cyan]{port.get('protocol')}[/cyan]",
+                                (0, 0, 0, 16),
+                            ),
+                        )
+                    check_manager.add_display(target_name=target_brokers, namespace=namespace, display=NewLine())
 
         if brokers_count > 0:
             check_manager.add_display(
@@ -762,7 +651,8 @@ def evaluate_brokers(
                 AIO_MQ_FRONTEND_PREFIX,
                 AIO_MQ_BACKEND_PREFIX,
                 AIO_MQ_AUTH_PREFIX,
-                AIO_MQ_HEALTH_MANAGER
+                AIO_MQ_HEALTH_MANAGER,
+                AIO_MQ_DIAGNOSTICS_SERVICE
             ]:
                 evaluate_pod_health(
                     check_manager=check_manager,

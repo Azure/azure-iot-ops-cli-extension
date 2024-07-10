@@ -79,6 +79,21 @@ ASSET_EVENT_PROPERTIES = [
     ("observabilityMode", "Observability Mode", False),
 ]
 
+BROKER_DIAGNOSTICS_PROPERTIES = [
+    ("logs.exportIntervalSeconds", "Log Export Interval(s)", False),
+    ("logs.exportLevel", "Log Export Level", False),
+    ("logs.level", "Log Level", False),
+    ("metrics.exportIntervalSeconds", "Metric Export Interval(s)", True),
+    ("metrics.mode", "Metrics Mode", True),
+    ("metrics.updateIntervalSeconds", "Metrics Update Interval(s)", False),
+    ("selfCheck.intervalSeconds", "Self Check Interval(s)", False),
+    ("selfCheck.mode", "Self Check Mode", True),
+    ("selfCheck.timeoutSeconds", "Self Check Timeout(s)", False),
+    ("traces.exportIntervalSeconds", "Trace Export Interval(s)", False),
+    ("traces.mode", "Trace Mode", True),
+    ("traces.selfTracing.intervalSeconds", "Self Tracing Interval(s)", False),
+]
+
 MAX_ASSET_EVENTS = 1000
 MAX_ASSET_DATAPOINTS = 1000
 

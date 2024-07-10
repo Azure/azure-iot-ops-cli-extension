@@ -12,7 +12,6 @@ class MqResourceKinds(ListableEnum):
     BROKER = "broker"
     BROKER_LISTENER = "brokerlistener"
     BROKER_DIAGNOSTIC = "brokerdiagnostic"
-    DIAGNOSTIC_SERVICE = "diagnosticservice"
     BROKER_AUTHENTICATION = "brokerauthentication"
     BROKER_AUTHORIZATION = "brokerauthorization"
     MQTT_BRIDGE_TOPIC_MAP = "mqttbridgetopicmap"
