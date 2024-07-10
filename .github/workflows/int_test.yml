@@ -63,7 +63,7 @@ permissions:
   id-token: 'write'
 
 env:
-  KV_NAME: "opskv${{ github.run_number }}int"
+  KV_NAME: "opsint${{ github.run_id }}"
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
 
 jobs:
@@ -77,7 +77,7 @@ jobs:
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     - name: "Create Key Vault for clusters"
-      run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false
+      run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false --tags run_number=${{ github.run_number }}
 
   test:
     needs: [create_kv]
