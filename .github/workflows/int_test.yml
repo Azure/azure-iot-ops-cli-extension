@@ -62,7 +62,7 @@ permissions:
   id-token: 'write'
 
 env:
-  KV_NAME: "opskv${{ github.run_number }}"
+  KV_NAME: "opskv${{ github.run_number }}int"
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
 
 jobs:
