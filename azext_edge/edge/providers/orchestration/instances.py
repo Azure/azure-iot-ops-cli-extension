@@ -25,19 +25,12 @@ QUERIES = {
         """
 }
 
-INSTANCES_API_VERSION = "2021-10-01-privatepreview"
-# TODO temporary
-BASE_URL = "https://eastus2euap.management.azure.com"
-QUALIFIED_RESOURCE_TYPE = "Private.IoTOperations/instances"
-
 
 class Instances(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.default_subscription_id,
-            endpoint=BASE_URL,
-            api_version=INSTANCES_API_VERSION,
         )
         self.console = Console()
 

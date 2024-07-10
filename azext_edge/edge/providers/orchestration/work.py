@@ -482,9 +482,7 @@ class WorkManager:
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
                 deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
                 deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
-                deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers(
-                    self._kwargs.get("include_dp", False)
-                )
+                deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers()
                 deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
                 deployment_result["deploymentState"]["resources"] = [
                     resource.id.split(
@@ -586,10 +584,13 @@ class WorkManager:
 
     def build_template(self, work_kpis: dict) -> Tuple[TemplateVer, dict]:
         # TODO refactor, move out of work
+        safe_cluster_name = self._cluster_name.replace("_", "-")
+
         template = get_current_template_copy(self._template_path)
         parameters = {}
 
         for template_pair in [
+            ("instance_name", "instanceName"),
             ("cluster_name", "clusterName"),
             ("location", "location"),
             ("cluster_location", "clusterLocation"),

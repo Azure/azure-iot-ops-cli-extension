@@ -99,6 +99,7 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
+    instance_name: Optional[str] = None,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     keyvault_spc_secret_name: str = DEFAULT_NAMESPACE,
     custom_location_name: Optional[str] = None,
@@ -161,8 +162,12 @@ def init(
     # cluster namespace must be lowercase
     cluster_namespace = str(cluster_namespace).lower()
     cluster_name_lowered = cluster_name.lower()
+    safe_cluster_name = cluster_name_lowered.replace("_", "-")
 
     hashed_cluster_slug = url_safe_hash_phrase(cluster_name)[:5]
+
+    if not instance_name:
+        instance_name = f"{safe_cluster_name}-ops-init-instance"
     if not mq_frontend_server_name:
         mq_frontend_server_name = "mq-dmqtt-frontend"
     if not mq_listener_name:
@@ -192,6 +197,7 @@ def init(
         cmd=cmd,
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
+        instance_name=instance_name,
         cluster_location=None,  # Effectively always fetch connected cluster location
         custom_location_name=custom_location_name,
         resource_group_name=resource_group_name,

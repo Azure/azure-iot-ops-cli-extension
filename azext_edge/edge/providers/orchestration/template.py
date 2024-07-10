@@ -16,13 +16,9 @@ class TemplateVer(NamedTuple):
     content: dict
     moniker: str
 
-    def get_component_vers(self, include_dp: bool = False) -> dict:
+    def get_component_vers(self) -> dict:
         # Don't need a deep copy here.
-        component_copy = self.content["variables"]["VERSIONS"].copy()
-        if not include_dp:
-            del component_copy["processor"]
-
-        return component_copy
+        return self.content["variables"]["VERSIONS"].copy()
 
     @property
     def parameters(self) -> dict:
@@ -36,11 +32,12 @@ V1_TEMPLATE = TemplateVer(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.28.1.47646", "templateHash": "4030590847079757805"},
+            "_generator": {"name": "bicep", "version": "0.28.1.47646", "templateHash": "12382911361503409474"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
             "clusterName": {"type": "string"},
+            "instanceName": {"type": "string"},
             "clusterLocation": {"type": "string", "defaultValue": "[parameters('location')]"},
             "location": {"type": "string", "defaultValue": "[resourceGroup().location]"},
             "customLocationName": {"type": "string", "defaultValue": "[format('{0}-cl', parameters('clusterName'))]"},
@@ -79,6 +76,7 @@ V1_TEMPLATE = TemplateVer(
             "kubernetesDistro": {"type": "string", "defaultValue": "k8s", "allowedValues": ["k3s", "k8s", "microk8s"]},
             "containerRuntimeSocket": {"type": "string", "defaultValue": ""},
             "deployResourceSyncRules": {"type": "bool", "defaultValue": True},
+            "deploySecretSyncController": {"type": "bool", "defaultValue": False},
         },
         "variables": {
             "AIO_CLUSTER_RELEASE_NAMESPACE": "azure-iot-operations",
@@ -114,11 +112,12 @@ V1_TEMPLATE = TemplateVer(
                 "mqServiceType": "[parameters('mqServiceType')]",
             },
             "VERSIONS": {
-                "platform": "0.6.0-preview-rc20240627.1",
+                "platform": "0.6.0-preview-rc20240709.2",
                 "aio": "0.6.0-preview-rc20240708.3",
                 "observability": "0.1.0-preview",
+                "secretSyncController": "0.3.0-97225789",
             },
-            "TRAINS": {"platform": "integration", "aio": "integration"},
+            "TRAINS": {"platform": "integration", "aio": "integration", "secretSyncController": "preview"},
             "broker_fe_issuer_configuration": {
                 "name": "mq-fe-issuer-configuration",
                 "type": "yaml.k8s",
@@ -216,6 +215,25 @@ V1_TEMPLATE = TemplateVer(
                 },
             },
             {
+                "condition": "[parameters('deploySecretSyncController')]",
+                "type": "Microsoft.KubernetesConfiguration/extensions",
+                "apiVersion": "2022-03-01",
+                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
+                "name": "[format('secret-sync-controller-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
+                "identity": {"type": "SystemAssigned"},
+                "properties": {
+                    "extensionType": "microsoft.secretsynccontroller",
+                    "version": "[variables('VERSIONS').secretSyncController]",
+                    "releaseTrain": "[variables('TRAINS').secretSyncController]",
+                    "autoUpgradeMinorVersion": False,
+                    "scope": "[variables('AIO_EXTENSION_SCOPE')]",
+                    "configurationSettings": {
+                        "rotationPollIntervalInSeconds": "120",
+                        "validatingAdmissionPolicies.applyPolicies": "false",
+                    },
+                },
+            },
+            {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2022-03-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
@@ -228,6 +246,7 @@ V1_TEMPLATE = TemplateVer(
                     "autoUpgradeMinorVersion": False,
                     "scope": "[variables('AIO_EXTENSION_SCOPE')]",
                     "configurationSettings": {
+                        "connectors.opcua.values.nameOverride": "microsoft-iotoperations-opcuabroker",
                         "connectors.opcua.values.mqttBroker.authenticationMethod": "serviceAccountToken",
                         "connectors.opcua.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQ_PROPERTIES').satAudience]",
                         "connectors.opcua.values.mqttBroker.caCertConfigMapRef": "[variables('AIO_TRUST_CONFIG_MAP')]",
@@ -236,6 +255,8 @@ V1_TEMPLATE = TemplateVer(
                         "connectors.opcua.values.mqttBroker.connectUserProperties.metriccategory": "aio-opc",
                         "connectors.opcua.values.opcPlcSimulation.deploy": "[format('{0}', parameters('simulatePLC'))]",
                         "connectors.opcua.values.opcPlcSimulation.autoAcceptUntrustedCertificates": "[format('{0}', parameters('simulatePLC'))]",
+                        "connectors.opcua.values.opcPlcSimulation.deployAkriConfiguration": "[format('{0}', parameters('simulatePLC'))]",
+                        "connectors.opcua.values.discoveryHandler.enabled": "true",
                         "connectors.opcua.values.openTelemetry.enabled": "true",
                         "connectors.opcua.values.openTelemetry.endpoints.default.uri": "[variables('OBSERVABILITY').otelCollectorAddress]",
                         "connectors.opcua.values.openTelemetry.endpoints.default.protocol": "grpc",
@@ -272,16 +293,16 @@ V1_TEMPLATE = TemplateVer(
                         "akri.image.tag": "0.3.2-preview",
                         "connectors.opcua.enabled": "true",
                         "connectors.opcua.image.registry": "aioconnectorsprod.azurecr.io",
-                        "connectors.opcua.image.repository": "opcuabroker/helmchart/microsoft-iotoperations-opcuabroker",
-                        "connectors.opcua.image.tag": "0.6.0-preview.4",
-                        "dataFlows.enabled": "false",
-                        "dataFlows.image.registry": "mqbuilds.azurecr.io",
+                        "connectors.opcua.image.repository": "aio-connectors/helmchart/microsoft-aio-connectors",
+                        "connectors.opcua.image.tag": "0.7.0-preview.2",
+                        "dataFlows.enabled": "true",
+                        "dataFlows.image.registry": "mqpreview.azurecr.io",
                         "dataFlows.image.repository": "helm/dataflows",
-                        "dataFlows.image.tag": "0.5.0-nightly",
+                        "dataFlows.image.tag": "0.1.0-preview-rc2",
                         "mqttBroker.enabled": "true",
                         "mqttBroker.image.registry": "mqpreview.azurecr.io",
                         "mqttBroker.image.repository": "helm/mq",
-                        "mqttBroker.image.tag": "0.5.0-nightly-06242024",
+                        "mqttBroker.image.tag": "0.5.0-preview-rc2",
                     },
                 },
                 "dependsOn": [
@@ -397,7 +418,7 @@ V1_TEMPLATE = TemplateVer(
             {
                 "type": "Microsoft.IoTOperations/instances",
                 "apiVersion": "2024-07-01-preview",
-                "name": "aio-instance",
+                "name": "[parameters('instanceName')]",
                 "location": "[parameters('location')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -413,7 +434,7 @@ V1_TEMPLATE = TemplateVer(
             {
                 "type": "Microsoft.IoTOperations/instances/brokers",
                 "apiVersion": "2024-07-01-preview",
-                "name": "[format('{0}/{1}', 'aio-instance', parameters('mqBrokerName'))]",
+                "name": "[format('{0}/{1}', parameters('instanceName'), parameters('mqBrokerName'))]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
                     "type": "CustomLocation",
@@ -434,14 +455,14 @@ V1_TEMPLATE = TemplateVer(
                     },
                 },
                 "dependsOn": [
-                    "[resourceId('Microsoft.IoTOperations/instances', 'aio-instance')]",
+                    "[resourceId('Microsoft.IoTOperations/instances', parameters('instanceName'))]",
                     "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
                 ],
             },
             {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
                 "apiVersion": "2024-07-01-preview",
-                "name": "[format('{0}/{1}/{2}', 'aio-instance', parameters('mqBrokerName'), parameters('mqListenerName'))]",
+                "name": "[format('{0}/{1}/{2}', parameters('instanceName'), parameters('mqBrokerName'), parameters('mqListenerName'))]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
                     "type": "CustomLocation",
@@ -469,13 +490,13 @@ V1_TEMPLATE = TemplateVer(
                 },
                 "dependsOn": [
                     "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-                    "[resourceId('Microsoft.IoTOperations/instances/brokers', 'aio-instance', parameters('mqBrokerName'))]",
+                    "[resourceId('Microsoft.IoTOperations/instances/brokers', parameters('instanceName'), parameters('mqBrokerName'))]",
                 ],
             },
             {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
                 "apiVersion": "2024-07-01-preview",
-                "name": "[format('{0}/{1}/{2}', 'aio-instance', parameters('mqBrokerName'), parameters('mqAuthnName'))]",
+                "name": "[format('{0}/{1}/{2}', parameters('instanceName'), parameters('mqBrokerName'), parameters('mqAuthnName'))]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
                     "type": "CustomLocation",
@@ -490,7 +511,7 @@ V1_TEMPLATE = TemplateVer(
                 },
                 "dependsOn": [
                     "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-                    "[resourceId('Microsoft.IoTOperations/instances/brokers', 'aio-instance', parameters('mqBrokerName'))]",
+                    "[resourceId('Microsoft.IoTOperations/instances/brokers', parameters('instanceName'), parameters('mqBrokerName'))]",
                 ],
             },
         ],

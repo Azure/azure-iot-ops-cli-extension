@@ -250,6 +250,11 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops init") as context:
         context.argument(
+            "instance_name",
+            options_list=["--name", "-n"],
+            help="IoT Operations instance name. The default is in the form '{cluster_name}-ops-init-instance'.",
+        )
+        context.argument(
             "cluster_name",
             options_list=["--cluster"],
             help="Target cluster name for IoT Operations deployment.",
