@@ -17,6 +17,7 @@ from .providers.support_bundle import (
     COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
+    COMPAT_DATAFLOW_APIS,
 )
 
 
@@ -56,6 +57,7 @@ def load_iotops_help():
             - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
+            - {COMPAT_DATAFLOW_APIS.as_str()}
 
         examples:
         - name: Basic usage with default options. This form of the command will auto detect IoT Operations APIs and build a suitable bundle

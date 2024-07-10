@@ -466,7 +466,7 @@ def test_create_bundle(
                 label_selector=AKRI_NAME_LABEL_V2,
                 directory_path=AKRI_DIRECTORY_PATH,
             )
-        
+
         if api in [DATAFLOW_API_V1B1]:
             assert_list_deployments(
                 mocked_client,

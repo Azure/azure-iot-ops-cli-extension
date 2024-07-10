@@ -5,23 +5,16 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, Optional
-from zipfile import ZipInfo
+from typing import Iterable
 
 from knack.log import get_logger
 
-from azext_edge.edge.providers.edge_api.mq import MqResourceKinds
-
 from ..edge_api import DATAFLOW_API_V1B1, EdgeResourceApi
-from ..stats import get_stats, get_traces
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
-    get_mq_namespaces,
     process_deployments,
     process_replicasets,
-    process_services,
-    process_statefulset,
     process_v1_pods,
 )
 from .shared import NAME_LABEL_FORMAT
@@ -41,7 +34,7 @@ def fetch_deployments():
 
     # TODO: remove this once dataflow deployment label is fixed
     processed.extend(
-            process_deployments(
+        process_deployments(
             directory_path=DATAFLOW_DIRECTORY_PATH,
             field_selector=DATAFLOW_DEPLOYMENT_FIELD_SELECTOR,
         )
