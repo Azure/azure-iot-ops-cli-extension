@@ -30,43 +30,57 @@ There are, however, some prerequisites and caveats that users should be made awa
 - #### Understanding the matrix
   This section is to resolve any confusion caused by the matrix and it's format. The goal for the matrix is to have either one job or four jobs run during `Run Cluster Tests`.
 
-  If you provide `runtime-init-args`, only one job (custom-input) will run, which will include an init test with your specified runtime init arguments. We do not run the other jobs since the runtime-init-args can conflict with their preset values.
+  If you provide `runtime-init-args`, only one job (custom-input) will run, which will include an init test with your specified runtime init arguments. This allows you to test new init arguments. We do not run the other jobs since the runtime-init-args can conflict with their preset values.
 
   If you do *not* provide `runtime-init-args`, four jobs will run with pre-set init arguments (default, mq-insecure, no-syncrules, ca-certs). We do not run the other job since it will just be `az iot ops init` with no additional parameters.
 
-  To achieve this, exclude is needed for the matrix. In this matrix, we have 5 options for features (what test to run) and 2 options for runtime-args (is `runtime-init-args` populated). This results in 10 possibilities, illustrated by the table below.
+  To achieve this, exclude is needed for the matrix. We have 5 options for features (what test to run) and 2 options for runtime-args (true or false based on if `runtime-init-args` populated). This results in 10 possibilities, but is narrowed down to 5 since runtime-args is evaluated before the matrix is even created. We further narrow down the number of jobs to be run by eliminating nonsense combinations [(custom-input, false); (default, true); (mq-insecure, true); (no-syncrules, true); (ca-certs, true)]. Eliminated combinations that are not present in our possible combinations are ignored.
 
-  Feature | runtime-init-args present | runtime-init-args not present |
-  |---|---|---|
-  custom-input | | |
-  default | | |
-  mq-insecure | | |
-  no-syncrules | | |
-  ca-certs | | |
+  ##### **Input runtime-init-args is provided**
 
-  Next, we want to exclude the options we do not want. First we exclude the opposite of our runtime-arg. In the case of runtime-arg being false, we want to eliminate the entire runtime-init-args present column. Eliminated values are denoted by X.
+  If runtime-init-args is provided (ex: `--simulate-plc`), runtime-args will be set to `true`, resulting in the following possible combinations:
 
-  Feature | runtime-init-args present | runtime-init-args not present |
-  |---|:---:|---|
-  custom-input | X | |
-  default | X | |
-  mq-insecure | X | |
-  no-syncrules | X | |
-  ca-certs | X | |
+  - (custom-input, true)
 
-  Then, we eliminate nonsense combinations (custom-input + no runtime-args; default + runtime-args, mq-insecure + runtime-args, no-syncrules + runtime-args, ca-certs + runtime-args).
+  - (default, true)
 
-  Feature | runtime-init-args present | runtime-init-args not present |
-  |---|:---:|:---:|
-  custom-input | X | X |
-  default | X | |
-  mq-insecure | X | |
-  no-syncrules | X | |
-  ca-certs | X | |
+  - (mq-insecure, true)
 
-  Thus not providing runtime-args leaves us with 4 combinations: default + no runtime-args;  mq-insecure + no runtime-args, no-syncrules + no runtime-args, ca-certs + no runtime-args. Thus, only the default, mq-insecure, no-syncrules, and ca-certs jobs are run.
+  - (no-syncrules, true)
 
-  The same exercise can be followed to determine that providing runtime-args leaves us with one combination: custom-input + runtime-args. Thus, only custom-input is run.
+  - (ca-certs, true)
+
+  We eliminate nonsense combinations.  This leaves us with only:
+
+  - (custom-input, true)
+
+  And thus, one job will be run.
+
+  ##### **Input runtime-init-args is not provided**
+
+  If runtime-init-args is *not* provided (it is left blank), runtime-args will be set to `false`, resulting in the following possible combinations:
+
+  - (custom-input, false)
+
+  - (default, false)
+
+  - (mq-insecure, false)
+
+  - (no-syncrules, false)
+
+  - (ca-certs, false)
+
+  We eliminate nonsense combinations. This leaves us with:
+
+  - (default, false)
+
+  - (mq-insecure, false)
+
+  - (no-syncrules, false)
+
+  - (ca-certs, false)
+
+  And thus, four jobs will be run.
 
 ### Inputs
 
