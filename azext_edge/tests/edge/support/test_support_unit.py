@@ -9,6 +9,7 @@ import random
 from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
 from zipfile import ZipInfo
+from unittest.mock import Mock
 
 import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
@@ -101,6 +102,7 @@ def test_create_bundle(
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_namespaced_custom_objects,
+    mocked_get_config_map: Mock,
 ):
     # TODO: clean up label once all service labels become stable
     asset_raises_not_found_error(mocked_cluster_resources)
@@ -461,6 +463,8 @@ def test_create_bundle(
 
     # assert shared KPIs regardless of service
     assert_shared_kpis(mocked_client, mocked_zipfile)
+    # Using a divergent pattern for cluster config since its mock is at a higher level.
+    mocked_get_config_map.assert_called_with(name='azure-clusterconfig', namespace='azure-arc')
 
 
 def asset_raises_not_found_error(mocked_cluster_resources):
@@ -764,8 +768,13 @@ def assert_shared_kpis(mocked_client, mocked_zipfile):
     mocked_client.StorageV1Api().list_storage_class.assert_called_once()
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo="storage_classes.yaml",
+        zinfo="storage-classes.yaml",
         data="items:\n- metadata:\n    name: mock_storage_class\n  provisioner: mock_provisioner\n",
+    )
+    assert_zipfile_write(
+        mocked_zipfile,
+        zinfo="azure-clusterconfig.yaml",
+        data='configkey: configvalue\n',
     )
 
 
@@ -899,6 +908,7 @@ def test_create_bundle_mq_traces(
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_mq_get_traces,
+    mocked_get_config_map,
 ):
     result = support_bundle(None, bundle_dir=a_bundle_dir, include_mq_traces=True)
 

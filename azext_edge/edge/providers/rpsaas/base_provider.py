@@ -29,6 +29,7 @@ from ...common import ResourceTypeMapping
 
 logger = get_logger(__name__)
 EXTENSION_API_VERSION = "2023-05-01"
+IOT_OPS_EXTENSION = "microsoft.iotoperations"
 
 
 class RPSaaSBaseProvider:
@@ -260,6 +261,7 @@ class RPSaaSBaseProvider:
             logger.warning(CLUSTER_OFFLINE_MSG.format(cluster["name"]))
 
         possible_locations = []
+        extension_key = f"{self.required_extension}.enabled"
         for location in location_query_result:
             usable = False
             for extension_id in location["properties"]["clusterExtensionIds"]:
@@ -268,7 +270,10 @@ class RPSaaSBaseProvider:
                     resource_id=extension_id,
                     api_version=EXTENSION_API_VERSION,
                 ).as_dict()
-                if extension["properties"]["extensionType"] == self.required_extension:
+                if all([
+                    extension["properties"]["extensionType"] == IOT_OPS_EXTENSION,
+                    extension["properties"]["configurationSettings"].get(extension_key, "false") == "true"
+                ]):
                     usable = True
                     break
             if usable:
@@ -276,7 +281,9 @@ class RPSaaSBaseProvider:
 
         # throw if there are no suitable extensions (in the cluster)
         if len(possible_locations) == 0:
-            raise ValidationError(MISSING_EXTENSION_ERROR.format(cluster["name"], self.required_extension))
+            raise ValidationError(
+                MISSING_EXTENSION_ERROR.format(cluster["name"], IOT_OPS_EXTENSION, self.required_extension)
+            )
         # throw if multiple custom locations (cluster name given, multiple locations possible)
         if len(possible_locations) > 1:
             possible_locations = "\n".join(possible_locations)
