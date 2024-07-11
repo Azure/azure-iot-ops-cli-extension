@@ -273,7 +273,7 @@ def process_top_levels(
     ops_service: str,
 ) -> NamespaceTuple:
     level_0 = walk_result.pop(BASE_ZIP_PATH)
-    for file in ["events.yaml", "nodes.yaml", "storage_classes.yaml"]:
+    for file in ["events.yaml", "nodes.yaml", "storage-classes.yaml", "azure-clusterconfig.yaml"]:
         assert file in level_0["files"]
     if not level_0["folders"]:
         pytest.skip(f"No bundles created for {ops_service}.")

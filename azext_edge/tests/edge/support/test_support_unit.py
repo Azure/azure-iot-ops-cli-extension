@@ -9,6 +9,7 @@ import random
 from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
 from zipfile import ZipInfo
+from unittest.mock import Mock
 
 import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
@@ -23,6 +24,7 @@ from azext_edge.edge.providers.edge_api import (
     MQTT_BROKER_API_V1B1,
     OPCUA_API_V1,
     ORC_API_V1,
+    DATAFLOW_API_V1B1,
     EdgeResourceApi,
 )
 from azext_edge.edge.providers.support.akri import (
@@ -42,7 +44,7 @@ from azext_edge.edge.providers.support.billing import (
     ARC_BILLING_DIRECTORY_PATH,
     BILLING_RESOURCE_KIND,
 )
-from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_LABEL, MQ_NAME_LABEL
+from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_K8S_LABEL, MQ_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
     OPC_DIRECTORY_PATH,
@@ -102,6 +104,7 @@ def test_create_bundle(
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_namespaced_custom_objects,
+    mocked_get_config_map: Mock,
 ):
     # TODO: clean up label once all service labels become stable
     asset_raises_not_found_error(mocked_cluster_resources)
@@ -190,6 +193,14 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=MQ_NAME_LABEL,
+                directory_path=MQ_DIRECTORY_PATH,
+                since_seconds=since_seconds,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=MQ_K8S_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
                 since_seconds=since_seconds,
             )
@@ -457,11 +468,42 @@ def test_create_bundle(
                 directory_path=AKRI_DIRECTORY_PATH,
             )
 
+        if api in [DATAFLOW_API_V1B1]:
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATAFLOW_API_V1B1.label,
+                directory_path=DATAFLOW_API_V1B1.moniker,
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=DATAFLOW_API_V1B1.moniker,
+                mock_names=["aio-dataflow-operator"],
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATAFLOW_API_V1B1.label,
+                directory_path=DATAFLOW_API_V1B1.moniker,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=DATAFLOW_API_V1B1.label,
+                directory_path=DATAFLOW_API_V1B1.moniker,
+                since_seconds=since_seconds,
+            )
+
     if expected_resources:
         assert_otel_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
 
     # assert shared KPIs regardless of service
     assert_shared_kpis(mocked_client, mocked_zipfile)
+    # Using a divergent pattern for cluster config since its mock is at a higher level.
+    mocked_get_config_map.assert_called_with(name='azure-clusterconfig', namespace='azure-arc')
 
 
 def asset_raises_not_found_error(mocked_cluster_resources):
@@ -775,8 +817,13 @@ def assert_shared_kpis(mocked_client, mocked_zipfile):
     mocked_client.StorageV1Api().list_storage_class.assert_called_once()
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo="storage_classes.yaml",
+        zinfo="storage-classes.yaml",
         data="items:\n- metadata:\n    name: mock_storage_class\n  provisioner: mock_provisioner\n",
+    )
+    assert_zipfile_write(
+        mocked_zipfile,
+        zinfo="azure-clusterconfig.yaml",
+        data='configkey: configvalue\n',
     )
 
 
@@ -910,6 +957,7 @@ def test_create_bundle_mq_traces(
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_mq_get_traces,
+    mocked_get_config_map,
 ):
     result = support_bundle(None, bundle_dir=a_bundle_dir, include_mq_traces=True)
 

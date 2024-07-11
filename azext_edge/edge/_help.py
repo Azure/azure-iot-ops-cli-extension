@@ -17,6 +17,7 @@ from .providers.support_bundle import (
     COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
+    COMPAT_DATAFLOW_APIS,
 )
 
 
@@ -56,6 +57,7 @@ def load_iotops_help():
             - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
+            - {COMPAT_DATAFLOW_APIS.as_str()}
 
             Note: logs from evicted pod will not be captured, as they are inaccessible. For details
             on why a pod was evicted, please refer to the related pod and node files.
@@ -72,11 +74,11 @@ def load_iotops_help():
 
         - name: Specify a custom container log age in seconds.
           text: >
-            az iot ops support create-bundle --ops-service mq --log-age 172800
+            az iot ops support create-bundle --ops-service broker --log-age 172800
 
-        - name: Include mq traces in the support bundle. This is an alias for stats trace fetch capability.
+        - name: Include mqtt broker traces in the support bundle. This is an alias for stats trace fetch capability.
           text: >
-            az iot ops support create-bundle --ops-service mq --mq-traces
+            az iot ops support create-bundle --ops-service broker --broker-traces
 
         - name: Include arc agents resources in the support bundle.
           text: >
@@ -99,11 +101,11 @@ def load_iotops_help():
             - {COMPAT_OPCUA_APIS.as_str()}
 
         examples:
-        - name: Basic usage. Checks `mq` health with summary output.
+        - name: Basic usage. Checks `broker` health with summary output.
           text: >
             az iot ops check
 
-        - name: Evaluates `mq` like prior example, however output is optimized for CI.
+        - name: Evaluates `broker` like prior example, however output is optimized for CI.
           text: >
             az iot ops check --as-object
 
@@ -121,14 +123,14 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops mq"
+        "iot ops broker"
     ] = """
         type: group
-        short-summary: MQ specific tools.
+        short-summary: Mqtt broker management and operations.
     """
 
     helps[
-        "iot ops mq stats"
+        "iot ops broker stats"
     ] = f"""
         type: command
         short-summary: Show dmqtt running statistics.
@@ -139,37 +141,25 @@ def load_iotops_help():
         examples:
         - name: Fetch key performance indicators from the diagnostics Prometheus metrics endpoint.
           text: >
-            az iot ops mq stats
+            az iot ops broker stats
 
         - name: Same as prior example except with a dynamic display that refreshes periodically.
           text: >
-            az iot ops mq stats --watch
+            az iot ops broker stats --watch
 
         - name: Return the raw output of the metrics endpoint with minimum processing.
           text: >
-            az iot ops mq stats --raw
+            az iot ops broker stats --raw
 
         - name: Fetch all available mq traces from the diagnostics Protobuf endpoint.
                 This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
                 A trace files last modified attribute will match the trace timestamp.
           text: >
-            az iot ops mq stats --trace-dir .
+            az iot ops broker stats --trace-dir .
 
         - name: Fetch traces by trace Ids provided in space-separated hex format. Only `Otel` format is shown.
           text: >
-            az iot ops mq stats --trace-ids 4e84000155a98627cdac7de46f53055d
-    """
-
-    helps[
-        "iot ops mq get-password-hash"
-    ] = """
-        type: command
-        short-summary: Generates a PBKDF2 hash of the passphrase applying PBKDF2-HMAC-SHA512. A 128-bit salt is used from os.urandom.
-
-        examples:
-        - name: Produce a hash of the phrase 'mypassphrase' using the default number of hash iterations.
-          text: >
-            az iot ops mq get-password-hash -p mypassphrase
+            az iot ops broker stats --trace-ids 4e84000155a98627cdac7de46f53055d
     """
 
     helps[
@@ -192,8 +182,6 @@ def load_iotops_help():
         long-summary: |
                       For additional resources including how to Arc-enable a cluster see
                       https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
-
-                      Note: Data Processor is not deployed by default. Use --include-dp to add it.
 
         examples:
         - name: Minimum input for complete setup. This includes Key Vault configuration, CSI driver deployment, TLS config and deployment of IoT Operations.

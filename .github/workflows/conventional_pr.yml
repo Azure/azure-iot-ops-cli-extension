@@ -15,7 +15,7 @@ jobs:
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
-            conventional_regex='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.*\))?: .*$'
+            conventional_regex='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.*\))?!?: .*$'
             if [[ "$TITLE" =~ $conventional_regex ]]; then
                 echo "Success!"
             else

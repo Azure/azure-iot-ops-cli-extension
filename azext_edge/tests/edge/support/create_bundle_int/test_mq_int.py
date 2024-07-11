@@ -25,8 +25,8 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     mq_traces = True
 
     ops_service = OpsServiceType.mq.value
-    command = f"az iot ops support create-bundle --mq-traces {mq_traces} --ops-service {ops_service}"
-    walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
+    command = f"az iot ops support create-bundle --broker-traces {mq_traces} --ops-service {ops_service}"
+    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service, mq_traces=mq_traces)["aio"]
     traces = file_map.pop("traces", {})
     # diagnostic_metrics.txt
