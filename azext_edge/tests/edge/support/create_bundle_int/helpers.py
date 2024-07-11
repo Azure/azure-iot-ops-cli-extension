@@ -213,7 +213,7 @@ def get_file_map(
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
     elif ops_service == "billing":
         assert len(walk_result) == 2
-        ops_path = path.join(BASE_ZIP_PATH, namespace, "clusterconfig", ops_service)
+        ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
@@ -262,9 +262,6 @@ def process_top_levels(
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
         assert level_1["folders"] == ["clusterconfig"]
         assert not level_1["files"]
-        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, "clusterconfig"))
-        assert level_2["folders"] == ["billing"]
-        assert not level_2["files"]
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
