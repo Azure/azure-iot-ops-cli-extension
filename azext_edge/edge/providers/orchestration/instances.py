@@ -51,6 +51,10 @@ class Instances(Queryable):
 
     def _show_tree(self, instance: dict):
         custom_location = self._get_associated_cl(instance)
+        if not custom_location:
+            logger.warning("Unable to process the resource tree.")
+            return
+
         resource_id_container = parse_resource_id(custom_location["properties"]["hostResourceId"])
 
         # Currently resource map will query cluster state upon init
