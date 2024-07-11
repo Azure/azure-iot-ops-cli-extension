@@ -662,9 +662,8 @@ def assert_list_pods(
                     "namespace: namespace\ntimestamp: '0000-00-00T00:00:00Z'\n",
                 )
 
-            if "prefix_names" in kwargs:
-                if pod_name not in kwargs["prefix_names"]:
-                    continue
+            if pod_name not in kwargs.get("prefix_names", []):
+                continue
 
             for container_name in pods_with_container[namespace][pod_name]:
                 data = (
