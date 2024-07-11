@@ -34,8 +34,9 @@ def fetch_pods(
 ):
     # capture billing pods for aio usage
     billing_pods = process_v1_pods(
-        directory_path=ARC_BILLING_DIRECTORY_PATH,
+        directory_path=BILLING_RESOURCE_KIND,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
+        prefix_names=["aio-usage"],
         since_seconds=since_seconds,
     )
 
@@ -53,7 +54,7 @@ def fetch_pods(
 
 def fetch_jobs():
     processed = process_jobs(
-        directory_path=ARC_BILLING_DIRECTORY_PATH,
+        directory_path=BILLING_RESOURCE_KIND,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
     )
 
@@ -62,7 +63,7 @@ def fetch_jobs():
 
 def fetch_cron_jobs():
     processed = process_cron_jobs(
-        directory_path=ARC_BILLING_DIRECTORY_PATH,
+        directory_path=BILLING_RESOURCE_KIND,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
     )
 

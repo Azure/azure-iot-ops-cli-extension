@@ -145,9 +145,8 @@ class OpsServiceType(ListableEnum):
     orc = "orc"
     akri = "akri"
     deviceregistry = "deviceregistry"
+    billing = "billing"
     dataflow = "dataflow"
-    # TODO: re-enable billing once service is available post 0.6.0 release
-    # billing = "billing"
 
     @classmethod
     def list_check_services(cls):
