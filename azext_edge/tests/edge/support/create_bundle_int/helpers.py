@@ -262,9 +262,6 @@ def process_top_levels(
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
         assert level_1["folders"] == ["clusterconfig"]
         assert not level_1["files"]
-        # level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, "clusterconfig"))
-        # assert level_2["folders"] == ["billing"]
-        # assert not level_2["files"]
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
