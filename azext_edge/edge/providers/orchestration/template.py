@@ -555,31 +555,6 @@ V1_TEMPLATE = TemplateVer(
 )
 
 
-def get_insecure_mq_listener():
-    return {
-        "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-        "apiVersion": "2024-07-01-preview",
-        "name": "[format('{0}/{1}/{2}', parameters('mqInstanceName'), parameters('mqBrokerName'), 'non-tls-listener')]",
-        "location": "[parameters('location')]",
-        "extendedLocation": {
-            "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-            "type": "CustomLocation",
-        },
-        "properties": {
-            "brokerRef": "[parameters('mqBrokerName')]",
-            "serviceType": "[parameters('mqServiceType')]",
-            "serviceName": "[variables('MQ_PROPERTIES').name]",
-            "authenticationEnabled": False,
-            "authorizationEnabled": False,
-            "port": 1883,
-        },
-        "dependsOn": [
-            "[resourceId('Microsoft.IoTOperationsMQ/mq/broker', parameters('mqInstanceName'), parameters('mqBrokerName'))]",
-            "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-        ],
-    }
-
-
 CURRENT_TEMPLATE = V1_TEMPLATE
 
 

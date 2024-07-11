@@ -7,7 +7,7 @@
 
 from os import environ
 from random import randint
-from typing import Dict, FrozenSet
+from typing import Dict, FrozenSet, List
 from unittest.mock import Mock
 
 import pytest
@@ -139,7 +139,7 @@ from ...generators import generate_random_string
             generate_random_string(),  # mq_listener_name
             generate_random_string(),  # mq_broker_name
             generate_random_string(),  # mq_authn_name
-            False,  # mq_insecure @digimaun
+            True,  # mq_insecure
             True,  # disable_rsync_rules
         ),
     ],
@@ -196,7 +196,7 @@ def test_init_to_template_params(
         (mq_listener_name, "mq_listener_name"),
         (mq_broker_name, "mq_broker_name"),
         (mq_authn_name, "mq_authn_name"),
-        #(mq_insecure, "mq_insecure"),
+        (mq_insecure, "mq_insecure"),
         (disable_rsync_rules, "disable_rsync_rules"),
     ]
 
@@ -292,21 +292,16 @@ def test_init_to_template_params(
 
     # test mq_insecure
     listeners = _get_resources_of_type(
-        resource_type="Microsoft.IoTOperationsMQ/mq/broker/listener", template=template_ver
+        resource_type="Microsoft.IoTOperations/instances/brokers/listeners", template=template_ver
     )
-    brokers = _get_resources_of_type(resource_type="Microsoft.IoTOperations/instances/brokers", template=template_ver)
-    insecure_listener_added = False
-    for listener in listeners:
-        if "'non-tls-listener'" in listener["name"]:
-            insecure_listener_added = True
+    assert listeners
+    ports: List[dict] = listeners[0]["properties"]["ports"]
+    assert ports
+    assert ports[0]["port"] == 8883
 
     if mq_insecure:
-        assert insecure_listener_added
-        assert brokers[0]["properties"]["encryptInternalTraffic"] is False
-        return
-
-    assert not insecure_listener_added
-    assert "encryptInternalTraffic" not in brokers[0]["properties"]
+        assert len(ports) == 2
+        assert ports[1]["port"] == 1883
 
 
 def _get_resources_of_type(resource_type: str, template: TemplateVer):

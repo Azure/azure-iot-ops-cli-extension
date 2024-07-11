@@ -22,7 +22,6 @@ from .providers.orchestration.common import (
     KEYVAULT_ARC_EXTENSION_VERSION,
     KubernetesDistroType,
     MqMemoryProfile,
-    MqMode,
     MqServiceType,
 )
 from .providers.support.base import get_bundle_path
@@ -147,7 +146,6 @@ def init(
     from .util import (
         assemble_nargs_to_dict,
         is_env_flag_enabled,
-        url_safe_hash_phrase,
         url_safe_random_chars,
     )
 
@@ -164,7 +162,7 @@ def init(
     cluster_name_lowered = cluster_name.lower()
     safe_cluster_name = cluster_name_lowered.replace("_", "-")
 
-    hashed_cluster_slug = url_safe_hash_phrase(cluster_name)[:5]
+    # @digimaun hashed_cluster_slug = url_safe_hash_phrase(cluster_name)[:5]
 
     if not instance_name:
         instance_name = f"{safe_cluster_name}-ops-init-instance"

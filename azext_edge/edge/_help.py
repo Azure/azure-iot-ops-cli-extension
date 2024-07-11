@@ -184,7 +184,7 @@ def load_iotops_help():
                       --sp-object-id and --sp-secret. By providing the SP fields, no additional work via Microsoft Graph operations will be done.
 
                       Pre-creating an app registration is useful when the logged-in principal has constrained Entra Id permissions. For example
-                      in CI/automation scenarios, or an orgs separation of user responsibility. 
+                      in CI/automation scenarios, or an orgs separation of user responsibility.
 
         examples:
         - name: Minimum input for complete setup. This includes Key Vault configuration, CSI driver deployment, TLS config and deployment of IoT Operations.

@@ -642,24 +642,17 @@ class WorkManager:
 
         mq_insecure = self._kwargs.get("mq_insecure", False)
         if mq_insecure:
-            logger.warning("--mq-insecure is not currently supported")
-            return
-            # TODO: digimaun
-
-            broker_adj = False
             # This solution entirely relies on the form of the "standard" template.
             # Needs re-work after event
+            listener_adj = False
             for resource in template.content["resources"]:
-                if resource.get("type") == "Microsoft.IoTOperations/instances/brokers":
-                    resource["properties"]["encryptInternalTraffic"] = False
-                    broker_adj = True
+                if resource.get("type") == "Microsoft.IoTOperations/instances/brokers/listeners":
+                    ports: list = resource["properties"]["ports"]
+                    ports.append({"port": 1883})
+                    listener_adj = True
 
-                if broker_adj:
+                if listener_adj:
                     break
-
-            from .template import get_insecure_mq_listener
-
-            template.content["resources"].append(get_insecure_mq_listener())
 
         return template, parameters
 
