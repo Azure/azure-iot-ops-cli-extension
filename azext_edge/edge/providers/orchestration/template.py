@@ -32,7 +32,7 @@ V1_TEMPLATE = TemplateVer(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.28.1.47646", "templateHash": "12382911361503409474"},
+            "_generator": {"name": "bicep", "version": "0.28.1.47646", "templateHash": "16179461344115953854"},
             "description": "This template deploys Azure IoT Operations.",
         },
         "parameters": {
@@ -113,7 +113,7 @@ V1_TEMPLATE = TemplateVer(
             },
             "VERSIONS": {
                 "platform": "0.6.0-preview-rc20240709.2",
-                "aio": "0.6.0-preview-rc20240708.3",
+                "aio": "0.6.0-preview-rc20240710.2",
                 "observability": "0.1.0-preview",
                 "secretSyncController": "0.3.0-97225789",
             },
@@ -298,11 +298,11 @@ V1_TEMPLATE = TemplateVer(
                         "dataFlows.enabled": "true",
                         "dataFlows.image.registry": "mqpreview.azurecr.io",
                         "dataFlows.image.repository": "helm/dataflows",
-                        "dataFlows.image.tag": "0.1.0-preview-rc2",
+                        "dataFlows.image.tag": "0.1.0-preview-rc4",
                         "mqttBroker.enabled": "true",
                         "mqttBroker.image.registry": "mqpreview.azurecr.io",
                         "mqttBroker.image.repository": "helm/mq",
-                        "mqttBroker.image.tag": "0.5.0-preview-rc2",
+                        "mqttBroker.image.tag": "0.5.0-preview-rc3",
                     },
                 },
                 "dependsOn": [
