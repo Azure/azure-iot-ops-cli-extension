@@ -20,6 +20,7 @@ from ..providers.edge_api import (
     AKRI_API_V0,
     DEVICEREGISTRY_API_V1,
     DATAFLOW_API_V1B1,
+    META_API_V1B1,
     EdgeApiManager,
 )
 
@@ -34,6 +35,7 @@ COMPAT_ORC_APIS = EdgeApiManager(resource_apis=[ORC_API_V1])
 COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
+COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1B1])
 
 
 def build_bundle(
@@ -54,6 +56,7 @@ def build_bundle(
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.otel import prepare_bundle as prepare_otel_bundle
+    from .support.meta import prepare_bundle as prepare_meta_bundle
 
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
@@ -107,6 +110,10 @@ def build_bundle(
 
     # Collect common resources if any AIO service is deployed with any service selected.
     pending_work["common"] = prepare_shared_bundle()
+
+    # Collect meta resources if any AIO service is deployed with any service selected.
+    deployed_meta_apis = COMPAT_META_APIS.get_deployed(raise_on_404)
+    pending_work["meta"] = prepare_meta_bundle(deployed_meta_apis, log_age_seconds)
 
     total_work_count = 0
     for service in pending_work:
