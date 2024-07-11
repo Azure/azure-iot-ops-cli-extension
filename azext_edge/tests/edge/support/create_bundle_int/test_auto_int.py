@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 
 
 def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
-    case = ops_service, mq_traces, bundle_dir
+    # case = ops_service, mq_traces, bundle_dir
     cases = [(service, False, "support_bundles") for service in OpsServiceType.list()]
     cases.append((OpsServiceType.mq.value, True, None))
     return cases
