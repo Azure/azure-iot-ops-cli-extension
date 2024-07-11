@@ -20,7 +20,6 @@ from azext_edge.edge.providers.orchestration.base import KEYVAULT_ARC_EXTENSION_
 from azext_edge.edge.providers.orchestration.common import (
     KubernetesDistroType,
     MqMemoryProfile,
-    MqMode,
     MqServiceType,
 )
 from azext_edge.edge.providers.orchestration.work import (
@@ -32,7 +31,7 @@ from azext_edge.edge.providers.orchestration.work import (
     WorkManager,
     WorkStepKey,
 )
-from azext_edge.edge.util import url_safe_hash_phrase, assemble_nargs_to_dict
+from azext_edge.edge.util import assemble_nargs_to_dict
 
 from ...generators import generate_random_string
 
@@ -48,13 +47,9 @@ from ...generators import generate_random_string
     custom_location_namespace,
     location,
     simulate_plc,
-    opcua_discovery_endpoint,
     container_runtime_socket,
     kubernetes_distro,
-    dp_instance_name,
-    mq_instance_name,
     mq_frontend_server_name,
-    mq_mode,
     mq_memory_profile,
     mq_service_type,
     mq_backend_partitions,
@@ -66,7 +61,6 @@ from ...generators import generate_random_string
     mq_broker_name,
     mq_authn_name,
     mq_insecure,
-    target_name,
     disable_rsync_rules,
     """,
     [
@@ -80,13 +74,9 @@ from ...generators import generate_random_string
             None,  # custom_location_namespace
             None,  # location
             None,  # simulate_plc
-            None,  # opcua_discovery_endpoint
             None,  # container_runtime_socket
             None,  # kubernetes_distro,
-            None,  # dp_instance_name
-            None,  # mq_instance_name
             None,  # mq_frontend_server_name
-            None,  # mq_mode
             None,  # mq_memory_profile
             None,  # mq_service_type
             None,  # mq_backend_partitions
@@ -98,7 +88,6 @@ from ...generators import generate_random_string
             None,  # mq_broker_name
             None,  # mq_authn_name
             None,  # mq_insecure
-            None,  # target_name
             None,  # disable_rsync_rules
         ),
         pytest.param(
@@ -111,13 +100,9 @@ from ...generators import generate_random_string
             None,  # custom_location_namespace
             generate_random_string(),  # location
             True,  # simulate_plc
-            None,  # opcua_discovery_endpoint
             None,  # container_runtime_socket
             KubernetesDistroType.k3s.value,  # kubernetes_distro,
-            generate_random_string(),  # dp_instance_name
-            generate_random_string(),  # mq_instance_name
             generate_random_string(),  # mq_frontend_server_name
-            MqMode.auto.value,  # mq_mode
             MqMemoryProfile.high.value,  # mq_memory_profile
             MqServiceType.load_balancer.value,  # mq_service_type
             randint(1, 5),  # mq_backend_partitions
@@ -129,7 +114,6 @@ from ...generators import generate_random_string
             generate_random_string(),  # mq_broker_name
             generate_random_string(),  # mq_authn_name
             None,  # mq_insecure
-            generate_random_string(),  # target_name
             None,  # disable_rsync_rules
         ),
         pytest.param(
@@ -142,13 +126,9 @@ from ...generators import generate_random_string
             None,  # custom_location_namespace
             generate_random_string(),  # location
             True,  # simulate_plc
-            generate_random_string(),  # opcua_discovery_endpoint
             generate_random_string(),  # container_runtime_socket
             KubernetesDistroType.microk8s.value,  # kubernetes_distro,
-            generate_random_string(),  # dp_instance_name
-            generate_random_string(),  # mq_instance_name
             generate_random_string(),  # mq_frontend_server_name
-            MqMode.auto.value,  # mq_mode
             MqMemoryProfile.high.value,  # mq_memory_profile
             MqServiceType.load_balancer.value,  # mq_service_type
             randint(1, 5),  # mq_backend_partitions
@@ -159,8 +139,7 @@ from ...generators import generate_random_string
             generate_random_string(),  # mq_listener_name
             generate_random_string(),  # mq_broker_name
             generate_random_string(),  # mq_authn_name
-            True,  # mq_insecure
-            generate_random_string(),  # target_name
+            False,  # mq_insecure @digimaun
             True,  # disable_rsync_rules
         ),
     ],
@@ -178,13 +157,9 @@ def test_init_to_template_params(
     custom_location_namespace,
     location,
     simulate_plc,
-    opcua_discovery_endpoint,
     container_runtime_socket,
     kubernetes_distro,
-    dp_instance_name,
-    mq_instance_name,
     mq_frontend_server_name,
-    mq_mode,
     mq_memory_profile,
     mq_service_type,
     mq_backend_partitions,
@@ -196,7 +171,6 @@ def test_init_to_template_params(
     mq_broker_name,
     mq_authn_name,
     mq_insecure,
-    target_name,
     disable_rsync_rules,
 ):
     kwargs = {}
@@ -209,13 +183,9 @@ def test_init_to_template_params(
         (custom_location_namespace, "custom_location_namespace"),
         (location, "location"),
         (simulate_plc, "simulate_plc"),
-        (opcua_discovery_endpoint, "opcua_discovery_endpoint"),
         (container_runtime_socket, "container_runtime_socket"),
         (kubernetes_distro, "kubernetes_distro"),
-        (dp_instance_name, "dp_instance_name"),
-        (mq_instance_name, "mq_instance_name"),
         (mq_frontend_server_name, "mq_frontend_server_name"),
-        (mq_mode, "mq_mode"),
         (mq_memory_profile, "mq_memory_profile"),
         (mq_service_type, "mq_service_type"),
         (mq_backend_partitions, "mq_backend_partitions"),
@@ -226,8 +196,7 @@ def test_init_to_template_params(
         (mq_listener_name, "mq_listener_name"),
         (mq_broker_name, "mq_broker_name"),
         (mq_authn_name, "mq_authn_name"),
-        (mq_insecure, "mq_insecure"),
-        (target_name, "target_name"),
+        #(mq_insecure, "mq_insecure"),
         (disable_rsync_rules, "disable_rsync_rules"),
     ]
 
@@ -274,35 +243,8 @@ def test_init_to_template_params(
             assert c in expected_char_set
         parameters["customLocationName"]["value"].endswith("-ops-init-cli")
 
-    assert "targetName" in parameters
-    if target_name:
-        assert parameters["targetName"]["value"] == target_name
-    else:
-        assert parameters["targetName"]["value"] == f"{lowered_cluster_name}-ops-init-target"
-
-    assert "dataProcessorInstanceName" in parameters
-    if dp_instance_name:
-        assert parameters["dataProcessorInstanceName"]["value"] == dp_instance_name
-    else:
-        assert parameters["dataProcessorInstanceName"]["value"] == f"{lowered_cluster_name}-ops-init-processor"
-
-    assert "mqInstanceName" in parameters
-    if mq_instance_name:
-        assert parameters["mqInstanceName"]["value"] == mq_instance_name
-    else:
-        assert parameters["mqInstanceName"]["value"] == f"init-{url_safe_hash_phrase(cluster_name)[:5]}-mq-instance"
-
     if simulate_plc:
         assert "simulatePLC" in parameters and parameters["simulatePLC"]["value"] is True
-        if not opcua_discovery_endpoint:
-            assert (
-                parameters["opcuaDiscoveryEndpoint"]["value"]
-                == f"opc.tcp://opcplc-000000.{expected_cluster_namespace}:50000"
-            )
-
-    if opcua_discovery_endpoint:
-        assert "opcuaDiscoveryEndpoint" in parameters
-        assert parameters["opcuaDiscoveryEndpoint"]["value"] == opcua_discovery_endpoint
 
     assert "deployResourceSyncRules" in parameters
     assert parameters["deployResourceSyncRules"] is not disable_rsync_rules
@@ -319,7 +261,6 @@ def test_init_to_template_params(
         (mq_backend_redundancy_factor, "mqBackendRedundancyFactor", 2),
         (mq_backend_workers, "mqBackendWorkers", 2),
         (mq_backend_partitions, "mqBackendPartitions", 2),
-        (mq_mode, "mqMode", MqMode.distributed.value),
         (mq_memory_profile, "mqMemoryProfile", MqMemoryProfile.medium.value),
         (mq_service_type, "mqServiceType", MqServiceType.cluster_ip.value),
     ]
@@ -331,10 +272,6 @@ def test_init_to_template_params(
             assert parameters[passthrough_value_tuple[1]]["value"] == passthrough_value_tuple[2]
 
     set_value_tuples = [
-        (
-            "dataProcessorSecrets",
-            {"enabled": True, "secretProviderClassName": "aio-default-spc", "servicePrincipalSecretRef": "aio-akv-sp"},
-        ),
         (
             "mqSecrets",
             {"enabled": True, "secretProviderClassName": "aio-default-spc", "servicePrincipalSecretRef": "aio-akv-sp"},
@@ -357,7 +294,7 @@ def test_init_to_template_params(
     listeners = _get_resources_of_type(
         resource_type="Microsoft.IoTOperationsMQ/mq/broker/listener", template=template_ver
     )
-    brokers = _get_resources_of_type(resource_type="Microsoft.IoTOperationsMQ/mq/broker", template=template_ver)
+    brokers = _get_resources_of_type(resource_type="Microsoft.IoTOperations/instances/brokers", template=template_ver)
     insecure_listener_added = False
     for listener in listeners:
         if "'non-tls-listener'" in listener["name"]:

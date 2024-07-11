@@ -615,7 +615,6 @@ class WorkManager:
             if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
 
-
         parameters["mqSecrets"] = {
             "value": {
                 "enabled": True,
@@ -643,11 +642,15 @@ class WorkManager:
 
         mq_insecure = self._kwargs.get("mq_insecure", False)
         if mq_insecure:
+            logger.warning("--mq-insecure is not currently supported")
+            return
+            # TODO: digimaun
+
             broker_adj = False
             # This solution entirely relies on the form of the "standard" template.
             # Needs re-work after event
             for resource in template.content["resources"]:
-                if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker":
+                if resource.get("type") == "Microsoft.IoTOperations/instances/brokers":
                     resource["properties"]["encryptInternalTraffic"] = False
                     broker_adj = True
 
