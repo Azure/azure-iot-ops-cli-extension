@@ -80,8 +80,12 @@ def test_check_cluster_connectivity_no_location(mocked_cmd, mocked_build_query):
     "offline cluster"
 ], indirect=True)
 def test_check_cluster_connectivity(mocked_cmd, mocked_build_query):
-    from azext_edge.edge.providers.rpsaas.adr.base import ADRBaseProvider
-    provider = ADRBaseProvider(mocked_cmd, generate_random_string())
+    from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
+    provider = RPSaaSBaseProvider(
+        mocked_cmd,
+        generate_random_string(),
+        generate_random_string()
+    )
     custom_location_id = generate_random_string()
     provider.check_cluster_connectivity(custom_location_id)
     assert mocked_build_query.call_count == 2

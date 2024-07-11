@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from pathlib import PurePath
-from typing import List, Dict, Optional, Iterable, Union
+from typing import List, Dict, Optional, Iterable, Tuple, Union
 from functools import partial
 
 from azext_edge.edge.common import BundleResourceKind
@@ -164,7 +164,7 @@ def process_statefulset(
     return_namespaces: bool = False,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
-) -> List[dict]:
+) -> Union[Tuple[List[dict], dict], List[dict]]:
     from kubernetes.client.models import V1StatefulSetList
 
     v1_apps = client.AppsV1Api()
@@ -290,7 +290,7 @@ def process_storage_classes() -> List[dict]:
     storage_class_content.append(
         {
             "data": generic.sanitize_for_serialization(obj=storage_v1_api.list_storage_class()),
-            "zinfo": "storage_classes.yaml",
+            "zinfo": "storage-classes.yaml",
         }
     )
 

@@ -146,6 +146,7 @@ class OpsServiceType(ListableEnum):
     akri = "akri"
     deviceregistry = "deviceregistry"
     billing = "billing"
+    dataflow = "dataflow"
 
     @classmethod
     def list_check_services(cls):
@@ -200,7 +201,7 @@ class ClusterExtensionsMapping(Enum):
     Cluster extension mappings.
     """
 
-    asset = "microsoft.deviceregistry.assets"
+    asset = "adr"
 
 
 class AEPAuthModes(Enum):
