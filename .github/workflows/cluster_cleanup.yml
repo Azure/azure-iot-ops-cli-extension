@@ -76,8 +76,7 @@ jobs:
       - name: Delete keyvaults
         run: |
           for vault in $(az keyvault list --query "[?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
-            # we can get the recently deleted ones next run
-            az keyvault delete -n $vault -g ${{ env.RESOURCE_GROUP }} --no-wait
+            az keyvault delete -n $vault -g ${{ env.RESOURCE_GROUP }}
           done
       - name: Purge keyvaults
         run: |
