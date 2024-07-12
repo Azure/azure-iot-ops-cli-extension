@@ -9,8 +9,10 @@ from os import mkdir, path
 from knack.log import get_logger
 from typing import Dict, List, Optional, Tuple
 from azext_edge.edge.common import OpsServiceType
+from azext_edge.edge.providers.edge_api.meta import META_API_V1B1
 from .helpers import (
     assert_file_names,
+    check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
     process_top_levels,
@@ -55,7 +57,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
     expected_services = _get_expected_services(walk_result, ops_service, namespace)
-    assert sorted(level_1["folders"]) == expected_services
+    assert sorted(level_1["folders"]) == sorted(expected_services)
     assert not level_1["files"]
 
     # Check and take out mq traces:
@@ -112,8 +114,14 @@ def test_create_bundle_meta(init_setup, tracked_files):
     walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, "meta")["aio"]
 
+    check_custom_resource_files(
+        file_objs=file_map,
+        resource_api=META_API_V1B1
+    )
+
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
-    assert set(file_map.keys()).issubset(set(expected_workload_types))
+    expected_types = set(expected_workload_types).union(META_API_V1B1.kinds)
+    assert set(file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(file_map, expected_workload_types, "aio-operator")
 
 
@@ -126,8 +134,11 @@ def _get_expected_services(
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
         expected_services.append("otel")
-        # device registry folder will not be created if there are no device registry resources
-        if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value)):
-            expected_services.remove(OpsServiceType.deviceregistry.value)
         expected_services.sort()
+
+    # device registry folder will not be created if there are no device registry resources
+    if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value))\
+       and OpsServiceType.deviceregistry.value in expected_services:
+        expected_services.remove(OpsServiceType.deviceregistry.value)
+    expected_services.append("meta")
     return expected_services

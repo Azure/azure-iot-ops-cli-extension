@@ -59,6 +59,7 @@ def fetch_services():
         prefix_names=[META_PREFIX_NAMES],
     )
 
+
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
