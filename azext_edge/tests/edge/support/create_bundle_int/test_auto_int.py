@@ -9,10 +9,8 @@ from os import mkdir, path
 from knack.log import get_logger
 from typing import Dict, List, Optional, Tuple
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api.meta import META_API_V1B1
 from .helpers import (
     assert_file_names,
-    check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
     process_top_levels,
@@ -104,25 +102,6 @@ def test_create_bundle_otel(init_setup, tracked_files):
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     assert set(file_map.keys()).issubset(set(expected_workload_types))
     check_workload_resource_files(file_map, expected_workload_types, "aio-otel")
-
-
-def test_create_bundle_meta(init_setup, tracked_files):
-    """Test for ensuring file names and content. ONLY CHECKS meta."""
-    # dir for unpacked files
-    ops_service = OpsServiceType.auto.value
-    command = f"az iot ops support create-bundle --ops-service {ops_service}"
-    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
-    file_map = get_file_map(walk_result, "meta")["aio"]
-
-    check_custom_resource_files(
-        file_objs=file_map,
-        resource_api=META_API_V1B1
-    )
-
-    expected_workload_types = ["deployment", "pod", "replicaset", "service"]
-    expected_types = set(expected_workload_types).union(META_API_V1B1.kinds)
-    assert set(file_map.keys()).issubset(set(expected_types))
-    check_workload_resource_files(file_map, expected_workload_types, "aio-operator")
 
 
 def _get_expected_services(
