@@ -91,7 +91,7 @@ def evaluate_diagnostics_service(
         kind=MqResourceKinds.DIAGNOSTIC_SERVICE,
         resource_name=resource_name,
     )
-    target_diagnostic_service = "diagnosticservices.mq.iotoperations.azure.com"
+    target_diagnostic_service = "diagnosticservices.mqttbroker.iotoperations.azure.com"
 
     if not all_diagnostic_services:
         status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value

@@ -15,6 +15,8 @@ from azure.cli.core.commands.parameters import (
 )
 from knack.arguments import CaseInsensitiveList
 
+from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
+
 from ._validators import validate_namespace, validate_resource_name
 from .common import FileType, OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
@@ -169,6 +171,7 @@ def load_iotops_arguments(self, _):
                         OpcuaResourceKinds.ASSET_TYPE.value,
                         AkriResourceKinds.CONFIGURATION.value,
                         AkriResourceKinds.INSTANCE.value,
+                        *DataflowResourceKinds.list()
                     ]
                 )
             ),
