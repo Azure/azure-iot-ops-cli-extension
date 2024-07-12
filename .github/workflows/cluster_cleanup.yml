@@ -30,6 +30,10 @@ on:
         description: "Resource group to clean up"
         required: true
         default: ops-cli-int-test-rg
+      keyvault_prefix:
+          type: string
+          description: "Prefix of keyvault to delete"
+          required: false
   # Run every night at midnight (Pacific) to cleanup resources
   # schedule:
   #   - cron: '0 8 * * *'
