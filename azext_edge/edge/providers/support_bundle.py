@@ -112,7 +112,7 @@ def build_bundle(
     pending_work["common"] = prepare_shared_bundle()
 
     # Collect meta resources if any AIO service is deployed with any service selected.
-    deployed_meta_apis = COMPAT_META_APIS.get_deployed(raise_on_404)
+    deployed_meta_apis = COMPAT_META_APIS.get_deployed()
     pending_work["meta"] = prepare_meta_bundle(deployed_meta_apis, log_age_seconds)
 
     total_work_count = 0
