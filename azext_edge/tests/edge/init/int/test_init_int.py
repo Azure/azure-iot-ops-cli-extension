@@ -41,7 +41,7 @@ def init_test_setup(cluster_connection, settings):
         "servicePrincipalObjectId": settings.env.azext_edge_sp_object_id,
         "servicePrincipalSecret": settings.env.azext_edge_sp_secret,
         "additionalArgs": settings.env.azext_edge_init_args.strip('"'),
-        "continueOnError": settings.env.init_continue_on_error or False
+        "continueOnError": settings.env.azext_edge_init_continue_on_error or False
     }
     if settings.env.azext_edge_aio_cleanup:
         run(
