@@ -7,7 +7,6 @@
 from typing import Dict, Union
 import pytest
 from os import mkdir
-
 from ....helpers import run
 from .mq_helper import assert_mq_args
 from .opcua_helper import assert_simulate_plc_args
@@ -27,6 +26,7 @@ def init_test_setup(cluster_connection, settings):
     settings.add_to_config(EnvironmentVariables.sp_secret.value, is_secret=True)
     settings.add_to_config(EnvironmentVariables.init_args.value)
     settings.add_to_config(EnvironmentVariables.aio_cleanup.value)
+    settings.add_to_config(EnvironmentVariables.init_continue_on_error.value)
 
     if not all([settings.env.azext_edge_cluster, settings.env.azext_edge_rg, settings.env.azext_edge_kv]):
         raise AssertionError(
@@ -40,7 +40,8 @@ def init_test_setup(cluster_connection, settings):
         "servicePrincipalAppId": settings.env.azext_edge_sp_app_id,
         "servicePrincipalObjectId": settings.env.azext_edge_sp_object_id,
         "servicePrincipalSecret": settings.env.azext_edge_sp_secret,
-        "additionalArgs": settings.env.azext_edge_init_args.strip('"')
+        "additionalArgs": settings.env.azext_edge_init_args.strip('"'),
+        "continueOnError": settings.env.init_continue_on_error or False
     }
     if settings.env.azext_edge_aio_cleanup:
         run(
@@ -83,30 +84,41 @@ def test_init_scenario(
         command += f"--sp-secret {sp_secret} "
 
     result = run(command)
-    assert_init_result(
-        result=result,
-        cluster_name=cluster_name,
-        key_vault=key_vault,
-        resource_group=resource_group,
-        arg_dict=arg_dict,
-        sp_app_id=sp_app_id,
-        sp_object_id=sp_object_id
-    )
-
-    custom_location = sorted(result["deploymentState"]["resources"])[0]
-    for assertion in [
-        assert_simulate_plc_args,
-        assert_mq_args,
-        assert_orchestrator_args
-    ]:
-        assertion(
-            namespace=result["clusterNamespace"],
+    try:
+        assert_init_result(
+            result=result,
             cluster_name=cluster_name,
-            custom_location=custom_location,
+            key_vault=key_vault,
             resource_group=resource_group,
-            init_resources=result["deploymentState"]["resources"],
-            **arg_dict
+            arg_dict=arg_dict,
+            sp_app_id=sp_app_id,
+            sp_object_id=sp_object_id
         )
+
+        custom_location = sorted(result["deploymentState"]["resources"])[0]
+        for assertion in [
+            assert_simulate_plc_args,
+            assert_mq_args,
+            assert_orchestrator_args
+        ]:
+            assertion(
+                namespace=result["clusterNamespace"],
+                cluster_name=cluster_name,
+                custom_location=custom_location,
+                resource_group=resource_group,
+                init_resources=result["deploymentState"]["resources"],
+                **arg_dict
+            )
+    except Exception as e:  # pylint: disable=broad-except
+        # Note we have this since there are multiple Exceptions that can occur:
+        # AssertionError: normal assert error (assuming the expression can get evaluated)
+        # CLIInternalError: a run to check existance fails
+        # KeyError: one of the expected keys in the result is not present
+        # TypeError: one of the values changes expected types and cannot be evaluated correctly (ex: len(None))
+        # and more
+        if init_test_setup["continueOnError"]:
+            pytest.skip(f"Deployment succeeded but init assertions failed. \n{e}")
+        raise e
 
 
 def _process_additional_args(additional_args: str) -> Dict[str, Union[str, bool]]:

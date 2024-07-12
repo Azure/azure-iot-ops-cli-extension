@@ -21,6 +21,7 @@ class EnvironmentVariables(Enum):
     init_args = "azext_edge_init_args"
     skip_cluster_check = "azext_edge_skip_cluster_check"
     aio_cleanup = "azext_edge_aio_cleanup"
+    init_continue_on_error = "azext_edge_init_continue_on_error"
 
 
 class Setting(object):
