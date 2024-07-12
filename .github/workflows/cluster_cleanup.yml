@@ -31,8 +31,8 @@ on:
         required: true
         default: ops-cli-int-test-rg
   # Run every night at midnight (Pacific) to cleanup resources
-  schedule:
-    - cron: '0 8 * * *'
+  # schedule:
+  #   - cron: '0 8 * * *'
 
 env:
   RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
@@ -72,7 +72,13 @@ jobs:
       - name: Delete keyvaults
         run: |
           for vault in $(az keyvault list --query "[?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
+            # we can get the recently deleted ones next run
             az keyvault delete -n $vault -g ${{ env.RESOURCE_GROUP }} --no-wait
+          done
+      - name: Purge keyvaults
+        run: |
+          for vault in $(az keyvault list-deleted --query "[?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
+            az keyvault purge -n $vault --no-wait
           done
   resource-cleanup:
     needs: [arc-cleanup]
@@ -110,7 +116,7 @@ jobs:
         run: |
           mq_type="Microsoft.IoTOperationsMQ/mq"
           in_cluster_ext_loc="contains(to_string(extendedLocation.name), '${{ env.CLUSTER_PREFIX }}')"
-          
+
           # MQ instance cannot be deleted until all child resources have successfully deleted
           sleep 15s
 
