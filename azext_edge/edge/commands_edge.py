@@ -99,6 +99,7 @@ def init(
     cluster_name: str,
     resource_group_name: str,
     instance_name: Optional[str] = None,
+    instance_description: Optional[str] = None,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     keyvault_spc_secret_name: str = DEFAULT_NAMESPACE,
     custom_location_name: Optional[str] = None,
@@ -196,6 +197,7 @@ def init(
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
         instance_name=instance_name,
+        instance_description=instance_description,
         cluster_location=None,  # Effectively always fetch connected cluster location
         custom_location_name=custom_location_name,
         resource_group_name=resource_group_name,
@@ -269,8 +271,12 @@ def list_instances(cmd, resource_group_name: Optional[str] = None) -> List[dict]
 
 
 def update_instance(
-    cmd, instance_name: str, resource_group_name: str, tags: Optional[str] = None, description: Optional[str] = None
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    tags: Optional[str] = None,
+    instance_description: Optional[str] = None,
 ) -> dict:
     return Instances(cmd).update(
-        name=instance_name, resource_group_name=resource_group_name, tags=tags, description=description
+        name=instance_name, resource_group_name=resource_group_name, tags=tags, description=instance_description
     )

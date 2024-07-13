@@ -587,10 +587,13 @@ class WorkManager:
         safe_cluster_name = self._cluster_name.replace("_", "-")
 
         template = get_current_template_copy(self._template_path)
+        built_in_template_params = template.parameters
+
         parameters = {}
 
         for template_pair in [
             ("instance_name", "instanceName"),
+            ("instance_name", "instanceDescription"),
             ("cluster_name", "clusterName"),
             ("location", "location"),
             ("cluster_location", "clusterLocation"),
@@ -598,7 +601,6 @@ class WorkManager:
             ("simulate_plc", "simulatePLC"),
             ("container_runtime_socket", "containerRuntimeSocket"),
             ("kubernetes_distro", "kubernetesDistro"),
-            ("dp_instance_name", "dataProcessorInstanceName"),
             ("mq_instance_name", "mqInstanceName"),
             ("mq_frontend_server_name", "mqFrontendServer"),
             ("mq_listener_name", "mqListenerName"),
@@ -612,7 +614,11 @@ class WorkManager:
             ("mq_memory_profile", "mqMemoryProfile"),
             ("mq_service_type", "mqServiceType"),
         ]:
-            if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
+            if (
+                template_pair[0] in self._kwargs
+                and self._kwargs[template_pair[0]] is not None
+                and template_pair[1] in built_in_template_params
+            ):
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
 
         parameters["mqSecrets"] = {
@@ -630,7 +636,7 @@ class WorkManager:
         # Covers cluster_namespace
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
 
-        # digimaun
+        # TODO @digimaun
         safe_cluster_name = self._cluster_name.replace("_", "-")
         template.content["variables"]["OBSERVABILITY"]["targetName"] = f"{safe_cluster_name}-observability"
 

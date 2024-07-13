@@ -82,7 +82,7 @@ def load_iotops_arguments(self, _):
             help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d",
         )
         context.argument(
-            "description",
+            "instance_description",
             options_list=["--desc"],
             help="Description of the instance.",
         )
