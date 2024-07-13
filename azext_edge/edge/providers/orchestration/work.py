@@ -593,7 +593,7 @@ class WorkManager:
 
         for template_pair in [
             ("instance_name", "instanceName"),
-            ("instance_name", "instanceDescription"),
+            ("instance_description", "instanceDescription"),
             ("cluster_name", "clusterName"),
             ("location", "location"),
             ("cluster_location", "clusterLocation"),

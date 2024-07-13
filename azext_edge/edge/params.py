@@ -84,7 +84,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "instance_description",
             options_list=["--desc"],
-            help="Description of the instance.",
+            help="Description of the IoT Operations instance.",
         )
 
     with self.argument_context("iot ops show") as context:
