@@ -464,7 +464,7 @@ def _process_kubernetes_resources(
 
     if not prefix_names:
         prefix_names = []
-    
+
     if exclude_prefixes:
         resources = exclude_resources_with_prefix(resources, exclude_prefixes)
 

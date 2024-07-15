@@ -29,4 +29,8 @@ def test_create_bundle_meta(init_setup, tracked_files):
     optional_workload_types = ["job"]
     expected_types = set(expected_workload_types + optional_workload_types).union(META_API_V1B1.kinds)
     assert set(file_map.keys()).issubset(set(expected_types))
-    check_workload_resource_files(file_map, expected_workload_types, ["aio-operator", "aio-pre-install-job", "aio-post-install-job"])
+    check_workload_resource_files(file_map, expected_workload_types, [
+        "aio-operator",
+        "aio-pre-install-job",
+        "aio-post-install-job"
+    ])

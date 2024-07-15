@@ -15,7 +15,6 @@ from ..edge_api import META_API_V1B1, EdgeResourceApi
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
-    exclude_resources_with_prefix,
     process_deployments,
     process_jobs,
     process_replicasets,
