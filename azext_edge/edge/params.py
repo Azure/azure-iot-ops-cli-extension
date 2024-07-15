@@ -341,34 +341,37 @@ def load_iotops_arguments(self, _):
             "mq_frontend_server_name",
             options_list=["--mq-frontend-server"],
             help="The mq frontend server name. The default is 'mq-dmqtt-frontend'.",
-            arg_group="MQ",
+            arg_group="Broker",
         )
         context.argument(
             "mq_listener_name",
             options_list=["--mq-listener"],
             help="The mq listener name. The default is 'listener'.",
-            arg_group="MQ",
+            arg_group="Broker",
         )
         context.argument(
             "mq_broker_name",
             options_list=["--mq-broker"],
             help="The mq broker name. The default is 'broker'.",
-            arg_group="MQ",
+            arg_group="Broker",
         )
         context.argument(
             "mq_authn_name",
             options_list=["--mq-authn"],
             help="The mq authN name. The default is 'authn'.",
-            arg_group="MQ",
+            arg_group="Broker",
         )
         context.argument(
             "mq_insecure",
-            options_list=["--mq-insecure"],
+            options_list=[
+                "--add-insecure-listener",
+                context.deprecate(target="--mq-insecure", redirect="--add-insecure-listener", expiration="0.6.0a1"),
+            ],
             arg_type=get_three_state_flag(),
             help="When enabled the mqtt broker deployment will include a listener "
             "bound to port 1883 with no authN or authZ."
             "For non-production workloads only.",
-            arg_group="MQ",
+            arg_group="Broker",
         )
         # MQ cardinality
         context.argument(
@@ -376,49 +379,49 @@ def load_iotops_arguments(self, _):
             type=int,
             options_list=["--mq-frontend-replicas"],
             help="MQ frontend replicas.",
-            arg_group="MQ Cardinality",
+            arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_frontend_workers",
             type=int,
             options_list=["--mq-frontend-workers"],
             help="MQ frontend workers.",
-            arg_group="MQ Cardinality",
+            arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_backend_redundancy_factor",
             type=int,
             options_list=["--mq-backend-rf"],
             help="MQ backend redundancy factor.",
-            arg_group="MQ Cardinality",
+            arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_backend_workers",
             type=int,
             options_list=["--mq-backend-workers"],
             help="MQ backend workers.",
-            arg_group="MQ Cardinality",
+            arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_backend_partitions",
             type=int,
             options_list=["--mq-backend-part"],
             help="MQ backend partitions.",
-            arg_group="MQ Cardinality",
+            arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_memory_profile",
             arg_type=get_enum_type(MqMemoryProfile),
             options_list=["--mq-mem-profile"],
             help="MQ memory profile.",
-            arg_group="MQ",
+            arg_group="Broker",
         )
         context.argument(
             "mq_service_type",
             arg_type=get_enum_type(MqServiceType),
             options_list=["--mq-service-type"],
             help="MQ service type.",
-            arg_group="MQ",
+            arg_group="Broker",
         )
         # AKV CSI Driver
         context.argument(
@@ -772,7 +775,7 @@ def load_iotops_arguments(self, _):
             "custom_attributes",
             options_list=["--custom-attribute", "--attr"],
             help="Space-separated key=value pairs corresponding to additional custom attributes for the asset. "
-            "To remove a custom attribute, please set the attribute's value to \"\".",
+            'To remove a custom attribute, please set the attribute\'s value to "".',
             nargs="+",
             arg_group="Additional Info",
             action="extend",
