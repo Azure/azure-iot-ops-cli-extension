@@ -9,11 +9,15 @@ from typing import Iterable
 
 from knack.log import get_logger
 
+from azext_edge.edge.providers.support.billing import BILLING_RESOURCE_KIND, AIO_USAGE_PREFIX
+
 from ..edge_api import META_API_V1B1, EdgeResourceApi
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
+    exclude_resources_with_prefix,
     process_deployments,
+    process_jobs,
     process_replicasets,
     process_services,
     process_v1_pods,
@@ -31,7 +35,7 @@ def fetch_deployments():
     return process_deployments(
         directory_path=META_DIRECTORY_PATH,
         label_selector=META_NAME_LABEL,
-        prefix_names=[META_PREFIX_NAMES],
+        exclude_prefixes=[AIO_USAGE_PREFIX, BILLING_RESOURCE_KIND],
     )
 
 
@@ -39,7 +43,7 @@ def fetch_replicasets():
     return process_replicasets(
         directory_path=META_DIRECTORY_PATH,
         label_selector=META_NAME_LABEL,
-        prefix_names=[META_PREFIX_NAMES],
+        exclude_prefixes=[AIO_USAGE_PREFIX, BILLING_RESOURCE_KIND],
     )
 
 
@@ -48,7 +52,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
         directory_path=META_DIRECTORY_PATH,
         label_selector=META_NAME_LABEL,
         since_seconds=since_seconds,
-        prefix_names=[META_PREFIX_NAMES],
+        exclude_prefixes=[AIO_USAGE_PREFIX, BILLING_RESOURCE_KIND],
     )
 
 
@@ -57,6 +61,15 @@ def fetch_services():
         directory_path=META_DIRECTORY_PATH,
         label_selector=META_NAME_LABEL,
         prefix_names=[META_PREFIX_NAMES],
+        exclude_prefixes=[AIO_USAGE_PREFIX, BILLING_RESOURCE_KIND],
+    )
+
+
+def fetch_jobs():
+    return process_jobs(
+        directory_path=META_DIRECTORY_PATH,
+        label_selector=META_NAME_LABEL,
+        exclude_prefixes=[AIO_USAGE_PREFIX, BILLING_RESOURCE_KIND],
     )
 
 
@@ -64,6 +77,7 @@ support_runtime_elements = {
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
+    "jobs": fetch_jobs,
 }
 
 

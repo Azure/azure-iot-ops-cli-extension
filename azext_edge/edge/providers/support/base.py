@@ -62,6 +62,7 @@ def process_v1_pods(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
     pod_prefix_for_init_container_logs: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
     from kubernetes.client.models import V1Pod, V1PodList
 
@@ -73,6 +74,9 @@ def process_v1_pods(
         prefix_names = []
 
     pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
+
+    if exclude_prefixes:
+        pods = exclude_resources_with_prefix(pods, exclude_prefixes)
 
     pod_logger_info = f"Detected {len(pods.items)} pods"
     if label_selector:
@@ -143,6 +147,7 @@ def process_deployments(
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
     from kubernetes.client.models import V1DeploymentList
 
@@ -156,6 +161,7 @@ def process_deployments(
         resources=deployments,
         prefix_names=prefix_names,
         kind=BundleResourceKind.deployment.value,
+        exclude_prefixes=exclude_prefixes,
     )
 
 
@@ -196,6 +202,7 @@ def process_services(
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
     from kubernetes.client.models import V1ServiceList
 
@@ -209,6 +216,7 @@ def process_services(
         resources=services,
         prefix_names=prefix_names,
         kind=BundleResourceKind.service.value,
+        exclude_prefixes=exclude_prefixes,
     )
 
 
@@ -216,6 +224,7 @@ def process_replicasets(
     directory_path: str,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
     from kubernetes.client.models import V1ReplicaSetList
 
@@ -227,6 +236,7 @@ def process_replicasets(
         resources=replicasets,
         prefix_names=prefix_names,
         kind=BundleResourceKind.replicaset.value,
+        exclude_prefixes=exclude_prefixes,
     )
 
 
@@ -323,6 +333,7 @@ def process_jobs(
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
     from kubernetes.client.models import V1JobList
 
@@ -336,6 +347,7 @@ def process_jobs(
         resources=jobs,
         prefix_names=prefix_names,
         kind=BundleResourceKind.job.value,
+        exclude_prefixes=exclude_prefixes,
     )
 
 
@@ -446,11 +458,15 @@ def _process_kubernetes_resources(
     resources: object,
     kind: str,
     prefix_names: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
     processed = []
 
     if not prefix_names:
         prefix_names = []
+    
+    if exclude_prefixes:
+        resources = exclude_resources_with_prefix(resources, exclude_prefixes)
 
     logger.info(f"Detected {len(resources.items)} {kind}s.")
     for resource in resources.items:
@@ -480,3 +496,10 @@ def _process_kubernetes_resources(
         )
 
     return processed
+
+
+def exclude_resources_with_prefix(resources: List[dict], exclude_prefixes: List[str]) -> List[str]:
+    for prefix in exclude_prefixes:
+        resources.items = [resource for resource in resources.items if not resource.metadata.name.startswith(prefix)]
+
+    return resources
