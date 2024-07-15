@@ -498,7 +498,7 @@ def _process_kubernetes_resources(
     return processed
 
 
-def exclude_resources_with_prefix(resources: List[dict], exclude_prefixes: List[str]) -> List[str]:
+def exclude_resources_with_prefix(resources: List[dict], exclude_prefixes: List[str]) -> List[dict]:
     for prefix in exclude_prefixes:
         resources.items = [resource for resource in resources.items if not resource.metadata.name.startswith(prefix)]
 
