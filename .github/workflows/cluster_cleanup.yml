@@ -42,6 +42,7 @@ on:
 env:
   RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
   CLUSTER_PREFIX: ${{ inputs.cluster_prefix || 'az-iot-ops-test-cluster' }}
+  KEYVAULT_PREFIX: ${{ inputs.keyvault_prefix || 'opskv' }}
 
 permissions:
   # required for OpenID federation
@@ -75,12 +76,12 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Delete keyvaults
         run: |
-          for vault in $(az keyvault list --query "[?starts_with(name, '${{ inputs.keyvault_prefix }}')].name" -o tsv); do
+          for vault in $(az keyvault list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
             az keyvault delete -n $vault -g ${{ env.RESOURCE_GROUP }}
           done
       - name: Purge keyvaults
         run: |
-          for vault in $(az keyvault list-deleted --query "[?starts_with(name, '${{ inputs.keyvault_prefix }}')].name" -o tsv); do
+          for vault in $(az keyvault list-deleted --query "[?contains(properties.vaultId, '${{ env.RESOURCE_GROUP }}')] | [?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
             az keyvault purge -n $vault --no-wait
           done
   resource-cleanup:
