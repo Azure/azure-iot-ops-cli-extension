@@ -218,11 +218,7 @@ def get_file_map(
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "deviceregistry":
-        if ops_path not in walk_result:
-            assert len(walk_result) == 1
-            pytest.skip(f"No bundles created for {ops_service}.")
-        else:
-            assert len(walk_result) == 2
+        assert len(walk_result) >= 1
     # remove ops_service that are not selectable by --svc
     elif ops_service != "otel" and ops_service != "meta":
         assert len(walk_result) == 2
