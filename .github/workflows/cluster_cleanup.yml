@@ -36,8 +36,8 @@ on:
         default: "opskv"
         required: false
   # Run every night at midnight (Pacific) to cleanup resources
-  # schedule:
-  #   - cron: '0 8 * * *'
+  schedule:
+    - cron: '0 8 * * *'
 
 env:
   RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
