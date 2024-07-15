@@ -31,9 +31,10 @@ on:
         required: true
         default: ops-cli-int-test-rg
       keyvault_prefix:
-          type: string
-          description: "Prefix of keyvault to delete"
-          required: false
+        type: string
+        description: "Prefix of keyvault to delete"
+        default: "opskv"
+        required: false
   # Run every night at midnight (Pacific) to cleanup resources
   # schedule:
   #   - cron: '0 8 * * *'
@@ -41,7 +42,6 @@ on:
 env:
   RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
   CLUSTER_PREFIX: ${{ inputs.cluster_prefix || 'az-iot-ops-test-cluster' }}
-  KEYVAULT_PREFIX: ${{ inputs.keyvault_prefix || 'opskv' }}
 
 permissions:
   # required for OpenID federation
@@ -75,12 +75,12 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Delete keyvaults
         run: |
-          for vault in $(az keyvault list --query "[?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
+          for vault in $(az keyvault list --query "[?starts_with(name, '${{ inputs.keyvault_prefix }}')].name" -o tsv); do
             az keyvault delete -n $vault -g ${{ env.RESOURCE_GROUP }}
           done
       - name: Purge keyvaults
         run: |
-          for vault in $(az keyvault list-deleted --query "[?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
+          for vault in $(az keyvault list-deleted --query "[?starts_with(name, '${{ inputs.keyvault_prefix }}')].name" -o tsv); do
             az keyvault purge -n $vault --no-wait
           done
   resource-cleanup:
