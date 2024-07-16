@@ -339,26 +339,26 @@ def load_iotops_arguments(self, _):
         # MQ
         context.argument(
             "mq_frontend_server_name",
-            options_list=["--mq-frontend-server"],
-            help="The mq frontend server name. The default is 'mq-dmqtt-frontend'.",
+            options_list=["--broker-frontend-server"],
+            help="The mqtt broker frontend server name. The default is 'mq-dmqtt-frontend'.",
             arg_group="Broker",
         )
         context.argument(
             "mq_listener_name",
-            options_list=["--mq-listener"],
-            help="The mq listener name. The default is 'listener'.",
+            options_list=["--broker-listener"],
+            help="The mqtt broker listener name. The default is 'listener'.",
             arg_group="Broker",
         )
         context.argument(
             "mq_broker_name",
-            options_list=["--mq-broker"],
-            help="The mq broker name. The default is 'broker'.",
+            options_list=["--broker"],
+            help="The mqtt broker name. The default is 'broker'.",
             arg_group="Broker",
         )
         context.argument(
             "mq_authn_name",
-            options_list=["--mq-authn"],
-            help="The mq authN name. The default is 'authn'.",
+            options_list=["--broker-authn"],
+            help="The mqtt broker authN name. The default is 'authn'.",
             arg_group="Broker",
         )
         context.argument(
@@ -377,50 +377,50 @@ def load_iotops_arguments(self, _):
         context.argument(
             "mq_frontend_replicas",
             type=int,
-            options_list=["--mq-frontend-replicas"],
-            help="MQ frontend replicas.",
+            options_list=["--broker-frontend-replicas"],
+            help="Mqtt broker frontend replicas.",
             arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_frontend_workers",
             type=int,
-            options_list=["--mq-frontend-workers"],
-            help="MQ frontend workers.",
+            options_list=["--broker-frontend-workers"],
+            help="Mqtt broker frontend workers.",
             arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_backend_redundancy_factor",
             type=int,
-            options_list=["--mq-backend-rf"],
-            help="MQ backend redundancy factor.",
+            options_list=["--broker-backend-rf"],
+            help="Mqtt broker backend redundancy factor.",
             arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_backend_workers",
             type=int,
-            options_list=["--mq-backend-workers"],
-            help="MQ backend workers.",
+            options_list=["--broker-backend-workers"],
+            help="Mqtt broker backend workers.",
             arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_backend_partitions",
             type=int,
-            options_list=["--mq-backend-part"],
-            help="MQ backend partitions.",
+            options_list=["--broker-backend-part"],
+            help="Mqtt broker backend partitions.",
             arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_memory_profile",
             arg_type=get_enum_type(MqMemoryProfile),
-            options_list=["--mq-mem-profile"],
-            help="MQ memory profile.",
+            options_list=["--broker-mem-profile"],
+            help="Mqtt broker memory profile.",
             arg_group="Broker",
         )
         context.argument(
             "mq_service_type",
             arg_type=get_enum_type(MqServiceType),
-            options_list=["--mq-service-type"],
-            help="MQ service type.",
+            options_list=["--broker-service-type"],
+            help="Mqtt broker service type.",
             arg_group="Broker",
         )
         # AKV CSI Driver
