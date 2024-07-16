@@ -19,6 +19,8 @@ from ..providers.edge_api import (
     ORC_API_V1,
     AKRI_API_V0,
     DEVICEREGISTRY_API_V1,
+    DATAFLOW_API_V1B1,
+    META_API_V1B1,
     EdgeApiManager,
 )
 
@@ -32,6 +34,8 @@ COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_ORC_APIS = EdgeApiManager(resource_apis=[ORC_API_V1])
 COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
+COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
+COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1B1])
 
 
 def build_bundle(
@@ -44,21 +48,23 @@ def build_bundle(
     from rich.progress import Progress
     from rich.table import Table
 
+    from .support.billing import prepare_bundle as prepare_billing_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.orc import prepare_bundle as prepare_symphony_bundle
+    from .support.dataflow import prepare_bundle as prepare_dataflow_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.otel import prepare_bundle as prepare_otel_bundle
+    from .support.meta import prepare_bundle as prepare_meta_bundle
 
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
-        # TODO: re-enable billing once service is available post 0.6.0 release
-        # OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
         OpsServiceType.mq.value: {"apis": COMPAT_MQTT_BROKER_APIS, "prepare_bundle": prepare_mq_bundle},
+        OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
@@ -72,6 +78,7 @@ def build_bundle(
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,
         },
+        OpsServiceType.dataflow.value: {"apis": COMPAT_DATAFLOW_APIS, "prepare_bundle": prepare_dataflow_bundle},
     }
 
     raise_on_404 = not (ops_service == OpsServiceType.auto.value)
@@ -103,6 +110,10 @@ def build_bundle(
 
     # Collect common resources if any AIO service is deployed with any service selected.
     pending_work["common"] = prepare_shared_bundle()
+
+    # Collect meta resources if any AIO service is deployed with any service selected.
+    deployed_meta_apis = COMPAT_META_APIS.get_deployed()
+    pending_work["meta"] = prepare_meta_bundle(deployed_meta_apis, log_age_seconds)
 
     total_work_count = 0
     for service in pending_work:

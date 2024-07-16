@@ -9,6 +9,7 @@ import random
 from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
 from zipfile import ZipInfo
+from unittest.mock import Mock
 
 import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
@@ -23,6 +24,7 @@ from azext_edge.edge.providers.edge_api import (
     MQTT_BROKER_API_V1B1,
     OPCUA_API_V1,
     ORC_API_V1,
+    DATAFLOW_API_V1B1,
     EdgeResourceApi,
 )
 from azext_edge.edge.providers.support.akri import (
@@ -41,7 +43,8 @@ from azext_edge.edge.providers.support.billing import (
     ARC_BILLING_DIRECTORY_PATH,
     BILLING_RESOURCE_KIND,
 )
-from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_LABEL, MQ_NAME_LABEL
+from azext_edge.edge.providers.support.meta import META_NAME_LABEL
+from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_K8S_LABEL, MQ_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
     OPC_DIRECTORY_PATH,
@@ -57,6 +60,7 @@ from azext_edge.edge.providers.support.orc import (
 from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
 from azext_edge.edge.providers.support.shared import NAME_LABEL_FORMAT
 from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
+from azext_edge.tests.edge.support.conftest import add_pod_to_mocked_pods
 
 from ...generators import generate_random_string
 
@@ -73,8 +77,7 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, AKRI_API_V0],
-        # TODO: re-enable billing once service is available post 0.6.0 release
-        # [MQ_API_V1B1, OPCUA_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
     ],
     indirect=True,
 )
@@ -101,6 +104,7 @@ def test_create_bundle(
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_namespaced_custom_objects,
+    mocked_get_config_map: Mock,
 ):
     # TODO: clean up label once all service labels become stable
     asset_raises_not_found_error(mocked_cluster_resources)
@@ -110,6 +114,14 @@ def test_create_bundle(
         mocked_root_logger.warning.assert_called_once_with("No known IoT Operations services discovered on cluster.")
         assert auto_result_no_resources is None
         return
+
+    if CLUSTER_CONFIG_API_V1 in mocked_cluster_resources["param"]:
+        add_pod_to_mocked_pods(
+            mocked_client=mocked_client,
+            expected_pod_map=mocked_list_pods,
+            mock_names=["aio-usage"],
+            mock_init_containers=True,
+        )
 
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(None, bundle_dir=a_bundle_dir, log_age_seconds=since_seconds)
@@ -139,6 +151,15 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
+                label_selector=AIO_BILLING_USAGE_NAME_LABEL,
+                directory_path=BILLING_RESOURCE_KIND,
+                since_seconds=since_seconds,
+                prefix_names=["aio-usage"],
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
                 label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
                 directory_path=ARC_BILLING_DIRECTORY_PATH,
                 since_seconds=since_seconds,
@@ -147,7 +168,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AIO_BILLING_USAGE_NAME_LABEL,
-                directory_path=ARC_BILLING_DIRECTORY_PATH,
+                directory_path=BILLING_RESOURCE_KIND,
             )
             assert_list_deployments(
                 mocked_client,
@@ -159,7 +180,7 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=AIO_BILLING_USAGE_NAME_LABEL,
-                directory_path=ARC_BILLING_DIRECTORY_PATH,
+                directory_path=BILLING_RESOURCE_KIND,
             )
             assert_list_replica_sets(
                 mocked_client,
@@ -189,6 +210,14 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=MQ_NAME_LABEL,
+                directory_path=MQ_DIRECTORY_PATH,
+                since_seconds=since_seconds,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=MQ_K8S_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
                 since_seconds=since_seconds,
             )
@@ -456,11 +485,44 @@ def test_create_bundle(
                 directory_path=AKRI_DIRECTORY_PATH,
             )
 
+        if api in [DATAFLOW_API_V1B1]:
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATAFLOW_API_V1B1.label,
+                directory_path=DATAFLOW_API_V1B1.moniker,
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=DATAFLOW_API_V1B1.moniker,
+                mock_names=["aio-dataflow-operator"],
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATAFLOW_API_V1B1.label,
+                directory_path=DATAFLOW_API_V1B1.moniker,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=DATAFLOW_API_V1B1.label,
+                directory_path=DATAFLOW_API_V1B1.moniker,
+                since_seconds=since_seconds,
+            )
+
     if expected_resources:
         assert_otel_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
 
     # assert shared KPIs regardless of service
     assert_shared_kpis(mocked_client, mocked_zipfile)
+    # assert meta KPIs
+    assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
+    # Using a divergent pattern for cluster config since its mock is at a higher level.
+    mocked_get_config_map.assert_called_with(name='azure-clusterconfig', namespace='azure-arc')
 
 
 def asset_raises_not_found_error(mocked_cluster_resources):
@@ -603,6 +665,9 @@ def assert_list_pods(
                     "namespace: namespace\ntimestamp: '0000-00-00T00:00:00Z'\n",
                 )
 
+            if pod_name not in kwargs.get("prefix_names", []):
+                continue
+
             for container_name in pods_with_container[namespace][pod_name]:
                 data = (
                     f"kind: Pod\nmetadata:\n  name: {pod_name}\n  namespace: {namespace}\nspec:\n  "
@@ -734,6 +799,24 @@ def assert_mq_stats(mocked_zipfile):
     assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/broker/diagnostic_metrics.txt", data="metrics")
 
 
+def assert_meta_kpis(
+    mocked_client,
+    mocked_zipfile,
+    mocked_list_pods
+):
+    for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_replica_sets]:
+        kwargs = {
+            "mocked_client": mocked_client,
+            "mocked_zipfile": mocked_zipfile,
+            "label_selector": META_NAME_LABEL,
+            "directory_path": OTEL_API.moniker,
+        }
+        if assert_func == assert_list_pods:
+            kwargs["mocked_list_pods"] = mocked_list_pods
+
+        assert_func(**kwargs)
+
+
 def assert_otel_kpis(
     mocked_client,
     mocked_zipfile,
@@ -764,8 +847,13 @@ def assert_shared_kpis(mocked_client, mocked_zipfile):
     mocked_client.StorageV1Api().list_storage_class.assert_called_once()
     assert_zipfile_write(
         mocked_zipfile,
-        zinfo="storage_classes.yaml",
+        zinfo="storage-classes.yaml",
         data="items:\n- metadata:\n    name: mock_storage_class\n  provisioner: mock_provisioner\n",
+    )
+    assert_zipfile_write(
+        mocked_zipfile,
+        zinfo="azure-clusterconfig.yaml",
+        data='configkey: configvalue\n',
     )
 
 
@@ -899,6 +987,7 @@ def test_create_bundle_mq_traces(
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_mq_get_traces,
+    mocked_get_config_map,
 ):
     result = support_bundle(None, bundle_dir=a_bundle_dir, include_mq_traces=True)
 

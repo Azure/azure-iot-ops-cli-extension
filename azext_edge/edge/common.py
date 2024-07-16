@@ -145,8 +145,8 @@ class OpsServiceType(ListableEnum):
     orc = "orc"
     akri = "akri"
     deviceregistry = "deviceregistry"
-    # TODO: re-enable billing once service is available post 0.6.0 release
-    # billing = "billing"
+    billing = "billing"
+    dataflow = "dataflow"
 
     @classmethod
     def list_check_services(cls):
@@ -201,7 +201,7 @@ class ClusterExtensionsMapping(Enum):
     Cluster extension mappings.
     """
 
-    asset = "microsoft.deviceregistry.assets"
+    asset = "adr"
 
 
 class AEPAuthModes(Enum):

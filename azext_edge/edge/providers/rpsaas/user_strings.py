@@ -11,7 +11,7 @@ CLUSTER_NOT_FOUND_MSG = "Cluster associated with the custom location {0} not fou
     "The command may fail."
 CLUSTER_OFFLINE_MSG = "Cluster {0} is not connected. The cluster may not update correctly."
 MISSING_CLUSTER_CUSTOM_LOCATION_ERROR = "Need to provide either cluster name or custom location"
-MISSING_EXTENSION_ERROR = "Cluster {0} is missing the {1} extension."
+MISSING_EXTENSION_ERROR = "Cluster {0} is missing the {1} extension with enabled {2} features."
 MULTIPLE_CUSTOM_LOCATIONS_ERROR = "The following custom locations were found for cluster {0}: \n{1}. "\
     "Please specify which custom location to use."
 MULTIPLE_POSSIBLE_ITEMS_ERROR = "Found {0} {1}s with the name {2}. Please provide the resource group "\

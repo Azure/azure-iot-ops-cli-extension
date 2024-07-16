@@ -33,7 +33,7 @@ def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
 def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
     """Test to focus on ops_service param."""
 
-    command = f"az iot ops support create-bundle --mq-traces {mq_traces} " + "--ops-service {0}"
+    command = f"az iot ops support create-bundle --broker-traces {mq_traces} " + "--ops-service {0}"
     if bundle_dir:
         command += f" --bundle-dir {bundle_dir}"
         try:
@@ -55,7 +55,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
     expected_services = _get_expected_services(walk_result, ops_service, namespace)
-    assert sorted(level_1["folders"]) == expected_services
+    assert sorted(level_1["folders"]) == sorted(expected_services)
     assert not level_1["files"]
 
     # Check and take out mq traces:
@@ -69,9 +69,9 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] = []
 
     # Level 2 and 3 - bottom
-    actual_walk_result = (len(expected_services) + int("clusterconfig" in expected_services))
-
+    actual_walk_result = (len(expected_services) + int(OpsServiceType.billing.value in expected_services))
     assert len(walk_result) == actual_walk_result
+
     for directory in walk_result:
         assert not walk_result[directory]["folders"]
         assert_file_names(walk_result[directory]["files"])
@@ -108,20 +108,16 @@ def _get_expected_services(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str , namespace: str
 ) -> List[str]:
     expected_services = [ops_service]
-    # TODO: re-enable billing once service is available post 0.6.0 release
     if ops_service == OpsServiceType.auto.value:
         # these should always be generated
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
-        # expected_services.remove(OpsServiceType.billing.value)
         expected_services.append("otel")
-        if walk_result.get(path.join(BASE_ZIP_PATH, namespace, "clusterconfig", "billing")):
-            expected_services.append("clusterconfig")
-        # device registry folder will not be created if there are no device registry resources
-        if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value)):
-            expected_services.remove(OpsServiceType.deviceregistry.value)
         expected_services.sort()
-    # elif ops_service == OpsServiceType.billing.value:
-    #     expected_services.remove(OpsServiceType.billing.value)
-    #     expected_services.append("clusterconfig")
+
+    # device registry folder will not be created if there are no device registry resources
+    if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value))\
+       and OpsServiceType.deviceregistry.value in expected_services:
+        expected_services.remove(OpsServiceType.deviceregistry.value)
+    expected_services.append("meta")
     return expected_services

@@ -118,9 +118,10 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "include_mq_traces",
-            options_list=["--mq-traces"],
+            options_list=["--broker-traces"],
             arg_type=get_three_state_flag(),
-            help="Include mq traces in the support bundle. Usage may add considerable size to the produced bundle.",
+            help="Include mqtt broker traces in the support bundle. "
+            "Usage may add considerable size to the produced bundle.",
         )
 
     with self.argument_context("iot ops check") as context:
@@ -193,21 +194,7 @@ def load_iotops_arguments(self, _):
             validator=validate_resource_name,
         ),
 
-    with self.argument_context("iot ops mq get-password-hash") as context:
-        context.argument(
-            "iterations",
-            options_list=["--iterations", "-i"],
-            help="Using a higher iteration count will increase the cost of an exhaustive search but "
-            "will also make derivation proportionally slower.",
-            type=int,
-        )
-        context.argument(
-            "passphrase",
-            options_list=["--phrase", "-p"],
-            help="Passphrase to apply hashing algorithm to.",
-        )
-
-    with self.argument_context("iot ops mq stats") as context:
+    with self.argument_context("iot ops broker stats") as context:
         context.argument(
             "refresh_in_seconds",
             options_list=["--refresh"],

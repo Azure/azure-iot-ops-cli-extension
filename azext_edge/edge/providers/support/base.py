@@ -5,13 +5,26 @@
 # ----------------------------------------------------------------------------------------------
 
 from pathlib import PurePath
-from typing import List, Dict, Optional, Iterable, Union
+from typing import List, Dict, Optional, Iterable, Tuple, TypeVar, Union
 from functools import partial
 
 from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
-from kubernetes.client.models import V1Container, V1ObjectMeta, V1PodSpec
+from kubernetes.client.models import (
+    V1Container,
+    V1ObjectMeta,
+    V1PodSpec,
+    V1PodList,
+    V1ServiceList,
+    V1DeploymentList,
+    V1StatefulSetList,
+    V1ReplicaSetList,
+    V1DaemonSetList,
+    V1PersistentVolumeClaimList,
+    V1JobList,
+    V1CronJobList,
+)
 
 from ..edge_api import EdgeResourceApi
 from ..base import client, get_custom_objects
@@ -21,6 +34,19 @@ logger = get_logger(__name__)
 generic = client.ApiClient()
 
 DAY_IN_SECONDS: int = 60 * 60 * 24
+
+K8sRuntimeResources = TypeVar(
+    "K8sRuntimeResources",
+    V1ServiceList,
+    V1PodList,
+    V1DeploymentList,
+    V1StatefulSetList,
+    V1ReplicaSetList,
+    V1DaemonSetList,
+    V1PersistentVolumeClaimList,
+    V1JobList,
+    V1CronJobList,
+)
 
 
 def process_crd(
@@ -62,8 +88,9 @@ def process_v1_pods(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
     pod_prefix_for_init_container_logs: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1Pod, V1PodList
+    from kubernetes.client.models import V1Pod
 
     v1_api = client.CoreV1Api()
     custom_api = client.CustomObjectsApi()
@@ -73,6 +100,9 @@ def process_v1_pods(
         prefix_names = []
 
     pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
+
+    if exclude_prefixes:
+        pods = exclude_resources_with_prefix(pods, exclude_prefixes)
 
     pod_logger_info = f"Detected {len(pods.items)} pods"
     if label_selector:
@@ -143,9 +173,8 @@ def process_deployments(
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1DeploymentList
-
     v1_apps = client.AppsV1Api()
     deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -156,6 +185,7 @@ def process_deployments(
         resources=deployments,
         prefix_names=prefix_names,
         kind=BundleResourceKind.deployment.value,
+        exclude_prefixes=exclude_prefixes,
     )
 
 
@@ -164,9 +194,7 @@ def process_statefulset(
     return_namespaces: bool = False,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
-) -> List[dict]:
-    from kubernetes.client.models import V1StatefulSetList
-
+) -> Union[Tuple[List[dict], dict], List[dict]]:
     v1_apps = client.AppsV1Api()
     statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -196,9 +224,8 @@ def process_services(
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1ServiceList
-
     v1_api = client.CoreV1Api()
     services: V1ServiceList = v1_api.list_service_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -209,6 +236,7 @@ def process_services(
         resources=services,
         prefix_names=prefix_names,
         kind=BundleResourceKind.service.value,
+        exclude_prefixes=exclude_prefixes,
     )
 
 
@@ -216,9 +244,8 @@ def process_replicasets(
     directory_path: str,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1ReplicaSetList
-
     v1_apps = client.AppsV1Api()
     replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
 
@@ -227,6 +254,7 @@ def process_replicasets(
         resources=replicasets,
         prefix_names=prefix_names,
         kind=BundleResourceKind.replicaset.value,
+        exclude_prefixes=exclude_prefixes,
     )
 
 
@@ -236,8 +264,6 @@ def process_daemonsets(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1DaemonSetList
-
     v1_apps = client.AppsV1Api()
     daemonsets: V1DaemonSetList = v1_apps.list_daemon_set_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -290,7 +316,7 @@ def process_storage_classes() -> List[dict]:
     storage_class_content.append(
         {
             "data": generic.sanitize_for_serialization(obj=storage_v1_api.list_storage_class()),
-            "zinfo": "storage_classes.yaml",
+            "zinfo": "storage-classes.yaml",
         }
     )
 
@@ -303,8 +329,6 @@ def process_persistent_volume_claims(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1PersistentVolumeClaimList
-
     v1_api = client.CoreV1Api()
     pvcs: V1PersistentVolumeClaimList = v1_api.list_persistent_volume_claim_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -323,9 +347,8 @@ def process_jobs(
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1JobList
-
     batch_v1_api = client.BatchV1Api()
     jobs: V1JobList = batch_v1_api.list_job_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -336,6 +359,7 @@ def process_jobs(
         resources=jobs,
         prefix_names=prefix_names,
         kind=BundleResourceKind.job.value,
+        exclude_prefixes=exclude_prefixes,
     )
 
 
@@ -345,8 +369,6 @@ def process_cron_jobs(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1CronJobList
-
     batch_v1_api = client.BatchV1Api()
     cron_jobs: V1CronJobList = batch_v1_api.list_cron_job_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -443,14 +465,18 @@ def _capture_pod_container_logs(
 
 def _process_kubernetes_resources(
     directory_path: str,
-    resources: object,
+    resources: K8sRuntimeResources,
     kind: str,
     prefix_names: Optional[List[str]] = None,
+    exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
     processed = []
 
     if not prefix_names:
         prefix_names = []
+
+    if exclude_prefixes:
+        resources = exclude_resources_with_prefix(resources, exclude_prefixes)
 
     logger.info(f"Detected {len(resources.items)} {kind}s.")
     for resource in resources.items:
@@ -480,3 +506,10 @@ def _process_kubernetes_resources(
         )
 
     return processed
+
+
+def exclude_resources_with_prefix(resources: K8sRuntimeResources, exclude_prefixes: List[str]) -> K8sRuntimeResources:
+    for prefix in exclude_prefixes:
+        resources.items = [resource for resource in resources.items if not resource.metadata.name.startswith(prefix)]
+
+    return resources

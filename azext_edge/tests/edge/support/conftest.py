@@ -12,10 +12,7 @@ import pytest
 
 
 def add_pod_to_mocked_pods(
-    mocked_client,
-    expected_pod_map,
-    mock_names: List[str] = None,
-    mock_init_containers: bool = False
+    mocked_client, expected_pod_map, mock_names: List[str] = None, mock_init_containers: bool = False
 ):
     from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
 
@@ -220,14 +217,14 @@ def mocked_get_custom_objects(mocker):
 def mocked_namespaced_custom_objects(mocked_client):
     def _handle_namespaced_custom_object(*args, **kwargs):
         custom_object = {
-            'kind': 'PodMetrics',
-            'apiVersion': 'metrics.k8s.io/v1beta1',
-            'metadata': {
-                'name': 'mock_custom_object',
-                'namespace': 'namespace',
-                'creationTimestamp': '0000-00-00T00:00:00Z',
+            "kind": "PodMetrics",
+            "apiVersion": "metrics.k8s.io/v1beta1",
+            "metadata": {
+                "name": "mock_custom_object",
+                "namespace": "namespace",
+                "creationTimestamp": "0000-00-00T00:00:00Z",
             },
-            'timestamp': '0000-00-00T00:00:00Z'
+            "timestamp": "0000-00-00T00:00:00Z",
         }
 
         return custom_object
@@ -453,7 +450,14 @@ def mocked_mq_get_traces(mocker):
     test_zipinfo.file_size = 0
     test_zipinfo.compress_size = 0
 
-    # Supports --mq-traces
+    # Supports --broker-traces
     patched_get_traces = mocker.patch("azext_edge.edge.providers.support.mq.get_traces")
     patched_get_traces.return_value = [(test_zipinfo, "trace_data")]
     yield patched_get_traces
+
+
+@pytest.fixture
+def mocked_get_config_map(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.support.shared.get_config_map", autospec=True)
+    patched.return_value = {"configkey": "configvalue"}
+    yield patched
