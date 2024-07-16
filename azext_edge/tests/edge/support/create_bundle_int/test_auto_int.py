@@ -55,7 +55,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
     expected_services = _get_expected_services(walk_result, ops_service, namespace)
-    assert sorted(level_1["folders"]) == expected_services
+    assert sorted(level_1["folders"]) == sorted(expected_services)
     assert not level_1["files"]
 
     # Check and take out mq traces:
@@ -113,8 +113,11 @@ def _get_expected_services(
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
         expected_services.append("otel")
-        # device registry folder will not be created if there are no device registry resources
-        if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value)):
-            expected_services.remove(OpsServiceType.deviceregistry.value)
         expected_services.sort()
+
+    # device registry folder will not be created if there are no device registry resources
+    if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value))\
+       and OpsServiceType.deviceregistry.value in expected_services:
+        expected_services.remove(OpsServiceType.deviceregistry.value)
+    expected_services.append("meta")
     return expected_services
