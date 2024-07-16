@@ -146,7 +146,8 @@ class DeletionManager:
                 self._render_display(f"[red]Deleting {batches_key}...")
                 for batch in batched_work[batches_key]:
                     # TODO: @digimaun - Show summary as result
-                    self._delete_batch(batch)
+                    lros = self._delete_batch(batch)
+                    [lro.result() for lro in lros]
         finally:
             self._stop_display()
 
