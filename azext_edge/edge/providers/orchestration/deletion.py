@@ -71,6 +71,8 @@ class DeletionManager:
         self._progress_shown = False
 
     def do_work(self, confirm_yes: Optional[bool] = None, force: Optional[bool] = None):
+        # Ensure cluster exists with existing resource_map pattern.
+        self.resource_map.connected_cluster.resource
         self._display_resource_tree()
 
         should_delete = True
