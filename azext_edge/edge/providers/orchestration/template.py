@@ -32,8 +32,9 @@ V1_TEMPLATE = TemplateVer(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.28.1.47646", "templateHash": "331560346280621255"},
+            "_generator": {"name": "bicep", "version": "0.28.1.47646", "templateHash": "4287026854122732779"},
             "description": "This template deploys Azure IoT Operations.",
+            "aziotopsCliVersion": "0.6.0a1",
         },
         "parameters": {
             "clusterName": {"type": "string"},
@@ -256,7 +257,6 @@ V1_TEMPLATE = TemplateVer(
                         "connectors.opcua.values.mqttBroker.connectUserProperties.metriccategory": "aio-opc",
                         "connectors.opcua.values.opcPlcSimulation.deploy": "[format('{0}', parameters('simulatePLC'))]",
                         "connectors.opcua.values.opcPlcSimulation.autoAcceptUntrustedCertificates": "[format('{0}', parameters('simulatePLC'))]",
-                        "connectors.opcua.values.opcPlcSimulation.deployAkriConfiguration": "[format('{0}', parameters('simulatePLC'))]",
                         "connectors.opcua.values.discoveryHandler.enabled": "true",
                         "connectors.opcua.values.openTelemetry.enabled": "true",
                         "connectors.opcua.values.openTelemetry.endpoints.default.uri": "[variables('OBSERVABILITY').otelCollectorAddress]",
@@ -299,11 +299,11 @@ V1_TEMPLATE = TemplateVer(
                         "dataFlows.enabled": "true",
                         "dataFlows.image.registry": "mqpreview.azurecr.io",
                         "dataFlows.image.repository": "helm/dataflows",
-                        "dataFlows.image.tag": "0.1.0-preview-rc4",
+                        "dataFlows.image.tag": "0.1.0-preview-rc7",
                         "mqttBroker.enabled": "true",
                         "mqttBroker.image.registry": "mqpreview.azurecr.io",
                         "mqttBroker.image.repository": "helm/mq",
-                        "mqttBroker.image.tag": "0.5.0-preview-rc3",
+                        "mqttBroker.image.tag": "0.5.0-preview-rc5",
                     },
                 },
                 "dependsOn": [
