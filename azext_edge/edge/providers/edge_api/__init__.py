@@ -13,6 +13,7 @@ from .akri import AKRI_API_V0, AkriResourceKinds
 from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
 from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
 from .dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
+from .meta import META_API_V1B1, MetaResourceKinds
 
 __all__ = [
     "CLUSTER_CONFIG_API_V1",
@@ -33,4 +34,6 @@ __all__ = [
     "DEVICEREGISTRY_API_V1",
     "DATAFLOW_API_V1B1",
     "DataflowResourceKinds",
+    "META_API_V1B1",
+    "MetaResourceKinds",
 ]

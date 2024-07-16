@@ -43,6 +43,7 @@ from azext_edge.edge.providers.support.billing import (
     ARC_BILLING_DIRECTORY_PATH,
     BILLING_RESOURCE_KIND,
 )
+from azext_edge.edge.providers.support.meta import META_NAME_LABEL
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_K8S_LABEL, MQ_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
@@ -518,6 +519,8 @@ def test_create_bundle(
 
     # assert shared KPIs regardless of service
     assert_shared_kpis(mocked_client, mocked_zipfile)
+    # assert meta KPIs
+    assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
     # Using a divergent pattern for cluster config since its mock is at a higher level.
     mocked_get_config_map.assert_called_with(name='azure-clusterconfig', namespace='azure-arc')
 
@@ -794,6 +797,24 @@ def assert_list_daemon_sets(
 
 def assert_mq_stats(mocked_zipfile):
     assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/broker/diagnostic_metrics.txt", data="metrics")
+
+
+def assert_meta_kpis(
+    mocked_client,
+    mocked_zipfile,
+    mocked_list_pods
+):
+    for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_replica_sets]:
+        kwargs = {
+            "mocked_client": mocked_client,
+            "mocked_zipfile": mocked_zipfile,
+            "label_selector": META_NAME_LABEL,
+            "directory_path": OTEL_API.moniker,
+        }
+        if assert_func == assert_list_pods:
+            kwargs["mocked_list_pods"] = mocked_list_pods
+
+        assert_func(**kwargs)
 
 
 def assert_otel_kpis(

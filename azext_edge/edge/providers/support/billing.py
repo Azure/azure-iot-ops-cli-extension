@@ -26,6 +26,7 @@ logger = get_logger(__name__)
 AIO_BILLING_USAGE_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations)"
 ARC_BILLING_EXTENSION_COMP_LABEL = "app.kubernetes.io/component in (billing-operator)"
 BILLING_RESOURCE_KIND = "billing"
+AIO_USAGE_PREFIX = "aio-usage"
 ARC_BILLING_DIRECTORY_PATH = f"{CLUSTER_CONFIG_API_V1.moniker}/{BILLING_RESOURCE_KIND}"
 
 
@@ -36,7 +37,7 @@ def fetch_pods(
     billing_pods = process_v1_pods(
         directory_path=BILLING_RESOURCE_KIND,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
-        prefix_names=["aio-usage"],
+        prefix_names=[AIO_USAGE_PREFIX],
         since_seconds=since_seconds,
     )
 
