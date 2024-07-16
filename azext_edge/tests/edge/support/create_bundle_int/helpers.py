@@ -207,18 +207,25 @@ def get_file_map(
     file_map = {"__namespaces__": {}}
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
-        assert len(walk_result) == 2
+        assert len(walk_result) == 3
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
     elif ops_service == "billing":
-        assert len(walk_result) == 2
+        assert len(walk_result) == 3
         ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
-    elif ops_service != "otel":
-        assert len(walk_result) == 1
+    elif ops_service == "deviceregistry":
+        if ops_path not in walk_result:
+            assert len(walk_result) == 1
+            pytest.skip(f"No bundles created for {ops_service}.")
+        else:
+            assert len(walk_result) == 2
+    # remove ops_service that are not selectable by --svc
+    elif ops_service != "otel" and ops_service != "meta":
+        assert len(walk_result) == 2
         assert not walk_result[ops_path]["folders"]
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = namespace
