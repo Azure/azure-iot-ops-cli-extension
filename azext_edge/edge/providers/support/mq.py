@@ -87,21 +87,17 @@ def fetch_statefulsets():
 
 
 def fetch_services():
-    processed = process_services(
+    return process_services(
         directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_NAME_LABEL,
     )
-
-    return processed
 
 
 def fetch_replicasets():
-    processed = process_replicasets(
+    return process_replicasets(
         directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_NAME_LABEL,
     )
-
-    return processed
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
