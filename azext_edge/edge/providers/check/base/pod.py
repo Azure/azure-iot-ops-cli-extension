@@ -32,7 +32,7 @@ def evaluate_pod_health(
     target: str,
     pod: str,
     display_padding: int,
-    service_label: str,
+    service_label: str = None,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
     target_service_pod = f"pod/{pod}"

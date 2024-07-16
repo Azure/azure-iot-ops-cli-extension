@@ -10,7 +10,6 @@ from rich.padding import Padding
 
 from ...common import AIO_MQ_RESOURCE_PREFIX, CheckTaskStatus
 from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
-from ..support.mq import MQ_LABEL
 from .base import (
     CheckManager,
     evaluate_pod_health,
@@ -257,7 +256,6 @@ def _display_connector_runtime_health(
                 namespace=namespace,
                 pod=pod,
                 display_padding=padding,
-                service_label=MQ_LABEL,
                 detail_level=detail_level,
             )
 
