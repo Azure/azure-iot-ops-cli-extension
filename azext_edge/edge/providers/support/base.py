@@ -90,7 +90,7 @@ def process_v1_pods(
     pod_prefix_for_init_container_logs: Optional[List[str]] = None,
     exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1Pod, V1PodList
+    from kubernetes.client.models import V1Pod
 
     v1_api = client.CoreV1Api()
     custom_api = client.CustomObjectsApi()
@@ -175,8 +175,6 @@ def process_deployments(
     prefix_names: Optional[List[str]] = None,
     exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1DeploymentList
-
     v1_apps = client.AppsV1Api()
     deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -197,8 +195,6 @@ def process_statefulset(
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
 ) -> Union[Tuple[List[dict], dict], List[dict]]:
-    from kubernetes.client.models import V1StatefulSetList
-
     v1_apps = client.AppsV1Api()
     statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -230,8 +226,6 @@ def process_services(
     prefix_names: Optional[List[str]] = None,
     exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1ServiceList
-
     v1_api = client.CoreV1Api()
     services: V1ServiceList = v1_api.list_service_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -252,8 +246,6 @@ def process_replicasets(
     prefix_names: Optional[List[str]] = None,
     exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1ReplicaSetList
-
     v1_apps = client.AppsV1Api()
     replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
 
@@ -272,8 +264,6 @@ def process_daemonsets(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1DaemonSetList
-
     v1_apps = client.AppsV1Api()
     daemonsets: V1DaemonSetList = v1_apps.list_daemon_set_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -339,8 +329,6 @@ def process_persistent_volume_claims(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1PersistentVolumeClaimList
-
     v1_api = client.CoreV1Api()
     pvcs: V1PersistentVolumeClaimList = v1_api.list_persistent_volume_claim_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -361,8 +349,6 @@ def process_jobs(
     prefix_names: Optional[List[str]] = None,
     exclude_prefixes: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1JobList
-
     batch_v1_api = client.BatchV1Api()
     jobs: V1JobList = batch_v1_api.list_job_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
@@ -383,8 +369,6 @@ def process_cron_jobs(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
-    from kubernetes.client.models import V1CronJobList
-
     batch_v1_api = client.BatchV1Api()
     cron_jobs: V1CronJobList = batch_v1_api.list_cron_job_for_all_namespaces(
         label_selector=label_selector, field_selector=field_selector
