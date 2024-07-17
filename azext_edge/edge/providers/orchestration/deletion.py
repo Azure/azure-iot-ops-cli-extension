@@ -71,6 +71,8 @@ class DeletionManager:
         self._progress_shown = False
 
     def do_work(self, confirm_yes: Optional[bool] = None, force: Optional[bool] = None):
+        # Ensure cluster exists with existing resource_map pattern.
+        self.resource_map.connected_cluster.resource
         self._display_resource_tree()
 
         should_delete = True
@@ -144,7 +146,8 @@ class DeletionManager:
                 self._render_display(f"[red]Deleting {batches_key}...")
                 for batch in batched_work[batches_key]:
                     # TODO: @digimaun - Show summary as result
-                    self._delete_batch(batch)
+                    lros = self._delete_batch(batch)
+                    [lro.result() for lro in lros]
         finally:
             self._stop_display()
 

@@ -4,12 +4,17 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from .deletion import delete_ops_resources
-from .host import run_host_verify
-from .work import deploy
+from .base import EdgeResourceApi
+from ...common import ListableEnum
 
-__all__ = [
-    "deploy",
-    "delete_ops_resources",
-    "run_host_verify",
-]
+
+class MetaResourceKinds(ListableEnum):
+    Instance = "instance"
+
+
+META_API_V1B1 = EdgeResourceApi(
+    group="iotoperations.azure.com",
+    version="v1beta1",
+    moniker="meta",
+    label="microsoft-iotoperations"
+)

@@ -11,16 +11,14 @@ from typing import Optional
 import pytest
 import responses
 
-from azext_edge.edge.providers.orchestration.instances import (
-    BASE_URL,
-    INSTANCES_API_VERSION,
-    QUALIFIED_RESOURCE_TYPE,
-    Instances,
-)
+from azext_edge.edge.providers.orchestration.resources.instances import Instances
 
 from ...generators import generate_random_string, get_zeroed_subscription
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
+BASE_URL = "https://management.azure.com"
+QUALIFIED_RESOURCE_TYPE = "Microsoft.IoTOperations/instances"
+INSTANCES_API_VERSION = "2024-07-01-preview"
 
 
 def get_instance_endpoint(resource_group_name: Optional[str] = None, instance_name: Optional[str] = None):

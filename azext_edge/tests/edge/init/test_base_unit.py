@@ -632,6 +632,8 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
     deployment_name = generate_random_string()
     cluster_name = generate_random_string()
     cluster_namespace = generate_random_string()
+    instance_name = generate_random_string()
+
     result, deployment = deploy_template(
         template=template,
         parameters=parameters,
@@ -641,6 +643,7 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
         pre_flight=pre_flight,
+        instance_name=instance_name,
     )
     expected_parameters = {"properties": {"mode": "Incremental", "template": template, "parameters": parameters}}
     if pre_flight:
@@ -660,6 +663,7 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
         assert result["resourceGroup"] == resource_group_name
         assert result["clusterName"] == cluster_name
         assert result["clusterNamespace"] == cluster_namespace
+        assert result["instanceName"] == instance_name
         assert result["deploymentLink"] == link
         assert result["deploymentState"]["timestampUtc"]["started"]
         assert result["deploymentState"]["status"]

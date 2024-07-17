@@ -17,6 +17,7 @@ from .providers.support_bundle import (
     COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
+    COMPAT_DATAFLOW_APIS,
 )
 
 
@@ -56,6 +57,7 @@ def load_iotops_help():
             - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
+            - {COMPAT_DATAFLOW_APIS.as_str()}
 
         examples:
         - name: Basic usage with default options. This form of the command will auto detect IoT Operations APIs and build a suitable bundle
@@ -154,6 +156,41 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker show"
+    ] = """
+        type: command
+        short-summary: Show details of an mqtt broker.
+    """
+
+    helps[
+        "iot ops broker list"
+    ] = """
+        type: command
+        short-summary: List mqtt brokers associated with an instance.
+    """
+
+    helps[
+        "iot ops broker listener"
+    ] = """
+        type: group
+        short-summary: Broker listener management.
+    """
+
+    helps[
+        "iot ops broker listener show"
+    ] = """
+        type: command
+        short-summary: Show details of an mqtt broker listener.
+    """
+
+    helps[
+        "iot ops broker listener list"
+    ] = """
+        type: command
+        short-summary: List mqtt broker listeners associated with an instance.
+    """
+
+    helps[
         "iot ops verify-host"
     ] = """
         type: command
@@ -174,37 +211,46 @@ def load_iotops_help():
                       For additional resources including how to Arc-enable a cluster see
                       https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
 
+                      IoT Operations depends on a service principal (SP) for Key Vault CSI driver secret synchronization.
+                      By default, init will do work in creating and configuring a suitable app registration via Microsoft Graph
+                      then apply it to the cluster.
+
+                      You can short-circuit this work, by pre-creating an app registration, then providing values for --sp-app-id,
+                      --sp-object-id and --sp-secret. By providing the SP fields, no additional work via Microsoft Graph operations will be done.
+
+                      Pre-creating an app registration is useful when the logged-in principal has constrained Entra Id permissions. For example
+                      in CI/automation scenarios, or an orgs separation of user responsibility.
+
         examples:
         - name: Minimum input for complete setup. This includes Key Vault configuration, CSI driver deployment, TLS config and deployment of IoT Operations.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id /subscriptions/2cb3a427-1abc-48d0-9d03-dd240819742a/resourceGroups/myresourcegroup/providers/Microsoft.KeyVault/vaults/mykeyvault
 
         - name: Same setup as prior example, except with the usage of an existing app Id and a flag to include a simulated PLC server as part of the deployment.
-                Including the app Id will prevent `init` from creating an app registration.
+                Including the app Id will prevent init from creating an app registration.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --simulate-plc
 
-        - name: To skip deployment and focus only on the Key Vault CSI driver and TLS config workflows simple pass in `--no-deploy`.
+        - name: To skip deployment and focus only on the Key Vault CSI driver and TLS config workflows simple pass in --no-deploy.
                 This can be useful when desiring to deploy from a different tool such as Portal.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-deploy
 
-        - name: To only deploy IoT Operations on a cluster that has already been prepped, simply omit `--kv-id` and include `--no-tls`.
+        - name: To only deploy IoT Operations on a cluster that has already been prepped, simply omit --kv-id and include --no-tls.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --no-tls
 
-        - name: Use `--no-block` to do other work while the deployment is on-going vs waiting for the deployment to finish before starting the other work.
+        - name: Use --no-block to do other work while the deployment is on-going vs waiting for the deployment to finish before starting the other work.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-block
 
-        - name: To avoid calling MS Graph such as for CI scenarios where the logged-in to az cli service principal permissions are limited or an existing
-                service principal should be re-used, provide all of `--sp-app-id`, `--sp-object-id` and `--sp-secret`.
-                These values should reflect the desired service principal that will be used for the Key Vault CSI driver setup.
+        - name: This example shows providing values for --sp-app-id, --sp-object-id and --sp-secret. These values should reflect the desired service principal
+                that will be used for the Key Vault CSI driver secret synchronization. Please review the command summary for additional details.
           text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29
-            --sp-secret $SP_SECRET
+            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d
+            --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29 --sp-secret $SP_SECRET
 
-        - name: To customize configuration of the Key Vault CSI driver, --csi-config can be used. For example setting resource limits on the telegraf container dependency.
+        - name: To customize runtime configuration of the Key Vault CSI driver, --csi-config can be used. For example setting resource limits on the telegraf container dependency.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d
             --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m

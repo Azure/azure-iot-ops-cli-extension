@@ -480,6 +480,7 @@ def deploy_template(
     deployment_name: str,
     cluster_name: str,
     cluster_namespace: str,
+    instance_name: str,
     pre_flight: bool = False,
     **kwargs,
 ) -> Tuple[dict, dict]:
@@ -506,12 +507,14 @@ def deploy_template(
     )
 
     result = {
-        "deploymentName": deployment_name,
-        "resourceGroup": resource_group_name,
         "clusterName": cluster_name,
         "clusterNamespace": cluster_namespace,
         "deploymentLink": deploy_link,
+        "deploymentName": deployment_name,
         "deploymentState": {"timestampUtc": {"started": get_timestamp_now_utc()}, "status": deployment.status()},
+        "instanceName": instance_name,
+        "resourceGroup": resource_group_name,
+        "subscriptionId": subscription_id,
     }
     return result, deployment
 

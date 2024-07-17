@@ -10,8 +10,8 @@ from knack.log import get_logger
 from rich import print
 from rich.console import Console
 
-from ...util.az_client import get_iotops_mgmt_client, parse_resource_id, wait_for_terminal_state
-from ...util.queryable import Queryable
+from ....util.az_client import get_iotops_mgmt_client, parse_resource_id, wait_for_terminal_state
+from ....util.queryable import Queryable
 
 logger = get_logger(__name__)
 
@@ -25,19 +25,12 @@ QUERIES = {
         """
 }
 
-INSTANCES_API_VERSION = "2021-10-01-privatepreview"
-# TODO temporary
-BASE_URL = "https://eastus2euap.management.azure.com"
-QUALIFIED_RESOURCE_TYPE = "Private.IoTOperations/instances"
-
 
 class Instances(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.default_subscription_id,
-            endpoint=BASE_URL,
-            api_version=INSTANCES_API_VERSION,
         )
         self.console = Console()
 
@@ -58,11 +51,15 @@ class Instances(Queryable):
 
     def _show_tree(self, instance: dict):
         custom_location = self._get_associated_cl(instance)
+        if not custom_location:
+            logger.warning("Unable to process the resource tree.")
+            return
+
         resource_id_container = parse_resource_id(custom_location["properties"]["hostResourceId"])
 
         # Currently resource map will query cluster state upon init
         # therefore we only use it when necessary to save cycles.
-        from .resource_map import IoTOperationsResourceMap
+        from ..resource_map import IoTOperationsResourceMap
 
         resource_map = IoTOperationsResourceMap(
             cmd=self.cmd,

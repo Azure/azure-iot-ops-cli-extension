@@ -126,8 +126,9 @@ class WorkManager:
         self._cluster_secret_ref = CLUSTER_SECRET_REF
         self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
         # TODO: Make cluster target with KPIs
-        self._cluster_namespace = kwargs["cluster_namespace"]
-        self._custom_location_name = kwargs["custom_location_name"]
+        self._cluster_name: str = kwargs["cluster_name"]
+        self._cluster_namespace: str = kwargs["cluster_namespace"]
+        self._custom_location_name: str = kwargs["custom_location_name"]
         self._deploy_rsync_rules = not kwargs.get("disable_rsync_rules", False)
         self._connected_cluster = None
         self._kwargs = kwargs
@@ -481,9 +482,7 @@ class WorkManager:
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
                 deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
                 deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
-                deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers(
-                    self._kwargs.get("include_dp", False)
-                )
+                deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers()
                 deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
                 deployment_result["deploymentState"]["resources"] = [
                     resource.id.split(
@@ -585,20 +584,23 @@ class WorkManager:
 
     def build_template(self, work_kpis: dict) -> Tuple[TemplateVer, dict]:
         # TODO refactor, move out of work
+        safe_cluster_name = self._cluster_name.replace("_", "-")
+
         template = get_current_template_copy(self._template_path)
+        built_in_template_params = template.parameters
+
         parameters = {}
 
         for template_pair in [
+            ("instance_name", "instanceName"),
+            ("instance_description", "instanceDescription"),
             ("cluster_name", "clusterName"),
             ("location", "location"),
             ("cluster_location", "clusterLocation"),
             ("custom_location_name", "customLocationName"),
             ("simulate_plc", "simulatePLC"),
-            ("opcua_discovery_endpoint", "opcuaDiscoveryEndpoint"),
             ("container_runtime_socket", "containerRuntimeSocket"),
             ("kubernetes_distro", "kubernetesDistro"),
-            ("target_name", "targetName"),
-            ("dp_instance_name", "dataProcessorInstanceName"),
             ("mq_instance_name", "mqInstanceName"),
             ("mq_frontend_server_name", "mqFrontendServer"),
             ("mq_listener_name", "mqListenerName"),
@@ -609,21 +611,16 @@ class WorkManager:
             ("mq_backend_redundancy_factor", "mqBackendRedundancyFactor"),
             ("mq_backend_workers", "mqBackendWorkers"),
             ("mq_backend_partitions", "mqBackendPartitions"),
-            ("mq_mode", "mqMode"),
             ("mq_memory_profile", "mqMemoryProfile"),
             ("mq_service_type", "mqServiceType"),
-            ("include_dp", "deployDataProcessor"),
         ]:
-            if template_pair[0] in self._kwargs and self._kwargs[template_pair[0]] is not None:
+            if (
+                template_pair[0] in self._kwargs
+                and self._kwargs[template_pair[0]] is not None
+                and template_pair[1] in built_in_template_params
+            ):
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
 
-        parameters["dataProcessorSecrets"] = {
-            "value": {
-                "enabled": True,
-                "secretProviderClassName": self._cluster_secret_class_name,
-                "servicePrincipalSecretRef": self._cluster_secret_ref,
-            }
-        }
         parameters["mqSecrets"] = {
             "value": {
                 "enabled": True,
@@ -639,6 +636,10 @@ class WorkManager:
         # Covers cluster_namespace
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
 
+        # TODO @digimaun
+        safe_cluster_name = self._cluster_name.replace("_", "-")
+        template.content["variables"]["OBSERVABILITY"]["targetName"] = f"{safe_cluster_name}-observability"
+
         tls_map = work_kpis.get("tls", {})
         if "aioTrustConfigMap" in tls_map:
             template.content["variables"]["AIO_TRUST_CONFIG_MAP"] = tls_map["aioTrustConfigMap"]
@@ -647,20 +648,17 @@ class WorkManager:
 
         mq_insecure = self._kwargs.get("mq_insecure", False)
         if mq_insecure:
-            broker_adj = False
             # This solution entirely relies on the form of the "standard" template.
             # Needs re-work after event
+            listener_adj = False
             for resource in template.content["resources"]:
-                if resource.get("type") == "Microsoft.IoTOperationsMQ/mq/broker":
-                    resource["properties"]["encryptInternalTraffic"] = False
-                    broker_adj = True
+                if resource.get("type") == "Microsoft.IoTOperations/instances/brokers/listeners":
+                    ports: list = resource["properties"]["ports"]
+                    ports.append({"port": 1883})
+                    listener_adj = True
 
-                if broker_adj:
+                if listener_adj:
                     break
-
-            from .template import get_insecure_mq_listener
-
-            template.content["resources"].append(get_insecure_mq_listener())
 
         return template, parameters
 

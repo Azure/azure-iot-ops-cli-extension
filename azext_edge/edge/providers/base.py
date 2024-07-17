@@ -75,7 +75,7 @@ _namespaced_pods_cache: dict = {}
 def get_namespaced_pods_by_prefix(
     prefix: str,
     namespace: str,
-    label_selector: str = None,
+    label_selector: Optional[str] = None,
     as_dict: bool = False,
 ) -> Union[List[V1Pod], List[dict], None]:
     def filter_pods_by_prefix(pods: List[V1Pod], prefix: str) -> List[V1Pod]:
