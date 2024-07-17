@@ -299,11 +299,11 @@ V1_TEMPLATE = TemplateVer(
                         "dataFlows.enabled": "true",
                         "dataFlows.image.registry": "mqpreview.azurecr.io",
                         "dataFlows.image.repository": "helm/dataflows",
-                        "dataFlows.image.tag": "0.1.0-preview-rc8",
+                        "dataFlows.image.tag": "0.1.0-preview-rc9",
                         "mqttBroker.enabled": "true",
                         "mqttBroker.image.registry": "mqpreview.azurecr.io",
                         "mqttBroker.image.repository": "helm/mq",
-                        "mqttBroker.image.tag": "0.5.0-preview-rc5",
+                        "mqttBroker.image.tag": "0.5.0-preview-rc6",
                     },
                 },
                 "dependsOn": [
