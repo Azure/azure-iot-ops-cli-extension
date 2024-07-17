@@ -80,7 +80,7 @@ jobs:
       RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
       KV_NAME: ${{ env.KV_NAME }}
     env:
-      CLUSTER_NAME: "iotopstest-${{ github.run_number }}${{ matrix.feature }}"
+      CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
       CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
       EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
       K3S_VERSION: "v1.28.5+k3s1"
