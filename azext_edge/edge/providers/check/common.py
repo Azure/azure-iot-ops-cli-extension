@@ -116,6 +116,19 @@ class DataLakeConnectorTargetType(ListableEnum):
     local_storage = "localStorage"
 
 
+class DataflowEndpointType(ListableEnum):
+    """
+    Dataflow Endpoint Type:
+    """
+
+    data_explorer = "DataExplorer"
+    datalake = "DataLakeStorage"
+    fabric_onelake = "FabricOneLake"
+    kafka = "Kafka"
+    local_storage = "LocalStorage"
+    mqtt = "Mqtt"
+
+
 # Akri runtime attributes
 AKRI_PREFIX = "aio-akri-"
 

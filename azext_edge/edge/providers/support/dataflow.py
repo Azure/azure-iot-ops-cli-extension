@@ -23,7 +23,8 @@ logger = get_logger(__name__)
 
 DATAFLOW_NAME_LABEL = NAME_LABEL_FORMAT.format(label=DATAFLOW_API_V1B1.label)
 DATAFLOW_DIRECTORY_PATH = DATAFLOW_API_V1B1.moniker
-DATAFLOW_DEPLOYMENT_FIELD_SELECTOR = "metadata.name=aio-dataflow-operator"
+DATAFLOW_OPERATOR_PREFIX = "aio-dataflow-operator"
+DATAFLOW_DEPLOYMENT_FIELD_SELECTOR = f"metadata.name={DATAFLOW_OPERATOR_PREFIX}"
 
 
 def fetch_deployments():
