@@ -19,7 +19,7 @@ from .check.opcua import check_opcua_deployment
 from .edge_api.deviceregistry import DeviceRegistryResourceKinds
 from .edge_api.mq import MqResourceKinds
 from .check.akri import check_akri_deployment
-from .check.dataflows import check_dataflows_deployment
+from .check.dataflow import check_dataflows_deployment
 from .edge_api.akri import AkriResourceKinds
 from .edge_api.opcua import OpcuaResourceKinds
 
