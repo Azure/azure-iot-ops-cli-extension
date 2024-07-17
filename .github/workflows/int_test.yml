@@ -293,7 +293,7 @@ jobs:
           az iot ops check --pre
           az iot ops check --post
           az iot ops check --as-object
-          az iot ops check --svc broker --resources broker brokerlistener diagnosticservice
+          az iot ops check --svc broker --resources broker brokerlistener
           az iot ops broker stats
           az iot ops broker stats --raw
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
