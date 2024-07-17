@@ -116,6 +116,17 @@ class DataLakeConnectorTargetType(ListableEnum):
     local_storage = "localStorage"
 
 
+# Dataflow properties
+class DataflowOperationType(ListableEnum):
+    """
+    Dataflow Profile Operation Type:
+    """
+
+    source = "Source"
+    destination = "Destination"
+    builtin_transformation = "BuiltInTransformation"
+
+
 class DataflowEndpointType(ListableEnum):
     """
     Dataflow Endpoint Type:

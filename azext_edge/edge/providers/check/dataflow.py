@@ -7,33 +7,31 @@
 from typing import Any, Dict, List
 
 from azure.cli.core.azclierror import CLIInternalError
+from rich.padding import Padding
 
 from azext_edge.edge.providers.check.base.pod import process_pod_status
 from azext_edge.edge.providers.check.base.resource import filter_resources_by_name
-from azext_edge.edge.providers.edge_api.dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
+from azext_edge.edge.providers.edge_api.dataflow import (
+    DATAFLOW_API_V1B1,
+    DataflowResourceKinds,
+)
+
+from ...common import CheckTaskStatus
+from ..base import get_namespaced_pods_by_prefix
+from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX
 from .base import (
     CheckManager,
     check_post_deployment,
     get_resources_by_name,
     get_resources_grouped_by_namespace,
 )
-
-from rich.padding import Padding
-
-from ...common import (
-    CheckTaskStatus,
-)
-
 from .common import (
     PADDING_SIZE,
     CoreServiceResourceKinds,
     DataflowEndpointType,
+    DataflowOperationType,
     ResourceOutputDetailLevel,
 )
-
-from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX
-
-from ..base import get_namespaced_pods_by_prefix
 
 
 def check_dataflows_deployment(
@@ -86,19 +84,25 @@ def evaluate_core_service_runtime(
         )
 
     if not operators:
-        check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value)
+        check_manager.add_target(
+            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value
+        )
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)),
         )
 
     for namespace, pods in get_resources_grouped_by_namespace(operators):
-        check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
+        check_manager.add_target(
+            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
+            namespace=namespace,
+        )
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             namespace=namespace,
             display=Padding(
-                f"Dataflow runtime resources in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, padding)
+                f"Dataflow runtime resources in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, padding),
             ),
         )
 
@@ -113,6 +117,131 @@ def evaluate_core_service_runtime(
         )
 
     return check_manager.as_dict(as_list)
+
+
+def _process_dataflow_sourcesettings(check_manager: CheckManager, target: str, namespace: str, resource: dict):
+    padding = 8
+    settings = resource.get("sourceSettings", {})
+    data_sources = settings.get("dataSources", [])
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("Data Sources", (0, 0, 0, padding))
+    )
+    for data_source in data_sources:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"- {data_source}", (0, 0, 0, padding))
+        )
+    for label, key in [
+        ("Dataflow Endpoint", "endpointRef"),
+        ("DeviceRegistry Asset Reference:", "assetRef"),
+        ("Schema Reference", "schemaRef"),
+        # TODO - jsonschema
+        ("Serialization Format", "serializationFormat"),
+    ]:
+        # TODO - validate endpoint ref
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"{label}: {settings.get(key)}",
+                (0, 0, 0, padding)
+            )
+        )
+
+
+def _process_dataflow_transformationsettings(check_manager: CheckManager, target: str, namespace: str, resource: dict):
+    settings = resource.get("builtInTransformationSettings", {})
+    # "builtInTransformationSettings": {
+    #     "datasets": [
+    #         {
+    #             "inputs": [
+    #                 "str"  # List of
+    #                   fields for enriching from the Broker State Store.
+    #                   Required.
+    #             ],
+    #             "key": "str",  # The key of
+    #               the dataset. Required.
+    #             "description": "str",  #
+    #               Optional. A user provided optional description of the
+    #               dataset.
+    #             "expression": "str",  #
+    #               Optional. Condition to enrich data from Broker State
+    #               Store. Example: $1 < 0 || $1 > $2 (Assuming inputs
+    #               section $1 and $2 are provided).
+    #             "schemaRef": "str"  #
+    #               Optional. The reference to the schema that describes the
+    #               dataset. Allowed: JSON Schema/draft-7.
+    #         }
+    #     ],
+    #     "filter": [
+    #         {
+    #             "expression": "str",  #
+    #               Condition to filter data. Can reference input fields with
+    #               {n} where n is the index of the input field starting from
+    #               1. Example: $1 < 0 || $1 > $2 (Assuming inputs section $1
+    #               and $2 are provided). Required.
+    #             "inputs": [
+    #                 "str"  # List of
+    #                   fields for filtering in JSON path expression.
+    #                   Required.
+    #             ],
+    #             "description": "str",  #
+    #               Optional. A user provided optional description of the
+    #               filter.
+    #             "type": "str"  # Optional.
+    #               The type of dataflow operation. "Filter"
+    #         }
+    #     ],
+    #     "map": [
+    #         {
+    #             "inputs": [
+    #                 "str"  # List of
+    #                   fields for mapping in JSON path expression. Required.
+    #             ],
+    #             "output": "str",  # Where and
+    #               how the input fields to be organized in the output
+    #               record. Required.
+    #             "description": "str",  #
+    #               Optional. A user provided optional description of the
+    #               mapping function.
+    #             "expression": "str",  #
+    #               Optional. Modify the inputs field(s) to the final output
+    #               field. Example: $1 * 2.2 (Assuming inputs section $1 is
+    #               provided).
+    #             "type": "str"  # Optional.
+    #               Type of transformation. Known values are:
+    #               "NewProperties", "Rename", "Compute", "PassThrough", and
+    #               "BuiltInFunction".
+    #         }
+    #     ],
+    #     "schemaRef": "str",  # Optional. Reference to
+    #       the schema that describes the output of the transformation.
+    #     "serializationFormat": "str"  # Optional.
+    #       Serialization format. Optional; defaults to JSON. Allowed value
+    #       JSON Schema/draft-7, Parquet. Default: Json. Known values are:
+    #       "Delta", "Json", and "Parquet".
+    # },
+
+
+def _process_dataflow_destinationsettings(check_manager: CheckManager, target: str, namespace: str, resource: dict):
+    padding = 8
+    settings = resource.get("destinationSettings", {})
+    for label, key in [
+        ("Data Destination", "dataDestination"),
+        ("Dataflow Endpoint", "endpointRef"),
+    ]:
+        # TODO - validate endpoint ref
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"{label}: {settings.get(key)}",
+                (0, 0, 0, padding)
+            )
+        )
 
 
 def evaluate_dataflows(
@@ -132,8 +261,45 @@ def evaluate_dataflows(
     target = "dataflows.connectivity.iotoperations.azure.com"
     for namespace, dataflows in get_resources_grouped_by_namespace(all_dataflows):
         check_manager.add_target(target_name=target, namespace=namespace)
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(dataflows, (0, 0, 0, 0)))
-        check_manager.set_target_status(target_name=target, namespace=namespace, status=CheckTaskStatus.success.value)
+        padding = 8
+        for dataflow in list(dataflows):
+            spec = dataflow.get("spec", {})
+
+            for label, key in [
+                ("Mode", "mode"),
+                ("Dataflow Profile", "profileRef"),
+            ]:
+                # TODO - validate profile ref
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(
+                        f"{label}: {spec.get(key)}",
+                        (0, 0, 0, padding)
+                    )
+                )
+
+            operations = spec.get("operations", [])
+            # TODO - error if no operations?
+            processor_dict = {
+                # TODO - enumerate source/transform/destination
+                DataflowOperationType.source.value: _process_dataflow_sourcesettings,
+                DataflowOperationType.builtin_transformation.value: _process_dataflow_transformationsettings,
+                DataflowOperationType.destination.value: _process_dataflow_destinationsettings
+            }
+
+            for operation in operations:
+                op_type = operation.get('operationType')
+                if op_type not in processor_dict:
+                    raise CLIInternalError(f"Invalid operation type {op_type}")
+                processor_dict[op_type](check_manager=check_manager, target=target, namespace=namespace, resource=operation)
+
+        # TODO - determine status
+        check_manager.set_target_status(
+            target_name=target,
+            namespace=namespace,
+            status=CheckTaskStatus.success.value,
+        )
     return check_manager.as_dict(as_list=as_list)
 
 
@@ -142,7 +308,7 @@ def _process_endpoint_mqttsettings(
 ) -> None:
     padding = 8
     settings = spec.get("mqttSettings", {})
-    for (label, key) in [
+    for label, key in [
         ("Client ID Prefix", "clientIdPrefix"),
         ("MQTT Host", "host"),
         ("Keep Alive (s)", "keepAliveSeconds"),
@@ -152,24 +318,28 @@ def _process_endpoint_mqttsettings(
         ("Retain", "retain"),
         ("Session Expiry (s)", "sessionExpirySeconds"),
     ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {settings.get(key)}",
-            (0, 0, 0, padding)
-        ))
-    
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {settings.get(key)}", (0, 0, 0, padding)),
+        )
+
     tls = settings.get("tls", {})
-    check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-        "TLS",
-        (0, 0, 0, padding)
-    ))
-    for (label, key) in [
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("TLS", (0, 0, 0, padding)),
+    )
+    for label, key in [
         ("Mode", "mode"),
         ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
     ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {tls.get(key)}",
-            (0, 0, 0, padding+4)
-        ))
+        # TODO - validate ref?
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {tls.get(key)}", (0, 0, 0, padding + 4)),
+        )
 
 
 def _process_endpoint_kafkasettings(
@@ -178,7 +348,7 @@ def _process_endpoint_kafkasettings(
     padding = 8
     settings = spec.get("kafkaSettings", {})
 
-    for (label, key) in [
+    for label, key in [
         ("Compression", "compression"),
         ("Consumer Group ID", "consumerGroupId"),
         ("Copy MQTT Properties", "copyMqttProperties"),
@@ -186,42 +356,47 @@ def _process_endpoint_kafkasettings(
         ("Acks", "kafkaAcks"),
         ("Partition Strategy", "partitionStrategy"),
     ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {settings.get(key)}",
-            (0, 0, 0, padding)
-        ))
-    
-    
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {settings.get(key)}", (0, 0, 0, padding)),
+        )
+
     tls = settings.get("tls", {})
-    check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-        "TLS",
-        (0, 0, 0, padding)
-    ))
-    for (label, key) in [
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("TLS", (0, 0, 0, padding)),
+    )
+    for label, key in [
         ("Mode", "mode"),
         ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
     ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {tls.get(key)}",
-            (0, 0, 0, padding+4)
-        ))
-    
-    batching = settings.get("batching", {})
-    check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-        "Batching",
-        (0, 0, 0, padding)
-    ))
+        # TODO - validate ref?
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {tls.get(key)}", (0, 0, 0, padding + 4)),
+        )
 
-    for (label, key) in [
+    batching = settings.get("batching", {})
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("Batching", (0, 0, 0, padding)),
+    )
+
+    for label, key in [
         ("Latency (ms)", "latencyMs"),
         ("Max Bytes", "maxBytes"),
         ("Max Messages", "maxMessages"),
         ("Mode", "mode"),
     ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {batching.get(key)}",
-            (0, 0, 0, padding+4)
-        ))
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {batching.get(key)}", (0, 0, 0, padding + 4)),
+        )
 
 
 def _process_endpoint_fabriconelakesettings(
@@ -229,40 +404,41 @@ def _process_endpoint_fabriconelakesettings(
 ) -> None:
     padding = 8
     settings = spec.get("fabricOneLakeSettings", {})
-    for (label, key) in [
-        ("Fabric Host", "host"),
-        ("Path Type", "oneLakePathType")
-    ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {settings.get(key)}",
-            (0, 0, 0, padding)
-        ))
+    for label, key in [("Fabric Host", "host"), ("Path Type", "oneLakePathType")]:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {settings.get(key)}", (0, 0, 0, padding)),
+        )
 
     names = settings.get("names", {})
-    for (label, key) in [
+    for label, key in [
         ("Lakehouse Name", "lakehouseName"),
-        ("Workspace Name", "workspaceName")
+        ("Workspace Name", "workspaceName"),
     ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {names.get(key)}",
-            (0, 0, 0, padding)
-        ))
-    
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {names.get(key)}", (0, 0, 0, padding)),
+        )
+
     batching = settings.get("batching", {})
-    check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-        "Batching",
-        (0, 0, 0, padding)
-    ))
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("Batching", (0, 0, 0, padding)),
+    )
 
     padding += 4
-    for (label, key) in [
+    for label, key in [
         ("Latency (s)", "latencySeconds"),
-        ("Max Messages", "maxMessages")
+        ("Max Messages", "maxMessages"),
     ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {batching.get(key)}",
-            (0, 0, 0, padding)
-        ))
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {batching.get(key)}", (0, 0, 0, padding)),
+        )
 
 
 def _process_endpoint_datalakestoragesettings(
@@ -270,29 +446,30 @@ def _process_endpoint_datalakestoragesettings(
 ) -> None:
     padding = 8
     settings = spec.get("datalakestoragesettings", {})
-    for (label, key) in [
-        ("DataLake Host", "host")
-    ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {settings.get(key)}",
-            (0, 0, 0, padding)
-        ))
-    
+    for label, key in [("DataLake Host", "host")]:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {settings.get(key)}", (0, 0, 0, padding)),
+        )
+
     batching = settings.get("batching", {})
-    check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-        "Batching",
-        (0, 0, 0, padding)
-    ))
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("Batching", (0, 0, 0, padding)),
+    )
 
     padding += 4
-    for (label, key) in [
+    for label, key in [
         ("Latency (s)", "latencySeconds"),
-        ("Max Messages", "maxMessages")
+        ("Max Messages", "maxMessages"),
     ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {batching.get(key)}",
-            (0, 0, 0, padding)
-        ))
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {batching.get(key)}", (0, 0, 0, padding)),
+        )
 
 
 def _process_endpoint_dataexplorersettings(
@@ -300,41 +477,45 @@ def _process_endpoint_dataexplorersettings(
 ) -> None:
     padding = 8
     settings = spec.get("dataexplorersettings", {})
-    for (label, key) in [
-        ("Database Name", "database"),
-        ("Data Explorer Host", "host")
-    ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {settings.get(key)}",
-            (0, 0, 0, padding)
-        ))
-    
+    for label, key in [("Database Name", "database"), ("Data Explorer Host", "host")]:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {settings.get(key)}", (0, 0, 0, padding)),
+        )
+
     batching = settings.get("batching", {})
-    check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-        "Batching",
-        (0, 0, 0, padding)
-    ))
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("Batching", (0, 0, 0, padding)),
+    )
 
     padding += 4
-    for (label, key) in [
+    for label, key in [
         ("Latency (s)", "latencySeconds"),
-        ("Max Messages", "maxMessages")
+        ("Max Messages", "maxMessages"),
     ]:
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-            f"{label}: {batching.get(key)}",
-            (0, 0, 0, padding)
-        ))
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"{label}: {batching.get(key)}", (0, 0, 0, padding)),
+        )
 
 
 def _process_endpoint_localstoragesettings(
     check_manager: CheckManager, target: str, namespace: str, spec: dict
 ) -> None:
+    # TODO - validate reference
     settings = spec.get("localStorageSettings", {})
-    persistent_volume_claim = settings.get('persistentVolumeClaimRef', {}).get("name")
-    check_manager.add_display(target_name=target, namespace=namespace, display=Padding(
-        f"Persistent Volume Claim: {persistent_volume_claim}",
-        (0, 0, 0, 8)
-    ))
+    persistent_volume_claim = settings.get("persistentVolumeClaimRef", {}).get("name")
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding(
+            f"Persistent Volume Claim: {persistent_volume_claim}", (0, 0, 0, 8)
+        ),
+    )
 
 
 def evaluate_dataflow_endpoints(
@@ -354,7 +535,6 @@ def evaluate_dataflow_endpoints(
     target = "dataflowendpoints.connectivity.iotoperations.azure.com"
     for namespace, endpoints in get_resources_grouped_by_namespace(all_endpoints):
         check_manager.add_target(target_name=target, namespace=namespace)
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(endpoints, (0, 0, 0, 0)))
         for endpoint in list(endpoints):
             spec = endpoint.get("spec", {})
             # TODO - figure out status
@@ -370,469 +550,28 @@ def evaluate_dataflow_endpoints(
             }
             # process endpoint settings
             if endpoint_type not in endpoint_processor_dict:
-                raise CLIInternalError(f"Unknown dataflow endpoint type: {endpoint_type}")
-            
-            endpoint_processor_dict[endpoint_type](check_manager, target, namespace, spec)
+                raise CLIInternalError(
+                    f"Unknown dataflow endpoint type: {endpoint_type}"
+                )
+
+            endpoint_processor_dict[endpoint_type](
+                check_manager, target, namespace, spec
+            )
 
             # endpoint auth
             auth = spec.get("authentication", {})
+            auth_method = auth.get("method")
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"Authentication Method: {auth_method}", (0, 0, 0, 0)),
+            )
 
-
-        # spec:
-        #   group: connectivity.iotoperations.azure.com
-        #   names:
-        #     kind: DataflowEndpoint
-        #     listKind: DataflowEndpointList
-        #     plural: dataflowendpoints
-        #     singular: dataflowendpoint
-        #   scope: Namespaced
-        #   versions:
-        #   - additionalPrinterColumns:
-        #     - description: More information about current state
-        #       jsonPath: .status.statusDescription
-        #       name: Description
-        #       type: string
-        #     name: v1beta1
-        #     schema:
-        #       openAPIV3Schema:
-        #         description: Auto-generated derived type for DataflowEndpointSpec via `CustomResource`
-        #         properties:
-        #           spec:
-        #             properties:
-        #               authentication:
-        #                 oneOf:
-        #                 - required:
-        #                   - systemAssignedManagedIdentitySettings
-        #                 - required:
-        #                   - userAssignedManagedIdentitySettings
-        #                 - required:
-        #                   - x509CredentialsSettings
-        #                 - required:
-        #                   - saslSettings
-        #                 - required:
-        #                   - serviceAccountTokenSettings
-        #                 - required:
-        #                   - accessTokenSecretRef
-        #                 properties:
-        #                   accessTokenSecretRef:
-        #                     type: string
-        #                   method:
-        #                     description: Selector used to determine which of the oneOf values
-        #                       to use.
-        #                     type: string
-        #                   saslSettings:
-        #                     properties:
-        #                       saslType:
-        #                         description: Type of SASL authentication. Can be PLAIN, SCRAM-SHA-256,
-        #                           or SCRAM-SHA-512. Required.
-        #                         enum:
-        #                         - plain
-        #                         - scramSha256
-        #                         - scramSha512
-        #                         type: string
-        #                       tokenSecretName:
-        #                         type: string
-        #                     required:
-        #                     - saslType
-        #                     - tokenSecretName
-        #                     type: object
-        #                   serviceAccountTokenSettings:
-        #                     properties:
-        #                       audience:
-        #                         description: Audience of the service account. Required.
-        #                         type: string
-        #                     required:
-        #                     - audience
-        #                     type: object
-        #                   systemAssignedManagedIdentitySettings:
-        #                     properties:
-        #                       audience:
-        #                         description: Audience of the service to authenticate against.
-        #                           Optional; defaults to the audience for Azure Data Explorer
-        #                           host configuration.
-        #                         type: string
-        #                     required:
-        #                     - audience
-        #                     type: object
-        #                   userAssignedManagedIdentitySettings:
-        #                     properties:
-        #                       clientId:
-        #                         description: Client ID for the user-assigned managed identity.
-        #                           Required
-        #                         type: string
-        #                       scope:
-        #                         description: Resource identifier (application ID URI) of the
-        #                           resource, affixed with the .default suffix. Required.
-        #                         type: string
-        #                       tenantId:
-        #                         description: Tenant ID. Required.
-        #                         type: string
-        #                     required:
-        #                     - clientId
-        #                     - scope
-        #                     - tenantId
-        #                     type: object
-        #                   x509CredentialsSettings:
-        #                     properties:
-        #                       secretRef:
-        #                         description: Secret name of the X.509 certificate. Required.
-        #                         type: string
-        #                     required:
-        #                     - secretRef
-        #                     type: object
-        #                 required:
-        #                 - method
-        #                 type: object
-        #               dataExplorerSettings:
-        #                 properties:
-        #                   batching:
-        #                     default:
-        #                       latencySeconds: 60
-        #                       maxMessages: 100000
-        #                     description: Batching configuration. Optional; no batching if
-        #                       omitted.
-        #                     properties:
-        #                       latencySeconds:
-        #                         default: 60
-        #                         description: Batching latency in seconds. Optional; defaults
-        #                           to 60.
-        #                         format: uint16
-        #                         maximum: 65535
-        #                         minimum: 0
-        #                         type: integer
-        #                       maxMessages:
-        #                         default: 100000
-        #                         description: Maximum number of messages in a batch. Optional;
-        #                           defaults to 100000.
-        #                         format: uint32
-        #                         maximum: 4294967295
-        #                         minimum: 0
-        #                         type: integer
-        #                     type: object
-        #                   database:
-        #                     description: Database name. Required
-        #                     type: string
-        #                   host:
-        #                     description: Host of the Azure Data Explorer in the form of <cluster>.<region>.kusto.windows.net.
-        #                     pattern: .*\.*\.kusto\.windows\.net
-        #                     type: string
-        #                 required:
-        #                 - database
-        #                 - host
-        #                 type: object
-        #               datalakeStorageSettings:
-        #                 properties:
-        #                   batching:
-        #                     default:
-        #                       latencySeconds: 60
-        #                       maxMessages: 100000
-        #                     description: Batching configuration. Optional; no batching if
-        #                       omitted.
-        #                     properties:
-        #                       latencySeconds:
-        #                         default: 60
-        #                         format: uint16
-        #                         maximum: 65535
-        #                         minimum: 0
-        #                         type: integer
-        #                       maxMessages:
-        #                         default: 100000
-        #                         format: uint32
-        #                         maximum: 4294967295
-        #                         minimum: 0
-        #                         type: integer
-        #                     type: object
-        #                   host:
-        #                     description: Host of the Azure Data Lake in the form of <account>.blob.core.windows.net.
-        #                       Required.
-        #                     pattern: .*\.blob\.core\.windows\.net
-        #                     type: string
-        #                 required:
-        #                 - host
-        #                 type: object
-        #               endpointType:
-        #                 description: Selector used to determine which of the oneOf values
-        #                   to use.
-        #                 type: string
-        #               fabricOneLakeSettings:
-        #                 properties:
-        #                   batching:
-        #                     default:
-        #                       latencySeconds: 60
-        #                       maxMessages: 100000
-        #                     description: Batching configuration. Optional; no batching if
-        #                       omitted.
-        #                     properties:
-        #                       latencySeconds:
-        #                         default: 60
-        #                         description: Batching latency in seconds. Optional; defaults
-        #                           to 60.
-        #                         format: uint16
-        #                         maximum: 65535
-        #                         minimum: 0
-        #                         type: integer
-        #                       maxMessages:
-        #                         default: 100000
-        #                         description: Maximum number of messages in a batch. Optional;
-        #                           defaults to 100000.
-        #                         format: uint32
-        #                         maximum: 4294967295
-        #                         minimum: 0
-        #                         type: integer
-        #                     type: object
-        #                   host:
-        #                     description: Host of the Microsoft Fabric in the form of https://<host>.fabric.microsoft.com.
-        #                       Required.
-        #                     pattern: .*\.fabric\.microsoft\.com
-        #                     type: string
-        #                   names:
-        #                     description: Names of the workspace and lakehouse. Required.
-        #                     properties:
-        #                       lakehouseName:
-        #                         description: Lakehouse name.
-        #                         type: string
-        #                       workspaceName:
-        #                         description: Workspace name.
-        #                         type: string
-        #                     required:
-        #                     - lakehouseName
-        #                     - workspaceName
-        #                     type: object
-        #                   oneLakePathType:
-        #                     description: Type of location of the data in the workspace. Can
-        #                       be either tables or files. Required.
-        #                     enum:
-        #                     - Files
-        #                     - Tables
-        #                     type: string
-        #                 required:
-        #                 - host
-        #                 - names
-        #                 - oneLakePathType
-        #                 type: object
-        #               kafkaSettings:
-        #                 properties:
-        #                   batching:
-        #                     default:
-        #                       latencyMs: 5
-        #                       maxBytes: 1000000
-        #                       maxMessages: 100000
-        #                       mode: Enabled
-        #                     description: Batching configuration.
-        #                     properties:
-        #                       latencyMs:
-        #                         default: 5
-        #                         description: Batching latency in milliseconds.
-        #                         format: uint16
-        #                         maximum: 65535
-        #                         minimum: 0
-        #                         type: integer
-        #                       maxBytes:
-        #                         default: 1000000
-        #                         description: Maximum number of bytes in a batch.
-        #                         format: uint32
-        #                         maximum: 4294967295
-        #                         minimum: 0
-        #                         type: integer
-        #                       maxMessages:
-        #                         default: 100000
-        #                         description: Maximum number of messages in a batch.
-        #                         format: uint32
-        #                         maximum: 4294967295
-        #                         minimum: 0
-        #                         type: integer
-        #                       mode:
-        #                         default: Enabled
-        #                         description: Mode for batching.
-        #                         enum:
-        #                         - Enabled
-        #                         - enabled
-        #                         - Disabled
-        #                         - disabled
-        #                         type: string
-        #                     type: object
-        #                   compression:
-        #                     default: None
-        #                     description: Compression. Can be none, gzip, lz4, or snappy. No
-        #                       effect if the endpoint is used as a source.
-        #                     enum:
-        #                     - None
-        #                     - Gzip
-        #                     - Snappy
-        #                     - Lz4
-        #                     type: string
-        #                   consumerGroupId:
-        #                     description: Consumer group ID.
-        #                     nullable: true
-        #                     type: string
-        #                   copyMqttProperties:
-        #                     default: Disabled
-        #                     description: Copy Broker properties. No effect if the endpoint
-        #                       is used as a source or if the dataflow doesn't have an Broker
-        #                       source.
-        #                     enum:
-        #                     - Enabled
-        #                     - enabled
-        #                     - Disabled
-        #                     - disabled
-        #                     type: string
-        #                   host:
-        #                     description: Kafka endpoint host.
-        #                     nullable: true
-        #                     type: string
-        #                   kafkaAcks:
-        #                     default: All
-        #                     description: Kafka acks. Can be all, one, or zero. No effect if
-        #                       the endpoint is used as a source.
-        #                     enum:
-        #                     - Zero
-        #                     - One
-        #                     - All
-        #                     type: string
-        #                   partitionStrategy:
-        #                     default: Default
-        #                     description: Partition handling strategy. Can be default or static.
-        #                       No effect if the endpoint is used as a source.
-        #                     enum:
-        #                     - Default
-        #                     - Static
-        #                     - Topic
-        #                     - Property
-        #                     type: string
-        #                   tls:
-        #                     description: TLS configuration.
-        #                     properties:
-        #                       mode:
-        #                         default: Disabled
-        #                         description: Mode for TLS.
-        #                         enum:
-        #                         - Enabled
-        #                         - Disabled
-        #                         type: string
-        #                       trustedCaCertificateConfigMapRef:
-        #                         description: Trusted CA certificate config map.
-        #                         nullable: true
-        #                         type: string
-        #                     type: object
-        #                 required:
-        #                 - tls
-        #                 type: object
-        #               localStorageSettings:
-        #                 properties:
-        #                   persistentVolumeClaimRef:
-        #                     description: Persistent volume claim name.
-        #                     type: string
-        #                 required:
-        #                 - persistentVolumeClaimRef
-        #                 type: object
-        #               mqttSettings:
-        #                 properties:
-        #                   clientIdPrefix:
-        #                     description: Client ID prefix. Client ID generated by the dataflow
-        #                       is <prefix>-TBD. Optional; no prefix if omitted.
-        #                     nullable: true
-        #                     type: string
-        #                   host:
-        #                     default: aio-mq-dmqtt-frontend:1883
-        #                     description: Host of the MQTT broker in the form of <hostname>:<port>.
-        #                       Optional; connects to MQ broker if omitted.
-        #                     type: string
-        #                   keepAliveSeconds:
-        #                     default: 60
-        #                     description: Broker `KeepAlive` for connection in seconds.
-        #                     format: uint16
-        #                     minimum: 0
-        #                     type: integer
-        #                   maxInflightMessages:
-        #                     default: 100
-        #                     description: The max number of messages to keep in flight. For
-        #                       subscribe, this is the receive maximum. For publish, this is
-        #                       the maximum number of messages to send before waiting for an
-        #                       ack.
-        #                     format: uint16
-        #                     minimum: 0
-        #                     type: integer
-        #                   protocol:
-        #                     default: Mqtt
-        #                     description: Enable or disable websockets. Optional; defaults
-        #                       to mqtt
-        #                     enum:
-        #                     - Mqtt
-        #                     - WebSockets
-        #                     type: string
-        #                   qos:
-        #                     default: 1
-        #                     description: Qos for Broker connection.
-        #                     format: uint8
-        #                     maximum: 2
-        #                     minimum: 0
-        #                     type: integer
-        #                   retain:
-        #                     default: Keep
-        #                     description: Whether or not to keep the retain setting. Optional;
-        #                       defaults to true
-        #                     enum:
-        #                     - Keep
-        #                     - Never
-        #                     type: string
-        #                   sessionExpirySeconds:
-        #                     default: 3600
-        #                     description: Session expiry in seconds. Optional; defaults to
-        #                       3600
-        #                     format: uint32
-        #                     minimum: 0
-        #                     type: integer
-        #                   tls:
-        #                     default:
-        #                       mode: Disabled
-        #                       trustedCaCertificateConfigMapRef: null
-        #                     description: TLS configuration. Optional; omit for no TLS
-        #                     properties:
-        #                       mode:
-        #                         default: Disabled
-        #                         description: Mode for TLS.
-        #                         enum:
-        #                         - Enabled
-        #                         - Disabled
-        #                         type: string
-        #                       trustedCaCertificateConfigMapRef:
-        #                         description: Trusted CA certificate config map.
-        #                         nullable: true
-        #                         type: string
-        #                     type: object
-        #                 type: object
-        #             required:
-        #             - authentication
-        #             - endpointType
-        #             type: object
-        #         required:
-        #         - spec
-        #         title: DataflowEndpoint
-        #         type: object
-        #     served: true
-        #     storage: true
-        #     subresources: {}
-        # status:
-        #   acceptedNames:
-        #     kind: DataflowEndpoint
-        #     listKind: DataflowEndpointList
-        #     plural: dataflowendpoints
-        #     singular: dataflowendpoint
-        #   conditions:
-        #   - lastTransitionTime: "2024-07-16T00:18:38Z"
-        #     message: no conflicts found
-        #     reason: NoConflicts
-        #     status: "True"
-        #     type: NamesAccepted
-        #   - lastTransitionTime: "2024-07-16T00:18:38Z"
-        #     message: the initial names have been accepted
-        #     reason: InitialNamesAccepted
-        #     status: "True"
-        #     type: Established
-        #   storedVersions:
-        #   - v1beta1
-
-        check_manager.set_target_status(target_name=target, namespace=namespace, status=CheckTaskStatus.success.value)
+        check_manager.set_target_status(
+            target_name=target,
+            namespace=namespace,
+            status=CheckTaskStatus.success.value,
+        )
 
     return check_manager.as_dict(as_list=as_list)
 
@@ -853,7 +592,15 @@ def evaluate_dataflow_profiles(
     )
     target = "dataflowprofiles.connectivity.iotoperations.azure.com"
     for namespace, profiles in get_resources_grouped_by_namespace(all_profiles):
-        check_manager.add_target(target_name=target, namespace=namespace)
-        check_manager.add_display(target_name=target, namespace=namespace, display=Padding(profiles, (0, 0, 0, 0)))
-        check_manager.set_target_status(target_name=target, namespace=namespace, status=CheckTaskStatus.success.value)
+        check_manager.add_target(target_name=target, namespace=namespace)    
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(profiles, (0, 0, 0, 0)),
+        )
+        check_manager.set_target_status(
+            target_name=target,
+            namespace=namespace,
+            status=CheckTaskStatus.success.value,
+        )
     return check_manager.as_dict(as_list=as_list)
