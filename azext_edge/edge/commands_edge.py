@@ -6,7 +6,7 @@
 
 from os.path import exists
 from pathlib import PurePath
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
@@ -15,7 +15,6 @@ from .common import OpsServiceType
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
-from .providers.orchestration import Instances
 from .providers.orchestration.common import (
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     DEFAULT_X509_CA_VALID_DAYS,
@@ -24,6 +23,7 @@ from .providers.orchestration.common import (
     MqMemoryProfile,
     MqServiceType,
 )
+from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
 
 logger = get_logger(__name__)
@@ -117,10 +117,10 @@ def init(
     mq_backend_redundancy_factor: int = 2,
     mq_frontend_workers: int = 2,
     mq_frontend_replicas: int = 2,
-    mq_frontend_server_name: Optional[str] = None,
-    mq_listener_name: Optional[str] = None,
-    mq_broker_name: Optional[str] = None,
-    mq_authn_name: Optional[str] = None,
+    mq_frontend_server_name: str = "mq-dmqtt-frontend",
+    mq_listener_name: str = "listener",
+    mq_broker_name: str = "broker",
+    mq_authn_name: str = "authn",
     mq_insecure: Optional[bool] = None,
     disable_secret_rotation: Optional[bool] = None,
     rotation_poll_interval: str = "1h",
@@ -163,18 +163,8 @@ def init(
     cluster_name_lowered = cluster_name.lower()
     safe_cluster_name = cluster_name_lowered.replace("_", "-")
 
-    # @digimaun hashed_cluster_slug = url_safe_hash_phrase(cluster_name)[:5]
-
     if not instance_name:
         instance_name = f"{safe_cluster_name}-ops-init-instance"
-    if not mq_frontend_server_name:
-        mq_frontend_server_name = "mq-dmqtt-frontend"
-    if not mq_listener_name:
-        mq_listener_name = "listener"
-    if not mq_broker_name:
-        mq_broker_name = "broker"
-    if not mq_authn_name:
-        mq_authn_name = "authn"
 
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
@@ -266,7 +256,7 @@ def show_instance(cmd, instance_name: str, resource_group_name: str, show_tree: 
     return Instances(cmd).show(name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree)
 
 
-def list_instances(cmd, resource_group_name: Optional[str] = None) -> List[dict]:
+def list_instances(cmd, resource_group_name: Optional[str] = None) -> Iterable[dict]:
     return Instances(cmd).list(resource_group_name)
 
 

@@ -156,6 +156,41 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker show"
+    ] = """
+        type: command
+        short-summary: Show details of an mqtt broker.
+    """
+
+    helps[
+        "iot ops broker list"
+    ] = """
+        type: command
+        short-summary: List mqtt brokers associated with an instance.
+    """
+
+    helps[
+        "iot ops broker listener"
+    ] = """
+        type: group
+        short-summary: Broker listener management.
+    """
+
+    helps[
+        "iot ops broker listener show"
+    ] = """
+        type: group
+        short-summary: Show details of an mqtt broker listener.
+    """
+
+    helps[
+        "iot ops broker listener list"
+    ] = """
+        type: group
+        short-summary: List mqtt broker listeners associated with instance.
+    """
+
+    helps[
         "iot ops verify-host"
     ] = """
         type: command

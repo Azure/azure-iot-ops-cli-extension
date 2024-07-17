@@ -11,7 +11,7 @@ from typing import Optional
 import pytest
 import responses
 
-from azext_edge.edge.providers.orchestration.instances import Instances
+from azext_edge.edge.providers.orchestration.resources.instances import Instances
 
 from ...generators import generate_random_string, get_zeroed_subscription
 

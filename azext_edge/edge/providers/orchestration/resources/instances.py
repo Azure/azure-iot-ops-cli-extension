@@ -10,8 +10,8 @@ from knack.log import get_logger
 from rich import print
 from rich.console import Console
 
-from ...util.az_client import get_iotops_mgmt_client, parse_resource_id, wait_for_terminal_state
-from ...util.queryable import Queryable
+from ....util.az_client import get_iotops_mgmt_client, parse_resource_id, wait_for_terminal_state
+from ....util.queryable import Queryable
 
 logger = get_logger(__name__)
 
@@ -59,7 +59,7 @@ class Instances(Queryable):
 
         # Currently resource map will query cluster state upon init
         # therefore we only use it when necessary to save cycles.
-        from .resource_map import IoTOperationsResourceMap
+        from ..resource_map import IoTOperationsResourceMap
 
         resource_map = IoTOperationsResourceMap(
             cmd=self.cmd,

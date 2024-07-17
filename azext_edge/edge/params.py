@@ -194,6 +194,18 @@ def load_iotops_arguments(self, _):
             validator=validate_resource_name,
         ),
 
+    with self.argument_context("iot ops broker") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance-name", "--in"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "broker_name",
+            options_list=["--name", "-n"],
+            help="Mqtt broker name.",
+        )
+
     with self.argument_context("iot ops broker stats") as context:
         context.argument(
             "refresh_in_seconds",
@@ -340,25 +352,25 @@ def load_iotops_arguments(self, _):
         context.argument(
             "mq_frontend_server_name",
             options_list=["--broker-frontend-server"],
-            help="The mqtt broker frontend server name. The default is 'mq-dmqtt-frontend'.",
+            help="The mqtt broker frontend server name.",
             arg_group="Broker",
         )
         context.argument(
             "mq_listener_name",
             options_list=["--broker-listener"],
-            help="The mqtt broker listener name. The default is 'listener'.",
+            help="The mqtt broker listener name.",
             arg_group="Broker",
         )
         context.argument(
             "mq_broker_name",
             options_list=["--broker"],
-            help="The mqtt broker name. The default is 'broker'.",
+            help="The mqtt broker name.",
             arg_group="Broker",
         )
         context.argument(
             "mq_authn_name",
             options_list=["--broker-authn"],
-            help="The mqtt broker authN name. The default is 'authn'.",
+            help="The mqtt broker authN name.",
             arg_group="Broker",
         )
         context.argument(

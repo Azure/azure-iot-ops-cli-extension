@@ -4,11 +4,13 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Optional, List
+from typing import Iterable, List, Optional
 
 from knack.log import get_logger
-from .providers.base import load_config_context
+
 from .common import METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT
+from .providers.base import load_config_context
+from .providers.orchestration.resources import BrokerListeners, Brokers
 
 logger = get_logger(__name__)
 
@@ -44,4 +46,29 @@ def stats(
         pod_metrics_port=pod_metrics_port,
         refresh_in_seconds=refresh_in_seconds,
         watch=watch,
+    )
+
+
+def show_broker(cmd, broker_name: str, instance_name: str, resource_group_name: str) -> dict:
+    return Brokers(cmd).show(name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name)
+
+
+def list_brokers(cmd, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+    return Brokers(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
+
+
+def show_broker_listener(
+    cmd, listener_name: str, broker_name: str, instance_name: str, resource_group_name: str
+) -> dict:
+    return BrokerListeners(cmd).show(
+        name=listener_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+
+
+def list_broker_listeners(cmd, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+    return BrokerListeners(cmd).list(
+        broker_name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name
     )
