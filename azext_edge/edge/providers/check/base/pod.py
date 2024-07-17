@@ -7,7 +7,7 @@
 from knack.log import get_logger
 from rich.padding import Padding
 from kubernetes.client.models import V1Pod
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from .check_manager import CheckManager
 from .display import add_display_and_eval
@@ -32,7 +32,7 @@ def evaluate_pod_health(
     target: str,
     pod: str,
     display_padding: int,
-    service_label: str = None,
+    service_label: Optional[str] = None,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
     target_service_pod = f"pod/{pod}"
