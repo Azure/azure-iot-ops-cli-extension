@@ -153,70 +153,100 @@ def _process_dataflow_sourcesettings(check_manager: CheckManager, target: str, n
 
 
 def _process_dataflow_transformationsettings(check_manager: CheckManager, target: str, namespace: str, resource: dict):
+    padding = 8
     settings = resource.get("builtInTransformationSettings", {})
+    datasets = settings.get("datasets", [])
+    for dataset in datasets:
+        inputs = dataset.get("inputs", [])
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("Dataset Inputs", (0, 0, 0, padding))
+        )
+        for input in inputs:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"- {input}", (0, 0, 0, padding))
+            )
+        for label, key in [
+            ("Description", "description"),
+            ("Key", "key"),
+            ("Expression", "expression"),
+            ("Schema", "schemaRef"),
+        ]:
+            # TODO - schema ref json
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+
+                display=Padding(
+                    f"{label}: {dataset.get(key)}",
+                    (0, 0, 0, padding)
+                )
+            )
+
+    filters = settings.get("filter", [])
+    for filter in filters:
+        inputs = filter.get("inputs", [])
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("Filter Inputs", (0, 0, 0, padding))
+        )
+        for input in inputs:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"- {input}", (0, 0, 0, padding))
+            )
+        for label, key in [
+            ("Description", "description"),
+            ("Expression", "expression"),
+            ("Operation Type", "type"),
+        ]:
+            # TODO - schema ref json
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+
+                display=Padding(
+                    f"{label}: {filter.get(key)}",
+                    (0, 0, 0, padding)
+                )
+            )
+    maps = settings.get("maps", [])
+    for map in maps:
+        inputs = map.get("inputs", [])
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("Map Inputs", (0, 0, 0, padding))
+        )
+        for input in inputs:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"- {input}", (0, 0, 0, padding))
+            )
+        for label, key in [
+            ("Description", "description"),
+            ("Expression", "expression"),
+            ("Output", "output"),
+            ("Transformation Type", "type"),
+        ]:
+            # TODO - schema ref json
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+
+                display=Padding(
+                    f"{label}: {filter.get(key)}",
+                    (0, 0, 0, padding)
+                )
+            )
+            # TODO - remaining values
     # "builtInTransformationSettings": {
-    #     "datasets": [
-    #         {
-    #             "inputs": [
-    #                 "str"  # List of
-    #                   fields for enriching from the Broker State Store.
-    #                   Required.
-    #             ],
-    #             "key": "str",  # The key of
-    #               the dataset. Required.
-    #             "description": "str",  #
-    #               Optional. A user provided optional description of the
-    #               dataset.
-    #             "expression": "str",  #
-    #               Optional. Condition to enrich data from Broker State
-    #               Store. Example: $1 < 0 || $1 > $2 (Assuming inputs
-    #               section $1 and $2 are provided).
-    #             "schemaRef": "str"  #
-    #               Optional. The reference to the schema that describes the
-    #               dataset. Allowed: JSON Schema/draft-7.
-    #         }
-    #     ],
-    #     "filter": [
-    #         {
-    #             "expression": "str",  #
-    #               Condition to filter data. Can reference input fields with
-    #               {n} where n is the index of the input field starting from
-    #               1. Example: $1 < 0 || $1 > $2 (Assuming inputs section $1
-    #               and $2 are provided). Required.
-    #             "inputs": [
-    #                 "str"  # List of
-    #                   fields for filtering in JSON path expression.
-    #                   Required.
-    #             ],
-    #             "description": "str",  #
-    #               Optional. A user provided optional description of the
-    #               filter.
-    #             "type": "str"  # Optional.
-    #               The type of dataflow operation. "Filter"
-    #         }
-    #     ],
-    #     "map": [
-    #         {
-    #             "inputs": [
-    #                 "str"  # List of
-    #                   fields for mapping in JSON path expression. Required.
-    #             ],
-    #             "output": "str",  # Where and
-    #               how the input fields to be organized in the output
-    #               record. Required.
-    #             "description": "str",  #
-    #               Optional. A user provided optional description of the
-    #               mapping function.
-    #             "expression": "str",  #
-    #               Optional. Modify the inputs field(s) to the final output
-    #               field. Example: $1 * 2.2 (Assuming inputs section $1 is
-    #               provided).
-    #             "type": "str"  # Optional.
-    #               Type of transformation. Known values are:
-    #               "NewProperties", "Rename", "Compute", "PassThrough", and
-    #               "BuiltInFunction".
-    #         }
-    #     ],
     #     "schemaRef": "str",  # Optional. Reference to
     #       the schema that describes the output of the transformation.
     #     "serializationFormat": "str"  # Optional.
@@ -237,6 +267,7 @@ def _process_dataflow_destinationsettings(check_manager: CheckManager, target: s
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
+
             display=Padding(
                 f"{label}: {settings.get(key)}",
                 (0, 0, 0, padding)
