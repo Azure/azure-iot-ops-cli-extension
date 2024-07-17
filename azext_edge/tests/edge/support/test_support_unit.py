@@ -15,7 +15,6 @@ import pytest
 from azure.cli.core.azclierror import ResourceNotFoundError
 
 from azext_edge.edge.commands_edge import support_bundle
-from azext_edge.edge.common import AIO_MQ_RESOURCE_PREFIX
 from azext_edge.edge.providers.edge_api import (
     AKRI_API_V0,
     CLUSTER_CONFIG_API_V1,
@@ -44,7 +43,7 @@ from azext_edge.edge.providers.support.billing import (
     BILLING_RESOURCE_KIND,
 )
 from azext_edge.edge.providers.support.meta import META_NAME_LABEL
-from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_K8S_LABEL, MQ_LABEL, MQ_NAME_LABEL
+from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_K8S_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
     OPC_DIRECTORY_PATH,
@@ -201,14 +200,6 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=MQ_LABEL,
-                directory_path=MQ_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
                 label_selector=MQ_NAME_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
                 since_seconds=since_seconds,
@@ -222,12 +213,6 @@ def test_create_bundle(
                 since_seconds=since_seconds,
             )
             assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=MQ_LABEL,
-                directory_path=MQ_DIRECTORY_PATH
-            )
-            assert_list_replica_sets(
                 mocked_client, mocked_zipfile, label_selector=MQ_NAME_LABEL, directory_path=MQ_DIRECTORY_PATH
             )
             assert_list_stateful_sets(
@@ -236,12 +221,6 @@ def test_create_bundle(
                 label_selector=MQ_NAME_LABEL,
                 field_selector=None,
                 directory_path=MQ_DIRECTORY_PATH,
-            )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=MQ_LABEL,
-                directory_path=MQ_DIRECTORY_PATH
             )
             assert_list_services(
                 mocked_client,
@@ -590,8 +569,6 @@ def assert_list_deployments(
 
         mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_has_calls(
             [
-                # MQ deployments
-                call(label_selector=MQ_LABEL, field_selector=None),
                 # Specific for `aio-mq-operator` (no app label)
                 call(label_selector=None, field_selector=field_selector),
                 call(label_selector=MQ_NAME_LABEL, field_selector=None),
@@ -948,16 +925,6 @@ def test_mq_list_stateful_sets(
         # TODO - will revert to initial call once the old label is removed
         # mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_called_once()
         mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_called()
-
-    # assert secondary connector calls to list stateful sets
-    for item in custom_objects["items"]:
-        item_name = item["metadata"]["name"]
-        statefulset_name = f"{AIO_MQ_RESOURCE_PREFIX}{item_name}"
-        selector = f"metadata.name={statefulset_name}"
-        mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
-            label_selector=None, field_selector=selector
-        )
-        # TODO - assert zipfile write of individual connector statefulset
 
 
 @pytest.mark.parametrize(
