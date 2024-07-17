@@ -206,7 +206,6 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker name.",
         )
 
-
     with self.argument_context("iot ops broker listener") as context:
         context.argument(
             "broker_name",
