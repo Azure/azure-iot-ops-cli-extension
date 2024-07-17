@@ -38,6 +38,8 @@ from ...generators import generate_random_string
 
 @pytest.mark.parametrize(
     """
+    instance_name,
+    instance_description,
     cluster_name,
     cluster_namespace,
     resource_group_name,
@@ -65,6 +67,8 @@ from ...generators import generate_random_string
     """,
     [
         pytest.param(
+            None,  # instance_name
+            None,  # instance_description
             generate_random_string(),  # cluster_name
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
@@ -91,6 +95,8 @@ from ...generators import generate_random_string
             None,  # disable_rsync_rules
         ),
         pytest.param(
+            None,  # instance_name
+            None,  # instance_description
             generate_random_string(),  # cluster_name
             generate_random_string(),  # cluster_namespace
             generate_random_string(),  # resource_group_name
@@ -117,6 +123,8 @@ from ...generators import generate_random_string
             None,  # disable_rsync_rules
         ),
         pytest.param(
+            generate_random_string(),  # instance_name
+            generate_random_string(),  # instance_description
             generate_random_string(),  # cluster_name
             generate_random_string(),  # cluster_namespace
             generate_random_string(),  # resource_group_name
@@ -148,6 +156,8 @@ def test_init_to_template_params(
     mocked_cmd: Mock,
     mocked_deploy: Mock,
     mocked_config: Mock,
+    instance_name,
+    instance_description,
     cluster_name,
     cluster_namespace,
     resource_group_name,
@@ -176,6 +186,8 @@ def test_init_to_template_params(
     kwargs = {}
 
     param_tuples = [
+        (instance_name, "instance_name"),
+        (instance_description, "instance_description"),
         (cluster_namespace, "cluster_namespace"),
         (keyvault_spc_secret_name, "keyvault_spc_secret_name"),
         (keyvault_resource_id, "keyvault_resource_id"),
@@ -220,10 +232,16 @@ def test_init_to_template_params(
     template_ver, parameters = work.build_template({})
 
     expected_cluster_namespace = cluster_namespace.lower() if cluster_namespace else DEFAULT_NAMESPACE
-
     lowered_cluster_name = cluster_name.lower()
+
     assert "clusterName" in parameters
     assert parameters["clusterName"]["value"] == cluster_name
+
+    assert "instanceName" in parameters
+    if instance_name:
+        assert parameters["instanceName"]["value"] == instance_name
+    else:
+        assert parameters["instanceName"]["value"] == f"{lowered_cluster_name}-ops-init-instance"
 
     assert parameters["clusterLocation"]["value"] == connected_cluster_location
     if location:
@@ -250,7 +268,8 @@ def test_init_to_template_params(
     assert parameters["deployResourceSyncRules"] is not disable_rsync_rules
 
     passthrough_value_tuples = [
-        (container_runtime_socket, "containerRuntimeSocket", ""),
+        (instance_description, "instanceDescription", None),
+        (container_runtime_socket, "containerRuntimeSocket", None),
         (kubernetes_distro, "kubernetesDistro", KubernetesDistroType.k8s.value),
         (mq_listener_name, "mqListenerName", "listener"),
         (mq_frontend_server_name, "mqFrontendServer", "mq-dmqtt-frontend"),
@@ -268,8 +287,10 @@ def test_init_to_template_params(
     for passthrough_value_tuple in passthrough_value_tuples:
         if passthrough_value_tuple[0]:
             assert parameters[passthrough_value_tuple[1]]["value"] == passthrough_value_tuple[0]
-        else:
+        elif passthrough_value_tuple[2]:
             assert parameters[passthrough_value_tuple[1]]["value"] == passthrough_value_tuple[2]
+        else:
+            assert passthrough_value_tuple[1] not in parameters
 
     set_value_tuples = [
         (
