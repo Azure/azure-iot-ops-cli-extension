@@ -187,7 +187,7 @@ def load_iotops_help():
         "iot ops broker listener list"
     ] = """
         type: command
-        short-summary: List mqtt broker listeners associated with instance.
+        short-summary: List mqtt broker listeners associated with an instance.
     """
 
     helps[
