@@ -7,7 +7,7 @@ on:
         required: true
         default: false
 name: Publish Integration Test Container Image
-run-name: Publish Test Container${{inputs.promote && ' [stable]' || ''}}
+run-name: Publish Test Container${{ inputs.promote && ' [stable]' || '' }}
 permissions:
     # required for OpenID federation
     contents: 'read'
