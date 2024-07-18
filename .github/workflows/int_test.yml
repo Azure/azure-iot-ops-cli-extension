@@ -124,7 +124,7 @@ jobs:
           if [[ ${{ matrix.feature }} == "default" ]]; then
             echo "ARG=\"--ca-valid-days 3 --kv-spc-secret-name test-kv-secret\"" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "mq-insecure" ]]; then
-            echo "ARG=\"--mq-insecure --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m\"" >> $GITHUB_OUTPUT
+            echo "ARG=\"--add-insecure-listener --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m\"" >> $GITHUB_OUTPUT
             echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "default" ]]; then
             echo "ARG=\"--disable-rsync-rules\"" >> $GITHUB_OUTPUT
