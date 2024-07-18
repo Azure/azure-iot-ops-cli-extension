@@ -141,6 +141,8 @@ AIO_MQ_BACKEND_PREFIX = "aio-mq-dmqtt-backend"
 AIO_MQ_AUTH_PREFIX = "aio-mq-dmqtt-authentication"
 AIO_MQ_KAFKA_CONFIG_PREFIX = "aio-mq-kafka-config"
 AIO_MQ_HEALTH_MANAGER = "aio-mq-dmqtt-health-manager"
+AIO_MQ_OPERATOR = "aio-mq-operator"
+AIO_MQ_FLUENT_BIT = "aio-mq-fluent-bit"
 
 # OPCUA runtime attributes
 AIO_OPCUA_PREFIX = "aio-opc-"

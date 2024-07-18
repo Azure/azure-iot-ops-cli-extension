@@ -29,10 +29,12 @@ from ...common import (
 
 from .common import (
     AIO_MQ_DIAGNOSTICS_PROBE_PREFIX,
+    AIO_MQ_FLUENT_BIT,
     AIO_MQ_FRONTEND_PREFIX,
     AIO_MQ_BACKEND_PREFIX,
     AIO_MQ_AUTH_PREFIX,
     AIO_MQ_HEALTH_MANAGER,
+    AIO_MQ_OPERATOR,
     BROKER_DIAGNOSTICS_PROPERTIES,
     ResourceOutputDetailLevel,
 )
@@ -41,7 +43,7 @@ from ...providers.edge_api import (
     MQ_ACTIVE_API,
     MqResourceKinds
 )
-from ..support.mq import MQ_NAME_LABEL
+from ..support.mq import MQ_K8S_LABEL, MQ_NAME_LABEL
 
 from ..base import get_namespaced_service
 
@@ -60,8 +62,8 @@ def check_mq_deployment(
 
     check_post_deployment(
         api_info=MQ_ACTIVE_API,
-        check_name="enumerateMqApi",
-        check_desc="Enumerate MQ API resources",
+        check_name="enumerateBrokerApi",
+        check_desc="Enumerate MQTTBroker API resources",
         result=result,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
@@ -78,10 +80,10 @@ def evaluate_broker_listeners(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(
         check_name="evalBrokerListeners",
-        check_desc="Evaluate MQ broker listeners",
+        check_desc="Evaluate MQTT Broker Listeners",
     )
 
-    target_listeners = "brokerlisteners.mq.iotoperations.azure.com"
+    target_listeners = "brokerlisteners.mqttbroker.iotoperations.azure.com"
     listener_conditions = [
         "len(brokerlisteners)>=1",
         "spec",
@@ -189,7 +191,11 @@ def evaluate_broker_listeners(
             if listener_spec_service_name not in processed_services:
                 target_listener_service = f"service/{listener_spec_service_name}"
                 listener_service_eval_status = CheckTaskStatus.success.value
-                check_manager.add_target(target_name=target_listener_service, namespace=namespace)
+                check_manager.add_target(
+                    target_name=target_listener_service,
+                    namespace=namespace,
+                    conditions=["listener_service"],
+                )
 
                 associated_service: dict = get_namespaced_service(
                     name=listener_spec_service_name, namespace=namespace, as_dict=True
@@ -209,9 +215,18 @@ def evaluate_broker_listeners(
                         target_name=target_listener_service,
                         namespace=namespace,
                         status=listener_service_eval_status,
-                        value="Unable to fetch service.",
+                        value={"listener_service": "Unable to fetch service."},
+                        resource_name=f"service/{listener_spec_service_name}"
                     )
                 else:
+                    check_manager.add_target_eval(
+                        target_name=target_listener_service,
+                        namespace=namespace,
+                        status=CheckTaskStatus.success.value,
+                        value={"listener_service": target_listener_service},
+                        resource_name=f"service/{listener_spec_service_name}"
+                    )
+
                     check_manager.add_display(
                         target_name=target_listener_service,
                         namespace=namespace,
@@ -220,28 +235,29 @@ def evaluate_broker_listeners(
                             (0, 0, 0, 8),
                         ),
                     )
-                    if detail_level != ResourceOutputDetailLevel.summary.value:
-                        if listener_spec_service_type.lower() == "loadbalancer":
-                            check_manager.set_target_conditions(
-                                target_name=target_listener_service,
-                                namespace=namespace,
-                                conditions=[
-                                    "status",
-                                    "len(status.loadBalancer.ingress[*].ip)>=1",
-                                ],
-                            )
-                            ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
 
-                            service_status = associated_service.get("status", {})
-                            load_balancer = service_status.get("c", {})
-                            ingress_rules: List[dict] = load_balancer.get("ingress", [])
+                    if listener_spec_service_type.lower() == "loadbalancer":
+                        check_manager.set_target_conditions(
+                            target_name=target_listener_service,
+                            namespace=namespace,
+                            conditions=[
+                                "status",
+                                "len(status.loadBalancer.ingress[*].ip)>=1",
+                            ],
+                        )
+                        ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
 
-                            if not ingress_rules:
-                                listener_service_eval_status = CheckTaskStatus.warning.value
-                                ingress_count_colored = "[red]Detected 0[/red]."
-                            else:
-                                ingress_count_colored = f"[green]Detected {len(ingress_rules)}[/green]."
+                        service_status = associated_service.get("status", {})
+                        load_balancer = service_status.get("c", {})
+                        ingress_rules: List[dict] = load_balancer.get("ingress", [])
 
+                        if not ingress_rules:
+                            listener_service_eval_status = CheckTaskStatus.warning.value
+                            ingress_count_colored = "[red]Detected 0[/red]."
+                        else:
+                            ingress_count_colored = f"[green]Detected {len(ingress_rules)}[/green]."
+
+                        if detail_level != ResourceOutputDetailLevel.summary.value:
                             check_manager.add_display(
                                 target_name=target_listener_service,
                                 namespace=namespace,
@@ -258,54 +274,54 @@ def evaluate_broker_listeners(
                                     display=Padding("\nIngress", (0, 0, 0, 12)),
                                 )
 
-                            for ingress in ingress_rules:
-                                ip = ingress.get("ip")
-                                if ip:
+                        for ingress in ingress_rules:
+                            ip = ingress.get("ip")
+                            if ip:
+                                if detail_level != ResourceOutputDetailLevel.summary.value:
                                     rule_desc = f"- ip: [green]{ip}[/green]"
                                     check_manager.add_display(
                                         target_name=target_listener_service,
                                         namespace=namespace,
                                         display=Padding(rule_desc, (0, 0, 0, 16)),
                                     )
-                                else:
-                                    listener_service_eval_status = CheckTaskStatus.warning.value
-
-                            check_manager.add_target_eval(
-                                target_name=target_listener_service,
-                                namespace=namespace,
-                                status=listener_service_eval_status,
-                                value=service_status,
-                            )
-
-                        if listener_spec_service_type.lower() == "clusterip":
-                            check_manager.set_target_conditions(
-                                target_name=target_listener_service,
-                                namespace=namespace,
-                                conditions=["spec.clusterIP"],
-                            )
-                            cluster_ip = associated_service.get("spec", {}).get("clusterIP")
-
-                            cluster_ip_desc = "Cluster IP: {}"
-                            if not cluster_ip:
-                                listener_service_eval_status = CheckTaskStatus.warning.value
-                                cluster_ip_desc = cluster_ip_desc.format("[yellow]Undetermined[/yellow]")
                             else:
-                                cluster_ip_desc = cluster_ip_desc.format(f"[cyan]{cluster_ip}[/cyan]")
+                                listener_service_eval_status = CheckTaskStatus.warning.value
 
+                        check_manager.add_target_eval(
+                            target_name=target_listener_service,
+                            namespace=namespace,
+                            status=listener_service_eval_status,
+                            value=service_status,
+                        )
+                    elif listener_spec_service_type.lower() == "clusterip":
+                        check_manager.set_target_conditions(
+                            target_name=target_listener_service,
+                            namespace=namespace,
+                            conditions=["spec.clusterIP"],
+                        )
+                        cluster_ip = associated_service.get("spec", {}).get("clusterIP")
+
+                        cluster_ip_desc = "Cluster IP: {}"
+                        if not cluster_ip:
+                            listener_service_eval_status = CheckTaskStatus.warning.value
+                            cluster_ip_desc = cluster_ip_desc.format("[yellow]Undetermined[/yellow]")
+                        else:
+                            cluster_ip_desc = cluster_ip_desc.format(f"[cyan]{cluster_ip}[/cyan]")
+
+                        if detail_level != ResourceOutputDetailLevel.summary.value:
                             check_manager.add_display(
                                 target_name=target_listener_service,
                                 namespace=namespace,
                                 display=Padding(cluster_ip_desc, (0, 0, 0, 12)),
                             )
-                            check_manager.add_target_eval(
-                                target_name=target_listener_service,
-                                namespace=namespace,
-                                status=listener_service_eval_status,
-                                value={"spec.clusterIP": cluster_ip},
-                            )
-
-                        if listener_spec_service_type.lower() == "nodeport":
-                            pass
+                        check_manager.add_target_eval(
+                            target_name=target_listener_service,
+                            namespace=namespace,
+                            status=listener_service_eval_status,
+                            value={"spec.clusterIP": cluster_ip},
+                        )
+                    elif listener_spec_service_type.lower() == "nodeport":
+                        pass
 
             check_manager.add_target_eval(
                 target_name=target_listeners,
@@ -323,9 +339,9 @@ def evaluate_brokers(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_name: str = None,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate MQ brokers")
+    check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate MQTT Brokers")
 
-    target_brokers = "brokers.mq.iotoperations.azure.com"
+    target_brokers = "brokers.mqttbroker.iotoperations.azure.com"
     broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
     all_brokers: dict = get_resources_by_name(
         api_info=MQ_ACTIVE_API,
@@ -356,7 +372,7 @@ def evaluate_brokers(
             target_name=target_brokers,
             namespace=namespace,
             display=Padding(
-                f"MQ Brokers in namespace {{[purple]{namespace}[/purple]}}",
+                f"MQTT Brokers in namespace {{[purple]{namespace}[/purple]}}",
                 (0, 0, 0, 8)
             )
         )
@@ -373,6 +389,7 @@ def evaluate_brokers(
         check_manager.add_display(target_name=target_brokers, namespace=namespace, display=Padding(brokers_count_text, (0, 0, 0, 8)))
 
         added_distributed_conditions = False
+        added_diagnostics_conditions = False
         for b in brokers:
             broker_name = b["metadata"]["name"]
             broker_spec: dict = b["spec"]
@@ -489,40 +506,46 @@ def evaluate_brokers(
 
             diagnostic_detail_padding = (0, 0, 0, 16)
 
-            if broker_diagnostics and detail_level != ResourceOutputDetailLevel.summary.value:
-                check_manager.add_display(
+            if not added_diagnostics_conditions:
+                check_manager.add_target_conditions(
                     target_name=target_brokers,
+                    conditions=["spec.diagnostics"],
                     namespace=namespace,
-                    display=Padding("\nBroker Diagnostics", (0, 0, 0, 12)),
                 )
+                added_diagnostics_conditions = True
+
+            broker_eval_value["spec.diagnostics"] = broker_diagnostics
+
+            if broker_diagnostics:
+                if detail_level != ResourceOutputDetailLevel.summary.value:
+                    check_manager.add_display(
+                        target_name=target_brokers,
+                        namespace=namespace,
+                        display=Padding("\nBroker Diagnostics", (0, 0, 0, 12)),
+                    )
                 
-                if detail_level == ResourceOutputDetailLevel.detail.value:
-                    process_resource_properties(
-                        check_manager=check_manager,
-                        detail_level=detail_level,
-                        target_name=target_brokers,
-                        prop_value=broker_diagnostics,
-                        properties=BROKER_DIAGNOSTICS_PROPERTIES,
-                        namespace=namespace,
-                        padding=diagnostic_detail_padding,
-                    )
-                else:
-                    process_dict_resource(
-                        check_manager=check_manager,
-                        target_name=target_brokers,
-                        resource=broker_diagnostics,
-                        namespace=namespace,
-                        padding=diagnostic_detail_padding[3],
-                    )
+                    if detail_level == ResourceOutputDetailLevel.detail.value:
+                        process_resource_properties(
+                            check_manager=check_manager,
+                            detail_level=detail_level,
+                            target_name=target_brokers,
+                            prop_value=broker_diagnostics,
+                            properties=BROKER_DIAGNOSTICS_PROPERTIES,
+                            namespace=namespace,
+                            padding=diagnostic_detail_padding,
+                        )
+                    else:
+                        process_dict_resource(
+                            check_manager=check_manager,
+                            target_name=target_brokers,
+                            resource=broker_diagnostics,
+                            namespace=namespace,
+                            padding=diagnostic_detail_padding[3],
+                        )
 
             # show broker diagnostics error regardless of detail_level
             elif not broker_diagnostics:
-                check_manager.add_target_eval(
-                    target_name=target_brokers,
-                    namespace=namespace,
-                    status=CheckTaskStatus.warning.value,
-                    value=None,
-                )
+                broker_eval_status = CheckTaskStatus.warning.value
                 check_manager.add_display(
                     target_name=target_brokers,
                     namespace=namespace,
@@ -551,7 +574,8 @@ def evaluate_brokers(
                     target_name=target_brokers,
                     namespace=namespace,
                     status=CheckTaskStatus.error.value,
-                    value=None,
+                    value=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE} not found in namespace {namespace}",
+                    resource_name=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE}",
                 )
                 diag_service_desc_suffix = "[red]not detected[/red]."
                 diag_service_desc = (
@@ -574,7 +598,7 @@ def evaluate_brokers(
                     namespace=namespace,
                     status=CheckTaskStatus.success.value,
                     value={"spec": {"clusterIP": clusterIP, "ports": ports}},
-                    resource_name=diagnostics_service["metadata"]["name"],
+                    resource_name=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE}",
                 )
                 diag_service_desc_suffix = "[green]detected[/green]."
                 diag_service_desc = (
@@ -618,7 +642,8 @@ def evaluate_brokers(
                 AIO_MQ_BACKEND_PREFIX,
                 AIO_MQ_AUTH_PREFIX,
                 AIO_MQ_HEALTH_MANAGER,
-                AIO_MQ_DIAGNOSTICS_SERVICE
+                AIO_MQ_DIAGNOSTICS_SERVICE,
+                AIO_MQ_OPERATOR,
             ]:
                 evaluate_pod_health(
                     check_manager=check_manager,
@@ -629,6 +654,16 @@ def evaluate_brokers(
                     service_label=MQ_NAME_LABEL,
                     detail_level=detail_level,
                 )
+            
+            evaluate_pod_health(
+                check_manager=check_manager,
+                target=target_brokers,
+                namespace=namespace,
+                pod=AIO_MQ_FLUENT_BIT,
+                display_padding=12,
+                service_label=MQ_K8S_LABEL,
+                detail_level=detail_level,
+            )
 
     return check_manager.as_dict(as_list)
 

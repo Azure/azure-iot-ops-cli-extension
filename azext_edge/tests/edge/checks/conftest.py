@@ -94,9 +94,6 @@ def mock_resource_types(mocker, ops_service):
             {
                 "Broker": [{}],
                 "BrokerListener": [{}],
-                "DiagnosticService": [{}],
-                "MqttBridgeConnector": [{}],
-                "DataLakeConnector": [{}]
             }
         )
     elif ops_service == "akri":
