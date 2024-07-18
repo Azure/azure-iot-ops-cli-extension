@@ -1,12 +1,13 @@
 on:
   workflow_dispatch:
     inputs:
-      tag-latest:
-        description: Tag this image as "latest" for the specific version
+      tag-stable:
+        description: Tag this image as stable for the specific version
         type: boolean
         required: true
         default: false
 name: Publish Integration Test Container Image
+run-name: Publish Test Container${{inputs.tag-stable && ' [stable]' || ''}}
 permissions:
     # required for OpenID federation
     contents: 'read'
@@ -45,5 +46,6 @@ jobs:
             echo VERSION=$(sed -n -e 's/^VERSION = "\(.*\)"/\1/p' ./azext_edge/constants.py) >> $GITHUB_ENV
       - name: Build, tag, and push container image to registry
         run: |
-          base="test/cli-extension-tests/${{ env.VERSION }}"
-          az acr build -t $base:${{ github.sha }} ${{ inputs.tag-latest && '-t  $base:latest' || '' }} -r aziotops .
+          base="test/cli-extension-tests"
+          datetag=$(date +%Y%m%d)
+          az acr build -t $base:${{ github.sha }} -t $base${{ env.VERSION }}${{ inputs.tag-stable && '-stable' || '-$datetag'}} -r aziotops .
