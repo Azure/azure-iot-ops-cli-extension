@@ -43,9 +43,9 @@ def check_dataflows_deployment(
 ) -> None:
     evaluate_funcs = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
+        DataflowResourceKinds.DATAFLOWPROFILE: evaluate_dataflow_profiles,
         DataflowResourceKinds.DATAFLOW: evaluate_dataflows,
         DataflowResourceKinds.DATAFLOWENDPOINT: evaluate_dataflow_endpoints,
-        DataflowResourceKinds.DATAFLOWPROFILE: evaluate_dataflow_profiles,
     }
 
     check_post_deployment(
@@ -136,7 +136,7 @@ def _process_dataflow_sourcesettings(check_manager: CheckManager, target: str, n
         )
     for label, key in [
         ("Dataflow Endpoint", "endpointRef"),
-        ("DeviceRegistry Asset Reference:", "assetRef"),
+        ("DeviceRegistry Asset Reference", "assetRef"),
         ("Schema Reference", "schemaRef"),
         # TODO - jsonschema
         ("Serialization Format", "serializationFormat"),
@@ -155,6 +155,21 @@ def _process_dataflow_sourcesettings(check_manager: CheckManager, target: str, n
 def _process_dataflow_transformationsettings(check_manager: CheckManager, target: str, namespace: str, resource: dict):
     padding = 8
     settings = resource.get("builtInTransformationSettings", {})
+    # extra properties
+    for label, key in [
+        ("Schema Reference", "schemaRef"),
+        ("Serialization Format", "serializationFormat"),
+    ]:
+        # TODO - validate endpoint ref
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"{label}: {settings.get(key)}",
+                (0, 0, 0, padding)
+            )
+        )
+    
     datasets = settings.get("datasets", [])
     for dataset in datasets:
         inputs = dataset.get("inputs", [])
@@ -215,7 +230,8 @@ def _process_dataflow_transformationsettings(check_manager: CheckManager, target
                     (0, 0, 0, padding)
                 )
             )
-    maps = settings.get("maps", [])
+
+    maps = settings.get("map", [])
     for map in maps:
         inputs = map.get("inputs", [])
         check_manager.add_display(
@@ -245,15 +261,6 @@ def _process_dataflow_transformationsettings(check_manager: CheckManager, target
                     (0, 0, 0, padding)
                 )
             )
-            # TODO - remaining values
-    # "builtInTransformationSettings": {
-    #     "schemaRef": "str",  # Optional. Reference to
-    #       the schema that describes the output of the transformation.
-    #     "serializationFormat": "str"  # Optional.
-    #       Serialization format. Optional; defaults to JSON. Allowed value
-    #       JSON Schema/draft-7, Parquet. Default: Json. Known values are:
-    #       "Delta", "Json", and "Parquet".
-    # },
 
 
 def _process_dataflow_destinationsettings(check_manager: CheckManager, target: str, namespace: str, resource: dict):
@@ -539,7 +546,7 @@ def _process_endpoint_localstoragesettings(
 ) -> None:
     # TODO - validate reference
     settings = spec.get("localStorageSettings", {})
-    persistent_volume_claim = settings.get("persistentVolumeClaimRef", {}).get("name")
+    persistent_volume_claim = settings.get("persistentVolumeClaimRef")
     check_manager.add_display(
         target_name=target,
         namespace=namespace,
@@ -623,12 +630,79 @@ def evaluate_dataflow_profiles(
     )
     target = "dataflowprofiles.connectivity.iotoperations.azure.com"
     for namespace, profiles in get_resources_grouped_by_namespace(all_profiles):
-        check_manager.add_target(target_name=target, namespace=namespace)    
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(profiles, (0, 0, 0, 0)),
-        )
+        check_manager.add_target(target_name=target, namespace=namespace)
+        for profile in list(profiles):
+            spec = profile.get("spec", {})
+            # TODO - figure out status
+            for label, key in [
+                ("Instance Count", "instanceCount"),
+                ("Provisioning State", "provisioningState"),
+            ]:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {spec.get(key)}", (0, 0, 0, 8)),
+                )
+            diagnostics = spec.get("diagnostics", {})
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding("Diagnostic Logs", (0, 0, 0, 8)),
+            )
+            diagnostic_logs = diagnostics.get("logs", {})
+            diagnostic_log_level = diagnostic_logs.get("level")
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"Log Level: {diagnostic_log_level}", (0, 0, 0, 12)),
+            )
+            diagnostic_log_otelconfig = diagnostic_logs.get("openTelemetryExportConfig", {})
+            import pdb; pdb.set_trace()
+            for label, key in [
+                ("Endpoint", "otlpGrpcEndpoint"),
+                ("Interval (s)", "intervalSeconds"),
+                ("Level", "level"),
+            ]:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(
+                        f"{label}: {diagnostic_log_otelconfig.get(key)}", (0, 0, 0, 12)
+                    ),
+                )
+            diagnostic_metrics = diagnostics.get("metrics", {})
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding("Diagnostic Metrics", (0, 0, 0, 8)),
+            )
+            diagnostic_metrics_prometheusPort = diagnostic_metrics.get("prometheusPort")
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(
+                    f"Prometheus Port: {diagnostic_metrics_prometheusPort}", (0, 0, 0, 12)
+                ),
+            )
+            diagnostic_metrics_otelconfig = diagnostic_metrics.get("openTelemetryExportConfig", {})
+            for label, key in [
+                ("Endpoint", "otlpGrpcEndpoint"),
+                ("Interval (s)", "intervalSeconds"),
+            ]:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(
+                        f"{label}: {diagnostic_metrics_otelconfig.get(key)}", (0, 0, 0, 12)
+                    ),
+                )
+
+            # TODO - determine status
+            check_manager.set_target_status(
+                target_name=target,
+                namespace=namespace,
+                status=CheckTaskStatus.success.value,
+            )
         check_manager.set_target_status(
             target_name=target,
             namespace=namespace,
