@@ -228,7 +228,7 @@ jobs:
       - name: "Tox INIT Integration Tests"
         env:
           AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
-          azext_edge_init_continue_on_error: ${{ inputs.init-continue-on-error }}
+          azext_edge_init_continue_on_error: ${{ inputs.init-continue-on-error || '' }}
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_kv: ${{ steps.keyvault_id.outputs.KV_ID }}
