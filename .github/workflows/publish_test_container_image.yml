@@ -1,5 +1,11 @@
 on:
   workflow_dispatch:
+    inputs:
+      tag-latest:
+        description: Tag this image as "latest" for the specific version
+        type: boolean
+        required: true
+        default: false
 name: Publish Integration Test Container Image
 permissions:
     # required for OpenID federation
@@ -7,7 +13,7 @@ permissions:
     id-token: 'write'
 jobs:
   int-test:
-      uses: azure/azure-iot-ops-cli-extension/.github/workflows/int_test.yml@dev
+      uses: ./.github/workflows/int_test.yml
       with:
         resource-group: ops-cli-int-test-rg
         use-container: true
@@ -39,5 +45,5 @@ jobs:
             echo VERSION=$(sed -n -e 's/^VERSION = "\(.*\)"/\1/p' ./azext_edge/constants.py) >> $GITHUB_ENV
       - name: Build, tag, and push container image to registry
         run: |
-          base="aziotops/cli-extension-tests"
-          az acr build -t $base:latest -t $base:${{ github.sha }} -t $base:${{ env.VERSION }} -r aziotops .
+          base="aziotops/cli-extension-tests/${{ env.VERSION }}"
+          az acr build -t $base:${{ github.sha }} ${{ inputs.tag-latest && '-t  $base:latest' || '' }} -r aziotops .
