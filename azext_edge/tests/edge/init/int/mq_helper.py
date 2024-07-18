@@ -12,7 +12,7 @@ from .helper import get_resource_from_partial_id, ResourceKeys
 def assert_broker_args(
     resource_group: str,
     init_resources: List[str],
-    add_insecure_listener: Optional[str] = None,
+    add_insecure_listener: Optional[bool] = None,
     broker: Optional[str] = None,
     broker_authn: Optional[str] = None,
     broker_frontend_server: Optional[str] = None,
@@ -42,18 +42,20 @@ def assert_broker_args(
     assert expected_broker_partial_id in broker_resources
 
     broker_obj = get_resource_from_partial_id(expected_broker_partial_id, resource_group)
-    assert broker_obj["properties"]["memoryProfile"] == (broker_mem_profile or "medium")
-    assert broker_obj["properties"]["encryptInternalTraffic"] is not add_insecure_listener
+    broker_props = broker_obj["properties"]
+    assert broker_props["memoryProfile"].lower() == (broker_mem_profile or "medium")
+    assert broker_props["advanced"]["encryptInternalTraffic"] == "Enabled"
 
-    cardinality = broker_obj["properties"]["cardinality"]
+    cardinality = broker_props["cardinality"]
     assert cardinality["backendChain"]["partitions"] == (broker_backend_part or 2)
     assert cardinality["backendChain"]["redundancyFactor"] == (broker_backend_rf or 2)
     assert cardinality["backendChain"]["workers"] == (broker_backend_workers or 2)
     assert cardinality["frontend"]["replicas"] == (broker_frontend_replicas or 2)
     assert cardinality["frontend"]["workers"] == (broker_frontend_workers or 2)
+    # there is diagnostics + generateResourceLimits but nothing from init yet
 
     # nothing interesting in the authenticator
-    expected_authn_partial_id = f"{expected_broker_partial_id}/authentication/{broker_authn or 'authn'}"
+    expected_authn_partial_id = f"{expected_broker_partial_id}/authentications/{broker_authn or 'authn'}"
     assert expected_authn_partial_id in broker_resources
     get_resource_from_partial_id(expected_authn_partial_id, resource_group)
 
@@ -61,15 +63,13 @@ def assert_broker_args(
     expected_listener_partial_id = f"{expected_broker_partial_id}/listeners/{broker_listener or 'listener'}"
     assert expected_listener_partial_id in broker_resources
     listener_obj = get_resource_from_partial_id(expected_listener_partial_id, resource_group)
-    assert listener_obj["properties"]["serviceType"] == (broker_service_type or "clusterIp")
-    assert listener_obj["properties"]["tls"]["automatic"]["issuerRef"]["name"] == (
-        broker_frontend_server or "mq-dmqtt-frontend"
-    )
+    listener_props = listener_obj["properties"]
+    assert listener_props["brokerRef"] == (broker or "broker")
+    assert listener_props["serviceName"] == (broker_frontend_server or "aio-mq-dmqtt-frontend")
+    assert listener_props["serviceType"].lower() == (broker_service_type or "ClusterIp").lower()
 
-    # if add_insecure_listener:
-    #     assert broker_resources[4].split("/")[-1] == "non-tls-listener"
-    #     get_resource_from_partial_id(broker_resources[4], resource_group)
+    ports = listener_props["ports"]
+    assert len(ports) == (2 if add_insecure_listener else 1)
+    if add_insecure_listener:
+        assert 1883 in [p['port'] for p in ports]
 
-    # # nothing interesting in the diagnostics
-    # assert broker_resources[-1].split("/")[-1] == "diagnostics"
-    # get_resource_from_partial_id(broker_resources[4], resource_group)

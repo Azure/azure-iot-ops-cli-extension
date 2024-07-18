@@ -12,7 +12,7 @@ from ....helpers import run
 from .mq_helper import assert_broker_args
 from .opcua_helper import assert_simulate_plc_args
 from .orchestrator_helper import assert_orchestrator_args
-from .helper import assert_init_result
+from .helper import assert_init_result, strip_quotes
 
 logger = get_logger(__name__)
 
@@ -35,6 +35,7 @@ def init_test_setup(cluster_connection, settings):
             "Cannot run init tests without a connected cluster, resource group, and precreated keyvault. "
             f"Current settings:\n {settings}"
         )
+
     yield {
         "clusterName": settings.env.azext_edge_cluster,
         "resourceGroup": settings.env.azext_edge_rg,
@@ -42,7 +43,7 @@ def init_test_setup(cluster_connection, settings):
         "servicePrincipalAppId": settings.env.azext_edge_sp_app_id,
         "servicePrincipalObjectId": settings.env.azext_edge_sp_object_id,
         "servicePrincipalSecret": settings.env.azext_edge_sp_secret,
-        "additionalArgs": settings.env.azext_edge_init_args.strip('"'),
+        "additionalArgs": strip_quotes(settings.env.azext_edge_init_args),
         "continueOnError": settings.env.azext_edge_init_continue_on_error or False
     }
     if settings.env.azext_edge_aio_cleanup:
@@ -107,7 +108,6 @@ def test_init_scenario(
             sp_object_id=sp_object_id
         )
 
-        custom_location = sorted(result["deploymentState"]["resources"])[0]
         for assertion in [
             assert_simulate_plc_args,
             assert_broker_args,
@@ -116,7 +116,6 @@ def test_init_scenario(
             assertion(
                 namespace=result["clusterNamespace"],
                 cluster_name=cluster_name,
-                custom_location=custom_location,
                 resource_group=resource_group,
                 init_resources=result["deploymentState"]["resources"],
                 **arg_dict

@@ -44,7 +44,12 @@ def assert_init_result(
     expected_name = name or f"{cluster_name}-ops-init-instance"
     assert result["instanceName"] == expected_name
     assert f"{ResourceKeys.iot_operations.value}/{expected_name}" in result["deploymentState"]["resources"]
-    get_resource_from_partial_id(f"{ResourceKeys.iot_operations.value}/{expected_name}", resource_group)
+    _assert_instance_show(
+        instance_name=expected_name,
+        resource_group=resource_group,
+        ops_version=result["deploymentState"]["opsVersion"]["aio"],
+        **arg_dict
+    )
 
     # CSI driver
     assert result["csiDriver"]["keyVaultId"] == key_vault
@@ -98,6 +103,14 @@ def get_resource_from_partial_id(
     return run(command)
 
 
+def strip_quotes(argument: Optional[str]) -> Optional[str]:
+    if not argument:
+        return
+    if argument[0] == argument[-1] and argument[0] in ("'", '"'):
+        argument = argument[1:-1]
+    return argument
+
+
 def _assert_aio_versions(aio_versions: Dict[str, str]):
     from azext_edge.edge.providers.orchestration.template import CURRENT_TEMPLATE
     template_versions = CURRENT_TEMPLATE.get_component_vers()
@@ -111,14 +124,13 @@ def _assert_deployment_resources(resources: List[str], cluster_name: str, resour
     ext_loc_resources = [res for res in resources if res.startswith(ResourceKeys.custom_location.value)]
     custom_loc_name = ext_loc_resources[0].split("/")[-1]
 
-    expected_rules = ['adr', 'aio', 'mq']
-
     custom_loc_obj = get_resource_from_partial_id(ext_loc_resources[0], resource_group)
     assert custom_loc_obj["properties"]["hostResourceId"].endswith(cluster_name)
     extensions = custom_loc_obj["properties"]["clusterExtensionIds"]
-    # should be the same number of extensions vs resource sync rules
-    assert len(extensions) == len(expected_rules)
+    expected_extensions = ["azure-iot-operations", "azure-iot-operations-platform"]
+    assert len(extensions) == len(expected_extensions)
 
+    expected_rules = ['adr', 'aio', 'mq']
     assert len(ext_loc_resources) - 1 == (0 if arg_dict.get("disable_rsync_rules") else len(expected_rules))
     for res in ext_loc_resources[1:]:
         assert custom_loc_name in res
@@ -130,7 +142,6 @@ def _assert_deployment_resources(resources: List[str], cluster_name: str, resour
 
     # connected cluster resources
     con_clus_resources = [res for res in resources if res.startswith(ResourceKeys.connected_cluster.value)]
-    expected_extensions = ["azure-iot-operations", "azure-iot-operations-platform"]
     assert len(expected_extensions) == len(con_clus_resources)
     keyhash = con_clus_resources[0].rsplit("-")[-1]
     for res in con_clus_resources:
@@ -138,3 +149,18 @@ def _assert_deployment_resources(resources: List[str], cluster_name: str, resour
         assert res.endswith(keyhash)
         ext_name = res.split("/")[-1]
         assert ext_name.rsplit("-", maxsplit=1)[0] in expected_extensions
+
+
+def _assert_instance_show(instance_name: str, resource_group: str, ops_version: str, **arg_dict):
+    show_result = run(f"az iot ops show -n {instance_name} -g {resource_group}")
+
+    assert show_result["extendedLocation"]["name"].endswith(arg_dict.get("custom_location", "-ops-init-cl"))
+    assert show_result["extendedLocation"]["type"] == "CustomLocation"
+    assert show_result["location"] == arg_dict.get(
+        "location", run(f"az group show -n {resource_group}")["location"]
+    ).lower()
+
+    props = show_result["properties"]
+    assert props.get("description") == strip_quotes(arg_dict.get("desc"))
+    assert props["provisioningState"] == "Succeeded"
+    assert props["version"] == ops_version

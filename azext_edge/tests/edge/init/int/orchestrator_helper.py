@@ -9,20 +9,18 @@ from .helper import get_resource_from_partial_id, ResourceKeys
 
 
 def assert_orchestrator_args(
-    resource_group: str,
+    # resource_group: str,
     cluster_name: str,
-    namespace: str,
+    # namespace: str,
     init_resources: List[str],
-    target: Optional[str] = None,
     # opcua_discovery_url: Optional[str] = None,
-    simulate_plc: Optional[bool] = None,
+    # simulate_plc: Optional[bool] = None,
     **_
 ):
     resources = [res for res in init_resources if res.startswith(ResourceKeys.orchestrator.value)]
     assert len(resources) == 1
 
-    expected_name = target or (f"{cluster_name}-ops-init-target")
-    assert resources[0].endswith(expected_name)
+    assert resources[0].endswith(f"{cluster_name}-observability")
 
     # orch_obj = get_resource_from_partial_id(resources[0], resource_group)
     # if simulate_plc:
