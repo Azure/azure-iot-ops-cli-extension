@@ -1,13 +1,13 @@
 on:
   workflow_dispatch:
     inputs:
-      tag-stable:
-        description: Tag this image as stable for the specific version
+      promote:
+        description: Promote this build to the latest stable image for this extension version
         type: boolean
         required: true
         default: false
 name: Publish Integration Test Container Image
-run-name: Publish Test Container${{inputs.tag-stable && ' [stable]' || ''}}
+run-name: Publish Test Container${{inputs.promote && ' [stable]' || ''}}
 permissions:
     # required for OpenID federation
     contents: 'read'
@@ -48,4 +48,4 @@ jobs:
         run: |
           base="test/cli-extension-tests"
           datetag=$(date +%Y%m%d)
-          az acr build -t $base:${{ github.sha }} -t $base${{ env.VERSION }}${{ inputs.tag-stable && '-stable' || '-$datetag'}} -r aziotops .
+          az acr build -t $base:${{ github.sha }} -t $base:${{ env.VERSION }}${{ !inputs.promote && '-$datetag' || '' }} -r aziotops .
