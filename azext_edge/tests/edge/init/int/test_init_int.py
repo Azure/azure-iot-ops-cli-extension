@@ -6,13 +6,15 @@
 
 from typing import Dict, Union
 import pytest
+from knack.log import get_logger
 from os import mkdir
 from ....helpers import run
-from .mq_helper import assert_mq_args
+from .mq_helper import assert_broker_args
 from .opcua_helper import assert_simulate_plc_args
 from .orchestrator_helper import assert_orchestrator_args
 from .helper import assert_init_result
 
+logger = get_logger(__name__)
 
 @pytest.fixture(scope="function")
 def init_test_setup(cluster_connection, settings):
@@ -84,6 +86,16 @@ def test_init_scenario(
         command += f"--sp-secret {sp_secret} "
 
     result = run(command)
+    if arg_dict.get("ensure_latest"):
+        logger.warning("Command has --ensure-latest and succeeded. Good job.")
+
+    if arg_dict.get("show_template"):
+        print(result)
+        pytest.skip("This is just showing the template. There is a unit test for it.")
+
+    # TODO: see what happens with --no-block and --no-deploy. maybe make witty warnings
+    # kubernetes distro + runtime socket
+
     try:
         assert_init_result(
             result=result,
@@ -98,7 +110,7 @@ def test_init_scenario(
         custom_location = sorted(result["deploymentState"]["resources"])[0]
         for assertion in [
             assert_simulate_plc_args,
-            assert_mq_args,
+            assert_broker_args,
             assert_orchestrator_args
         ]:
             assertion(
@@ -125,7 +137,7 @@ def _process_additional_args(additional_args: str) -> Dict[str, Union[str, bool]
     arg_dict = {}
     for arg in additional_args.split("--")[1:]:
         arg = arg.strip().split(" ", maxsplit=1)
-        # --simualte-plc vs --dp-instance dp-name
+        # --simualte-plc vs --desc "potato cluster"
         arg[0] = arg[0].replace("-", "_")
         if len(arg) == 1 or arg[1].lower() == "true":
             arg_dict[arg[0]] = True

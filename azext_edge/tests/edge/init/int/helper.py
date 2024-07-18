@@ -14,8 +14,7 @@ from ....helpers import run
 
 class ResourceKeys(Enum):
     custom_location = "Microsoft.ExtendedLocation/customLocations"
-    dataprocessor = "Microsoft.IoTOperationsDataProcessor"
-    mq = "Microsoft.IoTOperationsMQ/mq"
+    iot_operations = "Microsoft.IoTOperations/instances"
     orchestrator = "Microsoft.IoTOperationsOrchestrator/targets"
     connected_cluster = "Microsoft.Kubernetes/connectedClusters"
 
@@ -38,6 +37,15 @@ def assert_init_result(
     assert result["deploymentName"]
     assert result["deploymentLink"].endswith(result["deploymentName"])
 
+    # instance name (not in alphabetical but important enough)
+    name = arg_dict.get("name")
+    if not name:
+        name = arg_dict.get("n")
+    expected_name = name or f"{cluster_name}-ops-init-instance"
+    assert result["instanceName"] == expected_name
+    assert f"{ResourceKeys.iot_operations.value}/{expected_name}" in result["deploymentState"]["resources"]
+    get_resource_from_partial_id(f"{ResourceKeys.iot_operations.value}/{expected_name}", resource_group)
+
     # CSI driver
     assert result["csiDriver"]["keyVaultId"] == key_vault
     assert result["csiDriver"]["kvSpcSecretName"] == arg_dict.get("kv_spc_secret_name", "azure-iot-operations")
@@ -57,9 +65,6 @@ def assert_init_result(
     assert result["deploymentState"]["correlationId"]
     assert result["deploymentState"]["timestampUtc"]
 
-    # TODO: remove once include-dp is removed:
-    if arg_dict.get("include_dp"):
-        pytest.skip("Parameter --include-dp will be removed and thus the init tests assert if it is not present.")
     _assert_aio_versions(result["deploymentState"]["opsVersion"])
     _assert_deployment_resources(
         resources=result["deploymentState"]["resources"],
@@ -69,8 +74,11 @@ def assert_init_result(
     )
 
     # Tls
-    assert result["tls"]["aioTrustConfigMap"]
-    assert result["tls"]["aioTrustSecretName"]
+    if arg_dict.get("no_tls"):
+        assert "tls" not in result
+    else:
+        assert result["tls"]["aioTrustConfigMap"]
+        assert result["tls"]["aioTrustSecretName"]
 
 
 def get_resource_from_partial_id(
@@ -122,7 +130,7 @@ def _assert_deployment_resources(resources: List[str], cluster_name: str, resour
 
     # connected cluster resources
     con_clus_resources = [res for res in resources if res.startswith(ResourceKeys.connected_cluster.value)]
-    expected_extensions = ["akri", "assets", "azure-iot-operations", "layered-networking", "mq", "opc-ua-broker"]
+    expected_extensions = ["azure-iot-operations", "azure-iot-operations-platform"]
     assert len(expected_extensions) == len(con_clus_resources)
     keyhash = con_clus_resources[0].rsplit("-")[-1]
     for res in con_clus_resources:
