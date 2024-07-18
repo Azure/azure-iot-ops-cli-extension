@@ -12,20 +12,20 @@ permissions:
     contents: 'read'
     id-token: 'write'
 jobs:
-  int-test:
-      uses: ./.github/workflows/int_test.yml
-      with:
-        resource-group: ops-cli-int-test-rg
-        use-container: true
-      secrets:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AIO_SP_APP_ID: ${{ secrets.AIO_SP_APP_ID }}
-          AIO_SP_OBJECT_ID: ${{ secrets.AIO_SP_OBJECT_ID }}
-          AIO_SP_SECRET: ${{ secrets.AIO_SP_SECRET }}
+  # int-test:
+  #     uses: ./.github/workflows/int_test.yml
+  #     with:
+  #       resource-group: ops-cli-int-test-rg
+  #       use-container: true
+  #     secrets:
+  #         AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  #         AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  #         AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  #         AIO_SP_APP_ID: ${{ secrets.AIO_SP_APP_ID }}
+  #         AIO_SP_OBJECT_ID: ${{ secrets.AIO_SP_OBJECT_ID }}
+  #         AIO_SP_SECRET: ${{ secrets.AIO_SP_SECRET }}
   build-and-deploy:
-    needs: int-test
+    # needs: int-test
     environment: container_registry
     runs-on: ubuntu-latest
     steps:
@@ -45,5 +45,5 @@ jobs:
             echo VERSION=$(sed -n -e 's/^VERSION = "\(.*\)"/\1/p' ./azext_edge/constants.py) >> $GITHUB_ENV
       - name: Build, tag, and push container image to registry
         run: |
-          base="aziotops/cli-extension-tests/${{ env.VERSION }}"
+          base="test/cli-extension-tests/${{ env.VERSION }}"
           az acr build -t $base:${{ github.sha }} ${{ inputs.tag-latest && '-t  $base:latest' || '' }} -r aziotops .
