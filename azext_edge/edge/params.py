@@ -401,14 +401,14 @@ def load_iotops_arguments(self, _):
         context.argument(
             "mq_frontend_replicas",
             type=int,
-            options_list=["--broker-frontend-replicas"],
+            options_list=["--broker-frontend-replicas", "--bfr"],
             help="Mqtt broker frontend replicas.",
             arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_frontend_workers",
             type=int,
-            options_list=["--broker-frontend-workers"],
+            options_list=["--broker-frontend-workers", "--bfw"],
             help="Mqtt broker frontend workers.",
             arg_group="Broker Cardinality",
         )

@@ -212,14 +212,17 @@ def load_iotops_help():
                       https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
 
                       IoT Operations depends on a service principal (SP) for Key Vault CSI driver secret synchronization.
-                      By default, init will do work in creating and configuring a suitable app registration via Microsoft Graph
-                      then apply it to the cluster.
 
-                      You can short-circuit this work, by pre-creating an app registration, then providing values for --sp-app-id,
-                      --sp-object-id and --sp-secret. By providing the SP fields, no additional work via Microsoft Graph operations will be done.
+                      By default, init will do work in creating and configuring a suitable app registration
+                      via Microsoft Graph then apply it to the cluster.
 
-                      Pre-creating an app registration is useful when the logged-in principal has constrained Entra Id permissions. For example
-                      in CI/automation scenarios, or an orgs separation of user responsibility.
+                      You can short-circuit this work, by pre-creating an app registration, then providing values
+                      for --sp-app-id, --sp-object-id and --sp-secret. By providing the SP fields, no additional
+                      work via Microsoft Graph operations will be done.
+
+                      Pre-creating an app registration is useful when the logged-in principal has constrained
+                      Entra Id permissions. For example in CI/automation scenarios, or an orgs separation of user
+                      responsibility.
 
         examples:
         - name: Minimum input for complete setup. This includes Key Vault configuration, CSI driver deployment, TLS config and deployment of IoT Operations.

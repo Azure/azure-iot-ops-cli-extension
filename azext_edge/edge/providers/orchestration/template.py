@@ -114,7 +114,7 @@ V1_TEMPLATE = TemplateVer(
                 "mqServiceType": "[parameters('mqServiceType')]",
             },
             "VERSIONS": {
-                "platform": "0.6.0-preview-rc20240709.2",
+                "platform": "0.6.0-preview-rc20240717.1",
                 "aio": "0.6.0-preview-rc20240715.1",
                 "observability": "0.1.0-preview",
                 "secretSyncController": "0.3.0-97225789",
@@ -299,11 +299,11 @@ V1_TEMPLATE = TemplateVer(
                         "dataFlows.enabled": "true",
                         "dataFlows.image.registry": "mqpreview.azurecr.io",
                         "dataFlows.image.repository": "helm/dataflows",
-                        "dataFlows.image.tag": "0.1.0-preview-rc8",
+                        "dataFlows.image.tag": "0.1.0-preview-rc9",
                         "mqttBroker.enabled": "true",
                         "mqttBroker.image.registry": "mqpreview.azurecr.io",
                         "mqttBroker.image.repository": "helm/mq",
-                        "mqttBroker.image.tag": "0.5.0-preview-rc5",
+                        "mqttBroker.image.tag": "0.5.0-preview-rc7",
                     },
                 },
                 "dependsOn": [
