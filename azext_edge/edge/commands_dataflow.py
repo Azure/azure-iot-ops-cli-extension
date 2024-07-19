@@ -45,4 +45,4 @@ def show_dataflow_endpoint(cmd, dataflow_endpoint_name: str, instance_name: str,
 
 
 def list_dataflow_endpoints(cmd, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-    return DataFlowProfiles(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
+    return DataFlowEndpoints(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)

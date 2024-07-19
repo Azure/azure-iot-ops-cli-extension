@@ -197,25 +197,64 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops broker") as context:
         context.argument(
             "instance_name",
-            options_list=["--instance-name", "--in"],
+            options_list=["--instance", "-i"],
             help="IoT Operations instance name.",
         )
         context.argument(
-            "broker_name",
+            "mq_broker_name",
             options_list=["--name", "-n"],
             help="Mqtt broker name.",
         )
 
     with self.argument_context("iot ops broker listener") as context:
         context.argument(
-            "broker_name",
-            options_list=["--broker-name", "-b"],
-            help="Mqtt broker name.",
-        )
-        context.argument(
             "listener_name",
             options_list=["--name", "-n"],
             help="Mqtt broker listener name.",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
+
+    with self.argument_context("iot ops broker authn") as context:
+        context.argument(
+            "authn_name",
+            options_list=["--name", "-n"],
+            help="Mqtt broker authentication resource name.",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
+
+    with self.argument_context("iot ops broker authz") as context:
+        context.argument(
+            "authz_name",
+            options_list=["--name", "-n"],
+            help="Mqtt broker authorization resource name.",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
         )
 
     with self.argument_context("iot ops broker stats") as context:
