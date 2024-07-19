@@ -61,11 +61,12 @@ class Instances(Queryable):
         # therefore we only use it when necessary to save cycles.
         from ..resource_map import IoTOperationsResourceMap
 
-        resource_map = IoTOperationsResourceMap(
-            cmd=self.cmd,
-            cluster_name=resource_id_container.resource_name,
-            resource_group_name=resource_id_container.resource_group_name,
-        )
+        with self.console.status("Working..."):
+            resource_map = IoTOperationsResourceMap(
+                cmd=self.cmd,
+                cluster_name=resource_id_container.resource_name,
+                resource_group_name=resource_id_container.resource_group_name,
+            )
         print(resource_map.build_tree(category_color="cyan"))
 
     def _get_associated_cl(self, instance: dict) -> dict:
