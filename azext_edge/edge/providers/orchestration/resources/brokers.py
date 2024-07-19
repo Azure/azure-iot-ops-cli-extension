@@ -16,6 +16,7 @@ logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from ....vendor.clients.iotopsmgmt.operations import (
+        BrokerOperations,
         BrokerAuthenticationOperations,
         BrokerAuthorizationOperations,
         BrokerListenerOperations,
@@ -28,19 +29,16 @@ class Brokers(Queryable):
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
+        self.ops: "BrokerOperations" = self.iotops_mgmt_client.broker
         self.listeners = BrokerListeners(self.iotops_mgmt_client.broker_listener)
         self.authns = BrokerAuthn(self.iotops_mgmt_client.broker_authentication)
         self.authzs = BrokerAuthz(self.iotops_mgmt_client.broker_authentication)
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
-        return self.iotops_mgmt_client.broker.get(
-            resource_group_name=resource_group_name, instance_name=instance_name, broker_name=name
-        )
+        return self.ops.get(resource_group_name=resource_group_name, instance_name=instance_name, broker_name=name)
 
     def list(self, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.iotops_mgmt_client.broker.list_by_instance_resource(
-            resource_group_name=resource_group_name, instance_name=instance_name
-        )
+        return self.ops.list_by_instance_resource(resource_group_name=resource_group_name, instance_name=instance_name)
 
 
 class BrokerListeners:

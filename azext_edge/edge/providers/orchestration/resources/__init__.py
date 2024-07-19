@@ -6,8 +6,11 @@
 
 from .brokers import Brokers
 from .instances import Instances
+from .dataflows import DataFlowProfiles, DataFlowEndpoints
 
 __all__ = [
     "Brokers",
     "Instances",
+    "DataFlowProfiles",
+    "DataFlowEndpoints",
 ]

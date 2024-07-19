@@ -233,6 +233,48 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow"
+    ] = """
+        type: group
+        short-summary: Dataflow management.
+    """
+
+    helps[
+        "iot ops dataflow show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataflow resource.
+    """
+
+    helps[
+        "iot ops dataflow list"
+    ] = """
+        type: command
+        short-summary: List dataflow resources associated with an instance.
+    """
+
+    helps[
+        "iot ops dataflow profile"
+    ] = """
+        type: group
+        short-summary: Dataflow profile management.
+    """
+
+    helps[
+        "iot ops dataflow profile show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataflow profile resource.
+    """
+
+    helps[
+        "iot ops dataflow profile list"
+    ] = """
+        type: command
+        short-summary: List dataflow profile resources associated with an instance.
+    """
+
+    helps[
         "iot ops verify-host"
     ] = """
         type: command
