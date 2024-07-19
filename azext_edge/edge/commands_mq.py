@@ -10,7 +10,7 @@ from knack.log import get_logger
 
 from .common import METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT
 from .providers.base import load_config_context
-from .providers.orchestration.resources import BrokerListeners, Brokers
+from .providers.orchestration.resources import Brokers
 
 logger = get_logger(__name__)
 
@@ -60,7 +60,7 @@ def list_brokers(cmd, instance_name: str, resource_group_name: str) -> Iterable[
 def show_broker_listener(
     cmd, listener_name: str, broker_name: str, instance_name: str, resource_group_name: str
 ) -> dict:
-    return BrokerListeners(cmd).show(
+    return Brokers(cmd).listeners.show(
         name=listener_name,
         broker_name=broker_name,
         instance_name=instance_name,
@@ -69,6 +69,6 @@ def show_broker_listener(
 
 
 def list_broker_listeners(cmd, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-    return BrokerListeners(cmd).list(
+    return Brokers(cmd).listeners.list(
         broker_name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name
     )

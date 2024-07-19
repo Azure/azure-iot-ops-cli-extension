@@ -362,6 +362,13 @@ def load_iotops_arguments(self, _):
         )
         # MQ
         context.argument(
+            "mq_broker_config_file",
+            options_list=["--broker-config-file"],
+            help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
+            "The expected format is {\"properties\": {...}} or {...}.",
+            arg_group="Broker",
+        )
+        context.argument(
             "mq_frontend_server_name",
             options_list=["--broker-frontend-server"],
             help="The mqtt broker frontend server name.",

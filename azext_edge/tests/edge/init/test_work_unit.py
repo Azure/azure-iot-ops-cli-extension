@@ -324,6 +324,11 @@ def test_init_to_template_params(
         assert len(ports) == 2
         assert ports[1]["port"] == 1883
 
+    brokers = _get_resources_of_type(
+        resource_type="Microsoft.IoTOperations/instances/brokers", template=template_ver
+    )
+    assert brokers
+
 
 def _get_resources_of_type(resource_type: str, template: TemplateVer):
     return [resource for resource in template.content["resources"] if resource["type"] == resource_type]

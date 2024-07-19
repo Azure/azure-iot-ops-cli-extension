@@ -6,7 +6,7 @@
 
 import json
 from copy import deepcopy
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, List, Union
 
 from ...util import read_file_content
 
@@ -23,6 +23,12 @@ class TemplateVer(NamedTuple):
     @property
     def parameters(self) -> dict:
         return self.content["parameters"]
+
+    def get_resource_defs(self, resource_type: str, first=True) -> Union[List[dict], dict]:
+        resources = [resource for resource in self.content["resources"] if resource["type"] == resource_type]
+        if first and resources:
+            return resources[0]
+        return resources
 
 
 V1_TEMPLATE = TemplateVer(
@@ -303,7 +309,7 @@ V1_TEMPLATE = TemplateVer(
                         "mqttBroker.enabled": "true",
                         "mqttBroker.image.registry": "mqpreview.azurecr.io",
                         "mqttBroker.image.repository": "helm/mq",
-                        "mqttBroker.image.tag": "0.5.0-preview-rc7",
+                        "mqttBroker.image.tag": "0.5.0-preview-rc6",
                     },
                 },
                 "dependsOn": [
