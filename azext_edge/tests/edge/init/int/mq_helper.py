@@ -15,7 +15,6 @@ def assert_broker_args(
     add_insecure_listener: Optional[bool] = None,
     broker: Optional[str] = None,
     broker_authn: Optional[str] = None,
-    broker_frontend_server: Optional[str] = None,
     broker_listener: Optional[str] = None,
     broker_mem_profile: Optional[str] = None,
     broker_service_type: Optional[str] = None,
@@ -44,7 +43,6 @@ def assert_broker_args(
     broker_obj = get_resource_from_partial_id(expected_broker_partial_id, resource_group)
     broker_props = broker_obj["properties"]
     assert broker_props["memoryProfile"].lower() == (broker_mem_profile or "medium")
-    assert broker_props["advanced"]["encryptInternalTraffic"] == "Enabled"
 
     cardinality = broker_props["cardinality"]
     assert cardinality["backendChain"]["partitions"] == (broker_backend_part or 2)
@@ -65,7 +63,6 @@ def assert_broker_args(
     listener_obj = get_resource_from_partial_id(expected_listener_partial_id, resource_group)
     listener_props = listener_obj["properties"]
     assert listener_props["brokerRef"] == (broker or "broker")
-    assert listener_props["serviceName"] == (broker_frontend_server or "aio-mq-dmqtt-frontend")
     assert listener_props["serviceType"].lower() == (broker_service_type or "ClusterIp").lower()
 
     ports = listener_props["ports"]

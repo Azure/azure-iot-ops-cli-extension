@@ -105,7 +105,7 @@ def get_resource_from_partial_id(
 
 def strip_quotes(argument: Optional[str]) -> Optional[str]:
     if not argument:
-        return
+        return argument
     if argument[0] == argument[-1] and argument[0] in ("'", '"'):
         argument = argument[1:-1]
     return argument
@@ -161,6 +161,6 @@ def _assert_instance_show(instance_name: str, resource_group: str, ops_version: 
     ).lower()
 
     props = show_result["properties"]
-    assert props.get("description") == strip_quotes(arg_dict.get("desc"))
+    assert props.get("description") == strip_quotes(arg_dict.get("desc", ""))
     assert props["provisioningState"] == "Succeeded"
     assert props["version"] == ops_version
