@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 from os.path import exists
 from pathlib import PurePath
 from typing import Any, Dict, Iterable, List, Optional, Union
@@ -121,6 +122,7 @@ def init(
     mq_listener_name: str = "listener",
     mq_broker_name: str = "broker",
     mq_authn_name: str = "authn",
+    mq_broker_config_file: Optional[str] = None,
     mq_insecure: Optional[bool] = None,
     disable_secret_rotation: Optional[bool] = None,
     rotation_poll_interval: str = "1h",
@@ -147,6 +149,7 @@ def init(
     from .util import (
         assemble_nargs_to_dict,
         is_env_flag_enabled,
+        read_file_content,
         url_safe_random_chars,
     )
 
@@ -161,6 +164,7 @@ def init(
     # cluster namespace must be lowercase
     cluster_namespace = str(cluster_namespace).lower()
     cluster_name_lowered = cluster_name.lower()
+    # TODO - @digimaun
     safe_cluster_name = cluster_name_lowered.replace("_", "-")
 
     if not instance_name:
@@ -182,6 +186,11 @@ def init(
     if csi_driver_config:
         csi_driver_config = assemble_nargs_to_dict(csi_driver_config)
 
+    # TODO - @digimaun
+    mq_broker_config = None
+    if mq_broker_config_file:
+        mq_broker_config = json.loads(read_file_content(file_path=mq_broker_config_file))
+
     return deploy(
         cmd=cmd,
         cluster_name=cluster_name,
@@ -202,6 +211,7 @@ def init(
         no_preflight=no_preflight,
         no_deploy=no_deploy,
         disable_rsync_rules=disable_rsync_rules,
+        mq_broker_config=mq_broker_config,
         mq_memory_profile=str(mq_memory_profile),
         mq_service_type=str(mq_service_type),
         mq_backend_partitions=int(mq_backend_partitions),

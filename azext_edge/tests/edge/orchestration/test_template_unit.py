@@ -21,9 +21,11 @@ def test_current_template():
     assert CURRENT_TEMPLATE.content
     assert CURRENT_TEMPLATE.parameters
 
-    default_components = CURRENT_TEMPLATE.get_component_vers()
-    assert "processor" not in default_components
     assert CURRENT_TEMPLATE.get_component_vers() == CURRENT_TEMPLATE.content["variables"]["VERSIONS"]
+
+    for r_type in ["brokers", "brokers/listeners"]:
+        fqr_type = f"Microsoft.IoTOperations/instances/{r_type}"
+        assert CURRENT_TEMPLATE.get_resource_defs(fqr_type)["type"] == fqr_type
 
     deep_copy_template = get_current_template_copy()
 

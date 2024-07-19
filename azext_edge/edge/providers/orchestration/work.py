@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 from enum import IntEnum
 from json import dumps
 from time import sleep
@@ -20,7 +21,7 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
-from ...util import get_timestamp_now_utc
+from ...util import get_timestamp_now_utc, read_file_content
 from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
 from .template import CURRENT_TEMPLATE, TemplateVer, get_current_template_copy
 
@@ -650,15 +651,17 @@ class WorkManager:
         if mq_insecure:
             # This solution entirely relies on the form of the "standard" template.
             # Needs re-work after event
-            listener_adj = False
-            for resource in template.content["resources"]:
-                if resource.get("type") == "Microsoft.IoTOperations/instances/brokers/listeners":
-                    ports: list = resource["properties"]["ports"]
-                    ports.append({"port": 1883})
-                    listener_adj = True
+            default_listener = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers/listeners")
+            if default_listener:
+                ports: list = default_listener["properties"]["ports"]
+                ports.append({"port": 1883})
 
-                if listener_adj:
-                    break
+        mq_broker_config = self._kwargs.get("mq_broker_config")
+        if mq_broker_config:
+            if "properties" in mq_broker_config:
+                mq_broker_config = mq_broker_config["properties"]
+            broker: dict = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers")
+            broker["properties"] = mq_broker_config
 
         return template, parameters
 

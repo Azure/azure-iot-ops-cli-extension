@@ -21,6 +21,7 @@ class Brokers(Queryable):
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
+        self.listeners = BrokerListeners(self.default_subscription_id)
         self.console = Console()
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
@@ -34,13 +35,11 @@ class Brokers(Queryable):
         )
 
 
-class BrokerListeners(Queryable):
-    def __init__(self, cmd):
-        super().__init__(cmd=cmd)
+class BrokerListeners:
+    def __init__(self, subscription_id: str):
         self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            subscription_id=subscription_id,
         )
-        self.console = Console()
 
     def show(self, name: str, broker_name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.iotops_mgmt_client.broker_listener.get(
