@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import json
 from enum import IntEnum
 from json import dumps
 from time import sleep
@@ -21,7 +20,7 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
-from ...util import get_timestamp_now_utc, read_file_content
+from ...util import get_timestamp_now_utc
 from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
 from .template import CURRENT_TEMPLATE, TemplateVer, get_current_template_copy
 
@@ -647,7 +646,7 @@ class WorkManager:
         if "aioTrustSecretName" in tls_map:
             template.content["variables"]["AIO_TRUST_SECRET_NAME"] = tls_map["aioTrustSecretName"]
 
-        mq_insecure = self._kwargs.get("mq_insecure", False)
+        mq_insecure = self._kwargs.get("mq_insecure")
         if mq_insecure:
             # This solution entirely relies on the form of the "standard" template.
             # Needs re-work after event
