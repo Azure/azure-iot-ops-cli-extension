@@ -36,9 +36,9 @@ def list_dataflows(cmd, profile_name: str, instance_name: str, resource_group_na
     )
 
 
-def show_dataflow_endpoint(cmd, dataflow_endpoint_name: str, instance_name: str, resource_group_name: str) -> dict:
+def show_dataflow_endpoint(cmd, endpoint_name: str, instance_name: str, resource_group_name: str) -> dict:
     return DataFlowEndpoints(cmd).show(
-        name=dataflow_endpoint_name,
+        name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )

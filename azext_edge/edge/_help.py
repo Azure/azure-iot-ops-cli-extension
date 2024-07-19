@@ -275,6 +275,27 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow endpoint"
+    ] = """
+        type: group
+        short-summary: Dataflow endpoint management.
+    """
+
+    helps[
+        "iot ops dataflow endpoint show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataflow endpoint resource.
+    """
+
+    helps[
+        "iot ops dataflow endpoint list"
+    ] = """
+        type: command
+        short-summary: List dataflow endpoint resources associated with an instance.
+    """
+
+    helps[
         "iot ops verify-host"
     ] = """
         type: command
