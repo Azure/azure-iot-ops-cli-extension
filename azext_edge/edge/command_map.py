@@ -10,6 +10,7 @@ Load CLI commands
 from azure.cli.core.commands import CliCommandType
 
 mq_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_mq#{}")
+dataflow_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_dataflow#{}")
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
@@ -52,6 +53,41 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_broker_listener")
         cmd_group.command("list", "list_broker_listeners")
+
+    with self.command_group(
+        "iot ops broker authn",
+        command_type=mq_resource_ops,
+    ) as cmd_group:
+        cmd_group.show_command("show", "show_broker_authn")
+        cmd_group.command("list", "list_broker_authns")
+
+    with self.command_group(
+        "iot ops broker authz",
+        command_type=mq_resource_ops,
+    ) as cmd_group:
+        cmd_group.show_command("show", "show_broker_authz")
+        cmd_group.command("list", "list_broker_authzs")
+
+    with self.command_group(
+        "iot ops dataflow",
+        command_type=dataflow_resource_ops,
+    ) as cmd_group:
+        cmd_group.show_command("show", "show_dataflow")
+        cmd_group.command("list", "list_dataflows")
+
+    with self.command_group(
+        "iot ops dataflow profile",
+        command_type=dataflow_resource_ops,
+    ) as cmd_group:
+        cmd_group.show_command("show", "show_dataflow_profile")
+        cmd_group.command("list", "list_dataflow_profiles")
+
+    with self.command_group(
+        "iot ops dataflow endpoint",
+        command_type=dataflow_resource_ops,
+    ) as cmd_group:
+        cmd_group.show_command("show", "show_dataflow_endpoint")
+        cmd_group.command("list", "list_dataflow_endpoints")
 
     with self.command_group(
         "iot ops asset",

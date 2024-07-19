@@ -191,6 +191,111 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker authn"
+    ] = """
+        type: group
+        short-summary: Broker authentication management.
+    """
+
+    helps[
+        "iot ops broker authn show"
+    ] = """
+        type: command
+        short-summary: Show details of an mqtt broker authentication resource.
+    """
+
+    helps[
+        "iot ops broker authn list"
+    ] = """
+        type: command
+        short-summary: List mqtt broker authentication resources associated with an instance.
+    """
+
+    helps[
+        "iot ops broker authz"
+    ] = """
+        type: group
+        short-summary: Broker authorization management.
+    """
+
+    helps[
+        "iot ops broker authz show"
+    ] = """
+        type: command
+        short-summary: Show details of an mqtt broker authorization resource.
+    """
+
+    helps[
+        "iot ops broker authz list"
+    ] = """
+        type: command
+        short-summary: List mqtt broker authorization resources associated with an instance.
+    """
+
+    helps[
+        "iot ops dataflow"
+    ] = """
+        type: group
+        short-summary: Dataflow management.
+    """
+
+    helps[
+        "iot ops dataflow show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataflow resource.
+    """
+
+    helps[
+        "iot ops dataflow list"
+    ] = """
+        type: command
+        short-summary: List dataflow resources associated with an instance.
+    """
+
+    helps[
+        "iot ops dataflow profile"
+    ] = """
+        type: group
+        short-summary: Dataflow profile management.
+    """
+
+    helps[
+        "iot ops dataflow profile show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataflow profile resource.
+    """
+
+    helps[
+        "iot ops dataflow profile list"
+    ] = """
+        type: command
+        short-summary: List dataflow profile resources associated with an instance.
+    """
+
+    helps[
+        "iot ops dataflow endpoint"
+    ] = """
+        type: group
+        short-summary: Dataflow endpoint management.
+    """
+
+    helps[
+        "iot ops dataflow endpoint show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataflow endpoint resource.
+    """
+
+    helps[
+        "iot ops dataflow endpoint list"
+    ] = """
+        type: command
+        short-summary: List dataflow endpoint resources associated with an instance.
+    """
+
+    helps[
         "iot ops verify-host"
     ] = """
         type: command

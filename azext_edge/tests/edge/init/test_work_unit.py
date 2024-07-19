@@ -5,13 +5,15 @@
 # ----------------------------------------------------------------------------------------------
 
 
+import json
+import string
 from os import environ
+from pathlib import Path
 from random import randint
 from typing import Dict, FrozenSet, List
 from unittest.mock import Mock
 
 import pytest
-import string
 
 from azext_edge.edge.commands_edge import init
 from azext_edge.edge.common import INIT_NO_PREFLIGHT_ENV_KEY
@@ -26,7 +28,6 @@ from azext_edge.edge.providers.orchestration.work import (
     CLUSTER_SECRET_CLASS_NAME,
     CLUSTER_SECRET_REF,
     CURRENT_TEMPLATE,
-    TemplateVer,
     WorkCategoryKey,
     WorkManager,
     WorkStepKey,
@@ -34,6 +35,16 @@ from azext_edge.edge.providers.orchestration.work import (
 from azext_edge.edge.util import assemble_nargs_to_dict
 
 from ...generators import generate_random_string
+
+MOCK_BROKER_CONFIG_PATH = Path(__file__).parent.joinpath("./broker_config.json")
+
+
+@pytest.fixture(scope="module")
+def mock_broker_config():
+    custom_config = {generate_random_string(): generate_random_string()}
+    MOCK_BROKER_CONFIG_PATH.write_text(json.dumps(custom_config), encoding="utf-8")
+    yield custom_config
+    MOCK_BROKER_CONFIG_PATH.unlink()
 
 
 @pytest.mark.parametrize(
@@ -64,6 +75,7 @@ from ...generators import generate_random_string
     mq_authn_name,
     mq_insecure,
     disable_rsync_rules,
+    mq_broker_config_file,
     """,
     [
         pytest.param(
@@ -93,6 +105,7 @@ from ...generators import generate_random_string
             None,  # mq_authn_name
             None,  # mq_insecure
             None,  # disable_rsync_rules
+            None,  # mq_broker_config_file
         ),
         pytest.param(
             None,  # instance_name
@@ -121,6 +134,7 @@ from ...generators import generate_random_string
             generate_random_string(),  # mq_authn_name
             None,  # mq_insecure
             None,  # disable_rsync_rules
+            None,  # mq_broker_config_file
         ),
         pytest.param(
             generate_random_string(),  # instance_name
@@ -149,6 +163,7 @@ from ...generators import generate_random_string
             generate_random_string(),  # mq_authn_name
             True,  # mq_insecure
             True,  # disable_rsync_rules
+            str(MOCK_BROKER_CONFIG_PATH),  # mq_broker_config_file
         ),
     ],
 )
@@ -156,6 +171,7 @@ def test_init_to_template_params(
     mocked_cmd: Mock,
     mocked_deploy: Mock,
     mocked_config: Mock,
+    mock_broker_config: dict,
     instance_name,
     instance_description,
     cluster_name,
@@ -182,6 +198,7 @@ def test_init_to_template_params(
     mq_authn_name,
     mq_insecure,
     disable_rsync_rules,
+    mq_broker_config_file,
 ):
     kwargs = {}
 
@@ -210,6 +227,7 @@ def test_init_to_template_params(
         (mq_authn_name, "mq_authn_name"),
         (mq_insecure, "mq_insecure"),
         (disable_rsync_rules, "disable_rsync_rules"),
+        (mq_broker_config_file, "mq_broker_config_file"),
     ]
 
     for param_tuple in param_tuples:
@@ -311,12 +329,9 @@ def test_init_to_template_params(
     assert template_ver.content["variables"]["AIO_TRUST_CONFIG_MAP"]
     assert template_ver.content["variables"]["AIO_TRUST_SECRET_NAME"]
 
-    # test mq_insecure
-    listeners = _get_resources_of_type(
-        resource_type="Microsoft.IoTOperations/instances/brokers/listeners", template=template_ver
-    )
-    assert listeners
-    ports: List[dict] = listeners[0]["properties"]["ports"]
+    listener = template_ver.get_resource_defs(resource_type="Microsoft.IoTOperations/instances/brokers/listeners")
+    assert listener
+    ports: List[dict] = listener["properties"]["ports"]
     assert ports
     assert ports[0]["port"] == 8883
 
@@ -324,14 +339,10 @@ def test_init_to_template_params(
         assert len(ports) == 2
         assert ports[1]["port"] == 1883
 
-    brokers = _get_resources_of_type(
-        resource_type="Microsoft.IoTOperations/instances/brokers", template=template_ver
-    )
-    assert brokers
-
-
-def _get_resources_of_type(resource_type: str, template: TemplateVer):
-    return [resource for resource in template.content["resources"] if resource["type"] == resource_type]
+    broker = template_ver.get_resource_defs(resource_type="Microsoft.IoTOperations/instances/brokers")
+    assert broker
+    if mq_broker_config_file:
+        assert broker["properties"] == mock_broker_config
 
 
 @pytest.mark.parametrize(

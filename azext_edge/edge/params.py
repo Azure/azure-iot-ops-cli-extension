@@ -194,28 +194,83 @@ def load_iotops_arguments(self, _):
             validator=validate_resource_name,
         ),
 
-    with self.argument_context("iot ops broker") as context:
+    with self.argument_context("iot ops dataflow") as context:
         context.argument(
             "instance_name",
-            options_list=["--instance-name", "--in"],
+            options_list=["--instance", "-i"],
             help="IoT Operations instance name.",
         )
         context.argument(
-            "broker_name",
+            "dataflow_name",
+            options_list=["--name", "-n"],
+            help="Dataflow name.",
+        )
+        context.argument(
+            "profile_name",
+            options_list=["--profile", "-p"],
+            help="Dataflow profile name.",
+        )
+
+    with self.argument_context("iot ops dataflow profile") as context:
+        context.argument(
+            "profile_name",
+            options_list=["--name", "-n"],
+            help="Dataflow profile name.",
+        )
+
+    with self.argument_context("iot ops dataflow endpoint") as context:
+        context.argument(
+            "endpoint_name",
+            options_list=["--name", "-n"],
+            help="Dataflow endpoint name.",
+        )
+
+    with self.argument_context("iot ops broker") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "mq_broker_name",
             options_list=["--name", "-n"],
             help="Mqtt broker name.",
         )
 
     with self.argument_context("iot ops broker listener") as context:
         context.argument(
-            "broker_name",
-            options_list=["--broker-name", "-b"],
-            help="Mqtt broker name.",
-        )
-        context.argument(
             "listener_name",
             options_list=["--name", "-n"],
             help="Mqtt broker listener name.",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
+        )
+
+    with self.argument_context("iot ops broker authn") as context:
+        context.argument(
+            "authn_name",
+            options_list=["--name", "-n"],
+            help="Mqtt broker authentication resource name.",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
+        )
+
+    with self.argument_context("iot ops broker authz") as context:
+        context.argument(
+            "authz_name",
+            options_list=["--name", "-n"],
+            help="Mqtt broker authorization resource name.",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
         )
 
     with self.argument_context("iot ops broker stats") as context:
@@ -365,7 +420,7 @@ def load_iotops_arguments(self, _):
             "mq_broker_config_file",
             options_list=["--broker-config-file"],
             help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
-            "The expected format is {\"properties\": {...}} or {...}.",
+            'The expected format is {"properties": {...}} or {...}.',
             arg_group="Broker",
         )
         context.argument(
