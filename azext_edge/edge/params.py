@@ -205,6 +205,11 @@ def load_iotops_arguments(self, _):
             options_list=["--name", "-n"],
             help="Dataflow name.",
         )
+        context.argument(
+            "profile_name",
+            options_list=["--profile", "-p"],
+            help="Dataflow profile name.",
+        )
 
     with self.argument_context("iot ops dataflow profile") as context:
         context.argument(
