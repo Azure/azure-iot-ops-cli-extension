@@ -54,6 +54,20 @@ def load_iotops_commands(self, _):
         cmd_group.command("list", "list_broker_listeners")
 
     with self.command_group(
+        "iot ops broker authn",
+        command_type=mq_resource_ops,
+    ) as cmd_group:
+        cmd_group.show_command("show", "show_broker_authn")
+        cmd_group.command("list", "list_broker_authns")
+
+    with self.command_group(
+        "iot ops broker authz",
+        command_type=mq_resource_ops,
+    ) as cmd_group:
+        cmd_group.show_command("show", "show_broker_authz")
+        cmd_group.command("list", "list_broker_authzs")
+
+    with self.command_group(
         "iot ops asset",
         command_type=asset_resource_ops,
     ) as cmd_group:

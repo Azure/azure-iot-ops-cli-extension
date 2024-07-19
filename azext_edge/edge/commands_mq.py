@@ -72,3 +72,33 @@ def list_broker_listeners(cmd, broker_name: str, instance_name: str, resource_gr
     return Brokers(cmd).listeners.list(
         broker_name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name
     )
+
+
+def show_broker_authn(cmd, authn_name: str, broker_name: str, instance_name: str, resource_group_name: str) -> dict:
+    return Brokers(cmd).authns.show(
+        name=authn_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+
+
+def list_broker_authns(cmd, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+    return Brokers(cmd).authns.list(
+        broker_name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name
+    )
+
+
+def show_broker_authz(cmd, authn_name: str, broker_name: str, instance_name: str, resource_group_name: str) -> dict:
+    return Brokers(cmd).authzs.show(
+        name=authn_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+
+
+def list_broker_authzs(cmd, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+    return Brokers(cmd).authzs.list(
+        broker_name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name
+    )

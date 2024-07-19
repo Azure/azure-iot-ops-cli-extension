@@ -191,6 +191,48 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker authn"
+    ] = """
+        type: group
+        short-summary: Broker authentication management.
+    """
+
+    helps[
+        "iot ops broker authn show"
+    ] = """
+        type: command
+        short-summary: Show details of an mqtt broker authentication resource.
+    """
+
+    helps[
+        "iot ops broker authn list"
+    ] = """
+        type: command
+        short-summary: List mqtt broker authentication resources associated with an instance.
+    """
+
+    helps[
+        "iot ops broker authz"
+    ] = """
+        type: group
+        short-summary: Broker authorization management.
+    """
+
+    helps[
+        "iot ops broker authz show"
+    ] = """
+        type: command
+        short-summary: Show details of an mqtt broker authorization resource.
+    """
+
+    helps[
+        "iot ops broker authz list"
+    ] = """
+        type: command
+        short-summary: List mqtt broker authorization resources associated with an instance.
+    """
+
+    helps[
         "iot ops verify-host"
     ] = """
         type: command
