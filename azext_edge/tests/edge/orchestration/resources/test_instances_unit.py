@@ -11,54 +11,25 @@ from typing import Optional
 import pytest
 import responses
 
-from azext_edge.edge.providers.orchestration.resources.instances import Instances
+from azext_edge.edge.providers.orchestration.resources import Instances
 
-from ...generators import generate_random_string, get_zeroed_subscription
-
-ZEROED_SUBSCRIPTION = get_zeroed_subscription()
-BASE_URL = "https://management.azure.com"
-QUALIFIED_RESOURCE_TYPE = "Microsoft.IoTOperations/instances"
-INSTANCES_API_VERSION = "2024-07-01-preview"
+from ....generators import generate_random_string
+from .conftest import get_base_endpoint, get_mock_resource
 
 
 def get_instance_endpoint(resource_group_name: Optional[str] = None, instance_name: Optional[str] = None):
-    expected_endpoint = f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}"
-    if resource_group_name:
-        expected_endpoint += f"/resourceGroups/{resource_group_name}"
-    expected_endpoint += f"/providers/{QUALIFIED_RESOURCE_TYPE}"
+    resource_path = "/instances"
     if instance_name:
-        expected_endpoint += f"/{instance_name}"
-    expected_endpoint += f"?api-version={INSTANCES_API_VERSION}"
-
-    return expected_endpoint
+        resource_path += f"/{instance_name}"
+    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
 
 
-def get_mock_instance_record(
-    name: str, resource_group_name: str, subscription_id: str = ZEROED_SUBSCRIPTION, cl_name: str = "test_cl"
-):
-    return {
-        "etag": '"1d0044af-0000-0c00-0000-6675cef80000"',
-        "extendedLocation": {
-            "name": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
-            f"/providers/Microsoft.ExtendedLocation/customLocations/{cl_name}",
-            "type": "CustomLocation",
-        },
-        "id": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
-        f"/providers/{QUALIFIED_RESOURCE_TYPE}/{name}",
-        "location": "northeurope",
-        "name": name,
-        "properties": {"description": "AIO Instance description.", "provisioningState": "Succeeded"},
-        "resourceGroup": resource_group_name,
-        "systemData": {
-            "createdAt": "2024-06-21T19:04:29.2176544Z",
-            "createdBy": "",
-            "createdByType": "Application",
-            "lastModifiedAt": "2024-06-21T19:04:29.2176544Z",
-            "lastModifiedBy": "",
-            "lastModifiedByType": "Application",
-        },
-        "type": QUALIFIED_RESOURCE_TYPE,
-    }
+def get_mock_instance_record(name: str, resource_group_name: str):
+    return get_mock_resource(
+        name=name,
+        properties={"description": "AIO Instance description.", "provisioningState": "Succeeded"},
+        resource_group_name=resource_group_name,
+    )
 
 
 def test_instance_show(mocked_cmd, mocked_responses: responses):
@@ -89,12 +60,10 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
     [0, 2],
 )
 def test_instance_list(mocked_cmd, mocked_responses: responses, resource_group_name: str, records: int):
-    instance_name = generate_random_string()
-
     # If no resource_group_name, oh well
     mock_instance_records = {
         "value": [
-            get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
+            get_mock_instance_record(name=generate_random_string(), resource_group_name=resource_group_name)
             for _ in range(records)
         ]
     }

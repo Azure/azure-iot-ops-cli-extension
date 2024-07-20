@@ -120,7 +120,7 @@ V1_TEMPLATE = TemplateVer(
                 "mqServiceType": "[parameters('mqServiceType')]",
             },
             "VERSIONS": {
-                "platform": "0.6.0-preview-rc20240717.1",
+                "platform": "0.6.0-preview-rc20240718.1",
                 "aio": "0.6.0-preview-rc20240715.1",
                 "observability": "0.1.0-preview",
                 "secretSyncController": "0.3.0-97225789",
