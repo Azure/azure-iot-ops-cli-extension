@@ -9,7 +9,7 @@ from typing import Optional
 import pytest
 import responses
 
-from azext_edge.edge.providers.orchestration.resources import Brokers
+from azext_edge.edge.commands_mq import list_broker_listeners, show_broker_listener
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
@@ -65,6 +65,7 @@ def test_broker_listener_show(mocked_cmd, mocked_responses: responses):
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )
+
     mocked_responses.add(
         method=responses.GET,
         url=get_broker_listener_endpoint(
@@ -78,13 +79,14 @@ def test_broker_listener_show(mocked_cmd, mocked_responses: responses):
         content_type="application/json",
     )
 
-    brokers = Brokers(mocked_cmd)
-    result = brokers.listeners.show(
-        name=listener_name,
-        broker_name=broker_name,
+    result = show_broker_listener(
+        cmd=mocked_cmd,
+        listener_name=listener_name,
+        mq_broker_name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )
+
     assert result == mock_broker_listener_record
     assert len(mocked_responses.calls) == 1
 
@@ -120,11 +122,12 @@ def test_broker_list(mocked_cmd, mocked_responses: responses, records: int):
         content_type="application/json",
     )
 
-    brokers = Brokers(mocked_cmd)
-    result = list(
-        brokers.listeners.list(
-            broker_name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name
-        )
-    )
+    result = list(list_broker_listeners(
+        cmd=mocked_cmd,
+        mq_broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    ))
+
     assert result == mock_broker_listener_records["value"]
     assert len(mocked_responses.calls) == 1
