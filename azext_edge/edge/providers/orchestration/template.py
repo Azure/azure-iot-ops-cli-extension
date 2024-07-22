@@ -120,7 +120,7 @@ V1_TEMPLATE = TemplateVer(
                 "mqServiceType": "[parameters('mqServiceType')]",
             },
             "VERSIONS": {
-                "platform": "0.6.0-preview-rc20240718.1",
+                "platform": "0.6.0-preview-rc20240722.1",
                 "aio": "0.6.0-preview-rc20240715.1",
                 "observability": "0.1.0-preview",
                 "secretSyncController": "0.3.0-97225789",
@@ -301,7 +301,7 @@ V1_TEMPLATE = TemplateVer(
                         "connectors.opcua.enabled": "true",
                         "connectors.opcua.image.registry": "azureiotoperations.azurecr.io",
                         "connectors.opcua.image.repository": "aio-connectors/helmchart/microsoft-aio-connectors",
-                        "connectors.opcua.image.tag": "0.7.0-preview.3",
+                        "connectors.opcua.image.tag": "0.7.0-preview.6",
                         "dataFlows.enabled": "true",
                         "dataFlows.image.registry": "mqpreview.azurecr.io",
                         "dataFlows.image.repository": "helm/dataflows",
