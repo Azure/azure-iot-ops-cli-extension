@@ -19,6 +19,7 @@ from ..base import get_namespaced_pods_by_prefix
 from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX
 from .base import CheckManager, check_post_deployment, get_resources_by_name, get_resources_grouped_by_namespace
 from .common import (
+    COLOR_STR_FORMAT,
     PADDING_SIZE,
     CoreServiceResourceKinds,
     DataflowEndpointType,
@@ -124,14 +125,19 @@ def _process_dataflow_sourcesettings(
         check_manager.add_display(
             target_name=target, namespace=namespace, display=Padding(f"- {data_source}", (0, 0, 0, padding + 2))
         )
+    # TODO - validate endpoint ref
+    endpoint_ref = settings.get("endpointRef")
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding(f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_ref)}}}", (0, 0, 0, padding)),
+    )
     for label, key in [
-        ("Dataflow Endpoint", "endpointRef"),
         ("DeviceRegistry Asset Reference", "assetRef"),
         ("Schema Reference", "schemaRef"),
         # TODO - jsonschema
         ("Serialization Format", "serializationFormat"),
     ]:
-        # TODO - validate endpoint ref
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -273,30 +279,32 @@ def evaluate_dataflows(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"\n- Dataflow: {dataflow_name}", (0, 0, 0, padding)),
+                display=Padding(f"\n- Dataflow {{{COLOR_STR_FORMAT.format(color='bright_blue', value=dataflow_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}", (0, 0, 0, padding)),
             )
-            padding += 2
-            for label, key in [
-                ("Mode", "mode"),
-                ("Dataflow Profile", "profileRef"),
+            padding += 4
+            mode = spec.get("mode")
+            profile_ref = spec.get("profileRef")
+            for label, val in [
+                ("Dataflow Profile", f"{{{COLOR_STR_FORMAT.format(color='bright_blue', value=profile_ref)}}}"),
+                ("Mode", mode),
             ]:
                 # TODO - validate profile ref
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {spec.get(key)}", (0, 0, 0, padding)),
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
                 )
 
             operations = spec.get("operations", [])
             # TODO - error if no operations?
             processor_dict = {
-                # TODO - enumerate source/transform/destination
                 DataflowOperationType.source.value: _process_dataflow_sourcesettings,
                 DataflowOperationType.builtin_transformation.value: _process_dataflow_transformationsettings,
                 DataflowOperationType.destination.value: _process_dataflow_destinationsettings,
             }
 
             for operation in operations:
+                # TODO - group by type
                 # TODO - "Dataflow must have 3 operations max"
                 # TODO - "Dataflow must have a local MQ source or a local MQ target."
                 op_type = operation.get("operationType")
@@ -558,14 +566,19 @@ def evaluate_dataflow_endpoints(
             padding = 8
             spec = endpoint.get("spec", {})
             endpoint_name = endpoint.get("metadata", {}).get("name")
+            endpoint_type = spec.get("endpointType")
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"\n- Endpoint: {endpoint_name}", (0, 0, 0, padding)),
+                display=Padding(f"\n- Endpoint {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}", (0, 0, 0, padding)),
             )
             # TODO - figure out status
-            padding += 2
-            endpoint_type = spec.get("endpointType")
+            padding += 4
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"Type: {COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_type)}", (0, 0, 0, padding)),
+            )
             endpoint_processor_dict = {
                 DataflowEndpointType.mqtt.value: _process_endpoint_mqttsettings,
                 DataflowEndpointType.kafka.value: _process_endpoint_kafkasettings,
@@ -630,13 +643,12 @@ def evaluate_dataflow_profiles(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"\n- Profile: {profile_name}", (0, 0, 0, padding)),
+                display=Padding(f"\n- Profile {{{COLOR_STR_FORMAT.format(color='bright_blue', value=profile_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}", (0, 0, 0, padding)),
             )
             padding += 4
-            # TODO - figure out status
+            # TODO - figure out status / conditions
             for label, key in [
                 ("Instance Count", "instanceCount"),
-                ("Provisioning State", "provisioningState"),
             ]:
                 check_manager.add_display(
                     target_name=target,
