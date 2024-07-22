@@ -25,7 +25,7 @@ def get_broker_endpoint(instance_name: str, resource_group_name: str, broker_nam
 def get_mock_broker_record(broker_name: str, instance_name: str, resource_group_name: str):
     return get_mock_resource(
         name=broker_name,
-        resource_path=f"/instances/{instance_name}/brokers",
+        resource_path=f"/instances/{instance_name}/brokers/{broker_name}",
         properties={
             "advanced": {"encryptInternalTraffic": "Enabled"},
             "cardinality": {
@@ -83,7 +83,7 @@ def test_broker_list(mocked_cmd, mocked_responses: responses, records: int):
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
 
-    mock_instance_records = {
+    mock_broker_records = {
         "value": [
             get_mock_broker_record(
                 broker_name=generate_random_string(),
@@ -97,12 +97,12 @@ def test_broker_list(mocked_cmd, mocked_responses: responses, records: int):
     mocked_responses.add(
         method=responses.GET,
         url=get_broker_endpoint(instance_name=instance_name, resource_group_name=resource_group_name),
-        json=mock_instance_records,
+        json=mock_broker_records,
         status=200,
         content_type="application/json",
     )
 
     brokers = Brokers(mocked_cmd)
     result = list(brokers.list(instance_name=instance_name, resource_group_name=resource_group_name))
-    assert result == mock_instance_records["value"]
+    assert result == mock_broker_records["value"]
     assert len(mocked_responses.calls) == 1
