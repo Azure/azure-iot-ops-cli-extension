@@ -420,7 +420,7 @@ def load_iotops_arguments(self, _):
             "mq_broker_config_file",
             options_list=["--broker-config-file"],
             help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
-            'The expected format is {"properties": {...}} or {...}.',
+            "The expected format is described at https://aka.ms/aziotops-broker-config.",
             arg_group="Broker",
         )
         context.argument(
@@ -428,6 +428,7 @@ def load_iotops_arguments(self, _):
             options_list=["--broker-frontend-server"],
             help="The mqtt broker frontend server name.",
             arg_group="Broker",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "mq_listener_name",
