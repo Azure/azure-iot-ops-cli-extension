@@ -74,24 +74,24 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 spec={
                     "clusterIP": "10.0.222.134",
                     "ports": [
-                      {
-                        "name": "bincode-listener-service",
-                        "port": 9700,
-                        "protocol": "TCP",
-                        "targetPort": 9700
-                      },
-                      {
-                        "name": "protobuf-listener-service",
-                        "port": 9800,
-                        "protocol": "TCP",
-                        "targetPort": 9800
-                      },
-                      {
-                        "name": "aio-mq-metrics-service",
-                        "port": 9600,
-                        "protocol": "TCP",
-                        "targetPort": 9600
-                      }
+                        {
+                            "name": "bincode-listener-service",
+                            "port": 9700,
+                            "protocol": "TCP",
+                            "targetPort": 9700
+                        },
+                        {
+                            "name": "protobuf-listener-service",
+                            "port": 9800,
+                            "protocol": "TCP",
+                            "targetPort": 9800
+                        },
+                        {
+                            "name": "aio-mq-metrics-service",
+                            "port": 9600,
+                            "protocol": "TCP",
+                            "targetPort": 9600
+                        }
                     ]
                 }
             ),
@@ -147,24 +147,24 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 spec={
                     "clusterIP": "10.0.222.134",
                     "ports": [
-                      {
-                        "name": "bincode-listener-service",
-                        "port": 9700,
-                        "protocol": "TCP",
-                        "targetPort": 9700
-                      },
-                      {
-                        "name": "protobuf-listener-service",
-                        "port": 9800,
-                        "protocol": "TCP",
-                        "targetPort": 9800
-                      },
-                      {
-                        "name": "aio-mq-metrics-service",
-                        "port": 9600,
-                        "protocol": "TCP",
-                        "targetPort": 9600
-                      }
+                        {
+                            "name": "bincode-listener-service",
+                            "port": 9700,
+                            "protocol": "TCP",
+                            "targetPort": 9700
+                        },
+                        {
+                            "name": "protobuf-listener-service",
+                            "port": 9800,
+                            "protocol": "TCP",
+                            "targetPort": 9800
+                        },
+                        {
+                            "name": "aio-mq-metrics-service",
+                            "port": 9600,
+                            "protocol": "TCP",
+                            "targetPort": 9600
+                        }
                     ]
                 }
             ),
@@ -177,7 +177,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
             # evaluations
             [
                 [
-                    ("status", "error"), # error: no backendChain.redundancyFactor
+                    ("status", "error"),  # error: no backendChain.redundancyFactor
                     ("name", "mock-name"),
                     ("value/status/status", "Starting"),
                     ("value/spec.cardinality/backendChain/partitions", 1),
@@ -217,24 +217,24 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 spec={
                     "clusterIP": "10.0.222.134",
                     "ports": [
-                      {
-                        "name": "bincode-listener-service",
-                        "port": 9700,
-                        "protocol": "TCP",
-                        "targetPort": 9700
-                      },
-                      {
-                        "name": "protobuf-listener-service",
-                        "port": 9800,
-                        "protocol": "TCP",
-                        "targetPort": 9800
-                      },
-                      {
-                        "name": "aio-mq-metrics-service",
-                        "port": 9600,
-                        "protocol": "TCP",
-                        "targetPort": 9600
-                      }
+                        {
+                            "name": "bincode-listener-service",
+                            "port": 9700,
+                            "protocol": "TCP",
+                            "targetPort": 9700
+                        },
+                        {
+                            "name": "protobuf-listener-service",
+                            "port": 9800,
+                            "protocol": "TCP",
+                            "targetPort": 9800
+                        },
+                        {
+                            "name": "aio-mq-metrics-service",
+                            "port": 9600,
+                            "protocol": "TCP",
+                            "targetPort": 9600
+                        }
                     ]
                 }
             ),

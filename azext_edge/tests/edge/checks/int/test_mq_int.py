@@ -13,12 +13,10 @@ from azext_edge.edge.providers.edge_api import (
 )
 from .helpers import (
     assert_enumerate_resources,
-    assert_eval_core_service_runtime,
     assert_general_eval_custom_resources,
     run_check_command
 )
 from ....helpers import get_kubectl_custom_items
-from ....generators import generate_names
 
 logger = get_logger(__name__)
 
