@@ -228,6 +228,12 @@ def test_create_bundle(
                 label_selector=MQ_NAME_LABEL,
                 directory_path=MQ_DIRECTORY_PATH
             )
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=MQ_NAME_LABEL,
+                directory_path=MQ_DIRECTORY_PATH,
+            )
             assert_mq_stats(mocked_zipfile)
 
         if api in [OPCUA_API_V1]:
@@ -474,7 +480,7 @@ def test_create_bundle(
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=None,
+                label_selector=DATAFLOW_API_V1B1.label,
                 directory_path=DATAFLOW_API_V1B1.moniker,
                 mock_names=["aio-dataflow-operator"],
             )
