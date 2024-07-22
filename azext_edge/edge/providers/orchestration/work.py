@@ -237,16 +237,17 @@ class WorkManager:
                 self._connected_cluster = verify_cluster_and_use_location(self._kwargs)
                 verify_arc_cluster_config(self._connected_cluster)
 
-            # Always run this check
-            if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
-                raise ValidationError(error_msg="--kv-id is required when the Key Vault CSI driver is not installed.")
-
             # Pre-check segment
             if (
                 WorkCategoryKey.PRE_FLIGHT in self.display.categories
                 and not self.display.categories[WorkCategoryKey.PRE_FLIGHT][1]
             ):
                 self.render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
+
+                if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
+                    raise ValidationError(
+                        error_msg="--kv-id is required when the Key Vault CSI driver is not installed."
+                    )
 
                 # WorkStepKey.REG_RP
                 register_providers(**self._kwargs)

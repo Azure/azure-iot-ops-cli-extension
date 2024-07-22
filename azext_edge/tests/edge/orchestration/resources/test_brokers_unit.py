@@ -9,7 +9,7 @@ from typing import Optional
 import pytest
 import responses
 
-from azext_edge.edge.providers.orchestration.resources import Brokers
+from azext_edge.edge.commands_mq import list_brokers, show_broker
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
@@ -69,8 +69,12 @@ def test_broker_show(mocked_cmd, mocked_responses: responses):
         content_type="application/json",
     )
 
-    brokers = Brokers(mocked_cmd)
-    result = brokers.show(name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name)
+    result = show_broker(
+        cmd=mocked_cmd,
+        mq_broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
     assert result == mock_broker_record
     assert len(mocked_responses.calls) == 1
 
@@ -102,7 +106,6 @@ def test_broker_list(mocked_cmd, mocked_responses: responses, records: int):
         content_type="application/json",
     )
 
-    brokers = Brokers(mocked_cmd)
-    result = list(brokers.list(instance_name=instance_name, resource_group_name=resource_group_name))
+    result = list(list_brokers(cmd=mocked_cmd, instance_name=instance_name, resource_group_name=resource_group_name))
     assert result == mock_broker_records["value"]
     assert len(mocked_responses.calls) == 1

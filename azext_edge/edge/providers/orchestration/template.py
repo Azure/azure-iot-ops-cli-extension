@@ -309,7 +309,7 @@ V1_TEMPLATE = TemplateVer(
                         "mqttBroker.enabled": "true",
                         "mqttBroker.image.registry": "mqpreview.azurecr.io",
                         "mqttBroker.image.repository": "helm/mq",
-                        "mqttBroker.image.tag": "0.5.0-preview-rc6",
+                        "mqttBroker.image.tag": "0.5.0-preview-rc8",
                     },
                 },
                 "dependsOn": [
