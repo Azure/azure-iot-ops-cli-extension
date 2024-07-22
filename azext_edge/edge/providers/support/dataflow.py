@@ -23,7 +23,6 @@ logger = get_logger(__name__)
 
 DATAFLOW_NAME_LABEL = NAME_LABEL_FORMAT.format(label=DATAFLOW_API_V1B1.label)
 DATAFLOW_DIRECTORY_PATH = DATAFLOW_API_V1B1.moniker
-DATAFLOW_DEPLOYMENT_FIELD_SELECTOR = "metadata.name=aio-dataflow-operator"
 
 
 def fetch_deployments():
@@ -36,7 +35,7 @@ def fetch_deployments():
     processed.extend(
         process_deployments(
             directory_path=DATAFLOW_DIRECTORY_PATH,
-            field_selector=DATAFLOW_DEPLOYMENT_FIELD_SELECTOR,
+            label_selector=DATAFLOW_NAME_LABEL,
         )
     )
 
