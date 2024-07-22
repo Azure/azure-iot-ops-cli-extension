@@ -415,8 +415,8 @@ def test_broker_listener_checks(
     result = evaluate_broker_listeners(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalBrokerListeners"
-    assert namespace in result["targets"]["brokerlisteners.mq.iotoperations.azure.com"]
-    target = result["targets"]["brokerlisteners.mq.iotoperations.azure.com"][namespace]
+    assert namespace in result["targets"]["brokerlisteners.mqttbroker.iotoperations.azure.com"]
+    target = result["targets"]["brokerlisteners.mqttbroker.iotoperations.azure.com"][namespace]
 
     # conditions
     assert_conditions(target, conditions)
