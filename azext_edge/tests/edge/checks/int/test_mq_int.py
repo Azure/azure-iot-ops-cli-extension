@@ -24,7 +24,6 @@ logger = get_logger(__name__)
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("resource_kind", [None, MqResourceKinds.BROKER.value, MqResourceKinds.BROKER_LISTENER.value])
 # TODO: figure out if name match should be a general test vs each service (minimize test runs)
-# @pytest.mark.parametrize("resource_match", [None, "*dmqtt*", "aio-mq-*", "broker*", generate_names()])
 @pytest.mark.parametrize("resource_match", [None])
 def test_mq_check(init_setup, detail_level, resource_match, resource_kind):
     # resource_kinds = [MqResourceKinds.BROKER.value, MqResourceKinds.BROKER_LISTENER.value]
