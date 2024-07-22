@@ -20,6 +20,7 @@ from .base import (
     process_services,
     process_statefulset,
     process_v1_pods,
+    process_daemonsets,
 )
 from .shared import NAME_LABEL_FORMAT
 
@@ -86,6 +87,13 @@ def fetch_statefulsets():
     return processed
 
 
+def fetch_daemonsets():
+    return process_daemonsets(
+        directory_path=MQ_DIRECTORY_PATH,
+        label_selector=MQ_NAME_LABEL,
+    )
+
+
 def fetch_services():
     return process_services(
         directory_path=MQ_DIRECTORY_PATH,
@@ -123,6 +131,7 @@ support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
+    "daemonsets": fetch_daemonsets,
 }
 
 
