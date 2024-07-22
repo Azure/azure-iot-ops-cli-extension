@@ -50,7 +50,7 @@ class CheckTaskStatus(Enum):
 
     @classmethod
     def map_to_colored_emoji(cls, value) -> str:
-        return f"[{cls[value].color}]{cls[value].emoji}[{cls[value].color}]"
+        return f"[{cls[value].color}]{cls[value].emoji}[/{cls[value].color}]"
 
 
 class ResourceState(Enum):
