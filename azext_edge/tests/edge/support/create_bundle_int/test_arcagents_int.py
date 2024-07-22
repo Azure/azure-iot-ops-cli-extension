@@ -32,7 +32,7 @@ AGENT_RESOURCE_PREFIXES = {
 @pytest.mark.parametrize("include_arc_agents", [False, True])
 def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
-    ops_service = OpsServiceType.deviceregistry.value
+    ops_service = OpsServiceType.akri.value
 
     command = f"az iot ops support create-bundle --ops-service {ops_service} --arc-agents {include_arc_agents}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)

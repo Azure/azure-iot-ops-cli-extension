@@ -10,9 +10,6 @@ from zipfile import ZipInfo
 
 from knack.log import get_logger
 
-from azext_edge.edge.common import AIO_MQ_RESOURCE_PREFIX
-from azext_edge.edge.providers.edge_api.mq import MqResourceKinds
-
 from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
 from ..stats import get_stats, get_traces
 from .base import (
@@ -23,19 +20,12 @@ from .base import (
     process_services,
     process_statefulset,
     process_v1_pods,
+    process_daemonsets,
 )
 from .shared import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
-# TODO: @jiacju - will remove old labels once new labels are stabled
-MQ_APP_LABELS = [
-    "aio-mq-mqttbridge",
-    "aio-mq-datalake",
-    "aio-mq-kafka-connector",
-]
-
-MQ_LABEL = f"app in ({','.join(MQ_APP_LABELS)})"
 MQ_K8S_LABEL = "k8s-app in (aio-mq-fluent-bit)"
 
 MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_ACTIVE_API.label)
@@ -89,23 +79,6 @@ def fetch_statefulsets():
         return_namespaces=True,
     )
 
-    # bridge connector stateful sets have no labels
-    connectors = []
-    for kind in [
-        MqResourceKinds.DATALAKE_CONNECTOR,
-        MqResourceKinds.KAFKA_CONNECTOR,
-        MqResourceKinds.MQTT_BRIDGE_CONNECTOR,
-    ]:
-        connectors.extend(MQ_ACTIVE_API.get_resources(kind=kind).get("items", []))
-
-    for connector in connectors:
-        connector_name = connector.get("metadata", {}).get("name")
-        stateful_set = process_statefulset(
-            directory_path=MQ_DIRECTORY_PATH,
-            field_selector=f"metadata.name={AIO_MQ_RESOURCE_PREFIX}{connector_name}",
-        )
-        processed.extend(stateful_set)
-
     for namespace in namespaces:
         metrics = fetch_diagnostic_metrics(namespace)
         if metrics:
@@ -114,48 +87,32 @@ def fetch_statefulsets():
     return processed
 
 
-def fetch_services():
-    processed = process_services(
+def fetch_daemonsets():
+    return process_daemonsets(
         directory_path=MQ_DIRECTORY_PATH,
-        label_selector=MQ_LABEL,
-    )
-    processed.extend(
-        process_services(
-            directory_path=MQ_DIRECTORY_PATH,
-            label_selector=MQ_NAME_LABEL,
-        )
+        label_selector=MQ_NAME_LABEL,
     )
 
-    return processed
+
+def fetch_services():
+    return process_services(
+        directory_path=MQ_DIRECTORY_PATH,
+        label_selector=MQ_NAME_LABEL,
+    )
 
 
 def fetch_replicasets():
-    processed = process_replicasets(
+    return process_replicasets(
         directory_path=MQ_DIRECTORY_PATH,
-        label_selector=MQ_LABEL,
+        label_selector=MQ_NAME_LABEL,
     )
-    processed.extend(
-        process_replicasets(
-            directory_path=MQ_DIRECTORY_PATH,
-            label_selector=MQ_NAME_LABEL,
-        )
-    )
-
-    return processed
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     processed = process_v1_pods(
         directory_path=MQ_DIRECTORY_PATH,
-        label_selector=MQ_LABEL,
+        label_selector=MQ_NAME_LABEL,
         since_seconds=since_seconds,
-    )
-    processed.extend(
-        process_v1_pods(
-            directory_path=MQ_DIRECTORY_PATH,
-            label_selector=MQ_NAME_LABEL,
-            since_seconds=since_seconds,
-        )
     )
 
     # TODO: @jiacju - will remove once label decision is finalized
@@ -174,6 +131,7 @@ support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
+    "daemonsets": fetch_daemonsets,
 }
 
 

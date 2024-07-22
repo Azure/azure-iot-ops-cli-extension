@@ -50,7 +50,7 @@ class CheckTaskStatus(Enum):
 
     @classmethod
     def map_to_colored_emoji(cls, value) -> str:
-        return f"[{cls[value].color}]{cls[value].emoji}[{cls[value].color}]"
+        return f"[{cls[value].color}]{cls[value].emoji}[/{cls[value].color}]"
 
 
 class ResourceState(Enum):
@@ -145,9 +145,8 @@ class OpsServiceType(ListableEnum):
     orc = "orc"
     akri = "akri"
     deviceregistry = "deviceregistry"
+    billing = "billing"
     dataflow = "dataflow"
-    # TODO: re-enable billing once service is available post 0.6.0 release
-    # billing = "billing"
 
     @classmethod
     def list_check_services(cls):
