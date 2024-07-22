@@ -1,0 +1,22 @@
+apiVersion: connectivity.iotoperations.azure.com/v1beta1
+kind: DataflowEndpoint
+metadata:
+  name: dataflow-fabriconelake-endpoint
+  namespace: azure-iot-operations
+spec:
+  endpointType: FabricOneLake
+  fabricOneLakeSettings:
+    database: "database1"
+    host: "http://host.fabric.microsoft.com"
+    oneLakePathType: Tables
+    names:
+      lakehouseName: "lakehouse1"
+      workspaceName: "workspace1"
+    batching:
+      maxMessages: 123
+      latencySeconds: 7
+  authentication:
+    method: Sasl
+    saslSettings:
+      saslType: plain
+      tokenSecretName: secretz

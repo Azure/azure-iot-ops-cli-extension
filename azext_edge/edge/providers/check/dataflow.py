@@ -7,24 +7,17 @@
 from typing import Any, Dict, List
 
 from azure.cli.core.azclierror import CLIInternalError
+from knack.log import get_logger
 from rich.padding import Padding
 
 from azext_edge.edge.providers.check.base.pod import process_pod_status
 from azext_edge.edge.providers.check.base.resource import filter_resources_by_name
-from azext_edge.edge.providers.edge_api.dataflow import (
-    DATAFLOW_API_V1B1,
-    DataflowResourceKinds,
-)
+from azext_edge.edge.providers.edge_api.dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
 
 from ...common import CheckTaskStatus
 from ..base import get_namespaced_pods_by_prefix
 from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX
-from .base import (
-    CheckManager,
-    check_post_deployment,
-    get_resources_by_name,
-    get_resources_grouped_by_namespace,
-)
+from .base import CheckManager, check_post_deployment, get_resources_by_name, get_resources_grouped_by_namespace
 from .common import (
     PADDING_SIZE,
     CoreServiceResourceKinds,
@@ -32,6 +25,8 @@ from .common import (
     DataflowOperationType,
     ResourceOutputDetailLevel,
 )
+
+logger = get_logger(__name__)
 
 
 def check_dataflows_deployment(
@@ -84,9 +79,7 @@ def evaluate_core_service_runtime(
         )
 
     if not operators:
-        check_manager.add_target(
-            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value
-        )
+        check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value)
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)),
@@ -119,20 +112,17 @@ def evaluate_core_service_runtime(
     return check_manager.as_dict(as_list)
 
 
-def _process_dataflow_sourcesettings(check_manager: CheckManager, target: str, namespace: str, resource: dict):
-    padding = 8
+def _process_dataflow_sourcesettings(
+    check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
+):
     settings = resource.get("sourceSettings", {})
     data_sources = settings.get("dataSources", [])
     check_manager.add_display(
-        target_name=target,
-        namespace=namespace,
-        display=Padding("Data Sources", (0, 0, 0, padding))
+        target_name=target, namespace=namespace, display=Padding("Data Sources", (0, 0, 0, padding))
     )
     for data_source in data_sources:
         check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(f"- {data_source}", (0, 0, 0, padding))
+            target_name=target, namespace=namespace, display=Padding(f"- {data_source}", (0, 0, 0, padding + 2))
         )
     for label, key in [
         ("Dataflow Endpoint", "endpointRef"),
@@ -145,15 +135,13 @@ def _process_dataflow_sourcesettings(check_manager: CheckManager, target: str, n
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding(
-                f"{label}: {settings.get(key)}",
-                (0, 0, 0, padding)
-            )
+            display=Padding(f"{label}: {settings.get(key)}", (0, 0, 0, padding)),
         )
 
 
-def _process_dataflow_transformationsettings(check_manager: CheckManager, target: str, namespace: str, resource: dict):
-    padding = 8
+def _process_dataflow_transformationsettings(
+    check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
+):
     settings = resource.get("builtInTransformationSettings", {})
     # extra properties
     for label, key in [
@@ -164,25 +152,18 @@ def _process_dataflow_transformationsettings(check_manager: CheckManager, target
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding(
-                f"{label}: {settings.get(key)}",
-                (0, 0, 0, padding)
-            )
+            display=Padding(f"{label}: {settings.get(key)}", (0, 0, 0, padding)),
         )
-    
+
     datasets = settings.get("datasets", [])
     for dataset in datasets:
         inputs = dataset.get("inputs", [])
         check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding("Dataset Inputs", (0, 0, 0, padding))
+            target_name=target, namespace=namespace, display=Padding("Dataset Inputs:", (0, 0, 0, padding))
         )
         for input in inputs:
             check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"- {input}", (0, 0, 0, padding))
+                target_name=target, namespace=namespace, display=Padding(f"- {input}", (0, 0, 0, padding + 2))
             )
         for label, key in [
             ("Description", "description"),
@@ -194,26 +175,18 @@ def _process_dataflow_transformationsettings(check_manager: CheckManager, target
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-
-                display=Padding(
-                    f"{label}: {dataset.get(key)}",
-                    (0, 0, 0, padding)
-                )
+                display=Padding(f"{label}: {dataset.get(key)}", (0, 0, 0, padding)),
             )
 
     filters = settings.get("filter", [])
     for filter in filters:
         inputs = filter.get("inputs", [])
         check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding("Filter Inputs", (0, 0, 0, padding))
+            target_name=target, namespace=namespace, display=Padding("Filter Inputs:", (0, 0, 0, padding))
         )
         for input in inputs:
             check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"- {input}", (0, 0, 0, padding))
+                target_name=target, namespace=namespace, display=Padding(f"- {input}", (0, 0, 0, padding + 2))
             )
         for label, key in [
             ("Description", "description"),
@@ -224,26 +197,18 @@ def _process_dataflow_transformationsettings(check_manager: CheckManager, target
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-
-                display=Padding(
-                    f"{label}: {filter.get(key)}",
-                    (0, 0, 0, padding)
-                )
+                display=Padding(f"{label}: {filter.get(key)}", (0, 0, 0, padding)),
             )
 
     maps = settings.get("map", [])
     for map in maps:
         inputs = map.get("inputs", [])
         check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding("Map Inputs", (0, 0, 0, padding))
+            target_name=target, namespace=namespace, display=Padding("Map Inputs:", (0, 0, 0, padding))
         )
         for input in inputs:
             check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"- {input}", (0, 0, 0, padding))
+                target_name=target, namespace=namespace, display=Padding(f"- {input}", (0, 0, 0, padding + 2))
             )
         for label, key in [
             ("Description", "description"),
@@ -255,16 +220,13 @@ def _process_dataflow_transformationsettings(check_manager: CheckManager, target
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-
-                display=Padding(
-                    f"{label}: {filter.get(key)}",
-                    (0, 0, 0, padding)
-                )
+                display=Padding(f"{label}: {filter.get(key)}", (0, 0, 0, padding)),
             )
 
 
-def _process_dataflow_destinationsettings(check_manager: CheckManager, target: str, namespace: str, resource: dict):
-    padding = 8
+def _process_dataflow_destinationsettings(
+    check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
+):
     settings = resource.get("destinationSettings", {})
     for label, key in [
         ("Data Destination", "dataDestination"),
@@ -274,11 +236,7 @@ def _process_dataflow_destinationsettings(check_manager: CheckManager, target: s
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-
-            display=Padding(
-                f"{label}: {settings.get(key)}",
-                (0, 0, 0, padding)
-            )
+            display=Padding(f"{label}: {settings.get(key)}", (0, 0, 0, padding)),
         )
 
 
@@ -300,9 +258,24 @@ def evaluate_dataflows(
     for namespace, dataflows in get_resources_grouped_by_namespace(all_dataflows):
         check_manager.add_target(target_name=target, namespace=namespace)
         padding = 8
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"Dataflows in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, padding)
+            )
+        )
         for dataflow in list(dataflows):
+            padding = 8
             spec = dataflow.get("spec", {})
-
+            dataflow_name = dataflow.get("metadata", {}).get("name")
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"\n- Dataflow: {dataflow_name}", (0, 0, 0, padding)),
+            )
+            padding += 2
             for label, key in [
                 ("Mode", "mode"),
                 ("Dataflow Profile", "profileRef"),
@@ -311,10 +284,7 @@ def evaluate_dataflows(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(
-                        f"{label}: {spec.get(key)}",
-                        (0, 0, 0, padding)
-                    )
+                    display=Padding(f"{label}: {spec.get(key)}", (0, 0, 0, padding)),
                 )
 
             operations = spec.get("operations", [])
@@ -323,14 +293,23 @@ def evaluate_dataflows(
                 # TODO - enumerate source/transform/destination
                 DataflowOperationType.source.value: _process_dataflow_sourcesettings,
                 DataflowOperationType.builtin_transformation.value: _process_dataflow_transformationsettings,
-                DataflowOperationType.destination.value: _process_dataflow_destinationsettings
+                DataflowOperationType.destination.value: _process_dataflow_destinationsettings,
             }
 
             for operation in operations:
-                op_type = operation.get('operationType')
-                if op_type not in processor_dict:
+                # TODO - "Dataflow must have 3 operations max"
+                # TODO - "Dataflow must have a local MQ source or a local MQ target."
+                op_type = operation.get("operationType")
+                if op_type and op_type.lower() not in processor_dict:
                     raise CLIInternalError(f"Invalid operation type {op_type}")
-                processor_dict[op_type](check_manager=check_manager, target=target, namespace=namespace, resource=operation)
+                processor_dict[op_type.lower()](
+                    check_manager=check_manager,
+                    target=target,
+                    namespace=namespace,
+                    resource=operation,
+                    detail_level=detail_level,
+                    padding=padding,
+                )
 
         # TODO - determine status
         check_manager.set_target_status(
@@ -342,9 +321,8 @@ def evaluate_dataflows(
 
 
 def _process_endpoint_mqttsettings(
-    check_manager: CheckManager, target: str, namespace: str, spec: dict
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
 ) -> None:
-    padding = 8
     settings = spec.get("mqttSettings", {})
     for label, key in [
         ("Client ID Prefix", "clientIdPrefix"),
@@ -381,9 +359,8 @@ def _process_endpoint_mqttsettings(
 
 
 def _process_endpoint_kafkasettings(
-    check_manager: CheckManager, target: str, namespace: str, spec: dict
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
 ) -> None:
-    padding = 8
     settings = spec.get("kafkaSettings", {})
 
     for label, key in [
@@ -438,9 +415,8 @@ def _process_endpoint_kafkasettings(
 
 
 def _process_endpoint_fabriconelakesettings(
-    check_manager: CheckManager, target: str, namespace: str, spec: dict
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
 ) -> None:
-    padding = 8
     settings = spec.get("fabricOneLakeSettings", {})
     for label, key in [("Fabric Host", "host"), ("Path Type", "oneLakePathType")]:
         check_manager.add_display(
@@ -480,9 +456,8 @@ def _process_endpoint_fabriconelakesettings(
 
 
 def _process_endpoint_datalakestoragesettings(
-    check_manager: CheckManager, target: str, namespace: str, spec: dict
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
 ) -> None:
-    padding = 8
     settings = spec.get("datalakestoragesettings", {})
     for label, key in [("DataLake Host", "host")]:
         check_manager.add_display(
@@ -511,9 +486,8 @@ def _process_endpoint_datalakestoragesettings(
 
 
 def _process_endpoint_dataexplorersettings(
-    check_manager: CheckManager, target: str, namespace: str, spec: dict
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
 ) -> None:
-    padding = 8
     settings = spec.get("dataexplorersettings", {})
     for label, key in [("Database Name", "database"), ("Data Explorer Host", "host")]:
         check_manager.add_display(
@@ -542,7 +516,7 @@ def _process_endpoint_dataexplorersettings(
 
 
 def _process_endpoint_localstoragesettings(
-    check_manager: CheckManager, target: str, namespace: str, spec: dict
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
 ) -> None:
     # TODO - validate reference
     settings = spec.get("localStorageSettings", {})
@@ -550,9 +524,7 @@ def _process_endpoint_localstoragesettings(
     check_manager.add_display(
         target_name=target,
         namespace=namespace,
-        display=Padding(
-            f"Persistent Volume Claim: {persistent_volume_claim}", (0, 0, 0, 8)
-        ),
+        display=Padding(f"Persistent Volume Claim: {persistent_volume_claim}", (0, 0, 0, padding)),
     )
 
 
@@ -572,11 +544,27 @@ def evaluate_dataflow_endpoints(
     )
     target = "dataflowendpoints.connectivity.iotoperations.azure.com"
     for namespace, endpoints in get_resources_grouped_by_namespace(all_endpoints):
+        padding = 8
         check_manager.add_target(target_name=target, namespace=namespace)
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"Dataflow Endpoints in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 8)
+            )
+        )
         for endpoint in list(endpoints):
+            padding = 8
             spec = endpoint.get("spec", {})
+            endpoint_name = endpoint.get("metadata", {}).get("name")
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"\n- Endpoint: {endpoint_name}", (0, 0, 0, padding)),
+            )
             # TODO - figure out status
-
+            padding += 2
             endpoint_type = spec.get("endpointType")
             endpoint_processor_dict = {
                 DataflowEndpointType.mqtt.value: _process_endpoint_mqttsettings,
@@ -587,14 +575,10 @@ def evaluate_dataflow_endpoints(
                 DataflowEndpointType.local_storage.value: _process_endpoint_localstoragesettings,
             }
             # process endpoint settings
-            if endpoint_type not in endpoint_processor_dict:
-                raise CLIInternalError(
-                    f"Unknown dataflow endpoint type: {endpoint_type}"
-                )
+            if endpoint_type and endpoint_type.lower() not in endpoint_processor_dict:
+                logger.warn(f"Unknown dataflow endpoint type: {endpoint_type}")
 
-            endpoint_processor_dict[endpoint_type](
-                check_manager, target, namespace, spec
-            )
+            endpoint_processor_dict[endpoint_type.lower()](check_manager=check_manager, target=target, namespace=namespace, spec=spec, detail_level=detail_level, padding=padding)
 
             # endpoint auth
             auth = spec.get("authentication", {})
@@ -602,7 +586,7 @@ def evaluate_dataflow_endpoints(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"Authentication Method: {auth_method}", (0, 0, 0, 0)),
+                display=Padding(f"Authentication Method: {auth_method}", (0, 0, 0, padding)),
             )
 
         check_manager.set_target_status(
@@ -631,8 +615,24 @@ def evaluate_dataflow_profiles(
     target = "dataflowprofiles.connectivity.iotoperations.azure.com"
     for namespace, profiles in get_resources_grouped_by_namespace(all_profiles):
         check_manager.add_target(target_name=target, namespace=namespace)
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"Dataflow Profiles in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, 8)
+            )
+        )
         for profile in list(profiles):
+            padding = 8
             spec = profile.get("spec", {})
+            profile_name = profile.get("metadata", {}).get("name")
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"\n- Profile: {profile_name}", (0, 0, 0, padding)),
+            )
+            padding += 4
             # TODO - figure out status
             for label, key in [
                 ("Instance Count", "instanceCount"),
@@ -641,23 +641,23 @@ def evaluate_dataflow_profiles(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {spec.get(key)}", (0, 0, 0, 8)),
+                    display=Padding(f"{label}: {spec.get(key)}", (0, 0, 0, padding)),
                 )
             diagnostics = spec.get("diagnostics", {})
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding("Diagnostic Logs", (0, 0, 0, 8)),
+                display=Padding("Diagnostic Logs:", (0, 0, 0, padding)),
             )
             diagnostic_logs = diagnostics.get("logs", {})
             diagnostic_log_level = diagnostic_logs.get("level")
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"Log Level: {diagnostic_log_level}", (0, 0, 0, 12)),
+                display=Padding(f"Log Level: {diagnostic_log_level}", (0, 0, 0, padding + 4)),
             )
             diagnostic_log_otelconfig = diagnostic_logs.get("openTelemetryExportConfig", {})
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             for label, key in [
                 ("Endpoint", "otlpGrpcEndpoint"),
                 ("Interval (s)", "intervalSeconds"),
@@ -666,23 +666,19 @@ def evaluate_dataflow_profiles(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(
-                        f"{label}: {diagnostic_log_otelconfig.get(key)}", (0, 0, 0, 12)
-                    ),
+                    display=Padding(f"{label}: {diagnostic_log_otelconfig.get(key)}", (0, 0, 0, padding + 4)),
                 )
             diagnostic_metrics = diagnostics.get("metrics", {})
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding("Diagnostic Metrics", (0, 0, 0, 8)),
+                display=Padding("Diagnostic Metrics:", (0, 0, 0, padding)),
             )
             diagnostic_metrics_prometheusPort = diagnostic_metrics.get("prometheusPort")
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(
-                    f"Prometheus Port: {diagnostic_metrics_prometheusPort}", (0, 0, 0, 12)
-                ),
+                display=Padding(f"Prometheus Port: {diagnostic_metrics_prometheusPort}", (0, 0, 0, padding + 4)),
             )
             diagnostic_metrics_otelconfig = diagnostic_metrics.get("openTelemetryExportConfig", {})
             for label, key in [
@@ -692,9 +688,7 @@ def evaluate_dataflow_profiles(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(
-                        f"{label}: {diagnostic_metrics_otelconfig.get(key)}", (0, 0, 0, 12)
-                    ),
+                    display=Padding(f"{label}: {diagnostic_metrics_otelconfig.get(key)}", (0, 0, 0, padding + 4)),
                 )
 
             # TODO - determine status

@@ -122,9 +122,9 @@ class DataflowOperationType(ListableEnum):
     Dataflow Profile Operation Type:
     """
 
-    source = "Source"
-    destination = "Destination"
-    builtin_transformation = "BuiltInTransformation"
+    source = "source"
+    destination = "destination"
+    builtin_transformation = "builtintransformation"
 
 
 class DataflowEndpointType(ListableEnum):
@@ -132,12 +132,12 @@ class DataflowEndpointType(ListableEnum):
     Dataflow Endpoint Type:
     """
 
-    data_explorer = "DataExplorer"
-    datalake = "DataLakeStorage"
-    fabric_onelake = "FabricOneLake"
-    kafka = "Kafka"
-    local_storage = "LocalStorage"
-    mqtt = "Mqtt"
+    data_explorer = "dataexplorer"
+    datalake = "datalakestorage"
+    fabric_onelake = "fabriconelake"
+    kafka = "kafka"
+    local_storage = "localstorage"
+    mqtt = "mqtt"
 
 
 # Akri runtime attributes
