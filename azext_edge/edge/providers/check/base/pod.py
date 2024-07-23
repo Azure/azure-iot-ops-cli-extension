@@ -159,7 +159,7 @@ def process_pod_status(
             # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
             for condition, reason in conditions_display_list:
                 condition_not_ready = condition.endswith("[red]False[/red]")
-                if (detail_level == ResourceOutputDetailLevel.detail.value and status != condition_not_ready) or\
+                if (detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready) or\
                  detail_level == ResourceOutputDetailLevel.verbose.value:
                     check_manager.add_display(
                         target_name=target,
