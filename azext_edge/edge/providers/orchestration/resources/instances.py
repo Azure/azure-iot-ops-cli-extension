@@ -50,7 +50,7 @@ class Instances(Queryable):
         return self.iotops_mgmt_client.instance.list_by_subscription()
 
     def _show_tree(self, instance: dict):
-        custom_location = self._get_associated_cl(instance)
+        custom_location = self.get_associated_cl(instance)
         if not custom_location:
             logger.warning("Unable to process the resource tree.")
             return
@@ -69,7 +69,7 @@ class Instances(Queryable):
             )
         print(resource_map.build_tree(category_color="cyan"))
 
-    def _get_associated_cl(self, instance: dict) -> dict:
+    def get_associated_cl(self, instance: dict) -> dict:
         return self.query(
             QUERIES["get_cl_from_instance"].format(resource_id=instance["extendedLocation"]["name"]), first=True
         )

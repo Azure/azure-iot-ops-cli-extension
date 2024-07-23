@@ -11,7 +11,7 @@ from typing import Optional
 import pytest
 import responses
 
-from azext_edge.edge.providers.orchestration.resources import Instances
+from azext_edge.edge.commands_edge import list_instances, show_instance, update_instance
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
@@ -45,8 +45,8 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
         content_type="application/json",
     )
 
-    instances = Instances(mocked_cmd)
-    result = instances.show(name=instance_name, resource_group_name=resource_group_name)
+    result = show_instance(cmd=mocked_cmd, instance_name=instance_name, resource_group_name=resource_group_name)
+
     assert result == mock_instance_record
     assert len(mocked_responses.calls) == 1
 
@@ -76,8 +76,8 @@ def test_instance_list(mocked_cmd, mocked_responses: responses, resource_group_n
         content_type="application/json",
     )
 
-    instances = Instances(mocked_cmd)
-    result = list(instances.list(resource_group_name=resource_group_name))
+    result = list(list_instances(cmd=mocked_cmd, resource_group_name=resource_group_name))
+
     assert result == mock_instance_records["value"]
     assert len(mocked_responses.calls) == 1
 
@@ -111,12 +111,12 @@ def test_instance_update(mocked_cmd, mocked_responses: responses, description: O
         content_type="application/json",
     )
 
-    instances = Instances(mocked_cmd)
-    result = instances.update(
-        name=instance_name,
+    result = update_instance(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
         resource_group_name=resource_group_name,
         tags=tags,
-        description=description,
+        instance_description=description,
         wait_sec=0.5,
     )
     assert result == mock_instance_record

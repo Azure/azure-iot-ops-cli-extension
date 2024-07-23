@@ -277,7 +277,7 @@ def test_init_to_template_params(
         expected_char_set = string.ascii_lowercase + string.ascii_uppercase + string.digits
         for c in split_custom_location_name[1]:
             assert c in expected_char_set
-        parameters["customLocationName"]["value"].endswith("-ops-init-cli")
+        assert parameters["customLocationName"]["value"].endswith("-ops-init-cl")
 
     if simulate_plc:
         assert "simulatePLC" in parameters and parameters["simulatePLC"]["value"] is True

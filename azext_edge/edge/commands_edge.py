@@ -276,7 +276,12 @@ def update_instance(
     resource_group_name: str,
     tags: Optional[str] = None,
     instance_description: Optional[str] = None,
+    **kwargs,
 ) -> dict:
     return Instances(cmd).update(
-        name=instance_name, resource_group_name=resource_group_name, tags=tags, description=instance_description
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        tags=tags,
+        description=instance_description,
+        **kwargs,
     )
