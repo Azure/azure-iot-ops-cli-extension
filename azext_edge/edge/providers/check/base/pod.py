@@ -81,11 +81,7 @@ def process_pod_status(
 
         pod_conditions = [
             f"{target_service_pod}.status.phase",
-            f"{target_service_pod}.status.conditions.ready",
-            f"{target_service_pod}.status.conditions.initialized",
-            f"{target_service_pod}.status.conditions.containersready",
-            f"{target_service_pod}.status.conditions.podscheduled",
-            f"{target_service_pod}.status.conditions.podreadytostartcontainers",
+            f"{target_service_pod}.status.conditions",
         ]
 
         if check_manager.targets.get(target, {}).get(namespace, {}).get("conditions", None):
@@ -99,13 +95,9 @@ def process_pod_status(
         pod_conditions = pod_dict.get("status", {}).get("conditions", [])
         pod_phase_deco, status = decorate_pod_phase(pod_phase)
 
-        check_manager.add_target_eval(
-            target_name=target,
-            namespace=namespace,
-            status=status,
-            resource_name=target_service_pod,
-            value={"name": pod_name, "status.phase": pod_phase},
-        )
+        pod_eval_value = {}
+        pod_eval_status = status
+        pod_eval_value["status.phase"] = pod_phase
 
         for text in [
             f"\nPod {{[bright_blue]{pod_name}[/bright_blue]}}",
@@ -121,40 +113,62 @@ def process_pod_status(
 
         # When pod in obnormal state, sometimes the conditions are not available
         if pod_conditions:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding("- Conditions:", (0, 0, 0, padding)),
-            )
+            conditions_readiness = True
 
             for condition in pod_conditions:
                 type = condition["type"]
                 condition_type = POD_CONDITION_TEXT_MAP[type]
                 condition_status = condition.get("status") == "True"
+                conditions_readiness = conditions_readiness and condition_status
                 pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
+                conditions_display_list: List[Tuple[str, str]] = []
 
-                add_display_and_eval(
-                    check_manager=check_manager,
-                    target_name=target,
-                    display_text=f"{condition_type}: {pod_condition_deco}",
-                    eval_status=status,
-                    eval_value={"name": pod_name, f"status.conditions.{type.lower()}": condition_status},
-                    resource_name=target_service_pod,
-                    namespace=namespace,
-                    padding=(0, 0, 0, display_padding + 8)
-                )
-
-                if detail_level > ResourceOutputDetailLevel.summary.value:
+                # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
+                if (detail_level == ResourceOutputDetailLevel.detail.value and status != CheckTaskStatus.success.value) or\
+                 detail_level == ResourceOutputDetailLevel.verbose.value:
+                    formatted_reason = ""
                     condition_reason = condition.get("message", "")
 
                     if condition_reason:
                         # remove the [ and ] to prevent console not printing the text
-                        formatted_reason = condition_reason.replace("[", "\\[")
+                        condition_reason = condition_reason.replace("[", "\\[")
+                        formatted_reason = f"[red]Reason: {condition_reason}[/red]"
+                    
+                    # TODO: debug
+                    conditions_display_list.append(
+                        (f"{condition_type}: {pod_condition_deco}", formatted_reason)
+                    )
+
+                pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
+            
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding("- Conditions: [green]Ready[/green]" if conditions_readiness else "- Conditions: [red]Not Ready[/red]", (0, 0, 0, padding)),
+            )
+
+            if detail_level > ResourceOutputDetailLevel.summary.value:
+                for condition, reason in conditions_display_list:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(condition, (0, 0, 0, padding + 4)),
+                    )
+
+                    if reason:
                         check_manager.add_display(
                             target_name=target,
                             namespace=namespace,
-                            display=Padding(
-                                f"[red]Reason: {formatted_reason}[/red]",
-                                (0, 0, 0, display_padding + 8),
-                            ),
+                            display=Padding(reason, (0, 0, 0, padding + 8)),
                         )
+            
+        if not conditions_readiness:
+            pod_eval_status = CheckTaskStatus.error.value
+        
+        check_manager.add_target_eval(
+            target_name=target,
+            status=pod_eval_status,
+            value=pod_eval_value,
+            namespace=namespace,
+            resource_name=target_service_pod,
+        )
