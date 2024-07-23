@@ -23,6 +23,7 @@ principal arguments will be auto-populated during the workflow run.
     - `custom-locations-oid`: `string` - Custom Locations OID
     - `runtime-init-args`: `string` - Additional init arguments (beyond cluster name, resource group,
       key vault, and service principal arguments)
+    - `init-continue-on-error`: `bool` - Continue on error for init integration tests
     - `use-container`: `bool` - Build container image for tests
 - ### [Cluster Cleanup](cluster_cleanup.yml)
 Used to clean up a resource group after AIO deployment testing.

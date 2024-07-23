@@ -52,7 +52,7 @@ on:
         required: false
         default: ''
       init-continue-on-error:
-        description: Continue on error for init integration tests.
+        description: Continue on error for init integration tests
         type: boolean
         required: false
         default: true

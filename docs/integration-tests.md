@@ -104,6 +104,7 @@ There are, however, some prerequisites and caveats that users should be made awa
 **resource-group** | *The resource group to run tests in*
 **custom-locations-oid** | *Custom Locations Object ID - used to enable cluster-connect feature.*
 **runtime-init-args** | *Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments)*
+**init-continue-on-error** | *Continue on error for init integration tests.*
 **use-container** | *Build container image for tests*
 
 ### Example workflow
