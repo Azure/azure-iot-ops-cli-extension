@@ -249,12 +249,6 @@ def evaluate_dataflow_endpoints(
                 display=Padding(f"Authentication Method: {auth_method}", (0, 0, 0, padding)),
             )
 
-        check_manager.set_target_status(
-            target_name=target,
-            namespace=namespace,
-            status=CheckTaskStatus.success.value,
-        )
-
         check_manager.add_target_eval(
             target_name=target,
             namespace=namespace,

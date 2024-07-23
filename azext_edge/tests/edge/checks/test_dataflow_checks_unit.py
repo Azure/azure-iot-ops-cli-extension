@@ -80,7 +80,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
         ),
         # no dataflows
         (
-            # configurations
+            # dataflows
             [],
             # conditions
             [],
@@ -118,6 +118,211 @@ def test_evaluate_dataflows(
 
     for namespace in target:
         assert namespace in result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
+
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
+        assert_conditions(target[namespace], conditions)
+        assert_evaluations(target[namespace], evaluations)
+
+
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", ["endpoint*", "endpoint-?", "*point-?"])
+@pytest.mark.parametrize(
+    "endpoints, conditions, evaluations",
+    [
+        (
+            # endpoints
+            [
+                {
+                    "metadata": {
+                        "name": "endpoint-1",
+                    },
+                    "spec": {
+                        "endpointType": "kafka",
+                        "authentication": {
+                            "method": "authMethod"
+                        }
+                    }
+                },
+                {
+                    "metadata": {
+                        "name": "endpoint-2",
+                    },
+                    "spec": {
+                        "endpointType": "localstorage",
+                        "authentication": {
+                            "method": "authMethod"
+                        }
+                    }
+                },
+                {
+                    "metadata": {
+                        "name": "endpoint-3",
+                    },
+                    "spec": {
+                        "endpointType": "fabriconelake",
+                        "authentication": {
+                            "method": "authMethod"
+                        }
+                    }
+                },
+                {
+                    "metadata": {
+                        "name": "endpoint-4",
+                    },
+                    "spec": {
+                        "endpointType": "datalakestorage",
+                        "authentication": {
+                            "method": "authMethod"
+                        }
+                    }
+                },
+                {
+                    "metadata": {
+                        "name": "endpoint-5",
+                    },
+                    "spec": {
+                        "endpointType": "localstorage",
+                        "authentication": {
+                            "method": "authMethod"
+                        }
+                    }
+                },
+                {
+                    "metadata": {
+                        "name": "endpoint-6",
+                    },
+                    "spec": {
+                        "endpointType": "mqtt",
+                        "authentication": {
+                            "method": "authMethod"
+                        }
+                    }
+                },
+            ],
+            # conditions
+            [
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                ],
+            ],
+        ),
+        # no endpoints
+        (
+            # endpoints
+            [],
+            # conditions
+            [],
+            # evaluations
+            [
+                [
+                    ("status", "skipped"),
+                    ("value/endpoints", "No Dataflow Endpoints detected in any namespace."),
+                ]
+            ],
+        ),
+    ],
+)
+def test_evaluate_dataflow_endpoints(
+    mocker,
+    endpoints,
+    conditions,
+    evaluations,
+    detail_level,
+    resource_name,
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": endpoints}],
+    )
+
+    namespace = generate_random_string()
+    for endpoint in endpoints:
+        endpoint['metadata']['namespace'] = namespace
+    result = evaluate_dataflow_endpoints(detail_level=detail_level, resource_name=resource_name)
+
+    assert result["name"] == "evalDataflowEndpoints"
+    assert result["targets"]["dataflowendpoints.connectivity.iotoperations.azure.com"]
+    target = result["targets"]["dataflowendpoints.connectivity.iotoperations.azure.com"]
+
+    for namespace in target:
+        assert namespace in result["targets"]["dataflowendpoints.connectivity.iotoperations.azure.com"]
+
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
+        assert_conditions(target[namespace], conditions)
+        assert_evaluations(target[namespace], evaluations)
+
+
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", ["profile*", "profile-?", "*-1"])
+@pytest.mark.parametrize(
+    "profiles, conditions, evaluations",
+    [
+        (
+            # profiles
+            [
+                {
+                    "metadata": {
+                        "name": "profile-1",
+                    },
+                    "spec": {
+                        "mode": "Enabled",
+                        "profileRef": "dataflow-profile-1"
+                    }
+                }
+            ],
+            # conditions
+            [
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                ],
+            ],
+        ),
+        # no profiles
+        (
+            # profiles
+            [],
+            # conditions
+            [],
+            # evaluations
+            [
+                [
+                    ("status", "skipped"),
+                    ("value/profiles", "No Dataflow Profiles detected in any namespace."),
+                ]
+            ],
+        ),
+    ],
+)
+def test_evaluate_dataflow_profiles(
+    mocker,
+    profiles,
+    conditions,
+    evaluations,
+    detail_level,
+    resource_name,
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": profiles}],
+    )
+
+    namespace = generate_random_string()
+    for endpoint in profiles:
+        endpoint['metadata']['namespace'] = namespace
+    result = evaluate_dataflow_profiles(detail_level=detail_level, resource_name=resource_name)
+
+    assert result["name"] == "evalDataflowProfiles"
+    assert result["targets"]["dataflowprofiles.connectivity.iotoperations.azure.com"]
+    target = result["targets"]["dataflowprofiles.connectivity.iotoperations.azure.com"]
+
+    for namespace in target:
+        assert namespace in result["targets"]["dataflowprofiles.connectivity.iotoperations.azure.com"]
 
         target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], conditions)
