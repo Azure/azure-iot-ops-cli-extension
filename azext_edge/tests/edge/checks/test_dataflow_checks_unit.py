@@ -1,0 +1,196 @@
+# coding=utf-8
+# ----------------------------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License file in the project root for license information.
+# ----------------------------------------------------------------------------------------------
+
+
+import pytest
+from azext_edge.edge.providers.check.dataflow import (
+    evaluate_dataflow_endpoints,
+    evaluate_core_service_runtime,
+    evaluate_dataflow_profiles,
+    evaluate_dataflows,
+)
+from azext_edge.edge.providers.check.common import (
+    CoreServiceResourceKinds,
+    ResourceOutputDetailLevel
+)
+from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
+
+from .conftest import (
+    assert_check_by_resource_types,
+    assert_conditions,
+    assert_evaluations,
+    generate_pod_stub,
+)
+from ...generators import generate_random_string
+
+
+@pytest.mark.parametrize(
+    "resource_kinds",
+    [
+        None,
+        [],
+        [DataflowResourceKinds.DATAFLOW.value],
+        [DataflowResourceKinds.DATAFLOW.value, DataflowResourceKinds.DATAFLOWENDPOINT.value],
+        [DataflowResourceKinds.DATAFLOW.value, DataflowResourceKinds.DATAFLOWENDPOINT.value, DataflowResourceKinds.DATAFLOWPROFILE.value],
+    ],
+)
+@pytest.mark.parametrize('ops_service', ['dataflow'])
+def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
+    eval_lookup = {
+        CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
+            "azext_edge.edge.providers.check.dataflow.evaluate_core_service_runtime",
+        DataflowResourceKinds.DATAFLOW.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflows",
+        DataflowResourceKinds.DATAFLOWENDPOINT.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_endpoints",
+        DataflowResourceKinds.DATAFLOWPROFILE.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_profiles",
+    }
+
+    assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
+
+
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", ["dataflow*", "dataflow-?", "*-1"])
+@pytest.mark.parametrize(
+    "dataflows, conditions, evaluations",
+    [
+        (
+            # dataflows
+            [
+                {
+                    "metadata": {
+                        "name": "dataflow-1",
+                    },
+                    "spec": {
+                        "mode": "Enabled",
+                        "profileRef": "dataflow-profile-1"
+                    }
+                }
+            ],
+            # conditions
+            [
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                ],
+            ],
+        ),
+        # no dataflows
+        (
+            # configurations
+            [],
+            # conditions
+            [],
+            # evaluations
+            [
+                [
+                    ("status", "skipped"),
+                    ("value/dataflows", "No Dataflow resources detected in any namespace."),
+                ]
+            ],
+        ),
+    ],
+)
+def test_evaluate_dataflows(
+    mocker,
+    dataflows,
+    conditions,
+    evaluations,
+    detail_level,
+    resource_name,
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": dataflows}],
+    )
+
+    namespace = generate_random_string()
+    for dataflow in dataflows:
+        dataflow['metadata']['namespace'] = namespace
+    result = evaluate_dataflows(detail_level=detail_level, resource_name=resource_name)
+
+    assert result["name"] == "evalDataflows"
+    assert result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
+    target = result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
+
+    for namespace in target:
+        assert namespace in result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
+
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
+        assert_conditions(target[namespace], conditions)
+        assert_evaluations(target[namespace], evaluations)
+
+
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("resource_name", [None, "aio-dataflow-*", ])
+@pytest.mark.parametrize(
+    "pods, namespace_conditions, namespace_evaluations",
+    [
+        (
+            # pods
+            [
+                generate_pod_stub(
+                    name="aio-dataflow-operator-12345",
+                    phase="Running",
+                )
+            ],
+            # namespace conditions str
+            [],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "success"),
+                    ("value/status.phase", "Running"),
+                ],
+            ]
+        ),
+        (
+            # pods
+            [
+                generate_pod_stub(
+                    name="aio-dataflow-operator-12345",
+                    phase="Failed",
+                )
+            ],
+            # namespace conditions str
+            [],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "error")
+                ],
+            ]
+        ),
+    ]
+)
+def test_evaluate_core_service_runtime(
+    mocker,
+    pods,
+    namespace_conditions,
+    namespace_evaluations,
+    detail_level,
+    resource_name,
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.check.dataflow.get_namespaced_pods_by_prefix",
+        return_value=pods,
+    )
+
+    namespace = generate_random_string()
+    for pod in pods:
+        pod.metadata.namespace = namespace
+    result = evaluate_core_service_runtime(detail_level=detail_level, resource_name=resource_name)
+
+    assert result["name"] == "evalDataflowRuntime"
+    assert result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
+    target = result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
+
+    for namespace in target:
+        assert namespace in result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
+
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
+        assert_conditions(target[namespace], namespace_conditions)
+        assert_evaluations(target[namespace], namespace_evaluations)

@@ -125,6 +125,20 @@ def evaluate_dataflows(
         resource_name=resource_name,
     )
     target = "dataflows.connectivity.iotoperations.azure.com"
+    padding = 8
+    if not all_dataflows:
+        no_dataflows_text = "No Dataflow resources detected in any namespace."
+        check_manager.add_target(target_name=target)
+        check_manager.add_target_eval(
+            target_name=target,
+            status=CheckTaskStatus.skipped.value,
+            value={"dataflows": no_dataflows_text}
+        )
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(no_dataflows_text, (0, 0, 0, padding)),
+        )
+        return check_manager.as_dict(as_list=as_list)
     for namespace, dataflows in get_resources_grouped_by_namespace(all_dataflows):
         check_manager.add_target(target_name=target, namespace=namespace)
         padding = 8
@@ -158,13 +172,13 @@ def evaluate_dataflows(
                     namespace=namespace,
                     display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
                 )
-
-        # TODO - determine status
-        check_manager.set_target_status(
-            target_name=target,
-            namespace=namespace,
-            status=CheckTaskStatus.success.value,
-        )
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=CheckTaskStatus.success.value,
+                resource_name=dataflow_name,
+                resource_kind=DataflowResourceKinds.DATAFLOW.value,
+            )
     return check_manager.as_dict(as_list=as_list)
 
 
@@ -183,6 +197,20 @@ def evaluate_dataflow_endpoints(
         resource_name=resource_name,
     )
     target = "dataflowendpoints.connectivity.iotoperations.azure.com"
+    padding = 8
+    if not all_endpoints:
+        no_endpoints_text = "No Dataflow Endpoints detected in any namespace."
+        check_manager.add_target(target_name=target)
+        check_manager.add_target_eval(
+            target_name=target,
+            status=CheckTaskStatus.skipped.value,
+            value={"endpoints": no_endpoints_text}
+        )
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(no_endpoints_text, (0, 0, 0, padding)),
+        )
+        return check_manager.as_dict(as_list=as_list)
     for namespace, endpoints in get_resources_grouped_by_namespace(all_endpoints):
         padding = 8
         check_manager.add_target(target_name=target, namespace=namespace)
@@ -227,6 +255,13 @@ def evaluate_dataflow_endpoints(
             status=CheckTaskStatus.success.value,
         )
 
+        check_manager.add_target_eval(
+            target_name=target,
+            namespace=namespace,
+            status=CheckTaskStatus.success.value,
+            resource_name=endpoint_name,
+            resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
+        )
     return check_manager.as_dict(as_list=as_list)
 
 
@@ -245,6 +280,20 @@ def evaluate_dataflow_profiles(
         resource_name=resource_name,
     )
     target = "dataflowprofiles.connectivity.iotoperations.azure.com"
+    padding = 8
+    if not all_profiles:
+        no_profiles_text = "No Dataflow Profiles detected in any namespace."
+        check_manager.add_target(target_name=target)
+        check_manager.add_target_eval(
+            target_name=target,
+            status=CheckTaskStatus.skipped.value,
+            value={"profiles": no_profiles_text}
+        )
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(no_profiles_text, (0, 0, 0, padding)),
+        )
+        return check_manager.as_dict(as_list=as_list)
     for namespace, profiles in get_resources_grouped_by_namespace(all_profiles):
         padding = 8
         check_manager.add_target(target_name=target, namespace=namespace)
@@ -272,9 +321,11 @@ def evaluate_dataflow_profiles(
                 namespace=namespace,
                 status=CheckTaskStatus.success.value,
             )
-        check_manager.set_target_status(
-            target_name=target,
-            namespace=namespace,
-            status=CheckTaskStatus.success.value,
-        )
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=CheckTaskStatus.success.value,
+                resource_name=profile_name,
+                resource_kind=DataflowResourceKinds.DATAFLOWPROFILE.value,
+            )
     return check_manager.as_dict(as_list=as_list)
