@@ -64,6 +64,7 @@ def process_pod_status(
             return f"[green]{condition}[/green]", CheckTaskStatus.success.value
         return f"[red]{condition}[/red]", CheckTaskStatus.error.value
 
+    # TODO: Consolidate more using table view
     if not pods:
         return add_display_and_eval(
             check_manager=check_manager,
@@ -126,7 +127,6 @@ def process_pod_status(
                     conditions_readiness = conditions_readiness and condition_status
                     pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
                 except KeyError:
-                    # TODO: ADD warning when known condition type are all in good state
                     condition_type = type
                     condition_status = condition.get("status")
 
