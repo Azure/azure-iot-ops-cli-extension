@@ -424,7 +424,7 @@ def test_evaluate_core_service_runtime(
         detail_level=detail_level, resource_name=resource_name
     )
 
-    assert result["name"] == "evalDataflowRuntime"
+    assert result["name"] == "evalCoreServiceRuntime"
     assert result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
     target = result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 

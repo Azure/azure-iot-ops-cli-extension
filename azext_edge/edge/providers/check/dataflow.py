@@ -60,8 +60,8 @@ def evaluate_core_service_runtime(
     resource_name: str = None,
 ):
     check_manager = CheckManager(
-        check_name="evalDataflowRuntime",
-        check_desc="Evaluate Dataflow Runtime Resources",
+        check_name="evalCoreServiceRuntime",
+        check_desc="Evaluate Dataflow core service",
     )
 
     padding = 6

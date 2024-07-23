@@ -159,7 +159,7 @@ def assert_general_eval_custom_resources(
     assert post_deployment[key]
     assert post_deployment[key]["description"].startswith(f"Evaluate {description_name}")
     # for the ones that have spaces
-    assert post_deployment[key]["description"].replace(" ", "").endswith(resource_plural)
+    assert post_deployment[key]["description"].replace(" ", "").lower().endswith(resource_plural.lower())
 
     # check the target existence
     sorted_items = sort_kubectl_items_by_namespace(items, include_all=include_all_namespace)
@@ -171,7 +171,7 @@ def assert_general_eval_custom_resources(
         check_names = []
         for item in namespace_dict[namespace]["evaluations"]:
             if item.get("name"):
-                check_names.append(item.get("names"))
+                check_names.append(item.get("name"))
         # if using resource name filter, could have missing items
         assert len(check_names) <= len(kubectl_items)
         for name in check_names:
