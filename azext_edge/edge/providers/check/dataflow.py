@@ -301,7 +301,6 @@ def evaluate_dataflow_profiles(
         )
         for profile in list(profiles):
             padding = 8
-            spec = profile.get("spec", {})
             profile_name = profile.get("metadata", {}).get("name")
             check_manager.add_display(
                 target_name=target,
