@@ -103,26 +103,6 @@ class CoreServiceResourceKinds(Enum):
     RUNTIME_RESOURCE = "coreServiceRuntimeResource"
 
 
-# MQ connector enums
-class KafkaTopicMapRouteType(Enum):
-    """
-    Kafka Connector Topic Map Route type:
-    """
-
-    kafka_to_mqtt = "kafkaToMqtt"
-    mqtt_to_kafka = "mqttToKafka"
-
-
-class DataLakeConnectorTargetType(ListableEnum):
-    """
-    Data Lake Connector Target type:
-    """
-
-    data_lake_storage = "datalakeStorage"
-    fabric_onelake = "fabricOneLake"
-    local_storage = "localStorage"
-
-
 # Akri runtime attributes
 AKRI_PREFIX = "aio-akri-"
 
@@ -131,7 +111,6 @@ AIO_MQ_DIAGNOSTICS_PROBE_PREFIX = "aio-mq-diagnostics-probe"
 AIO_MQ_FRONTEND_PREFIX = "aio-mq-dmqtt-frontend"
 AIO_MQ_BACKEND_PREFIX = "aio-mq-dmqtt-backend"
 AIO_MQ_AUTH_PREFIX = "aio-mq-dmqtt-authentication"
-AIO_MQ_KAFKA_CONFIG_PREFIX = "aio-mq-kafka-config"
 AIO_MQ_HEALTH_MANAGER = "aio-mq-dmqtt-health-manager"
 AIO_MQ_OPERATOR = "aio-mq-operator"
 AIO_MQ_FLUENT_BIT = "aio-mq-fluent-bit"
