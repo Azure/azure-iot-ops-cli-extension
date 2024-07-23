@@ -114,29 +114,38 @@ def process_pod_status(
         # When pod in obnormal state, sometimes the conditions are not available
         if pod_conditions:
             conditions_readiness = True
+            conditions_display_list: List[Tuple[str, str]] = []
+            unknown_conditions_display_list: List[Tuple[str, str]] = []
 
             for condition in pod_conditions:
                 type = condition["type"]
-                condition_type = POD_CONDITION_TEXT_MAP[type]
-                condition_status = condition.get("status") == "True"
-                conditions_readiness = conditions_readiness and condition_status
-                pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
-                conditions_display_list: List[Tuple[str, str]] = []
 
-                # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
-                if (detail_level == ResourceOutputDetailLevel.detail.value and status != CheckTaskStatus.success.value) or\
-                 detail_level == ResourceOutputDetailLevel.verbose.value:
-                    formatted_reason = ""
-                    condition_reason = condition.get("message", "")
+                try:
+                    condition_type = POD_CONDITION_TEXT_MAP[type]
+                    condition_status = condition.get("status") == "True"
+                    conditions_readiness = conditions_readiness and condition_status
+                    pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
+                except KeyError:
+                    # TODO: ADD warning when known condition type are all in good state
+                    condition_type = type
+                    condition_status = condition.get("status")
 
-                    if condition_reason:
-                        # remove the [ and ] to prevent console not printing the text
-                        condition_reason = condition_reason.replace("[", "\\[")
-                        formatted_reason = f"[red]Reason: {condition_reason}[/red]"
-                    
-                    # TODO: debug
+                formatted_reason = ""
+                condition_reason = condition.get("message", "")
+
+                if condition_reason:
+                    # remove the [ and ] to prevent console not printing the text
+                    condition_reason = condition_reason.replace("[", "\\[")
+                    formatted_reason = f"[red]Reason: {condition_reason}[/red]"
+
+                known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
+                if condition_type.replace(" ", "").lower() in known_condition_values:
                     conditions_display_list.append(
                         (f"{condition_type}: {pod_condition_deco}", formatted_reason)
+                    )
+                else:
+                    unknown_conditions_display_list.append(
+                        (f"{condition_type}: {condition_status}", formatted_reason)
                     )
 
                 pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
@@ -147,7 +156,9 @@ def process_pod_status(
                 display=Padding("- Conditions: [green]Ready[/green]" if conditions_readiness else "- Conditions: [red]Not Ready[/red]", (0, 0, 0, padding)),
             )
 
-            if detail_level > ResourceOutputDetailLevel.summary.value:
+            # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
+            if (detail_level == ResourceOutputDetailLevel.detail.value and status != CheckTaskStatus.success.value) or\
+             detail_level == ResourceOutputDetailLevel.verbose.value:
                 for condition, reason in conditions_display_list:
                     check_manager.add_display(
                         target_name=target,
@@ -162,8 +173,26 @@ def process_pod_status(
                             display=Padding(reason, (0, 0, 0, padding + 8)),
                         )
             
-        if not conditions_readiness:
-            pod_eval_status = CheckTaskStatus.error.value
+            if not conditions_readiness:
+                pod_eval_status = CheckTaskStatus.error.value
+            else:
+                # add warning if there are unknown conditions when known conditions are all in good state
+                for condition, reason in unknown_conditions_display_list:
+                    condition_text: str = f"[yellow]Irrgular Condition {condition} found.[/yellow]"
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(condition_text, (0, 0, 0, padding + 4)),
+                    )
+                    if pod_eval_status != CheckTaskStatus.error.value:
+                        pod_eval_status = CheckTaskStatus.warning.value
+
+                    if reason and detail_level == ResourceOutputDetailLevel.verbose.value:
+                        check_manager.add_display(
+                            target_name=target,
+                            namespace=namespace,
+                            display=Padding(reason, (0, 0, 0, padding + 8)),
+                        )
         
         check_manager.add_target_eval(
             target_name=target,
