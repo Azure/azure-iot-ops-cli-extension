@@ -131,7 +131,7 @@ def process_pod_status(
                     condition_status = condition.get("status")
 
                 formatted_reason = ""
-                condition_reason = condition.get("message", "")
+                condition_reason = condition.get("reason", "")
 
                 if condition_reason:
                     # remove the [ and ] to prevent console not printing the text
@@ -157,9 +157,10 @@ def process_pod_status(
             )
 
             # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
-            if (detail_level == ResourceOutputDetailLevel.detail.value and status != CheckTaskStatus.success.value) or\
-             detail_level == ResourceOutputDetailLevel.verbose.value:
-                for condition, reason in conditions_display_list:
+            for condition, reason in conditions_display_list:
+                condition_not_ready = condition.endswith("[red]False[/red]")
+                if (detail_level == ResourceOutputDetailLevel.detail.value and status != condition_not_ready) or\
+                 detail_level == ResourceOutputDetailLevel.verbose.value:
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
