@@ -259,7 +259,7 @@ def test_init_to_template_params(
     if instance_name:
         assert parameters["instanceName"]["value"] == instance_name
     else:
-        assert parameters["instanceName"]["value"] == f"{lowered_cluster_name}-ops-instance"
+        assert parameters["instanceName"]["value"] == f"{lowered_cluster_name}-ops-init-instance"
 
     assert parameters["clusterLocation"]["value"] == connected_cluster_location
     if location:

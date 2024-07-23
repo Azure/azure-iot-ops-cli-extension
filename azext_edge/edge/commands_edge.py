@@ -168,7 +168,7 @@ def init(
     safe_cluster_name = cluster_name_lowered.replace("_", "-")
 
     if not instance_name:
-        instance_name = f"{safe_cluster_name}-ops-instance"
+        instance_name = f"{safe_cluster_name}-ops-init-instance"
 
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
