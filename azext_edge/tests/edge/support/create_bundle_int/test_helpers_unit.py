@@ -9,7 +9,7 @@ from typing import List
 from .helpers import split_name
 
 
-@pytest.mark.parametrize("input, expected",[
+@pytest.mark.parametrize("input, expected", [
     [
         "pod.aio-dataflow-upgrade-status-job-0.1.0-preview-rc9-4q4pg.aio-dataflow-upgrade-status-job.log",
         ["pod", "aio-dataflow-upgrade-status-job-0.1.0-preview-rc9-4q4pg", "aio-dataflow-upgrade-status-job", "log"]
