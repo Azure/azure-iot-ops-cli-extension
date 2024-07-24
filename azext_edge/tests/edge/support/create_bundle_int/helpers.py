@@ -35,7 +35,7 @@ class NamespaceTuple(NamedTuple):
 def assert_file_names(files: List[str]):
     """Asserts file names."""
     for full_name in files:
-        name = full_name.split(".")
+        name = split_name(full_name)
         file_type = name.pop(0)
         extension = name.pop(-1)
         # trace files
