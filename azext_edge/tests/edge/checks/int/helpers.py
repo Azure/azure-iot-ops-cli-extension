@@ -70,7 +70,7 @@ def assert_eval_core_service_runtime(
         else:
             assert not runtime_resource[namespace]["conditions"]
 
-        results = [pod["value"]["name"] for pod in evals]
+        results = [pod["name"].replace("pod/", "") for pod in evals]
         find_extra_or_missing_names(
             resource_type="pods",
             result_names=results,
@@ -80,9 +80,9 @@ def assert_eval_core_service_runtime(
         for pod in kubectl_pods:
             name = kubectl_pods[pod]["metadata"]["name"]
             # find all evals entries for this pod
-            pod_evals = [pod for pod in evals if name in pod["value"]["name"]]
+            pod_evals = [pod for pod in evals if name in pod["name"]]
 
-            assert pod_evals[0]["value"]["name"] == name
+            assert pod_evals[0]["name"] == f"pod/{name}"
 
             # check phase
             phase_eval = [pod for pod in pod_evals if "status.phase" in pod["value"]].pop()
