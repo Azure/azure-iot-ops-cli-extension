@@ -65,9 +65,11 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
     """Maps deployment/pod/etc to list of dissembled file names"""
     file_name_objs = {}
     for full_name in files:
-        name = full_name.split(".")
+        name = split_name(full_name)
         file_type = name.pop(0)
         name_obj = {"extension": name.pop(-1), "full_name": full_name}
+
+
 
         if file_type == "pod" and name[-1] == "metric":
             file_type = "podmetric"
@@ -323,3 +325,17 @@ def run_bundle_command(
             walk_result[built_path]["files"].append(file_name)
 
     return walk_result
+
+
+def split_name(name: str) -> List[str]:
+    first_pass = name.split(".")
+    second_pass = []
+    for i in range(len(first_pass)):
+        # we should not need to worry about trying to access too early
+        # since the first part should be the workload type (ex: pod)
+        if first_pass[i].isnumeric() or first_pass[i - 1].isnumeric():
+            second_pass[-1] = f"{second_pass[-1]}.{first_pass[i]}"
+        else:
+            second_pass.append(first_pass[i])
+
+    return second_pass
