@@ -159,9 +159,9 @@ def check_workload_resource_files(
             assert f"{file['descriptor']}.{file.get('sub_descriptor')}" not in converted_file
             converted_file[file["descriptor"]] = True
         else:
-            assert file["sub_descriptor"] == "previous", f"Full file name: {file['full_name']}"
+            assert file["sub_descriptor"] == "previous", f"Full file name: {file['full_name']}, file_obj {file}"
             sub_key = f"{file['descriptor']}.{file['sub_descriptor']}"
-            assert sub_key not in converted_file, f"Full file name: {file['full_name']}"
+            assert sub_key not in converted_file, f"Full file name: {file['full_name']}, file_obj {file}"
             converted_file[sub_key] = True
             # if msi-adapter.previous present, msi-adapter must present too
             # for some reason does not apply to xxx.init
