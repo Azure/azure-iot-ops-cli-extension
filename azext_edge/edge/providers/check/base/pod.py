@@ -149,7 +149,7 @@ def process_pod_status(
                     )
 
                 pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
-            
+
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
@@ -160,7 +160,7 @@ def process_pod_status(
             for condition, reason in conditions_display_list:
                 condition_not_ready = condition.endswith("[red]False[/red]")
                 if (detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready) or\
-                 detail_level == ResourceOutputDetailLevel.verbose.value:
+                   detail_level == ResourceOutputDetailLevel.verbose.value:
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
@@ -173,7 +173,7 @@ def process_pod_status(
                             namespace=namespace,
                             display=Padding(reason, (0, 0, 0, padding + 8)),
                         )
-            
+
             if not conditions_readiness:
                 pod_eval_status = CheckTaskStatus.error.value
             else:
@@ -194,7 +194,7 @@ def process_pod_status(
                             namespace=namespace,
                             display=Padding(reason, (0, 0, 0, padding + 8)),
                         )
-        
+
         check_manager.add_target_eval(
             target_name=target,
             status=pod_eval_status,

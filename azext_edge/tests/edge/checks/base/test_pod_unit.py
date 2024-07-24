@@ -6,7 +6,6 @@
 
 import pytest
 
-from rich.padding import Padding
 from azext_edge.edge.common import CheckTaskStatus, PodState
 from azext_edge.edge.providers.check.base import (
     decorate_pod_phase,
