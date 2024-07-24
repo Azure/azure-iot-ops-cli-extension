@@ -87,7 +87,7 @@ class Instances(Queryable):
         if description:
             instance["properties"]["description"] = description
 
-        if tags:
+        if tags or tags == {}:
             instance["tags"] = tags
 
         with self.console.status("Working..."):
