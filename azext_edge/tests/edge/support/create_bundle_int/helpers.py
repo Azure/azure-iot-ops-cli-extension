@@ -69,8 +69,6 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
         file_type = name.pop(0)
         name_obj = {"extension": name.pop(-1), "full_name": full_name}
 
-
-
         if file_type == "pod" and name[-1] == "metric":
             file_type = "podmetric"
 
