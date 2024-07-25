@@ -117,7 +117,7 @@ def assert_eval_core_service_runtime(
                 is_known_success = True
 
             if not is_known_success:
-                expected_status = "failed"
+                expected_status = "error"
 
             if is_known_success and unknown_conditions:
                 # if all known conditions are True, but there are unknown conditions, set status to warning
