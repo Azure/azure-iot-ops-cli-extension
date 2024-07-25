@@ -142,12 +142,16 @@ def assert_eval_core_service_runtime(
 def assert_pod_conditions(pod_conditions, pod_evals, expected_status, known_conditions_keys):
     # find the conditions_eval that has any known_conditions in its value
     conditions_eval = next((pod for pod in pod_evals if any([condition in pod["value"] for condition in known_conditions_keys])), None)
-    for condition in pod_conditions:
-        condition_type = condition.get("type")
-        condition_status = condition.get("status") == "True"
-        assert conditions_eval["value"][f"status.conditions.{condition_type.lower()}"] == condition_status
-    
-    assert conditions_eval["status"] == expected_status
+
+    if conditions_eval:
+        for condition in pod_conditions:
+            condition_type = condition.get("type")
+            condition_status = condition.get("status") == "True"
+            assert conditions_eval["value"][f"status.conditions.{condition_type.lower()}"] == condition_status
+        
+        assert conditions_eval["status"] == expected_status
+    else:
+        assert not pod_conditions
 
 
 def assert_pod_condition(pod_conditions, pod_evals, condition_type, condition_key):
