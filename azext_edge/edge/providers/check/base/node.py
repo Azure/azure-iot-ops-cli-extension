@@ -12,7 +12,7 @@ from rich.table import Table
 from typing import Any, Dict
 
 from .check_manager import CheckManager
-from .user_strings import MULTINODE_CLUSTER_MSG, NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
+from .user_strings import NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
 from ..common import (
     AIO_SUPPORTED_ARCHITECTURES,
     COLOR_STR_FORMAT,
