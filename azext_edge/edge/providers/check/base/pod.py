@@ -100,18 +100,6 @@ def process_pod_status(
         pod_eval_status = status
         pod_eval_value["status.phase"] = pod_phase
 
-        # for text in [
-        #     f"\nPod {{[bright_blue]{pod_name}[/bright_blue]}}",
-        #     f"- Phase: {pod_phase_deco}"
-        # ]:
-        #     padding = 2 if "\nPod" not in text else 0
-        #     padding += display_padding
-        #     check_manager.add_display(
-        #         target_name=target,
-        #         namespace=namespace,
-        #         display=Padding(text, (0, 0, 0, padding)),
-        #     )
-
         # When pod in obnormal state, sometimes the conditions are not available
         if pod_conditions:
             conditions_readiness = True
