@@ -84,20 +84,19 @@ def assert_eval_core_service_runtime(
 
             assert pod_evals[0]["name"] == f"pod/{name}"
 
-            # check phase
-            phase_eval = [pod for pod in pod_evals if "status.phase" in pod["value"]].pop()
-            assert phase_eval["value"]["status.phase"] == kubectl_pods[pod]["status"]["phase"]
+            # check phase and conditions
+            phase_conditions_eval = [pod for pod in pod_evals if "status.phase" in pod["value"]].pop()
+            assert phase_conditions_eval["value"]["status.phase"] == kubectl_pods[pod]["status"]["phase"]
             expected_status = "success"
-            if phase_eval["value"]["status.phase"] in ["Pending", "Unknown"]:
+            if phase_conditions_eval["value"]["status.phase"] in ["Pending", "Unknown"]:
                 expected_status = "warning"
                 namespace_status = overall_status = expected_status
-            elif phase_eval["value"]["status.phase"] == "Failed":
+            elif phase_conditions_eval["value"]["status.phase"] == "Failed":
                 expected_status = "error"
                 if namespace_status == "success":
                     namespace_status = expected_status
                 if overall_status == "success":
                     overall_status = expected_status
-            # assert phase_eval["status"] == expected_status
 
             # check conditions
             conditions_to_evaluate = [
@@ -124,33 +123,27 @@ def assert_eval_core_service_runtime(
                 expected_status = "warning"
             
             known_conditions_keys = [condition[1] for condition in conditions_to_evaluate]
-            assert_pod_conditions(pod_conditions, pod_evals, expected_status, known_conditions_keys)
-            # for condition_type, condition_key in conditions_to_evaluate:
-            #     condition_status = assert_pod_condition(pod_conditions, pod_evals, condition_type, condition_key)
-            #     if condition_status == "error":
-            #         expected_status = "error"
+            assert_pod_conditions(pod_conditions, phase_conditions_eval, expected_status)
+
             if namespace_status != "error":
                 namespace_status = expected_status
             if overall_status != "error":
                 overall_status = expected_status
 
-            assert phase_eval["status"] == expected_status
+            assert phase_conditions_eval["status"] == expected_status
 
         assert runtime_resource[namespace]["status"] == namespace_status
     assert post_deployment["evalCoreServiceRuntime"]["status"] == overall_status
 
 
-def assert_pod_conditions(pod_conditions, pod_evals, expected_status, known_conditions_keys):
-    # find the conditions_eval that has any known_conditions in its value
-    conditions_eval = next((pod for pod in pod_evals if any([condition in pod["value"] for condition in known_conditions_keys])), None)
-
-    if conditions_eval:
+def assert_pod_conditions(pod_conditions, phase_conditions_eval, expected_status):
+    if phase_conditions_eval:
         for condition in pod_conditions:
             condition_type = condition.get("type")
             condition_status = condition.get("status") == "True"
-            assert conditions_eval["value"][f"status.conditions.{condition_type.lower()}"] == condition_status
+            assert phase_conditions_eval["value"][f"status.conditions.{condition_type.lower()}"] == condition_status
         
-        assert conditions_eval["status"] == expected_status
+        assert phase_conditions_eval["status"] == expected_status
     else:
         assert not pod_conditions
 
