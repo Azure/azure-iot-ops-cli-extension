@@ -100,17 +100,17 @@ def process_pod_status(
         pod_eval_status = status
         pod_eval_value["status.phase"] = pod_phase
 
-        for text in [
-            f"\nPod {{[bright_blue]{pod_name}[/bright_blue]}}",
-            f"- Phase: {pod_phase_deco}"
-        ]:
-            padding = 2 if "\nPod" not in text else 0
-            padding += display_padding
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(text, (0, 0, 0, padding)),
-            )
+        # for text in [
+        #     f"\nPod {{[bright_blue]{pod_name}[/bright_blue]}}",
+        #     f"- Phase: {pod_phase_deco}"
+        # ]:
+        #     padding = 2 if "\nPod" not in text else 0
+        #     padding += display_padding
+        #     check_manager.add_display(
+        #         target_name=target,
+        #         namespace=namespace,
+        #         display=Padding(text, (0, 0, 0, padding)),
+        #     )
 
         # When pod in obnormal state, sometimes the conditions are not available
         if pod_conditions:
@@ -150,43 +150,66 @@ def process_pod_status(
 
                 pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
 
+            if not conditions_readiness:
+                pod_eval_status = CheckTaskStatus.error.value
+            else:
+                # add warning if there are unknown conditions when known conditions are all in good state
+                if unknown_conditions_display_list and pod_eval_status != CheckTaskStatus.error.value:
+                    pod_eval_status = CheckTaskStatus.warning.value
+        
+        is_pod_healthy = pod_eval_status == CheckTaskStatus.success.value
+        pod_health_status = "[green]Healthy[/green]" if is_pod_healthy else "[red]Unhealthy[/red]"
+        pod_health_text = f"Pod {{[bright_blue]{pod_name}[/bright_blue]}} is {pod_health_status}"
+
+        if detail_level != ResourceOutputDetailLevel.summary.value:
+            pod_health_text = f"\n{pod_health_text}"
+
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(pod_health_text, (0, 0, 0, display_padding)),
+        )
+
+        padding = display_padding + 4
+        if detail_level != ResourceOutputDetailLevel.summary.value:
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding("- Conditions: [green]Ready[/green]" if conditions_readiness else "- Conditions: [red]Not Ready[/red]", (0, 0, 0, padding)),
+                display=Padding(f"- Phase: {pod_phase_deco}", (0, 0, 0, padding)),
             )
+            
+            if pod_conditions:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding("- Conditions: [green]Ready[/green]" if conditions_readiness else "- Conditions: [red]Not Ready[/red]", (0, 0, 0, padding)),
+                )
 
-            # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
-            for condition, reason in conditions_display_list:
-                condition_not_ready = condition.endswith("[red]False[/red]")
-                if (detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready) or\
-                   detail_level == ResourceOutputDetailLevel.verbose.value:
+                # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
+                for condition, reason in conditions_display_list:
+                    condition_not_ready = condition.endswith("[red]False[/red]")
+                    if (detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready) or\
+                    detail_level == ResourceOutputDetailLevel.verbose.value:
+                        check_manager.add_display(
+                            target_name=target,
+                            namespace=namespace,
+                            display=Padding(condition, (0, 0, 0, padding + 4)),
+                        )
+
+                        if reason:
+                            check_manager.add_display(
+                                target_name=target,
+                                namespace=namespace,
+                                display=Padding(reason, (0, 0, 0, padding + 8)),
+                            )
+            
+            if conditions_readiness:
+                for condition, reason in unknown_conditions_display_list:
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
                         display=Padding(condition, (0, 0, 0, padding + 4)),
                     )
-
-                    if reason:
-                        check_manager.add_display(
-                            target_name=target,
-                            namespace=namespace,
-                            display=Padding(reason, (0, 0, 0, padding + 8)),
-                        )
-
-            if not conditions_readiness:
-                pod_eval_status = CheckTaskStatus.error.value
-            else:
-                # add warning if there are unknown conditions when known conditions are all in good state
-                for condition, reason in unknown_conditions_display_list:
-                    condition_text: str = f"[yellow]Irrgular Condition {condition} found.[/yellow]"
-                    check_manager.add_display(
-                        target_name=target,
-                        namespace=namespace,
-                        display=Padding(condition_text, (0, 0, 0, padding + 4)),
-                    )
-                    if pod_eval_status != CheckTaskStatus.error.value:
-                        pod_eval_status = CheckTaskStatus.warning.value
 
                     if reason and detail_level == ResourceOutputDetailLevel.verbose.value:
                         check_manager.add_display(
