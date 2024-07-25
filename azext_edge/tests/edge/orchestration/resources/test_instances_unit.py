@@ -88,7 +88,7 @@ def test_instance_list(mocked_cmd, mocked_responses: responses, resource_group_n
 )
 @pytest.mark.parametrize(
     "tags",
-    [None, {"a": "b", "c": "d"}],
+    [None, {"a": "b", "c": "d"}, {}],
 )
 def test_instance_update(mocked_cmd, mocked_responses: responses, description: Optional[str], tags: Optional[dict]):
     instance_name = generate_random_string()
@@ -126,8 +126,8 @@ def test_instance_update(mocked_cmd, mocked_responses: responses, description: O
     if description:
         assert update_request["properties"]["description"] == description
 
-    if tags:
+    if tags or tags == {}:
         assert update_request["tags"] == tags
 
-    if not any([description, tags]):
+    if not any([description, tags or tags == {}]):
         assert update_request == mock_instance_record
