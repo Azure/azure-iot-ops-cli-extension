@@ -9,58 +9,43 @@ from typing import Optional
 import pytest
 import responses
 
-from azext_edge.edge.commands_mq import list_broker_listeners, show_broker_listener
+from azext_edge.edge.commands_mq import show_broker_authn, list_broker_authns
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
 
 
-def get_broker_listener_endpoint(
-    instance_name: str, broker_name: str, resource_group_name: str, listener_name: Optional[str] = None
+def get_broker_authn_endpoint(
+    instance_name: str, broker_name: str, resource_group_name: str, authn_name: Optional[str] = None
 ):
-    resource_path = f"/instances/{instance_name}/brokers/{broker_name}/listeners"
-    if listener_name:
-        resource_path += f"/{listener_name}"
+    resource_path = f"/instances/{instance_name}/brokers/{broker_name}/authentications"
+    if authn_name:
+        resource_path += f"/{authn_name}"
     return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
 
 
-def get_mock_broker_listener_record(
-    listener_name: str, broker_name: str, instance_name: str, resource_group_name: str
-):
+def get_mock_broker_authn_record(authn_name: str, broker_name: str, instance_name: str, resource_group_name: str):
     return get_mock_resource(
-        name=listener_name,
-        resource_path=f"/instances/{instance_name}/brokers/{broker_name}/listeners/{listener_name}",
+        name=authn_name,
+        resource_path=f"/instances/{instance_name}/brokers/{broker_name}/authentications/{authn_name}",
         properties={
-            "brokerRef": broker_name,
-            "ports": [
-                {
-                    "authenticationRef": "authn",
-                    "port": 8883,
-                    "protocol": "Mqtt",
-                    "tls": {
-                        "automatic": {
-                            "issuerRef": {"apiGroup": "cert-manager.io", "kind": "Issuer", "name": "mq-dmqtt-frontend"}
-                        },
-                        "mode": "Automatic",
-                    },
-                }
+            "authenticationMethods": [
+                {"method": "ServiceAccountToken", "serviceAccountToken": {"audiences": ["aio-mq"]}}
             ],
             "provisioningState": "Succeeded",
-            "serviceName": "aio-mq-dmqtt-frontend",
-            "serviceType": "ClusterIp",
         },
         resource_group_name=resource_group_name,
     )
 
 
-def test_broker_listener_show(mocked_cmd, mocked_responses: responses):
-    listener_name = generate_random_string()
+def test_broker_authn_show(mocked_cmd, mocked_responses: responses):
+    authn_name = generate_random_string()
     broker_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
 
-    mock_broker_listener_record = get_mock_broker_listener_record(
-        listener_name=listener_name,
+    mock_broker_authn_record = get_mock_broker_authn_record(
+        authn_name=authn_name,
         broker_name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
@@ -68,26 +53,26 @@ def test_broker_listener_show(mocked_cmd, mocked_responses: responses):
 
     mocked_responses.add(
         method=responses.GET,
-        url=get_broker_listener_endpoint(
+        url=get_broker_authn_endpoint(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             broker_name=broker_name,
-            listener_name=listener_name,
+            authn_name=authn_name,
         ),
-        json=mock_broker_listener_record,
+        json=mock_broker_authn_record,
         status=200,
         content_type="application/json",
     )
 
-    result = show_broker_listener(
+    result = show_broker_authn(
         cmd=mocked_cmd,
-        listener_name=listener_name,
+        authn_name=authn_name,
         mq_broker_name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )
 
-    assert result == mock_broker_listener_record
+    assert result == mock_broker_authn_record
     assert len(mocked_responses.calls) == 1
 
 
@@ -100,10 +85,10 @@ def test_broker_list(mocked_cmd, mocked_responses: responses, records: int):
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
 
-    mock_broker_listener_records = {
+    mock_broker_authn_records = {
         "value": [
-            get_mock_broker_listener_record(
-                listener_name=generate_random_string(),
+            get_mock_broker_authn_record(
+                authn_name=generate_random_string(),
                 broker_name=broker_name,
                 instance_name=instance_name,
                 resource_group_name=resource_group_name,
@@ -114,20 +99,22 @@ def test_broker_list(mocked_cmd, mocked_responses: responses, records: int):
 
     mocked_responses.add(
         method=responses.GET,
-        url=get_broker_listener_endpoint(
+        url=get_broker_authn_endpoint(
             broker_name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name
         ),
-        json=mock_broker_listener_records,
+        json=mock_broker_authn_records,
         status=200,
         content_type="application/json",
     )
 
-    result = list(list_broker_listeners(
-        cmd=mocked_cmd,
-        mq_broker_name=broker_name,
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-    ))
+    result = list(
+        list_broker_authns(
+            cmd=mocked_cmd,
+            mq_broker_name=broker_name,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+        )
+    )
 
-    assert result == mock_broker_listener_records["value"]
+    assert result == mock_broker_authn_records["value"]
     assert len(mocked_responses.calls) == 1
