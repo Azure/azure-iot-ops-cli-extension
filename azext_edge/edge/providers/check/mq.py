@@ -670,7 +670,7 @@ def _evaluate_broker_diagnostics_service(
         )
         diag_service_desc_suffix = "[red]not detected[/red]."
         diag_service_desc = (
-            f"Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+            f"Diagnostics Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
         )
         check_manager.add_display(
             target_name=target_brokers,
@@ -693,7 +693,7 @@ def _evaluate_broker_diagnostics_service(
         )
         diag_service_desc_suffix = "[green]detected[/green]."
         diag_service_desc = (
-            f"\nService {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+            f"\nDiagnostics Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
         )
         check_manager.add_display(
             target_name=target_brokers,
