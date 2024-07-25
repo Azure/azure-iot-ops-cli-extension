@@ -108,13 +108,13 @@ def process_pod_status(
 
             for condition in pod_conditions:
                 type = condition["type"]
+                condition_type = POD_CONDITION_TEXT_MAP.get(type)
 
-                try:
-                    condition_type = POD_CONDITION_TEXT_MAP[type]
+                if condition_type:
                     condition_status = condition.get("status") == "True"
                     conditions_readiness = conditions_readiness and condition_status
                     pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
-                except KeyError:
+                else:
                     condition_type = type
                     condition_status = condition.get("status")
 
@@ -196,10 +196,11 @@ def process_pod_status(
             
                 if conditions_readiness:
                     for condition, reason in unknown_conditions_display_list:
+                        condition_text: str = f"[yellow]Irregular Condition {condition} found.[/yellow]"
                         check_manager.add_display(
                             target_name=target,
                             namespace=namespace,
-                            display=Padding(condition, (0, 0, 0, padding + 4)),
+                            display=Padding(condition_text, (0, 0, 0, padding + 4)),
                         )
 
                         if reason and detail_level == ResourceOutputDetailLevel.verbose.value:
