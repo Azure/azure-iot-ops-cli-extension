@@ -203,20 +203,20 @@ def process_pod_status(
                                 display=Padding(reason, (0, 0, 0, padding + 8)),
                             )
             
-            if conditions_readiness:
-                for condition, reason in unknown_conditions_display_list:
-                    check_manager.add_display(
-                        target_name=target,
-                        namespace=namespace,
-                        display=Padding(condition, (0, 0, 0, padding + 4)),
-                    )
-
-                    if reason and detail_level == ResourceOutputDetailLevel.verbose.value:
+                if conditions_readiness:
+                    for condition, reason in unknown_conditions_display_list:
                         check_manager.add_display(
                             target_name=target,
                             namespace=namespace,
-                            display=Padding(reason, (0, 0, 0, padding + 8)),
+                            display=Padding(condition, (0, 0, 0, padding + 4)),
                         )
+
+                        if reason and detail_level == ResourceOutputDetailLevel.verbose.value:
+                            check_manager.add_display(
+                                target_name=target,
+                                namespace=namespace,
+                                display=Padding(reason, (0, 0, 0, padding + 8)),
+                            )
 
         check_manager.add_target_eval(
             target_name=target,
