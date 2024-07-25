@@ -122,8 +122,6 @@ def process_pod_status(
                 condition_reason = condition.get("reason", "")
 
                 if condition_reason:
-                    # remove the [ and ] to prevent console not printing the text
-                    condition_reason = condition_reason.replace("[", "\\[")
                     formatted_reason = f"[red]Reason: {condition_reason}[/red]"
 
                 known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]

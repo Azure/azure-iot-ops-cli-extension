@@ -97,7 +97,7 @@ def assert_eval_core_service_runtime(
                     namespace_status = expected_status
                 if overall_status == "success":
                     overall_status = expected_status
-            assert phase_eval["status"] == expected_status
+            # assert phase_eval["status"] == expected_status
 
             # check conditions
             conditions_to_evaluate = [
@@ -116,9 +116,8 @@ def assert_eval_core_service_runtime(
             if all([condition["status"] == "True" for condition in pod_conditions if condition["type"] in known_conditions]):
                 is_known_success = True
 
-            if is_known_success:
-                # if all known conditions are True, set status to success
-                expected_status = "success"
+            if not is_known_success:
+                expected_status = "failed"
 
             if is_known_success and unknown_conditions:
                 # if all known conditions are True, but there are unknown conditions, set status to warning
@@ -134,6 +133,8 @@ def assert_eval_core_service_runtime(
                 namespace_status = expected_status
             if overall_status != "error":
                 overall_status = expected_status
+
+            assert phase_eval["status"] == expected_status
 
         assert runtime_resource[namespace]["status"] == namespace_status
     assert post_deployment["evalCoreServiceRuntime"]["status"] == overall_status
