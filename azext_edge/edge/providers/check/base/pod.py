@@ -145,8 +145,13 @@ def process_pod_status(
                 if unknown_conditions_display_list and pod_eval_status != CheckTaskStatus.error.value:
                     pod_eval_status = CheckTaskStatus.warning.value
         
-        is_pod_healthy = pod_eval_status == CheckTaskStatus.success.value
-        pod_health_status = "[green]Healthy[/green]" if is_pod_healthy else "[red]Unhealthy[/red]"
+        pod_health_status = "[green]Healthy[/green]"
+        
+        if pod_eval_status == CheckTaskStatus.error.value:
+            pod_health_status = "[red]Unhealthy[/red]"
+        elif pod_eval_status == CheckTaskStatus.warning.value:
+            pod_health_status = "[yellow]Indeterminate[/yellow]"
+
         pod_health_text = f"Pod {{[bright_blue]{pod_name}[/bright_blue]}} is {pod_health_status}"
 
         if detail_level != ResourceOutputDetailLevel.summary.value:
