@@ -105,10 +105,6 @@ def test_check_nodes(mocked_node_client):
         assert result["status"] == "error"
         assert evaluation[0]["value"] == "No nodes detected."
         return
-    elif len(nodes) > 1:
-        warning = result["targets"]["cluster/nodes"]["_all_"]["displays"][0].renderable
-        assert "Currently, only single-node clusters are officially supported for AIO deployments" in warning
-        assert result["targets"]["cluster/nodes"]["_all_"]["status"] == "warning"
     else:
         assert result["targets"]["cluster/nodes"]["_all_"]["status"] == "success"
 

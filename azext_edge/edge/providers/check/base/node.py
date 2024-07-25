@@ -58,22 +58,6 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
             check_manager.add_display(target_name=target, display=target_display)
             return check_manager.as_dict()
 
-        check_manager.add_target_eval(
-            target_name=target,
-            status=CheckTaskStatus.warning.value if len(nodes.items) > 1 else CheckTaskStatus.success.value,
-            value=len(nodes.items)
-        )
-        if len(nodes.items) > 1:
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    COLOR_STR_FORMAT.format(
-                        color=CheckTaskStatus.warning.color,
-                        value=MULTINODE_CLUSTER_MSG
-                    ),
-                    padding
-                ),
-            )
         table = _generate_node_table(check_manager, nodes)
         check_manager.add_display(target_name=target, display=Padding(table, padding))
 
