@@ -12,6 +12,7 @@ from pathlib import Path
 from random import randint
 from typing import Dict, FrozenSet, List
 from unittest.mock import Mock
+from azure.cli.core.azclierror import InvalidArgumentValueError
 
 import pytest
 
@@ -23,6 +24,7 @@ from azext_edge.edge.providers.orchestration.common import (
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
+    MAX_INSTANCE_LENGTH,
 )
 from azext_edge.edge.providers.orchestration.work import (
     CLUSTER_SECRET_CLASS_NAME,
@@ -821,3 +823,60 @@ def _assert_displays_for(work_category_set: FrozenSet[WorkCategoryKey], display_
         index += 1
         # DEPLOY_AIO gets rendered twice to dynamically expose deployment link
         assert render_display_call_kwargs[index] == {"category": WorkCategoryKey.DEPLOY_AIO}
+
+
+@pytest.mark.parametrize(
+    """
+    cluster_name,
+    resource_group_name,
+    instance_name,
+    should_throw
+    """,
+    [
+        pytest.param(
+            generate_random_string(24),  # cluster_name
+            generate_random_string(),  # resource_group_name
+            None,  # instance_name,
+            False,  # should_throw
+        ),
+        pytest.param(
+            generate_random_string(25),  # cluster_name
+            generate_random_string(),  # resource_group_name
+            None,  # instance_name
+            True,  # should_throw
+        ),
+        pytest.param(
+            generate_random_string(25),  # cluster_name
+            generate_random_string(),  # resource_group_name
+            generate_random_string(MAX_INSTANCE_LENGTH),  # instance_name
+            False,  # should_throw
+        ),
+        pytest.param(
+            generate_random_string(24),  # cluster_name
+            generate_random_string(),  # resource_group_name
+            generate_random_string(MAX_INSTANCE_LENGTH + 1),  # instance_name
+            True,  # should_throw
+        ),
+    ],
+)
+def test_instance_name_length(
+    mocked_cmd: Mock,
+    mocked_deploy: Mock,
+    mocked_config: Mock,
+    cluster_name: str,
+    resource_group_name: str,
+    instance_name: str,
+    should_throw: bool,
+):
+    try:
+        init(
+            cmd=mocked_cmd,
+            cluster_name=cluster_name,
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+        )
+    except InvalidArgumentValueError as e:
+        assert should_throw and e
+        return
+
+    assert not should_throw
