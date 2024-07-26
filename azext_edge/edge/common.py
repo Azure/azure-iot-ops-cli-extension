@@ -63,6 +63,7 @@ class ResourceState(Enum):
     recovering = "Recovering"
     succeeded = "Succeeded"
     failed = "Failed"
+    waiting = "Waiting"
     ok = "OK"
     warn = "warn"
     error = "Error"
@@ -81,6 +82,7 @@ class ResourceState(Enum):
             cls.n_a.value: CheckTaskStatus.warning,
             cls.failed.value: CheckTaskStatus.error,
             cls.error.value: CheckTaskStatus.error,
+            cls.waiting.value: CheckTaskStatus.warning,
         }
         return status_map.get(value, CheckTaskStatus.success)
 
