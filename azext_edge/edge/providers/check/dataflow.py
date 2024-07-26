@@ -49,6 +49,8 @@ dataflow_endpoint_target = "dataflowendpoints.connectivity.iotoperations.azure.c
 dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com"
 
 
+# TODO - consolidate TLS.mode checks
+
 def _process_dataflow_sourcesettings(
     check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
 ):
@@ -141,7 +143,6 @@ def _process_dataflow_transformationsettings(
 
     # only show datasets, filters, maps on verbose
     if detail_level > ResourceOutputDetailLevel.verbose.value:
-        
         # datasets
         datasets = settings.get("datasets", [])
         if datasets:
@@ -255,14 +256,8 @@ def _process_endpoint_mqttsettings(
 ) -> None:
     settings = spec.get("mqttSettings", {})
     for label, key in [
-        ("Client ID Prefix", "clientIdPrefix"),
         ("MQTT Host", "host"),
-        ("Keep Alive (s)", "keepAliveSeconds"),
-        ("Max Inflight Messages", "maxInflightMessages"),
         ("Protocol", "protocol"),
-        ("QOS", "qos"),
-        ("Retain", "retain"),
-        ("Session Expiry (s)", "sessionExpirySeconds"),
     ]:
         val = settings.get(key)
         if val:
@@ -271,25 +266,41 @@ def _process_endpoint_mqttsettings(
                 namespace=namespace,
                 display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
             )
+    if detail_level > ResourceOutputDetailLevel.detail.value:
+        for label, key in [
+            ("Client ID Prefix", "clientIdPrefix"),
+            ("Keep Alive (s)", "keepAliveSeconds"),
+            ("Max Inflight Messages", "maxInflightMessages"),
+            ("QOS", "qos"),
+            ("Retain", "retain"),
+            ("Session Expiry (s)", "sessionExpirySeconds"),
+        ]:
+            val = settings.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                )
 
-    tls = settings.get("tls", {})
-    check_manager.add_display(
-        target_name=target,
-        namespace=namespace,
-        display=Padding("TLS", (0, 0, 0, padding)),
-    )
-    for label, key in [
-        ("Mode", "mode"),
-        ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
-    ]:
-        # TODO - validate ref?
-        val = tls.get(key)
-        if val:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
-            )
+        tls = settings.get("tls", {})
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("TLS", (0, 0, 0, padding)),
+        )
+        for label, key in [
+            ("Mode", "mode"),
+            ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
+        ]:
+            # TODO - validate ref?
+            val = tls.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                )
 
 
 def _process_endpoint_kafkasettings(
@@ -298,12 +309,8 @@ def _process_endpoint_kafkasettings(
     settings = spec.get("kafkaSettings", {})
 
     for label, key in [
-        ("Compression", "compression"),
-        ("Consumer Group ID", "consumerGroupId"),
-        ("Copy MQTT Properties", "copyMqttProperties"),
         ("Kafka Host", "host"),
-        ("Acks", "kafkaAcks"),
-        ("Partition Strategy", "partitionStrategy"),
+        ("Consumer Group ID", "consumerGroupId"),
     ]:
         val = settings.get(key)
         if val:
@@ -313,45 +320,62 @@ def _process_endpoint_kafkasettings(
                 display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
             )
 
-    tls = settings.get("tls", {})
-    check_manager.add_display(
-        target_name=target,
-        namespace=namespace,
-        display=Padding("TLS", (0, 0, 0, padding)),
-    )
-    for label, key in [
-        ("Mode", "mode"),
-        ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
-    ]:
-        # TODO - validate ref?
-        val = tls.get(key)
-        if val:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
-            )
+    if detail_level > ResourceOutputDetailLevel.detail.value:
+        # extra properties
+        for label, key in [
+            ("Compression", "compression"),
+            ("Copy MQTT Properties", "copyMqttProperties"),
+            ("Acks", "kafkaAcks"),
+            ("Partition Strategy", "partitionStrategy"),
+        ]:
+            val = settings.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                )
+        # tls
+        tls = settings.get("tls", {})
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("TLS", (0, 0, 0, padding)),
+        )
+        for label, key in [
+            ("Mode", "mode"),
+            ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
+        ]:
+            # TODO - validate ref?
+            val = tls.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                )
 
-    batching = settings.get("batching", {})
-    check_manager.add_display(
-        target_name=target,
-        namespace=namespace,
-        display=Padding("Batching", (0, 0, 0, padding)),
-    )
+        # batching
+        batching = settings.get("batching", {})
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("Batching:", (0, 0, 0, padding)),
+        )
 
-    for label, key in [
-        ("Latency (ms)", "latencyMs"),
-        ("Max Bytes", "maxBytes"),
-        ("Max Messages", "maxMessages"),
-        ("Mode", "mode"),
-    ]:
-        val = batching.get(key)
-        if val:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
-            )
+        for label, key in [
+            ("Latency (ms)", "latencyMs"),
+            ("Max Bytes", "maxBytes"),
+            ("Max Messages", "maxMessages"),
+            ("Mode", "mode"),
+        ]:
+            val = batching.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                )
 
 
 def _process_endpoint_fabriconelakesettings(
@@ -366,45 +390,45 @@ def _process_endpoint_fabriconelakesettings(
                 namespace=namespace,
                 display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
             )
+    if detail_level > ResourceOutputDetailLevel.detail.value:
+        names = settings.get("names", {})
+        for label, key in [
+            ("Lakehouse Name", "lakehouseName"),
+            ("Workspace Name", "workspaceName"),
+        ]:
+            val = names.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                )
 
-    names = settings.get("names", {})
-    for label, key in [
-        ("Lakehouse Name", "lakehouseName"),
-        ("Workspace Name", "workspaceName"),
-    ]:
-        val = names.get(key)
-        if val:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
-            )
+        batching = settings.get("batching", {})
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("Batching:", (0, 0, 0, padding)),
+        )
 
-    batching = settings.get("batching", {})
-    check_manager.add_display(
-        target_name=target,
-        namespace=namespace,
-        display=Padding("Batching", (0, 0, 0, padding)),
-    )
-
-    padding += 4
-    for label, key in [
-        ("Latency (s)", "latencySeconds"),
-        ("Max Messages", "maxMessages"),
-    ]:
-        val = batching.get(key)
-        if val:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
-            )
+        padding += 4
+        for label, key in [
+            ("Latency (s)", "latencySeconds"),
+            ("Max Messages", "maxMessages"),
+        ]:
+            val = batching.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                )
 
 
 def _process_endpoint_datalakestoragesettings(
     check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
 ) -> None:
-    settings = spec.get("datalakestoragesettings", {})
+    settings = spec.get("datalakeStorageSettings", {})
     for label, key in [("DataLake Host", "host")]:
         val = settings.get(key)
         if val:
@@ -414,31 +438,31 @@ def _process_endpoint_datalakestoragesettings(
                 display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
             )
 
-    batching = settings.get("batching", {})
-    check_manager.add_display(
-        target_name=target,
-        namespace=namespace,
-        display=Padding("Batching", (0, 0, 0, padding)),
-    )
-
-    padding += 4
-    for label, key in [
-        ("Latency (s)", "latencySeconds"),
-        ("Max Messages", "maxMessages"),
-    ]:
-        val = batching.get(key)
-        if val:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
-            )
+    if detail_level > ResourceOutputDetailLevel.detail.value:
+        batching = settings.get("batching", {})
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("Batching:", (0, 0, 0, padding)),
+        )
+        padding += 4
+        for label, key in [
+            ("Latency (s)", "latencySeconds"),
+            ("Max Messages", "maxMessages"),
+        ]:
+            val = batching.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                )
 
 
 def _process_endpoint_dataexplorersettings(
     check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
 ) -> None:
-    settings = spec.get("dataexplorersettings", {})
+    settings = spec.get("dataExplorerSettings", {})
     for label, key in [("Database Name", "database"), ("Data Explorer Host", "host")]:
         val = settings.get(key)
         if val:
@@ -448,25 +472,26 @@ def _process_endpoint_dataexplorersettings(
                 display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
             )
 
-    batching = settings.get("batching", {})
-    check_manager.add_display(
-        target_name=target,
-        namespace=namespace,
-        display=Padding("Batching", (0, 0, 0, padding)),
-    )
+    if detail_level > ResourceOutputDetailLevel.detail.value:
+        batching = settings.get("batching", {})
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("Batching:", (0, 0, 0, padding)),
+        )
 
-    padding += 4
-    for label, key in [
-        ("Latency (s)", "latencySeconds"),
-        ("Max Messages", "maxMessages"),
-    ]:
-        val = batching.get(key)
-        if val:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
-            )
+        padding += 4
+        for label, key in [
+            ("Latency (s)", "latencySeconds"),
+            ("Max Messages", "maxMessages"),
+        ]:
+            val = batching.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                )
 
 
 def _process_endpoint_localstoragesettings(
@@ -706,51 +731,42 @@ def evaluate_dataflow_endpoints(
             spec = endpoint.get("spec", {})
             endpoint_name = endpoint.get("metadata", {}).get("name")
             endpoint_type = spec.get("endpointType")
+
+            endpoint_string = f"Endpoint {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_name)}}}"
+            detected_string = COLOR_STR_FORMAT.format(color='green', value='detected')
+            type_string = f"type: {COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_type)}"
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
                 display=Padding(
-                    f"\n- Endpoint {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}",
+                    f"\n- {endpoint_string} {detected_string}, {type_string}",
                     (0, 0, 0, padding),
-                ),
-            )
-            # TODO - figure out status
-            padding += 4
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(
-                    f"Type: {COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_type)}", (0, 0, 0, padding)
                 ),
             )
 
             # endpoint auth
-            auth = spec.get("authentication", {})
-            auth_method = auth.get("method")
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"Authentication Method: {auth_method}", (0, 0, 0, padding)),
-            )
+            if detail_level > ResourceOutputDetailLevel.summary.value:
+                auth = spec.get("authentication", {})
+                auth_method = auth.get("method")
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"Authentication Method: {auth_method}", (0, 0, 0, padding + 4)),
+                )
 
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"Type: {COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_type)}", (0, 0, 0, padding)),
-            )
-            endpoint_processor_dict = {
-                DataflowEndpointType.mqtt.value: _process_endpoint_mqttsettings,
-                DataflowEndpointType.kafka.value: _process_endpoint_kafkasettings,
-                DataflowEndpointType.fabric_onelake.value: _process_endpoint_fabriconelakesettings,
-                DataflowEndpointType.datalake.value: _process_endpoint_datalakestoragesettings,
-                DataflowEndpointType.data_explorer.value: _process_endpoint_dataexplorersettings,
-                DataflowEndpointType.local_storage.value: _process_endpoint_localstoragesettings,
-            }
-            # process endpoint settings
-            if endpoint_type and endpoint_type.lower() not in endpoint_processor_dict:
-                logger.warn(f"Unknown dataflow endpoint type: {endpoint_type}")
+                endpoint_processor_dict = {
+                    DataflowEndpointType.mqtt.value: _process_endpoint_mqttsettings,
+                    DataflowEndpointType.kafka.value: _process_endpoint_kafkasettings,
+                    DataflowEndpointType.fabric_onelake.value: _process_endpoint_fabriconelakesettings,
+                    DataflowEndpointType.datalake.value: _process_endpoint_datalakestoragesettings,
+                    DataflowEndpointType.data_explorer.value: _process_endpoint_dataexplorersettings,
+                    DataflowEndpointType.local_storage.value: _process_endpoint_localstoragesettings,
+                }
+                # process endpoint settings
+                if endpoint_type and endpoint_type.lower() not in endpoint_processor_dict:
+                    logger.warn(f"Unknown dataflow endpoint type: {endpoint_type}")
 
-            endpoint_processor_dict[endpoint_type.lower()](check_manager=check_manager, target=target, namespace=namespace, spec=spec, detail_level=detail_level, padding=padding)
+                endpoint_processor_dict[endpoint_type.lower()](check_manager=check_manager, target=target, namespace=namespace, spec=spec, detail_level=detail_level, padding=padding + 4)
 
         check_manager.add_target_eval(
             target_name=target,
@@ -809,70 +825,81 @@ def evaluate_dataflow_profiles(
                     (0, 0, 0, padding),
                 ),
             )
-
-            padding += 4
             # TODO - figure out status / conditions
-            for label, key in [
-                ("Instance Count", "instanceCount"),
-            ]:
-                val = spec.get(key)
-                if val:
+
+            # diagnostics on higher detail levels
+            if detail_level > ResourceOutputDetailLevel.summary.value:
+                padding += 4
+                for label, key in [
+                    ("Instance Count", "instanceCount"),
+                ]:
+                    val = spec.get(key)
+                    if val:
+                        check_manager.add_display(
+                            target_name=target,
+                            namespace=namespace,
+                            display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                        )
+
+                diagnostics = spec.get("diagnostics", {})
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding("Diagnostic Logs:", (0, 0, 0, padding)),
+                )
+
+                # diagnostic logs
+                diagnostic_logs = diagnostics.get("logs", {})
+                diagnostic_log_level = diagnostic_logs.get("level")
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"Log Level: {diagnostic_log_level}", (0, 0, 0, padding + 4)),
+                )
+
+                if detail_level > ResourceOutputDetailLevel.detail.value:
+                    diagnostic_log_otelconfig = diagnostic_logs.get("openTelemetryExportConfig", {})
+                    for label, key in [
+                        ("Endpoint", "otlpGrpcEndpoint"),
+                        ("Interval (s)", "intervalSeconds"),
+                        ("Level", "level"),
+                    ]:
+                        val = diagnostic_log_otelconfig.get(key)
+                        if val:
+                            check_manager.add_display(
+                                target_name=target,
+                                namespace=namespace,
+                                display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                            )
+
+                    # diagnostic metrics
+                    diagnostic_metrics = diagnostics.get("metrics", {})
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
-                        display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                        display=Padding("Diagnostic Metrics:", (0, 0, 0, padding)),
                     )
-            diagnostics = spec.get("diagnostics", {})
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding("Diagnostic Logs:", (0, 0, 0, padding)),
-            )
-            diagnostic_logs = diagnostics.get("logs", {})
-            diagnostic_log_level = diagnostic_logs.get("level")
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"Log Level: {diagnostic_log_level}", (0, 0, 0, padding + 4)),
-            )
-            diagnostic_log_otelconfig = diagnostic_logs.get("openTelemetryExportConfig", {})
-            for label, key in [
-                ("Endpoint", "otlpGrpcEndpoint"),
-                ("Interval (s)", "intervalSeconds"),
-                ("Level", "level"),
-            ]:
-                val = diagnostic_log_otelconfig.get(key)
-                if val:
+
+                    diagnostic_metrics_prometheusPort = diagnostic_metrics.get("prometheusPort")
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
-                        display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                        display=Padding(f"Prometheus Port: {diagnostic_metrics_prometheusPort}", (0, 0, 0, padding + 4)),
                     )
-            diagnostic_metrics = diagnostics.get("metrics", {})
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding("Diagnostic Metrics:", (0, 0, 0, padding)),
-            )
-            diagnostic_metrics_prometheusPort = diagnostic_metrics.get("prometheusPort")
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"Prometheus Port: {diagnostic_metrics_prometheusPort}", (0, 0, 0, padding + 4)),
-            )
-            diagnostic_metrics_otelconfig = diagnostic_metrics.get("openTelemetryExportConfig", {})
-            for label, key in [
-                ("Endpoint", "otlpGrpcEndpoint"),
-                ("Interval (s)", "intervalSeconds"),
-            ]:
-                val = diagnostic_metrics_otelconfig.get(key)
-                if val:
-                    check_manager.add_display(
-                        target_name=target,
-                        namespace=namespace,
-                        display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
-                    )
-            # TODO - determine status
+
+                    diagnostic_metrics_otelconfig = diagnostic_metrics.get("openTelemetryExportConfig", {})
+                    for label, key in [
+                        ("Endpoint", "otlpGrpcEndpoint"),
+                        ("Interval (s)", "intervalSeconds"),
+                    ]:
+                        val = diagnostic_metrics_otelconfig.get(key)
+                        if val:
+                            check_manager.add_display(
+                                target_name=target,
+                                namespace=namespace,
+                                display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                            )
+                # TODO - determine status
             check_manager.add_target_eval(
                 target_name=target,
                 namespace=namespace,

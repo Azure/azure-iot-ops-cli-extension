@@ -6,7 +6,6 @@ metadata:
 spec:
   endpointType: FabricOneLake
   fabricOneLakeSettings:
-    database: "database1"
     host: "http://host.fabric.microsoft.com"
     oneLakePathType: Tables
     names:
