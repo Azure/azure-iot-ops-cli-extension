@@ -53,177 +53,201 @@ def _process_dataflow_sourcesettings(
     check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
 ):
     settings = resource.get("sourceSettings", {})
-    check_manager.add_display(
-        target_name=target, namespace=namespace, display=Padding("\nSource:", (0, 0, 0, padding))
-    )
-
-    padding += 4
 
     # show endpoint ref
     # TODO - validate endpoint ref
     endpoint_ref = settings.get("endpointRef")
-    check_manager.add_display(
-        target_name=target,
-        namespace=namespace,
-        display=Padding(
-            f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_ref)}}}",
-            (0, 0, 0, padding),
-        ),
-    )
 
-    # extra properties
-    for label, key in [
-        # TODO - validate asset ref / colorize
-        ("DeviceRegistry Asset Reference", "assetRef"),
-        ("Schema Reference", "schemaRef"),
-        # TODO - jsonschema
-        ("Serialization Format", "serializationFormat"),
-    ]:
-        val = settings.get(key)
-        if val:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
-            )
-
-    # data source strings
-    data_sources = settings.get("dataSources", [])
-    if data_sources:
+    if detail_level > ResourceOutputDetailLevel.summary.value:
         check_manager.add_display(
-            target_name=target, namespace=namespace, display=Padding("Data Sources:", (0, 0, 0, padding))
+            target_name=target, namespace=namespace, display=Padding("\nSource:", (0, 0, 0, padding))
         )
-        for data_source in data_sources:
+
+        padding += 4
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_ref)}}}",
+                (0, 0, 0, padding),
+            ),
+        )
+
+    # TODO extra properties - only on verbose
+    if detail_level > ResourceOutputDetailLevel.detail.value:
+        for label, key in [
+            # TODO - validate asset ref / colorize
+            ("DeviceRegistry Asset Reference", "assetRef"),
+            ("Schema Reference", "schemaRef"),
+            # TODO - jsonschema
+            ("Serialization Format", "serializationFormat"),
+        ]:
+            val = settings.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                )
+
+    # data source strings - not on summary
+    if detail_level > ResourceOutputDetailLevel.summary.value:
+        data_sources = settings.get("dataSources", [])
+        if data_sources:
             check_manager.add_display(
-                target_name=target, namespace=namespace, display=Padding(f"- {data_source}", (0, 0, 0, padding + 2))
+                target_name=target, namespace=namespace, display=Padding("Data Sources:", (0, 0, 0, padding))
             )
+            for data_source in data_sources:
+                check_manager.add_display(
+                    target_name=target, namespace=namespace, display=Padding(f"- {data_source}", (0, 0, 0, padding + 2))
+                )
 
 
 def _process_dataflow_transformationsettings(
     check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
 ):
     settings = resource.get("builtInTransformationSettings", {})
-    check_manager.add_display(
-        target_name=target, namespace=namespace, display=Padding("\nBuilt-In Transformation:", (0, 0, 0, padding))
-    )
-    padding += 4
-    inner_padding = padding + 4
 
-    def _process_inputs(inputs: List[str]):
-        if inputs:
+    # only show details on non-summary
+    if detail_level > ResourceOutputDetailLevel.summary.value:
+        check_manager.add_display(
+            target_name=target, namespace=namespace, display=Padding("\nBuilt-In Transformation:", (0, 0, 0, padding))
+        )
+        padding += 4
+        inner_padding = padding + 4
+
+        def _process_inputs(inputs: List[str]):
+            if inputs:
+                check_manager.add_display(
+                    target_name=target, namespace=namespace, display=Padding("Inputs:", (0, 0, 0, inner_padding))
+                )
+                for input in inputs:
+                    check_manager.add_display(
+                        target_name=target, namespace=namespace, display=Padding(f"- {input}", (0, 0, 0, inner_padding + 2))
+                    )
+        # extra properties
+        for datasets_label, key in [
+            ("Schema Reference", "schemaRef"),
+            ("Serialization Format", "serializationFormat"),
+        ]:
+            # TODO - validate endpoint ref
+            val = settings.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{datasets_label}: {val}", (0, 0, 0, padding)),
+                )
+
+    # only show datasets, filters, maps on verbose
+    if detail_level > ResourceOutputDetailLevel.verbose.value:
+        
+        # datasets
+        datasets = settings.get("datasets", [])
+        if datasets:
             check_manager.add_display(
-                target_name=target, namespace=namespace, display=Padding("Inputs:", (0, 0, 0, inner_padding))
+                target_name=target, namespace=namespace, display=Padding("Datasets:", (0, 0, 0, padding))
             )
-            for input in inputs:
-                check_manager.add_display(
-                    target_name=target, namespace=namespace, display=Padding(f"- {input}", (0, 0, 0, inner_padding + 2))
-                )
-    # extra properties
-    for label, key in [
-        ("Schema Reference", "schemaRef"),
-        ("Serialization Format", "serializationFormat"),
-    ]:
-        # TODO - validate endpoint ref
-        val = settings.get(key)
-        if val:
+        for dataset in datasets:
+            for label, key in [
+                ("Description", "description"),
+                ("Key", "key"),
+                ("Expression", "expression"),
+                ("Schema", "schemaRef"),
+            ]:
+                # TODO - schema ref json
+                val = dataset.get(key)
+                if val:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
+                    )
+            inputs = dataset.get("inputs", [])
+            _process_inputs(inputs)
+
+        # filters
+        filters = settings.get("filter", [])
+        if filters:
             check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                target_name=target, namespace=namespace, display=Padding("Filters:", (0, 0, 0, padding))
             )
+        for filter in filters:
+            for datasets_label, key in [
+                ("Description", "description"),
+                ("Expression", "expression"),
+                ("Operation Type", "type"),
+            ]:
+                # TODO - schema ref json
+                val = filter.get(key)
+                if val:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(f"{datasets_label}: {val}", (0, 0, 0, padding + 4)),
+                    )
+            inputs = filter.get("inputs", [])
+            _process_inputs(inputs)
 
-    # datasets
-    datasets = settings.get("datasets", [])
-    if datasets:
-        check_manager.add_display(
-            target_name=target, namespace=namespace, display=Padding("Datasets:", (0, 0, 0, padding))
-        )
-    for dataset in datasets:
-        for label, key in [
-            ("Description", "description"),
-            ("Key", "key"),
-            ("Expression", "expression"),
-            ("Schema", "schemaRef"),
-        ]:
-            # TODO - schema ref json
-            val = dataset.get(key)
-            if val:
-                check_manager.add_display(
-                    target_name=target,
-                    namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
-                )
-        inputs = dataset.get("inputs", [])
-        _process_inputs(inputs)
-
-    # filters
-    filters = settings.get("filter", [])
-    if filters:
-        check_manager.add_display(
-            target_name=target, namespace=namespace, display=Padding("Filters:", (0, 0, 0, padding))
-        )
-    for filter in filters:
-        for label, key in [
-            ("Description", "description"),
-            ("Expression", "expression"),
-            ("Operation Type", "type"),
-        ]:
-            # TODO - schema ref json
-            val = filter.get(key)
-            if val:
-                check_manager.add_display(
-                    target_name=target,
-                    namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
-                )
-        inputs = filter.get("inputs", [])
-        _process_inputs(inputs)
-
-    # maps
-    maps = settings.get("map", [])
-    if maps:
-        check_manager.add_display(
-            target_name=target, namespace=namespace, display=Padding("Maps:", (0, 0, 0, padding))
-        )
-    for map in maps:
-        for label, key in [
-            ("Description", "description"),
-            ("Expression", "expression"),
-            ("Output", "output"),
-            ("Transformation Type", "type"),
-        ]:
-            # TODO - schema ref json
-            val = map.get(key)
-            if val:
-                check_manager.add_display(
-                    target_name=target,
-                    namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
-                )
-        inputs = map.get("inputs", [])
-        _process_inputs(inputs)
+        # maps
+        maps = settings.get("map", [])
+        if maps:
+            check_manager.add_display(
+                target_name=target, namespace=namespace, display=Padding("Maps:", (0, 0, 0, padding))
+            )
+        for map in maps:
+            for label, key in [
+                ("Description", "description"),
+                ("Expression", "expression"),
+                ("Output", "output"),
+                ("Transformation Type", "type"),
+            ]:
+                # TODO - schema ref json
+                val = map.get(key)
+                if val:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
+                    )
+            inputs = map.get("inputs", [])
+            _process_inputs(inputs)
 
 
 def _process_dataflow_destinationsettings(
     check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
 ):
     settings = resource.get("destinationSettings", {})
-    check_manager.add_display(
-        target_name=target, namespace=namespace, display=Padding("\nDestination:", (0, 0, 0, padding))
-    )
+    if detail_level > ResourceOutputDetailLevel.summary.value:
+        check_manager.add_display(
+            target_name=target, namespace=namespace, display=Padding("\nDestination:", (0, 0, 0, padding))
+        )
     padding += 4
-    for label, key in [
-        ("Data Destination", "dataDestination"),
-        ("Dataflow Endpoint", "endpointRef"),
-    ]:
-        # TODO - validate endpoint ref
-        val = settings.get(key)
-        if val:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
-            )
+    # TODO - validate endpoint ref
+    endpoint_ref = settings.get("endpointRef")
+    # show dataflow endpoint ref on detail
+    if detail_level > ResourceOutputDetailLevel.summary.value:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_ref)}}}",
+                (0, 0, 0, padding),
+            ),
+        )
+        # only show destination on verbose
+        if detail_level > ResourceOutputDetailLevel.detail.value:
+            for label, key in [
+                ("Data Destination", "dataDestination"),
+            ]:
+                # TODO - validate endpoint ref
+                val = settings.get(key)
+                if val:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                    )
 
 
 def _process_endpoint_mqttsettings(
@@ -557,6 +581,8 @@ def evaluate_dataflows(
     )
     target = dataflow_target
     padding = 8
+
+    # No dataflows - skip
     if not all_dataflows:
         no_dataflows_text = "No Dataflow resources detected in any namespace."
         check_manager.add_target(target_name=target)
@@ -569,15 +595,14 @@ def evaluate_dataflows(
         )
         return check_manager.as_dict(as_list=as_list)
     for namespace, dataflows in get_resources_grouped_by_namespace(all_dataflows):
-        check_manager.add_target(target_name=target, namespace=namespace)
         padding = 8
+        check_manager.add_target(target_name=target, namespace=namespace)
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
             display=Padding(f"Dataflows in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, padding)),
         )
         for dataflow in list(dataflows):
-            padding = 8
             spec = dataflow.get("spec", {})
             dataflow_name = dataflow.get("metadata", {}).get("name")
             check_manager.add_display(
@@ -588,7 +613,7 @@ def evaluate_dataflows(
                     (0, 0, 0, padding),
                 ),
             )
-            padding += 4
+
             mode = spec.get("mode")
             profile_ref = spec.get("profileRef")
             for label, val in [
@@ -599,9 +624,15 @@ def evaluate_dataflows(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
                 )
             operations = spec.get("operations", [])
+            if operations and detail_level > ResourceOutputDetailLevel.summary.value:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding("Operations:", (0, 0, 0, padding + 4)),
+                )
             # TODO - error if no operations?
             processor_dict = {
                 DataflowOperationType.source.value: _process_dataflow_sourcesettings,
@@ -622,7 +653,7 @@ def evaluate_dataflows(
                     namespace=namespace,
                     resource=operation,
                     detail_level=detail_level,
-                    padding=padding,
+                    padding=padding + 8,
                 )
 
             check_manager.add_target_eval(
