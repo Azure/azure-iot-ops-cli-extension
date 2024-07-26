@@ -169,7 +169,9 @@ def assert_general_eval_custom_resources(
     for namespace, kubectl_items in sorted_items.items():
         assert namespace in namespace_dict
         check_names = []
-        for item in namespace_dict[namespace]["evaluations"]:
+        # filter out the kubernetes runtime resource evals using /, only check the CRD evals
+        crd_evals = [item for item in namespace_dict[namespace]["evaluations"] if "/" not in item.get("name", "")]
+        for item in crd_evals:
             if item.get("name"):
                 check_names.append(item.get("name"))
         # if using resource name filter, could have missing items

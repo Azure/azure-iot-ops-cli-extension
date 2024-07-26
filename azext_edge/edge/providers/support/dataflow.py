@@ -37,7 +37,7 @@ def fetch_deployments():
     processed.extend(
         process_deployments(
             directory_path=DATAFLOW_DIRECTORY_PATH,
-            field_selector=DATAFLOW_DEPLOYMENT_FIELD_SELECTOR,
+            label_selector=DATAFLOW_NAME_LABEL,
         )
     )
 
