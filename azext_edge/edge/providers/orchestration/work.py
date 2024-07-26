@@ -199,7 +199,7 @@ class WorkManager:
         deployment_moniker = "Custom template" if self._template_path else CURRENT_TEMPLATE.moniker
         self.display.add_category(
             WorkCategoryKey.DEPLOY_AIO,
-            f"Deploy IoT Operations - [cyan]{deployment_moniker}[/cyan]",
+            f"Deploy IoT Operations - '[cyan]{deployment_moniker}[/cyan]'",
             skipped=self._no_deploy,
         )
 

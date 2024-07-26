@@ -38,7 +38,7 @@ V1_TEMPLATE = TemplateVer(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.28.1.47646", "templateHash": "10066951547782216117"},
+            "_generator": {"name": "bicep", "version": "0.28.1.47646", "templateHash": "5845726988990598993"},
             "description": "This template deploys Azure IoT Operations.",
             "aziotopsCliVersion": "0.6.0a2",
         },
@@ -121,7 +121,7 @@ V1_TEMPLATE = TemplateVer(
             },
             "VERSIONS": {
                 "platform": "0.6.0-preview-rc20240722.1",
-                "aio": "0.6.0-preview-rc20240718.1",
+                "aio": "0.6.0-preview-rc20240724.1",
                 "observability": "0.1.0-preview",
                 "secretSyncController": "0.3.0-97225789",
             },
@@ -290,26 +290,6 @@ V1_TEMPLATE = TemplateVer(
                         "mqttBroker.values.secrets.secretProviderClassName": "[parameters('mqSecrets').secretProviderClassName]",
                         "mqttBroker.values.secrets.servicePrincipalSecretRef": "[parameters('mqSecrets').servicePrincipalSecretRef]",
                         "observability.metrics.openTelemetryCollectorAddress": "[variables('OBSERVABILITY').otelCollectorAddressNoProtocol]",
-                        "adr.enabled": "true",
-                        "adr.image.registry": "azureiotoperations.azurecr.io",
-                        "adr.image.repository": "helm/adr/assets-arc-extension",
-                        "adr.image.tag": "0.1.1-preview-rc.2",
-                        "akri.enabled": "true",
-                        "akri.image.registry": "akripreview.azurecr.io",
-                        "akri.image.repository": "helm/microsoft-managed-akri",
-                        "akri.image.tag": "0.3.3-preview",
-                        "connectors.opcua.enabled": "true",
-                        "connectors.opcua.image.registry": "azureiotoperations.azurecr.io",
-                        "connectors.opcua.image.repository": "aio-connectors/helmchart/microsoft-aio-connectors",
-                        "connectors.opcua.image.tag": "0.7.0-preview.6",
-                        "dataFlows.enabled": "true",
-                        "dataFlows.image.registry": "mqpreview.azurecr.io",
-                        "dataFlows.image.repository": "helm/dataflows",
-                        "dataFlows.image.tag": "0.1.0-preview-rc9",
-                        "mqttBroker.enabled": "true",
-                        "mqttBroker.image.registry": "mqpreview.azurecr.io",
-                        "mqttBroker.image.repository": "helm/mq",
-                        "mqttBroker.image.tag": "0.5.0-preview-rc8",
                     },
                 },
                 "dependsOn": [
@@ -522,42 +502,6 @@ V1_TEMPLATE = TemplateVer(
                 ],
             },
         ],
-        "outputs": {
-            "clusterName": {"type": "string", "value": "[parameters('clusterName')]"},
-            "customLocationId": {
-                "type": "string",
-                "value": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-            },
-            "customLocationName": {"type": "string", "value": "[parameters('customLocationName')]"},
-            "targetName": {"type": "string", "value": "[variables('OBSERVABILITY').targetName]"},
-            "aioNamespace": {"type": "string", "value": "[variables('AIO_CLUSTER_RELEASE_NAMESPACE')]"},
-            "mq": {"type": "object", "value": "[variables('MQ_PROPERTIES')]"},
-            "observability": {"type": "object", "value": "[variables('OBSERVABILITY')]"},
-            "clusterInfo": {
-                "type": "object",
-                "value": {
-                    "clusterName": "[parameters('clusterName')]",
-                    "aioNamespace": "[variables('AIO_CLUSTER_RELEASE_NAMESPACE')]",
-                },
-            },
-            "orchestrator": {
-                "type": "object",
-                "value": {"enabled": True, "targetName": "[variables('OBSERVABILITY').targetName]"},
-            },
-            "customLocation": {
-                "type": "object",
-                "value": {
-                    "id": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-                    "name": "[parameters('customLocationName')]",
-                    "resourceSyncRulesEnabled": "[parameters('deployResourceSyncRules')]",
-                    "resourceSyncRules": [
-                        "[format('{0}-aio-sync', parameters('customLocationName'))]",
-                        "[format('{0}-adr-sync', parameters('customLocationName'))]",
-                        "[format('{0}-mq-sync', parameters('customLocationName'))]",
-                    ],
-                },
-            },
-        },
     },
 )
 
