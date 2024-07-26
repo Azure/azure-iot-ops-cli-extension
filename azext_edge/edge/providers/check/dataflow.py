@@ -6,6 +6,7 @@
 
 from typing import Any, Dict, List
 
+from azure.cli.core.azclierror import CLIInternalError
 from knack.log import get_logger
 from rich.padding import Padding
 
@@ -21,6 +22,8 @@ from .common import (
     COLOR_STR_FORMAT,
     PADDING_SIZE,
     CoreServiceResourceKinds,
+    DataflowEndpointType,
+    DataflowOperationType,
     ResourceOutputDetailLevel,
 )
 
@@ -38,12 +41,422 @@ dataflows_check_desc = "Evaluate Dataflows"
 dataflow_endpoint_check_name = "evalDataflowEndpoints"
 dataflow_endpoint_check_desc = "Evaluate Dataflow Endpoints"
 
-dataflow_profile_check_name="evalDataflowProfiles"
-dataflow_profile_check_desc="Evaluate Dataflow Profiles"
+dataflow_profile_check_name = "evalDataflowProfiles"
+dataflow_profile_check_desc = "Evaluate Dataflow Profiles"
 
 dataflow_target = "dataflows.connectivity.iotoperations.azure.com"
 dataflow_endpoint_target = "dataflowendpoints.connectivity.iotoperations.azure.com"
 dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com"
+
+
+def _process_dataflow_sourcesettings(
+    check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
+):
+    settings = resource.get("sourceSettings", {})
+    check_manager.add_display(
+        target_name=target, namespace=namespace, display=Padding("\nSource:", (0, 0, 0, padding))
+    )
+
+    padding += 4
+
+    # show endpoint ref
+    # TODO - validate endpoint ref
+    endpoint_ref = settings.get("endpointRef")
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding(
+            f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_ref)}}}",
+            (0, 0, 0, padding),
+        ),
+    )
+
+    # extra properties
+    for label, key in [
+        # TODO - validate asset ref / colorize
+        ("DeviceRegistry Asset Reference", "assetRef"),
+        ("Schema Reference", "schemaRef"),
+        # TODO - jsonschema
+        ("Serialization Format", "serializationFormat"),
+    ]:
+        val = settings.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+    # data source strings
+    data_sources = settings.get("dataSources", [])
+    if data_sources:
+        check_manager.add_display(
+            target_name=target, namespace=namespace, display=Padding("Data Sources:", (0, 0, 0, padding))
+        )
+        for data_source in data_sources:
+            check_manager.add_display(
+                target_name=target, namespace=namespace, display=Padding(f"- {data_source}", (0, 0, 0, padding + 2))
+            )
+
+
+def _process_dataflow_transformationsettings(
+    check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
+):
+    settings = resource.get("builtInTransformationSettings", {})
+    check_manager.add_display(
+        target_name=target, namespace=namespace, display=Padding("\nBuilt-In Transformation:", (0, 0, 0, padding))
+    )
+    padding += 4
+    inner_padding = padding + 4
+
+    def _process_inputs(inputs: List[str]):
+        if inputs:
+            check_manager.add_display(
+                target_name=target, namespace=namespace, display=Padding("Inputs:", (0, 0, 0, inner_padding))
+            )
+            for input in inputs:
+                check_manager.add_display(
+                    target_name=target, namespace=namespace, display=Padding(f"- {input}", (0, 0, 0, inner_padding + 2))
+                )
+    # extra properties
+    for label, key in [
+        ("Schema Reference", "schemaRef"),
+        ("Serialization Format", "serializationFormat"),
+    ]:
+        # TODO - validate endpoint ref
+        val = settings.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+    # datasets
+    datasets = settings.get("datasets", [])
+    if datasets:
+        check_manager.add_display(
+            target_name=target, namespace=namespace, display=Padding("Datasets:", (0, 0, 0, padding))
+        )
+    for dataset in datasets:
+        for label, key in [
+            ("Description", "description"),
+            ("Key", "key"),
+            ("Expression", "expression"),
+            ("Schema", "schemaRef"),
+        ]:
+            # TODO - schema ref json
+            val = dataset.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
+                )
+        inputs = dataset.get("inputs", [])
+        _process_inputs(inputs)
+
+    # filters
+    filters = settings.get("filter", [])
+    if filters:
+        check_manager.add_display(
+            target_name=target, namespace=namespace, display=Padding("Filters:", (0, 0, 0, padding))
+        )
+    for filter in filters:
+        for label, key in [
+            ("Description", "description"),
+            ("Expression", "expression"),
+            ("Operation Type", "type"),
+        ]:
+            # TODO - schema ref json
+            val = filter.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                )
+        inputs = filter.get("inputs", [])
+        _process_inputs(inputs)
+
+    # maps
+    maps = settings.get("map", [])
+    if maps:
+        check_manager.add_display(
+            target_name=target, namespace=namespace, display=Padding("Maps:", (0, 0, 0, padding))
+        )
+    for map in maps:
+        for label, key in [
+            ("Description", "description"),
+            ("Expression", "expression"),
+            ("Output", "output"),
+            ("Transformation Type", "type"),
+        ]:
+            # TODO - schema ref json
+            val = map.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
+                )
+        inputs = map.get("inputs", [])
+        _process_inputs(inputs)
+
+
+def _process_dataflow_destinationsettings(
+    check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
+):
+    settings = resource.get("destinationSettings", {})
+    check_manager.add_display(
+        target_name=target, namespace=namespace, display=Padding("\nDestination:", (0, 0, 0, padding))
+    )
+    padding += 4
+    for label, key in [
+        ("Data Destination", "dataDestination"),
+        ("Dataflow Endpoint", "endpointRef"),
+    ]:
+        # TODO - validate endpoint ref
+        val = settings.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+
+def _process_endpoint_mqttsettings(
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
+) -> None:
+    settings = spec.get("mqttSettings", {})
+    for label, key in [
+        ("Client ID Prefix", "clientIdPrefix"),
+        ("MQTT Host", "host"),
+        ("Keep Alive (s)", "keepAliveSeconds"),
+        ("Max Inflight Messages", "maxInflightMessages"),
+        ("Protocol", "protocol"),
+        ("QOS", "qos"),
+        ("Retain", "retain"),
+        ("Session Expiry (s)", "sessionExpirySeconds"),
+    ]:
+        val = settings.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+    tls = settings.get("tls", {})
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("TLS", (0, 0, 0, padding)),
+    )
+    for label, key in [
+        ("Mode", "mode"),
+        ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
+    ]:
+        # TODO - validate ref?
+        val = tls.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+            )
+
+
+def _process_endpoint_kafkasettings(
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
+) -> None:
+    settings = spec.get("kafkaSettings", {})
+
+    for label, key in [
+        ("Compression", "compression"),
+        ("Consumer Group ID", "consumerGroupId"),
+        ("Copy MQTT Properties", "copyMqttProperties"),
+        ("Kafka Host", "host"),
+        ("Acks", "kafkaAcks"),
+        ("Partition Strategy", "partitionStrategy"),
+    ]:
+        val = settings.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+    tls = settings.get("tls", {})
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("TLS", (0, 0, 0, padding)),
+    )
+    for label, key in [
+        ("Mode", "mode"),
+        ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
+    ]:
+        # TODO - validate ref?
+        val = tls.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+            )
+
+    batching = settings.get("batching", {})
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("Batching", (0, 0, 0, padding)),
+    )
+
+    for label, key in [
+        ("Latency (ms)", "latencyMs"),
+        ("Max Bytes", "maxBytes"),
+        ("Max Messages", "maxMessages"),
+        ("Mode", "mode"),
+    ]:
+        val = batching.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+            )
+
+
+def _process_endpoint_fabriconelakesettings(
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
+) -> None:
+    settings = spec.get("fabricOneLakeSettings", {})
+    for label, key in [("Fabric Host", "host"), ("Path Type", "oneLakePathType")]:
+        val = settings.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+    names = settings.get("names", {})
+    for label, key in [
+        ("Lakehouse Name", "lakehouseName"),
+        ("Workspace Name", "workspaceName"),
+    ]:
+        val = names.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+    batching = settings.get("batching", {})
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("Batching", (0, 0, 0, padding)),
+    )
+
+    padding += 4
+    for label, key in [
+        ("Latency (s)", "latencySeconds"),
+        ("Max Messages", "maxMessages"),
+    ]:
+        val = batching.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+
+def _process_endpoint_datalakestoragesettings(
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
+) -> None:
+    settings = spec.get("datalakestoragesettings", {})
+    for label, key in [("DataLake Host", "host")]:
+        val = settings.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+    batching = settings.get("batching", {})
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("Batching", (0, 0, 0, padding)),
+    )
+
+    padding += 4
+    for label, key in [
+        ("Latency (s)", "latencySeconds"),
+        ("Max Messages", "maxMessages"),
+    ]:
+        val = batching.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+
+def _process_endpoint_dataexplorersettings(
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
+) -> None:
+    settings = spec.get("dataexplorersettings", {})
+    for label, key in [("Database Name", "database"), ("Data Explorer Host", "host")]:
+        val = settings.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+    batching = settings.get("batching", {})
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("Batching", (0, 0, 0, padding)),
+    )
+
+    padding += 4
+    for label, key in [
+        ("Latency (s)", "latencySeconds"),
+        ("Max Messages", "maxMessages"),
+    ]:
+        val = batching.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+            )
+
+
+def _process_endpoint_localstoragesettings(
+    check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
+) -> None:
+    # TODO - validate reference
+    settings = spec.get("localStorageSettings", {})
+    persistent_volume_claim = settings.get("persistentVolumeClaimRef")
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding(f"Persistent Volume Claim: {persistent_volume_claim}", (0, 0, 0, padding)),
+    )
+
 
 def check_dataflows_deployment(
     result: Dict[str, Any],
@@ -148,9 +561,7 @@ def evaluate_dataflows(
         no_dataflows_text = "No Dataflow resources detected in any namespace."
         check_manager.add_target(target_name=target)
         check_manager.add_target_eval(
-            target_name=target,
-            status=CheckTaskStatus.skipped.value,
-            value={"dataflows": no_dataflows_text}
+            target_name=target, status=CheckTaskStatus.skipped.value, value={"dataflows": no_dataflows_text}
         )
         check_manager.add_display(
             target_name=target,
@@ -163,10 +574,7 @@ def evaluate_dataflows(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding(
-                f"Dataflows in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, padding)
-            )
+            display=Padding(f"Dataflows in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, padding)),
         )
         for dataflow in list(dataflows):
             padding = 8
@@ -175,7 +583,10 @@ def evaluate_dataflows(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"\n- Dataflow {{{COLOR_STR_FORMAT.format(color='bright_blue', value=dataflow_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}", (0, 0, 0, padding)),
+                display=Padding(
+                    f"\n- Dataflow {{{COLOR_STR_FORMAT.format(color='bright_blue', value=dataflow_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}",
+                    (0, 0, 0, padding),
+                ),
             )
             padding += 4
             mode = spec.get("mode")
@@ -190,6 +601,30 @@ def evaluate_dataflows(
                     namespace=namespace,
                     display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
                 )
+            operations = spec.get("operations", [])
+            # TODO - error if no operations?
+            processor_dict = {
+                DataflowOperationType.source.value: _process_dataflow_sourcesettings,
+                DataflowOperationType.builtin_transformation.value: _process_dataflow_transformationsettings,
+                DataflowOperationType.destination.value: _process_dataflow_destinationsettings,
+            }
+
+            for operation in operations:
+                # TODO - group by type
+                # TODO - "Dataflow must have 3 operations max"
+                # TODO - "Dataflow must have a local MQ source or a local MQ target."
+                op_type = operation.get("operationType")
+                if op_type and op_type.lower() not in processor_dict:
+                    raise CLIInternalError(f"Invalid operation type {op_type}")
+                processor_dict[op_type.lower()](
+                    check_manager=check_manager,
+                    target=target,
+                    namespace=namespace,
+                    resource=operation,
+                    detail_level=detail_level,
+                    padding=padding,
+                )
+
             check_manager.add_target_eval(
                 target_name=target,
                 namespace=namespace,
@@ -220,9 +655,7 @@ def evaluate_dataflow_endpoints(
         no_endpoints_text = "No Dataflow Endpoints detected in any namespace."
         check_manager.add_target(target_name=target)
         check_manager.add_target_eval(
-            target_name=target,
-            status=CheckTaskStatus.skipped.value,
-            value={"endpoints": no_endpoints_text}
+            target_name=target, status=CheckTaskStatus.skipped.value, value={"endpoints": no_endpoints_text}
         )
         check_manager.add_display(
             target_name=target,
@@ -235,10 +668,7 @@ def evaluate_dataflow_endpoints(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding(
-                f"Dataflow Endpoints in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, padding)
-            )
+            display=Padding(f"Dataflow Endpoints in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, padding)),
         )
         for endpoint in list(endpoints):
             padding = 8
@@ -248,14 +678,19 @@ def evaluate_dataflow_endpoints(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"\n- Endpoint {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}", (0, 0, 0, padding)),
+                display=Padding(
+                    f"\n- Endpoint {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}",
+                    (0, 0, 0, padding),
+                ),
             )
             # TODO - figure out status
             padding += 4
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"Type: {COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_type)}", (0, 0, 0, padding)),
+                display=Padding(
+                    f"Type: {COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_type)}", (0, 0, 0, padding)
+                ),
             )
 
             # endpoint auth
@@ -266,6 +701,25 @@ def evaluate_dataflow_endpoints(
                 namespace=namespace,
                 display=Padding(f"Authentication Method: {auth_method}", (0, 0, 0, padding)),
             )
+
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"Type: {COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_type)}", (0, 0, 0, padding)),
+            )
+            endpoint_processor_dict = {
+                DataflowEndpointType.mqtt.value: _process_endpoint_mqttsettings,
+                DataflowEndpointType.kafka.value: _process_endpoint_kafkasettings,
+                DataflowEndpointType.fabric_onelake.value: _process_endpoint_fabriconelakesettings,
+                DataflowEndpointType.datalake.value: _process_endpoint_datalakestoragesettings,
+                DataflowEndpointType.data_explorer.value: _process_endpoint_dataexplorersettings,
+                DataflowEndpointType.local_storage.value: _process_endpoint_localstoragesettings,
+            }
+            # process endpoint settings
+            if endpoint_type and endpoint_type.lower() not in endpoint_processor_dict:
+                logger.warn(f"Unknown dataflow endpoint type: {endpoint_type}")
+
+            endpoint_processor_dict[endpoint_type.lower()](check_manager=check_manager, target=target, namespace=namespace, spec=spec, detail_level=detail_level, padding=padding)
 
         check_manager.add_target_eval(
             target_name=target,
@@ -284,7 +738,7 @@ def evaluate_dataflow_profiles(
 ):
     check_manager = CheckManager(
         check_name=dataflow_profile_check_name,
-        check_desc=dataflow_api_check_desc,
+        check_desc=dataflow_profile_check_desc,
     )
     all_profiles = get_resources_by_name(
         api_info=DATAFLOW_API_V1B1,
@@ -297,9 +751,7 @@ def evaluate_dataflow_profiles(
         no_profiles_text = "No Dataflow Profiles detected in any namespace."
         check_manager.add_target(target_name=target)
         check_manager.add_target_eval(
-            target_name=target,
-            status=CheckTaskStatus.skipped.value,
-            value={"profiles": no_profiles_text}
+            target_name=target, status=CheckTaskStatus.skipped.value, value={"profiles": no_profiles_text}
         )
         check_manager.add_display(
             target_name=target,
@@ -312,26 +764,84 @@ def evaluate_dataflow_profiles(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding(
-                f"Dataflow Profiles in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, padding)
-            )
+            display=Padding(f"Dataflow Profiles in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, padding)),
         )
         for profile in list(profiles):
             padding = 8
             profile_name = profile.get("metadata", {}).get("name")
+            spec = profile.get("spec", {})
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"\n- Profile {{{COLOR_STR_FORMAT.format(color='bright_blue', value=profile_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}", (0, 0, 0, padding)),
+                display=Padding(
+                    f"\n- Profile {{{COLOR_STR_FORMAT.format(color='bright_blue', value=profile_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}",
+                    (0, 0, 0, padding),
+                ),
             )
 
-            # TODO - determine status
-            check_manager.set_target_status(
+            padding += 4
+            # TODO - figure out status / conditions
+            for label, key in [
+                ("Instance Count", "instanceCount"),
+            ]:
+                val = spec.get(key)
+                if val:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                    )
+            diagnostics = spec.get("diagnostics", {})
+            check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                status=CheckTaskStatus.success.value,
+                display=Padding("Diagnostic Logs:", (0, 0, 0, padding)),
             )
+            diagnostic_logs = diagnostics.get("logs", {})
+            diagnostic_log_level = diagnostic_logs.get("level")
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"Log Level: {diagnostic_log_level}", (0, 0, 0, padding + 4)),
+            )
+            diagnostic_log_otelconfig = diagnostic_logs.get("openTelemetryExportConfig", {})
+            for label, key in [
+                ("Endpoint", "otlpGrpcEndpoint"),
+                ("Interval (s)", "intervalSeconds"),
+                ("Level", "level"),
+            ]:
+                val = diagnostic_log_otelconfig.get(key)
+                if val:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                    )
+            diagnostic_metrics = diagnostics.get("metrics", {})
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding("Diagnostic Metrics:", (0, 0, 0, padding)),
+            )
+            diagnostic_metrics_prometheusPort = diagnostic_metrics.get("prometheusPort")
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"Prometheus Port: {diagnostic_metrics_prometheusPort}", (0, 0, 0, padding + 4)),
+            )
+            diagnostic_metrics_otelconfig = diagnostic_metrics.get("openTelemetryExportConfig", {})
+            for label, key in [
+                ("Endpoint", "otlpGrpcEndpoint"),
+                ("Interval (s)", "intervalSeconds"),
+            ]:
+                val = diagnostic_metrics_otelconfig.get(key)
+                if val:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                    )
+            # TODO - determine status
             check_manager.add_target_eval(
                 target_name=target,
                 namespace=namespace,
