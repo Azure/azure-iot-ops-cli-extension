@@ -23,7 +23,6 @@ from .providers.orchestration.common import (
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
-    MAX_INSTANCE_LENGTH,
 )
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
@@ -169,15 +168,7 @@ def init(
     safe_cluster_name = cluster_name_lowered.replace("_", "-")
 
     if not instance_name:
-        instance_name = f"{safe_cluster_name}-ops-instance"
-
-    if len(instance_name) > MAX_INSTANCE_LENGTH:
-        raise InvalidArgumentValueError(
-            f"Currently the instance name length must be <= {MAX_INSTANCE_LENGTH} chars.\n"
-            f"'{instance_name}' has exceeded this constraint.\n\n"
-            "An instance name can be provided via --name/-n. If one isn't provided the \n"
-            "following convention is used '{cluster_name}-ops-instance.'"
-        )
+        instance_name = f"{safe_cluster_name}-ops-init-instance"
 
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
