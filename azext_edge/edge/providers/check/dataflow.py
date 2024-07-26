@@ -26,6 +26,24 @@ from .common import (
 
 logger = get_logger(__name__)
 
+dataflow_api_check_name = "enumerateDataflowApi"
+dataflow_api_check_desc = "Enumerate Dataflow API resources"
+
+dataflow_runtime_check_name = "evalCoreServiceRuntime"
+dataflow_runtime_check_desc = "Evaluate Dataflow core service"
+
+dataflows_check_name = "evalDataflows"
+dataflows_check_desc = "Evaluate Dataflows"
+
+dataflow_endpoint_check_name = "evalDataflowEndpoints"
+dataflow_endpoint_check_desc = "Evaluate Dataflow Endpoints"
+
+dataflow_profile_check_name="evalDataflowProfiles"
+dataflow_profile_check_desc="Evaluate Dataflow Profiles"
+
+dataflow_target = "dataflows.connectivity.iotoperations.azure.com"
+dataflow_endpoint_target = "dataflowendpoints.connectivity.iotoperations.azure.com"
+dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com"
 
 def check_dataflows_deployment(
     result: Dict[str, Any],
@@ -43,8 +61,8 @@ def check_dataflows_deployment(
 
     check_post_deployment(
         api_info=DATAFLOW_API_V1B1,
-        check_name="enumerateDataflowApi",
-        check_desc="Enumerate Dataflow API resources",
+        check_name=dataflow_api_check_name,
+        check_desc=dataflow_api_check_desc,
         result=result,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
@@ -60,8 +78,8 @@ def evaluate_core_service_runtime(
     resource_name: str = None,
 ):
     check_manager = CheckManager(
-        check_name="evalCoreServiceRuntime",
-        check_desc="Evaluate Dataflow core service",
+        check_name=dataflow_runtime_check_name,
+        check_desc=dataflow_runtime_check_desc,
     )
 
     padding = 6
@@ -116,15 +134,15 @@ def evaluate_dataflows(
     resource_name: str = None,
 ):
     check_manager = CheckManager(
-        check_name="evalDataflows",
-        check_desc="Evaluate Dataflows",
+        check_name=dataflows_check_name,
+        check_desc=dataflows_check_desc,
     )
     all_dataflows = get_resources_by_name(
         api_info=DATAFLOW_API_V1B1,
         kind=DataflowResourceKinds.DATAFLOW,
         resource_name=resource_name,
     )
-    target = "dataflows.connectivity.iotoperations.azure.com"
+    target = dataflow_target
     padding = 8
     if not all_dataflows:
         no_dataflows_text = "No Dataflow resources detected in any namespace."
@@ -188,15 +206,15 @@ def evaluate_dataflow_endpoints(
     resource_name: str = None,
 ):
     check_manager = CheckManager(
-        check_name="evalDataflowEndpoints",
-        check_desc="Evaluate Dataflow Endpoints",
+        check_name=dataflow_endpoint_check_name,
+        check_desc=dataflow_endpoint_check_desc,
     )
     all_endpoints = get_resources_by_name(
         api_info=DATAFLOW_API_V1B1,
         kind=DataflowResourceKinds.DATAFLOWENDPOINT,
         resource_name=resource_name,
     )
-    target = "dataflowendpoints.connectivity.iotoperations.azure.com"
+    target = dataflow_endpoint_target
     padding = 8
     if not all_endpoints:
         no_endpoints_text = "No Dataflow Endpoints detected in any namespace."
@@ -265,15 +283,15 @@ def evaluate_dataflow_profiles(
     resource_name: str = None,
 ):
     check_manager = CheckManager(
-        check_name="evalDataflowProfiles",
-        check_desc="Evaluate Dataflow Profiles",
+        check_name=dataflow_profile_check_name,
+        check_desc=dataflow_api_check_desc,
     )
     all_profiles = get_resources_by_name(
         api_info=DATAFLOW_API_V1B1,
         kind=DataflowResourceKinds.DATAFLOWPROFILE,
         resource_name=resource_name,
     )
-    target = "dataflowprofiles.connectivity.iotoperations.azure.com"
+    target = dataflow_profile_target
     padding = 8
     if not all_profiles:
         no_profiles_text = "No Dataflow Profiles detected in any namespace."
