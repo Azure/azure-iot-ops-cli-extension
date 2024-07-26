@@ -330,7 +330,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "instance_name",
             options_list=["--name", "-n"],
-            help="IoT Operations instance name. The default is in the form '{cluster_name}-ops-init-instance'.",
+            help="IoT Operations instance name. The default is in the form '{cluster_name}-ops-instance'.",
         )
         context.argument(
             "cluster_name",
