@@ -17,17 +17,21 @@ def process_template(input_template_path: str, output_format: str = "json"):
     with open(input_template_path, "r") as content:
         data = json.load(content)
 
-    for parameter in data["parameters"]:
-        if "metadata" in data["parameters"][parameter]:
-            if (
-                "description" in data["parameters"][parameter]["metadata"]
-                and len(data["parameters"][parameter]["metadata"]) == 1
-            ):
-                del data["parameters"][parameter]["metadata"]
+    if "parameters" in data:
+        for parameter in data["parameters"]:
+            if "metadata" in data["parameters"][parameter]:
+                if (
+                    "description" in data["parameters"][parameter]["metadata"]
+                    and len(data["parameters"][parameter]["metadata"]) == 1
+                ):
+                    del data["parameters"][parameter]["metadata"]
 
-        if parameter in ["clusterLocation", "location"]:
-            if "allowedValues" in data["parameters"][parameter]:
-                del data["parameters"][parameter]["allowedValues"]
+            if parameter in ["clusterLocation", "location"]:
+                if "allowedValues" in data["parameters"][parameter]:
+                    del data["parameters"][parameter]["allowedValues"]
+
+    if "outputs" in data:
+        del data["outputs"]
 
     output_ext = "json" if output_format == "json" else "py"
     output_template_path = f"./optimized.{output_ext}"

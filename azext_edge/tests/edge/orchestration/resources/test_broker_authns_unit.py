@@ -80,7 +80,7 @@ def test_broker_authn_show(mocked_cmd, mocked_responses: responses):
     "records",
     [0, 2],
 )
-def test_broker_list(mocked_cmd, mocked_responses: responses, records: int):
+def test_broker_authn_list(mocked_cmd, mocked_responses: responses, records: int):
     broker_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()

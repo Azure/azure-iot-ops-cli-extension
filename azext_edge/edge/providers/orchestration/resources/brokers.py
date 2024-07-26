@@ -32,7 +32,7 @@ class Brokers(Queryable):
         self.ops: "BrokerOperations" = self.iotops_mgmt_client.broker
         self.listeners = BrokerListeners(self.iotops_mgmt_client.broker_listener)
         self.authns = BrokerAuthn(self.iotops_mgmt_client.broker_authentication)
-        self.authzs = BrokerAuthz(self.iotops_mgmt_client.broker_authentication)
+        self.authzs = BrokerAuthz(self.iotops_mgmt_client.broker_authorization)
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(resource_group_name=resource_group_name, instance_name=instance_name, broker_name=name)
