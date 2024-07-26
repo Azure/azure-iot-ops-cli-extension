@@ -109,10 +109,14 @@ def assert_eval_core_service_runtime(
             pod_conditions = kubectl_pods[pod]["status"].get("conditions", {})
 
             known_conditions = [condition[0] for condition in conditions_to_evaluate]
-            unknown_conditions = [condition["type"] for condition in pod_conditions if condition["type"] not in known_conditions]
+            unknown_conditions = [
+                condition["type"] for condition in pod_conditions if condition["type"] not in known_conditions
+            ]
             # if all known conditions in pod_conditions are "True", set is_known_success to True
             is_known_success = False
-            if all([condition["status"] == "True" for condition in pod_conditions if condition["type"] in known_conditions]):
+            if all(
+                [condition["status"] == "True" for condition in pod_conditions if condition["type"] in known_conditions]
+            ):
                 is_known_success = True
 
             if not is_known_success:
@@ -121,8 +125,7 @@ def assert_eval_core_service_runtime(
             if is_known_success and unknown_conditions:
                 # if all known conditions are True, but there are unknown conditions, set status to warning
                 expected_status = "warning"
-            
-            known_conditions_keys = [condition[1] for condition in conditions_to_evaluate]
+
             assert_pod_conditions(pod_conditions, phase_conditions_eval, expected_status)
 
             if namespace_status != "error":
@@ -142,7 +145,7 @@ def assert_pod_conditions(pod_conditions, phase_conditions_eval, expected_status
             condition_type = condition.get("type")
             condition_status = condition.get("status") == "True"
             assert phase_conditions_eval["value"][f"status.conditions.{condition_type.lower()}"] == condition_status
-        
+
         assert phase_conditions_eval["status"] == expected_status
     else:
         assert not pod_conditions
