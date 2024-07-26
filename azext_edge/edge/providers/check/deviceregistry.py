@@ -103,6 +103,9 @@ def evaluate_assets(
 
         assets: List[dict] = list(assets)
 
+        added_datapoint_conditions = False
+        added_event_conditions = False
+        added_status_conditions = False
         for asset in assets:
             padding = 10
             asset_name = asset["metadata"]["name"]
@@ -148,11 +151,17 @@ def evaluate_assets(
             data_points = asset_spec.get("dataPoints", [])
 
             if data_points:
-                check_manager.add_target_conditions(
-                    target_name=target_assets,
-                    namespace=namespace,
-                    conditions=["len(spec.dataPoints)"]
-                )
+                if not added_datapoint_conditions:
+                    check_manager.add_target_conditions(
+                        target_name=target_assets,
+                        namespace=namespace,
+                        conditions=[
+                            "len(spec.dataPoints)",
+                            "spec.dataPoints.dataSource"
+                        ]
+                    )
+                    added_datapoint_conditions = True
+
                 data_points_count = len(data_points)
                 data_points_value = {"len(spec.dataPoints)": data_points_count}
                 data_points_status = CheckTaskStatus.success.value
@@ -180,12 +189,6 @@ def evaluate_assets(
                 for index, data_point in enumerate(data_points):
                     data_point_data_source = data_point.get("dataSource", "")
                     datapoint_padding = spec_padding + PADDING_SIZE
-
-                    check_manager.add_target_conditions(
-                        target_name=target_assets,
-                        namespace=namespace,
-                        conditions=[f"spec.dataPoints.[{index}].dataSource"]
-                    )
                     data_point_data_source_value = {f"spec.dataPoints.[{index}].dataSource": data_point_data_source}
                     data_point_data_source_status = CheckTaskStatus.success.value
                     if data_point_data_source:
@@ -234,11 +237,17 @@ def evaluate_assets(
             # events
             events = asset_spec.get("events", [])
             if events:
-                check_manager.add_target_conditions(
-                    target_name=target_assets,
-                    namespace=namespace,
-                    conditions=["len(spec.events)"]
-                )
+                if not added_event_conditions:
+                    check_manager.add_target_conditions(
+                        target_name=target_assets,
+                        namespace=namespace,
+                        conditions=[
+                            "len(spec.events)",
+                            "spec.events.eventNotifier"
+                        ]
+                    )
+                    added_event_conditions = True
+
                 events_count = len(events)
                 events_count_value = {"len(spec.events)": events_count}
                 events_count_status = CheckTaskStatus.success.value
@@ -267,12 +276,6 @@ def evaluate_assets(
                 for index, event in enumerate(events):
                     event_notifier = event.get("eventNotifier", "")
                     event_padding = spec_padding + PADDING_SIZE
-
-                    check_manager.add_target_conditions(
-                        target_name=target_assets,
-                        namespace=namespace,
-                        conditions=[f"spec.events.[{index}].eventNotifier"]
-                    )
                     event_notifier_value = {f"spec.events.[{index}].eventNotifier": event_notifier}
                     event_notifier_status = CheckTaskStatus.success.value
                     if event_notifier:
@@ -310,11 +313,13 @@ def evaluate_assets(
             # status
             status = asset_spec.get("status", "")
             if status:
-                check_manager.add_target_conditions(
-                    target_name=target_assets,
-                    namespace=namespace,
-                    conditions=["spec.status"]
-                )
+                if not added_status_conditions:
+                    check_manager.add_target_conditions(
+                        target_name=target_assets,
+                        namespace=namespace,
+                        conditions=["spec.status"]
+                    )
+                    added_status_conditions = True
 
                 status_value = {"spec.status": str(status)}
                 status_status = CheckTaskStatus.success.value
@@ -396,6 +401,8 @@ def evaluate_asset_endpoint_profiles(
 
         asset_endpoint_profiles: List[dict] = list(asset_endpoint_profiles)
 
+        added_transport_authentication_conditions = False
+        added_user_authentication_conditions = False
         for asset_endpoint_profile in asset_endpoint_profiles:
             asset_endpoint_profile_name = asset_endpoint_profile["metadata"]["name"]
             padding = 10
@@ -441,6 +448,16 @@ def evaluate_asset_endpoint_profiles(
             # transportAuthentication
             transport_authentication = asset_endpoint_profile_spec.get("transportAuthentication", {})
             if transport_authentication:
+                if not added_transport_authentication_conditions:
+                    check_manager.add_target_conditions(
+                        target_name=target_asset_endpoint_profiles,
+                        namespace=namespace,
+                        conditions=[
+                            "spec.transportAuthentication.ownCertificates"
+                        ]
+                    )
+                    added_transport_authentication_conditions = True
+
                 check_manager.add_display(
                     target_name=target_asset_endpoint_profiles,
                     namespace=namespace,
@@ -450,12 +467,6 @@ def evaluate_asset_endpoint_profiles(
                     )
                 )
                 transport_authentication_own_certificates = transport_authentication.get("ownCertificates", None)
-                check_manager.add_target_conditions(
-                    target_name=target_asset_endpoint_profiles,
-                    namespace=namespace,
-                    conditions=["spec.transportAuthentication.ownCertificates"]
-                )
-
                 transport_authentication_own_certificates_value = {"spec.transportAuthentication.ownCertificates": transport_authentication_own_certificates}
                 transport_authentication_own_certificates_status = CheckTaskStatus.success.value
                 transport_authentication_padding = spec_padding + PADDING_SIZE
@@ -493,6 +504,19 @@ def evaluate_asset_endpoint_profiles(
             # userAuthentication
             user_authentication = asset_endpoint_profile_spec.get("userAuthentication", {})
             if user_authentication:
+                if not added_user_authentication_conditions:
+                    check_manager.add_target_conditions(
+                        target_name=target_asset_endpoint_profiles,
+                        namespace=namespace,
+                        conditions=[
+                            "spec.userAuthentication.mode",
+                            "spec.userAuthentication.x509Credentials.certificateReference",
+                            "spec.userAuthentication.usernamePasswordCredentials.usernameReference",
+                            "spec.userAuthentication.usernamePasswordCredentials.passwordReference"
+                        ]
+                    )
+                    added_user_authentication_conditions = True
+
                 check_manager.add_display(
                     target_name=target_asset_endpoint_profiles,
                     namespace=namespace,
@@ -504,12 +528,6 @@ def evaluate_asset_endpoint_profiles(
 
                 # check required mode
                 user_authentication_mode = user_authentication.get("mode", "")
-                check_manager.add_target_conditions(
-                    target_name=target_asset_endpoint_profiles,
-                    namespace=namespace,
-                    conditions=["spec.userAuthentication.mode"]
-                )
-
                 user_authentication_mode_value = {"spec.userAuthentication.mode": user_authentication_mode}
                 user_authentication_mode_status = CheckTaskStatus.success.value
                 user_authentication_padding = spec_padding + PADDING_SIZE
@@ -538,11 +556,6 @@ def evaluate_asset_endpoint_profiles(
                 if user_authentication_mode == "Certificate":
                     # check x509Credentials
                     user_authentication_x509_credentials = user_authentication.get("x509Credentials", {})
-                    check_manager.add_target_conditions(
-                        target_name=target_asset_endpoint_profiles,
-                        namespace=namespace,
-                        conditions=["spec.userAuthentication.x509Credentials.certificateReference"]
-                    )
 
                     certificate_reference = user_authentication_x509_credentials.get("certificateReference", "")
                     user_authentication_x509_credentials_value = {"spec.userAuthentication.x509Credentials.certificateReference": certificate_reference}
@@ -571,12 +584,6 @@ def evaluate_asset_endpoint_profiles(
                 elif user_authentication_mode == "UsernamePassword":
                     # check usernamePasswordCredentials
                     user_authentication_username_password_credentials = user_authentication.get("usernamePasswordCredentials", {})
-                    check_manager.add_target_conditions(
-                        target_name=target_asset_endpoint_profiles,
-                        namespace=namespace,
-                        conditions=["spec.userAuthentication.usernamePasswordCredentials.usernameReference", "spec.userAuthentication.usernamePasswordCredentials.passwordReference"]
-                    )
-
                     username_reference = user_authentication_username_password_credentials.get("usernameReference", "")
                     password_reference = user_authentication_username_password_credentials.get("passwordReference", "")
                     user_authentication_username_password_credentials_value = {
