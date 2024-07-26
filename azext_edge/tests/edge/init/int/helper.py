@@ -41,7 +41,7 @@ def assert_init_result(
     name = arg_dict.get("name")
     if not name:
         name = arg_dict.get("n")
-    expected_name = name or f"{cluster_name}-ops-init-instance"
+    expected_name = name or f"{cluster_name}-ops-instance"
     assert result["instanceName"] == expected_name
     assert f"{ResourceKeys.iot_operations.value}/{expected_name}" in result["deploymentState"]["resources"]
     _assert_instance_show(
