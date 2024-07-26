@@ -93,46 +93,48 @@ def process_pod_status(
         pod_dict = pod.to_dict()
         pod_name = pod_dict["metadata"]["name"]
         pod_phase = pod_dict.get("status", {}).get("phase")
-        pod_conditions = pod_dict.get("status", {}).get("conditions", [])
+        pod_conditions: list = pod_dict.get("status", {}).get("conditions", [])
         pod_phase_deco, status = decorate_pod_phase(pod_phase)
 
         pod_eval_value = {}
         pod_eval_status = status
         pod_eval_value["status.phase"] = pod_phase
+
         conditions_readiness = True
         conditions_display_list: List[Tuple[str, str]] = []
         unknown_conditions_display_list: List[Tuple[str, str]] = []
 
         # When pod in obnormal state, sometimes the conditions are not available
-        for condition in pod_conditions:
-            type = condition["type"]
-            condition_type = POD_CONDITION_TEXT_MAP.get(type)
+        if pod_conditions:
+            for condition in pod_conditions:
+                type = condition["type"]
+                condition_type = POD_CONDITION_TEXT_MAP.get(type)
 
-            if condition_type:
-                condition_status = condition.get("status") == "True"
-                conditions_readiness = conditions_readiness and condition_status
-                pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
-            else:
-                condition_type = type
-                condition_status = condition.get("status")
+                if condition_type:
+                    condition_status = condition.get("status") == "True"
+                    conditions_readiness = conditions_readiness and condition_status
+                    pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
+                else:
+                    condition_type = type
+                    condition_status = condition.get("status")
 
-            formatted_reason = ""
-            condition_reason = condition.get("reason", "")
+                formatted_reason = ""
+                condition_reason = condition.get("reason", "")
 
-            if condition_reason:
-                formatted_reason = f"[red]Reason: {condition_reason}[/red]"
+                if condition_reason:
+                    formatted_reason = f"[red]Reason: {condition_reason}[/red]"
 
-            known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
-            if condition_type.replace(" ", "").lower() in known_condition_values:
-                conditions_display_list.append(
-                    (f"{condition_type}: {pod_condition_deco}", formatted_reason)
-                )
-            else:
-                unknown_conditions_display_list.append(
-                    (f"{condition_type}: {condition_status}", formatted_reason)
-                )
+                known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
+                if condition_type.replace(" ", "").lower() in known_condition_values:
+                    conditions_display_list.append(
+                        (f"{condition_type}: {pod_condition_deco}", formatted_reason)
+                    )
+                else:
+                    unknown_conditions_display_list.append(
+                        (f"{condition_type}: {condition_status}", formatted_reason)
+                    )
 
-            pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
+                pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
 
         if not conditions_readiness:
             pod_eval_status = CheckTaskStatus.error.value
