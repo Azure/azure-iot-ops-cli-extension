@@ -313,49 +313,14 @@ def evaluate_assets(
             # status
             status = asset_spec.get("status", "")
             if status:
-                if not added_status_conditions:
-                    check_manager.add_target_conditions(
-                        target_name=target_assets,
-                        namespace=namespace,
-                        conditions=["spec.status"]
-                    )
-                    added_status_conditions = True
-
-                status_value = {"spec.status": str(status)}
-                status_status = CheckTaskStatus.success.value
-
-                errors = status.get("errors", [])
-                if errors:
-                    status_text = (
-                        "Asset status [red]error[/red]."
-                    )
-                    for error in errors:
-                        error_code = error.get("code", "")
-                        message = error.get("message", "")
-                        error_text = (
-                            f"- Asset status error code: [red]{error_code}[/red]. Message: {message}"
-                        )
-
-                        check_manager.add_display(
-                            target_name=target_assets,
-                            namespace=namespace,
-                            display=Padding(error_text, (0, 0, 0, spec_padding + PADDING_SIZE)),
-                        )
-                    status_status = CheckTaskStatus.error.value
-                else:
-                    status_text = (
-                        "Asset status [green]OK[/green]."
-                    )
-
-                add_display_and_eval(
+                _process_asset_status(
                     check_manager=check_manager,
-                    target_name=target_assets,
-                    display_text=status_text,
-                    eval_status=status_status,
-                    eval_value=status_value,
-                    resource_name=asset_name,
-                    namespace=namespace,
-                    padding=(0, 0, 0, spec_padding)
+                    added_status_conditions=added_status_conditions,
+                    target_assets=target_assets,
+                    asset_name=asset_name,
+                    status=status,
+                    padding=spec_padding,
+                    namespace=namespace
                 )
 
     return check_manager.as_dict(as_list)
@@ -628,3 +593,58 @@ def evaluate_asset_endpoint_profiles(
                 )
 
     return check_manager.as_dict(as_list)
+
+
+def _process_asset_status(
+    check_manager: CheckManager,
+    added_status_conditions: bool,
+    target_assets: str,
+    asset_name: str,
+    status: dict,
+    padding: int,
+    namespace: str,
+):
+    if not added_status_conditions:
+        check_manager.add_target_conditions(
+            target_name=target_assets,
+            namespace=namespace,
+            conditions=["spec.status"]
+        )
+        added_status_conditions = True
+
+    status_value = {"spec.status": str(status)}
+    status_status = CheckTaskStatus.success.value
+
+    errors = status.get("errors", [])
+    if errors:
+        status_text = (
+            "Asset status [red]error[/red]."
+        )
+        for error in errors:
+            error_code = error.get("code", "")
+            message = error.get("message", "")
+            error_text = (
+                f"- Asset status error code: [red]{error_code}[/red]. Message: {message}"
+            )
+
+            check_manager.add_display(
+                target_name=target_assets,
+                namespace=namespace,
+                display=Padding(error_text, (0, 0, 0, padding + PADDING_SIZE)),
+            )
+        status_status = CheckTaskStatus.error.value
+    else:
+        status_text = (
+            "Asset status [green]OK[/green]."
+        )
+
+    add_display_and_eval(
+        check_manager=check_manager,
+        target_name=target_assets,
+        display_text=status_text,
+        eval_status=status_status,
+        eval_value=status_value,
+        resource_name=asset_name,
+        namespace=namespace,
+        padding=(0, 0, 0, padding)
+    )
