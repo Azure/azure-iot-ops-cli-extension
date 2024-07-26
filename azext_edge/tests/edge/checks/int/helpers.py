@@ -114,9 +114,7 @@ def assert_eval_core_service_runtime(
             ]
             # if all known conditions in pod_conditions are "True", set is_known_success to True
             is_known_success = False
-            if all(
-                [condition["status"] == "True" for condition in pod_conditions if condition["type"] in known_conditions]
-            ):
+            if all(condition_statuses(pod_conditions, known_conditions)):
                 is_known_success = True
 
             if not is_known_success:
@@ -256,3 +254,12 @@ def run_check_command(
     result = run(command)
 
     return {cond["name"]: cond for cond in result["postDeployment"]}, service_present
+
+
+def condition_statuses(
+    conditions: list,
+    known_conditions: list,
+):
+    for condition in conditions:
+        if condition['type'] in known_conditions:
+            yield condition['status'] == 'True'
