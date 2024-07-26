@@ -362,6 +362,11 @@ def load_iotops_help():
             data_source={data_source} name={name} observability_mode={observability_mode} sampling_interval={sampling_interval}
             queue_size={queue_size} --data data_source={data_source}
 
+        - name: Create an asset using a file containing data-points and another file containing events.
+          text: >
+            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
+            --endpoint {endpoint} --data-file {data_point_file_path} --event-file {event_file_path}
+
         - name: Create an asset with the given pre-filled values.
           text: >
             az iot ops asset create --name MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
