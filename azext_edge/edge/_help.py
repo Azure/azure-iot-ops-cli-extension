@@ -331,7 +331,7 @@ def load_iotops_help():
         examples:
         - name: Enumerate dataflow profiles in the instance 'mycluster-ops-instance'.
           text: >
-            az iot ops dataflow profile list -n myprofile --in mycluster-ops-instance -g myresourcegroup
+            az iot ops dataflow profile list --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -362,7 +362,7 @@ def load_iotops_help():
         examples:
         - name: Enumerate dataflow endpoints in the instance 'mycluster-ops-instance'.
           text: >
-            az iot ops dataflow endpoint show -n myendpoint --in mycluster-ops-instance -g myresourcegroup
+            az iot ops dataflow endpoint list --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
