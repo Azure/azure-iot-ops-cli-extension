@@ -17,14 +17,14 @@ from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
 
 
-def get_instance_endpoint(resource_group_name: Optional[str] = None, instance_name: Optional[str] = None):
+def get_instance_endpoint(resource_group_name: Optional[str] = None, instance_name: Optional[str] = None) -> str:
     resource_path = "/instances"
     if instance_name:
         resource_path += f"/{instance_name}"
     return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
 
 
-def get_mock_instance_record(name: str, resource_group_name: str):
+def get_mock_instance_record(name: str, resource_group_name: str) -> dict:
     return get_mock_resource(
         name=name,
         properties={"description": "AIO Instance description.", "provisioningState": "Succeeded"},

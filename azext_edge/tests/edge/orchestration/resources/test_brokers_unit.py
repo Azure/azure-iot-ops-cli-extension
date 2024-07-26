@@ -15,14 +15,14 @@ from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
 
 
-def get_broker_endpoint(instance_name: str, resource_group_name: str, broker_name: Optional[str] = None):
+def get_broker_endpoint(instance_name: str, resource_group_name: str, broker_name: Optional[str] = None) -> str:
     resource_path = f"/instances/{instance_name}/brokers"
     if broker_name:
         resource_path += f"/{broker_name}"
     return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
 
 
-def get_mock_broker_record(broker_name: str, instance_name: str, resource_group_name: str):
+def get_mock_broker_record(broker_name: str, instance_name: str, resource_group_name: str) -> dict:
     return get_mock_resource(
         name=broker_name,
         resource_path=f"/instances/{instance_name}/brokers/{broker_name}",
