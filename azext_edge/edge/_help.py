@@ -160,6 +160,11 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Show details of an mqtt broker.
+
+        examples:
+        - name: Show details of an mqtt broker named 'broker', the default, in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops broker show -n broker --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
