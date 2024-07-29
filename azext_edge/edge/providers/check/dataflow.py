@@ -142,7 +142,7 @@ def _process_dataflow_transformationsettings(
                 )
 
     # only show datasets, filters, maps on verbose
-    if detail_level > ResourceOutputDetailLevel.verbose.value:
+    if detail_level > ResourceOutputDetailLevel.detail.value:
         # datasets
         datasets = settings.get("datasets", [])
         if datasets:

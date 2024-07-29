@@ -75,7 +75,71 @@ def test_check_dataflow_by_resource_types(
                         "name": "dataflow-1",
                     },
                     "spec": {"mode": "Enabled", "profileRef": "dataflow-profile-1"},
-                }
+                },
+                {
+                    "metadata": {
+                        "name": "dataflow-2",
+                    },
+                    "spec": {
+                        "mode": "Enabled",
+                        "profileRef": "dataflow-profile-1",
+                        "operations": [
+                            {
+                                "operationType": "source",
+                                "sourceSettings": {
+                                    "endpointRef": "endpoint-ref",
+                                    "assetRef": "asset-ref",
+                                    "serializationFormat": "JSON",
+                                    "dataSources": ["one", "two"]
+                                }
+                            },
+                            {
+                                "operationType": "builtintransformation",
+                                "builtInTransformationSettings": {
+                                    "schemaRef": "Schema",
+                                    "datasets": [
+                                        {
+                                            "description": "desc",
+                                            "key": "key",
+                                            "expression": "$1 < 20",
+                                            "inputs": [
+                                                "temperature",
+                                                "pressure"
+                                            ]
+                                        },
+                                    ],
+                                    "filter": [
+                                        {
+                                            "expression": "$1 > 10",
+                                            "type": "operationType",
+                                            "inputs": [
+                                                "temperature",
+                                                "pressure"
+                                            ]
+                                        }
+                                    ],
+                                    "map": [
+                                        {
+                                            "description": "desc",
+                                            "output": "output",
+                                            "inputs": [
+                                                "temperature",
+                                                "pressure"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "operationType": "destination",
+                                "destinationSettings": {
+                                    "endpointRef": "endpoint",
+                                    "dataDestination": "destination"
+                                }
+                            }
+                        ]
+                    },
+                },
             ],
             # conditions
             [],
@@ -150,6 +214,7 @@ def test_evaluate_dataflows(
         (
             # endpoints
             [
+                # kafka endpoint
                 {
                     "metadata": {
                         "name": "endpoint-1",
@@ -157,8 +222,21 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "kafka",
                         "authentication": {"method": "authMethod"},
+                        "kafkaSettings": {
+                            "host": "kafkaHost",
+                            "consumerGroupId": None,
+                            "compression": "compression",
+                            "kafkaAcks": 3,
+                            "tls": {
+                                "mode": "Enabled"
+                            },
+                            "batching": {
+                                "latencyMs": 300
+                            }
+                        }
                     },
                 },
+                # localStorage
                 {
                     "metadata": {
                         "name": "endpoint-2",
@@ -166,8 +244,12 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "localstorage",
                         "authentication": {"method": "authMethod"},
+                        "localStorageSettings": {
+                            "persistentVolumeClaimRef": "ref"
+                        }
                     },
                 },
+                # Fabric Onelake
                 {
                     "metadata": {
                         "name": "endpoint-3",
@@ -175,8 +257,19 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "fabriconelake",
                         "authentication": {"method": "authMethod"},
+                        "fabricOneLakeSettings": {
+                            "host": "fabric_host",
+                            "names": {
+                                "lakehouseName": "lakehouse",
+                                "workspaceName": "workspaceName"
+                            },
+                            "batching": {
+                                "latencySeconds": 2
+                            }
+                        }
                     },
                 },
+                # datalake storage
                 {
                     "metadata": {
                         "name": "endpoint-4",
@@ -184,17 +277,32 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "datalakestorage",
                         "authentication": {"method": "authMethod"},
+                        "datalakeStorageSettings": {
+                            "host": "datalakeHost",
+                            "batching": {
+                                "latencySeconds": 12
+                            }
+                        }
                     },
                 },
+                # dataExplorer
                 {
                     "metadata": {
                         "name": "endpoint-5",
                     },
                     "spec": {
-                        "endpointType": "localstorage",
+                        "endpointType": "dataExplorer",
                         "authentication": {"method": "authMethod"},
+                        "dataExplorerSettings": {
+                            "database": "databse",
+                            "host": "data_explorer_host",
+                            "batching": {
+                                "latencySeconds": 3
+                            }
+                        }
                     },
                 },
+                # mqtt
                 {
                     "metadata": {
                         "name": "endpoint-6",
@@ -202,6 +310,17 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "mqtt",
                         "authentication": {"method": "authMethod"},
+                        "mqttSettings": {
+                            "host": "mqttHost",
+                            "protocol": "Websockets",
+                            "clientIdPrefix": None,
+                            "qos": 3,
+                            "maxInflightMessages": 100,
+                            "tls": {
+                                "mode": "Enabled",
+                                "trustedCaCertificateConfigMapRef": "ref"
+                            }
+                        }
                     },
                 },
             ],
