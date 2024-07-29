@@ -16,6 +16,7 @@ from .helper import assert_init_result, strip_quotes
 
 logger = get_logger(__name__)
 
+
 @pytest.fixture(scope="function")
 def init_test_setup(cluster_connection, settings):
     from ....settings import EnvironmentVariables
