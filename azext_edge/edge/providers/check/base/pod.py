@@ -114,6 +114,7 @@ def process_pod_status(
                     condition_status = condition.get("status") == "True"
                     conditions_readiness = conditions_readiness and condition_status
                     pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
+                    pod_eval_status = status if status != CheckTaskStatus.success.value else pod_eval_status
                 else:
                     condition_type = type
                     condition_status = condition.get("status")
