@@ -525,7 +525,8 @@ def load_iotops_help():
                       for the existance of the associated custom location and cluster and ensure that
                       both are set up correctly with the microsoft.deviceregistry.assets extension.
 
-                      At least one data point or event must be defined during asset creation.
+                      At least one data point or event must be defined during asset creation. For examples
+                      of file formats, please see aka.ms/asset_examples
 
         examples:
         - name: Create an asset using the given custom location.
@@ -585,11 +586,6 @@ def load_iotops_help():
             --endpoint {endpoint} --disable --data capability_id={capability_id}
             data_source={data_source} name={name} observability_mode={observability_mode} sampling_interval={sampling_interval}
             queue_size={queue_size} --data data_source={data_source}
-
-        - name: Create an asset using a file containing data-points and another file containing events.
-          text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --data-file {data_point_file_path} --event-file {event_file_path}
 
         - name: Create an asset using a file containing data-points and another file containing events.
           text: >
@@ -737,6 +733,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Import data points in an asset.
+        long-summary: For examples of file formats, please see aka.ms/asset_examples
         examples:
         - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be ignored.
           text: >
@@ -830,6 +827,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Import events in an asset.
+        long-summary: For examples of file formats, please see aka.ms/asset_examples
         examples:
         - name: Import all events from a file. These events will be appended to the asset's current events.
           text: >
