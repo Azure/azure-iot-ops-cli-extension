@@ -26,10 +26,11 @@ VALID_EVENT_OBSERVABILITY_MODES = ["none", "log"]
 
 
 class AssetProvider(ADRBaseProvider):
-    def __init__(self, cmd):
+    def __init__(self, cmd, subscriptions: Optional[List[str]] = None):
         super(AssetProvider, self).__init__(
             cmd=cmd,
             resource_type=ResourceTypeMapping.asset.value,
+            subscriptions=subscriptions
         )
 
     def create(
@@ -141,7 +142,7 @@ class AssetProvider(ADRBaseProvider):
         )
         return poller
 
-    def query(
+    def build_query(
         self,
         asset_name: Optional[str] = None,
         asset_type: Optional[str] = None,
@@ -161,6 +162,7 @@ class AssetProvider(ADRBaseProvider):
         serial_number: Optional[str] = None,
         software_revision: Optional[str] = None,
         resource_group_name: Optional[str] = None,
+        resource_query: Optional[str] = None,
     ) -> dict:
         query = ""
         if asset_name:
@@ -195,14 +197,12 @@ class AssetProvider(ADRBaseProvider):
             query += f"| where properties.serialNumber =~ \"{serial_number}\""
         if software_revision:
             query += f"| where properties.softwareRevision =~ \"{software_revision}\""
-        return build_query(
-            self.cmd,
-            subscription_id=self.subscription,
+        return self.run_query(
             custom_query=query,
+            type=ResourceTypeMapping.asset.full_resource_path,
             location=location,
             resource_group=resource_group_name,
-            type=ResourceTypeMapping.asset.full_resource_path,
-            additional_project="extendedLocation"
+            resource_query=resource_query
         )
 
     def update(
@@ -454,7 +454,7 @@ class AssetProvider(ADRBaseProvider):
     def _check_endpoint(self, endpoint: str):
         possible_endpoints = build_query(
             self.cmd,
-            subscription_id=self.subscription,
+            subscription_id=self.default_subscription_id,
             name=endpoint
         )
         # future TODO: add option flag to fail on these

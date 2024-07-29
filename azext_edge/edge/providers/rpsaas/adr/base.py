@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from typing import List, Optional
 from knack.log import get_logger
 from ..base_provider import RPSaaSBaseProvider
 from ....common import ResourceProviderMapping
@@ -14,11 +15,12 @@ ADR_API_VERSION = "2023-11-01-preview"
 
 class ADRBaseProvider(RPSaaSBaseProvider):
     def __init__(
-        self, cmd, resource_type: str
+        self, cmd, resource_type: str, subscriptions: Optional[List[str]] = None
     ):
         super(ADRBaseProvider, self).__init__(
             cmd=cmd,
             api_version=ADR_API_VERSION,
             provider_namespace=ResourceProviderMapping.deviceregistry.value,
             resource_type=resource_type,
+            subscriptions=subscriptions
         )

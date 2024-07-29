@@ -24,7 +24,7 @@ class Queryable:
         self.cmd = cmd
         self.default_subscription_id: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
 
-        if not subscriptions:
+        if subscriptions is None:
             subscriptions = [self.default_subscription_id]
 
         self.subscriptions = subscriptions

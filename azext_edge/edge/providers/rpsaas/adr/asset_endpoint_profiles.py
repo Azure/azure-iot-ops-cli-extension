@@ -32,10 +32,11 @@ logger = get_logger(__name__)
 
 
 class AssetEndpointProfileProvider(ADRBaseProvider):
-    def __init__(self, cmd):
+    def __init__(self, cmd, subscriptions: Optional[List[str]] = None):
         super(AssetEndpointProfileProvider, self).__init__(
             cmd=cmd,
             resource_type=ResourceTypeMapping.asset_endpoint_profile.value,
+            subscriptions=subscriptions
         )
 
     def create(
@@ -106,7 +107,7 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         )
         return poller
 
-    def query(
+    def build_query(
         self,
         additional_configuration: Optional[str] = None,
         auth_mode: Optional[str] = None,
@@ -114,6 +115,7 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         location: Optional[str] = None,
         resource_group_name: Optional[str] = None,
         target_address: Optional[str] = None,
+        resource_query: Optional[str] = None,
     ) -> dict:
         query = ""
         if additional_configuration:
@@ -124,15 +126,12 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
             query += f"| where extendedLocation.name contains \"{custom_location_name}\""
         if target_address:
             query += f"| where properties.targetAddress =~ \"{target_address}\""
-
-        return build_query(
-            self.cmd,
-            subscription_id=self.subscription,
+        return self.run_query(
             custom_query=query,
+            type=ResourceTypeMapping.asset_endpoint_profile.full_resource_path,
             location=location,
             resource_group=resource_group_name,
-            type=ResourceTypeMapping.asset_endpoint_profile.full_resource_path,
-            additional_project="extendedLocation"
+            resource_query=resource_query
         )
 
     def update(

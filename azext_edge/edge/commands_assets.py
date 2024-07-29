@@ -125,9 +125,11 @@ def query_assets(
     serial_number: Optional[str] = None,
     software_revision: Optional[str] = None,
     resource_group_name: Optional[str] = None,
+    resource_query: Optional[str] = None,
+    subscriptions: Optional[List[str]] = None
 ) -> dict:
-    asset_provider = AssetProvider(cmd)
-    return asset_provider.query(
+    asset_provider = AssetProvider(cmd, subscriptions=subscriptions)
+    return asset_provider.build_query(
         asset_type=asset_type,
         custom_location_name=custom_location_name,
         description=description,
@@ -144,7 +146,8 @@ def query_assets(
         product_code=product_code,
         serial_number=serial_number,
         software_revision=software_revision,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        resource_query=resource_query
     )
 
 

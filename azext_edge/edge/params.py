@@ -16,7 +16,7 @@ from azure.cli.core.commands.parameters import (
 from knack.arguments import CaseInsensitiveList
 
 from ._validators import validate_namespace, validate_resource_name
-from .common import FileType, OpsServiceType
+from .common import FileType, OpsServiceType, ResourceTypeMapping
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
     AkriResourceKinds,
@@ -866,6 +866,21 @@ def load_iotops_arguments(self, _):
             arg_group="Additional Info",
             arg_type=get_three_state_flag(),
         )
+        context.argument(
+            "subscriptions",
+            options_list=["--sub"],
+            help="Space-seperated list of subscription IDs to overwrite --subscription and query against. "
+            "To query against all avaliable subscriptions, use *.",
+            nargs="+",
+            action="extend"
+        )
+        context.argument(
+            "resource_query",
+            options_list=["--resource-query", "--rq"],
+            help="Custom resource graph query. All other inputs aside from --sub will be ignored. Input "
+            "will be appended to "
+            f'"resources | where type =~ "{ResourceTypeMapping.asset.full_resource_path}".',
+        )
 
     with self.argument_context("iot ops asset update") as context:
         context.argument(
@@ -1068,6 +1083,23 @@ def load_iotops_arguments(self, _):
             options_list=["--tags"],
             help="Asset Endpoint resource tags. Property bag in key-value pairs with the following format: a=b c=d",
             arg_type=tags_type,
+        )
+
+    with self.argument_context("iot ops asset endpoint query") as context:
+        context.argument(
+            "subscriptions",
+            options_list=["--sub"],
+            help="Space-seperated list of subscription IDs to overwrite --subscription and query against. "
+            "To query against all avaliable subscriptions, use *.",
+            nargs="+",
+            action="extend"
+        )
+        context.argument(
+            "resource_query",
+            options_list=["--resource-query", "--rq"],
+            help="Custom resource graph query. All other inputs aside from --sub will be ignored. Input "
+            "will be appended to "
+            f'"resources | where type =~ "{ResourceTypeMapping.asset_endpoint_profile.full_resource_path}".',
         )
 
     with self.argument_context("iot ops asset endpoint certificate") as context:

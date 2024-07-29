@@ -25,6 +25,7 @@ from .user_strings import (
     NO_EXTENDED_LOCATION_TO_CHECK_MSG
 )
 from ...util import build_query
+from ...util.queryable import Queryable
 from ...common import ResourceTypeMapping
 
 logger = get_logger(__name__)
@@ -32,7 +33,7 @@ EXTENSION_API_VERSION = "2023-05-01"
 IOT_OPS_EXTENSION = "microsoft.iotoperations"
 
 
-class RPSaaSBaseProvider:
+class RPSaaSBaseProvider(Queryable):
     def __init__(
         self,
         cmd,
@@ -40,13 +41,16 @@ class RPSaaSBaseProvider:
         provider_namespace: str = "",
         parent_resource_path: str = "",
         resource_type: str = "",
+        subscriptions: Optional[List[str]] = None
     ):
-        from azure.cli.core.commands.client_factory import get_subscription_id
+        # Ensure you can query over all subscriptions if you want
+        if subscriptions and subscriptions[0] == "*":
+            subscriptions = []
+        super(RPSaaSBaseProvider, self).__init__(cmd=cmd, subscriptions=subscriptions)
         from ...util.az_client import get_resource_client
 
         self.cmd = cmd
-        self.subscription = get_subscription_id(cmd.cli_ctx)
-        self.resource_client = get_resource_client(subscription_id=self.subscription)
+        self.resource_client = get_resource_client(subscription_id=self.default_subscription_id)
         self.api_version = api_version
         self.provider_namespace = provider_namespace
         self.resource_type = resource_type
@@ -105,7 +109,7 @@ class RPSaaSBaseProvider:
         # Note the usage of az rest/send_raw_request over resource
         # az resource list/resource_client.resources.list will omit properties
         from ...util.common import _process_raw_request
-        uri = f"/subscriptions/{self.subscription}"
+        uri = f"/subscriptions/{self.default_subscription_id}"
         if resource_group_name:
             uri += f"/resourceGroups/{resource_group_name}"
         uri += f"/providers/{self.provider_namespace}"
@@ -146,6 +150,30 @@ class RPSaaSBaseProvider:
                 result.get("extendedLocation", {}).get("name")
             )
         return result
+
+    def run_query(
+        self,
+        type: str,
+        custom_query: Optional[str] = None,
+        location: Optional[str] = None,
+        resource_group: Optional[str] = None,
+        resource_query: Optional[str] = None,
+    ):
+        query = f'Resources | where type =~ "{type}" '
+        if resource_query:
+            if not resource_query.lstrip().startswith("|"):
+                resource_query = "|" + resource_query
+            query += resource_query
+        else:
+            if resource_group:
+                query += f'| where resourceGroup =~ "{resource_group}" '
+            if location:
+                query += f'| where location =~ "{location}" '
+            if custom_query:
+                query += custom_query
+            query += "| project id, location, name, resourceGroup, properties, tags, type, "\
+                "subscriptionId, extendedLocation"
+        return super(RPSaaSBaseProvider, self).query(query=query)
 
     def check_cluster_connectivity(
         self,
