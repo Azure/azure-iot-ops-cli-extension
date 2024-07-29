@@ -611,13 +611,7 @@ def _process_asset_sub_points(required_arg: str, sub_points: Optional[List[str]]
 
         if not parsed_points.get(required_arg):
             raise RequiredArgumentMissingError(f"{point_type} ({point}) is missing the {required_arg}.")
-        if parsed_points.get(invalid_arg) or (
-            required_arg == "event_notifier"
-            and any([
-                "capability_id" in parsed_points,
-                "sampling_interval" in parsed_points
-            ])
-        ):
+        if parsed_points.get(invalid_arg):
             raise InvalidArgumentValueError(f"{point_type} does not support {invalid_arg}.")
 
         processed_point = _build_asset_sub_point(**parsed_points)
