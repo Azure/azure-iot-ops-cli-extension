@@ -69,4 +69,3 @@ def assert_broker_args(
     assert len(ports) == (2 if add_insecure_listener else 1)
     if add_insecure_listener:
         assert 1883 in [p['port'] for p in ports]
-

@@ -7,7 +7,6 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-import pytest
 from azext_edge.edge.providers.orchestration.common import KEYVAULT_ARC_EXTENSION_VERSION
 from ....helpers import run
 
