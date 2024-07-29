@@ -304,6 +304,45 @@ def test_evaluate_pod_health(
         # resource_name
         "akri-operator-6",
     ),
+    (
+        # pods
+        [
+            generate_pod_stub(
+                name="akri-operator-7",
+                phase="Starting",
+                conditions=[
+                    {
+                        "type": "Ready",
+                        "status": "True",
+                    },
+                    {
+                        "type": "Initialized",
+                        "status": "True",
+                    },
+                    {
+                        "type": "ContainersReady",
+                        "status": "True",
+                    },
+                    {
+                        "type": "PodScheduled",
+                        "status": "False",
+                    },
+                ]
+            ),
+        ],
+        # eval_status
+        CheckTaskStatus.error.value,
+        # eval_value
+        {
+            "status.conditions.ready": True,
+            "status.conditions.initialized": True,
+            "status.conditions.containersready": True,
+            "status.conditions.podscheduled": False,
+            "status.phase": "Starting"
+        },
+        # resource_name
+        "akri-operator-7",
+    ),
 ])
 def test_process_pod_status(
     detail_level,
