@@ -4,12 +4,13 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from .deletion import delete_ops_resources
-from .host import run_host_verify
-from .work import deploy
+from .brokers import Brokers
+from .instances import Instances
+from .dataflows import DataFlowProfiles, DataFlowEndpoints
 
 __all__ = [
-    "deploy",
-    "delete_ops_resources",
-    "run_host_verify",
+    "Brokers",
+    "Instances",
+    "DataFlowProfiles",
+    "DataFlowEndpoints",
 ]

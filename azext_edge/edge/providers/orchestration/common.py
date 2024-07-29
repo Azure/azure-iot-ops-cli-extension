@@ -23,7 +23,7 @@ ARC_CONFIG_MAP = "azure-clusterconfig"
 ARC_NAMESPACE = "azure-arc"
 
 # Key Vault KPIs
-KEYVAULT_ARC_EXTENSION_VERSION = "1.5.5"
+KEYVAULT_ARC_EXTENSION_VERSION = "1.5.6"
 KEYVAULT_DATAPLANE_API_VERSION = "7.4"
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 
@@ -34,16 +34,16 @@ class MqMode(Enum):
 
 
 class MqMemoryProfile(Enum):
-    tiny = "tiny"
-    low = "low"
-    medium = "medium"
-    high = "high"
+    tiny = "Tiny"
+    low = "Low"
+    medium = "Medium"
+    high = "High"
 
 
 class MqServiceType(Enum):
-    cluster_ip = "clusterIp"
-    load_balancer = "loadBalancer"
-    node_port = "nodePort"
+    cluster_ip = "ClusterIp"
+    load_balancer = "LoadBalancer"
+    node_port = "NodePort"
 
 
 class KubernetesDistroType(Enum):
