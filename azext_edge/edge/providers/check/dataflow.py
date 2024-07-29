@@ -81,7 +81,6 @@ def _process_dataflow_sourcesettings(
             # TODO - validate asset ref / colorize
             ("DeviceRegistry Asset Reference", "assetRef"),
             ("Schema Reference", "schemaRef"),
-            # TODO - jsonschema
             ("Serialization Format", "serializationFormat"),
         ]:
             val = settings.get(key)
@@ -156,7 +155,6 @@ def _process_dataflow_transformationsettings(
                 ("Expression", "expression"),
                 ("Schema", "schemaRef"),
             ]:
-                # TODO - schema ref json
                 val = dataset.get(key)
                 if val:
                     check_manager.add_display(
@@ -179,7 +177,6 @@ def _process_dataflow_transformationsettings(
                 ("Expression", "expression"),
                 ("Operation Type", "type"),
             ]:
-                # TODO - schema ref json
                 val = filter.get(key)
                 if val:
                     check_manager.add_display(
@@ -203,7 +200,6 @@ def _process_dataflow_transformationsettings(
                 ("Output", "output"),
                 ("Transformation Type", "type"),
             ]:
-                # TODO - schema ref json
                 val = map.get(key)
                 if val:
                     check_manager.add_display(
