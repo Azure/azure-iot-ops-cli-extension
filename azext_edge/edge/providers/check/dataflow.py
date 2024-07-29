@@ -58,6 +58,7 @@ def _process_dataflow_sourcesettings(
 
     # show endpoint ref
     # TODO - validate endpoint ref
+    # TODO - sourcetype only mqtt and kafka
     endpoint_ref = settings.get("endpointRef")
 
     if detail_level > ResourceOutputDetailLevel.summary.value:
@@ -623,6 +624,32 @@ def evaluate_dataflows(
             namespace=namespace,
             display=Padding(f"Dataflows in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, padding)),
         )
+        # conditions
+        check_manager.add_target_conditions(
+            target_name=target,
+            namespace=namespace,
+            conditions=[
+                # valid dataflow profile reference
+                "spec.profileRef"
+                # at least a source and destination operation
+                "len(spec.operations)<=3",
+                "len(spec.operations)>=2",
+                "spec.operations[*].operationType='source'",
+                "spec.operations[*].operationType='destination'",
+                # valid endpoint refs
+                "spec.operations[*].sourceSettings.endpointRef",
+                "spec.operations[*].destinationSettings.endpointRef",
+            ]
+        )
+
+        # profile names for reference lookup
+        all_profiles = get_resources_by_name(
+            api_info=DATAFLOW_API_V1B1,
+            kind=DataflowResourceKinds.DATAFLOWPROFILE,
+            namespace=namespace,
+            resource_name=None,
+        )
+        profile_names = {profile.get("metadata", {}).get("name") for profile in all_profiles}
         for dataflow in list(dataflows):
             spec = dataflow.get("spec", {})
             dataflow_name = dataflow.get("metadata", {}).get("name")
@@ -637,8 +664,26 @@ def evaluate_dataflows(
 
             mode = spec.get("mode")
             profile_ref = spec.get("profileRef")
+            profile_ref_status = CheckTaskStatus.success.value
+            profile_ref_status_color = "green"
+            profile_ref_status_display = "valid"
+            if profile_ref and profile_ref not in profile_names:
+                profile_ref_status = CheckTaskStatus.error.value
+                profile_ref_status_display = "invalid"
+                profile_ref_status_color = "red"
+
+            # valid profileRef eval
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=profile_ref_status,
+                resource_name=dataflow_name,
+                resource_kind=DataflowResourceKinds.DATAFLOWPROFILE.value,
+                value={"spec.profileRef": profile_ref_status_display},
+            )
+
             for label, val in [
-                ("Dataflow Profile", f"{{{COLOR_STR_FORMAT.format(color='bright_blue', value=profile_ref)}}}"),
+                ("Dataflow Profile", f"{{{COLOR_STR_FORMAT.format(color=profile_ref_status_color, value=profile_ref)}}} ({COLOR_STR_FORMAT.format(color=profile_ref_status_color, value=profile_ref_status_display)})"),
                 ("Mode", mode),
             ]:
                 # TODO - validate profile ref
@@ -648,6 +693,20 @@ def evaluate_dataflows(
                     display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
                 )
             operations = spec.get("operations", [])
+
+            # check operations count
+            operations_status = CheckTaskStatus.success.value
+            if not operations or not (2 <= len(operations) <= 3):
+                operations_status = CheckTaskStatus.error.value
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=operations_status,
+                resource_name=dataflow_name,
+                resource_kind=DataflowResourceKinds.DATAFLOW.value,
+                value={"len(operations)": len(operations)},
+            )
+
             if operations and detail_level > ResourceOutputDetailLevel.summary.value:
                 check_manager.add_display(
                     target_name=target,
