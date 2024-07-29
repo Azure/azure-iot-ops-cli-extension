@@ -108,12 +108,6 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("DiagnosticService"))
             v1_resources.append(_get_api_resource("BrokerAuthentication"))
             v1_resources.append(_get_api_resource("BrokerAuthorization"))
-            v1_resources.append(_get_api_resource("MqttBridgeTopicMap"))
-            v1_resources.append(_get_api_resource("MqttBridgeConnector"))
-            v1_resources.append(_get_api_resource("DataLakeConnector"))
-            v1_resources.append(_get_api_resource("DataLakeConnectorTopicMap"))
-            v1_resources.append(_get_api_resource("KafkaConnector"))
-            v1_resources.append(_get_api_resource("KafkaConnectorTopicMap"))
 
         if r == MQ_ACTIVE_API:
             v1_resources.append(_get_api_resource("Broker"))
@@ -122,13 +116,6 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("DiagnosticService"))
             v1_resources.append(_get_api_resource("BrokerAuthentication"))
             v1_resources.append(_get_api_resource("BrokerAuthorization"))
-            v1_resources.append(_get_api_resource("MqttBridgeTopicMap"))
-            v1_resources.append(_get_api_resource("MqttBridgeConnector"))
-            v1_resources.append(_get_api_resource("DataLakeConnector"))
-            v1_resources.append(_get_api_resource("DataLakeConnectorTopicMap"))
-            v1_resources.append(_get_api_resource("KafkaConnector"))
-            v1_resources.append(_get_api_resource("KafkaConnectorTopicMap"))
-
         if r == OPCUA_API_V1:
             v1_resources.append(_get_api_resource("AssetType"))
 

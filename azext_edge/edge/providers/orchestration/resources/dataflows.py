@@ -29,7 +29,7 @@ class DataFlowProfiles(Queryable):
             subscription_id=self.default_subscription_id,
         )
         self.ops: "DataFlowProfileOperations" = self.iotops_mgmt_client.data_flow_profile
-        self.dataflows = DataFlows(self.iotops_mgmt_client.broker_authentication)
+        self.dataflows = DataFlows(self.iotops_mgmt_client.data_flow)
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(

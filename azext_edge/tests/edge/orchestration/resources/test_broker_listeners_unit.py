@@ -17,7 +17,7 @@ from .conftest import get_base_endpoint, get_mock_resource
 
 def get_broker_listener_endpoint(
     instance_name: str, broker_name: str, resource_group_name: str, listener_name: Optional[str] = None
-):
+) -> str:
     resource_path = f"/instances/{instance_name}/brokers/{broker_name}/listeners"
     if listener_name:
         resource_path += f"/{listener_name}"
@@ -26,7 +26,7 @@ def get_broker_listener_endpoint(
 
 def get_mock_broker_listener_record(
     listener_name: str, broker_name: str, instance_name: str, resource_group_name: str
-):
+) -> dict:
     return get_mock_resource(
         name=listener_name,
         resource_path=f"/instances/{instance_name}/brokers/{broker_name}/listeners/{listener_name}",
@@ -122,12 +122,14 @@ def test_broker_list(mocked_cmd, mocked_responses: responses, records: int):
         content_type="application/json",
     )
 
-    result = list(list_broker_listeners(
-        cmd=mocked_cmd,
-        mq_broker_name=broker_name,
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-    ))
+    result = list(
+        list_broker_listeners(
+            cmd=mocked_cmd,
+            mq_broker_name=broker_name,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+        )
+    )
 
     assert result == mock_broker_listener_records["value"]
     assert len(mocked_responses.calls) == 1

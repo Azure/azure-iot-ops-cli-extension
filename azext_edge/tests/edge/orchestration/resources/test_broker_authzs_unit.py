@@ -17,14 +17,16 @@ from .conftest import get_base_endpoint, get_mock_resource
 
 def get_broker_authz_endpoint(
     instance_name: str, broker_name: str, resource_group_name: str, authz_name: Optional[str] = None
-):
+) -> str:
     resource_path = f"/instances/{instance_name}/brokers/{broker_name}/authorizations"
     if authz_name:
         resource_path += f"/{authz_name}"
     return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
 
 
-def get_mock_broker_authz_record(authz_name: str, broker_name: str, instance_name: str, resource_group_name: str):
+def get_mock_broker_authz_record(
+    authz_name: str, broker_name: str, instance_name: str, resource_group_name: str
+) -> dict:
     return get_mock_resource(
         name=authz_name,
         resource_path=f"/instances/{instance_name}/brokers/{broker_name}/authorizations/{authz_name}",

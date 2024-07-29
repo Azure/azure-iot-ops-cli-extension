@@ -93,6 +93,8 @@ def load_iotops_help():
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
 
+            For more information on cluster requirements, please check https://aka.ms/iot-ops-cluster-requirements
+
         examples:
         - name: Basic usage. Checks `broker` health with summary output.
           text: >
@@ -160,6 +162,11 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Show details of an mqtt broker.
+
+        examples:
+        - name: Show details of the default broker 'broker' in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops broker show -n broker --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -167,6 +174,11 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: List mqtt brokers associated with an instance.
+
+        examples:
+        - name: Enumerate all brokers in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops broker list --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -181,13 +193,23 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Show details of an mqtt broker listener.
+
+        examples:
+        - name: Show details of the default listener 'listener' associated with the default broker.
+          text: >
+            az iot ops broker listener show -n listener -b broker --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
         "iot ops broker listener list"
     ] = """
         type: command
-        short-summary: List mqtt broker listeners associated with an instance.
+        short-summary: List mqtt broker listeners associated with a broker.
+
+        examples:
+        - name: Enumerate all broker listeners associated with the default broker.
+          text: >
+            az iot ops broker listener list -b broker --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -202,6 +224,11 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Show details of an mqtt broker authentication resource.
+
+        examples:
+        - name: Show details of the default broker authentication resource 'authn' associated with the default broker.
+          text: >
+            az iot ops broker authn show -n authn -b broker --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -209,6 +236,11 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: List mqtt broker authentication resources associated with an instance.
+
+        examples:
+        - name: Enumerate all broker authentication resources associated with the default broker.
+          text: >
+            az iot ops broker authn list -b broker --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -223,6 +255,11 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Show details of an mqtt broker authorization resource.
+
+        examples:
+        - name: Show details of a broker authorization resource 'authz' associated with the default broker.
+          text: >
+            az iot ops broker authz show -n authz -b broker --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -230,6 +267,11 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: List mqtt broker authorization resources associated with an instance.
+
+        examples:
+        - name: Enumerate all broker authorization resources associated with the default broker.
+          text: >
+            az iot ops broker authz list -b broker --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -243,14 +285,24 @@ def load_iotops_help():
         "iot ops dataflow show"
     ] = """
         type: command
-        short-summary: Show details of a dataflow resource.
+        short-summary: Show details of a dataflow associated with a dataflow profile.
+
+        examples:
+        - name: Show details of a dataflow 'mydataflow' associated with a profile 'myprofile'.
+          text: >
+            az iot ops dataflow show -n mydataflow -p myprofile --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
         "iot ops dataflow list"
     ] = """
         type: command
-        short-summary: List dataflow resources associated with an instance.
+        short-summary: List dataflows associated with a dataflow profile.
+
+        examples:
+        - name: Enumerate dataflows associated with the profile 'myprofile'.
+          text: >
+            az iot ops dataflow list -p myprofile --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -264,14 +316,24 @@ def load_iotops_help():
         "iot ops dataflow profile show"
     ] = """
         type: command
-        short-summary: Show details of a dataflow profile resource.
+        short-summary: Show details of a dataflow profile.
+
+        examples:
+        - name: Show details of a dataflow profile 'myprofile'.
+          text: >
+            az iot ops dataflow profile show -n myprofile --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
         "iot ops dataflow profile list"
     ] = """
         type: command
-        short-summary: List dataflow profile resources associated with an instance.
+        short-summary: List dataflow profiles associated with an instance.
+
+        examples:
+        - name: Enumerate dataflow profiles in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops dataflow profile list --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -286,6 +348,11 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Show details of a dataflow endpoint resource.
+
+        examples:
+        - name: Show details of a dataflow endpoint 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint show -n myendpoint --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -293,6 +360,11 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: List dataflow endpoint resources associated with an instance.
+
+        examples:
+        - name: Enumerate dataflow endpoints in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops dataflow endpoint list --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
