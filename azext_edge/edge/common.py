@@ -157,6 +157,7 @@ class OpsServiceType(ListableEnum):
             cls.opcua.value,
             cls.akri.value,
             cls.deviceregistry.value,
+            cls.dataflow.value,
         ]
 
 
