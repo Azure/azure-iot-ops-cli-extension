@@ -768,13 +768,13 @@ def evaluate_dataflow_endpoints(
 
                 endpoint_processor_dict[endpoint_type.lower()](check_manager=check_manager, target=target, namespace=namespace, spec=spec, detail_level=detail_level, padding=padding + 4)
 
-        check_manager.add_target_eval(
-            target_name=target,
-            namespace=namespace,
-            status=CheckTaskStatus.success.value,
-            resource_name=endpoint_name,
-            resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
-        )
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=CheckTaskStatus.success.value,
+                resource_name=endpoint_name,
+                resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
+            )
     return check_manager.as_dict(as_list=as_list)
 
 
