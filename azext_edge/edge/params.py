@@ -29,7 +29,6 @@ from .providers.edge_api import (
 from .providers.orchestration.common import (
     KubernetesDistroType,
     MqMemoryProfile,
-    MqMode,
     MqServiceType,
 )
 
@@ -85,9 +84,9 @@ def load_iotops_arguments(self, _):
             help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d",
         )
         context.argument(
-            "description",
+            "instance_description",
             options_list=["--desc"],
-            help="Description of the instance.",
+            help="Description of the IoT Operations instance.",
         )
 
     with self.argument_context("iot ops show") as context:
@@ -196,6 +195,85 @@ def load_iotops_arguments(self, _):
             validator=validate_resource_name,
         ),
 
+    with self.argument_context("iot ops dataflow") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "dataflow_name",
+            options_list=["--name", "-n"],
+            help="Dataflow name.",
+        )
+        context.argument(
+            "profile_name",
+            options_list=["--profile", "-p"],
+            help="Dataflow profile name.",
+        )
+
+    with self.argument_context("iot ops dataflow profile") as context:
+        context.argument(
+            "profile_name",
+            options_list=["--name", "-n"],
+            help="Dataflow profile name.",
+        )
+
+    with self.argument_context("iot ops dataflow endpoint") as context:
+        context.argument(
+            "endpoint_name",
+            options_list=["--name", "-n"],
+            help="Dataflow endpoint name.",
+        )
+
+    with self.argument_context("iot ops broker") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--name", "-n"],
+            help="Mqtt broker name.",
+        )
+
+    with self.argument_context("iot ops broker listener") as context:
+        context.argument(
+            "listener_name",
+            options_list=["--name", "-n"],
+            help="Mqtt broker listener name.",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
+        )
+
+    with self.argument_context("iot ops broker authn") as context:
+        context.argument(
+            "authn_name",
+            options_list=["--name", "-n"],
+            help="Mqtt broker authentication resource name.",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
+        )
+
+    with self.argument_context("iot ops broker authz") as context:
+        context.argument(
+            "authz_name",
+            options_list=["--name", "-n"],
+            help="Mqtt broker authorization resource name.",
+        )
+        context.argument(
+            "mq_broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
+        )
+
     with self.argument_context("iot ops broker stats") as context:
         context.argument(
             "refresh_in_seconds",
@@ -250,6 +328,11 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops init") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--name", "-n"],
+            help="IoT Operations instance name. The default is in the form '{cluster_name}-ops-instance'.",
+        )
         context.argument(
             "cluster_name",
             options_list=["--cluster"],
@@ -311,14 +394,6 @@ def load_iotops_arguments(self, _):
         )
         # Akri
         context.argument(
-            "opcua_discovery_endpoint",
-            options_list=["--opcua-discovery-url"],
-            help="Configures an OPC-UA server endpoint for Akri discovery handlers. If not provided "
-            "and --simulate-plc is set, this value becomes "
-            "'opc.tcp://opcplc-000000.{cluster_namespace}:50000'.",
-            arg_group="Akri",
-        )
-        context.argument(
             "container_runtime_socket",
             options_list=["--runtime-socket"],
             help="The default node path of the container runtime socket. If not provided (default), the "
@@ -341,122 +416,100 @@ def load_iotops_arguments(self, _):
             help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
             arg_group="OPC-UA Broker",
         )
-        # Data Processor
-        context.argument(
-            "include_dp",
-            options_list=["--include-dp"],
-            arg_type=get_three_state_flag(),
-            help="Include Data Processor in the IoT Operations deployment. Default: false.",
-        )
-        context.argument(
-            "dp_instance_name",
-            options_list=["--dp-instance"],
-            help="Instance name for Data Processor. The default is in the form '{cluster_name}-ops-init-processor'.",
-            arg_group="Data Processor",
-        )
         # MQ
         context.argument(
-            "mq_instance_name",
-            options_list=["--mq-instance"],
-            help="The mq instance name. The default is in the form 'init-{hash}-mq-instance'.",
-            arg_group="MQ",
+            "mq_broker_config_file",
+            options_list=["--broker-config-file"],
+            help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
+            "The expected format is described at https://aka.ms/aziotops-broker-config.",
+            arg_group="Broker",
         )
         context.argument(
             "mq_frontend_server_name",
-            options_list=["--mq-frontend-server"],
-            help="The mq frontend server name. The default is 'mq-dmqtt-frontend'.",
-            arg_group="MQ",
+            options_list=["--broker-frontend-server"],
+            help="The mqtt broker frontend server name.",
+            arg_group="Broker",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "mq_listener_name",
-            options_list=["--mq-listener"],
-            help="The mq listener name. The default is 'listener'.",
-            arg_group="MQ",
+            options_list=["--broker-listener"],
+            help="The mqtt broker listener name.",
+            arg_group="Broker",
         )
         context.argument(
             "mq_broker_name",
-            options_list=["--mq-broker"],
-            help="The mq broker name. The default is 'broker'.",
-            arg_group="MQ",
+            options_list=["--broker"],
+            help="The mqtt broker name.",
+            arg_group="Broker",
         )
         context.argument(
             "mq_authn_name",
-            options_list=["--mq-authn"],
-            help="The mq authN name. The default is 'authn'.",
-            arg_group="MQ",
+            options_list=["--broker-authn"],
+            help="The mqtt broker authN name.",
+            arg_group="Broker",
         )
         context.argument(
             "mq_insecure",
-            options_list=["--mq-insecure"],
+            options_list=[
+                "--add-insecure-listener",
+                context.deprecate(target="--mq-insecure", redirect="--add-insecure-listener", hide=True),
+            ],
             arg_type=get_three_state_flag(),
-            help="When enabled the mq deployment will include a listener bound to port 1883 with no authN "
-            "or authZ. The broker encryptInternalTraffic setting will be set to false. "
+            help="When enabled the mqtt broker deployment will include a listener "
+            "bound to port 1883 with no authN or authZ."
             "For non-production workloads only.",
-            arg_group="MQ",
+            arg_group="Broker",
         )
         # MQ cardinality
         context.argument(
             "mq_frontend_replicas",
             type=int,
-            options_list=["--mq-frontend-replicas"],
-            help="MQ frontend replicas.",
-            arg_group="MQ Cardinality",
+            options_list=["--broker-frontend-replicas", "--bfr"],
+            help="Mqtt broker frontend replicas.",
+            arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_frontend_workers",
             type=int,
-            options_list=["--mq-frontend-workers"],
-            help="MQ frontend workers.",
-            arg_group="MQ Cardinality",
+            options_list=["--broker-frontend-workers", "--bfw"],
+            help="Mqtt broker frontend workers.",
+            arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_backend_redundancy_factor",
             type=int,
-            options_list=["--mq-backend-rf"],
-            help="MQ backend redundancy factor.",
-            arg_group="MQ Cardinality",
+            options_list=["--broker-backend-rf"],
+            help="Mqtt broker backend redundancy factor.",
+            arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_backend_workers",
             type=int,
-            options_list=["--mq-backend-workers"],
-            help="MQ backend workers.",
-            arg_group="MQ Cardinality",
+            options_list=["--broker-backend-workers"],
+            help="Mqtt broker backend workers.",
+            arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_backend_partitions",
             type=int,
-            options_list=["--mq-backend-part"],
-            help="MQ backend partitions.",
-            arg_group="MQ Cardinality",
-        )
-        context.argument(
-            "mq_mode",
-            arg_type=get_enum_type(MqMode),
-            options_list=["--mq-mode"],
-            help="MQ mode of operation.",
-            arg_group="MQ",
+            options_list=["--broker-backend-part"],
+            help="Mqtt broker backend partitions.",
+            arg_group="Broker Cardinality",
         )
         context.argument(
             "mq_memory_profile",
             arg_type=get_enum_type(MqMemoryProfile),
-            options_list=["--mq-mem-profile"],
-            help="MQ memory profile.",
-            arg_group="MQ",
+            options_list=["--broker-mem-profile"],
+            help="Mqtt broker memory profile.",
+            arg_group="Broker",
         )
         context.argument(
             "mq_service_type",
             arg_type=get_enum_type(MqServiceType),
-            options_list=["--mq-service-type"],
-            help="MQ service type.",
-            arg_group="MQ",
-        )
-        # Symphony
-        context.argument(
-            "target_name",
-            options_list=["--target"],
-            help="Target name for ops orchestrator. The default is in the form '{cluster_name}-ops-init-target'.",
-            arg_group="Orchestration",
+            options_list=["--broker-service-type"],
+            help="Mqtt broker service type.",
+            arg_group="Broker",
         )
         # AKV CSI Driver
         context.argument(
@@ -810,7 +863,7 @@ def load_iotops_arguments(self, _):
             "custom_attributes",
             options_list=["--custom-attribute", "--attr"],
             help="Space-separated key=value pairs corresponding to additional custom attributes for the asset. "
-            "To remove a custom attribute, please set the attribute's value to \"\".",
+            'To remove a custom attribute, please set the attribute\'s value to "".',
             nargs="+",
             arg_group="Additional Info",
             action="extend",

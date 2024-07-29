@@ -57,7 +57,7 @@ permissions:
   id-token: 'write'
 
 env:
-  KV_NAME: "opskv${{ github.run_number }}"
+  KV_NAME: "opskv${{ github.run_number }}x"
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
 
 jobs:
@@ -76,11 +76,11 @@ jobs:
   test:
     needs: [create_kv]
     outputs:
-      CLUSTER_PREFIX: "az-iot-ops-test-cluster${{ github.run_number }}"
+      CLUSTER_PREFIX: "iotopstest-${{ github.run_number }}"
       RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
       KV_NAME: ${{ env.KV_NAME }}
     env:
-      CLUSTER_NAME: "az-iot-ops-test-cluster${{ github.run_number }}${{ matrix.feature }}"
+      CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
       CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
       EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
       K3S_VERSION: "v1.28.5+k3s1"
@@ -105,7 +105,6 @@ jobs:
           - feature: ca-certs
             ca-file: 'test-ca.pem'
             ca-key-file: 'test-ca-key.pem'
-            include-dp: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -215,7 +214,6 @@ jobs:
           kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
           csi-config: ${{ matrix.csi-config || ''}}
-          include-dp: ${{ matrix.include-dp }}
       - name: "Allow cluster to finish provisioning"
         run: |
           sleep 2m
@@ -290,15 +288,14 @@ jobs:
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle --svc auto
-          az iot ops support create-bundle --svc mq --mq-traces
+          az iot ops support create-bundle --svc broker --broker-traces
           az iot ops check
           az iot ops check --pre
           az iot ops check --post
           az iot ops check --as-object
-          az iot ops check --svc mq --resources broker brokerlistener diagnosticservice
-          az iot ops mq stats
-          az iot ops mq stats --raw
-          az iot ops mq get-password-hash -p test
+          az iot ops check --svc broker --resources broker brokerlistener
+          az iot ops broker stats
+          az iot ops broker stats --raw
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
           az iot ops verify-host
       - name: "Delete Cluster for redeployment"
@@ -324,7 +321,6 @@ jobs:
           kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
           template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
           csi-config: ${{ matrix.csi-config || ''}}
-          include-dp: ${{ matrix.include-dp }}
       - name: "Delete AIO resources"
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
