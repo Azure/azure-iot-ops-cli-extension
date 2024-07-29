@@ -167,7 +167,9 @@ def load_iotops_arguments(self, _):
                         OpcuaResourceKinds.ASSET_TYPE.value,
                         AkriResourceKinds.CONFIGURATION.value,
                         AkriResourceKinds.INSTANCE.value,
-                        *DataflowResourceKinds.list()
+                        DataflowResourceKinds.DATAFLOW.value,
+                        DataflowResourceKinds.DATAFLOWENDPOINT.value,
+                        DataflowResourceKinds.DATAFLOWPROFILE.value,
                     ]
                 )
             ),
