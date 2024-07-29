@@ -526,7 +526,7 @@ def load_iotops_help():
                       both are set up correctly with the microsoft.deviceregistry.assets extension.
 
                       At least one data point or event must be defined during asset creation. For examples
-                      of file formats, please see aka.ms/asset_examples
+                      of file formats, please see aka.ms/aziotops-assets
 
         examples:
         - name: Create an asset using the given custom location.
@@ -733,7 +733,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Import data points in an asset.
-        long-summary: For examples of file formats, please see aka.ms/asset_examples
+        long-summary: For examples of file formats, please see aka.ms/aziotops-assets
         examples:
         - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be ignored.
           text: >
@@ -827,7 +827,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Import events in an asset.
-        long-summary: For examples of file formats, please see aka.ms/asset_examples
+        long-summary: For examples of file formats, please see aka.ms/aziotops-assets
         examples:
         - name: Import all events from a file. These events will be appended to the asset's current events.
           text: >
