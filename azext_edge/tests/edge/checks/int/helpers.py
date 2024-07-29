@@ -140,7 +140,7 @@ def assert_eval_core_service_runtime(
 def assert_pod_conditions(pod_conditions, phase_conditions_eval, expected_status):
     if phase_conditions_eval:
         for condition in pod_conditions:
-            condition_type = condition.get("type")
+            condition_type = condition["type"]
             condition_status = condition.get("status") == "True"
             assert phase_conditions_eval["value"][f"status.conditions.{condition_type.lower()}"] == condition_status
 
@@ -153,7 +153,7 @@ def assert_pod_condition(pod_conditions, pod_evals, condition_type, condition_ke
     condition_eval = next((pod for pod in pod_evals if condition_key in pod["value"]), None)
     if condition_eval:
         condition_status = [
-            condition.get("status") for condition in pod_conditions if condition.get("type") == condition_type
+            condition.get("status") for condition in pod_conditions if condition["type"] == condition_type
         ]
         assert str(condition_eval["value"][condition_key]) == condition_status.pop()
         if not condition_eval["value"][condition_key]:
@@ -262,4 +262,4 @@ def condition_statuses(
 ):
     for condition in conditions:
         if condition['type'] in known_conditions:
-            yield condition['status'] == 'True'
+            return condition['status'] == 'True'
