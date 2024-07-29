@@ -8,7 +8,7 @@ The **Azure IoT Operations extension for Azure CLI** aims to accelerate the deve
 ## Pre-requisites
 
 - An Azure Arc-enabled CNCF K8s cluster.
-- Azure CLI `2.46.0` or higher. If you don't have az cli installed, follow [these instructions](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
+- Azure CLI `2.53.0` or higher. If you don't have az cli installed, follow [these instructions](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
 
 ## Install az iot ops extension
 
