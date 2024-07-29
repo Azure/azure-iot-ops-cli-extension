@@ -189,11 +189,11 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
         assert_sub_point(asset_data_points[i], **expected_data_points[i])
 
     for file_type in FileType.list():
-        file_path = run(
+        data_file_path = run(
             f"az iot ops asset data-point export -a {asset_name} -g {rg} -f {file_type}"
         )["file_path"]
-        tracked_files.append(file_path)
-        assert os.path.exists(file_path)
+        tracked_files.append(data_file_path)
+        assert os.path.exists(data_file_path)
 
         asset_data_points = run(
             f"az iot ops asset data-point remove -a {asset_name} -g {rg} "
@@ -202,7 +202,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
         assert len(asset_data_points) + 1 == len(expected_data_points)
 
         asset_data_points = run(
-            f"az iot ops asset data-point import -a {asset_name} -g {rg} --input-file {file_path}"
+            f"az iot ops asset data-point import -a {asset_name} -g {rg} --input-file {data_file_path}"
         )
         assert len(asset_data_points) == len(expected_data_points)
         assert expected_data_points[1]['data_source'] in [point["dataSource"] for point in asset_data_points]
@@ -238,11 +238,11 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
         assert_sub_point(asset_events[i], **expected_events[i])
 
     for file_type in FileType.list():
-        file_path = run(
+        event_file_path = run(
             f"az iot ops asset event export -a {asset_name} -g {rg} -f {file_type}"
         )["file_path"]
-        tracked_files.append(file_path)
-        assert os.path.exists(file_path)
+        tracked_files.append(event_file_path)
+        assert os.path.exists(event_file_path)
 
         asset_events = run(
             f"az iot ops asset event remove -a {asset_name} -g {rg} "
@@ -251,10 +251,20 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
         assert len(asset_events) + 1 == len(expected_events)
 
         asset_events = run(
-            f"az iot ops asset event import -a {asset_name} -g {rg} --input-file {file_path}"
+            f"az iot ops asset event import -a {asset_name} -g {rg} --input-file {event_file_path}"
         )
         assert len(asset_events) == len(expected_events)
         assert expected_events[1]['event_notifier'] in [point["eventNotifier"] for point in asset_events]
+
+    second_asset = run(
+        f"az iot ops asset create -n {asset_name} -g {rg} -c {cluster_name} --cg {rg} "
+        f"--endpoint {endpoint_name} --data-file {data_file_path} --event-file {event_file_path}"
+    )
+    tracked_resources.append(second_asset["id"])
+    assert len(second_asset["properties"]["dataPoints"]) == len(expected_data_points)
+    assert_sub_point(second_asset["properties"]["dataPoints"][0], **expected_data_points[0])
+    assert len(second_asset["properties"]["events"]) == len(expected_events)
+    assert_sub_point(second_asset["properties"]["events"][0], **expected_events[0])
 
 
 def assert_asset_props(result, **expected):

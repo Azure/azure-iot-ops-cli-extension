@@ -46,11 +46,13 @@ class AssetProvider(ADRBaseProvider):
         custom_location_resource_group: Optional[str] = None,
         custom_location_subscription: Optional[str] = None,
         data_points: Optional[List[str]] = None,
+        data_points_file_path: Optional[str] = None,
         description: Optional[str] = None,
         disabled: bool = False,
         display_name: Optional[str] = None,
         documentation_uri: Optional[str] = None,
         events: Optional[List[str]] = None,
+        events_file_path: Optional[List[str]] = None,
         external_asset_id: Optional[str] = None,
         hardware_revision: Optional[str] = None,
         location: Optional[str] = None,
@@ -68,7 +70,7 @@ class AssetProvider(ADRBaseProvider):
         ev_queue_size: int = 1,
         tags: Optional[Dict[str, str]] = None,
     ):
-        if not any([data_points, events]):
+        if not any([data_points, events, data_points_file_path, events_file_path]):
             raise RequiredArgumentMissingError(MISSING_DATA_EVENT_ERROR)
         extended_location = self.check_cluster_and_custom_location(
             custom_location_name=custom_location_name,
@@ -88,6 +90,14 @@ class AssetProvider(ADRBaseProvider):
             "dataPoints": _process_asset_sub_points("data_source", data_points),
             "events": _process_asset_sub_points("event_notifier", events),
         }
+        if data_points_file_path:
+            properties["dataPoints"].extend(
+                _process_asset_sub_points_file_path(file_path=data_points_file_path)
+            )
+        if events_file_path:
+            properties["events"].extend(
+                _process_asset_sub_points_file_path(file_path=events_file_path)
+            )
 
         # Other properties
         _update_properties(
@@ -354,7 +364,6 @@ class AssetProvider(ADRBaseProvider):
         resource_group_name: str,
         replace: bool = False
     ):
-        from ....util import deserialize_file_content
         asset = self.show(
             resource_name=asset_name,
             resource_group_name=resource_group_name,
@@ -363,8 +372,7 @@ class AssetProvider(ADRBaseProvider):
         if sub_point_type not in asset["properties"]:
             asset["properties"][sub_point_type] = []
 
-        sub_points = list(deserialize_file_content(file_path=file_path))
-        _convert_sub_points_from_csv(sub_points)
+        sub_points = _process_asset_sub_points_file_path(file_path=file_path)
 
         key = "dataSource" if sub_point_type == "dataPoints" else "eventNotifier"
         if replace:
@@ -591,7 +599,7 @@ def _convert_sub_points_to_csv(
     return list(csv_conversion_map.values())
 
 
-def _process_asset_sub_points(required_arg: str, sub_points: Optional[List[str]]) -> Dict[str, str]:
+def _process_asset_sub_points(required_arg: str, sub_points: Optional[List[str]]) -> List[Dict[str, str]]:
     """This is for the main create/update asset commands"""
     if not sub_points:
         return []
@@ -603,19 +611,20 @@ def _process_asset_sub_points(required_arg: str, sub_points: Optional[List[str]]
 
         if not parsed_points.get(required_arg):
             raise RequiredArgumentMissingError(f"{point_type} ({point}) is missing the {required_arg}.")
-        if parsed_points.get(invalid_arg) or (
-            required_arg == "event_notifier"
-            and any([
-                "capability_id" in parsed_points,
-                "sampling_interval" in parsed_points
-            ])
-        ):
+        if parsed_points.get(invalid_arg):
             raise InvalidArgumentValueError(f"{point_type} does not support {invalid_arg}.")
 
         processed_point = _build_asset_sub_point(**parsed_points)
         processed_points.append(processed_point)
 
     return processed_points
+
+
+def _process_asset_sub_points_file_path(file_path: str) -> List[Dict[str, str]]:
+    from ....util import deserialize_file_content
+    sub_points = list(deserialize_file_content(file_path=file_path))
+    _convert_sub_points_from_csv(sub_points)
+    return sub_points
 
 
 def _process_custom_attributes(current_attributes: Dict[str, str], custom_attributes: List[str]):
