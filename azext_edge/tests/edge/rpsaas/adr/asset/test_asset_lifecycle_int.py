@@ -261,10 +261,10 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
         f"--endpoint {endpoint_name} --data-file {data_file_path} --event-file {event_file_path}"
     )
     tracked_resources.append(second_asset["id"])
-    assert len(asset["properties"]["dataPoints"]) == len(expected_data_points)
-    assert_sub_point(asset["properties"]["dataPoints"][0], **expected_data_points[0])
-    assert len(asset["properties"]["events"]) == len(expected_events)
-    assert_sub_point(asset["properties"]["events"][0], **expected_events[0])
+    assert len(second_asset["properties"]["dataPoints"]) == len(expected_data_points)
+    assert_sub_point(second_asset["properties"]["dataPoints"][0], **expected_data_points[0])
+    assert len(second_asset["properties"]["events"]) == len(expected_events)
+    assert_sub_point(second_asset["properties"]["events"][0], **expected_events[0])
 
 
 def assert_asset_props(result, **expected):
