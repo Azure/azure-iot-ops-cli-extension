@@ -126,9 +126,8 @@ def query_assets(
     software_revision: Optional[str] = None,
     resource_group_name: Optional[str] = None,
     resource_query: Optional[str] = None,
-    subscriptions: Optional[List[str]] = None
 ) -> dict:
-    asset_provider = AssetProvider(cmd, subscriptions=subscriptions)
+    asset_provider = AssetProvider(cmd)
     return asset_provider.build_query(
         asset_type=asset_type,
         custom_location_name=custom_location_name,

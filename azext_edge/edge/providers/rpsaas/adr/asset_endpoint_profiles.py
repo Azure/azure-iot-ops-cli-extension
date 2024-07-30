@@ -32,11 +32,10 @@ logger = get_logger(__name__)
 
 
 class AssetEndpointProfileProvider(ADRBaseProvider):
-    def __init__(self, cmd, subscriptions: Optional[List[str]] = None):
+    def __init__(self, cmd):
         super(AssetEndpointProfileProvider, self).__init__(
             cmd=cmd,
-            resource_type=ResourceTypeMapping.asset_endpoint_profile.value,
-            subscriptions=subscriptions
+            resource_type=ResourceTypeMapping.asset_endpoint_profile.value
         )
 
     def create(

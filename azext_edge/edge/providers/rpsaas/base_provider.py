@@ -33,6 +33,7 @@ EXTENSION_API_VERSION = "2023-05-01"
 IOT_OPS_EXTENSION = "microsoft.iotoperations"
 
 
+# TODO: refactor into generated sdk
 class RPSaaSBaseProvider(Queryable):
     def __init__(
         self,
@@ -41,12 +42,8 @@ class RPSaaSBaseProvider(Queryable):
         provider_namespace: str = "",
         parent_resource_path: str = "",
         resource_type: str = "",
-        subscriptions: Optional[List[str]] = None
     ):
-        # Ensure you can query over all subscriptions if you want
-        if subscriptions and subscriptions[0] == "*":
-            subscriptions = []
-        super(RPSaaSBaseProvider, self).__init__(cmd=cmd, subscriptions=subscriptions)
+        super(RPSaaSBaseProvider, self).__init__(cmd=cmd)
         from ...util.az_client import get_resource_client
 
         self.cmd = cmd

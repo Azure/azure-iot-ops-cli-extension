@@ -44,7 +44,7 @@ from .....generators import generate_random_string
         "resource_group_name": generate_random_string(),
     },
 ])
-def test_query_assets(mocked_cmd, mocked_get_subscription_id, mocked_build_query, req):
+def test_query_assets(mocked_cmd, mocked_get_subscription_id, mocked_responses, req):
     result = query_assets(
         cmd=mocked_cmd,
         **req

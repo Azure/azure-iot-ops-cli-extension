@@ -867,14 +867,6 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
         context.argument(
-            "subscriptions",
-            options_list=["--sub"],
-            help="Space-seperated list of subscription IDs to overwrite --subscription and query against. "
-            "To query against all avaliable subscriptions, use *.",
-            nargs="+",
-            action="extend"
-        )
-        context.argument(
             "resource_query",
             options_list=["--resource-query", "--rq"],
             help="Custom resource graph query. All other inputs aside from --sub will be ignored. Input "
@@ -1086,14 +1078,6 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops asset endpoint query") as context:
-        context.argument(
-            "subscriptions",
-            options_list=["--sub"],
-            help="Space-seperated list of subscription IDs to overwrite --subscription and query against. "
-            "To query against all avaliable subscriptions, use *.",
-            nargs="+",
-            action="extend"
-        )
         context.argument(
             "resource_query",
             options_list=["--resource-query", "--rq"],

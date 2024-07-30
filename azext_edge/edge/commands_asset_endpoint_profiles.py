@@ -75,9 +75,8 @@ def query_asset_endpoint_profiles(
     resource_group_name: Optional[str] = None,
     resource_query: Optional[str] = None,
     target_address: Optional[str] = None,
-    subscriptions: Optional[List[str]] = None
 ) -> dict:
-    aep_provider = AssetEndpointProfileProvider(cmd, subscriptions=subscriptions)
+    aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.build_query(
         additional_configuration=additional_configuration,
         auth_mode=auth_mode,

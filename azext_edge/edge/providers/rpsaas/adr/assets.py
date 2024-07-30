@@ -26,11 +26,10 @@ VALID_EVENT_OBSERVABILITY_MODES = ["none", "log"]
 
 
 class AssetProvider(ADRBaseProvider):
-    def __init__(self, cmd, subscriptions: Optional[List[str]] = None):
+    def __init__(self, cmd):
         super(AssetProvider, self).__init__(
             cmd=cmd,
-            resource_type=ResourceTypeMapping.asset.value,
-            subscriptions=subscriptions
+            resource_type=ResourceTypeMapping.asset.value
         )
 
     def create(
