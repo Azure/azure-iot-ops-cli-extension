@@ -6,7 +6,6 @@
 
 from typing import Any, Dict, List
 
-from azure.cli.core.azclierror import CLIInternalError
 from knack.log import get_logger
 from rich.padding import Padding
 
@@ -52,7 +51,7 @@ dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com
 # TODO - consolidate TLS.mode checks
 
 def _process_dataflow_sourcesettings(
-    check_manager: CheckManager, target: str, namespace: str, endpoint_tuples: List[tuple[str,str]], resource: dict, detail_level: int, padding: int
+    check_manager: CheckManager, target: str, namespace: str, endpoint_tuples: List[tuple[str, str]], resource: dict, detail_level: int, padding: int
 ):
     settings = resource.get("sourceSettings", {})
 
@@ -63,12 +62,12 @@ def _process_dataflow_sourcesettings(
 
     endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
 
-    endpoint_status_color = "green" 
+    endpoint_status_color = "green"
     endpoint_status = CheckTaskStatus.success.value
     if not endpoint_match:
         endpoint_status = CheckTaskStatus.error.value
         endpoint_status_color = "red"
-    
+
     # valid endpoint ref eval
     check_manager.add_target_eval(
         target_name=target,
@@ -78,7 +77,6 @@ def _process_dataflow_sourcesettings(
         resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
         value={"spec.operations[*].sourceSettings.endpointRef": endpoint_ref},
     )
-
 
     if detail_level > ResourceOutputDetailLevel.summary.value:
         check_manager.add_display(
@@ -238,7 +236,7 @@ def _process_dataflow_transformationsettings(
 
 
 def _process_dataflow_destinationsettings(
-    check_manager: CheckManager, target: str, namespace: str, endpoint_tuples: List[tuple[str,str]], resource: dict, detail_level: int, padding: int
+    check_manager: CheckManager, target: str, namespace: str, endpoint_tuples: List[tuple[str, str]], resource: dict, detail_level: int, padding: int
 ):
     settings = resource.get("destinationSettings", {})
     if detail_level > ResourceOutputDetailLevel.summary.value:
@@ -251,12 +249,12 @@ def _process_dataflow_destinationsettings(
 
     endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
 
-    endpoint_status_color = "green" 
+    endpoint_status_color = "green"
     endpoint_status = CheckTaskStatus.success.value
     if not endpoint_match:
         endpoint_status = CheckTaskStatus.error.value
         endpoint_status_color = "red"
-    
+
     # valid endpoint ref eval
     check_manager.add_target_eval(
         target_name=target,
