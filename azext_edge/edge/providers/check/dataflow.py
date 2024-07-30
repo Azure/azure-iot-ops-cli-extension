@@ -835,7 +835,7 @@ def evaluate_dataflow_endpoints(
         return check_manager.as_dict(as_list=as_list)
     for namespace, endpoints in get_resources_grouped_by_namespace(all_endpoints):
         padding = 8
-        check_manager.add_target(target_name=target, namespace=namespace)
+        check_manager.add_target(target_name=target, namespace=namespace, conditions=["valid(spec.endpointType)"])
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -846,10 +846,19 @@ def evaluate_dataflow_endpoints(
             spec = endpoint.get("spec", {})
             endpoint_name = endpoint.get("metadata", {}).get("name")
             endpoint_type = spec.get("endpointType")
+            valid_endpoint_type = endpoint_type and endpoint_type.lower() in DataflowEndpointType.list()
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=CheckTaskStatus.success.value if valid_endpoint_type else CheckTaskStatus.error.value,
+                resource_name=endpoint_name,
+                resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
+                value={"spec.endpointType": endpoint_type},
+            )
 
             endpoint_string = f"Endpoint {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_name)}}}"
             detected_string = COLOR_STR_FORMAT.format(color='green', value='detected')
-            type_string = f"type: {COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_type)}"
+            type_string = f"type: {COLOR_STR_FORMAT.format(color='bright_blue' if valid_endpoint_type else 'red', value=endpoint_type)}"
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
@@ -878,10 +887,15 @@ def evaluate_dataflow_endpoints(
                     DataflowEndpointType.local_storage.value: _process_endpoint_localstoragesettings,
                 }
                 # process endpoint settings
-                if endpoint_type and endpoint_type.lower() not in endpoint_processor_dict:
+                if endpoint_type and endpoint_type.lower() in endpoint_processor_dict:
+                    endpoint_processor_dict[endpoint_type.lower()](check_manager=check_manager, target=target, namespace=namespace, spec=spec, detail_level=detail_level, padding=padding + 4)
+                else:
                     logger.warn(f"Unknown dataflow endpoint type: {endpoint_type}")
-
-                endpoint_processor_dict[endpoint_type.lower()](check_manager=check_manager, target=target, namespace=namespace, spec=spec, detail_level=detail_level, padding=padding + 4)
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(f"[red]Unknown endpoint type: {endpoint_type}[/red]", (0, 0, 0, padding + 4)),
+                    )
 
             check_manager.add_target_eval(
                 target_name=target,
@@ -922,7 +936,7 @@ def evaluate_dataflow_profiles(
         return check_manager.as_dict(as_list=as_list)
     for namespace, profiles in get_resources_grouped_by_namespace(all_profiles):
         padding = 8
-        check_manager.add_target(target_name=target, namespace=namespace)
+        check_manager.add_target(target_name=target, namespace=namespace, conditions=["spec.instanceCount"])
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -941,21 +955,33 @@ def evaluate_dataflow_profiles(
                 ),
             )
             # TODO - figure out status / conditions
+            instance_count = spec.get("instanceCount")
+            has_instances = (instance_count is not None and int(instance_count) >= 0)
+            instance_status = CheckTaskStatus.success.value if has_instances else CheckTaskStatus.error.value
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=instance_status,
+                resource_name=profile_name,
+                resource_kind=DataflowResourceKinds.DATAFLOWPROFILE.value,
+                value={"spec.instanceCount": instance_count},
+            )
+            if has_instances:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"Instance count: {instance_count}", (0, 0, 0, padding + 4)),
+                )
+            else:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding("[red]No instance count set[/red]", (0, 0, 0, padding + 4)),
+                )
 
             # diagnostics on higher detail levels
             if detail_level > ResourceOutputDetailLevel.summary.value:
                 padding += 4
-                for label, key in [
-                    ("Instance Count", "instanceCount"),
-                ]:
-                    val = spec.get(key)
-                    if val:
-                        check_manager.add_display(
-                            target_name=target,
-                            namespace=namespace,
-                            display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
-                        )
-
                 diagnostics = spec.get("diagnostics", {})
                 check_manager.add_display(
                     target_name=target,
@@ -974,18 +1000,19 @@ def evaluate_dataflow_profiles(
 
                 if detail_level > ResourceOutputDetailLevel.detail.value:
                     diagnostic_log_otelconfig = diagnostic_logs.get("openTelemetryExportConfig", {})
-                    for label, key in [
-                        ("Endpoint", "otlpGrpcEndpoint"),
-                        ("Interval (s)", "intervalSeconds"),
-                        ("Level", "level"),
-                    ]:
-                        val = diagnostic_log_otelconfig.get(key)
-                        if val:
-                            check_manager.add_display(
-                                target_name=target,
-                                namespace=namespace,
-                                display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
-                            )
+                    if diagnostic_log_otelconfig:
+                        for label, key in [
+                            ("Endpoint", "otlpGrpcEndpoint"),
+                            ("Interval (s)", "intervalSeconds"),
+                            ("Level", "level"),
+                        ]:
+                            val = diagnostic_log_otelconfig.get(key)
+                            if val:
+                                check_manager.add_display(
+                                    target_name=target,
+                                    namespace=namespace,
+                                    display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                                )
 
                     # diagnostic metrics
                     diagnostic_metrics = diagnostics.get("metrics", {})
@@ -1003,17 +1030,18 @@ def evaluate_dataflow_profiles(
                     )
 
                     diagnostic_metrics_otelconfig = diagnostic_metrics.get("openTelemetryExportConfig", {})
-                    for label, key in [
-                        ("Endpoint", "otlpGrpcEndpoint"),
-                        ("Interval (s)", "intervalSeconds"),
-                    ]:
-                        val = diagnostic_metrics_otelconfig.get(key)
-                        if val:
-                            check_manager.add_display(
-                                target_name=target,
-                                namespace=namespace,
-                                display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
-                            )
+                    if diagnostic_metrics_otelconfig:
+                        for label, key in [
+                            ("Endpoint", "otlpGrpcEndpoint"),
+                            ("Interval (s)", "intervalSeconds"),
+                        ]:
+                            val = diagnostic_metrics_otelconfig.get(key)
+                            if val:
+                                check_manager.add_display(
+                                    target_name=target,
+                                    namespace=namespace,
+                                    display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
+                                )
                 # TODO - determine status
             check_manager.add_target_eval(
                 target_name=target,
