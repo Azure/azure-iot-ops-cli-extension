@@ -128,6 +128,19 @@ def mocked_deserialize_file_content(mocker, request):
     )
 
 
+@pytest.fixture
+def mocked_resource_graph(mocker, request):
+    from ..generators import generate_random_string
+    request_params = getattr(request, "param", {generate_random_string(): generate_random_string()})
+    mocked_response = mocker.Mock()
+    mocked_response.json.return_value = {"data": request_params}
+    yield mocker.patch(
+        "azext_edge.edge.util.resource_graph.send_raw_request",
+        return_value=mocked_response,
+        autospec=True
+    )
+
+
 # Int testing
 @pytest.fixture(scope="session")
 def settings():

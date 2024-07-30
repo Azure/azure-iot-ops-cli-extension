@@ -4,9 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Optional
 import pytest
-from azext_edge.edge.common import ResourceTypeMapping
 from .....generators import generate_random_string
 
 
@@ -41,6 +39,7 @@ def asset_helpers_fixture(mocker, request):
 
 # Paths for mocking
 ASSETS_PATH = "azext_edge.edge.providers.rpsaas.adr.assets"
+
 
 # Generic objects
 MINIMUM_ASSET = {

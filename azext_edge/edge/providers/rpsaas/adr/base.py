@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List, Optional
 from knack.log import get_logger
 from ..base_provider import RPSaaSBaseProvider
 from ....common import ResourceProviderMapping

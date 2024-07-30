@@ -43,7 +43,7 @@ def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
 
 def build_query(cmd, subscription_id: Optional[str] = None, custom_query: Optional[str] = None, **kwargs):
     url = "/providers/Microsoft.ResourceGraph/resources?api-version=2022-10-01"
-    subscriptions = []
+    subscriptions = [subscription_id] if subscription_id else []
     payload = {"subscriptions": subscriptions, "query": "Resources ", "options": {}}
 
     # TODO: add more query options as they pop up
