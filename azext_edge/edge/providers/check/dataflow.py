@@ -63,8 +63,10 @@ def _process_dataflow_sourcesettings(
     endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
 
     endpoint_status_color = "green"
+    endpoint_validity = "valid"
     endpoint_status = CheckTaskStatus.success.value
     if not endpoint_match:
+        endpoint_validity = "invalid"
         endpoint_status = CheckTaskStatus.error.value
         endpoint_status_color = "red"
 
@@ -84,20 +86,22 @@ def _process_dataflow_sourcesettings(
         )
 
         padding += 4
+        endpoint_name_display = f"{{{COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_ref)}}}"
+        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_validity)
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_ref)}}}",
+                f"Dataflow Endpoint {endpoint_name_display} is {endpoint_validity_display}",
                 (0, 0, 0, padding),
             ),
         )
-        if not endpoint_match:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding("[red]Invalid Dataflow Endpoint reference[/red]", (0, 0, 0, padding)),
-            )
+    elif not endpoint_match:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("[red]Invalid source endpoint reference[/red]", (0, 0, 0, padding - 4)),
+        )
 
     # TODO extra properties - only on verbose
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -243,18 +247,18 @@ def _process_dataflow_destinationsettings(
         check_manager.add_display(
             target_name=target, namespace=namespace, display=Padding("\nDestination:", (0, 0, 0, padding))
         )
-    padding += 4
     # TODO - validate endpoint ref
     endpoint_ref = settings.get("endpointRef")
 
     endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
 
     endpoint_status_color = "green"
+    endpoint_validity = "valid"
     endpoint_status = CheckTaskStatus.success.value
     if not endpoint_match:
+        endpoint_validity = "invalid"
         endpoint_status = CheckTaskStatus.error.value
         endpoint_status_color = "red"
-
     # valid endpoint ref eval
     check_manager.add_target_eval(
         target_name=target,
@@ -266,33 +270,36 @@ def _process_dataflow_destinationsettings(
     )
     # show dataflow endpoint ref on detail
     if detail_level > ResourceOutputDetailLevel.summary.value:
+        padding += 4
+        endpoint_name_display = f"{{{COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_ref)}}}"
+        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_validity)
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_ref)}}}",
+                f"Dataflow Endpoint {endpoint_name_display} is {endpoint_validity_display}",
                 (0, 0, 0, padding),
             ),
         )
-        if not endpoint_match:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding("[red]Invalid Dataflow Endpoint reference[/red]", (0, 0, 0, padding)),
-            )
-        # only show destination on verbose
-        if detail_level > ResourceOutputDetailLevel.detail.value:
-            for label, key in [
-                ("Data Destination", "dataDestination"),
-            ]:
-                # TODO - validate endpoint ref
-                val = settings.get(key)
-                if val:
-                    check_manager.add_display(
-                        target_name=target,
-                        namespace=namespace,
-                        display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
-                    )
+    elif not endpoint_match:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("[red]Invalid destination endpoint reference[/red]", (0, 0, 0, padding - 4)),
+        )
+    # only show destination on verbose
+    if detail_level > ResourceOutputDetailLevel.detail.value:
+        for label, key in [
+            ("Data Destination", "dataDestination"),
+        ]:
+            # TODO - validate endpoint ref
+            val = settings.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                )
 
 
 def _process_endpoint_mqttsettings(
