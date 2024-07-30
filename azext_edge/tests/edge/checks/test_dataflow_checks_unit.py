@@ -63,19 +63,13 @@ def test_check_dataflow_by_resource_types(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("resource_name", ["dataflow*", "dataflow-?", "*-1"])
 @pytest.mark.parametrize(
-    "dataflows, conditions, evaluations",
+    "dataflows, profiles, endpoints, conditions, evaluations",
     [
+        # dataflows (valid)
         (
             # dataflows
             [
-                {
-                    "metadata": {
-                        "name": "dataflow-1",
-                    },
-                    "spec": {"mode": "Enabled", "profileRef": "dataflow-profile-1"},
-                },
                 {
                     "metadata": {
                         "name": "dataflow-2",
@@ -87,7 +81,7 @@ def test_check_dataflow_by_resource_types(
                             {
                                 "operationType": "source",
                                 "sourceSettings": {
-                                    "endpointRef": "endpoint-ref",
+                                    "endpointRef": "dataflow-endpoint-1",
                                     "assetRef": "asset-ref",
                                     "serializationFormat": "JSON",
                                     "dataSources": ["one", "two"]
@@ -133,13 +127,32 @@ def test_check_dataflow_by_resource_types(
                             {
                                 "operationType": "destination",
                                 "destinationSettings": {
-                                    "endpointRef": "endpoint",
+                                    "endpointRef": "dataflow-endpoint-2",
                                     "dataDestination": "destination"
                                 }
                             }
                         ]
                     },
                 },
+            ],
+            # profiles
+            [{
+                "metadata": {
+                    "name": "dataflow-profile-1"
+                }
+            }],
+            # endpoints
+            [
+                {
+                    "metadata": {
+                        "name": "dataflow-endpoint-1"
+                    }
+                },
+                {
+                    "metadata": {
+                        "name": "dataflow-endpoint-2"
+                    }
+                }
             ],
             # conditions
             [],
@@ -153,6 +166,10 @@ def test_check_dataflow_by_resource_types(
         # no dataflows
         (
             # dataflows
+            [],
+            # profiles
+            [],
+            # endpoints
             [],
             # conditions
             [],
@@ -172,20 +189,21 @@ def test_check_dataflow_by_resource_types(
 def test_evaluate_dataflows(
     mocker,
     dataflows,
+    profiles,
+    endpoints,
     conditions,
     evaluations,
     detail_level,
-    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": dataflows}],
+        side_effect=[{"items": dataflows}, {"items": profiles}, {"items": endpoints}],
     )
 
     namespace = generate_random_string()
     for dataflow in dataflows:
         dataflow["metadata"]["namespace"] = namespace
-    result = evaluate_dataflows(detail_level=detail_level, resource_name=resource_name)
+    result = evaluate_dataflows(detail_level=detail_level)
 
     assert result["name"] == "evalDataflows"
     assert result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
@@ -394,7 +412,6 @@ def test_evaluate_dataflow_endpoints(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("resource_name", ["profile*", "profile-?", "*-1"])
 @pytest.mark.parametrize(
     "profiles, conditions, evaluations",
     [
@@ -405,7 +422,7 @@ def test_evaluate_dataflow_endpoints(
                     "metadata": {
                         "name": "profile-1",
                     },
-                    "spec": {"mode": "Enabled", "profileRef": "dataflow-profile-1"},
+                    "spec": {"mode": "Enabled", "profileRef": "dataflow-profile-1", "instanceCount": 1},
                 }
             ],
             # conditions
@@ -442,7 +459,6 @@ def test_evaluate_dataflow_profiles(
     conditions,
     evaluations,
     detail_level,
-    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -452,9 +468,7 @@ def test_evaluate_dataflow_profiles(
     namespace = generate_random_string()
     for endpoint in profiles:
         endpoint["metadata"]["namespace"] = namespace
-    result = evaluate_dataflow_profiles(
-        detail_level=detail_level, resource_name=resource_name
-    )
+    result = evaluate_dataflow_profiles(detail_level=detail_level)
 
     assert result["name"] == "evalDataflowProfiles"
     assert result["targets"]["dataflowprofiles.connectivity.iotoperations.azure.com"]
