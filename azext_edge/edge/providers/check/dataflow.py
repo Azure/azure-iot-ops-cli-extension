@@ -52,7 +52,7 @@ dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com
 # TODO - consolidate TLS.mode checks
 
 def _process_dataflow_sourcesettings(
-    check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
+    check_manager: CheckManager, target: str, namespace: str, endpoint_tuples: List[tuple[str,str]], resource: dict, detail_level: int, padding: int
 ):
     settings = resource.get("sourceSettings", {})
 
@@ -60,6 +60,25 @@ def _process_dataflow_sourcesettings(
     # TODO - validate endpoint ref
     # TODO - sourcetype only mqtt and kafka
     endpoint_ref = settings.get("endpointRef")
+
+    endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
+
+    endpoint_status_color = "green" 
+    endpoint_status = CheckTaskStatus.success.value
+    if not endpoint_match:
+        endpoint_status = CheckTaskStatus.error.value
+        endpoint_status_color = "red"
+    
+    # valid endpoint ref eval
+    check_manager.add_target_eval(
+        target_name=target,
+        namespace=namespace,
+        status=endpoint_status,
+        resource_name=endpoint_ref,
+        resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
+        value={"spec.operations[*].sourceSettings.endpointRef": endpoint_ref},
+    )
+
 
     if detail_level > ResourceOutputDetailLevel.summary.value:
         check_manager.add_display(
@@ -71,10 +90,16 @@ def _process_dataflow_sourcesettings(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_ref)}}}",
+                f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_ref)}}}",
                 (0, 0, 0, padding),
             ),
         )
+        if not endpoint_match:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding("[red]Invalid Dataflow Endpoint reference[/red]", (0, 0, 0, padding)),
+            )
 
     # TODO extra properties - only on verbose
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -213,7 +238,7 @@ def _process_dataflow_transformationsettings(
 
 
 def _process_dataflow_destinationsettings(
-    check_manager: CheckManager, target: str, namespace: str, resource: dict, detail_level: int, padding: int
+    check_manager: CheckManager, target: str, namespace: str, endpoint_tuples: List[tuple[str,str]], resource: dict, detail_level: int, padding: int
 ):
     settings = resource.get("destinationSettings", {})
     if detail_level > ResourceOutputDetailLevel.summary.value:
@@ -223,16 +248,40 @@ def _process_dataflow_destinationsettings(
     padding += 4
     # TODO - validate endpoint ref
     endpoint_ref = settings.get("endpointRef")
+
+    endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
+
+    endpoint_status_color = "green" 
+    endpoint_status = CheckTaskStatus.success.value
+    if not endpoint_match:
+        endpoint_status = CheckTaskStatus.error.value
+        endpoint_status_color = "red"
+    
+    # valid endpoint ref eval
+    check_manager.add_target_eval(
+        target_name=target,
+        namespace=namespace,
+        status=endpoint_status,
+        resource_name=endpoint_ref,
+        resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
+        value={"spec.operations[*].destinationSettings.endpointRef": endpoint_ref},
+    )
     # show dataflow endpoint ref on detail
     if detail_level > ResourceOutputDetailLevel.summary.value:
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_ref)}}}",
+                f"Dataflow Endpoint: {{{COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_ref)}}}",
                 (0, 0, 0, padding),
             ),
         )
+        if not endpoint_match:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding("[red]Invalid Dataflow Endpoint reference[/red]", (0, 0, 0, padding)),
+            )
         # only show destination on verbose
         if detail_level > ResourceOutputDetailLevel.detail.value:
             for label, key in [
