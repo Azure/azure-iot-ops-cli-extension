@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from knack.log import get_logger
 from rich.padding import Padding
@@ -51,7 +51,7 @@ dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com
 # TODO - consolidate TLS.mode checks
 
 def _process_dataflow_sourcesettings(
-    check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoint_tuples: List[tuple[str, str]], operation: dict, detail_level: int, padding: int
+    check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoint_tuples: List[Tuple[str, str]], operation: dict, detail_level: int, padding: int
 ):
     settings = operation.get("sourceSettings", {})
 
@@ -241,7 +241,7 @@ def _process_dataflow_transformationsettings(
 
 
 def _process_dataflow_destinationsettings(
-    check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoint_tuples: List[tuple[str, str]], operation: dict, detail_level: int, padding: int
+    check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoint_tuples: List[Tuple[str, str]], operation: dict, detail_level: int, padding: int
 ):
     settings = operation.get("destinationSettings", {})
     if detail_level > ResourceOutputDetailLevel.summary.value:
