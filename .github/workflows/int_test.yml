@@ -100,7 +100,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [custom-input, default, mq-insecure, no-syncrules, ca-certs]
+        feature: [custom-input, default, insecure-listener, no-syncrules, ca-certs]
         runtime-args:
           - ${{ inputs.runtime-init-args != '' }}
         exclude:
@@ -108,7 +108,7 @@ jobs:
             runtime-args: false
           - feature: default
             runtime-args: true
-          - feature: mq-insecure
+          - feature: insecure-listener
             runtime-args: true
           - feature: no-syncrules
             runtime-args: true
@@ -122,13 +122,13 @@ jobs:
         run: |
           echo "NO_PREFLIGHT=false" >> $GITHUB_OUTPUT
           if [[ ${{ matrix.feature }} == "default" ]]; then
-            echo "ARG=\"--ca-valid-days 3 --kv-spc-secret-name test-kv-secret\"" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "mq-insecure" ]]; then
-            echo "ARG=\"--add-insecure-listener --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m\"" >> $GITHUB_OUTPUT
+            echo "ARG=\"--ca-valid-days 3 --kv-spc-secret-name test-kv-secret\" --simulate-plc" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} == "insecure-listener" ]]; then
+            echo "ARG=\"--add-insecure-listener --broker-service-type LoadBalancer --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m\"" >> $GITHUB_OUTPUT
             echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "default" ]]; then
+          elif [[ ${{ matrix.feature }} == "no-syncrules" ]]; then
             echo "ARG=\"--disable-rsync-rules\"" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "default" ]]; then
+          elif [[ ${{ matrix.feature }} == "ca-certs" ]]; then
             echo "ARG=\"--ca-file \"${{ env.CA_FILE }}\" --ca-key-file \"${{ env.CA_KEY_FILE }}\"\"" >> $GITHUB_OUTPUT
           else
             echo "ARG=\"${{ inputs.runtime-init-args }}\"" >> $GITHUB_OUTPUT
