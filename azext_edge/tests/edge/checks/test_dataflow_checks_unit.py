@@ -373,7 +373,6 @@ def test_evaluate_dataflows(
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("resource_name", ["endpoint*", "endpoint-?", "*point-?"])
 @pytest.mark.parametrize(
     "endpoints, conditions, evaluations",
     [
@@ -489,14 +488,57 @@ def test_evaluate_dataflows(
                         }
                     },
                 },
+                # invalid endpoint type
+                {
+                    "metadata": {
+                        "name": "endpoint-7",
+                    },
+                    "spec": {
+                        "endpointType": "invalid",
+                    },
+                }
             ],
             # conditions
-            [],
+            [
+                "spec.endpointType",
+            ],
             # evaluations
             [
                 [
                     ("status", "success"),
+                    ('name', 'endpoint-1',),
+                    ('value', {'spec.endpointType': 'kafka'})
                 ],
+                [
+                    ("status", "success"),
+                    ('name', 'endpoint-2',),
+                    ('value', {'spec.endpointType': 'localstorage'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'endpoint-3',),
+                    ('value', {'spec.endpointType': 'fabriconelake'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'endpoint-4',),
+                    ('value', {'spec.endpointType': 'datalakestorage'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'endpoint-5',),
+                    ('value', {'spec.endpointType': 'dataExplorer'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'endpoint-6',),
+                    ('value', {'spec.endpointType': 'mqtt'})
+                ],
+                [
+                    ("status", "error"),
+                    ('name', 'endpoint-7',),
+                    ('value', {'spec.endpointType': 'invalid'})
+                ]
             ],
         ),
         # no endpoints
@@ -524,7 +566,6 @@ def test_evaluate_dataflow_endpoints(
     conditions,
     evaluations,
     detail_level,
-    resource_name,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
@@ -534,9 +575,7 @@ def test_evaluate_dataflow_endpoints(
     namespace = generate_random_string()
     for endpoint in endpoints:
         endpoint["metadata"]["namespace"] = namespace
-    result = evaluate_dataflow_endpoints(
-        detail_level=detail_level, resource_name=resource_name
-    )
+    result = evaluate_dataflow_endpoints(detail_level=detail_level)
 
     assert result["name"] == "evalDataflowEndpoints"
     assert result["targets"]["dataflowendpoints.connectivity.iotoperations.azure.com"]

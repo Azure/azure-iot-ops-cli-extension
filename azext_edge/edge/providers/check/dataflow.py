@@ -846,7 +846,7 @@ def evaluate_dataflow_endpoints(
         return check_manager.as_dict(as_list=as_list)
     for namespace, endpoints in get_resources_grouped_by_namespace(all_endpoints):
         padding = 8
-        check_manager.add_target(target_name=target, namespace=namespace, conditions=["valid(spec.endpointType)"])
+        check_manager.add_target(target_name=target, namespace=namespace, conditions=["spec.endpointType"])
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -901,20 +901,11 @@ def evaluate_dataflow_endpoints(
                 if endpoint_type and endpoint_type.lower() in endpoint_processor_dict:
                     endpoint_processor_dict[endpoint_type.lower()](check_manager=check_manager, target=target, namespace=namespace, spec=spec, detail_level=detail_level, padding=padding + 4)
                 else:
-                    logger.warn(f"Unknown dataflow endpoint type: {endpoint_type}")
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
                         display=Padding(f"[red]Unknown endpoint type: {endpoint_type}[/red]", (0, 0, 0, padding + 4)),
                     )
-
-            check_manager.add_target_eval(
-                target_name=target,
-                namespace=namespace,
-                status=CheckTaskStatus.success.value,
-                resource_name=endpoint_name,
-                resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
-            )
     return check_manager.as_dict(as_list=as_list)
 
 
