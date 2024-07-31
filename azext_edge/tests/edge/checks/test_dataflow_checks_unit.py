@@ -26,6 +26,15 @@ from .conftest import (
 )
 from ...generators import generate_random_string
 
+dataflow_conditions = [
+    "spec.profileRef",
+    "len(spec.operations)<=3",
+    "spec.operations[*].sourceSettings.endpointRef",
+    "spec.operations[*].destinationSettings.endpointRef",
+    "len(spec.operations[*].sourceSettings)==1",
+    "len(spec.operations[*].destinationSettings)==1",
+]
+
 
 @pytest.mark.parametrize(
     "resource_kinds",
@@ -161,12 +170,7 @@ def test_check_dataflow_by_resource_types(
                 }
             ],
             # conditions
-            [
-                "spec.profileRef",
-                "spec.operations[*].sourceSettings.endpointRef",
-                "spec.operations[*].destinationSettings.endpointRef",
-                "2<=len(spec.operations)<=3",
-            ],
+            dataflow_conditions,
             # evaluations
             [
                 [
@@ -259,12 +263,7 @@ def test_check_dataflow_by_resource_types(
                 },
             ],
             # conditions
-            [
-                "spec.profileRef",
-                "2<=len(spec.operations)<=3",
-                "spec.operations[*].sourceSettings.endpointRef",
-                "spec.operations[*].destinationSettings.endpointRef",
-            ],
+            dataflow_conditions,
             # evaluations
             [
                 [
@@ -281,6 +280,16 @@ def test_check_dataflow_by_resource_types(
                     ("status", "error"),
                     ('name', 'dataflow-1',),
                     ('value', {'spec.operations[*].destinationSettings.endpointRef': 'invalid-endpoint'})
+                ],
+                [
+                    ("status", "error"),
+                    ('name', 'dataflow-1',),
+                    ('value', {'len(spec.operations[*].sourceSettings)': 0})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-1',),
+                    ('value', {'len(spec.operations[*].destinationSettings)': 1})
                 ],
                 [
                     ("status", "success"),
@@ -301,6 +310,16 @@ def test_check_dataflow_by_resource_types(
                     ("status", "success"),
                     ('name', 'dataflow-2',),
                     ('value', {'spec.operations[*].destinationSettings.endpointRef': 'real-endpoint'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'len(spec.operations[*].sourceSettings)': 1})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'len(spec.operations[*].destinationSettings)': 1})
                 ],
             ],
         ),

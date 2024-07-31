@@ -692,10 +692,13 @@ def evaluate_dataflows(
                 # valid dataflow profile reference
                 "spec.profileRef",
                 # at least a source and destination operation
-                "2<=len(spec.operations)<=3",
+                "len(spec.operations)<=3",
                 # valid endpoint refs
                 "spec.operations[*].sourceSettings.endpointRef",
                 "spec.operations[*].destinationSettings.endpointRef",
+                # single source/destination
+                "len(spec.operations[*].sourceSettings)==1",
+                "len(spec.operations[*].destinationSettings)==1"
             ]
         )
 
@@ -786,9 +789,11 @@ def evaluate_dataflows(
                     display=Padding("Operations:", (0, 0, 0, padding + 4)),
                 )
             operation_padding = padding + 8
+            sources = destinations = 0
             for operation in operations:
                 op_type = operation.get("operationType", "").lower()
                 if op_type == DataflowOperationType.source.value:
+                    sources += 1
                     _process_dataflow_sourcesettings(
                         check_manager=check_manager,
                         target=target,
@@ -809,6 +814,7 @@ def evaluate_dataflows(
                         padding=operation_padding,
                     )
                 elif op_type == DataflowOperationType.destination.value:
+                    destinations += 1
                     _process_dataflow_destinationsettings(
                         check_manager=check_manager,
                         target=target,
@@ -819,6 +825,41 @@ def evaluate_dataflows(
                         detail_level=detail_level,
                         padding=operation_padding,
                     )
+            # eval source amount (1)
+            sources_status = destinations_status = CheckTaskStatus.success.value
+            if sources != 1:
+                sources_status = CheckTaskStatus.error.value
+                message = "Missing source operation" if sources == 0 else f"Too many source operations: {sources}"
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"[red]{message}[/red]", (0, 0, 0, padding + 4)),
+                )
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=sources_status,
+                resource_name=dataflow_name,
+                resource_kind=DataflowResourceKinds.DATAFLOW.value,
+                value={"len(spec.operations[*].sourceSettings)": sources},
+            )
+
+            if destinations != 1:
+                destinations_status = CheckTaskStatus.error.value
+                message = "Missing destination operation" if destinations == 0 else f"Too many destination operations: {destinations}"
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(f"[red]{message}[/red]", (0, 0, 0, padding + 4)),
+                )
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=destinations_status,
+                resource_name=dataflow_name,
+                resource_kind=DataflowResourceKinds.DATAFLOW.value,
+                value={"len(spec.operations[*].destinationSettings)": destinations},
+            )
     return check_manager.as_dict(as_list=as_list)
 
 
