@@ -500,9 +500,12 @@ def load_iotops_help():
         long-summary: Currently instance tags and description can be updated.
 
         examples:
-        - name: Update instance tags.
+        - name: Update instance tags. This is equivalent to a replace.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --tags a=b c=d
+        - name: Remove instance tags.
+          text: >
+            az iot ops update --name myinstance -g myresourcegroup --tags ""
         - name: Update the instance description.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
