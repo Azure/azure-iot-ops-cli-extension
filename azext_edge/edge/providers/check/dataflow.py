@@ -1045,11 +1045,4 @@ def evaluate_dataflow_profiles(
                                     display=Padding(f"{label}: {val}", (0, 0, 0, padding + 4)),
                                 )
                 # TODO - determine status
-            check_manager.add_target_eval(
-                target_name=target,
-                namespace=namespace,
-                status=CheckTaskStatus.success.value,
-                resource_name=profile_name,
-                resource_kind=DataflowResourceKinds.DATAFLOWPROFILE.value,
-            )
     return check_manager.as_dict(as_list=as_list)

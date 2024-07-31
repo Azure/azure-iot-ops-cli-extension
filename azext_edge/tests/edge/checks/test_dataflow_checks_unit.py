@@ -605,19 +605,36 @@ def test_evaluate_dataflow_endpoints(
         (
             # profiles
             [
+                # good profile (instance count)
                 {
                     "metadata": {
                         "name": "profile-1",
                     },
-                    "spec": {"mode": "Enabled", "profileRef": "dataflow-profile-1", "instanceCount": 1},
-                }
+                    "spec": {"instanceCount": 1},
+                },
+                # bad profile (no instance count)
+                {
+                    "metadata": {
+                        "name": "profile-2",
+                    },
+                    "spec": {"instanceCount": None},
+                },
             ],
             # conditions
-            [],
+            [
+                "spec.instanceCount",
+            ],
             # evaluations
             [
                 [
                     ("status", "success"),
+                    ('name', 'profile-1',),
+                    ('value', {'spec.instanceCount': 1})
+                ],
+                [
+                    ("status", "error"),
+                    ('name', 'profile-2',),
+                    ('value', {'spec.instanceCount': None})
                 ],
             ],
         ),
