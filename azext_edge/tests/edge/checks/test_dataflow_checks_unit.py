@@ -605,12 +605,27 @@ def test_evaluate_dataflow_endpoints(
         (
             # profiles
             [
-                # good profile (instance count)
+                # good profile (instance count and diagnostic vals)
                 {
                     "metadata": {
                         "name": "profile-1",
                     },
-                    "spec": {"instanceCount": 1},
+                    "spec": {
+                        "instanceCount": 1,
+                        "diagnostics": {
+                            "logs": {
+                                "level": "info",
+                                "openTelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "endpoint",
+                                }
+                            },
+                            "metrics": {
+                                "openTelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "endpoint",
+                                }
+                            }
+                        }
+                    },
                 },
                 # bad profile (no instance count)
                 {
@@ -739,6 +754,23 @@ def test_evaluate_dataflow_profiles(
                 [("status", "error")],
             ],
         ),
+        # no pods
+        (
+            # pods
+            [],
+            # namespace conditions str
+            [],
+            # namespace evaluations str
+            [
+                [
+                    ("status", "error"),
+                    (
+                        "value/pods",
+                        "Unable to fetch pods.",
+                    ),
+                ]
+            ],
+        )
     ],
 )
 def test_evaluate_core_service_runtime(

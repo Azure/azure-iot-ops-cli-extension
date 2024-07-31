@@ -614,6 +614,11 @@ def evaluate_core_service_runtime(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)),
         )
+        check_manager.add_target_eval(
+            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
+            status=CheckTaskStatus.error.value,
+            value={"pods": "Unable to fetch pods."},
+        )
 
     for namespace, pods in get_resources_grouped_by_namespace(operators):
         check_manager.add_target(
