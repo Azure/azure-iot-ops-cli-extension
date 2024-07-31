@@ -145,21 +145,162 @@ def test_check_dataflow_by_resource_types(
             [
                 {
                     "metadata": {
-                        "name": "dataflow-endpoint-1"
+                        "name": "dataflow-endpoint-1",
+                    },
+                    "spec": {
+                        "endpointType": "mqtt"
                     }
                 },
                 {
                     "metadata": {
-                        "name": "dataflow-endpoint-2"
+                        "name": "dataflow-endpoint-2",
+                    },
+                    "spec": {
+                        "endpointType": "kafka"
                     }
                 }
             ],
             # conditions
-            [],
+            [
+                "spec.profileRef",
+                "spec.operations[*].sourceSettings.endpointRef",
+                "spec.operations[*].destinationSettings.endpointRef",
+                "2<=len(spec.operations)<=3",
+            ],
             # evaluations
             [
                 [
                     ("status", "success"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'spec.profileRef': 'dataflow-profile-1'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'len(operations)': 3})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'spec.operations[*].sourceSettings.endpointRef': 'dataflow-endpoint-1'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'spec.operations[*].destinationSettings.endpointRef': 'dataflow-endpoint-2'})
+                ]
+            ],
+        ),
+        # dataflows (invalid)
+        (
+            # dataflows
+            [
+                {
+                    "metadata": {
+                        "name": "dataflow-1",
+                    },
+                    "spec": {
+                        "mode": "Enabled",
+                        # invalid profileRef
+                        "profileRef": "nonexistent-dataflow-profile",
+                        "operations": [
+                            # only one destination
+                            {
+                                "operationType": "destination",
+                                "destinationSettings": {
+                                    "endpointRef": "invalid-endpoint",
+                                }
+                            }
+                        ]
+                    },
+                },
+                {
+                    "metadata": {
+                        "name": "dataflow-2",
+                    },
+                    "spec": {
+                        "mode": "Enabled",
+                        "profileRef": "real-dataflow-profile",
+                        "operations": [
+                            # good destination, bad source
+                            {
+                                "operationType": "source",
+                                "sourceSettings": {
+                                    "endpointRef": "invalid-endpoint",
+                                }
+                            },
+                            {
+                                "operationType": "destination",
+                                "destinationSettings": {
+                                    "endpointRef": "real-endpoint",
+                                }
+                            }
+                        ]
+                    },
+                },
+            ],
+            # profiles
+            [
+                {
+                    "metadata": {
+                        "name": "real-dataflow-profile"
+                    }
+                }
+            ],
+            # endpoints
+            [
+                {
+                    "metadata": {
+                        "name": "real-endpoint",
+                    },
+                    "spec": {
+                        "endpointType": "kafka"
+                    }
+                },
+            ],
+            # conditions
+            [
+                "spec.profileRef",
+                "2<=len(spec.operations)<=3",
+                "spec.operations[*].sourceSettings.endpointRef",
+                "spec.operations[*].destinationSettings.endpointRef",
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "error"),
+                    ('name', 'dataflow-1',),
+                    ('value', {'spec.profileRef': 'nonexistent-dataflow-profile'})
+                ],
+                [
+                    ("status", "error"),
+                    ('name', 'dataflow-1',),
+                    ('value', {'len(operations)': 1})
+                ],
+                [
+                    ("status", "error"),
+                    ('name', 'dataflow-1',),
+                    ('value', {'spec.operations[*].destinationSettings.endpointRef': 'invalid-endpoint'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'spec.profileRef': 'real-dataflow-profile'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'len(operations)': 2})
+                ],
+                [
+                    ("status", "error"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'spec.operations[*].sourceSettings.endpointRef': 'invalid-endpoint'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'spec.operations[*].destinationSettings.endpointRef': 'real-endpoint'})
                 ],
             ],
         ),
@@ -195,14 +336,21 @@ def test_evaluate_dataflows(
     evaluations,
     detail_level,
 ):
+    namespace = generate_random_string()
+    for resource in [dataflows, profiles, endpoints]:
+        for item in resource:
+            item["metadata"]["namespace"] = namespace
+    # this expects the logic to follow this path:
+    # 1. get all dataflows
+    # 2. get all profiles
+    # 3. get all endpoints
+    side_effects = [{"items": dataflows}, {"items": profiles}, {"items": endpoints}]
+
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": dataflows}, {"items": profiles}, {"items": endpoints}],
+        side_effect=side_effects,
     )
 
-    namespace = generate_random_string()
-    for dataflow in dataflows:
-        dataflow["metadata"]["namespace"] = namespace
     result = evaluate_dataflows(detail_level=detail_level)
 
     assert result["name"] == "evalDataflows"
