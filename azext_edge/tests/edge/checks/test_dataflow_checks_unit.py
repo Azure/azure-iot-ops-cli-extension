@@ -30,6 +30,7 @@ dataflow_conditions = [
     "spec.profileRef",
     "len(spec.operations)<=3",
     "spec.operations[*].sourceSettings.endpointRef",
+    "ref(spec.operations[*].sourceSettings.endpointRef).endpointType in ('kafka','mqtt')",
     "spec.operations[*].destinationSettings.endpointRef",
     "len(spec.operations[*].sourceSettings)==1",
     "len(spec.operations[*].destinationSettings)==1",
@@ -191,6 +192,11 @@ def test_check_dataflow_by_resource_types(
                 [
                     ("status", "success"),
                     ('name', 'dataflow-2',),
+                    ('value', {'ref(spec.operations[*].sourceSettings.endpointRef).endpointType': 'mqtt'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-2',),
                     ('value', {'spec.operations[*].destinationSettings.endpointRef': 'dataflow-endpoint-2'})
                 ]
             ],
@@ -242,6 +248,43 @@ def test_check_dataflow_by_resource_types(
                         ]
                     },
                 },
+                {
+                    "metadata": {
+                        "name": "dataflow-3",
+                    },
+                    "spec": {
+                        "mode": "Enabled",
+                        "profileRef": "real-dataflow-profile",
+                        "operations": [
+                            # invalid source type
+                            {
+                                "operationType": "source",
+                                "sourceSettings": {
+                                    "endpointRef": "bad-source-endpoint",
+                                }
+                            },
+                            {
+                                "operationType": "destination",
+                                "destinationSettings": {
+                                    "endpointRef": "real-endpoint",
+                                }
+                            }
+                        ]
+                    },
+                },
+
+                {
+                    "metadata": {
+                        "name": "dataflow-4",
+                    },
+                    "spec": {
+                        "mode": "Enabled",
+                        "profileRef": "real-dataflow-profile",
+                        # no operations
+                        "operations": [
+                        ]
+                    },
+                },
             ],
             # profiles
             [
@@ -261,6 +304,14 @@ def test_check_dataflow_by_resource_types(
                         "endpointType": "kafka"
                     }
                 },
+                {
+                    "metadata": {
+                        "name": "bad-source-endpoint",
+                    },
+                    "spec": {
+                        "endpointType": "fabriconelake"
+                    }
+                }
             ],
             # conditions
             dataflow_conditions,
@@ -307,6 +358,11 @@ def test_check_dataflow_by_resource_types(
                     ('value', {'spec.operations[*].sourceSettings.endpointRef': 'invalid-endpoint'})
                 ],
                 [
+                    ("status", "error"),
+                    ('name', 'dataflow-2',),
+                    ('value', {'ref(spec.operations[*].sourceSettings.endpointRef).endpointType': None})
+                ],
+                [
                     ("status", "success"),
                     ('name', 'dataflow-2',),
                     ('value', {'spec.operations[*].destinationSettings.endpointRef': 'real-endpoint'})
@@ -320,6 +376,61 @@ def test_check_dataflow_by_resource_types(
                     ("status", "success"),
                     ('name', 'dataflow-2',),
                     ('value', {'len(spec.operations[*].destinationSettings)': 1})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-3',),
+                    ('value', {'spec.profileRef': 'real-dataflow-profile'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-3',),
+                    ('value', {'len(operations)': 2})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-3',),
+                    ('value', {'spec.operations[*].sourceSettings.endpointRef': 'bad-source-endpoint'})
+                ],
+                [
+                    ("status", "error"),
+                    ('name', 'dataflow-3',),
+                    ('value', {'ref(spec.operations[*].sourceSettings.endpointRef).endpointType': 'fabriconelake'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-3',),
+                    ('value', {'spec.operations[*].destinationSettings.endpointRef': 'real-endpoint'})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-3',),
+                    ('value', {'len(spec.operations[*].sourceSettings)': 1})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-3',),
+                    ('value', {'len(spec.operations[*].destinationSettings)': 1})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'dataflow-4',),
+                    ('value', {'spec.profileRef': 'real-dataflow-profile'})
+                ],
+                [
+                    ("status", "error"),
+                    ('name', 'dataflow-4',),
+                    ('value', {'len(operations)': 0})
+                ],
+                [
+                    ("status", "error"),
+                    ('name', 'dataflow-4',),
+                    ('value', {'len(spec.operations[*].sourceSettings)': 0})
+                ],
+                [
+                    ("status", "error"),
+                    ('name', 'dataflow-4',),
+                    ('value', {'len(spec.operations[*].destinationSettings)': 0})
                 ],
             ],
         ),

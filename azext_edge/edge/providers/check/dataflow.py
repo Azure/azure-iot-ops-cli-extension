@@ -47,8 +47,8 @@ dataflow_target = "dataflows.connectivity.iotoperations.azure.com"
 dataflow_endpoint_target = "dataflowendpoints.connectivity.iotoperations.azure.com"
 dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com"
 
+valid_source_endpoint_types = [DataflowEndpointType.kafka.value, DataflowEndpointType.mqtt.value]
 
-# TODO - consolidate TLS.mode checks
 
 def _process_dataflow_sourcesettings(
     check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoint_tuples: List[Tuple[str, str]], operation: dict, detail_level: int, padding: int
@@ -56,19 +56,20 @@ def _process_dataflow_sourcesettings(
     settings = operation.get("sourceSettings", {})
 
     # show endpoint ref
-    # TODO - validate endpoint ref
-    # TODO - sourcetype only mqtt and kafka
     # TODO - lots of shared code for validating source/dest endpoints, consider refactoring
     endpoint_ref = settings.get("endpointRef")
 
     endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
+    endpoint_type = endpoint_match[1] if endpoint_match else None
+    endpoint_type_valid = endpoint_type and endpoint_type.lower() in valid_source_endpoint_types
+    endpoint_type_status = CheckTaskStatus.success.value if endpoint_type_valid else CheckTaskStatus.error.value
 
     endpoint_status_color = "green"
-    endpoint_validity = "valid"
+    endpoint_status_string = "is valid"
     endpoint_status = CheckTaskStatus.success.value
-    if not endpoint_match:
-        endpoint_validity = "invalid"
-        endpoint_status = CheckTaskStatus.error.value
+    if not endpoint_match or not endpoint_type_valid:
+        endpoint_status_string = "not found" if not endpoint_match else f"has invalid endpoint type: {endpoint_type}"
+        endpoint_status = CheckTaskStatus.success.value if endpoint_match else CheckTaskStatus.error.value
         endpoint_status_color = "red"
 
     # valid endpoint ref eval
@@ -80,6 +81,15 @@ def _process_dataflow_sourcesettings(
         resource_kind=DataflowResourceKinds.DATAFLOW.value,
         value={"spec.operations[*].sourceSettings.endpointRef": endpoint_ref},
     )
+    # valid source endpoint type eval
+    check_manager.add_target_eval(
+        target_name=target,
+        namespace=namespace,
+        status=endpoint_type_status,
+        resource_name=dataflow_name,
+        resource_kind=DataflowResourceKinds.DATAFLOW.value,
+        value={"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": endpoint_type},
+    )
 
     if detail_level > ResourceOutputDetailLevel.summary.value:
         check_manager.add_display(
@@ -88,16 +98,16 @@ def _process_dataflow_sourcesettings(
 
         padding += 4
         endpoint_name_display = f"{{{COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_ref)}}}"
-        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_validity)
+        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_status_string)
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"Dataflow Endpoint {endpoint_name_display} is {endpoint_validity_display}",
+                f"Dataflow Endpoint {endpoint_name_display} {endpoint_validity_display}",
                 (0, 0, 0, padding),
             ),
         )
-    elif not endpoint_match:
+    elif not endpoint_match or not endpoint_type_valid:
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -254,10 +264,10 @@ def _process_dataflow_destinationsettings(
     endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
 
     endpoint_status_color = "green"
-    endpoint_validity = "valid"
+    endpoint_validity = "is valid"
     endpoint_status = CheckTaskStatus.success.value
     if not endpoint_match:
-        endpoint_validity = "invalid"
+        endpoint_validity = "not found"
         endpoint_status = CheckTaskStatus.error.value
         endpoint_status_color = "red"
     # valid endpoint ref eval
@@ -278,7 +288,7 @@ def _process_dataflow_destinationsettings(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"Dataflow Endpoint {endpoint_name_display} is {endpoint_validity_display}",
+                f"Dataflow Endpoint {endpoint_name_display} {endpoint_validity_display}",
                 (0, 0, 0, padding),
             ),
         )
@@ -693,8 +703,10 @@ def evaluate_dataflows(
                 "spec.profileRef",
                 # at least a source and destination operation
                 "len(spec.operations)<=3",
-                # valid endpoint refs
+                # valid source endpoint
                 "spec.operations[*].sourceSettings.endpointRef",
+                "ref(spec.operations[*].sourceSettings.endpointRef).endpointType in ('kafka','mqtt')",
+                # valid destination endpoint
                 "spec.operations[*].destinationSettings.endpointRef",
                 # single source/destination
                 "len(spec.operations[*].sourceSettings)==1",
