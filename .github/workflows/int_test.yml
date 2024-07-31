@@ -122,16 +122,16 @@ jobs:
         run: |
           echo "NO_PREFLIGHT=false" >> $GITHUB_OUTPUT
           if [[ ${{ matrix.feature }} == "default" ]]; then
-            echo "ARG=\"--ca-valid-days 3 --kv-spc-secret-name test-kv-secret\" --simulate-plc" >> $GITHUB_OUTPUT
+            echo "ARG=--ca-valid-days 3 --kv-spc-secret-name test-kv-secret --simulate-plc" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "insecure-listener" ]]; then
-            echo "ARG=\"--add-insecure-listener --broker-service-type LoadBalancer --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m\"" >> $GITHUB_OUTPUT
+            echo "ARG=--add-insecure-listener --broker-service-type LoadBalancer --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m" >> $GITHUB_OUTPUT
             echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "no-syncrules" ]]; then
-            echo "ARG=\"--disable-rsync-rules\"" >> $GITHUB_OUTPUT
+            echo "ARG=--disable-rsync-rules" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "ca-certs" ]]; then
-            echo "ARG=\"--ca-file \"${{ env.CA_FILE }}\" --ca-key-file \"${{ env.CA_KEY_FILE }}\"\"" >> $GITHUB_OUTPUT
+            echo "ARG=--ca-file \"${{ env.CA_FILE }}\" --ca-key-file \"${{ env.CA_KEY_FILE }}\"" >> $GITHUB_OUTPUT
           else
-            echo "ARG=\"${{ inputs.runtime-init-args }}\"" >> $GITHUB_OUTPUT
+            echo "ARG=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
           fi
       - name: "Output variables for future steps"
         id: "env_out"

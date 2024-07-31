@@ -32,9 +32,9 @@ There are, however, some prerequisites and caveats that users should be made awa
 
   If you provide `runtime-init-args`, only one job (custom-input) will run, which will include an init test with your specified runtime init arguments. This allows you to test new init arguments. We do not run the other jobs since the runtime-init-args can conflict with their preset values.
 
-  If you do *not* provide `runtime-init-args`, four jobs will run with pre-set init arguments (default, mq-insecure, no-syncrules, ca-certs). We do not run the other job since it will just be `az iot ops init` with no additional parameters.
+  If you do *not* provide `runtime-init-args`, four jobs will run with pre-set init arguments (default, insecure-listener, no-syncrules, ca-certs). We do not run the other job since it will just be `az iot ops init` with no additional parameters.
 
-  To achieve this, exclude is needed for the matrix. We have 5 options for features (what test to run) and 2 options for runtime-args (true or false based on if `runtime-init-args` populated). This results in 10 possibilities, but is narrowed down to 5 since runtime-args is evaluated before the matrix is even created. We further narrow down the number of jobs to be run by eliminating nonsense combinations [(custom-input, false); (default, true); (mq-insecure, true); (no-syncrules, true); (ca-certs, true)]. Eliminated combinations that are not present in our possible combinations are ignored.
+  To achieve this, exclude is needed for the matrix. We have 5 options for features (what test to run) and 2 options for runtime-args (true or false based on if `runtime-init-args` populated). This results in 10 possibilities, but is narrowed down to 5 since runtime-args is evaluated before the matrix is even created. We further narrow down the number of jobs to be run by eliminating nonsense combinations [(custom-input, false); (default, true); (insecure-listener, true); (no-syncrules, true); (ca-certs, true)]. Eliminated combinations that are not present in our possible combinations are ignored.
 
   ##### **Input runtime-init-args is provided**
 
@@ -44,7 +44,7 @@ There are, however, some prerequisites and caveats that users should be made awa
 
   - (default, true)
 
-  - (mq-insecure, true)
+  - (insecure-listener, true)
 
   - (no-syncrules, true)
 
@@ -64,7 +64,7 @@ There are, however, some prerequisites and caveats that users should be made awa
 
   - (default, false)
 
-  - (mq-insecure, false)
+  - (insecure-listener, false)
 
   - (no-syncrules, false)
 
@@ -74,7 +74,7 @@ There are, however, some prerequisites and caveats that users should be made awa
 
   - (default, false)
 
-  - (mq-insecure, false)
+  - (insecure-listener, false)
 
   - (no-syncrules, false)
 
