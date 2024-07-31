@@ -51,13 +51,14 @@ dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com
 # TODO - consolidate TLS.mode checks
 
 def _process_dataflow_sourcesettings(
-    check_manager: CheckManager, target: str, namespace: str, endpoint_tuples: List[tuple[str, str]], resource: dict, detail_level: int, padding: int
+    check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoint_tuples: List[tuple[str, str]], operation: dict, detail_level: int, padding: int
 ):
-    settings = resource.get("sourceSettings", {})
+    settings = operation.get("sourceSettings", {})
 
     # show endpoint ref
     # TODO - validate endpoint ref
     # TODO - sourcetype only mqtt and kafka
+    # TODO - lots of shared code for validating source/dest endpoints, consider refactoring
     endpoint_ref = settings.get("endpointRef")
 
     endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
@@ -75,8 +76,8 @@ def _process_dataflow_sourcesettings(
         target_name=target,
         namespace=namespace,
         status=endpoint_status,
-        resource_name=endpoint_ref,
-        resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
+        resource_name=dataflow_name,
+        resource_kind=DataflowResourceKinds.DATAFLOW.value,
         value={"spec.operations[*].sourceSettings.endpointRef": endpoint_ref},
     )
 
@@ -240,9 +241,9 @@ def _process_dataflow_transformationsettings(
 
 
 def _process_dataflow_destinationsettings(
-    check_manager: CheckManager, target: str, namespace: str, endpoint_tuples: List[tuple[str, str]], resource: dict, detail_level: int, padding: int
+    check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoint_tuples: List[tuple[str, str]], operation: dict, detail_level: int, padding: int
 ):
-    settings = resource.get("destinationSettings", {})
+    settings = operation.get("destinationSettings", {})
     if detail_level > ResourceOutputDetailLevel.summary.value:
         check_manager.add_display(
             target_name=target, namespace=namespace, display=Padding("\nDestination:", (0, 0, 0, padding))
@@ -264,8 +265,8 @@ def _process_dataflow_destinationsettings(
         target_name=target,
         namespace=namespace,
         status=endpoint_status,
-        resource_name=endpoint_ref,
-        resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
+        resource_name=dataflow_name,
+        resource_kind=DataflowResourceKinds.DATAFLOW.value,
         value={"spec.operations[*].destinationSettings.endpointRef": endpoint_ref},
     )
     # show dataflow endpoint ref on detail
@@ -684,7 +685,7 @@ def evaluate_dataflows(
             namespace=namespace,
             conditions=[
                 # valid dataflow profile reference
-                "spec.profileRef"
+                "spec.profileRef",
                 # at least a source and destination operation
                 "2<=len(spec.operations)<=3",
                 # valid endpoint refs
@@ -727,7 +728,7 @@ def evaluate_dataflows(
                 namespace=namespace,
                 status=profile_ref_status,
                 resource_name=dataflow_name,
-                resource_kind=DataflowResourceKinds.DATAFLOWPROFILE.value,
+                resource_kind=DataflowResourceKinds.DATAFLOW.value,
                 value={"spec.profileRef": profile_ref},
             )
 
@@ -784,8 +785,9 @@ def evaluate_dataflows(
                         check_manager=check_manager,
                         target=target,
                         namespace=namespace,
+                        dataflow_name=dataflow_name,
                         endpoint_tuples=endpoint_tuples,
-                        resource=operation,
+                        operation=operation,
                         detail_level=detail_level,
                         padding=operation_padding,
                     )
@@ -803,8 +805,9 @@ def evaluate_dataflows(
                         check_manager=check_manager,
                         target=target,
                         namespace=namespace,
+                        dataflow_name=dataflow_name,
                         endpoint_tuples=endpoint_tuples,
-                        resource=operation,
+                        operation=operation,
                         detail_level=detail_level,
                         padding=operation_padding,
                     )
