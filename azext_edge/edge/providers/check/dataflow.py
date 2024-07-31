@@ -702,6 +702,16 @@ def evaluate_dataflows(
             resource_name=None,
         )
         profile_names = {profile.get("metadata", {}).get("name") for profile in all_profiles}
+        
+        all_endpoints = get_resources_by_name(
+                api_info=DATAFLOW_API_V1B1,
+                kind=DataflowResourceKinds.DATAFLOWENDPOINT,
+                namespace=namespace,
+                resource_name=None,
+        )
+        # TODO - validate allowed source endpoint types
+        endpoint_tuples = [(endpoint.get("metadata", {}).get("name"), endpoint.get("spec", {}).get("endpointType")) for endpoint in all_endpoints]
+        
         for dataflow in list(dataflows):
             spec = dataflow.get("spec", {})
             dataflow_name = dataflow.get("metadata", {}).get("name")
@@ -770,13 +780,6 @@ def evaluate_dataflows(
                     namespace=namespace,
                     display=Padding("Operations:", (0, 0, 0, padding + 4)),
                 )
-            all_endpoints = get_resources_by_name(
-                api_info=DATAFLOW_API_V1B1,
-                kind=DataflowResourceKinds.DATAFLOWENDPOINT,
-                namespace=namespace,
-                resource_name=None,
-            )
-            endpoint_tuples = [(endpoint.get("metadata", {}).get("name"), endpoint.get("spec", {}).get("endpointType")) for endpoint in all_endpoints]
             operation_padding = padding + 8
             for operation in operations:
                 op_type = operation.get("operationType", "").lower()
