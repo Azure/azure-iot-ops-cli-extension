@@ -56,6 +56,7 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         password_reference: Optional[str] = None,
         username_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
+        skip_checks: Optional[bool] = None
     ):
         if certificate_reference:
             raise InvalidArgumentValueError(CERT_AUTH_NOT_SUPPORTED)
@@ -65,7 +66,8 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
             custom_location_subscription=custom_location_subscription,
             cluster_name=cluster_name,
             cluster_resource_group=cluster_resource_group,
-            cluster_subscription=cluster_subscription
+            cluster_subscription=cluster_subscription,
+            skip_checks=skip_checks
         )
 
         # Location
@@ -146,12 +148,13 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         password_reference: Optional[str] = None,
         certificate_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
+        skip_connectivity_check: Optional[bool] = None,
     ):
         # get the asset
         original_aep = self.show(
             asset_endpoint_profile_name,
             resource_group_name=resource_group_name,
-            check_cluster_connectivity=True
+            skip_connectivity_check=skip_connectivity_check
         )
         if tags:
             original_aep["tags"] = tags
@@ -182,11 +185,12 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         password_reference: str,
         secret_reference: str,
         thumbprint: str,
+        skip_connectivity_check: Optional[bool] = None,
     ):
         original_aep = self.show(
             asset_endpoint_profile_name,
             resource_group_name=resource_group_name,
-            check_cluster_connectivity=True
+            skip_connectivity_check=skip_connectivity_check
         )
         if original_aep["properties"].get("transportAuthentication") is None:
             original_aep["properties"]["transportAuthentication"] = {
@@ -228,11 +232,12 @@ class AssetEndpointProfileProvider(ADRBaseProvider):
         asset_endpoint_profile_name: str,
         thumbprint: str,
         resource_group_name: str,
+        skip_connectivity_check: Optional[bool] = None,
     ):
         original_aep = self.show(
             asset_endpoint_profile_name,
             resource_group_name=resource_group_name,
-            check_cluster_connectivity=True
+            skip_connectivity_check=skip_connectivity_check
         )
         if original_aep["properties"].get("transportAuthentication") is None:
             original_aep["properties"]["transportAuthentication"] = {

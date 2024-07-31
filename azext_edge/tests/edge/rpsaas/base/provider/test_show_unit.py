@@ -14,13 +14,13 @@ from .....generators import generate_random_string
     {"resources.get": {"result": generate_random_string()}},
 ], ids=["extended_location", "extendedLocation", "result"], indirect=True)
 @pytest.mark.parametrize("parent_resource_path", ["", generate_random_string()])
-@pytest.mark.parametrize("check_cluster_connectivity", [True, False])
+@pytest.mark.parametrize("skip_connectivity_check", [True, False])
 def test_show(
     mocked_cmd,
     mock_check_cluster_connectivity,
     mocked_resource_management_client,
-    check_cluster_connectivity,
-    parent_resource_path
+    parent_resource_path,
+    skip_connectivity_check
 ):
     from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
     api_version = generate_random_string()
@@ -35,7 +35,11 @@ def test_show(
         resource_type=resource_type,
         parent_resource_path=parent_resource_path
     )
-    result = provider.show(resource_name, resource_group_name, check_cluster_connectivity)
+    result = provider.show(
+        resource_name=resource_name,
+        resource_group_name=resource_group_name,
+        skip_connectivity_check=skip_connectivity_check
+    )
 
     mocked_resource_management_client.resources.get.assert_called_once()
     kwargs = mocked_resource_management_client.resources.get.call_args.kwargs
@@ -51,8 +55,8 @@ def test_show(
     assert "extended_location" not in result
     assert result == as_dict
 
-    assert mock_check_cluster_connectivity.called is check_cluster_connectivity
-    if check_cluster_connectivity:
+    assert mock_check_cluster_connectivity.called is not skip_connectivity_check
+    if not skip_connectivity_check:
         mock_check_cluster_connectivity.assert_called_once_with(
             as_dict.get("extendedLocation", {}).get("name")
         )

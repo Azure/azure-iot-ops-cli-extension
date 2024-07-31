@@ -14,13 +14,13 @@ from .....generators import generate_random_string
         "resources.get": {"extendedLocation": {"name": generate_random_string()}}
     },
 ], ids=["result"], indirect=True)
-@pytest.mark.parametrize("check_cluster_connectivity", [True, False])
+@pytest.mark.parametrize("skip_connectivity_check", [True, False])
 @pytest.mark.parametrize("parent_resource_path", ["", generate_random_string()])
 def test_delete(
     mocked_cmd,
     mock_check_cluster_connectivity,
     mocked_resource_management_client,
-    check_cluster_connectivity,
+    skip_connectivity_check,
     parent_resource_path
 ):
     from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
@@ -36,9 +36,9 @@ def test_delete(
         resource_type=resource_type,
         parent_resource_path=parent_resource_path
     )
-    result = provider.delete(resource_name, resource_group_name, check_cluster_connectivity)
+    result = provider.delete(resource_name, resource_group_name, skip_connectivity_check)
 
-    assert mock_check_cluster_connectivity.called is check_cluster_connectivity
+    assert mock_check_cluster_connectivity.called is not skip_connectivity_check
 
     mocked_resource_management_client.resources.begin_delete.assert_called_once()
     kwargs = mocked_resource_management_client.resources.begin_delete.call_args.kwargs

@@ -31,6 +31,7 @@ def create_asset_endpoint_profile(
     password_reference: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
     username_reference: Optional[str] = None,
+    skip_checks: Optional[bool] = None,
 ):
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.create(
@@ -49,7 +50,8 @@ def create_asset_endpoint_profile(
         location=location,
         password_reference=password_reference,
         username_reference=username_reference,
-        tags=tags
+        tags=tags,
+        skip_checks=skip_checks
     )
 
 
@@ -57,12 +59,13 @@ def delete_asset_endpoint_profile(
     cmd,
     asset_endpoint_profile_name: str,
     resource_group_name: str,
+    skip_connectivity_check: Optional[bool] = None,
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.delete(
         asset_endpoint_profile_name,
         resource_group_name=resource_group_name,
-        check_cluster_connectivity=True
+        skip_connectivity_check=skip_connectivity_check
     )
 
 
@@ -109,6 +112,7 @@ def update_asset_endpoint_profile(
     password_reference: Optional[str] = None,
     certificate_reference: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
+    skip_connectivity_check: Optional[bool] = None,
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.update(
@@ -120,7 +124,8 @@ def update_asset_endpoint_profile(
         certificate_reference=certificate_reference,
         password_reference=password_reference,
         username_reference=username_reference,
-        tags=tags
+        tags=tags,
+        skip_connectivity_check=skip_connectivity_check
     )
 
 
@@ -131,6 +136,7 @@ def add_asset_endpoint_profile_transport_auth(
     secret_reference: str,
     thumbprint: str,
     password_reference: Optional[str] = None,
+    skip_connectivity_check: Optional[bool] = None,
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.add_transport_auth(
@@ -138,7 +144,8 @@ def add_asset_endpoint_profile_transport_auth(
         resource_group_name=resource_group_name,
         secret_reference=secret_reference,
         thumbprint=thumbprint,
-        password_reference=password_reference
+        password_reference=password_reference,
+        skip_connectivity_check=skip_connectivity_check
     )
 
 
@@ -158,11 +165,13 @@ def remove_asset_endpoint_profile_transport_auth(
     cmd,
     asset_endpoint_profile_name: str,
     resource_group_name: str,
-    thumbprint: str
+    thumbprint: str,
+    skip_connectivity_check: Optional[bool] = None,
 ) -> dict:
     aep_provider = AssetEndpointProfileProvider(cmd)
     return aep_provider.remove_transport_auth(
         asset_endpoint_profile_name,
         resource_group_name=resource_group_name,
-        thumbprint=thumbprint
+        thumbprint=thumbprint,
+        skip_connectivity_check=skip_connectivity_check
     )

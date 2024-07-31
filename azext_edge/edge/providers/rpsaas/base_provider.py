@@ -56,14 +56,14 @@ class RPSaaSBaseProvider:
         self,
         resource_name: str,
         resource_group_name: str,
-        check_cluster_connectivity: bool = False,
+        skip_connectivity_check: Optional[bool] = None,
     ):
         # Note that delete should not break if the item does not exist so checking is not required
-        if check_cluster_connectivity:
+        if not skip_connectivity_check:
             self.show(
                 resource_name=resource_name,
                 resource_group_name=resource_group_name,
-                check_cluster_connectivity=check_cluster_connectivity
+                skip_connectivity_check=skip_connectivity_check
             )
         return self.resource_client.resources.begin_delete(
             resource_group_name=resource_group_name,
@@ -119,7 +119,7 @@ class RPSaaSBaseProvider:
         self,
         resource_name: str,
         resource_group_name: str,
-        check_cluster_connectivity: bool = False,
+        skip_connectivity_check: bool = True,
     ) -> Dict[str, Any]:
         result = self.resource_client.resources.get(
             resource_group_name=resource_group_name,
@@ -141,7 +141,8 @@ class RPSaaSBaseProvider:
         if extended_location:
             result["extendedLocation"] = extended_location
 
-        if check_cluster_connectivity:
+        # a basic show should not check connectivity while a show for an update/delete should check
+        if not skip_connectivity_check:
             self.check_cluster_connectivity(
                 result.get("extendedLocation", {}).get("name")
             )
@@ -185,14 +186,24 @@ class RPSaaSBaseProvider:
         cluster_name: Optional[str] = None,
         cluster_resource_group: Optional[str] = None,
         cluster_subscription: Optional[str] = None,
+        skip_checks: Optional[bool] = None,
     ) -> Dict[str, str]:
         if not any([cluster_name, custom_location_name]):
             raise RequiredArgumentMissingError(MISSING_CLUSTER_CUSTOM_LOCATION_ERROR)
+
+        extended_location = {"type": "CustomLocation",}
+        if all([skip_checks, custom_location_name, custom_location_resource_group, custom_location_subscription]):
+            extended_location["name"] = f"/subscription/{custom_location_subscription}/resourceGroups/{custom_location_resource_group}/"\
+                f"providers/microsoft.extendedlocation/customlocations/{custom_location_name}"
+            return extended_location
+        elif skip_checks:
+            logger.warning("Not enough information provided for custom location. Will need to run at least one query.")
         query = ""
         cluster = None
 
         # provide cluster name - start with checking for the cluster (if can)
-        if cluster_name:
+        # if skip check, only check cluster if there is no custom location
+        if (cluster_name and not skip_checks) or (not custom_location_name and skip_checks):
             cluster_query_result = build_query(
                 self.cmd,
                 subscription_id=cluster_subscription,
@@ -237,6 +248,9 @@ class RPSaaSBaseProvider:
                     custom_location_name
                 )
             )
+        if skip_checks:
+            extended_location["name"] = location_query_result[0]["id"]
+            return extended_location
         # by this point there should be at least one custom location
         # if cluster name was given (and no custom_location_names), there can be more than one
         # otherwise, if no cluster name, needs to be only one
@@ -283,9 +297,5 @@ class RPSaaSBaseProvider:
             possible_locations = "\n".join(possible_locations)
             raise ValidationError(MULTIPLE_CUSTOM_LOCATIONS_ERROR.format(cluster['id'], possible_locations))
 
-        extended_location = {
-            "type": "CustomLocation",
-            "name": possible_locations[0]
-        }
-
+        extended_location["name"] = possible_locations[0]
         return extended_location

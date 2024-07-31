@@ -44,6 +44,7 @@ from .....generators import generate_random_string
     "location only",
     "cluster only"
 ])
+@pytest.mark.parametrize("skip_checks", [True, False])
 def test_check_cluster_and_custom_location(
     mocker,
     mocked_cmd,
@@ -53,7 +54,8 @@ def test_check_cluster_and_custom_location(
     custom_location_resource_group,
     custom_location_subscription,
     cluster_resource_group,
-    cluster_subscription
+    cluster_subscription,
+    skip_checks
 ):
     from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
     extension_key = generate_random_string()
@@ -94,16 +96,28 @@ def test_check_cluster_and_custom_location(
         custom_location_subscription=custom_location_subscription,
         cluster_name=cluster_name,
         cluster_resource_group=cluster_resource_group,
-        cluster_subscription=cluster_subscription
+        cluster_subscription=cluster_subscription,
+        skip_checks=skip_checks
     )
     assert result["type"] == "CustomLocation"
-    assert result["name"] == location_query_result["id"]
 
-    assert mocked_build_query.call_count == 2
+    if not skip_checks or (skip_checks and not custom_location_name):
+        assert mocked_build_query.call_count == 2
+        assert result["name"] == location_query_result["id"]
+    elif all([skip_checks, custom_location_name, custom_location_resource_group, custom_location_subscription]):
+        mocked_build_query.assert_not_called()
+        assert custom_location_name in result["name"]
+        assert custom_location_resource_group in result["name"]
+        assert custom_location_subscription in result["name"]
+        return
+    else:
+        assert mocked_build_query.call_count == 1
+        assert result["name"] == query_results[0][0]["id"]
 
     # queries
     call = 0
-    if cluster_name:
+    run_first_call = (cluster_name and not skip_checks) or (not custom_location_name and skip_checks)
+    if run_first_call:
         cluster_query_kwargs = mocked_build_query.call_args_list[call].kwargs
         assert cluster_query_kwargs["subscription_id"] == cluster_subscription
         assert cluster_query_kwargs["type"] == ResourceTypeMapping.connected_cluster.full_resource_path
@@ -116,9 +130,12 @@ def test_check_cluster_and_custom_location(
     assert location_query_kwargs["type"] == ResourceTypeMapping.custom_location.full_resource_path
     assert location_query_kwargs["name"] == custom_location_name
     assert location_query_kwargs["resource_group"] == custom_location_resource_group
-    custom_query = f"| where properties.hostResourceId =~ \"{cluster_query_result['id']}\" " if cluster_name else ""
+    custom_query = f"| where properties.hostResourceId =~ \"{cluster_query_result['id']}\" " if run_first_call else ""
     assert location_query_kwargs["custom_query"] == custom_query
     call += 1
+    if skip_checks:
+        # nothing more to check
+        return
 
     if not cluster_name:
         cluster_query_kwargs = mocked_build_query.call_args_list[call].kwargs

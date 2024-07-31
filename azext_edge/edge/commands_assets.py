@@ -52,6 +52,7 @@ def create_asset(
     ev_sampling_interval: int = 500,
     ev_queue_size: int = 1,
     tags: Optional[Dict[str, str]] = None,
+    skip_checks: Optional[bool] = None,
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.create(
@@ -89,7 +90,8 @@ def create_asset(
         ev_publishing_interval=ev_publishing_interval,
         ev_sampling_interval=ev_sampling_interval,
         ev_queue_size=ev_queue_size,
-        tags=tags
+        tags=tags,
+        skip_checks=skip_checks
     )
 
 
@@ -97,12 +99,13 @@ def delete_asset(
     cmd,
     asset_name: str,
     resource_group_name: str,
+    skip_connectivity_check: Optional[bool] = None,
 ) -> dict:
     asset_provider = AssetProvider(cmd)
     return asset_provider.delete(
         resource_name=asset_name,
         resource_group_name=resource_group_name,
-        check_cluster_connectivity=True
+        skip_connectivity_check=skip_connectivity_check
     )
 
 
@@ -182,6 +185,7 @@ def update_asset(
     ev_sampling_interval: Optional[int] = None,
     ev_queue_size: Optional[int] = None,
     tags: Optional[Dict[str, str]] = None,
+    skip_connectivity_check: Optional[bool] = None,
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.update(
@@ -207,7 +211,8 @@ def update_asset(
         ev_publishing_interval=ev_publishing_interval,
         ev_sampling_interval=ev_sampling_interval,
         ev_queue_size=ev_queue_size,
-        tags=tags
+        tags=tags,
+        skip_connectivity_check=skip_connectivity_check
     )
 
 
@@ -222,6 +227,7 @@ def add_asset_data_point(
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
+    skip_connectivity_check: Optional[bool] = None,
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.add_sub_point(
@@ -232,7 +238,8 @@ def add_asset_data_point(
         observability_mode=observability_mode,
         queue_size=queue_size,
         sampling_interval=sampling_interval,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        skip_connectivity_check=skip_connectivity_check
     )
 
 
@@ -261,6 +268,7 @@ def import_asset_data_points(
     file_path: str,
     resource_group_name: str,
     replace: bool = False,
+    skip_connectivity_check: Optional[bool] = None,
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.import_sub_points(
@@ -268,7 +276,8 @@ def import_asset_data_points(
         file_path=file_path,
         sub_point_type="dataPoints",
         replace=replace,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        skip_connectivity_check=skip_connectivity_check
     )
 
 
@@ -291,6 +300,7 @@ def remove_asset_data_point(
     resource_group_name: str,
     data_source: Optional[str] = None,
     name: Optional[str] = None,
+    skip_connectivity_check: Optional[bool] = None,
 ):
     if not any([data_source, name]):
         raise RequiredArgumentMissingError(
@@ -303,7 +313,8 @@ def remove_asset_data_point(
         data_source=data_source,
         name=name,
         sub_point_type="dataPoints",
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        skip_connectivity_check=skip_connectivity_check
     )
 
 
@@ -318,6 +329,7 @@ def add_asset_event(
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
+    skip_connectivity_check: Optional[bool] = None,
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.add_sub_point(
@@ -328,7 +340,8 @@ def add_asset_event(
         observability_mode=observability_mode,
         queue_size=queue_size,
         sampling_interval=sampling_interval,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        skip_connectivity_check=skip_connectivity_check
     )
 
 
@@ -357,6 +370,7 @@ def import_asset_events(
     file_path: str,
     resource_group_name: str,
     replace: bool = False,
+    skip_connectivity_check: Optional[bool] = None,
 ):
     asset_provider = AssetProvider(cmd)
     return asset_provider.import_sub_points(
@@ -364,7 +378,8 @@ def import_asset_events(
         file_path=file_path,
         sub_point_type="events",
         replace=replace,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        skip_connectivity_check=skip_connectivity_check
     )
 
 
@@ -387,6 +402,7 @@ def remove_asset_event(
     resource_group_name: str,
     event_notifier: Optional[str] = None,
     name: Optional[str] = None,
+    skip_connectivity_check: Optional[bool] = None,
 ):
     if not any([event_notifier, name]):
         raise RequiredArgumentMissingError(
@@ -399,5 +415,6 @@ def remove_asset_event(
         event_notifier=event_notifier,
         name=name,
         sub_point_type="events",
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        skip_connectivity_check=skip_connectivity_check
     )

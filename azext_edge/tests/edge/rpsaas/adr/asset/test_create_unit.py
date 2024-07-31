@@ -73,6 +73,7 @@ from .....generators import generate_random_string
         "dp_publishing_interval": 3333,
         "dp_sampling_interval": 44,
         "ev_queue_size": 888,
+        "skip_checks": True
     },
 ])
 @pytest.mark.parametrize("mocked_deserialize_file_content", [[

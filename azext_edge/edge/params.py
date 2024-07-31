@@ -857,6 +857,19 @@ def load_iotops_arguments(self, _):
             options_list=["--output-dir", "--od"],
             help="Output directory for exported file.",
         )
+        context.argument(
+            "skip_checks",
+            options_list=["--skip-custom-location-checks", "--sclc"],
+            arg_type=get_three_state_flag(),
+            help="If possible, skip checks for ensuring correct cluster and custom location set up. Not recommended.",
+        )
+        context.argument(
+            "skip_connectivity_check",
+            options_list=["--skip-connectivity-checks", "--scc"],
+            arg_type=get_three_state_flag(),
+            help="Skip checks for ensuring cluster connectivity and custom location "
+            "existance. Not recommened.",
+        )
 
     with self.argument_context("iot ops asset query") as context:
         context.argument(

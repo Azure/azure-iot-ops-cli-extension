@@ -69,6 +69,7 @@ class AssetProvider(ADRBaseProvider):
         ev_sampling_interval: int = 500,
         ev_queue_size: int = 1,
         tags: Optional[Dict[str, str]] = None,
+        skip_checks: Optional[bool] = None,
     ):
         if not any([data_points, events, data_points_file_path, events_file_path]):
             raise RequiredArgumentMissingError(MISSING_DATA_EVENT_ERROR)
@@ -78,7 +79,8 @@ class AssetProvider(ADRBaseProvider):
             custom_location_subscription=custom_location_subscription,
             cluster_name=cluster_name,
             cluster_resource_group=cluster_resource_group,
-            cluster_subscription=cluster_subscription
+            cluster_subscription=cluster_subscription,
+            skip_checks=skip_checks
         )
         # Location
         if not location:
@@ -230,12 +232,13 @@ class AssetProvider(ADRBaseProvider):
         ev_sampling_interval: Optional[int] = None,
         ev_queue_size: Optional[int] = None,
         tags: Optional[Dict[str, str]] = None,
+        skip_connectivity_check: Optional[bool] = None,
     ):
         # get the asset
         original_asset = self.show(
             resource_name=asset_name,
             resource_group_name=resource_group_name,
-            check_cluster_connectivity=True
+            skip_connectivity_check=skip_connectivity_check
         )
         if tags:
             original_asset["tags"] = tags
@@ -287,11 +290,12 @@ class AssetProvider(ADRBaseProvider):
         observability_mode: Optional[str] = None,
         queue_size: Optional[int] = None,
         sampling_interval: Optional[int] = None,
+        skip_connectivity_check: Optional[bool] = None,
     ):
         asset = self.show(
             resource_name=asset_name,
             resource_group_name=resource_group_name,
-            check_cluster_connectivity=True
+            skip_connectivity_check=skip_connectivity_check
         )
 
         sub_point = _build_asset_sub_point(
@@ -362,12 +366,13 @@ class AssetProvider(ADRBaseProvider):
         file_path: str,
         sub_point_type: str,
         resource_group_name: str,
-        replace: bool = False
+        replace: bool = False,
+        skip_connectivity_check: Optional[bool] = None,
     ):
         asset = self.show(
             resource_name=asset_name,
             resource_group_name=resource_group_name,
-            check_cluster_connectivity=True
+            skip_connectivity_check=skip_connectivity_check
         )
         if sub_point_type not in asset["properties"]:
             asset["properties"][sub_point_type] = []
@@ -421,11 +426,12 @@ class AssetProvider(ADRBaseProvider):
         data_source: Optional[str] = None,
         event_notifier: Optional[str] = None,
         name: Optional[str] = None,
+        skip_connectivity_check: Optional[bool] = None
     ):
         asset = self.show(
             resource_name=asset_name,
             resource_group_name=resource_group_name,
-            check_cluster_connectivity=True
+            skip_connectivity_check=skip_connectivity_check
         )
 
         if sub_point_type not in asset["properties"]:
