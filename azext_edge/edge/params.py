@@ -695,6 +695,13 @@ def load_iotops_arguments(self, _):
             arg_group="Additional Info",
         )
         context.argument(
+            "data_points_file_path",
+            options_list=["--data-file", "--df"],
+            help="File path for the file containing the data points. The following file types are supported: "
+            f"{', '.join(FileType.list())}.",
+            arg_group="Additional Info",
+        )
+        context.argument(
             "description",
             options_list=["--description", "-d"],
             help="Description.",
@@ -729,6 +736,13 @@ def load_iotops_arguments(self, _):
             "`name`, `observability_mode` (none or log), `sampling_interval` "
             "(int), `queue_size` (int). "
             "--event can be used 1 or more times. Review help examples for full parameter usage",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "events_file_path",
+            options_list=["--event-file", "--ef"],
+            help="File path for the file containing the events. The following file types are supported: "
+            f"{', '.join(FileType.list())}.",
             arg_group="Additional Info",
         )
         context.argument(
