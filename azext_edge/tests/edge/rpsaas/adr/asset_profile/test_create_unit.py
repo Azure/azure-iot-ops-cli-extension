@@ -42,6 +42,7 @@ from .....generators import generate_random_string
         "additional_configuration": generate_random_string(),
         "username_reference": generate_random_string(),
         "password_reference": generate_random_string(),
+        "skip_checks": True
     },
 ])
 def test_create_asset_endpoint_profile(mocker, mocked_cmd, mocked_resource_management_client, aep_helpers_fixture, req):

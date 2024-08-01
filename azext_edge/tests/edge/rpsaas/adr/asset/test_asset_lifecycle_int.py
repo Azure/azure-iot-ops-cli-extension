@@ -34,7 +34,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
     data_source = generate_random_string()
     custom_attribute = f"{generate_random_string()}={generate_random_string()}"
     min_asset = run(
-        f"az iot ops asset create -n {min_asset_name} -g {rg} -c {cluster_name} --cg {rg} "
+        f"az iot ops asset create --sc -n {min_asset_name} -g {rg} -c {cluster_name} --cg {rg} "
         f"--endpoint {endpoint_name} --data data_source={data_source} --custom-attribute {custom_attribute}"
     )
     tracked_resources.append(min_asset["id"])
@@ -65,7 +65,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
     custom_attribute_key = custom_attribute.split("=")[0]
     update_asset = run(
         f"az iot ops asset update -n {min_asset_name} -g {rg} --disable "
-        f"--custom-attribute {custom_attribute_key}=\"\""
+        f"--custom-attribute {custom_attribute_key}=\"\" --sc"
     )
     assert_asset_props(
         result=update_asset,
@@ -103,7 +103,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
         "event_sample_int": 200,
     }
     event_notifier = generate_random_string()
-    command = f"az iot ops asset create -n {max_asset_name} -g {rg} --cl {custom_location} "\
+    command = f"az iot ops asset create --sc -n {max_asset_name} -g {rg} --cl {custom_location} "\
         f"--clg {custom_location_rg} --endpoint {endpoint_name} --event event_notifier={event_notifier} "\
         "sampling_interval 10"
     for prop in asset_props:
@@ -123,7 +123,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
         **asset_props
     )
 
-    run(f"az iot ops asset delete -n {max_asset_name} -g {rg}")
+    run(f"az iot ops asset delete -n {max_asset_name} -g {rg} --sc")
     sleep(30)
     asset_list = run(f"az iot ops asset query --cl {custom_location}")
     asset_names = [asset["name"] for asset in asset_list]
@@ -148,7 +148,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     data_source = generate_random_string()
     expected_data_points = [{"data_source": generate_random_string()}]
     asset = run(
-        f"az iot ops asset create -n {asset_name} -g {rg} -c {cluster_name} --cg {rg} "
+        f"az iot ops asset create --sc -n {asset_name} -g {rg} -c {cluster_name} --cg {rg} "
         f"--endpoint {endpoint_name} --data data_source={expected_data_points[0]['data_source']}"
     )
     tracked_resources.append(asset["id"])
@@ -174,7 +174,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
         "queue_size": 1,
         "sampling_interval": 30,
     })
-    command = f"az iot ops asset data-point add -a {asset_name} -g {rg}"
+    command = f"az iot ops asset data-point add -a {asset_name} -g {rg} --sc"
     for arg, value in expected_data_points[1].items():
         command += f" --{arg.replace('_', '-')} {value}"
 
@@ -197,12 +197,12 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
 
         asset_data_points = run(
             f"az iot ops asset data-point remove -a {asset_name} -g {rg} "
-            f"--data-source {expected_data_points[1]['data_source']}"
+            f"--data-source {expected_data_points[1]['data_source']} --sc"
         )
         assert len(asset_data_points) + 1 == len(expected_data_points)
 
         asset_data_points = run(
-            f"az iot ops asset data-point import -a {asset_name} -g {rg} --input-file {data_file_path}"
+            f"az iot ops asset data-point import -a {asset_name} -g {rg} --input-file {data_file_path} --sc"
         )
         assert len(asset_data_points) == len(expected_data_points)
         assert expected_data_points[1]['data_source'] in [point["dataSource"] for point in asset_data_points]
@@ -214,7 +214,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
         "observability_mode": "log",
         "queue_size": 1,
     }]
-    command = f"az iot ops asset event add -a {asset_name} -g {rg}"
+    command = f"az iot ops asset event add -a {asset_name} -g {rg} --sc"
     for arg, value in expected_events[0].items():
         command += f" --{arg.replace('_', '-')} {value}"
 
@@ -223,7 +223,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     expected_events.append({
         "event_notifier": generate_random_string(),
     })
-    command = f"az iot ops asset event add -a {asset_name} -g {rg}"
+    command = f"az iot ops asset event add -a {asset_name} -g {rg} --sc"
     for arg, value in expected_events[1].items():
         command += f" --{arg.replace('_', '-')} {value}"
 
@@ -246,18 +246,18 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
 
         asset_events = run(
             f"az iot ops asset event remove -a {asset_name} -g {rg} "
-            f"--event-notifier {expected_events[1]['event_notifier']}"
+            f"--event-notifier {expected_events[1]['event_notifier']} --sc"
         )
         assert len(asset_events) + 1 == len(expected_events)
 
         asset_events = run(
-            f"az iot ops asset event import -a {asset_name} -g {rg} --input-file {event_file_path}"
+            f"az iot ops asset event import -a {asset_name} -g {rg} --input-file {event_file_path} --sc"
         )
         assert len(asset_events) == len(expected_events)
         assert expected_events[1]['event_notifier'] in [point["eventNotifier"] for point in asset_events]
 
     second_asset = run(
-        f"az iot ops asset create -n {asset_name} -g {rg} -c {cluster_name} --cg {rg} "
+        f"az iot ops asset create --sc -n {asset_name} -g {rg} -c {cluster_name} --cg {rg} "
         f"--endpoint {endpoint_name} --data-file {data_file_path} --event-file {event_file_path}"
     )
     tracked_resources.append(second_asset["id"])

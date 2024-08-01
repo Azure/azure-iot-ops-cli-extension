@@ -858,17 +858,19 @@ def load_iotops_arguments(self, _):
             help="Output directory for exported file.",
         )
         context.argument(
-            "skip_checks",
-            options_list=["--skip-custom-location-checks", "--sclc"],
-            arg_type=get_three_state_flag(),
-            help="If possible, skip checks for ensuring correct cluster and custom location set up. Not recommended.",
-        )
-        context.argument(
             "skip_connectivity_check",
-            options_list=["--skip-connectivity-checks", "--scc"],
+            options_list=["--skip-checks", "--sc"],
             arg_type=get_three_state_flag(),
             help="Skip checks for ensuring cluster connectivity and custom location "
             "existance. Not recommened.",
+        )
+
+    with self.argument_context("iot ops asset create") as context:
+        context.argument(
+            "skip_checks",
+            options_list=["--skip-checks", "--sc"],
+            arg_type=get_three_state_flag(),
+            help="If possible, skip checks for ensuring correct cluster and custom location set up. Not recommended.",
         )
 
     with self.argument_context("iot ops asset query") as context:
@@ -1081,6 +1083,14 @@ def load_iotops_arguments(self, _):
             options_list=["--tags"],
             help="Asset Endpoint resource tags. Property bag in key-value pairs with the following format: a=b c=d",
             arg_type=tags_type,
+        )
+
+    with self.argument_context("iot ops asset endpoint create") as context:
+        context.argument(
+            "skip_checks",
+            options_list=["--skip-checks", "--sc"],
+            arg_type=get_three_state_flag(),
+            help="If possible, skip checks for ensuring correct cluster and custom location set up. Not recommended.",
         )
 
     with self.argument_context("iot ops asset endpoint certificate") as context:

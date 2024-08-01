@@ -44,7 +44,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
 
     additional_configuration = generate_random_string()
     update_endpoint = run(
-        f"az iot ops asset endpoint update -n {anon_name} -g {rg} --ac {additional_configuration}"
+        f"az iot ops asset endpoint update -n {anon_name} -g {rg} --ac {additional_configuration} --sc"
     )
     assert_endpoint_props(
         result=update_endpoint,
@@ -60,7 +60,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
     address = f"tcp://{generate_random_string()}:5000"
     userpass_endpoint = run(
         f"az iot ops asset endpoint create -n {userpass_name} -g {rg} -c {cluster_name} --cg {rg} "
-        f"--ta {address} --username-ref {username} --password-ref {password}"
+        f"--ta {address} --username-ref {username} --password-ref {password} --sc"
     )
     tracked_resources.append(userpass_endpoint["id"])
     assert_endpoint_props(
@@ -91,7 +91,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
     #     additional_configuration=additional_configuration
     # )
 
-    run(f"az iot ops asset endpoint delete -n {userpass_name} -g {rg}")
+    run(f"az iot ops asset endpoint delete -n {userpass_name} -g {rg} --sc")
     sleep(30)
     asset_list = run(f"az iot ops asset query --cl {custom_location}")
     asset_names = [asset["name"] for asset in asset_list]
