@@ -13,7 +13,7 @@ from azext_edge.edge.providers.check.base.pod import process_pod_status
 from azext_edge.edge.providers.check.base.resource import filter_resources_by_name
 from azext_edge.edge.providers.edge_api.dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
 
-from ...common import CheckTaskStatus
+from ...common import CheckTaskStatus, ResourceState
 from ..base import get_namespaced_pods_by_prefix
 from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX
 from .base import CheckManager, check_post_deployment, get_resources_by_name, get_resources_grouped_by_namespace
@@ -1008,7 +1008,27 @@ def evaluate_dataflow_profiles(
                     (0, 0, 0, padding),
                 ),
             )
-            # TODO - figure out status / conditions
+            profile_status = profile.get('status', {})
+            status_level = profile_status.get("configStatusLevel")
+            status_description = profile_status.get("statusDescription")
+            # set status to status level if set
+            if profile_status:
+                check_manager.set_target_status(
+                    target_name=target,
+                    namespace=namespace,
+                    status=ResourceState.map_to_status(status_level).value,
+                )
+            # show status description (colorized) if it exists
+            if status_description:
+                status_display = f"Status: {COLOR_STR_FORMAT.format(color=ResourceState.map_to_color(status_level), value=status_description)}"
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(
+                        status_display,
+                        (0, 0, 0, padding + 2)
+                    )
+                )
             instance_count = spec.get("instanceCount")
             has_instances = (instance_count is not None and int(instance_count) >= 0)
             instance_status = CheckTaskStatus.success.value if has_instances else CheckTaskStatus.error.value
