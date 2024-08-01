@@ -6,6 +6,7 @@
 
 from knack.log import get_logger
 from rich.padding import Padding
+from rich.table import Table
 from kubernetes.client.models import V1Pod
 from typing import List, Optional, Tuple
 
@@ -48,6 +49,67 @@ def evaluate_pod_health(
         detail_level=detail_level,
     )
 
+# evaluate_pod_health_new(
+#     check_manager=check_manager,
+#     target=target_brokers,
+#     namespace=namespace,
+#     display_padding=12,
+#     pod_with_labels=[
+#         (AIO_MQ_DIAGNOSTICS_PROBE_PREFIX, MQ_NAME_LABEL),
+#         (AIO_MQ_FRONTEND_PREFIX, MQ_NAME_LABEL),
+#         (AIO_MQ_BACKEND_PREFIX, MQ_NAME_LABEL),
+#         (AIO_MQ_AUTH_PREFIX, MQ_NAME_LABEL),
+#         (AIO_MQ_HEALTH_MANAGER, MQ_NAME_LABEL),
+#         (AIO_MQ_DIAGNOSTICS_SERVICE, MQ_K8S_LABEL),
+#         (AIO_MQ_OPERATOR, MQ_K8S_LABEL),
+#         (AIO_MQ_FLUENT_BIT, MQ_K8S_LABEL),
+#     ],
+#     detail_level=detail_level,
+# )
+def evaluate_pod_health_with_table(
+    check_manager: CheckManager,
+    target: str,
+    namespace: str,
+    display_padding: int,
+    pod_with_labels: List[Tuple[str, str]],
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> None:
+    
+    # prep table
+    table = Table(
+        show_header=True, header_style="bold", show_lines=True, caption_justify="left"
+    )
+    for column_name, justify in [
+        ("Pod Name", "left"),
+        ("Phase", "left"),
+        ("Conditions", "left"),
+    ]:
+        table.add_column(column_name, justify=f"{justify}")
+    
+    for pod, label in pod_with_labels:
+        target_service_pod = f"pod/{pod}"
+        pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=label)
+
+        process_pod_status(
+            check_manager=check_manager,
+            table=table,
+            target=target,
+            target_service_pod=target_service_pod,
+            pods=pods,
+            display_padding=display_padding,
+            namespace=namespace,
+            detail_level=detail_level,
+        )
+    
+    if detail_level != ResourceOutputDetailLevel.summary.value:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(table, (0, 0, 0, display_padding)),
+        )
+
+    
+
 
 def process_pod_status(
     check_manager: CheckManager,
@@ -57,6 +119,7 @@ def process_pod_status(
     display_padding: int,
     namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    table: Optional[Table] = None,
 ) -> None:
 
     def _decorate_pod_condition(condition: bool) -> Tuple[str, str]:
@@ -64,7 +127,6 @@ def process_pod_status(
             return f"[green]{condition}[/green]", CheckTaskStatus.success.value
         return f"[red]{condition}[/red]", CheckTaskStatus.error.value
 
-    # TODO: Consolidate more using table view
     if not pods:
         return add_display_and_eval(
             check_manager=check_manager,
@@ -146,6 +208,7 @@ def process_pod_status(
 
         _add_pod_health_display(
             check_manager=check_manager,
+            table=table,
             target=target,
             namespace=namespace,
             pod_name=pod_name,
@@ -181,6 +244,7 @@ def _add_pod_health_display(
     unknown_conditions_display_list: List[Tuple[str, str]],
     display_padding: int,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    table: Optional[Table] = None,
 ) -> None:
     pod_health_status = "[green]Healthy[/green]"
 
@@ -194,45 +258,43 @@ def _add_pod_health_display(
     if detail_level != ResourceOutputDetailLevel.summary.value:
         pod_health_text = f"\n{pod_health_text}"
 
-    check_manager.add_display(
+    padding = display_padding + 4
+
+    if detail_level == ResourceOutputDetailLevel.summary.value:
+        check_manager.add_display(
         target_name=target,
         namespace=namespace,
         display=Padding(pod_health_text, (0, 0, 0, display_padding)),
     )
-
-    padding = display_padding + 4
-
-    if detail_level != ResourceOutputDetailLevel.summary.value:
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(f"- Phase: {pod_phase_deco}", (0, 0, 0, padding)),
-        )
+    else:
+        pod_conditions_text = "N/A"
 
         if pod_conditions:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding("- Conditions: [green]Ready[/green]" if conditions_readiness else "- Conditions: [red]Not Ready[/red]", (0, 0, 0, padding)),
-            )
+
+            if detail_level == ResourceOutputDetailLevel.detail.value:
+                pod_conditions_text = "[green]Ready[/green]" if conditions_readiness else ""
+            else:
+                pod_conditions_text = ""
 
             # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
             for condition, reason in conditions_display_list:
                 condition_not_ready = condition.endswith("[red]False[/red]")
                 if (detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready) or\
                    detail_level == ResourceOutputDetailLevel.verbose.value:
-                    check_manager.add_display(
-                        target_name=target,
-                        namespace=namespace,
-                        display=Padding(condition, (0, 0, 0, padding + 4)),
-                    )
+                    pod_conditions_text += f"{condition}\n"
+                    # check_manager.add_display(
+                    #     target_name=target,
+                    #     namespace=namespace,
+                    #     display=Padding(condition, (0, 0, 0, padding + 4)),
+                    # )
 
                     if reason:
-                        check_manager.add_display(
-                            target_name=target,
-                            namespace=namespace,
-                            display=Padding(reason, (0, 0, 0, padding + 8)),
-                        )
+                        pod_conditions_text += f"\n{reason}"
+                        # check_manager.add_display(
+                        #     target_name=target,
+                        #     namespace=namespace,
+                        #     display=Padding(reason, (0, 0, 0, padding + 8)),
+                        # )
 
             if conditions_readiness:
                 for condition, reason in unknown_conditions_display_list:
@@ -249,3 +311,6 @@ def _add_pod_health_display(
                             namespace=namespace,
                             display=Padding(reason, (0, 0, 0, padding + 8)),
                         )
+
+        if table:
+            table.add_row(pod_name, pod_phase_deco, pod_conditions_text)

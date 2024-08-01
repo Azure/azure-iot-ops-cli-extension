@@ -7,6 +7,7 @@
 from typing import Any, Dict, List, Optional, Union
 from enum import Enum
 
+from azext_edge.edge.providers.check.base.pod import evaluate_pod_health_with_table
 from azext_edge.edge.providers.check.base.resource import process_dict_resource, process_resource_properties
 from .base import (
     CheckManager,
@@ -457,34 +458,53 @@ def evaluate_brokers(
                 ),
             )
 
-            for pod in [
-                AIO_MQ_DIAGNOSTICS_PROBE_PREFIX,
-                AIO_MQ_FRONTEND_PREFIX,
-                AIO_MQ_BACKEND_PREFIX,
-                AIO_MQ_AUTH_PREFIX,
-                AIO_MQ_HEALTH_MANAGER,
-                AIO_MQ_DIAGNOSTICS_SERVICE,
-                AIO_MQ_OPERATOR,
-            ]:
-                evaluate_pod_health(
-                    check_manager=check_manager,
-                    target=target_brokers,
-                    namespace=namespace,
-                    pod=pod,
-                    display_padding=12,
-                    service_label=MQ_NAME_LABEL,
-                    detail_level=detail_level,
-                )
-
-            evaluate_pod_health(
+            #TODO - call the function once with (pod prefix, service label) tuple list
+            evaluate_pod_health_with_table(
                 check_manager=check_manager,
                 target=target_brokers,
                 namespace=namespace,
-                pod=AIO_MQ_FLUENT_BIT,
                 display_padding=12,
-                service_label=MQ_K8S_LABEL,
+                pod_with_labels=[
+                    (AIO_MQ_DIAGNOSTICS_PROBE_PREFIX, MQ_NAME_LABEL),
+                    (AIO_MQ_FRONTEND_PREFIX, MQ_NAME_LABEL),
+                    (AIO_MQ_BACKEND_PREFIX, MQ_NAME_LABEL),
+                    (AIO_MQ_AUTH_PREFIX, MQ_NAME_LABEL),
+                    (AIO_MQ_HEALTH_MANAGER, MQ_NAME_LABEL),
+                    (AIO_MQ_DIAGNOSTICS_SERVICE, MQ_NAME_LABEL),
+                    (AIO_MQ_OPERATOR, MQ_NAME_LABEL),
+                    (AIO_MQ_FLUENT_BIT, MQ_K8S_LABEL),
+                ],
                 detail_level=detail_level,
             )
+
+            # for pod in [
+            #     AIO_MQ_DIAGNOSTICS_PROBE_PREFIX,
+            #     AIO_MQ_FRONTEND_PREFIX,
+            #     AIO_MQ_BACKEND_PREFIX,
+            #     AIO_MQ_AUTH_PREFIX,
+            #     AIO_MQ_HEALTH_MANAGER,
+            #     AIO_MQ_DIAGNOSTICS_SERVICE,
+            #     AIO_MQ_OPERATOR,
+            # ]:
+            #     evaluate_pod_health(
+            #         check_manager=check_manager,
+            #         target=target_brokers,
+            #         namespace=namespace,
+            #         pod=pod,
+            #         display_padding=12,
+            #         service_label=MQ_NAME_LABEL,
+            #         detail_level=detail_level,
+            #     )
+
+            # evaluate_pod_health(
+            #     check_manager=check_manager,
+            #     target=target_brokers,
+            #     namespace=namespace,
+            #     pod=AIO_MQ_FLUENT_BIT,
+            #     display_padding=12,
+            #     service_label=MQ_K8S_LABEL,
+            #     detail_level=detail_level,
+            # )
 
     return check_manager.as_dict(as_list)
 
