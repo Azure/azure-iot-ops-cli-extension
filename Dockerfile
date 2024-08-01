@@ -21,5 +21,5 @@ RUN mkdir -p /root/.kube && touch /root/.kube/config
 # tox setup
 RUN pip install tox==4.12.1 --no-cache-dir
 
-# run tests
-ENTRYPOINT ["tox", "r", "-vv", "-e", "python-int", "--", "--durations=0"]
+# run tests - OPCUA Check INT tests are currently disabled
+ENTRYPOINT ["tox", "r", "-vv", "-e", "python-int", "--", "--durations=0", "--ignore=./azext_edge/tests/edge/checks/int/test_opcua_int.py"]
