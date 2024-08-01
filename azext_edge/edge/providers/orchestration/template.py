@@ -519,3 +519,22 @@ def get_current_template_copy(custom_template_path: Optional[str] = None) -> Tem
         moniker=CURRENT_TEMPLATE.moniker,
         content=deepcopy(CURRENT_TEMPLATE.content),
     )
+
+
+def get_basic_dataflow_profile(profile_name: str = "profile", instance_count: int = 1):
+    return {
+        "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
+        "apiVersion": "2024-07-01-preview",
+        "name": f"[format('{{0}}/{{1}}', parameters('instanceName'), '{profile_name}')]",
+        "extendedLocation": {
+            "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+            "type": "CustomLocation",
+        },
+        "properties": {
+            "instanceCount": instance_count,
+        },
+        "dependsOn": [
+            "[resourceId('Microsoft.IoTOperations/instances', parameters('instanceName'))]",
+            "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+        ],
+    }

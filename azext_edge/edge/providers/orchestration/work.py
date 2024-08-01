@@ -7,7 +7,7 @@
 from enum import IntEnum
 from json import dumps
 from time import sleep
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
@@ -22,7 +22,12 @@ from rich.table import Table
 
 from ...util import get_timestamp_now_utc
 from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
-from .template import CURRENT_TEMPLATE, TemplateVer, get_current_template_copy
+from .template import (
+    CURRENT_TEMPLATE,
+    TemplateVer,
+    get_basic_dataflow_profile,
+    get_current_template_copy,
+)
 
 logger = get_logger(__name__)
 
@@ -662,6 +667,10 @@ class WorkManager:
                 mq_broker_config = mq_broker_config["properties"]
             broker: dict = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers")
             broker["properties"] = mq_broker_config
+
+        # Default dataflow profile
+        deploy_resources: List[dict] = template.content.get("resources", [])
+        deploy_resources.append(get_basic_dataflow_profile())
 
         return template, parameters
 
