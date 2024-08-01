@@ -191,10 +191,11 @@ class RPSaaSBaseProvider:
         if not any([cluster_name, custom_location_name]):
             raise RequiredArgumentMissingError(MISSING_CLUSTER_CUSTOM_LOCATION_ERROR)
 
-        extended_location = {"type": "CustomLocation",}
+        extended_location = {"type": "CustomLocation"}
         if all([skip_checks, custom_location_name, custom_location_resource_group, custom_location_subscription]):
-            extended_location["name"] = f"/subscription/{custom_location_subscription}/resourceGroups/{custom_location_resource_group}/"\
-                f"providers/microsoft.extendedlocation/customlocations/{custom_location_name}"
+            extended_location["name"] = f"/subscription/{custom_location_subscription}/resourceGroups/"\
+                f"{custom_location_resource_group}/providers/microsoft.extendedlocation/customlocations/"\
+                f"{custom_location_name}"
             return extended_location
         elif skip_checks:
             logger.warning("Not enough information provided for custom location. Will need to run at least one query.")
@@ -272,6 +273,12 @@ class RPSaaSBaseProvider:
         if cluster["properties"]["connectivityStatus"].lower() != "connected":
             logger.warning(CLUSTER_OFFLINE_MSG.format(cluster["name"]))
 
+        extended_location["name"] = self._check_custom_location_extensions(cluster, location_query_result)
+        return extended_location
+
+    def _check_custom_location_extensions(
+        self, cluster: Dict[str, Any], location_query_result: Dict[str, Any]
+    ) -> str:
         possible_locations = []
         for location in location_query_result:
             usable = False
@@ -297,5 +304,4 @@ class RPSaaSBaseProvider:
             possible_locations = "\n".join(possible_locations)
             raise ValidationError(MULTIPLE_CUSTOM_LOCATIONS_ERROR.format(cluster['id'], possible_locations))
 
-        extended_location["name"] = possible_locations[0]
-        return extended_location
+        return possible_locations[0]
