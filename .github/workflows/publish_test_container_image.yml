@@ -6,6 +6,11 @@ on:
         type: boolean
         required: true
         default: false
+      continue-on-error:
+        description: Allow container publish to bypass failing tests
+        type: boolean
+        required: true
+        default: false
 name: Publish Integration Test Container Image
 run-name: Publish Test Container${{ inputs.promote && ' [stable]' || '' }}
 permissions:
@@ -27,6 +32,7 @@ jobs:
           AIO_SP_SECRET: ${{ secrets.AIO_SP_SECRET }}
   build-and-deploy:
     needs: int-test
+    if: ${{ success() || inputs.continue-on-error }}
     environment: container_registry
     runs-on: ubuntu-latest
     steps:
