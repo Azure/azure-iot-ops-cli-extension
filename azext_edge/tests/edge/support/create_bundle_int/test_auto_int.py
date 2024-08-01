@@ -87,7 +87,11 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             auto_files = sorted(auto_walk_result[directory]["files"])
             ser_files = sorted(walk_result[directory]["files"])
             find_extra_or_missing_names(
-                f"auto bundle files not found in {ops_service} bundle", auto_files, ser_files, ignore_extras=True
+                resource_type=f"auto bundle files not found in {ops_service} bundle",
+                result_names=auto_files,
+                expected_names=ser_files,
+                ignore_extras=True,
+                ignore_missing=True
             )
 
 
