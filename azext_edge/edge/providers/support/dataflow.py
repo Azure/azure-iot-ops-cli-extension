@@ -31,6 +31,14 @@ def fetch_deployments():
         label_selector=DATAFLOW_NAME_LABEL,
     )
 
+    # TODO: remove this once dataflow deployment label is fixed
+    processed.extend(
+        process_deployments(
+            directory_path=DATAFLOW_DIRECTORY_PATH,
+            label_selector=DATAFLOW_NAME_LABEL,
+        )
+    )
+
     return processed
 
 

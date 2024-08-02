@@ -26,7 +26,6 @@ from azext_edge.edge.providers.edge_api import (
     DATAFLOW_API_V1B1,
     EdgeResourceApi,
 )
-from azext_edge.edge.providers.edge_api.meta import META_API_V1B1
 from azext_edge.edge.providers.support.akri import (
     AKRI_AGENT_LABEL,
     AKRI_APP_LABEL,
@@ -43,7 +42,6 @@ from azext_edge.edge.providers.support.billing import (
     ARC_BILLING_DIRECTORY_PATH,
     BILLING_RESOURCE_KIND,
 )
-from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL
 from azext_edge.edge.providers.support.meta import META_NAME_LABEL
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_K8S_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
@@ -79,7 +77,6 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, AKRI_API_V0],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, DATAFLOW_API_V1B1],
     ],
     indirect=True,
 )
@@ -478,20 +475,27 @@ def test_create_bundle(
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_NAME_LABEL,
+                label_selector=DATAFLOW_API_V1B1.label,
                 directory_path=DATAFLOW_API_V1B1.moniker,
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATAFLOW_API_V1B1.label,
+                directory_path=DATAFLOW_API_V1B1.moniker,
+                mock_names=["aio-dataflow-operator"],
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_NAME_LABEL,
+                label_selector=DATAFLOW_API_V1B1.label,
                 directory_path=DATAFLOW_API_V1B1.moniker,
             )
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=DATAFLOW_NAME_LABEL,
+                label_selector=DATAFLOW_API_V1B1.label,
                 directory_path=DATAFLOW_API_V1B1.moniker,
                 since_seconds=since_seconds,
             )
@@ -596,7 +600,7 @@ def assert_list_jobs(
     mocked_zipfile,
     label_selector: str,
     directory_path: str,
-    mock_names: List[str] = None,
+    mock_names: Optional[List[str]] = None,
 ):
     mocked_client.BatchV1Api().list_job_for_all_namespaces.assert_any_call(
         label_selector=label_selector, field_selector=None
@@ -792,12 +796,10 @@ def assert_meta_kpis(
             "mocked_client": mocked_client,
             "mocked_zipfile": mocked_zipfile,
             "label_selector": META_NAME_LABEL,
-            "directory_path": META_API_V1B1.moniker,
+            "directory_path": OTEL_API.moniker,
         }
         if assert_func == assert_list_pods:
             kwargs["mocked_list_pods"] = mocked_list_pods
-        if assert_func == assert_list_services:
-            kwargs["mock_names"] = ["aio-operator-service"]
 
         assert_func(**kwargs)
 

@@ -334,13 +334,6 @@ def mocked_list_services(mocked_client):
                     "opcplc-0000000",
                 ]
             )
-        
-        if "label_selector" in kwargs and kwargs["label_selector"] == "app.kubernetes.io/name in (microsoft-iotoperations)":
-            service_names.extend(
-                [
-                    "aio-operator-service",
-                ]
-            )
 
         service_list = []
         for name in service_names:
