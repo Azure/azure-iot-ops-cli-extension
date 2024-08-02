@@ -68,8 +68,7 @@ def test_check_cluster_and_custom_location(
 
     provider = RPSaaSBaseProvider(
         mocked_cmd,
-        generate_random_string(),
-        required_extension=extension_key
+        generate_random_string()
     )
 
     custom_location_name = req.get("custom_location_name")
@@ -225,29 +224,24 @@ def test_check_cluster_and_custom_location_build_query_error(
         }]
     },
 ], ids=["build_query"], indirect=True)
-@pytest.mark.parametrize("extension_enabled", [True, False], ids=["invalid_type", "not_enabled"])
 def test_check_cluster_and_custom_location_no_extension_error(
     mocker,
     mocked_cmd,
     mocked_build_query,
     mocked_resource_management_client,
-    extension_enabled,
 ):
     from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
-    extension_key = generate_random_string()
     ext_result = mocker.Mock()
     ext_result.as_dict.return_value = {
         "properties": {
-            "configurationSettings": {f"{extension_key}.enabled": str(extension_enabled).lower()},
-            "extensionType": generate_random_string() if extension_enabled else "microsoft.iotoperations"
+            "extensionType": generate_random_string()
         }
     }
     mocked_resource_management_client.resources.get_by_id.return_value = ext_result
 
     provider = RPSaaSBaseProvider(
         mocked_cmd,
-        generate_random_string(),
-        required_extension=extension_key
+        generate_random_string()
     )
 
     from azext_edge.edge.providers.rpsaas.adr.base import ADRBaseProvider

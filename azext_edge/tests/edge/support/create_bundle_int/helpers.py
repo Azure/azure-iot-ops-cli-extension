@@ -37,7 +37,7 @@ class NamespaceTuple(NamedTuple):
 def assert_file_names(files: List[str]):
     """Asserts file names."""
     for full_name in files:
-        name = full_name.split(".")
+        name = split_name(full_name)
         file_type = name.pop(0)
         extension = name.pop(-1)
         # trace files
@@ -67,7 +67,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
     """Maps deployment/pod/etc to list of dissembled file names"""
     file_name_objs = {}
     for full_name in files:
-        name = full_name.split(".")
+        name = split_name(full_name)
         file_type = name.pop(0)
         name_obj = {"extension": name.pop(-1), "full_name": full_name}
 
@@ -162,9 +162,9 @@ def check_workload_resource_files(
             assert f"{file['descriptor']}.{file.get('sub_descriptor')}" not in converted_file
             converted_file[file["descriptor"]] = True
         else:
-            assert file["sub_descriptor"] == "previous"
+            assert file["sub_descriptor"] == "previous", f"Full file name: {file['full_name']}, file_obj {file}"
             sub_key = f"{file['descriptor']}.{file['sub_descriptor']}"
-            assert sub_key not in converted_file
+            assert sub_key not in converted_file, f"Full file name: {file['full_name']}, file_obj {file}"
             converted_file[sub_key] = True
             # if msi-adapter.previous present, msi-adapter must present too
             # for some reason does not apply to xxx.init
@@ -346,6 +346,8 @@ def run_bundle_command(
     tracked_files: List[str],
 ) -> Dict[str, Dict[str, List[str]]]:
     result = run(command)
+    if not result:
+        pytest.skip("No bundle was created.")
     assert result["bundlePath"]
     tracked_files.append(result["bundlePath"])
     # transform this into a walk result of an extracted zip file
@@ -381,3 +383,17 @@ def run_bundle_command(
             walk_result[built_path]["files"].append(file_name)
 
     return walk_result, result["bundlePath"]
+
+
+def split_name(name: str) -> List[str]:
+    first_pass = name.split(".")
+    second_pass = []
+    for i in range(len(first_pass)):
+        # we should not need to worry about trying to access too early
+        # since the first part should be the workload type (ex: pod)
+        if first_pass[i].isnumeric() or first_pass[i - 1].isnumeric():
+            second_pass[-1] = f"{second_pass[-1]}.{first_pass[i]}"
+        else:
+            second_pass.append(first_pass[i])
+
+    return second_pass

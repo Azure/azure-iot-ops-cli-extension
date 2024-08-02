@@ -4,9 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 from os.path import exists
 from pathlib import PurePath
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
@@ -15,16 +16,15 @@ from .common import OpsServiceType
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
-from .providers.orchestration import Instances
 from .providers.orchestration.common import (
     DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     DEFAULT_X509_CA_VALID_DAYS,
     KEYVAULT_ARC_EXTENSION_VERSION,
     KubernetesDistroType,
     MqMemoryProfile,
-    MqMode,
     MqServiceType,
 )
+from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
 
 logger = get_logger(__name__)
@@ -101,20 +101,18 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
+    instance_name: Optional[str] = None,
+    instance_description: Optional[str] = None,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     keyvault_spc_secret_name: str = DEFAULT_NAMESPACE,
     custom_location_name: Optional[str] = None,
     location: Optional[str] = None,
     show_template: Optional[bool] = None,
     simulate_plc: Optional[bool] = None,
-    opcua_discovery_endpoint: Optional[str] = None,
-    container_runtime_socket: str = "",
+    container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
     no_block: Optional[bool] = None,
     no_progress: Optional[bool] = None,
-    include_dp: Optional[bool] = None,
-    dp_instance_name: Optional[str] = None,
-    mq_mode: str = MqMode.distributed.value,
     mq_memory_profile: str = MqMemoryProfile.medium.value,
     mq_service_type: str = MqServiceType.cluster_ip.value,
     mq_backend_partitions: int = 2,
@@ -122,13 +120,13 @@ def init(
     mq_backend_redundancy_factor: int = 2,
     mq_frontend_workers: int = 2,
     mq_frontend_replicas: int = 2,
-    mq_frontend_server_name: Optional[str] = None,
-    mq_instance_name: Optional[str] = None,
-    mq_listener_name: Optional[str] = None,
-    mq_broker_name: Optional[str] = None,
-    mq_authn_name: Optional[str] = None,
+    mq_frontend_server_name: str = "mq-dmqtt-frontend",
+    mq_listener_name: str = "listener",
+    mq_broker_name: str = "broker",
+    mq_authn_name: str = "authn",
+    mq_broker_config_file: Optional[str] = None,
     mq_insecure: Optional[bool] = None,
-    target_name: Optional[str] = None,
+    dataflow_profile_instances: int = 1,
     disable_secret_rotation: Optional[bool] = None,
     rotation_poll_interval: str = "1h",
     csi_driver_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
@@ -154,7 +152,7 @@ def init(
     from .util import (
         assemble_nargs_to_dict,
         is_env_flag_enabled,
-        url_safe_hash_phrase,
+        read_file_content,
         url_safe_random_chars,
     )
 
@@ -169,32 +167,14 @@ def init(
     # cluster namespace must be lowercase
     cluster_namespace = str(cluster_namespace).lower()
     cluster_name_lowered = cluster_name.lower()
+    # TODO - @digimaun
+    safe_cluster_name = cluster_name_lowered.replace("_", "-")
 
-    hashed_cluster_slug = url_safe_hash_phrase(cluster_name)[:5]
-    if not mq_instance_name:
-        mq_instance_name = f"init-{hashed_cluster_slug}-mq-instance"
-    if not mq_frontend_server_name:
-        mq_frontend_server_name = "mq-dmqtt-frontend"
-    if not mq_listener_name:
-        mq_listener_name = "listener"
-    if not mq_broker_name:
-        mq_broker_name = "broker"
-    if not mq_authn_name:
-        mq_authn_name = "authn"
+    if not instance_name:
+        instance_name = f"{safe_cluster_name}-ops-instance"
 
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
-
-    if not dp_instance_name:
-        dp_instance_name = f"{cluster_name_lowered}-ops-init-processor"
-        dp_instance_name = dp_instance_name.replace("_", "-")
-
-    if not target_name:
-        target_name = f"{cluster_name_lowered}-ops-init-target"
-        target_name = target_name.replace("_", "-")
-
-    if simulate_plc and not opcua_discovery_endpoint:
-        opcua_discovery_endpoint = f"opc.tcp://opcplc-000000.{cluster_namespace}:50000"
 
     if tls_ca_path:
         if not tls_ca_key_path:
@@ -209,17 +189,23 @@ def init(
     if csi_driver_config:
         csi_driver_config = assemble_nargs_to_dict(csi_driver_config)
 
+    # TODO - @digimaun
+    mq_broker_config = None
+    if mq_broker_config_file:
+        mq_broker_config = json.loads(read_file_content(file_path=mq_broker_config_file))
+
     return deploy(
         cmd=cmd,
         cluster_name=cluster_name,
         cluster_namespace=cluster_namespace,
+        instance_name=instance_name,
+        instance_description=instance_description,
         cluster_location=None,  # Effectively always fetch connected cluster location
         custom_location_name=custom_location_name,
         resource_group_name=resource_group_name,
         location=location,
         show_template=show_template,
-        opcua_discovery_endpoint=opcua_discovery_endpoint,
-        container_runtime_socket=str(container_runtime_socket),
+        container_runtime_socket=container_runtime_socket,
         kubernetes_distro=str(kubernetes_distro),
         simulate_plc=simulate_plc,
         no_block=no_block,
@@ -228,9 +214,7 @@ def init(
         no_preflight=no_preflight,
         no_deploy=no_deploy,
         disable_rsync_rules=disable_rsync_rules,
-        include_dp=include_dp,
-        dp_instance_name=dp_instance_name,
-        mq_mode=str(mq_mode),
+        mq_broker_config=mq_broker_config,
         mq_memory_profile=str(mq_memory_profile),
         mq_service_type=str(mq_service_type),
         mq_backend_partitions=int(mq_backend_partitions),
@@ -238,13 +222,12 @@ def init(
         mq_backend_redundancy_factor=int(mq_backend_redundancy_factor),
         mq_frontend_replicas=int(mq_frontend_replicas),
         mq_frontend_workers=int(mq_frontend_workers),
-        mq_instance_name=mq_instance_name,
-        mq_frontend_server_name=mq_frontend_server_name,
-        mq_listener_name=mq_listener_name,
-        mq_broker_name=mq_broker_name,
-        mq_authn_name=mq_authn_name,
+        mq_frontend_server_name=str(mq_frontend_server_name),
+        mq_listener_name=str(mq_listener_name),
+        mq_broker_name=str(mq_broker_name),
+        mq_authn_name=str(mq_authn_name),
         mq_insecure=mq_insecure,
-        target_name=target_name,
+        dataflow_profile_instances=int(dataflow_profile_instances),
         keyvault_resource_id=keyvault_resource_id,
         keyvault_spc_secret_name=str(keyvault_spc_secret_name),
         disable_secret_rotation=disable_secret_rotation,
@@ -287,13 +270,22 @@ def show_instance(cmd, instance_name: str, resource_group_name: str, show_tree: 
     return Instances(cmd).show(name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree)
 
 
-def list_instances(cmd, resource_group_name: Optional[str] = None) -> List[dict]:
+def list_instances(cmd, resource_group_name: Optional[str] = None) -> Iterable[dict]:
     return Instances(cmd).list(resource_group_name)
 
 
 def update_instance(
-    cmd, instance_name: str, resource_group_name: str, tags: Optional[str] = None, description: Optional[str] = None
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    tags: Optional[str] = None,
+    instance_description: Optional[str] = None,
+    **kwargs,
 ) -> dict:
     return Instances(cmd).update(
-        name=instance_name, resource_group_name=resource_group_name, tags=tags, description=description
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        tags=tags,
+        description=instance_description,
+        **kwargs,
     )

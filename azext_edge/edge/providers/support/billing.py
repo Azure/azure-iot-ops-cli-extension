@@ -59,6 +59,7 @@ def fetch_jobs():
     processed = process_jobs(
         directory_path=BILLING_RESOURCE_KIND,
         label_selector=AIO_BILLING_USAGE_NAME_LABEL,
+        prefix_names=[AIO_USAGE_PREFIX],
     )
 
     return processed

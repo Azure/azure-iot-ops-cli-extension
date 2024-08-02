@@ -1,13 +1,20 @@
 on:
   workflow_dispatch:
+    inputs:
+      promote:
+        description: Promote this build to the latest stable image for this extension version
+        type: boolean
+        required: true
+        default: false
 name: Publish Integration Test Container Image
+run-name: Publish Test Container${{ inputs.promote && ' [stable]' || '' }}
 permissions:
     # required for OpenID federation
     contents: 'read'
     id-token: 'write'
 jobs:
   int-test:
-      uses: azure/azure-iot-ops-cli-extension/.github/workflows/int_test.yml@dev
+      uses: ./.github/workflows/int_test.yml
       with:
         resource-group: ops-cli-int-test-rg
         use-container: true
@@ -40,4 +47,5 @@ jobs:
       - name: Build, tag, and push container image to registry
         run: |
           base="aziotops/cli-extension-tests"
-          az acr build -t $base:latest -t $base:${{ github.sha }} -t $base:${{ env.VERSION }} -r aziotops .
+          datetag=$(date +%Y%m%d)
+          az acr build -t $base:${{ github.sha }} -t $base:${{ env.VERSION }}${{ !inputs.promote && '-$datetag' || '' }} -r aziotops .

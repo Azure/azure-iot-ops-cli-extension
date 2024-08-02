@@ -33,8 +33,7 @@ def test_show(
         api_version=api_version,
         provider_namespace=provider_namespace,
         resource_type=resource_type,
-        parent_resource_path=parent_resource_path,
-        required_extension=generate_random_string()
+        parent_resource_path=parent_resource_path
     )
     result = provider.show(resource_name, resource_group_name, check_cluster_connectivity)
 

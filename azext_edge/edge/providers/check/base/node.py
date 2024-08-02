@@ -12,7 +12,7 @@ from rich.table import Table
 from typing import Any, Dict
 
 from .check_manager import CheckManager
-from .user_strings import MULTINODE_CLUSTER_MSG, NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
+from .user_strings import NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
 from ..common import (
     AIO_SUPPORTED_ARCHITECTURES,
     COLOR_STR_FORMAT,
@@ -58,22 +58,6 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
             check_manager.add_display(target_name=target, display=target_display)
             return check_manager.as_dict()
 
-        check_manager.add_target_eval(
-            target_name=target,
-            status=CheckTaskStatus.warning.value if len(nodes.items) > 1 else CheckTaskStatus.success.value,
-            value=len(nodes.items)
-        )
-        if len(nodes.items) > 1:
-            check_manager.add_display(
-                target_name=target,
-                display=Padding(
-                    COLOR_STR_FORMAT.format(
-                        color=CheckTaskStatus.warning.color,
-                        value=MULTINODE_CLUSTER_MSG
-                    ),
-                    padding
-                ),
-            )
         table = _generate_node_table(check_manager, nodes)
         check_manager.add_display(target_name=target, display=Padding(table, padding))
 

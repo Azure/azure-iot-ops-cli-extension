@@ -37,7 +37,6 @@ class RPSaaSBaseProvider:
         self,
         cmd,
         api_version: str,
-        required_extension: str,
         provider_namespace: str = "",
         parent_resource_path: str = "",
         resource_type: str = "",
@@ -52,7 +51,6 @@ class RPSaaSBaseProvider:
         self.provider_namespace = provider_namespace
         self.resource_type = resource_type
         self.parent_resource_path = parent_resource_path
-        self.required_extension = required_extension
 
     def delete(
         self,
@@ -261,7 +259,6 @@ class RPSaaSBaseProvider:
             logger.warning(CLUSTER_OFFLINE_MSG.format(cluster["name"]))
 
         possible_locations = []
-        extension_key = f"{self.required_extension}.enabled"
         for location in location_query_result:
             usable = False
             for extension_id in location["properties"]["clusterExtensionIds"]:
@@ -270,10 +267,7 @@ class RPSaaSBaseProvider:
                     resource_id=extension_id,
                     api_version=EXTENSION_API_VERSION,
                 ).as_dict()
-                if all([
-                    extension["properties"]["extensionType"] == IOT_OPS_EXTENSION,
-                    extension["properties"]["configurationSettings"].get(extension_key, "false") == "true"
-                ]):
+                if extension["properties"]["extensionType"] == IOT_OPS_EXTENSION:
                     usable = True
                     break
             if usable:
@@ -282,7 +276,7 @@ class RPSaaSBaseProvider:
         # throw if there are no suitable extensions (in the cluster)
         if len(possible_locations) == 0:
             raise ValidationError(
-                MISSING_EXTENSION_ERROR.format(cluster["name"], IOT_OPS_EXTENSION, self.required_extension)
+                MISSING_EXTENSION_ERROR.format(cluster["name"], IOT_OPS_EXTENSION)
             )
         # throw if multiple custom locations (cluster name given, multiple locations possible)
         if len(possible_locations) > 1:
