@@ -6,6 +6,8 @@
 
 from functools import partial
 from typing import List
+
+from azext_edge.edge.providers.support.billing import AIO_BILLING_USAGE_NAME_LABEL
 from ...generators import generate_random_string
 
 import pytest
@@ -242,7 +244,7 @@ def mocked_list_jobs(mocked_client):
 
     def _handle_list_jobs(*args, **kwargs):
         names = ["mock_job"]
-        if "label_selector" in kwargs and kwargs["label_selector"] == "app.kubernetes.io/name in (microsoft-iotoperations)":
+        if "label_selector" in kwargs and kwargs["label_selector"] == AIO_BILLING_USAGE_NAME_LABEL:
             names.extend(
                 [
                     "aio-usage-job",
