@@ -245,11 +245,7 @@ def mocked_list_jobs(mocked_client):
     def _handle_list_jobs(*args, **kwargs):
         names = ["mock_job"]
         if "label_selector" in kwargs and kwargs["label_selector"] == AIO_BILLING_USAGE_NAME_LABEL:
-            names.extend(
-                [
-                    "aio-usage-job",
-                ]
-            )
+            names.append("aio-usage-job")
 
         job_list = []
         for name in names:
