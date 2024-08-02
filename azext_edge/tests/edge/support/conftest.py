@@ -241,8 +241,18 @@ def mocked_list_jobs(mocked_client):
     from kubernetes.client.models import V1JobList, V1Job, V1ObjectMeta
 
     def _handle_list_jobs(*args, **kwargs):
-        job = V1Job(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_job"))
-        job_list = V1JobList(items=[job])
+        names = ["mock_job"]
+        if "label_selector" in kwargs and kwargs["label_selector"] == "app.kubernetes.io/name in (microsoft-iotoperations)":
+            names.extend(
+                [
+                    "aio-usage-job",
+                ]
+            )
+
+        job_list = []
+        for name in names:
+            job_list.append(V1Job(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        job_list = V1JobList(items=job_list)
 
         return job_list
 
@@ -322,6 +332,13 @@ def mocked_list_services(mocked_client):
             service_names.extend(
                 [
                     "opcplc-0000000",
+                ]
+            )
+        
+        if "label_selector" in kwargs and kwargs["label_selector"] == "app.kubernetes.io/name in (microsoft-iotoperations)":
+            service_names.extend(
+                [
+                    "aio-operator-service",
                 ]
             )
 
