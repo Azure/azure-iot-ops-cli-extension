@@ -155,6 +155,7 @@ def _assert_instance_show(instance_name: str, resource_group: str, ops_version: 
 
     assert show_result["extendedLocation"]["name"].endswith(arg_dict.get("custom_location", "-ops-init-cl"))
     assert show_result["extendedLocation"]["type"] == "CustomLocation"
+
     assert show_result["location"] == arg_dict.get(
         "location", run(f"az group show -n {resource_group}")["location"]
     ).lower()
