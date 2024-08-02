@@ -137,7 +137,7 @@ def process_v1_pods(
             if any(pod_name.startswith(prefix) for prefix in pod_prefix_for_init_container_logs):
                 init_pod_containers: List[V1Container] = pod_spec.init_containers
                 pod_containers.extend(init_pod_containers)
-        
+
         # exclude evicted pods from log capture since they are not accessible
         pod_status = pod.status
         if pod_status and pod_status.phase == PodState.failed.value and pod_status.reason == POD_STATUS_FAILED_EVICTED:
