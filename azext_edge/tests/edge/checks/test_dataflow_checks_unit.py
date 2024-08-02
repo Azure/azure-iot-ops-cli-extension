@@ -891,15 +891,7 @@ def test_evaluate_dataflow_profiles(
             # namespace conditions str
             [],
             # namespace evaluations str
-            [
-                [
-                    ("status", "error"),
-                    (
-                        "value/pods",
-                        "Unable to fetch pods.",
-                    ),
-                ]
-            ],
+            [],
         )
     ],
 )
