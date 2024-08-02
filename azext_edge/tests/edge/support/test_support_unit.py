@@ -180,6 +180,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=AIO_BILLING_USAGE_NAME_LABEL,
                 directory_path=BILLING_RESOURCE_KIND,
+                mock_names=["aio-usage-job"],
             )
             assert_list_replica_sets(
                 mocked_client,
@@ -599,16 +600,19 @@ def assert_list_jobs(
     mocked_zipfile,
     label_selector: str,
     directory_path: str,
+    mock_names: Optional[List[str]] = None,
 ):
     mocked_client.BatchV1Api().list_job_for_all_namespaces.assert_any_call(
         label_selector=label_selector, field_selector=None
     )
 
-    assert_zipfile_write(
-        mocked_zipfile,
-        zinfo=f"mock_namespace/{directory_path}/job.mock_job.yaml",
-        data="kind: Job\nmetadata:\n  name: mock_job\n  namespace: mock_namespace\n",
-    )
+    mock_names = mock_names or ["mock_job"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{directory_path}/job.{name}.yaml",
+            data=f"kind: Job\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+        )
 
 
 def assert_list_pods(
