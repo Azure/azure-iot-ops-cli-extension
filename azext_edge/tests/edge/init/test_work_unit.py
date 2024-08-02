@@ -31,6 +31,7 @@ from azext_edge.edge.providers.orchestration.work import (
     WorkCategoryKey,
     WorkManager,
     WorkStepKey,
+    get_basic_dataflow_profile,
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
 
@@ -343,6 +344,11 @@ def test_init_to_template_params(
     assert broker
     if mq_broker_config_file:
         assert broker["properties"] == mock_broker_config
+
+    dataflow_profiles = template_ver.get_resource_defs(resource_type="Microsoft.IoTOperations/instances/dataflowProfiles", first=False)
+    assert len(dataflow_profiles) == 1
+    dataflow_profile = dataflow_profiles[0]
+    assert dataflow_profile == get_basic_dataflow_profile()
 
 
 @pytest.mark.parametrize(

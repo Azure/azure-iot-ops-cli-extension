@@ -670,7 +670,8 @@ class WorkManager:
 
         # Default dataflow profile
         deploy_resources: List[dict] = template.content.get("resources", [])
-        deploy_resources.append(get_basic_dataflow_profile())
+        df_profile_instances = self._kwargs.get("dataflow_profile_instances", 1)
+        deploy_resources.append(get_basic_dataflow_profile(instance_count=df_profile_instances))
 
         return template, parameters
 
