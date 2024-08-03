@@ -34,7 +34,7 @@ logger = get_logger(__name__)
 generic = client.ApiClient()
 
 DAY_IN_SECONDS: int = 60 * 60 * 24
-POD_STATUS_FAILED_EVICTED: str = "Evicted"
+POD_STATUS_FAILED_EVICTED: str = "evicted"
 
 K8sRuntimeResources = TypeVar(
     "K8sRuntimeResources",
@@ -140,7 +140,8 @@ def process_v1_pods(
 
         # exclude evicted pods from log capture since they are not accessible
         pod_status = pod.status
-        if pod_status and pod_status.phase == PodState.failed.value and pod_status.reason == POD_STATUS_FAILED_EVICTED:
+        if pod_status and pod_status.phase == PodState.failed.value and\
+           str(pod_status.reason).lower() == POD_STATUS_FAILED_EVICTED:
             logger.info(f"Pod {pod_name} in namespace {pod_namespace} is evicted. Skipping log capture.")
         else:
             processed.extend(
