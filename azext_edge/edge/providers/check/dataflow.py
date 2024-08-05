@@ -62,7 +62,7 @@ def _process_dataflow_sourcesettings(
     endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
     endpoint_type = endpoint_match[1] if endpoint_match else None
     endpoint_type_valid = endpoint_type and endpoint_type.lower() in valid_source_endpoint_types
-    endpoint_type_status = CheckTaskStatus.success.value if endpoint_type_valid else CheckTaskStatus.error.value
+    endpoint_type_status = CheckTaskStatus.success if endpoint_type_valid else CheckTaskStatus.error
 
     endpoint_status_string = "valid"
     endpoint_status = CheckTaskStatus.success
@@ -83,7 +83,7 @@ def _process_dataflow_sourcesettings(
     check_manager.add_target_eval(
         target_name=target,
         namespace=namespace,
-        status=endpoint_type_status,
+        status=endpoint_type_status.value,
         resource_name=dataflow_name,
         resource_kind=DataflowResourceKinds.DATAFLOW.value,
         value={"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": endpoint_type},
@@ -96,7 +96,7 @@ def _process_dataflow_sourcesettings(
 
         padding += 4
         endpoint_name_display = f"{{{COLOR_STR_FORMAT.format(color=endpoint_status.color, value=endpoint_ref)}}}"
-        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_status.color, value=endpoint_status_string)
+        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_type_status.color, value=endpoint_status_string)
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
