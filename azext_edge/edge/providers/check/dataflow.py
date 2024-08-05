@@ -64,19 +64,17 @@ def _process_dataflow_sourcesettings(
     endpoint_type_valid = endpoint_type and endpoint_type.lower() in valid_source_endpoint_types
     endpoint_type_status = CheckTaskStatus.success.value if endpoint_type_valid else CheckTaskStatus.error.value
 
-    endpoint_status_color = "green"
-    endpoint_status_string = "is valid"
-    endpoint_status = CheckTaskStatus.success.value
+    endpoint_status_string = "valid"
+    endpoint_status = CheckTaskStatus.success
     if not endpoint_match or not endpoint_type_valid:
-        endpoint_status_string = "not found" if not endpoint_match else f"has invalid endpoint type: {endpoint_type}"
-        endpoint_status = CheckTaskStatus.success.value if endpoint_match else CheckTaskStatus.error.value
-        endpoint_status_color = "red"
+        endpoint_status_string = "not found" if not endpoint_match else f"has invalid type: {endpoint_type}"
+        endpoint_status = CheckTaskStatus.success if endpoint_match else CheckTaskStatus.error
 
     # valid endpoint ref eval
     check_manager.add_target_eval(
         target_name=target,
         namespace=namespace,
-        status=endpoint_status,
+        status=endpoint_status.value,
         resource_name=dataflow_name,
         resource_kind=DataflowResourceKinds.DATAFLOW.value,
         value={"spec.operations[*].sourceSettings.endpointRef": endpoint_ref},
@@ -97,8 +95,8 @@ def _process_dataflow_sourcesettings(
         )
 
         padding += 4
-        endpoint_name_display = f"{{{COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_ref)}}}"
-        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_status_string)
+        endpoint_name_display = f"{{{COLOR_STR_FORMAT.format(color=endpoint_status.color, value=endpoint_ref)}}}"
+        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_status.color, value=endpoint_status_string)
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -263,18 +261,16 @@ def _process_dataflow_destinationsettings(
 
     endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
 
-    endpoint_status_color = "green"
-    endpoint_validity = "is valid"
-    endpoint_status = CheckTaskStatus.success.value
+    endpoint_validity = "valid"
+    endpoint_status = CheckTaskStatus.success
     if not endpoint_match:
         endpoint_validity = "not found"
-        endpoint_status = CheckTaskStatus.error.value
-        endpoint_status_color = "red"
+        endpoint_status = CheckTaskStatus.error
     # valid endpoint ref eval
     check_manager.add_target_eval(
         target_name=target,
         namespace=namespace,
-        status=endpoint_status,
+        status=endpoint_status.value,
         resource_name=dataflow_name,
         resource_kind=DataflowResourceKinds.DATAFLOW.value,
         value={"spec.operations[*].destinationSettings.endpointRef": endpoint_ref},
@@ -282,8 +278,8 @@ def _process_dataflow_destinationsettings(
     # show dataflow endpoint ref on detail
     if detail_level > ResourceOutputDetailLevel.summary.value:
         padding += 4
-        endpoint_name_display = f"{{{COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_ref)}}}"
-        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_status_color, value=endpoint_validity)
+        endpoint_name_display = f"{{{COLOR_STR_FORMAT.format(color=endpoint_status.color, value=endpoint_ref)}}}"
+        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_status.color, value=endpoint_validity)
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -740,17 +736,15 @@ def evaluate_dataflows(
 
             mode = spec.get("mode")
             profile_ref = spec.get("profileRef")
-            profile_ref_status = CheckTaskStatus.success.value
-            profile_ref_status_color = "green"
+            profile_ref_status = CheckTaskStatus.success
             if profile_ref and profile_ref not in profile_names:
-                profile_ref_status = CheckTaskStatus.error.value
-                profile_ref_status_color = "red"
+                profile_ref_status = CheckTaskStatus.error
 
             # valid profileRef eval
             check_manager.add_target_eval(
                 target_name=target,
                 namespace=namespace,
-                status=profile_ref_status,
+                status=profile_ref_status.value,
                 resource_name=dataflow_name,
                 resource_kind=DataflowResourceKinds.DATAFLOW.value,
                 value={"spec.profileRef": profile_ref},
@@ -759,9 +753,9 @@ def evaluate_dataflows(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"Dataflow Profile: {{{COLOR_STR_FORMAT.format(color=profile_ref_status_color, value=profile_ref)}}}", (0, 0, 0, padding + 4)),
+                display=Padding(f"Dataflow Profile: {{{COLOR_STR_FORMAT.format(color=profile_ref_status.color, value=profile_ref)}}}", (0, 0, 0, padding + 4)),
             )
-            if profile_ref_status == CheckTaskStatus.error.value and detail_level > ResourceOutputDetailLevel.summary.value:
+            if profile_ref_status == CheckTaskStatus.error and detail_level > ResourceOutputDetailLevel.summary.value:
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
@@ -956,7 +950,7 @@ def evaluate_dataflow_endpoints(
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
-                        display=Padding(f"[red]Unknown endpoint type: {endpoint_type}[/red]", (0, 0, 0, padding + 4)),
+                        display=Padding(COLOR_STR_FORMAT.format(color="red", value=f"Unknown endpoint type: {endpoint_type}"), (0, 0, 0, padding + 4)),
                     )
     return check_manager.as_dict(as_list=as_list)
 
