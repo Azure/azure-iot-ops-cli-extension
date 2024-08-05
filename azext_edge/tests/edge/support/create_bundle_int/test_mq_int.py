@@ -26,7 +26,7 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
 
     ops_service = OpsServiceType.mq.value
     command = f"az iot ops support create-bundle --broker-traces {mq_traces} --ops-service {ops_service}"
-    walk_result = run_bundle_command(command=command, tracked_files=tracked_files)
+    walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service, mq_traces=mq_traces)["aio"]
     traces = file_map.pop("traces", {})
     # diagnostic_metrics.txt
@@ -70,4 +70,9 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
             assert extension_dict.get("json")
             assert extension_dict.get("pb")
 
-    check_workload_resource_files(file_map, expected_workload_types, "aio-mq")
+    check_workload_resource_files(
+        file_objs=file_map,
+        expected_workload_types=expected_workload_types,
+        prefixes="aio-mq",
+        bundle_path=bundle_path
+    )

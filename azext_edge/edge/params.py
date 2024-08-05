@@ -619,6 +619,13 @@ def load_iotops_arguments(self, _):
             help="The path to a custom IoT Operations deployment template. Intended for advanced use cases.",
             deprecate_info=context.deprecate(hide=True),
         )
+        context.argument(
+            "dataflow_profile_instances",
+            type=int,
+            options_list=["--df-profile-instances"],
+            help="The instance count associated with the default dataflow profile.",
+            arg_group="Dataflow Profile",
+        )
 
     with self.argument_context("iot ops delete") as context:
         context.argument(
