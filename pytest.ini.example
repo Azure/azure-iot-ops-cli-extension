@@ -17,3 +17,6 @@ env =
     azext_edge_cluster=
     azext_edge_skip_init=
     azext_edge_kv=
+
+markers =
+    init_scenario_test: mark tests that will run az iot ops init

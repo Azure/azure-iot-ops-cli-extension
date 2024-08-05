@@ -180,6 +180,7 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=AIO_BILLING_USAGE_NAME_LABEL,
                 directory_path=BILLING_RESOURCE_KIND,
+                mock_names=["aio-usage-job"],
             )
             assert_list_replica_sets(
                 mocked_client,
@@ -599,16 +600,19 @@ def assert_list_jobs(
     mocked_zipfile,
     label_selector: str,
     directory_path: str,
+    mock_names: Optional[List[str]] = None,
 ):
     mocked_client.BatchV1Api().list_job_for_all_namespaces.assert_any_call(
         label_selector=label_selector, field_selector=None
     )
 
-    assert_zipfile_write(
-        mocked_zipfile,
-        zinfo=f"mock_namespace/{directory_path}/job.mock_job.yaml",
-        data="kind: Job\nmetadata:\n  name: mock_job\n  namespace: mock_namespace\n",
-    )
+    mock_names = mock_names or ["mock_job"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{directory_path}/job.{name}.yaml",
+            data=f"kind: Job\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+        )
 
 
 def assert_list_pods(
@@ -656,7 +660,12 @@ def assert_list_pods(
                     f"kind: Pod\nmetadata:\n  name: {pod_name}\n  namespace: {namespace}\nspec:\n  "
                     f"containers:\n  - name: {container_name}\n"
                 )
-                data += init_data
+                if pod_name == "evicted_pod":
+                    status = "status:\n  phase: Failed\n  reason: Evicted\n"
+                else:
+                    status = "status:\n  phase: Running\n"
+
+                data += f"{init_data}{status}"
 
                 assert_zipfile_write(
                     mocked_zipfile,
@@ -666,20 +675,25 @@ def assert_list_pods(
 
                 if "since_seconds" in kwargs:
                     for previous_logs in [False, True]:
-                        mocked_client.CoreV1Api().read_namespaced_pod_log.assert_any_call(
-                            name=pod_name,
-                            namespace=namespace,
-                            since_seconds=kwargs["since_seconds"],
-                            container=container_name,
-                            previous=previous_logs,
-                        )
                         previous_segment = ".previous" if previous_logs else ""
-                        assert_zipfile_write(
-                            mocked_zipfile,
-                            zinfo=f"{namespace}/{directory_path}/"
-                            f"pod.{pod_name}.{container_name}{previous_segment}.log",
-                            data=pods_with_container[namespace][pod_name][container_name],
-                        )
+
+                        try:
+                            mocked_client.CoreV1Api().read_namespaced_pod_log.assert_any_call(
+                                name=pod_name,
+                                namespace=namespace,
+                                since_seconds=kwargs["since_seconds"],
+                                container=container_name,
+                                previous=previous_logs,
+                            )
+                            assert_zipfile_write(
+                                mocked_zipfile,
+                                zinfo=f"{namespace}/{directory_path}/"
+                                f"pod.{pod_name}.{container_name}{previous_segment}.log",
+                                data=pods_with_container[namespace][pod_name][container_name],
+                            )
+                        except AssertionError:
+                            # if pod is evicted, no logs are available
+                            assert "evicted_pod" in pod_name
 
 
 def assert_list_replica_sets(

@@ -23,7 +23,7 @@ def test_current_template():
 
     assert CURRENT_TEMPLATE.get_component_vers() == CURRENT_TEMPLATE.content["variables"]["VERSIONS"]
 
-    for r_type in ["brokers", "brokers/listeners"]:
+    for r_type in ["brokers", "brokers/listeners", "brokers/authentications"]:
         fqr_type = f"Microsoft.IoTOperations/instances/{r_type}"
         assert CURRENT_TEMPLATE.get_resource_defs(fqr_type)["type"] == fqr_type
 
