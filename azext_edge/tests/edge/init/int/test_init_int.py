@@ -4,15 +4,18 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from os import mkdir
 from typing import Dict, Union
+
 import pytest
 from knack.log import get_logger
-from os import mkdir
+
 from ....helpers import run
+from .dataflow_helper import assert_dataflow_profile_args
+from .helper import assert_init_result, strip_quotes
 from .mq_helper import assert_broker_args
 from .opcua_helper import assert_simulate_plc_args
 from .orchestrator_helper import assert_orchestrator_args
-from .helper import assert_init_result, strip_quotes
 
 logger = get_logger(__name__)
 
@@ -58,7 +61,7 @@ def init_test_setup(cluster_connection, settings):
 def test_init_scenario(
     init_test_setup, tracked_files
 ):
-    additional_args = init_test_setup["additionalArgs"]
+    additional_args = init_test_setup["additionalArgs"] or ""
     arg_dict = _process_additional_args(additional_args)
 
     if "ca_dir" in arg_dict:
@@ -112,6 +115,7 @@ def test_init_scenario(
         for assertion in [
             assert_simulate_plc_args,
             assert_broker_args,
+            assert_dataflow_profile_args,
             assert_orchestrator_args
         ]:
             assertion(
@@ -137,7 +141,7 @@ def _process_additional_args(additional_args: str) -> Dict[str, Union[str, bool]
     arg_dict = {}
     for arg in additional_args.split("--")[1:]:
         arg = arg.strip().split(" ", maxsplit=1)
-        # --simualte-plc vs --desc "potato cluster"
+        # --simulate-plc vs --desc "potato cluster"
         arg[0] = arg[0].replace("-", "_")
         if len(arg) == 1 or arg[1].lower() == "true":
             arg_dict[arg[0]] = True
