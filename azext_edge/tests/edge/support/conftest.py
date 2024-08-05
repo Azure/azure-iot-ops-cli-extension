@@ -6,18 +6,17 @@
 
 from functools import partial
 from typing import List
+
+from azext_edge.edge.providers.support.billing import AIO_BILLING_USAGE_NAME_LABEL
 from ...generators import generate_random_string
 
 import pytest
 
 
 def add_pod_to_mocked_pods(
-    mocked_client,
-    expected_pod_map,
-    mock_names: List[str] = None,
-    mock_init_containers: bool = False
+    mocked_client, expected_pod_map, mock_names: List[str] = None, mock_init_containers: bool = False
 ):
-    from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
+    from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1PodStatus, V1ObjectMeta, V1Container
 
     current_pods = mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value
     pod_list = current_pods.items
@@ -29,7 +28,8 @@ def add_pod_to_mocked_pods(
     for pod_name in mock_names:
         container_name = generate_random_string()
         spec = V1PodSpec(containers=[V1Container(name=container_name)])
-        pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
+        status = V1PodStatus(phase="Running")
+        pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec, status=status)
 
         if mock_init_containers:
             pod.spec.init_containers = [V1Container(name="mock-init-container")]
@@ -84,13 +84,11 @@ def mocked_cluster_resources(request, mocker):
 
     from azext_edge.edge.providers.edge_api import (
         EdgeResourceApi,
-        MQ_API_V1B1,
         MQ_ACTIVE_API,
+        MQTT_BROKER_API_V1B1,
         OPCUA_API_V1,
-        DATA_PROCESSOR_API_V1,
         ORC_API_V1,
         AKRI_API_V0,
-        LNM_API_V1B1,
         DEVICEREGISTRY_API_V1,
         CLUSTER_CONFIG_API_V1,
     )
@@ -106,19 +104,13 @@ def mocked_cluster_resources(request, mocker):
         r_key = r.as_str()
         v1_resources: List[V1APIResource] = []
 
-        if r == MQ_API_V1B1:
+        if r == MQTT_BROKER_API_V1B1:
             v1_resources.append(_get_api_resource("Broker"))
             v1_resources.append(_get_api_resource("BrokerListener"))
             v1_resources.append(_get_api_resource("BrokerDiagnostic"))
             v1_resources.append(_get_api_resource("DiagnosticService"))
             v1_resources.append(_get_api_resource("BrokerAuthentication"))
             v1_resources.append(_get_api_resource("BrokerAuthorization"))
-            v1_resources.append(_get_api_resource("MqttBridgeTopicMap"))
-            v1_resources.append(_get_api_resource("MqttBridgeConnector"))
-            v1_resources.append(_get_api_resource("DataLakeConnector"))
-            v1_resources.append(_get_api_resource("DataLakeConnectorTopicMap"))
-            v1_resources.append(_get_api_resource("KafkaConnector"))
-            v1_resources.append(_get_api_resource("KafkaConnectorTopicMap"))
 
         if r == MQ_ACTIVE_API:
             v1_resources.append(_get_api_resource("Broker"))
@@ -127,20 +119,8 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("DiagnosticService"))
             v1_resources.append(_get_api_resource("BrokerAuthentication"))
             v1_resources.append(_get_api_resource("BrokerAuthorization"))
-            v1_resources.append(_get_api_resource("MqttBridgeTopicMap"))
-            v1_resources.append(_get_api_resource("MqttBridgeConnector"))
-            v1_resources.append(_get_api_resource("DataLakeConnector"))
-            v1_resources.append(_get_api_resource("DataLakeConnectorTopicMap"))
-            v1_resources.append(_get_api_resource("KafkaConnector"))
-            v1_resources.append(_get_api_resource("KafkaConnectorTopicMap"))
-
         if r == OPCUA_API_V1:
             v1_resources.append(_get_api_resource("AssetType"))
-
-        if r == DATA_PROCESSOR_API_V1:
-            v1_resources.append(_get_api_resource("Dataset"))
-            v1_resources.append(_get_api_resource("Instance"))
-            v1_resources.append(_get_api_resource("Pipeline"))
 
         if r == ORC_API_V1:
             v1_resources.append(_get_api_resource("Instance"))
@@ -150,9 +130,6 @@ def mocked_cluster_resources(request, mocker):
         if r == AKRI_API_V0:
             v1_resources.append(_get_api_resource("Instance"))
             v1_resources.append(_get_api_resource("Configuration"))
-
-        if r == LNM_API_V1B1:
-            v1_resources.append(_get_api_resource("Lnm"))
 
         if r == DEVICEREGISTRY_API_V1:
             v1_resources.append(_get_api_resource("Asset"))
@@ -187,7 +164,7 @@ def mocked_cluster_resources(request, mocker):
 # TODO - @digimaun make this more useful / flexible configuration.
 @pytest.fixture
 def mocked_list_pods(mocked_client):
-    from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
+    from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1PodStatus, V1ObjectMeta, V1Container
 
     expected_pod_map = {}
     namespaces = [generate_random_string()]
@@ -199,9 +176,22 @@ def mocked_list_pods(mocked_client):
         for pod_name in pod_names:
             container_name = generate_random_string()
             spec = V1PodSpec(containers=[V1Container(name=container_name)])
-            pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
+            status = V1PodStatus(phase="Running")
+            pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec, status=status)
             pods.append(pod)
             expected_pod_map[namespace][pod_name] = {container_name: mock_log}
+
+    # add evicted pod for testing
+    evicted_pod_name = "evicted_pod"
+    evicted_pod_spec = V1PodSpec(containers=[V1Container(name=generate_random_string())])
+    evicted_pod_status = V1PodStatus(phase="Failed", reason="Evicted")
+    evicted_pod = V1Pod(
+        metadata=V1ObjectMeta(namespace=namespace, name=evicted_pod_name),
+        spec=evicted_pod_spec,
+        status=evicted_pod_status
+    )
+    pods.append(evicted_pod)
+    expected_pod_map[namespace][evicted_pod_name] = {evicted_pod.spec.containers[0].name: mock_log}
 
     pods_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
@@ -230,14 +220,14 @@ def mocked_get_custom_objects(mocker):
 def mocked_namespaced_custom_objects(mocked_client):
     def _handle_namespaced_custom_object(*args, **kwargs):
         custom_object = {
-            'kind': 'PodMetrics',
-            'apiVersion': 'metrics.k8s.io/v1beta1',
-            'metadata': {
-                'name': 'mock_custom_object',
-                'namespace': 'namespace',
-                'creationTimestamp': '0000-00-00T00:00:00Z',
+            "kind": "PodMetrics",
+            "apiVersion": "metrics.k8s.io/v1beta1",
+            "metadata": {
+                "name": "mock_custom_object",
+                "namespace": "namespace",
+                "creationTimestamp": "0000-00-00T00:00:00Z",
             },
-            'timestamp': '0000-00-00T00:00:00Z'
+            "timestamp": "0000-00-00T00:00:00Z",
         }
 
         return custom_object
@@ -267,8 +257,14 @@ def mocked_list_jobs(mocked_client):
     from kubernetes.client.models import V1JobList, V1Job, V1ObjectMeta
 
     def _handle_list_jobs(*args, **kwargs):
-        job = V1Job(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_job"))
-        job_list = V1JobList(items=[job])
+        names = ["mock_job"]
+        if "label_selector" in kwargs and kwargs["label_selector"] == AIO_BILLING_USAGE_NAME_LABEL:
+            names.append("aio-usage-job")
+
+        job_list = []
+        for name in names:
+            job_list.append(V1Job(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        job_list = V1JobList(items=job_list)
 
         return job_list
 
@@ -283,11 +279,9 @@ def mocked_list_deployments(mocked_client):
 
     def _handle_list_deployments(*args, **kwargs):
         names = ["mock_deployment"]
-        # @jiacju - currently no unique label for lnm
         if "label_selector" in kwargs and kwargs["label_selector"] is None:
             names.extend(
                 [
-                    "aio-lnm-operator",
                     "aio-opc-admission-controller",
                     "aio-opc-supervisor",
                     "aio-opc-opc",
@@ -419,11 +413,7 @@ def mocked_list_daemonsets(mocked_client):
     from kubernetes.client.models import V1DaemonSetList, V1DaemonSet, V1ObjectMeta
 
     def _handle_list_daemonsets(*args, **kwargs):
-        # @jiacju - currently no unique label for lnm
         daemonset_names = ["mock_daemonset"]
-        if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            daemonset_names.extend(["svclb-aio-lnm-operator"])
-
         daemonset_list = []
         for name in daemonset_names:
             daemonset_list.append(V1DaemonSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
@@ -469,7 +459,14 @@ def mocked_mq_get_traces(mocker):
     test_zipinfo.file_size = 0
     test_zipinfo.compress_size = 0
 
-    # Supports --mq-traces
+    # Supports --broker-traces
     patched_get_traces = mocker.patch("azext_edge.edge.providers.support.mq.get_traces")
     patched_get_traces.return_value = [(test_zipinfo, "trace_data")]
     yield patched_get_traces
+
+
+@pytest.fixture
+def mocked_get_config_map(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.support.shared.get_config_map", autospec=True)
+    patched.return_value = {"configkey": "configvalue"}
+    yield patched

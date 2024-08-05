@@ -31,8 +31,8 @@ def test_check_pre_post(init_setup, post, pre):
     result = run(command)
 
     # default service title
-    expected_title = "Evaluation for {[bright_blue]mq[/bright_blue]} service deployment"
-    expected_precheck_title = "[bright_blue]IoT Operations readiness[/bright_blue]"
+    expected_title = "Evaluation for {broker} service deployment"
+    expected_precheck_title = "IoT Operations readiness"
     expected_pre = not post if pre is None else pre
     expected_post = not pre if post is None else post
     assert result["title"] == expected_title if expected_post else expected_precheck_title
@@ -81,12 +81,9 @@ def test_check_pre_post(init_setup, post, pre):
     assert "_all_" in node_result["targets"]["cluster/nodes"]
     node_count_target = node_result["targets"]["cluster/nodes"]["_all_"]
     assert node_count_target["conditions"] == ["len(cluster/nodes)>=1"]
-    assert node_count_target["evaluations"][0]["value"] == len(kubectl_nodes)
-    final_status = expected_status(
-        success_or_fail=len(kubectl_nodes) >= 1,
-        success_or_warning=len(kubectl_nodes) == 1
-    )
-    assert node_count_target["evaluations"][0]["status"] == node_count_target["status"] == final_status
+    assert not node_count_target["evaluations"]
+    final_status = expected_status(success_or_fail=len(kubectl_nodes) >= 1)
+    assert node_count_target["status"] == final_status
 
     # node eval
     for node in kubectl_nodes:

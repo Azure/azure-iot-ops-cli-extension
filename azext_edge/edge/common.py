@@ -50,7 +50,7 @@ class CheckTaskStatus(Enum):
 
     @classmethod
     def map_to_colored_emoji(cls, value) -> str:
-        return f"[{cls[value].color}]{cls[value].emoji}[{cls[value].color}]"
+        return f"[{cls[value].color}]{cls[value].emoji}[/{cls[value].color}]"
 
 
 class ResourceState(Enum):
@@ -63,6 +63,7 @@ class ResourceState(Enum):
     recovering = "Recovering"
     succeeded = "Succeeded"
     failed = "Failed"
+    waiting = "Waiting"
     ok = "OK"
     warn = "warn"
     error = "Error"
@@ -81,6 +82,7 @@ class ResourceState(Enum):
             cls.n_a.value: CheckTaskStatus.warning,
             cls.failed.value: CheckTaskStatus.error,
             cls.error.value: CheckTaskStatus.error,
+            cls.waiting.value: CheckTaskStatus.warning,
         }
         return status_map.get(value, CheckTaskStatus.success)
 
@@ -140,14 +142,22 @@ class OpsServiceType(ListableEnum):
     """
 
     auto = "auto"
-    billing = "billing"
-    mq = "mq"
-    lnm = "lnm"
+    mq = "broker"
     opcua = "opcua"
-    dataprocessor = "dataprocessor"
     orc = "orc"
     akri = "akri"
     deviceregistry = "deviceregistry"
+    billing = "billing"
+    dataflow = "dataflow"
+
+    @classmethod
+    def list_check_services(cls):
+        return [
+            cls.mq.value,
+            cls.opcua.value,
+            cls.akri.value,
+            cls.deviceregistry.value,
+        ]
 
 
 class ResourceProviderMapping(ListableEnum):
@@ -186,14 +196,6 @@ class ResourceTypeMapping(Enum):
             ResourceTypeMapping.cluster_extensions: ResourceProviderMapping.kubernetes_configuration.value,
         }
         return mapping[self]
-
-
-class ClusterExtensionsMapping(Enum):
-    """
-    Cluster extension mappings.
-    """
-
-    asset = "microsoft.deviceregistry.assets"
 
 
 class AEPAuthModes(Enum):

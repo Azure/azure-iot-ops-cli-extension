@@ -8,15 +8,15 @@ from .base import EdgeResourceApi
 from ...common import ListableEnum
 
 
-class DataProcessorResourceKinds(ListableEnum):
-    DATASET = "dataset"
-    INSTANCE = "instance"
-    PIPELINE = "pipeline"
+class DataflowResourceKinds(ListableEnum):
+    DATAFLOWENDPOINT = "dataflowendpoint"
+    DATAFLOWPROFILE = "dataflowprofile"
+    DATAFLOW = "dataflow"
 
 
-DATA_PROCESSOR_API_V1 = EdgeResourceApi(
-    group="dataprocessor.iotoperations.azure.com",
-    version="v1",
-    moniker="dataprocessor",
-    label="microsoft-iotoperations-dp"
+DATAFLOW_API_V1B1 = EdgeResourceApi(
+    group="connectivity.iotoperations.azure.com",
+    version="v1beta1",
+    moniker="dataflow",
+    label="microsoft-iotoperations-dataflows"
 )

@@ -7,10 +7,11 @@ on:
         type: string
         required: true
         default: ops-cli-int-test-rg
-      template-content:
-        description: Custom AIO deployment template file contents, used for all deployments in this workflow.
+      runtime-init-args:
+        description: Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments).
         type: string
         required: false
+        default: ''
       custom-locations-oid:
         description: Custom Locations OID
         type: string
@@ -45,6 +46,16 @@ on:
         type: string
         required: false
         default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+      runtime-init-args:
+        description: Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments).
+        type: string
+        required: false
+        default: ''
+      init-continue-on-error:
+        description: Continue on error for init integration tests
+        type: boolean
+        required: false
+        default: true
       use-container:
         description: Build container image for tests
         type: boolean
@@ -57,7 +68,7 @@ permissions:
   id-token: 'write'
 
 env:
-  KV_NAME: "opskv${{ github.run_number }}"
+  KV_NAME: "opskv${{ github.run_number }}x"
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
 
 jobs:
@@ -71,49 +82,62 @@ jobs:
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     - name: "Create Key Vault for clusters"
-      run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false
+      run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false --tags run_number=${{ github.run_number }}
 
   test:
     needs: [create_kv]
     outputs:
-      CLUSTER_PREFIX: "az-iot-ops-test-cluster${{ github.run_number }}"
+      CLUSTER_PREFIX: "iotopstest-${{ github.run_number }}"
       RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
       KV_NAME: ${{ env.KV_NAME }}
     env:
-      CLUSTER_NAME: "az-iot-ops-test-cluster${{ github.run_number }}${{ matrix.feature }}"
+      CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
       CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
       EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
       K3S_VERSION: "v1.28.5+k3s1"
+      CA_FILE: "test-ca.pem"
+      CA_KEY_FILE: "test-ca-key.pem"
     strategy:
       fail-fast: false
       matrix:
-        feature: [default, mq-insecure, no-syncrules, ca-certs]
-        include:
-          # default / limited options
+        feature: [custom-input, default, insecure-listener, no-syncrules, ca-certs]
+        runtime-args:
+          - ${{ inputs.runtime-init-args != '' }}
+        exclude:
+          - feature: custom-input
+            runtime-args: false
           - feature: default
-            ca-valid-days: 3
-            kv-spc-secret-name: test-kv-secret
-          # test --mq-insecure deployment
-          - feature: mq-insecure
-            mq-insecure: true
-            no-preflight: true
-            csi-config: 'telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m'
-          # test disabling custom sync rules
+            runtime-args: true
+          - feature: insecure-listener
+            runtime-args: true
           - feature: no-syncrules
-            disable-rsync-rules: true
-          # test custom ca files
+            runtime-args: true
           - feature: ca-certs
-            ca-file: 'test-ca.pem'
-            ca-key-file: 'test-ca-key.pem'
-            include-dp: true
+            runtime-args: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
+      - name: "Determine Init Args"
+        id: "init"
+        run: |
+          echo "NO_PREFLIGHT=false" >> $GITHUB_OUTPUT
+          if [[ ${{ matrix.feature }} == "default" ]]; then
+            echo "ARG=--ca-valid-days 3 --kv-spc-secret-name test-kv-secret --simulate-plc" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} == "insecure-listener" ]]; then
+            echo "ARG=--add-insecure-listener --broker-service-type LoadBalancer --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m" >> $GITHUB_OUTPUT
+            echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} == "no-syncrules" ]]; then
+            echo "ARG=--disable-rsync-rules" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} == "ca-certs" ]]; then
+            echo "ARG=--ca-file \"${{ env.CA_FILE }}\" --ca-key-file \"${{ env.CA_KEY_FILE }}\"" >> $GITHUB_OUTPUT
+          else
+            echo "ARG=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
+          fi
       - name: "Output variables for future steps"
         id: "env_out"
         run: |
-          echo "RESOURCE_GROUP=${{env.RESOURCE_GROUP}}" >> $GITHUB_OUTPUT
-          echo "CLUSTER_NAME=${{env.CLUSTER_NAME}}" >> $GITHUB_OUTPUT
+          echo "RESOURCE_GROUP=${{ env.RESOURCE_GROUP }}" >> $GITHUB_OUTPUT
+          echo "CLUSTER_NAME=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
       - name: "Setup python"
         uses: actions/setup-python@v5
         with:
@@ -164,13 +188,20 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
-      - name: "Get Keyvault ID"
+      - name: "Tox test environment setup for init"
         run: |
-          KV_ID=$(az keyvault show -n ${{env.KV_NAME}} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
-          echo "KV_ID=$KV_ID" >> $GITHUB_ENV
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          python -m pip install tox
+          tox r -vv -e python-init-int --notest
+      - name: "Tox test environment setup for integration tests"
+        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          tox r -vv -e python-int --notest
       - name: "Create CA certificates"
-        if: ${{matrix.feature == 'ca-certs'}}
+        if: ${{ matrix.feature == 'ca-certs' }}
         run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           >ca.conf cat <<-EOF
           [ req ]
           distinguished_name = req_distinguished_name
@@ -186,47 +217,30 @@ jobs:
           subjectKeyIdentifier = hash
           authorityKeyIdentifier = keyid
           EOF
-          openssl ecparam -name prime256v1 -genkey -noout -out ${{ matrix.ca-key-file }}
-          openssl req -new -x509 -key ${{ matrix.ca-key-file }} -days 30 -config ca.conf -out ${{ matrix.ca-file }}
+          openssl ecparam -name prime256v1 -genkey -noout -out ${{ env.CA_KEY_FILE }}
+          openssl req -new -x509 -key ${{ env.CA_KEY_FILE }} -days 30 -config ca.conf -out ${{ env.CA_FILE }}
           rm ca.conf
-      - name: "Create local template file"
-        if: ${{ inputs.template-content }}
+      - name: "Get Keyvault ID"
+        id: "keyvault_id"
+        run: |
+          KV_ID=$(az keyvault show -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
+          echo "KV_ID=$KV_ID" >> $GITHUB_OUTPUT
+      - name: "Tox INIT Integration Tests"
         env:
-          template: "${{ inputs.template-content }}"
-        run: |
-          >custom-template.json cat <<-'EOF'
-          ${{ env.template }}
-          EOF
-      - name: "AIO Deployment"
-        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
-        with:
-          cluster: ${{ env.CLUSTER_NAME }}
-          resource-group: ${{ env.RESOURCE_GROUP }}
-          keyvault-id: ${{ env.KV_ID }}
-          sp-app-id: ${{ secrets.AIO_SP_APP_ID || '' }}
-          sp-object-id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
-          sp-secret: ${{ secrets.AIO_SP_SECRET || '' }}
-          no-preflight: ${{ matrix.no-preflight }}
-          mq-insecure: ${{ matrix.mq-insecure }}
-          disable-rsync-rules: ${{ matrix.disable-rsync-rules }}
-          ca-valid-days: ${{ matrix.ca-valid-days || '' }}
-          ca-file: ${{ matrix.ca-file || '' }}
-          ca-key-file: ${{ matrix.ca-key-file || '' }}
-          kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
-          template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
-          csi-config: ${{ matrix.csi-config || ''}}
-          include-dp: ${{ matrix.include-dp }}
-      - name: "Allow cluster to finish provisioning"
-        run: |
-          sleep 2m
-      - name: "Tox test environment setup"
-        if: ${{matrix.feature == 'default' && !inputs.use-container}}
+          AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
+          azext_edge_init_continue_on_error: ${{ inputs.init-continue-on-error || '' }}
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_kv: ${{ steps.keyvault_id.outputs.KV_ID }}
+          azext_edge_init_args: ${{ steps.init.outputs.ARG }}
+          azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
+          azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
+          azext_edge_sp_secret: ${{ secrets.AIO_SP_SECRET || '' }}
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-          python -m pip install tox
-          tox r -vv -e python-int --notest
+          tox r -e python-init-int --skip-pkg-install -- --durations=0
       - name: "Az CLI login refresh"
-        if: ${{matrix.feature == 'default'}}
+        if: ${{ matrix.feature == 'default' }}
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -243,20 +257,18 @@ jobs:
             sleep 240
           done &
       - name: "Tox Integration Tests"
-        if: ${{matrix.feature == 'default' && !inputs.use-container}}
+        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_skip_init: True
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-int --skip-pkg-install -- --durations=0
       - name: "Containerized tests"
-        if: ${{matrix.feature == 'default' && inputs.use-container}}
+        if: ${{ matrix.feature == 'default' && inputs.use-container }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_cluster: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
-          azext_edge_skip_init: True
         run: |
           # volume mounts
           azure_dir=$(realpath ~/.azure)
@@ -290,45 +302,52 @@ jobs:
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle --svc auto
-          az iot ops support create-bundle --svc mq --mq-traces
+          az iot ops support create-bundle --svc broker --broker-traces
           az iot ops check
           az iot ops check --pre
           az iot ops check --post
           az iot ops check --as-object
-          az iot ops check --svc dataprocessor
-          az iot ops check --svc mq --resources broker brokerlistener diagnosticservice
-          az iot ops mq stats
-          az iot ops mq stats --raw
-          az iot ops mq get-password-hash -p test
+          az iot ops check --svc broker --resources broker brokerlistener
+          az iot ops broker stats
+          az iot ops broker stats --raw
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
           az iot ops verify-host
       - name: "Delete Cluster for redeployment"
-        if: ${{matrix.feature == 'ca-certs'}}
+        if: ${{ matrix.feature == 'ca-certs' }}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
-      - name: "Test cluster redeployment"
-        if: ${{matrix.feature == 'ca-certs'}}
-        uses: azure/azure-iot-ops-cli-extension/.github/actions/deploy-aio@dev
-        with:
-          cluster: ${{ env.CLUSTER_NAME }}
-          resource-group: ${{ env.RESOURCE_GROUP }}
-          keyvault-id: ${{ env.KV_ID }}
-          sp-app-id: ${{ secrets.AIO_SP_APP_ID || '' }}
-          sp-object-id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
-          sp-secret: ${{ secrets.AIO_SP_SECRET || '' }}
-          no-preflight: ${{ matrix.no-preflight }}
-          mq-insecure: ${{ matrix.mq-insecure }}
-          disable-rsync-rules: ${{ matrix.disable-rsync-rules }}
-          ca-valid-days: ${{ matrix.ca-valid-days || '' }}
-          ca-file: ${{ matrix.ca-file || '' }}
-          ca-key-file: ${{ matrix.ca-key-file || '' }}
-          kv-spc-secret-name: ${{ matrix.kv-spc-secret-name || '' }}
-          template-file: ${{ inputs.template-content && 'custom-template.json' || '' }}
-          csi-config: ${{ matrix.csi-config || ''}}
-          include-dp: ${{ matrix.include-dp }}
+      - name: "Redeploy cluster via tox"
+        if: ${{ matrix.feature == 'ca-certs' }}
+        env:
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_kv: ${{ steps.keyvault_id.outputs.KV_ID }}
+          azext_edge_init_args: ${{ steps.init.outputs.ARG }}
+          azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
+          azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
+          azext_edge_sp_secret: ${{ secrets.AIO_SP_SECRET || '' }}
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          tox r -e python-init-int --skip-pkg-install -- --durations=0
       - name: "Delete AIO resources"
+        if: ${{ always() }}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
       - name: "Delete connected cluster"
+        if: ${{ always() }}
         run: |
           az connectedk8s delete --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
+
+  delete_kv:
+    if: ${{ always() }}
+    needs: [test]
+    runs-on: ubuntu-22.04
+    steps:
+    - name: "Az CLI login"
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    - name: "Delete Key Vault for clusters"
+      run: az keyvault delete -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --no-wait

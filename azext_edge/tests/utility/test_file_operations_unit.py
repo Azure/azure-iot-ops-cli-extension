@@ -68,7 +68,7 @@ class TestFileHeaders(object):
                         contents = None
                         with open(entry.path, "rt", encoding="utf-8") as f:
                             contents = f.read()
-                        if contents and not contents.startswith(header):
+                        if contents and not contents.startswith(header) and "vendor" not in entry.path:
                             files_missing_header.append(entry.path)
 
         _validate_directory(EXTENSION_ROOT)
@@ -230,23 +230,3 @@ def test_try_loading_as(mocker, error, raise_error, return_value):
         )
         assert result == (None if error else return_value)
     loader.assert_called_once_with(content)
-
-
-@pytest.mark.parametrize("env_value", ["true", "y", "1", "false", "0", "no", "random", ""])
-@pytest.mark.parametrize("flag_key", [generate_random_string()])
-def test_is_env_flag_enabled(env_value: str, flag_key: str):
-    from os import environ
-
-    environ[flag_key] = env_value
-
-    from azext_edge.edge.util import is_env_flag_enabled
-
-    is_enabled = is_env_flag_enabled(flag_key)
-
-    if env_value in ["true", "y", "1"]:
-        assert is_enabled
-        return
-
-    assert not is_enabled
-
-    del environ[flag_key]

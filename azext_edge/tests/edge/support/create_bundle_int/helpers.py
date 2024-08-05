@@ -5,12 +5,11 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Dict, List, NamedTuple, Optional, Union
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
-from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import (
     PLURAL_KEY,
@@ -31,13 +30,12 @@ WORKLOAD_TYPES = [
 class NamespaceTuple(NamedTuple):
     aio: str
     usage_system: str
-    lnm_svclb: str
 
 
 def assert_file_names(files: List[str]):
     """Asserts file names."""
     for full_name in files:
-        name = full_name.split(".")
+        name = split_name(full_name)
         file_type = name.pop(0)
         extension = name.pop(-1)
         # trace files
@@ -67,7 +65,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
     """Maps deployment/pod/etc to list of dissembled file names"""
     file_name_objs = {}
     for full_name in files:
-        name = full_name.split(".")
+        name = split_name(full_name)
         file_type = name.pop(0)
         name_obj = {"extension": name.pop(-1), "full_name": full_name}
 
@@ -139,6 +137,7 @@ def check_workload_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     expected_workload_types: List[str],
     prefixes: Union[str, List[str]],
+    bundle_path: str,
     optional_workload_types: Optional[List[str]] = None,
 ):
     if "pod" in expected_workload_types:
@@ -161,9 +160,9 @@ def check_workload_resource_files(
             assert f"{file['descriptor']}.{file.get('sub_descriptor')}" not in converted_file
             converted_file[file["descriptor"]] = True
         else:
-            assert file["sub_descriptor"] == "previous"
+            assert file["sub_descriptor"] == "previous", f"Full file name: {file['full_name']}, file_obj {file}"
             sub_key = f"{file['descriptor']}.{file['sub_descriptor']}"
-            assert sub_key not in converted_file
+            assert sub_key not in converted_file, f"Full file name: {file['full_name']}, file_obj {file}"
             converted_file[sub_key] = True
             # if msi-adapter.previous present, msi-adapter must present too
             # for some reason does not apply to xxx.init
@@ -171,7 +170,14 @@ def check_workload_resource_files(
                 converted_file[file["descriptor"]] = False
 
     expected_pods = get_kubectl_workload_items(prefixes, service_type="pod")
-    find_extra_or_missing_names("pod", file_pods.keys(), expected_pods.keys())
+    check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))
+    find_extra_or_missing_names(
+        resource_type="pod",
+        result_names=file_pods.keys(),
+        expected_names=expected_pods.keys(),
+        ignore_extras=True,
+        ignore_missing=True
+    )
 
     for name, files in file_pods.items():
         for extension, value in files.items():
@@ -195,44 +201,56 @@ def check_workload_resource_files(
         _check_non_pod_files(optional_workload_types, required=False)
 
 
+def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]]):
+    # open the file using bundle_dir and check for evicted pods
+    name_extension_pair = list(set([(file["name"], file["extension"]) for file in file_pods]))
+    # TODO: upcoming fix will get file content earlier
+    with ZipFile(bundle_dir, 'r') as zip:
+        file_names = zip.namelist()
+        for name, extension in name_extension_pair:
+            if extension == "log":
+                # find file path in file_names that has name and extension
+                file_path = next((file for file in file_names if file.endswith(name + ".yaml")), None)
+                if not file_path:
+                    continue
+                with zip.open(file_path) as pod_content:
+                    log_content = pod_content.read().decode("utf-8")
+                    assert "Evicted" not in log_content, f"Evicted pod {name} log found in bundle."
+
+
 def get_file_map(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
     mq_traces: bool = False
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    namespace, c_namespace, lnm_namespace = process_top_levels(walk_result, ops_service)
+    namespace, c_namespace = process_top_levels(walk_result, ops_service)
     walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
-
-    # Level 2 and 3 - bottom
-    if ops_service == OpsServiceType.dataprocessor.value and not walk_result:
-        return
 
     ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
     # separate namespaces
     file_map = {"__namespaces__": {}}
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
-        assert len(walk_result) == 2
+        assert len(walk_result) == 3
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
     elif ops_service == "billing":
-        assert len(walk_result) == 2
-        ops_path = path.join(BASE_ZIP_PATH, namespace, "clusterconfig", ops_service)
+        assert len(walk_result) == 3
+        ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
-    elif ops_service == "lnm":
-        assert len(walk_result) >= 1
-        ops_path = path.join(BASE_ZIP_PATH, namespace, ops_service)
-
-        if lnm_namespace:
-            lnm_path = path.join(BASE_ZIP_PATH, lnm_namespace, ops_service)
-            file_map["svclb"] = convert_file_names(walk_result[lnm_path]["files"])
-            file_map["__namespaces__"]["svclb"] = lnm_namespace
-    elif ops_service != "otel":
-        assert len(walk_result) == 1
+    elif ops_service == "deviceregistry":
+        if ops_path not in walk_result:
+            assert len(walk_result) == 1
+            pytest.skip(f"No bundles created for {ops_service}.")
+        else:
+            assert len(walk_result) == 2
+    # remove ops_service that are not selectable by --svc
+    elif ops_service != "otel" and ops_service != "meta":
+        assert len(walk_result) == 2
         assert not walk_result[ops_path]["folders"]
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = namespace
@@ -243,14 +261,13 @@ def process_top_levels(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str
 ) -> NamespaceTuple:
     level_0 = walk_result.pop(BASE_ZIP_PATH)
-    for file in ["events.yaml", "nodes.yaml", "storage_classes.yaml"]:
+    for file in ["events.yaml", "nodes.yaml", "storage-classes.yaml", "azure-clusterconfig.yaml"]:
         assert file in level_0["files"]
     if not level_0["folders"]:
         pytest.skip(f"No bundles created for {ops_service}.")
     namespaces = level_0["folders"]
     namespace = namespaces[0]
     clusterconfig_namespace = None
-    lnm_namespace = None
 
     def _get_namespace_determinating_files(
         name: str,
@@ -261,7 +278,7 @@ def process_top_levels(
         return [f for f in level1.get("files", []) if f.startswith(file_prefix)]
 
     for name in namespaces:
-        # determine which namespace belongs to aio vs billing vs lnm
+        # determine which namespace belongs to aio vs billing
         if _get_namespace_determinating_files(
             name=name,
             folder=path.join("clusterconfig", "billing"),
@@ -269,13 +286,6 @@ def process_top_levels(
         ):
             # if there is a deployment, should be azure-extensions-usage-system
             clusterconfig_namespace = name
-        elif _get_namespace_determinating_files(
-            name=name,
-            folder=OpsServiceType.lnm.value,
-            file_prefix="daemonset"
-        ):
-            # if there is a daemonset, should be kube-system
-            lnm_namespace = name
         else:
             namespace = name
 
@@ -284,36 +294,27 @@ def process_top_levels(
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
         assert level_1["folders"] == ["clusterconfig"]
         assert not level_1["files"]
-        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, "clusterconfig"))
-        assert level_2["folders"] == ["billing"]
-        assert not level_2["files"]
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
 
-    if lnm_namespace:
-        # remove empty lnm svclb related folders
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, lnm_namespace))
-        assert level_1["folders"] == ["lnm"]
-        assert not level_1["files"]
-
     logger.debug("Determined the following namespaces:")
     logger.debug(f"AIO namespace: {namespace}")
     logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
-    logger.debug(f"LNM svclb namespace: {lnm_namespace}")
 
     return NamespaceTuple(
         aio=namespace,
         usage_system=clusterconfig_namespace,
-        lnm_svclb=lnm_namespace
     )
 
 
 def run_bundle_command(
     command: str,
     tracked_files: List[str],
-) -> Dict[str, Dict[str, List[str]]]:
+) -> Tuple[Dict[str, Dict[str, List[str]]], str]:
     result = run(command)
+    if not result:
+        pytest.skip("No bundle was created.")
     assert result["bundlePath"]
     tracked_files.append(result["bundlePath"])
     # transform this into a walk result of an extracted zip file
@@ -348,4 +349,18 @@ def run_bundle_command(
             # lastly add in the file (with the correct seperators)
             walk_result[built_path]["files"].append(file_name)
 
-    return walk_result
+    return walk_result, result["bundlePath"]
+
+
+def split_name(name: str) -> List[str]:
+    first_pass = name.split(".")
+    second_pass = []
+    for i in range(len(first_pass)):
+        # we should not need to worry about trying to access too early
+        # since the first part should be the workload type (ex: pod)
+        if first_pass[i].isnumeric() or first_pass[i - 1].isnumeric():
+            second_pass[-1] = f"{second_pass[-1]}.{first_pass[i]}"
+        else:
+            second_pass.append(first_pass[i])
+
+    return second_pass

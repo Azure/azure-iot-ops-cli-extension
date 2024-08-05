@@ -117,7 +117,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                 },
             ],
             # namespace conditions str
-            ["spec.assetEndpointProfileUri", 'len(spec.dataPoints)', "spec.dataPoints.[0].dataSource"],
+            ["spec.assetEndpointProfileUri", 'len(spec.dataPoints)'],
             # namespace evaluations str
             [
                 [
@@ -202,7 +202,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                 },
             ],
             # namespace conditions str
-            ["spec.assetEndpointProfileUri", "len(spec.events)", "spec.events.[0].eventNotifier"],
+            ["spec.assetEndpointProfileUri", "len(spec.events)"],
             # namespace evaluations str
             [
                 [

@@ -14,9 +14,6 @@ from ...conftest import BP_PATH
 from .....generators import generate_random_string
 
 
-@pytest.mark.parametrize("mocked_resource_management_client", [{
-    "resources.get_by_id": {"properties": {"extensionType": "microsoft.deviceregistry.assets"}},
-}], ids=["extension"], indirect=True)
 @pytest.mark.parametrize("mocked_build_query", [{
     "path": BP_PATH,
     "side_effect": [[{
@@ -48,6 +45,7 @@ from .....generators import generate_random_string
     "cluster only"
 ])
 def test_check_cluster_and_custom_location(
+    mocker,
     mocked_cmd,
     mocked_resource_management_client,
     mocked_build_query,
@@ -57,8 +55,21 @@ def test_check_cluster_and_custom_location(
     cluster_resource_group,
     cluster_subscription
 ):
-    from azext_edge.edge.providers.rpsaas.adr.base import ADRBaseProvider
-    provider = ADRBaseProvider(mocked_cmd, generate_random_string())
+    from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
+    extension_key = generate_random_string()
+    ext_result = mocker.Mock()
+    ext_result.as_dict.return_value = {
+        "properties": {
+            "configurationSettings": {f"{extension_key}.enabled": "true"},
+            "extensionType": "microsoft.iotoperations"
+        }
+    }
+    mocked_resource_management_client.resources.get_by_id.return_value = ext_result
+
+    provider = RPSaaSBaseProvider(
+        mocked_cmd,
+        generate_random_string()
+    )
 
     custom_location_name = req.get("custom_location_name")
     cluster_name = req.get("cluster_name")
@@ -126,8 +137,12 @@ def test_check_cluster_and_custom_location(
 def test_check_cluster_and_custom_location_argument_error(
     mocked_cmd,
 ):
-    from azext_edge.edge.providers.rpsaas.adr.base import ADRBaseProvider
-    provider = ADRBaseProvider(mocked_cmd, generate_random_string())
+    from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
+    provider = RPSaaSBaseProvider(
+        mocked_cmd,
+        generate_random_string(),
+        generate_random_string()
+    )
 
     with pytest.raises(RequiredArgumentMissingError):
         provider.check_cluster_and_custom_location(
@@ -167,8 +182,12 @@ def test_check_cluster_and_custom_location_build_query_error(
     mocked_build_query,
     req
 ):
-    from azext_edge.edge.providers.rpsaas.adr.base import ADRBaseProvider
-    provider = ADRBaseProvider(mocked_cmd, generate_random_string())
+    from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
+    provider = RPSaaSBaseProvider(
+        mocked_cmd,
+        generate_random_string(),
+        generate_random_string()
+    )
     custom_location_name = req.get("custom_location_name")
     cluster_name = req.get("cluster_name")
 
@@ -191,11 +210,6 @@ def test_check_cluster_and_custom_location_build_query_error(
         assert "cluster" in e.value.error_msg.lower()
 
 
-@pytest.mark.parametrize("mocked_resource_management_client", [
-    {
-        "resources.get_by_id": {"properties": {"extensionType": generate_random_string()}}
-    },
-], ids=["invalid_extensions"], indirect=True)
 @pytest.mark.parametrize("mocked_build_query", [
     {
         "path": BP_PATH,
@@ -211,10 +225,25 @@ def test_check_cluster_and_custom_location_build_query_error(
     },
 ], ids=["build_query"], indirect=True)
 def test_check_cluster_and_custom_location_no_extension_error(
+    mocker,
     mocked_cmd,
     mocked_build_query,
     mocked_resource_management_client,
 ):
+    from azext_edge.edge.providers.rpsaas.base_provider import RPSaaSBaseProvider
+    ext_result = mocker.Mock()
+    ext_result.as_dict.return_value = {
+        "properties": {
+            "extensionType": generate_random_string()
+        }
+    }
+    mocked_resource_management_client.resources.get_by_id.return_value = ext_result
+
+    provider = RPSaaSBaseProvider(
+        mocked_cmd,
+        generate_random_string()
+    )
+
     from azext_edge.edge.providers.rpsaas.adr.base import ADRBaseProvider
     provider = ADRBaseProvider(mocked_cmd, generate_random_string())
 
@@ -228,4 +257,4 @@ def test_check_cluster_and_custom_location_no_extension_error(
     mocked_resource_management_client.resources.get_by_id.assert_called_once()
 
     assert isinstance(e.value, ValidationError)
-    assert "missing the microsoft.deviceregistry.assets extension" in e.value.error_msg.lower()
+    assert "missing the microsoft.iotoperations extension" in e.value.error_msg.lower()

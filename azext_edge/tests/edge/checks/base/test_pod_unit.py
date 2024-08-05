@@ -9,11 +9,8 @@ import pytest
 from azext_edge.edge.common import CheckTaskStatus, PodState
 from azext_edge.edge.providers.check.base import (
     decorate_pod_phase,
-    evaluate_detailed_pod_health,
-)
-from azext_edge.edge.providers.check.base.pod import (
     evaluate_pod_health,
-    process_pods_status,
+    process_pod_status,
 )
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 from azext_edge.tests.edge.checks.conftest import generate_pod_stub
@@ -32,32 +29,33 @@ def test_decorate_pod_phase(phase, expected):
 
 
 @pytest.mark.parametrize("target_service_pod", [generate_random_string()])
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("namespace", [ALL_NAMESPACES_TARGET, generate_random_string()])
 @pytest.mark.parametrize("padding", [4])
 @pytest.mark.parametrize(
     "pods",
     [
         [],
-        [generate_pod_stub(name="lnm-operator-1", phase="Running")],
-        [generate_pod_stub(name="lnm-operator-1", phase="Pending")],
-        [generate_pod_stub(name="lnm-operator-1", phase="Failed")],
+        [generate_pod_stub(name="mq-operator-1", phase="Running")],
+        [generate_pod_stub(name="mq-operator-1", phase="Pending")],
+        [generate_pod_stub(name="mq-operator-1", phase="Failed")],
         [
             generate_pod_stub(
-                name="lnm-operator-1",
+                name="akri-operator-1",
                 phase="Running",
             ),
             generate_pod_stub(
-                name="lnm-operator-2",
+                name="akri-operator-2",
                 phase="Pending",
             ),
         ],
         [
             generate_pod_stub(
-                name="lnm-operator-1",
+                name="opcua-operator-1",
                 phase="Running",
             ),
             generate_pod_stub(
-                name="lnm-operator-3",
+                name="opcua-operator-3",
                 phase="Failed",
             ),
         ],
@@ -65,12 +63,13 @@ def test_decorate_pod_phase(phase, expected):
 )
 def test_evaluate_pod_health(
     mocker,
-    mock_process_pods_status,
+    mock_process_pod_status,
     mocked_check_manager,
     namespace,
     padding,
     pods,
     target_service_pod,
+    detail_level,
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.check.base.pod.get_namespaced_pods_by_prefix",
@@ -84,111 +83,27 @@ def test_evaluate_pod_health(
         pod=target_service_pod,
         display_padding=padding,
         service_label=generate_random_string(),
+        detail_level=detail_level,
     )
 
-    mocked_check_manager.add_target_conditions.assert_called_once_with(
-        target_name=target_service_pod,
-        namespace=namespace,
-        conditions=[f"pod/{target_service_pod}.status.phase"]
-    )
-
-    mock_process_pods_status.assert_called_once_with(
+    mock_process_pod_status.assert_called_once_with(
         check_manager=mocked_check_manager,
         namespace=namespace,
         target=target_service_pod,
         target_service_pod=f"pod/{target_service_pod}",
         pods=pods,
-        display_padding=padding
-    )
-
-
-@pytest.mark.parametrize("target_service_pod", [generate_random_string()])
-@pytest.mark.parametrize("namespace", [ALL_NAMESPACES_TARGET, generate_random_string()])
-@pytest.mark.parametrize("padding", [4])
-@pytest.mark.parametrize(
-    "pods",
-    [
-        [],
-        [generate_pod_stub(name="lnm-operator-1", phase="Running")],
-        [generate_pod_stub(name="lnm-operator-1", phase="Pending")],
-        [generate_pod_stub(name="lnm-operator-1", phase="Failed")],
-        [
-            generate_pod_stub(
-                name="lnm-operator-1",
-                phase="Running",
-            ),
-            generate_pod_stub(
-                name="lnm-operator-2",
-                phase="Pending",
-            ),
-        ],
-        [
-            generate_pod_stub(
-                name="lnm-operator-1",
-                phase="Running",
-            ),
-            generate_pod_stub(
-                name="lnm-operator-3",
-                phase="Failed",
-            ),
-        ],
-    ]
-)
-def test_process_pods_status(
-    mock_add_display_and_eval,
-    mocked_check_manager,
-    namespace,
-    padding,
-    pods,
-    target_service_pod,
-):
-    process_pods_status(
-        check_manager=mocked_check_manager,
-        namespace=namespace,
-        target=target_service_pod,
-        target_service_pod=target_service_pod,
-        pods=pods,
         display_padding=padding,
+        detail_level=detail_level,
     )
-
-    if not pods:
-        mock_add_display_and_eval.assert_called_once_with(
-            check_manager=mocked_check_manager,
-            target_name=target_service_pod,
-            display_text=f"{target_service_pod}* [yellow]not detected[/yellow].",
-            eval_status=CheckTaskStatus.warning.value,
-            eval_value=None,
-            resource_name=target_service_pod,
-            namespace=namespace,
-            padding=(0, 0, 0, padding)
-        )
-
-    else:
-        for pod in pods:
-            pod_dict = pod.to_dict()
-            pod_name = pod_dict["metadata"]["name"]
-            pod_phase = pod_dict.get("status", {}).get("phase")
-            pod_phase_deco, status = decorate_pod_phase(pod_phase)
-            resource_name = f"pod/{pod_name}"
-            mock_add_display_and_eval.assert_any_call(
-                check_manager=mocked_check_manager,
-                target_name=target_service_pod,
-                display_text=f"Pod {{[bright_blue]{pod_name}[/bright_blue]}} in phase {{{pod_phase_deco}}}.",
-                eval_status=status,
-                eval_value={"name": pod_name, "status.phase": pod_phase},
-                resource_name=resource_name,
-                namespace=namespace,
-                padding=(0, 0, 0, padding)
-            )
 
 
 @pytest.mark.parametrize("target_service_pod", [generate_random_string()])
 @pytest.mark.parametrize("namespace", [ALL_NAMESPACES_TARGET, generate_random_string()])
 @pytest.mark.parametrize("padding", [4])
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("pod, eval_status, eval_value, resource_name, conditions", [
+@pytest.mark.parametrize("pods, eval_status, eval_value, resource_name", [
     (
-        # pod
+        # pods
         None,
         # eval_status
         CheckTaskStatus.warning.value,
@@ -196,210 +111,240 @@ def test_process_pods_status(
         None,
         # resource_name
         "",
-        # conditions
-        []
     ),
     (
-        # pod
-        generate_pod_stub(
-            name="lnm-operator-1",
-            phase="Running",
-            conditions=[
-                {
-                    "type": "Ready",
-                    "status": "True",
-                },
-                {
-                    "type": "Initialized",
-                    "status": "True",
-                },
-                {
-                    "type": "ContainersReady",
-                    "status": "True",
-                },
-                {
-                    "type": "PodScheduled",
-                    "status": "True",
-                },
-            ]
-        ),
+        # pods
+        [
+            generate_pod_stub(
+                name="akri-operator-1",
+                phase="Running",
+                conditions=[
+                    {
+                        "type": "Ready",
+                        "status": "True",
+                    },
+                    {
+                        "type": "Initialized",
+                        "status": "True",
+                    },
+                    {
+                        "type": "ContainersReady",
+                        "status": "True",
+                    },
+                    {
+                        "type": "PodScheduled",
+                        "status": "True",
+                    },
+                ]
+            ),
+        ],
         # eval_status
         CheckTaskStatus.success.value,
         # eval_value
-        {"name": "lnm-operator-1", "status.phase": "Running"},
+        {
+            "status.conditions.ready": True,
+            "status.conditions.initialized": True,
+            "status.conditions.containersready": True,
+            "status.conditions.podscheduled": True,
+            "status.phase": "Running"
+        },
         # resource_name
-        "lnm-operator-1",
-        # conditions
-        [
-            {
-                "type": "Ready",
-                "status": "True",
-                "status_text": "Pod Readiness: [green]True[/green]",
-                "eval_status": CheckTaskStatus.success.value
-            },
-            {
-                "type": "Initialized",
-                "status": "True",
-                "status_text": "Pod Initialized: [green]True[/green]",
-                "eval_status": CheckTaskStatus.success.value
-            },
-            {
-                "type": "ContainersReady",
-                "status": "True",
-                "status_text": "Containers Readiness: [green]True[/green]",
-                "eval_status": CheckTaskStatus.success.value
-            },
-            {
-                "type": "PodScheduled",
-                "status": "True",
-                "status_text": "Pod Scheduled: [green]True[/green]",
-                "eval_status": CheckTaskStatus.success.value
-            },
-        ]
+        "akri-operator-1",
     ),
     (
-        # pod
-        generate_pod_stub(
-            name="lnm-operator-2",
-            phase="Pending",
-            conditions=[
-                {
-                    "type": "PodReadyToStartContainers",
-                    "status": "True",
-                }
-            ]
-        ),
+        # pods
+        [
+            generate_pod_stub(
+                name="mq-operator-2",
+                phase="Pending",
+                conditions=[
+                    {
+                        "type": "PodReadyToStartContainers",
+                        "status": "True",
+                    }
+                ]
+            ),
+        ],
         # eval_status
         CheckTaskStatus.warning.value,
         # eval_value
-        {"name": "lnm-operator-2", "status.phase": "Pending"},
+        {
+            "status.conditions.podreadytostartcontainers": True,
+            "status.phase": "Pending"
+        },
         # resource_name
-        "lnm-operator-2",
-        # conditions
-        [
-            {
-                "type": "PodReadyToStartContainers",
-                "status": "True",
-                "status_text": "Pod Ready To Start Containers: [green]True[/green]",
-                "eval_status": CheckTaskStatus.success.value
-            }
-        ]
+        "mq-operator-2",
     ),
     (
-        # pod
-        generate_pod_stub(
-            name="lnm-operator-3",
-            phase="Running",
-            conditions=[
-                {
-                    "type": "Ready",
-                    "status": "False",
-                },
-                {
-                    "type": "Initialized",
-                    "status": "False",
-                },
-                {
-                    "type": "ContainersReady",
-                    "status": "False",
-                },
-                {
-                    "type": "PodScheduled",
-                    "status": "False",
-                },
-                {
-                    "type": "PodReadyToStartContainers",
-                    "status": "False",
-                }
-            ]
-        ),
-        # eval_status
-        CheckTaskStatus.success.value,
-        # eval_value
-        {"name": "lnm-operator-3", "status.phase": "Running"},
-        # resource_name
-        "lnm-operator-3",
-        # conditions
+        # pods
         [
-            {
-                "type": "Ready",
-                "status": "False",
-                "status_text": "Pod Readiness: [red]False[/red]",
-                "eval_status": CheckTaskStatus.error.value
-            },
-            {
-                "type": "Initialized",
-                "status": "False",
-                "status_text": "Pod Initialized: [red]False[/red]",
-                "eval_status": CheckTaskStatus.error.value
-            },
-            {
-                "type": "ContainersReady",
-                "status": "False",
-                "status_text": "Containers Readiness: [red]False[/red]",
-                "eval_status": CheckTaskStatus.error.value
-            },
-            {
-                "type": "PodScheduled",
-                "status": "False",
-                "status_text": "Pod Scheduled: [red]False[/red]",
-                "eval_status": CheckTaskStatus.error.value
-            },
-            {
-                "type": "PodReadyToStartContainers",
-                "status": "False",
-                "status_text": "Pod Ready To Start Containers: [red]False[/red]",
-                "eval_status": CheckTaskStatus.error.value
-            }
-        ]
-    ),
-    (
-        # pod
-        generate_pod_stub(
-            name="lnm-operator-4",
-            phase="Pending",
-            conditions=[
-                {
-                    "type": "Ready",
-                    "status": "True",
-                },
-            ]
-        ),
-        # eval_status
-        CheckTaskStatus.warning.value,
-        # eval_value
-        {"name": "lnm-operator-4", "status.phase": "Pending"},
-        # resource_name
-        "lnm-operator-4",
-        # conditions
-        [
-            {
-                "type": "Ready",
-                "status": "True",
-                "status_text": "Pod Readiness: [green]True[/green]",
-                "eval_status": CheckTaskStatus.success.value
-            }
-        ]
-    ),
-    (
-        # pod
-        generate_pod_stub(
-            name="lnm-operator-5",
-            phase="Failed",
-            conditions=None
-        ),
+            generate_pod_stub(
+                name="aio-operator-3",
+                phase="Running",
+                conditions=[
+                    {
+                        "type": "Ready",
+                        "status": "False",
+                    },
+                    {
+                        "type": "Initialized",
+                        "status": "False",
+                    },
+                    {
+                        "type": "ContainersReady",
+                        "status": "False",
+                    },
+                    {
+                        "type": "PodScheduled",
+                        "status": "False",
+                    },
+                    {
+                        "type": "PodReadyToStartContainers",
+                        "status": "False",
+                    }
+                ]
+            ),
+        ],
         # eval_status
         CheckTaskStatus.error.value,
         # eval_value
-        {"name": "lnm-operator-5", "status.phase": "Failed"},
+        {
+            "status.conditions.ready": False,
+            "status.conditions.initialized": False,
+            "status.conditions.containersready": False,
+            "status.conditions.podscheduled": False,
+            "status.conditions.podreadytostartcontainers": False,
+            "status.phase": "Running"
+        },
         # resource_name
-        "lnm-operator-5",
-        # conditions
-        None
-    )
+        "aio-operator-3",
+    ),
+    (
+        # pods
+        [
+            generate_pod_stub(
+                name="opcua-operator-4",
+                phase="Pending",
+                conditions=[
+                    {
+                        "type": "Ready",
+                        "status": "True",
+                    },
+                ]
+            ),
+        ],
+        # eval_status
+        CheckTaskStatus.warning.value,
+        # eval_value
+        {
+            "status.conditions.ready": True,
+            "status.phase": "Pending"
+        },
+        # resource_name
+        "opcua-operator-4",
+    ),
+    (
+        # pods
+        [
+            generate_pod_stub(
+                name="mq-operator-5",
+                phase="Failed",
+                conditions=None
+            ),
+        ],
+        # eval_status
+        CheckTaskStatus.error.value,
+        # eval_value
+        {"status.phase": "Failed"},
+        # resource_name
+        "mq-operator-5",
+    ),
+    (
+        # pods
+        [
+            generate_pod_stub(
+                name="akri-operator-6",
+                phase="Running",
+                conditions=[
+                    {
+                        "type": "Ready",
+                        "status": "True",
+                    },
+                    {
+                        "type": "Initialized",
+                        "status": "True",
+                    },
+                    {
+                        "type": "ContainersReady",
+                        "status": "True",
+                    },
+                    {
+                        "type": "PodScheduled",
+                        "status": "True",
+                    },
+                    {
+                        "type": "UnknownCondition",
+                        "status": "True",
+                        "reason": "Unknown",
+                    }
+                ]
+            ),
+        ],
+        # eval_status
+        CheckTaskStatus.warning.value,
+        # eval_value
+        {
+            "status.conditions.ready": True,
+            "status.conditions.initialized": True,
+            "status.conditions.containersready": True,
+            "status.conditions.podscheduled": True,
+            "status.conditions.unknowncondition": 'True',
+            "status.phase": "Running"
+        },
+        # resource_name
+        "akri-operator-6",
+    ),
+    (
+        # pods
+        [
+            generate_pod_stub(
+                name="akri-operator-7",
+                phase="Starting",
+                conditions=[
+                    {
+                        "type": "Ready",
+                        "status": "True",
+                    },
+                    {
+                        "type": "Initialized",
+                        "status": "True",
+                    },
+                    {
+                        "type": "ContainersReady",
+                        "status": "True",
+                    },
+                    {
+                        "type": "PodScheduled",
+                        "status": "False",
+                    },
+                ]
+            ),
+        ],
+        # eval_status
+        CheckTaskStatus.error.value,
+        # eval_value
+        {
+            "status.conditions.ready": True,
+            "status.conditions.initialized": True,
+            "status.conditions.containersready": True,
+            "status.conditions.podscheduled": False,
+            "status.phase": "Starting"
+        },
+        # resource_name
+        "akri-operator-7",
+    ),
 ])
-def test_evaluate_detailed_pod_health(
-    conditions,
+def test_process_pod_status(
     detail_level,
     eval_status,
     eval_value,
@@ -407,23 +352,23 @@ def test_evaluate_detailed_pod_health(
     mocked_check_manager,
     namespace,
     padding,
-    pod,
+    pods,
     resource_name,
     target_service_pod,
 ):
     target_name = generate_random_string()
 
-    evaluate_detailed_pod_health(
+    process_pod_status(
         check_manager=mocked_check_manager,
         target=target_name,
         target_service_pod=target_service_pod,
-        pod=pod,
+        pods=pods,
         display_padding=padding,
         namespace=namespace,
         detail_level=detail_level,
     )
 
-    if not pod:
+    if not pods:
         mock_add_display_and_eval.assert_any_call(
             check_manager=mocked_check_manager,
             target_name=target_name,
@@ -437,6 +382,7 @@ def test_evaluate_detailed_pod_health(
 
     else:
         assert mocked_check_manager.set_target_conditions.called or mocked_check_manager.add_target_conditions.called
+        assert mocked_check_manager.add_display.called
         mocked_check_manager.add_target_eval.assert_any_call(
             target_name=target_name,
             namespace=namespace,
@@ -444,22 +390,3 @@ def test_evaluate_detailed_pod_health(
             value=eval_value,
             resource_name=f"pod/{resource_name}"
         )
-
-        if not conditions:
-            return
-
-        for condition in conditions:
-            condition_status = True if condition.get("status") == "True" else False
-            mock_add_display_and_eval.assert_any_call(
-                check_manager=mocked_check_manager,
-                target_name=target_name,
-                display_text=condition["status_text"],
-                eval_status=condition["eval_status"],
-                eval_value={"name": resource_name, f"status.conditions.{condition['type'].lower()}": condition_status},
-                resource_name=f"pod/{resource_name}",
-                namespace=namespace,
-                padding=(0, 0, 0, padding + 8)
-            )
-
-            if detail_level > ResourceOutputDetailLevel.summary.value:
-                mocked_check_manager.add_display.assert_called()

@@ -14,13 +14,13 @@ from rich.console import Console, NewLine
 from ..common import OpsServiceType
 from ..providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
-    DATA_PROCESSOR_API_V1,
-    MQ_API_V1B1,
-    LNM_API_V1B1,
+    MQTT_BROKER_API_V1B1,
     OPCUA_API_V1,
     ORC_API_V1,
     AKRI_API_V0,
     DEVICEREGISTRY_API_V1,
+    DATAFLOW_API_V1B1,
+    META_API_V1B1,
     EdgeApiManager,
 )
 
@@ -29,13 +29,13 @@ logger = get_logger(__name__)
 console = Console()
 
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
-COMPAT_MQ_APIS = EdgeApiManager(resource_apis=[MQ_API_V1B1])
+COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
-COMPAT_DATA_PROCESSOR_APIS = EdgeApiManager(resource_apis=[DATA_PROCESSOR_API_V1])
 COMPAT_ORC_APIS = EdgeApiManager(resource_apis=[ORC_API_V1])
 COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
-COMPAT_LNM_APIS = EdgeApiManager(resource_apis=[LNM_API_V1B1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
+COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
+COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1B1])
 
 
 def build_bundle(
@@ -49,43 +49,36 @@ def build_bundle(
     from rich.table import Table
 
     from .support.billing import prepare_bundle as prepare_billing_bundle
-    from .support.dataprocessor import prepare_bundle as prepare_dataprocessor_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
-    from .support.lnm import prepare_bundle as prepare_lnm_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.orc import prepare_bundle as prepare_symphony_bundle
+    from .support.dataflow import prepare_bundle as prepare_dataflow_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.otel import prepare_bundle as prepare_otel_bundle
+    from .support.meta import prepare_bundle as prepare_meta_bundle
 
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
+        OpsServiceType.mq.value: {"apis": COMPAT_MQTT_BROKER_APIS, "prepare_bundle": prepare_mq_bundle},
         OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
-        OpsServiceType.mq.value: {"apis": COMPAT_MQ_APIS, "prepare_bundle": prepare_mq_bundle},
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
         },
-        OpsServiceType.dataprocessor.value: {
-            "apis": COMPAT_DATA_PROCESSOR_APIS,
-            "prepare_bundle": prepare_dataprocessor_bundle,
-        },
         OpsServiceType.orc.value: {
             "apis": COMPAT_ORC_APIS,
             "prepare_bundle": prepare_symphony_bundle,
-        },
-        OpsServiceType.lnm.value: {
-            "apis": COMPAT_LNM_APIS,
-            "prepare_bundle": prepare_lnm_bundle,
         },
         OpsServiceType.akri.value: {"apis": COMPAT_AKRI_APIS, "prepare_bundle": prepare_akri_bundle},
         OpsServiceType.deviceregistry.value: {
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,
         },
+        OpsServiceType.dataflow.value: {"apis": COMPAT_DATAFLOW_APIS, "prepare_bundle": prepare_dataflow_bundle},
     }
 
     raise_on_404 = not (ops_service == OpsServiceType.auto.value)
@@ -117,6 +110,10 @@ def build_bundle(
 
     # Collect common resources if any AIO service is deployed with any service selected.
     pending_work["common"] = prepare_shared_bundle()
+
+    # Collect meta resources if any AIO service is deployed with any service selected.
+    deployed_meta_apis = COMPAT_META_APIS.get_deployed()
+    pending_work["meta"] = prepare_meta_bundle(deployed_meta_apis, log_age_seconds)
 
     total_work_count = 0
     for service in pending_work:

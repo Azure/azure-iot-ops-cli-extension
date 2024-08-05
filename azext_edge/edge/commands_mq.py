@@ -4,11 +4,13 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Optional, List
+from typing import Iterable, List, Optional
 
 from knack.log import get_logger
-from .providers.base import load_config_context
+
 from .common import METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT
+from .providers.base import load_config_context
+from .providers.orchestration.resources import Brokers
 
 logger = get_logger(__name__)
 
@@ -47,15 +49,56 @@ def stats(
     )
 
 
-def get_password_hash(cmd, passphrase: str, iterations: int = 210000):
-    import base64
-    from hashlib import pbkdf2_hmac
-    from os import urandom
+def show_broker(cmd, mq_broker_name: str, instance_name: str, resource_group_name: str) -> dict:
+    return Brokers(cmd).show(name=mq_broker_name, instance_name=instance_name, resource_group_name=resource_group_name)
 
-    salt = urandom(16)
 
-    dk = pbkdf2_hmac("sha512", bytes(passphrase, encoding="utf8"), salt, iterations)
-    return {
-        "hash": f"$pbkdf2-sha512$i={iterations},l={len(dk)}${str(base64.b64encode(salt), encoding='utf-8').rstrip('=')}"
-        f"${str(base64.b64encode(dk), encoding='utf-8').rstrip('=')}"
-    }
+def list_brokers(cmd, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+    return Brokers(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
+
+
+def show_broker_listener(
+    cmd, listener_name: str, mq_broker_name: str, instance_name: str, resource_group_name: str
+) -> dict:
+    return Brokers(cmd).listeners.show(
+        name=listener_name,
+        broker_name=mq_broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+
+
+def list_broker_listeners(cmd, mq_broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+    return Brokers(cmd).listeners.list(
+        broker_name=mq_broker_name, instance_name=instance_name, resource_group_name=resource_group_name
+    )
+
+
+def show_broker_authn(cmd, authn_name: str, mq_broker_name: str, instance_name: str, resource_group_name: str) -> dict:
+    return Brokers(cmd).authns.show(
+        name=authn_name,
+        broker_name=mq_broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+
+
+def list_broker_authns(cmd, mq_broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+    return Brokers(cmd).authns.list(
+        broker_name=mq_broker_name, instance_name=instance_name, resource_group_name=resource_group_name
+    )
+
+
+def show_broker_authz(cmd, authz_name: str, mq_broker_name: str, instance_name: str, resource_group_name: str) -> dict:
+    return Brokers(cmd).authzs.show(
+        name=authz_name,
+        broker_name=mq_broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+
+
+def list_broker_authzs(cmd, mq_broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+    return Brokers(cmd).authzs.list(
+        broker_name=mq_broker_name, instance_name=instance_name, resource_group_name=resource_group_name
+    )

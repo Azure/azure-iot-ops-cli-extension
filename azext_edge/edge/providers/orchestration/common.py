@@ -34,16 +34,16 @@ class MqMode(Enum):
 
 
 class MqMemoryProfile(Enum):
-    tiny = "tiny"
-    low = "low"
-    medium = "medium"
-    high = "high"
+    tiny = "Tiny"
+    low = "Low"
+    medium = "Medium"
+    high = "High"
 
 
 class MqServiceType(Enum):
-    cluster_ip = "clusterIp"
-    load_balancer = "loadBalancer"
-    node_port = "nodePort"
+    cluster_ip = "ClusterIp"
+    load_balancer = "LoadBalancer"
+    node_port = "NodePort"
 
 
 class KubernetesDistroType(Enum):

@@ -267,7 +267,7 @@ def get_traces(
             if trace_dir:
                 normalized_dir_path = normalize_dir(dir_path=trace_dir)
                 normalized_dir_path = normalized_dir_path.joinpath(
-                    f"mq_traces_{get_timestamp_now_utc(format='%Y%m%dT%H%M%S')}.zip"
+                    f"broker_traces_{get_timestamp_now_utc(format='%Y%m%dT%H%M%S')}.zip"
                 )
                 # pylint: disable=consider-using-with
                 myzip = ZipFile(file=str(normalized_dir_path), mode="w", compression=ZIP_DEFLATED)

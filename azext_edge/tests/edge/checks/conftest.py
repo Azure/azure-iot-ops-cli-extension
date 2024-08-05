@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 import pytest
-from kubernetes.client import V1Pod, V1ObjectMeta, V1PodStatus, V1PodCondition
+from kubernetes.client import V1Pod, V1ObjectMeta, V1PodStatus, V1PodCondition, V1APIResourceList, V1APIResource
 from typing import List, Dict, Any
 from azext_edge.edge.providers.checks import run_checks
 from azext_edge.edge.providers.check.common import CoreServiceResourceKinds
@@ -19,8 +19,8 @@ def mocked_check_manager(mocker):
 
 
 @pytest.fixture
-def mock_process_pods_status(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.base.pod.process_pods_status")
+def mock_process_pod_status(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.base.pod.process_pod_status")
     yield patched
 
 
@@ -49,20 +49,8 @@ def mock_evaluate_cloud_connector_pod_health(mocker):
 
 
 @pytest.fixture
-def mock_evaluate_dataprocessor_pod_health(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.dataprocessor.evaluate_pod_health", return_value={})
-    yield patched
-
-
-@pytest.fixture
 def mock_evaluate_opcua_pod_health(mocker):
     patched = mocker.patch("azext_edge.edge.providers.check.opcua.get_namespaced_pods_by_prefix", return_value={})
-    yield patched
-
-
-@pytest.fixture
-def mock_get_namespaced_pods_by_prefix(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.lnm.get_namespaced_pods_by_prefix", return_value=[])
     yield patched
 
 
@@ -71,15 +59,6 @@ def mock_generate_deviceregistry_asset_target_resources(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.check.deviceregistry.generate_target_resource_name",
         return_value="deviceregistry.microsoft.com"
-    )
-    yield patched
-
-
-@pytest.fixture
-def mock_generate_lnm_target_resources(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.check.lnm.generate_target_resource_name",
-        return_value="lnmz.layerednetworkmgmt.iotoperations.azure.com"
     )
     yield patched
 
@@ -100,34 +79,21 @@ def mock_opcua_get_namespaced_pods_by_prefix(mocker):
 
 
 @pytest.fixture
+def mock_get_cluster_custom_api(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.check.base.resource.get_cluster_custom_api")
+    yield patched
+
+
+@pytest.fixture
 def mock_resource_types(mocker, ops_service):
     patched = mocker.patch("azext_edge.edge.providers.check.base.deployment.enumerate_ops_service_resources")
 
-    if ops_service == "mq":
+    if ops_service == "broker":
         patched.return_value = (
             {},
             {
                 "Broker": [{}],
                 "BrokerListener": [{}],
-                "DiagnosticService": [{}],
-                "MqttBridgeConnector": [{}],
-                "DataLakeConnector": [{}]
-            }
-        )
-    elif ops_service == "dataprocessor":
-        patched.return_value = (
-            {},
-            {
-                "Dataset": [{}],
-                "Instance": [{}],
-                "Pipeline": [{}]
-            }
-        )
-    elif ops_service == "lnm":
-        patched.return_value = (
-            {},
-            {
-                "Lnm": [{}]
             }
         )
     elif ops_service == "akri":
@@ -218,6 +184,15 @@ def generate_pod_stub(
     pod_status = V1PodStatus(phase=phase, conditions=condition_list)
     pod = V1Pod(metadata=metadata, status=pod_status)
     return pod
+
+
+def generate_api_resource_list(
+    api_version: str,
+    group_version: str,
+    resources: List[Dict[str, Any]],
+):
+    resources = [V1APIResource(**resource) for resource in resources]
+    return V1APIResourceList(api_version=api_version, group_version=group_version, resources=resources)
 
 
 def assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup):

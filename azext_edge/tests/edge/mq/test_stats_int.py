@@ -12,7 +12,7 @@ from ...helpers import run
 def test_stats(init_setup, raw):
     # TODO: add in other params
     # TODO: figure out optimal init setup so trace dir can yield non empty zips
-    command = "az iot ops mq stats"
+    command = "az iot ops broker stats"
     if raw:
         command += " --raw"
     result = run(command)

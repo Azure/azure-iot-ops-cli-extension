@@ -33,191 +33,7 @@ class DataSourceStageType(ListableEnum):
     sql = "input/mssql"
 
 
-class DataProcessorStageType(ListableEnum):
-    """
-    Data processor stage type.
-    """
-    aggregate = "processor/aggregate"
-    enrich = "processor/enrich"
-    filter = "processor/filter"
-    grpc = "processor/grpc"
-    http = "processor/http"
-    lkv = "processor/lkv"
-    transform = "processor/transform"
-
-
-class DataprocessorDestinationStageType(ListableEnum):
-    """
-    Data processor destination stage type.
-    """
-    blob_storage = "output/blobstorage"
-    data_explorer = "output/dataexplorer"
-    fabric = "output/fabric"
-    file = "output/file"
-    grpc = "output/grpc"
-    http = "output/http"
-    mqtt = "output/mqtt"
-    reference_data = "output/refdata"
-
-
-class DataprocessorAuthenticationType(ListableEnum):
-    """
-    Data processor authentication type.
-    """
-    accessKey = "accessKey"
-    accessToken = "accessToken"
-    header = "header"
-    metadata = "metadata"
-    none = "none"
-    serviceAccountToken = "serviceAccountToken"
-    servicePrincipal = "servicePrincipal"
-    systemAssignedManagedIdentity = "systemAssignedManagedIdentity"
-    usernamePassword = "usernamePassword"
-
-
 ERROR_NO_DETAIL = "<No detail available>"
-
-DATA_PROCESSOR_SOURCE_REQUIRED_PROPERTIES = {
-    DataSourceStageType.mqtt.value: ["broker", "topics"],
-    DataSourceStageType.sql.value: ["query", "server", "database", "interval"],
-    DataSourceStageType.influxdb.value: ["query", "url", "interval", "organization"],
-    DataSourceStageType.http.value: ["url", "interval"],
-}
-
-DATA_PROCESSOR_SOURCE_DISPLAY_PROPERTIES = {
-    DataSourceStageType.http.value: [
-        ("method", "Request method", True),
-        ("request", "HTTP request", True),
-    ],
-    DataSourceStageType.influxdb.value: [
-        ("port", "Port", True),
-    ],
-    DataSourceStageType.mqtt.value: [
-        ("qos", "MQTT QoS", True),
-        ("cleanSession", "MQTT Clean Session", True),
-    ],
-    DataSourceStageType.sql.value: [
-        ("port", "Port", True),
-    ],
-}
-
-DATA_PROCESSOR_INTERMEDIATE_REQUIRED_PROPERTIES = {
-    DataProcessorStageType.aggregate.value: ["window", "properties"],
-    DataProcessorStageType.enrich.value: ["dataset", "outputPath"],
-    DataProcessorStageType.filter.value: ["expression"],
-    DataProcessorStageType.grpc.value: ["serverAddress", "rpcName", "descriptor"],
-    DataProcessorStageType.http.value: ["url", "method"],
-    DataProcessorStageType.lkv.value: ["properties"],
-    DataProcessorStageType.transform.value: ["expression"],
-}
-
-DATA_PROCESSOR_INTERMEDIATE_STAGE_PROPERTIES = {
-    DataProcessorStageType.aggregate.value: [],
-    DataProcessorStageType.enrich.value: [
-        ("conditions", "Enrich condition", True),
-        ("alwaysArray", "Enrich always array", True),
-        ("limit", "Enrich limit", True)
-    ],
-    DataProcessorStageType.filter.value: [],
-    DataProcessorStageType.grpc.value: [
-        ("request", "gRPC request", True),
-        ("response", "gRPC response", True),
-        ("retry", "gRPC retry mechanism", True),
-        ("tls", "gRPC TLS", True),
-    ],
-    DataProcessorStageType.http.value: [
-        ("request", "gRPC request", True),
-        ("response", "gRPC response", True),
-        ("retry", "gRPC retry mechanism", True)
-    ],
-    DataProcessorStageType.transform.value: []
-}
-
-DATA_PROCESSOR_DESTINATION_REQUIRED_PROPERTIES = {
-    DataprocessorDestinationStageType.blob_storage.value: ["accountName", "containerName"],
-    DataprocessorDestinationStageType.data_explorer.value: ["clusterUrl", "database", "table"],
-    DataprocessorDestinationStageType.fabric.value: ["workspace", "lakehouse", "table"],
-    DataprocessorDestinationStageType.file.value: ["rootDirectory"],
-    DataprocessorDestinationStageType.grpc.value: ["serverAddress", "rpcName", "descriptor"],
-    DataprocessorDestinationStageType.http.value: ["url", "method"],
-    DataprocessorDestinationStageType.mqtt.value: ["broker", "topic"],
-    DataprocessorDestinationStageType.reference_data.value: ["dataset"]
-}
-
-DATA_PROCESSOR_DESTINATION_STAGE_PROPERTIES = {
-    DataprocessorDestinationStageType.blob_storage.value: [
-        ("blobPath", "Blob path", True),
-        ("batch", "Batch method", True),
-        ("retry", "Retry mechanism", True),
-    ],
-    DataprocessorDestinationStageType.fabric.value: [
-        ("filePath", "Template file path", True),
-        ("batch", "Batch method", True),
-        ("columns", "Table column", True),
-        ("retry", "Retry mechanism", True)
-    ],
-    DataprocessorDestinationStageType.file.value: [
-        ("filePath", "File path", False),
-        ("batch", "Batch method", True),
-        ("filePermissions", "File permissions", True),
-    ],
-    DataprocessorDestinationStageType.grpc.value: [
-        ("request", "gRPC request", True),
-        ("retry", "Retry mechanism", True),
-    ],
-    DataprocessorDestinationStageType.http.value: [
-        ("request", "HTTP request", True),
-        ("retry", "Retry mechanism", True),
-    ],
-    DataprocessorDestinationStageType.data_explorer.value: [
-        ("batch", "Batch method", True),
-        ("columns", "Table column", True),
-        ("retry", "Retry mechanism", True)
-    ],
-    DataprocessorDestinationStageType.mqtt.value: [
-        ("qos", "QoS", False),
-        ("userProperties", "MQTT user property", True),
-        ("retry", "MQTT retry mechanism", True)
-    ],
-    DataprocessorDestinationStageType.reference_data.value: []
-}
-
-DATA_PROCESSOR_AUTHENTICATION_REQUIRED_PROPERTIES = {
-    DataprocessorAuthenticationType.accessToken.value: ["accessToken"],
-    DataprocessorAuthenticationType.accessKey.value: ["accessKey"],
-    DataprocessorAuthenticationType.header.value: ["key", "value"],
-    DataprocessorAuthenticationType.metadata.value: ["key", "value"],
-    DataprocessorAuthenticationType.none.value: [],
-    DataprocessorAuthenticationType.serviceAccountToken.value: [],
-    DataprocessorAuthenticationType.servicePrincipal.value: ["tenantId", "clientId", "clientSecret"],
-    DataprocessorAuthenticationType.systemAssignedManagedIdentity.value: [],
-    DataprocessorAuthenticationType.usernamePassword.value: ["username", "password"],
-}
-
-DATA_PROCESSOR_AUTHENTICATION_SECRET_REF = "(Secret reference)"
-
-LNM_ALLOWLIST_PROPERTIES = [
-    ("domains", "[bright_blue]Domains[/bright_blue]", False),
-    ("enableArcDomains", "[bright_blue]Enable Arc Domains[/bright_blue]", False),
-    ("sourceIpRange", "[bright_blue]Source Ip Range[/bright_blue]", False),
-]
-
-LNM_IMAGE_PROPERTIES = [
-    ("repository", "[bright_blue]Repository[/bright_blue]", True),
-    ("tag", "[bright_blue]Tag[/bright_blue]", True),
-]
-
-LNM_REST_PROPERTIES = [
-    ("endpointType", "Endpoint Type", False),
-    ("level", "Level", True),
-    ("logLevel", "Log Level", True),
-    ("nodeTolerations", "Node to Tolerations", True),
-    ("openTelemetryMetricsCollectorAddr", "Open Telemetry Metrics Collector Address", True),
-    ("parentIpAddr", "Parent IP Address", True),
-    ("parentPort", "Parent Port", True),
-    ("port", "Port", False),
-    ("replicas", "Replicas", False),
-]
 
 POD_CONDITION_TEXT_MAP = {
     "Ready": "Pod Readiness",
@@ -226,11 +42,6 @@ POD_CONDITION_TEXT_MAP = {
     "PodScheduled": "Pod Scheduled",
     "PodReadyToStartContainers": "Pod Ready To Start Containers",
 }
-
-LNM_EXCLUDED_SUBRESOURCE = [
-    "lnmz/scale",
-    "lnmz/status",
-]
 
 ASSET_DATAPOINT_PROPERTIES = [
     ("name", "Name", False),
@@ -268,6 +79,13 @@ ASSET_EVENT_PROPERTIES = [
     ("observabilityMode", "Observability Mode", False),
 ]
 
+BROKER_DIAGNOSTICS_PROPERTIES = [
+    ("logs.level", "Log Level", False),
+    ("metrics.mode", "Metrics Mode", False),
+    ("selfCheck.mode", "Self Check Mode", False),
+    ("traces.mode", "Trace Mode", False),
+]
+
 MAX_ASSET_EVENTS = 1000
 MAX_ASSET_DATAPOINTS = 1000
 
@@ -285,46 +103,20 @@ class CoreServiceResourceKinds(Enum):
     RUNTIME_RESOURCE = "coreServiceRuntimeResource"
 
 
-# MQ connector enums
-class KafkaTopicMapRouteType(Enum):
-    """
-    Kafka Connector Topic Map Route type:
-    """
-
-    kafka_to_mqtt = "kafkaToMqtt"
-    mqtt_to_kafka = "mqttToKafka"
-
-
-class DataLakeConnectorTargetType(ListableEnum):
-    """
-    Data Lake Connector Target type:
-    """
-
-    data_lake_storage = "datalakeStorage"
-    fabric_onelake = "fabricOneLake"
-    local_storage = "localStorage"
-
-
 # Akri runtime attributes
 AKRI_PREFIX = "aio-akri-"
-
-# Data processor runtime attributes
-DATA_PROCESSOR_READER_WORKER_PREFIX = "aio-dp-reader-worker"
-DATA_PROCESSOR_RUNNER_WORKER_PREFIX = "aio-dp-runner-worker"
-DATA_PROCESSOR_REFDATA_STORE_PREFIX = "aio-dp-refdata-store"
-DATA_PROCESSOR_NATS_PREFIX = "aio-dp-msg-store"
-DATA_PROCESSOR_OPERATOR = "aio-dp-operator"
 
 # MQ runtime attributes
 AIO_MQ_DIAGNOSTICS_PROBE_PREFIX = "aio-mq-diagnostics-probe"
 AIO_MQ_FRONTEND_PREFIX = "aio-mq-dmqtt-frontend"
 AIO_MQ_BACKEND_PREFIX = "aio-mq-dmqtt-backend"
 AIO_MQ_AUTH_PREFIX = "aio-mq-dmqtt-authentication"
-AIO_MQ_KAFKA_CONFIG_PREFIX = "aio-mq-kafka-config"
 AIO_MQ_HEALTH_MANAGER = "aio-mq-dmqtt-health-manager"
+AIO_MQ_OPERATOR = "aio-mq-operator"
+AIO_MQ_FLUENT_BIT = "aio-mq-fluent-bit"
 
-# Lnm runtime attributes
-AIO_LNM_PREFIX = "aio-lnm"
+# OPCUA runtime attributes
+AIO_OPCUA_PREFIX = "aio-opc-"
 
 # Pre-deployment KPIs
 

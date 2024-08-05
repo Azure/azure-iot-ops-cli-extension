@@ -25,7 +25,7 @@ from .base import (
     generate_target_resource_name,
     get_resources_by_name,
     process_dict_resource,
-    process_pods_status,
+    process_pod_status,
     get_resources_grouped_by_namespace,
 )
 
@@ -98,13 +98,14 @@ def evaluate_core_service_runtime(
             )
         )
 
-        process_pods_status(
+        process_pod_status(
             check_manager=check_manager,
-            target_service_pod="",
+            target_service_pod=f"pod/{AKRI_PREFIX}",
             target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
-            pods=list(pods),
+            pods=pods,
             namespace=namespace,
             display_padding=padding + PADDING_SIZE,
+            detail_level=detail_level,
         )
 
     return check_manager.as_dict(as_list)
@@ -127,12 +128,11 @@ def evaluate_configurations(
     )
 
     if not all_configurations:
-        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_configurations_error_text = "Unable to fetch Akri configurations in any namespaces."
         check_manager.add_target(target_name=target_configurations)
         check_manager.add_target_eval(
             target_name=target_configurations,
-            status=status,
+            status=CheckTaskStatus.skipped.value,
             value={"configurations": fetch_configurations_error_text}
         )
         check_manager.add_display(target_name=target_configurations, display=Padding(fetch_configurations_error_text, (0, 0, 0, 8)))

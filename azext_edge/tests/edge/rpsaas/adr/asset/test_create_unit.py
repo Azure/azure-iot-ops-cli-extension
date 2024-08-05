@@ -14,6 +14,7 @@ from azext_edge.edge.commands_assets import create_asset
 from azext_edge.edge.common import ResourceProviderMapping, ResourceTypeMapping
 from azext_edge.edge.providers.rpsaas.adr.base import ADR_API_VERSION
 
+from .conftest import FULL_ASSET
 from .....generators import generate_random_string
 
 
@@ -22,7 +23,7 @@ from .....generators import generate_random_string
     "resources.begin_create_or_update": {"result": generate_random_string()}
 }], ids=["create"], indirect=True)
 @pytest.mark.parametrize("asset_helpers_fixture", [{
-    "process_asset_sub_points": generate_random_string(),
+    "process_asset_sub_points": [{generate_random_string(): generate_random_string()}],
     "update_properties": generate_random_string(),
 }], ids=["create helpers"], indirect=True)
 @pytest.mark.parametrize("req", [
@@ -41,9 +42,11 @@ from .....generators import generate_random_string
         "data_points": generate_random_string(),
         "description": generate_random_string(),
         "display_name": generate_random_string(),
+        "data_points_file_path": generate_random_string(),
         "disabled": True,
         "documentation_uri": generate_random_string(),
         "events": generate_random_string(),
+        "events_file_path": generate_random_string(),
         "external_asset_id": generate_random_string(),
         "hardware_revision": generate_random_string(),
         "location": generate_random_string(),
@@ -72,7 +75,23 @@ from .....generators import generate_random_string
         "ev_queue_size": 888,
     },
 ])
-def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, asset_helpers_fixture, req):
+@pytest.mark.parametrize("mocked_deserialize_file_content", [[
+    FULL_ASSET["properties"]["events"][0],
+    {
+        "capabilityId": generate_random_string(),
+        "dataPointConfiguration": "{\"samplingInterval\": 100}",
+        "dataSource": FULL_ASSET["properties"]["dataPoints"][1]["dataSource"],
+        "name": generate_random_string()
+    }
+]], ids=["subPoints"], indirect=True)
+def test_create_asset(
+    mocker,
+    mocked_cmd,
+    mocked_deserialize_file_content,
+    mocked_resource_management_client,
+    asset_helpers_fixture,
+    req
+):
     patched_sp = asset_helpers_fixture["process_asset_sub_points"]
     patched_up = asset_helpers_fixture["update_properties"]
     patched_cap = mocker.patch(
@@ -150,10 +169,19 @@ def test_create_asset(mocker, mocked_cmd, mocked_resource_management_client, ass
     # Data points + events
     assert patched_sp.call_args_list[0].args[0] == "data_source"
     assert patched_sp.call_args_list[0].args[1] == req.get("data_points")
-    assert request_props["dataPoints"] == patched_sp.return_value
+    expected_data_points = patched_sp.return_value
+    if req.get("data_points_file_path"):
+        mocked_deserialize_file_content.assert_any_call(file_path=req["data_points_file_path"])
+        expected_data_points.extend(mocked_deserialize_file_content.return_value)
+    assert request_props["dataPoints"] == expected_data_points
+
     assert patched_sp.call_args_list[1].args[0] == "event_notifier"
     assert patched_sp.call_args_list[1].args[1] == req.get("events")
-    assert request_props["events"] == patched_sp.return_value
+    expected_events = patched_sp.return_value
+    if req.get("events_file_path"):
+        mocked_deserialize_file_content.assert_any_call(file_path=req["events_file_path"])
+        expected_events.extend(mocked_deserialize_file_content.return_value)
+    assert request_props["events"] == expected_events
 
 
 def test_create_asset_error(mocked_cmd):

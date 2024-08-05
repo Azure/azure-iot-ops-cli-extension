@@ -4,12 +4,13 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from .base import EdgeResourceApi
-from ...common import ListableEnum
+from .brokers import Brokers
+from .instances import Instances
+from .dataflows import DataFlowProfiles, DataFlowEndpoints
 
-
-class LnmResourceKinds(ListableEnum):
-    LNM = "lnm"
-
-
-LNM_API_V1B1 = EdgeResourceApi(group="layerednetworkmgmt.iotoperations.azure.com", version="v1beta1", moniker="lnm")
+__all__ = [
+    "Brokers",
+    "Instances",
+    "DataFlowProfiles",
+    "DataFlowEndpoints",
+]

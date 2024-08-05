@@ -29,6 +29,7 @@ from ...common import ResourceTypeMapping
 
 logger = get_logger(__name__)
 EXTENSION_API_VERSION = "2023-05-01"
+IOT_OPS_EXTENSION = "microsoft.iotoperations"
 
 
 class RPSaaSBaseProvider:
@@ -36,7 +37,6 @@ class RPSaaSBaseProvider:
         self,
         cmd,
         api_version: str,
-        required_extension: str,
         provider_namespace: str = "",
         parent_resource_path: str = "",
         resource_type: str = "",
@@ -51,7 +51,6 @@ class RPSaaSBaseProvider:
         self.provider_namespace = provider_namespace
         self.resource_type = resource_type
         self.parent_resource_path = parent_resource_path
-        self.required_extension = required_extension
 
     def delete(
         self,
@@ -268,7 +267,7 @@ class RPSaaSBaseProvider:
                     resource_id=extension_id,
                     api_version=EXTENSION_API_VERSION,
                 ).as_dict()
-                if extension["properties"]["extensionType"] == self.required_extension:
+                if extension["properties"]["extensionType"] == IOT_OPS_EXTENSION:
                     usable = True
                     break
             if usable:
@@ -276,7 +275,9 @@ class RPSaaSBaseProvider:
 
         # throw if there are no suitable extensions (in the cluster)
         if len(possible_locations) == 0:
-            raise ValidationError(MISSING_EXTENSION_ERROR.format(cluster["name"], self.required_extension))
+            raise ValidationError(
+                MISSING_EXTENSION_ERROR.format(cluster["name"], IOT_OPS_EXTENSION)
+            )
         # throw if multiple custom locations (cluster name given, multiple locations possible)
         if len(possible_locations) > 1:
             possible_locations = "\n".join(possible_locations)

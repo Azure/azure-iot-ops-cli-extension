@@ -11,15 +11,11 @@ from rich.console import Console
 
 from ..common import ListableEnum, OpsServiceType
 from .check.base import check_pre_deployment, display_as_list
-from .check.common import ResourceOutputDetailLevel
-from .check.dataprocessor import check_dataprocessor_deployment
+from .check.common import COLOR_STR_FORMAT, ResourceOutputDetailLevel
 from .check.deviceregistry import check_deviceregistry_deployment
-from .check.lnm import check_lnm_deployment
 from .check.mq import check_mq_deployment
 from .check.opcua import check_opcua_deployment
-from .edge_api.dataprocessor import DataProcessorResourceKinds
 from .edge_api.deviceregistry import DeviceRegistryResourceKinds
-from .edge_api.lnm import LnmResourceKinds
 from .edge_api.mq import MqResourceKinds
 from .check.akri import check_akri_deployment
 from .edge_api.akri import AkriResourceKinds
@@ -48,10 +44,11 @@ def run_checks(
 
         sleep(0.5)
 
+        color = COLOR_STR_FORMAT.format(color="bright_blue", value="{text}") if as_list else "{text}"
         title_subject = (
-            f"{{[bright_blue]{ops_service}[/bright_blue]}} service deployment"
+            f"{{{color.format(text=ops_service)}}} service deployment"
             if post_deployment
-            else "[bright_blue]IoT Operations readiness[/bright_blue]"
+            else color.format(text="IoT Operations readiness")
         )
         result["title"] = f"Evaluation for {title_subject}"
 
@@ -62,9 +59,7 @@ def run_checks(
             service_check_dict = {
                 OpsServiceType.akri.value: check_akri_deployment,
                 OpsServiceType.mq.value: check_mq_deployment,
-                OpsServiceType.dataprocessor.value: check_dataprocessor_deployment,
                 OpsServiceType.deviceregistry.value: check_deviceregistry_deployment,
-                OpsServiceType.lnm.value: check_lnm_deployment,
                 OpsServiceType.opcua.value: check_opcua_deployment,
             }
             service_check_dict[ops_service](
@@ -83,10 +78,8 @@ def run_checks(
 def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: List[str]) -> None:
     service_kinds_dict: Dict[str, ListableEnum] = {
         OpsServiceType.akri.value: AkriResourceKinds,
-        OpsServiceType.dataprocessor.value: DataProcessorResourceKinds,
         OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
-        OpsServiceType.lnm.value: LnmResourceKinds,
         OpsServiceType.opcua.value: OpcuaResourceKinds,
     }
 

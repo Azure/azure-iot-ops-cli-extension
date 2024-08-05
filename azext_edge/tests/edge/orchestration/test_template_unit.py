@@ -21,9 +21,11 @@ def test_current_template():
     assert CURRENT_TEMPLATE.content
     assert CURRENT_TEMPLATE.parameters
 
-    default_components = CURRENT_TEMPLATE.get_component_vers()
-    assert "processor" not in default_components
-    assert CURRENT_TEMPLATE.get_component_vers(True) == CURRENT_TEMPLATE.content["variables"]["VERSIONS"]
+    assert CURRENT_TEMPLATE.get_component_vers() == CURRENT_TEMPLATE.content["variables"]["VERSIONS"]
+
+    for r_type in ["brokers", "brokers/listeners", "brokers/authentications"]:
+        fqr_type = f"Microsoft.IoTOperations/instances/{r_type}"
+        assert CURRENT_TEMPLATE.get_resource_defs(fqr_type)["type"] == fqr_type
 
     deep_copy_template = get_current_template_copy()
 
@@ -32,7 +34,6 @@ def test_current_template():
     assert deep_copy_template.parameters == CURRENT_TEMPLATE.parameters
     assert deep_copy_template.content == CURRENT_TEMPLATE.content
     assert deep_copy_template.get_component_vers() == CURRENT_TEMPLATE.get_component_vers()
-    assert deep_copy_template.get_component_vers(True) == CURRENT_TEMPLATE.get_component_vers(True)
 
     TestCase().assertDictEqual(CURRENT_TEMPLATE.content, deep_copy_template.content)
 
@@ -62,6 +63,6 @@ def test_custom_template():
     assert custom_template.content == expected_custom_template_content
     assert custom_template.parameters == expected_custom_template_content["parameters"]
 
-    assert custom_template.get_component_vers(True) == expected_custom_template_content["variables"]["VERSIONS"]
+    assert custom_template.get_component_vers() == expected_custom_template_content["variables"]["VERSIONS"]
 
     to_consume_custom_template_path.unlink()

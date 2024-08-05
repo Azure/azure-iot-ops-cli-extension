@@ -22,6 +22,7 @@ from kubernetes.client.models import (
 )
 
 from ..common import K8sSecretType
+from ..util import is_enabled_str
 
 DEFAULT_NAMESPACE: str = "azure-iot-operations"
 
@@ -74,7 +75,7 @@ _namespaced_pods_cache: dict = {}
 def get_namespaced_pods_by_prefix(
     prefix: str,
     namespace: str,
-    label_selector: str = None,
+    label_selector: Optional[str] = None,
     as_dict: bool = False,
 ) -> Union[List[V1Pod], List[dict], None]:
     def filter_pods_by_prefix(pods: List[V1Pod], prefix: str) -> List[V1Pod]:
@@ -212,10 +213,12 @@ def portforward_socket(namespace: str, pod_name: str, pod_port: str) -> Iterator
     namespaced_brokers: dict = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER, namespace=namespace)
     broker = None
     if namespaced_brokers and namespaced_brokers["items"]:
-        broker: dict = namespaced_brokers["items"][0]
+        broker: Dict[str, Union[str, dict]] = namespaced_brokers["items"][0]
 
-    if broker and broker["spec"].get("encryptInternalTraffic"):
-        internal_tls = True
+    if broker and broker["spec"]:
+        encrypt_internal_traffic = broker["spec"].get("advanced", {}).get("encryptInternalTraffic")
+        if is_enabled_str(encrypt_internal_traffic):
+            internal_tls = True
 
     if internal_tls:
         import ssl
@@ -363,7 +366,9 @@ def delete_namespaced_custom_object(
             raise RuntimeError(error_msg)
 
 
-def create_namespaced_configmap(namespace: str, cm_name: str, data: Dict[str, str], delete_first: bool = False) -> dict:
+def create_namespaced_configmap(
+    namespace: str, cm_name: str, data: Dict[str, str], delete_first: bool = False
+) -> dict:
     result = None
     try:
         v1_api = client.CoreV1Api()

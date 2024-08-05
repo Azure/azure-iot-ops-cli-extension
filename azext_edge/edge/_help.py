@@ -13,12 +13,11 @@ from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
     COMPAT_AKRI_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
-    COMPAT_DATA_PROCESSOR_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
-    COMPAT_LNM_APIS,
-    COMPAT_MQ_APIS,
+    COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_ORC_APIS,
+    COMPAT_DATAFLOW_APIS,
 )
 
 
@@ -52,14 +51,16 @@ def load_iotops_help():
         short-summary: Creates a standard support bundle zip archive for use in troubleshooting and diagnostics.
         long-summary: |
             {{Supported service APIs}}
-            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
-            - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_ORC_APIS.as_str()}
             - {COMPAT_AKRI_APIS.as_str()}
-            - {COMPAT_LNM_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
+            - {COMPAT_DATAFLOW_APIS.as_str()}
+
+            Note: logs from evicted pod will not be captured, as they are inaccessible. For details
+            on why a pod was evicted, please refer to the related pod and node files.
 
         examples:
         - name: Basic usage with default options. This form of the command will auto detect IoT Operations APIs and build a suitable bundle
@@ -73,11 +74,11 @@ def load_iotops_help():
 
         - name: Specify a custom container log age in seconds.
           text: >
-            az iot ops support create-bundle --ops-service mq --log-age 172800
+            az iot ops support create-bundle --ops-service broker --log-age 172800
 
-        - name: Include mq traces in the support bundle. This is an alias for stats trace fetch capability.
+        - name: Include mqtt broker traces in the support bundle. This is an alias for stats trace fetch capability.
           text: >
-            az iot ops support create-bundle --ops-service mq --mq-traces
+            az iot ops support create-bundle --ops-service broker --broker-traces
     """
 
     helps[
@@ -91,51 +92,43 @@ def load_iotops_help():
 
             {{Supported service APIs}}
             - {COMPAT_AKRI_APIS.as_str()}
-            - {COMPAT_DATA_PROCESSOR_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
-            - {COMPAT_LNM_APIS.as_str()}
-            - {COMPAT_MQ_APIS.as_str()}
+            - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
 
+            For more information on cluster requirements, please check https://aka.ms/iot-ops-cluster-requirements
+
         examples:
-        - name: Basic usage. Checks `mq` health with summary output.
+        - name: Basic usage. Checks `broker` health with summary output.
           text: >
             az iot ops check
 
-        - name: Evaluates `mq` like prior example, however output is optimized for CI.
+        - name: Evaluates `broker` like prior example, however output is optimized for CI.
           text: >
             az iot ops check --as-object
 
-        - name: Checks `dataprocessor` health and configuration with detailed output.
+        - name: Checks `opcua` health and configuration with detailed output.
           text: >
-            az iot ops check --svc dataprocessor --detail-level 1
+            az iot ops check --svc opcua --detail-level 1
 
-        - name: Same as prior example, except constraining results to the `pipeline` resource.
+        - name: Checks 'deviceregistry' health, but constrains results to `asset` resources.
           text: >
-            az iot ops check --svc dataprocessor --detail-level 1 --resources pipeline
+            az iot ops check --svc deviceregistry --detail-level 1 --resources asset
 
-        - name: Use resource name to constrain results to `pipeline` resource exactly matching name `pipeline`.
+        - name: Use resource name to constrain results to `asset` resources with `my-asset-` name prefix
           text: >
-            az iot ops check --svc dataprocessor  --resources pipeline --resource-name pipeline
-
-        - name: Use resource name to constrain results to resource names that start with `pipeline-name`.
-          text: >
-            az iot ops check --svc dataprocessor --detail-level 1 --resource-name pipeline-name*
-
-        - name: Use '?' glob pattern to constrain results to resource names that contain `pipeline` and end with a single character.
-          text: >
-            az iot ops check --svc dataprocessor --detail-level 1 --resource-name pipeline?
+            az iot ops check --svc deviceregistry --resources asset --resource-name 'my-asset-*'
     """
 
     helps[
-        "iot ops mq"
+        "iot ops broker"
     ] = """
         type: group
-        short-summary: MQ specific tools.
+        short-summary: Mqtt broker management and operations.
     """
 
     helps[
-        "iot ops mq stats"
+        "iot ops broker stats"
     ] = f"""
         type: command
         short-summary: Show dmqtt running statistics.
@@ -146,37 +139,235 @@ def load_iotops_help():
         examples:
         - name: Fetch key performance indicators from the diagnostics Prometheus metrics endpoint.
           text: >
-            az iot ops mq stats
+            az iot ops broker stats
 
         - name: Same as prior example except with a dynamic display that refreshes periodically.
           text: >
-            az iot ops mq stats --watch
+            az iot ops broker stats --watch
 
         - name: Return the raw output of the metrics endpoint with minimum processing.
           text: >
-            az iot ops mq stats --raw
+            az iot ops broker stats --raw
 
         - name: Fetch all available mq traces from the diagnostics Protobuf endpoint.
                 This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
                 A trace files last modified attribute will match the trace timestamp.
           text: >
-            az iot ops mq stats --trace-dir .
+            az iot ops broker stats --trace-dir .
 
         - name: Fetch traces by trace Ids provided in space-separated hex format. Only `Otel` format is shown.
           text: >
-            az iot ops mq stats --trace-ids 4e84000155a98627cdac7de46f53055d
+            az iot ops broker stats --trace-ids 4e84000155a98627cdac7de46f53055d
     """
 
     helps[
-        "iot ops mq get-password-hash"
+        "iot ops broker show"
     ] = """
         type: command
-        short-summary: Generates a PBKDF2 hash of the passphrase applying PBKDF2-HMAC-SHA512. A 128-bit salt is used from os.urandom.
+        short-summary: Show details of an mqtt broker.
 
         examples:
-        - name: Produce a hash of the phrase 'mypassphrase' using the default number of hash iterations.
+        - name: Show details of the default broker 'broker' in the instance 'mycluster-ops-instance'.
           text: >
-            az iot ops mq get-password-hash -p mypassphrase
+            az iot ops broker show -n broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker list"
+    ] = """
+        type: command
+        short-summary: List mqtt brokers associated with an instance.
+
+        examples:
+        - name: Enumerate all brokers in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops broker list --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker listener"
+    ] = """
+        type: group
+        short-summary: Broker listener management.
+    """
+
+    helps[
+        "iot ops broker listener show"
+    ] = """
+        type: command
+        short-summary: Show details of an mqtt broker listener.
+
+        examples:
+        - name: Show details of the default listener 'listener' associated with the default broker.
+          text: >
+            az iot ops broker listener show -n listener -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker listener list"
+    ] = """
+        type: command
+        short-summary: List mqtt broker listeners associated with a broker.
+
+        examples:
+        - name: Enumerate all broker listeners associated with the default broker.
+          text: >
+            az iot ops broker listener list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker authn"
+    ] = """
+        type: group
+        short-summary: Broker authentication management.
+    """
+
+    helps[
+        "iot ops broker authn show"
+    ] = """
+        type: command
+        short-summary: Show details of an mqtt broker authentication resource.
+
+        examples:
+        - name: Show details of the default broker authentication resource 'authn' associated with the default broker.
+          text: >
+            az iot ops broker authn show -n authn -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker authn list"
+    ] = """
+        type: command
+        short-summary: List mqtt broker authentication resources associated with an instance.
+
+        examples:
+        - name: Enumerate all broker authentication resources associated with the default broker.
+          text: >
+            az iot ops broker authn list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker authz"
+    ] = """
+        type: group
+        short-summary: Broker authorization management.
+    """
+
+    helps[
+        "iot ops broker authz show"
+    ] = """
+        type: command
+        short-summary: Show details of an mqtt broker authorization resource.
+
+        examples:
+        - name: Show details of a broker authorization resource 'authz' associated with the default broker.
+          text: >
+            az iot ops broker authz show -n authz -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker authz list"
+    ] = """
+        type: command
+        short-summary: List mqtt broker authorization resources associated with an instance.
+
+        examples:
+        - name: Enumerate all broker authorization resources associated with the default broker.
+          text: >
+            az iot ops broker authz list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow"
+    ] = """
+        type: group
+        short-summary: Dataflow management.
+    """
+
+    helps[
+        "iot ops dataflow show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataflow associated with a dataflow profile.
+
+        examples:
+        - name: Show details of a dataflow 'mydataflow' associated with a profile 'myprofile'.
+          text: >
+            az iot ops dataflow show -n mydataflow -p myprofile --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow list"
+    ] = """
+        type: command
+        short-summary: List dataflows associated with a dataflow profile.
+
+        examples:
+        - name: Enumerate dataflows associated with the profile 'myprofile'.
+          text: >
+            az iot ops dataflow list -p myprofile --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow profile"
+    ] = """
+        type: group
+        short-summary: Dataflow profile management.
+    """
+
+    helps[
+        "iot ops dataflow profile show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataflow profile.
+
+        examples:
+        - name: Show details of a dataflow profile 'myprofile'.
+          text: >
+            az iot ops dataflow profile show -n myprofile --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow profile list"
+    ] = """
+        type: command
+        short-summary: List dataflow profiles associated with an instance.
+
+        examples:
+        - name: Enumerate dataflow profiles in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops dataflow profile list --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow endpoint"
+    ] = """
+        type: group
+        short-summary: Dataflow endpoint management.
+    """
+
+    helps[
+        "iot ops dataflow endpoint show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataflow endpoint resource.
+
+        examples:
+        - name: Show details of a dataflow endpoint 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint show -n myendpoint --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow endpoint list"
+    ] = """
+        type: command
+        short-summary: List dataflow endpoint resources associated with an instance.
+
+        examples:
+        - name: Enumerate dataflow endpoints in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops dataflow endpoint list --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -200,7 +391,18 @@ def load_iotops_help():
                       For additional resources including how to Arc-enable a cluster see
                       https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
 
-                      Note: Data Processor is not deployed by default. Use --include-dp to add it.
+                      IoT Operations depends on a service principal (SP) for Key Vault CSI driver secret synchronization.
+
+                      By default, init will do work in creating and configuring a suitable app registration
+                      via Microsoft Graph then apply it to the cluster.
+
+                      You can short-circuit this work, by pre-creating an app registration, then providing values
+                      for --sp-app-id, --sp-object-id and --sp-secret. By providing the SP fields, no additional
+                      work via Microsoft Graph operations will be done.
+
+                      Pre-creating an app registration is useful when the logged-in principal has constrained
+                      Entra Id permissions. For example in CI/automation scenarios, or an orgs separation of user
+                      responsibility.
 
         examples:
         - name: Minimum input for complete setup. This includes Key Vault configuration, CSI driver deployment, TLS config and deployment of IoT Operations.
@@ -208,31 +410,30 @@ def load_iotops_help():
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id /subscriptions/2cb3a427-1abc-48d0-9d03-dd240819742a/resourceGroups/myresourcegroup/providers/Microsoft.KeyVault/vaults/mykeyvault
 
         - name: Same setup as prior example, except with the usage of an existing app Id and a flag to include a simulated PLC server as part of the deployment.
-                Including the app Id will prevent `init` from creating an app registration.
+                Including the app Id will prevent init from creating an app registration.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --simulate-plc
 
-        - name: To skip deployment and focus only on the Key Vault CSI driver and TLS config workflows simple pass in `--no-deploy`.
+        - name: To skip deployment and focus only on the Key Vault CSI driver and TLS config workflows simple pass in --no-deploy.
                 This can be useful when desiring to deploy from a different tool such as Portal.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-deploy
 
-        - name: To only deploy IoT Operations on a cluster that has already been prepped, simply omit `--kv-id` and include `--no-tls`.
+        - name: To only deploy IoT Operations on a cluster that has already been prepped, simply omit --kv-id and include --no-tls.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --no-tls
 
-        - name: Use `--no-block` to do other work while the deployment is on-going vs waiting for the deployment to finish before starting the other work.
+        - name: Use --no-block to do other work while the deployment is on-going vs waiting for the deployment to finish before starting the other work.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-block
 
-        - name: To avoid calling MS Graph such as for CI scenarios where the logged-in to az cli service principal permissions are limited or an existing
-                service principal should be re-used, provide all of `--sp-app-id`, `--sp-object-id` and `--sp-secret`.
-                These values should reflect the desired service principal that will be used for the Key Vault CSI driver setup.
+        - name: This example shows providing values for --sp-app-id, --sp-object-id and --sp-secret. These values should reflect the desired service principal
+                that will be used for the Key Vault CSI driver secret synchronization. Please review the command summary for additional details.
           text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29
-            --sp-secret $SP_SECRET
+            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d
+            --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29 --sp-secret $SP_SECRET
 
-        - name: To customize configuration of the Key Vault CSI driver, --csi-config can be used. For example setting resource limits on the telegraf container dependency.
+        - name: To customize runtime configuration of the Key Vault CSI driver, --csi-config can be used. For example setting resource limits on the telegraf container dependency.
           text: >
             az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d
             --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m
@@ -259,6 +460,61 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops show"
+    ] = """
+        type: command
+        short-summary: Show an IoT Operations instance.
+        long-summary: Optionally the command can output a tree structure of associated resources representing
+          the IoT Operations deployment against the backing cluster.
+
+        examples:
+        - name: Basic usage to show an instance.
+          text: >
+            az iot ops show --name myinstance -g myresourcegroup
+        - name: Output a tree structure of associated resources representing the IoT Operations deployment.
+          text: >
+            az iot ops show --name myinstance -g myresourcegroup --tree
+    """
+
+    helps[
+        "iot ops list"
+    ] = """
+        type: command
+        short-summary: List IoT Operations instances.
+        long-summary: Use --query with desired JMESPath syntax to query the result.
+
+        examples:
+        - name: List all instances in the subscription.
+          text: >
+            az iot ops list
+        - name: List all instances of a particular resource group.
+          text: >
+            az iot ops list -g myresourcegroup
+        - name: List the instances in the subscription that have a particular tag value.
+          text: >
+            az iot ops list -g myresourcegroup --query "[?tags.env == 'prod']"
+    """
+
+    helps[
+        "iot ops update"
+    ] = """
+        type: command
+        short-summary: Update an IoT Operations instance.
+        long-summary: Currently instance tags and description can be updated.
+
+        examples:
+        - name: Update instance tags. This is equivalent to a replace.
+          text: >
+            az iot ops update --name myinstance -g myresourcegroup --tags a=b c=d
+        - name: Remove instance tags.
+          text: >
+            az iot ops update --name myinstance -g myresourcegroup --tags ""
+        - name: Update the instance description.
+          text: >
+            az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
+    """
+
+    helps[
         "iot ops asset"
     ] = """
         type: group
@@ -275,7 +531,8 @@ def load_iotops_help():
                       for the existance of the associated custom location and cluster and ensure that
                       both are set up correctly with the microsoft.deviceregistry.assets extension.
 
-                      At least one data point or event must be defined during asset creation.
+                      At least one data point or event must be defined during asset creation. For examples
+                      of file formats, please see aka.ms/aziotops-assets
 
         examples:
         - name: Create an asset using the given custom location.
@@ -336,9 +593,14 @@ def load_iotops_help():
             data_source={data_source} name={name} observability_mode={observability_mode} sampling_interval={sampling_interval}
             queue_size={queue_size} --data data_source={data_source}
 
+        - name: Create an asset using a file containing data-points and another file containing events.
+          text: >
+            az iot ops asset create --name MyAsset -g MyRg --custom-location MyLocation --endpoint exampleEndpoint
+            --data-file /path/to/myasset_datapoints.json --event-file /path/to/myasset_events.csv
+
         - name: Create an asset with the given pre-filled values.
           text: >
-            az iot ops asset create --name MyAsset -g MyRg --custom-location MyLocation --endpoint example.com
+            az iot ops asset create --name MyAsset -g MyRg --custom-location MyLocation --endpoint exampleEndpoint
             --data capability_id=myTagId data_source=NodeID1 name=myTagName1
             observability_mode=counter sampling_interval=10 queue_size=2 --data
             data_source=NodeID2 --data-publish-int 1000 --data-queue-size 1 --data-sample-int 30
@@ -477,6 +739,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Import data points in an asset.
+        long-summary: For examples of file formats, please see aka.ms/aziotops-assets
         examples:
         - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be ignored.
           text: >
@@ -570,6 +833,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Import events in an asset.
+        long-summary: For examples of file formats, please see aka.ms/aziotops-assets
         examples:
         - name: Import all events from a file. These events will be appended to the asset's current events.
           text: >
