@@ -10,8 +10,9 @@ from knack.log import get_logger
 from rich import print
 from rich.console import Console
 
-from ....util.az_client import get_iotops_mgmt_client, parse_resource_id, wait_for_terminal_state
+from ....util.az_client import get_iotops_mgmt_client, parse_resource_id, wait_for_terminal_state, get_resource_client
 from ....util.queryable import Queryable
+from ..common import CUSTOM_LOCATIONS_API_VERSION
 
 logger = get_logger(__name__)
 
@@ -32,6 +33,7 @@ class Instances(Queryable):
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
+        self.resource_client = get_resource_client(subscription_id=self.default_subscription_id)
         self.console = Console()
 
     def show(self, name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> Optional[dict]:
@@ -51,6 +53,7 @@ class Instances(Queryable):
 
     def _show_tree(self, instance: dict):
         custom_location = self.get_associated_cl(instance)
+        # TODO @digimaun
         if not custom_location:
             logger.warning("Unable to process the resource tree.")
             return
@@ -70,9 +73,9 @@ class Instances(Queryable):
         print(resource_map.build_tree(category_color="cyan"))
 
     def get_associated_cl(self, instance: dict) -> dict:
-        return self.query(
-            QUERIES["get_cl_from_instance"].format(resource_id=instance["extendedLocation"]["name"]), first=True
-        )
+        return self.resource_client.resources.get_by_id(
+            resource_id=instance["extendedLocation"]["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
+        ).as_dict()
 
     def update(
         self,
