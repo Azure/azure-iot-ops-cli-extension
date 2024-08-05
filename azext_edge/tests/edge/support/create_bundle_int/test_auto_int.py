@@ -105,7 +105,6 @@ def test_create_bundle_otel(init_setup, tracked_files):
 
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     assert set(file_map.keys()).issubset(set(expected_workload_types))
-
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,

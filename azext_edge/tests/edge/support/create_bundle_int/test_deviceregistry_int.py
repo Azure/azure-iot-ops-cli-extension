@@ -8,7 +8,12 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import DEVICEREGISTRY_API_V1
-from .helpers import check_custom_resource_files, BASE_ZIP_PATH, get_file_map, run_bundle_command
+from .helpers import (
+    check_custom_resource_files,
+    BASE_ZIP_PATH,
+    get_file_map,
+    run_bundle_command
+)
 
 logger = get_logger(__name__)
 

@@ -182,17 +182,17 @@ def mocked_list_pods(mocked_client):
             pods.append(pod)
             expected_pod_map[namespace][pod_name] = {container_name: mock_log}
 
-        # add evicted pod for testing
-        evicted_pod_name = "evicted_pod"
-        evicted_pod_spec = V1PodSpec(containers=[V1Container(name=generate_random_string())])
-        evicted_pod_status = V1PodStatus(phase="Failed", reason="Evicted")
-        evicted_pod = V1Pod(
-            metadata=V1ObjectMeta(namespace=namespace, name=evicted_pod_name),
-            spec=evicted_pod_spec,
-            status=evicted_pod_status
-        )
-        pods.append(evicted_pod)
-        expected_pod_map[namespace][evicted_pod_name] = {evicted_pod.spec.containers[0].name: mock_log}
+    # add evicted pod for testing
+    evicted_pod_name = "evicted_pod"
+    evicted_pod_spec = V1PodSpec(containers=[V1Container(name=generate_random_string())])
+    evicted_pod_status = V1PodStatus(phase="Failed", reason="Evicted")
+    evicted_pod = V1Pod(
+        metadata=V1ObjectMeta(namespace=namespace, name=evicted_pod_name),
+        spec=evicted_pod_spec,
+        status=evicted_pod_status
+    )
+    pods.append(evicted_pod)
+    expected_pod_map[namespace][evicted_pod_name] = {evicted_pod.spec.containers[0].name: mock_log}
 
     pods_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list

@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Dict, List, NamedTuple, Optional, Union
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
 import pytest
@@ -344,7 +344,7 @@ def process_top_levels(
 def run_bundle_command(
     command: str,
     tracked_files: List[str],
-) -> Dict[str, Dict[str, List[str]]]:
+) -> Tuple[Dict[str, Dict[str, List[str]]], str]:
     result = run(command)
     if not result:
         pytest.skip("No bundle was created.")
