@@ -994,7 +994,6 @@ def test_create_bundle_mq_traces(
 @pytest.mark.parametrize(
     "mocked_cluster_resources",
     [
-        [],
         [MQTT_BROKER_API_V1B1],
         [MQTT_BROKER_API_V1B1, MQ_ACTIVE_API],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1],
@@ -1030,7 +1029,7 @@ def test_create_bundle_arc_agents(
     mocked_get_arc_services
 ):
     since_seconds = random.randint(86400, 172800)
-    result = support_bundle(None, bundle_dir=a_bundle_dir, include_arc_agents=True, log_age_seconds=since_seconds)
+    result = support_bundle(None, bundle_dir=a_bundle_dir, log_age_seconds=since_seconds)
 
     assert "bundlePath" in result
     assert a_bundle_dir in result["bundlePath"]

@@ -29,20 +29,13 @@ AGENT_RESOURCE_PREFIXES = {
 }
 
 
-@pytest.mark.parametrize("include_arc_agents", [False, True])
-def test_create_bundle_arcagents(init_setup, tracked_files, include_arc_agents):
+def test_create_bundle_arcagents(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.akri.value
 
-    command = f"az iot ops support create-bundle --ops-service {ops_service} --arc-agents {include_arc_agents}"
+    command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
-    files = get_file_map(walk_result=walk_result, ops_service=ops_service, include_arc_agents=include_arc_agents)
-
-    if not include_arc_agents:
-        # No arc agents should be included
-        assert not hasattr(files, "arc")
-        return
-
+    files = get_file_map(walk_result=walk_result, ops_service=ops_service)
     agents_file_map = files["arc"]
 
     for agent, has_service in ARC_AGENTS:

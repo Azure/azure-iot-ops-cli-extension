@@ -42,7 +42,6 @@ def build_bundle(
     ops_service: str,
     bundle_path: str,
     log_age_seconds: Optional[int] = None,
-    include_arc_agents: Optional[bool] = None,
     include_mq_traces: Optional[bool] = None,
 ):
     from rich.live import Live
@@ -101,10 +100,6 @@ def build_bundle(
 
                 pending_work[service_moniker].update(bundle)
 
-    # arc agent resources
-    if include_arc_agents:
-        pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
-
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):
         logger.warning("No known IoT Operations services discovered on cluster.")
@@ -113,6 +108,9 @@ def build_bundle(
     if ops_service == OpsServiceType.auto.value:
         # Only attempt to collect otel resources if any AIO service is deployed AND auto is used.
         pending_work["otel"] = prepare_otel_bundle()
+    
+    # arc agent resources
+    pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
 
     # Collect common resources if any AIO service is deployed with any service selected.
     pending_work["common"] = prepare_shared_bundle()

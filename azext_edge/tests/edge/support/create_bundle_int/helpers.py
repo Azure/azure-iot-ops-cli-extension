@@ -224,7 +224,6 @@ def get_file_map(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
     mq_traces: bool = False,
-    include_arc_agents: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
     arc_namespace, aio_namespace, c_namespace = process_top_levels(walk_result, ops_service)
@@ -235,7 +234,7 @@ def get_file_map(
 
     # separate namespaces
     file_map = {"__namespaces__": {}}
-    expected_arc_walk_result = len(ARC_AGENTS) if include_arc_agents else 0
+    expected_arc_walk_result = len(ARC_AGENTS)
 
     if arc_namespace:
         file_map["arc"] = {}
