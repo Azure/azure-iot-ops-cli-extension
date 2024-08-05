@@ -347,7 +347,7 @@ def load_iotops_arguments(self, _):
             "custom_location_name",
             options_list=["--custom-location"],
             help="The custom location name corresponding to the IoT Operations deployment. "
-            "The default is in the form '{cluster_name}-ops-init-cl'.",
+            "The default is in the form '{cluster_name}-{token}-ops-init-cl'.",
         )
         context.argument(
             "location",
@@ -624,6 +624,13 @@ def load_iotops_arguments(self, _):
             help="The path to a custom IoT Operations deployment template. Intended for advanced use cases.",
             deprecate_info=context.deprecate(hide=True),
         )
+        context.argument(
+            "dataflow_profile_instances",
+            type=int,
+            options_list=["--df-profile-instances"],
+            help="The instance count associated with the default dataflow profile.",
+            arg_group="Dataflow Profile",
+        )
 
     with self.argument_context("iot ops delete") as context:
         context.argument(
@@ -700,6 +707,13 @@ def load_iotops_arguments(self, _):
             arg_group="Additional Info",
         )
         context.argument(
+            "data_points_file_path",
+            options_list=["--data-file", "--df"],
+            help="File path for the file containing the data points. The following file types are supported: "
+            f"{', '.join(FileType.list())}.",
+            arg_group="Additional Info",
+        )
+        context.argument(
             "description",
             options_list=["--description", "-d"],
             help="Description.",
@@ -734,6 +748,13 @@ def load_iotops_arguments(self, _):
             "`name`, `observability_mode` (none or log), `sampling_interval` "
             "(int), `queue_size` (int). "
             "--event can be used 1 or more times. Review help examples for full parameter usage",
+            arg_group="Additional Info",
+        )
+        context.argument(
+            "events_file_path",
+            options_list=["--event-file", "--ef"],
+            help="File path for the file containing the events. The following file types are supported: "
+            f"{', '.join(FileType.list())}.",
             arg_group="Additional Info",
         )
         context.argument(

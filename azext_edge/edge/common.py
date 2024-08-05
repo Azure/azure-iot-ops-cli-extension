@@ -199,14 +199,6 @@ class ResourceTypeMapping(Enum):
         return mapping[self]
 
 
-class ClusterExtensionsMapping(Enum):
-    """
-    Cluster extension mappings.
-    """
-
-    asset = "adr"
-
-
 class AEPAuthModes(Enum):
     """
     Authentication modes for asset endpoints
