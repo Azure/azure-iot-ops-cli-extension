@@ -108,7 +108,7 @@ def build_bundle(
     if ops_service == OpsServiceType.auto.value:
         # Only attempt to collect otel resources if any AIO service is deployed AND auto is used.
         pending_work["otel"] = prepare_otel_bundle()
-    
+
     # arc agent resources
     pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
 
