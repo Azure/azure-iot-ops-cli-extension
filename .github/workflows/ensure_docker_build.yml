@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - "Dockerfile"
+  push:
+    paths:
+      - "Dockerfile"
 jobs:
   ensure-docker-build:
     permissions:
