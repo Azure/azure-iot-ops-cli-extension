@@ -342,7 +342,7 @@ def load_iotops_arguments(self, _):
             "custom_location_name",
             options_list=["--custom-location"],
             help="The custom location name corresponding to the IoT Operations deployment. "
-            "The default is in the form '{cluster_name}-ops-init-cl'.",
+            "The default is in the form '{cluster_name}-{token}-ops-init-cl'.",
         )
         context.argument(
             "location",
@@ -618,6 +618,13 @@ def load_iotops_arguments(self, _):
             options_list=["--template-file"],
             help="The path to a custom IoT Operations deployment template. Intended for advanced use cases.",
             deprecate_info=context.deprecate(hide=True),
+        )
+        context.argument(
+            "dataflow_profile_instances",
+            type=int,
+            options_list=["--df-profile-instances"],
+            help="The instance count associated with the default dataflow profile.",
+            arg_group="Dataflow Profile",
         )
 
     with self.argument_context("iot ops delete") as context:

@@ -32,13 +32,13 @@ class TemplateVer(NamedTuple):
 
 
 V1_TEMPLATE = TemplateVer(
-    commit_id="6a6ce36417fce836dcc9b5b2bc525dcf92534b41",
+    commit_id="f8fc2737da7d276a8e44f3d3abc74348bc7135c0",
     moniker="v0.6.0-preview",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.29.47.4906", "templateHash": "14376074618405923372"},
+            "_generator": {"name": "bicep", "version": "0.29.47.4906", "templateHash": "13762215607900880500"},
             "description": "This template deploys Azure IoT Operations.",
             "aziotopsCliVersion": "0.6.0a2",
         },
@@ -120,12 +120,12 @@ V1_TEMPLATE = TemplateVer(
                 "mqServiceType": "[parameters('mqServiceType')]",
             },
             "VERSIONS": {
-                "platform": "0.6.0-preview-rc20240722.1",
-                "aio": "0.6.0-preview-rc20240726.2",
+                "platform": "0.6.0-preview",
+                "aio": "0.6.0-preview",
                 "observability": "0.1.0-preview",
                 "secretSyncController": "0.3.0-97225789",
             },
-            "TRAINS": {"platform": "integration", "aio": "integration", "secretSyncController": "preview"},
+            "TRAINS": {"platform": "preview", "aio": "preview", "secretSyncController": "preview"},
             "broker_fe_issuer_configuration": {
                 "name": "mq-fe-issuer-configuration",
                 "type": "yaml.k8s",
@@ -519,3 +519,22 @@ def get_current_template_copy(custom_template_path: Optional[str] = None) -> Tem
         moniker=CURRENT_TEMPLATE.moniker,
         content=deepcopy(CURRENT_TEMPLATE.content),
     )
+
+
+def get_basic_dataflow_profile(profile_name: str = "profile", instance_count: int = 1):
+    return {
+        "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
+        "apiVersion": "2024-07-01-preview",
+        "name": f"[format('{{0}}/{{1}}', parameters('instanceName'), '{profile_name}')]",
+        "extendedLocation": {
+            "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+            "type": "CustomLocation",
+        },
+        "properties": {
+            "instanceCount": instance_count,
+        },
+        "dependsOn": [
+            "[resourceId('Microsoft.IoTOperations/instances', parameters('instanceName'))]",
+            "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+        ],
+    }

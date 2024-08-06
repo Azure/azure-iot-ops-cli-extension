@@ -59,6 +59,9 @@ def load_iotops_help():
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
 
+            Note: logs from evicted pod will not be captured, as they are inaccessible. For details
+            on why a pod was evicted, please refer to the related pod and node files.
+
         examples:
         - name: Basic usage with default options. This form of the command will auto detect IoT Operations APIs and build a suitable bundle
                 capturing the last 24 hours of container logs. The bundle will be produced in the current working directory.
@@ -500,9 +503,12 @@ def load_iotops_help():
         long-summary: Currently instance tags and description can be updated.
 
         examples:
-        - name: Update instance tags.
+        - name: Update instance tags. This is equivalent to a replace.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --tags a=b c=d
+        - name: Remove instance tags.
+          text: >
+            az iot ops update --name myinstance -g myresourcegroup --tags ""
         - name: Update the instance description.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"

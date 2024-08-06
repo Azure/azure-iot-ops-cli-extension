@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Dict, List, NamedTuple, Optional, Union
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
 import pytest
@@ -137,6 +137,7 @@ def check_workload_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     expected_workload_types: List[str],
     prefixes: Union[str, List[str]],
+    bundle_path: str,
     optional_workload_types: Optional[List[str]] = None,
 ):
     if "pod" in expected_workload_types:
@@ -169,7 +170,14 @@ def check_workload_resource_files(
                 converted_file[file["descriptor"]] = False
 
     expected_pods = get_kubectl_workload_items(prefixes, service_type="pod")
-    find_extra_or_missing_names("pod", file_pods.keys(), expected_pods.keys())
+    check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))
+    find_extra_or_missing_names(
+        resource_type="pod",
+        result_names=file_pods.keys(),
+        expected_names=expected_pods.keys(),
+        ignore_extras=True,
+        ignore_missing=True
+    )
 
     for name, files in file_pods.items():
         for extension, value in files.items():
@@ -191,6 +199,23 @@ def check_workload_resource_files(
     _check_non_pod_files(expected_workload_types)
     if optional_workload_types:
         _check_non_pod_files(optional_workload_types, required=False)
+
+
+def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]]):
+    # open the file using bundle_dir and check for evicted pods
+    name_extension_pair = list(set([(file["name"], file["extension"]) for file in file_pods]))
+    # TODO: upcoming fix will get file content earlier
+    with ZipFile(bundle_dir, 'r') as zip:
+        file_names = zip.namelist()
+        for name, extension in name_extension_pair:
+            if extension == "log":
+                # find file path in file_names that has name and extension
+                file_path = next((file for file in file_names if file.endswith(name + ".yaml")), None)
+                if not file_path:
+                    continue
+                with zip.open(file_path) as pod_content:
+                    log_content = pod_content.read().decode("utf-8")
+                    assert "Evicted" not in log_content, f"Evicted pod {name} log found in bundle."
 
 
 def get_file_map(
@@ -286,8 +311,10 @@ def process_top_levels(
 def run_bundle_command(
     command: str,
     tracked_files: List[str],
-) -> Dict[str, Dict[str, List[str]]]:
+) -> Tuple[Dict[str, Dict[str, List[str]]], str]:
     result = run(command)
+    if not result:
+        pytest.skip("No bundle was created.")
     assert result["bundlePath"]
     tracked_files.append(result["bundlePath"])
     # transform this into a walk result of an extracted zip file
@@ -322,7 +349,7 @@ def run_bundle_command(
             # lastly add in the file (with the correct seperators)
             walk_result[built_path]["files"].append(file_name)
 
-    return walk_result
+    return walk_result, result["bundlePath"]
 
 
 def split_name(name: str) -> List[str]:

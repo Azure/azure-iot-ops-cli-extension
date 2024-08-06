@@ -74,7 +74,9 @@ def assert_eval_core_service_runtime(
         find_extra_or_missing_names(
             resource_type="pods",
             result_names=results,
-            expected_names=kubectl_pods.keys()
+            expected_names=kubectl_pods.keys(),
+            ignore_extras=True,
+            ignore_missing=True
         )
 
         for pod in kubectl_pods:

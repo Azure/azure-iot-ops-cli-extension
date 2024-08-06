@@ -160,27 +160,9 @@ def tracked_resources():
 
 
 @pytest.fixture(scope="session")
-def tracked_keyvault(request, tracked_resources, settings):
-    # TODO: clean up env variables later
-    from ..settings import convert_flag, EnvironmentVariables
-    settings.add_to_config(EnvironmentVariables.rg.value)
-    settings.add_to_config(EnvironmentVariables.kv.value)
-    settings.add_to_config(EnvironmentVariables.skip_init.value, conversion=convert_flag)
-    if settings.env.azext_edge_skip_init:
-        # kv only needed for init for now
-        kv = None
-    elif settings.env.azext_edge_kv:
-        kv = run(f"az keyvault show -n {settings.env.azext_edge_kv} -g {settings.env.azext_edge_rg}")
-    else:
-        run_id = id(request.session)
-        kv_name = f"opstestkv-{run_id}"
-        kv = run(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_rg}")
-        tracked_resources.append(kv["id"])
-    yield kv
-
-
-@pytest.fixture(scope="session")
-def cluster_setup(settings):
+def cluster_connection(settings):
+    """Fixture to ensure that the cluster is connected."""
+    from urllib3.exceptions import MaxRetryError
     from kubernetes.client.rest import ApiException
     from ..settings import EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.context_name.value)
@@ -197,17 +179,15 @@ def cluster_setup(settings):
         # Check for cluster access
         client.VersionApi().get_code()
         yield
+    except MaxRetryError:
+        raise CLIInternalError("Cluster is not connected.")
     except ApiException:
         raise NotImplementedError("Local cluster creation for testing not fully implemented yet.")
-        # import os
-        # os.environ["K3D_FIX_MOUNTS"] = "1"
-        # run("kubectl cluster create -i ghcr.io/jlian/k3d-nfs:v1.25.3-k3s1")
-        # yield
-        # run("kubectl cluster delete")
 
 
+# TODO: change the check/support bundle tests to point to cluster connection instead
 @pytest.fixture(scope="session")
-def init_setup(request, cluster_setup, settings):
+def init_setup(request, cluster_connection, settings):
     from ..settings import EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.cluster.value)
@@ -215,62 +195,6 @@ def init_setup(request, cluster_setup, settings):
     run("az iot ops verify-host")
     yield {
         "clusterName": settings.env.azext_edge_cluster,
-        "resourceGroup": settings.env.azext_edge_rg
+        "resourceGroup": settings.env.azext_edge_rg,
     }
     return
-
-    # cluster_resources = []
-    # scenario = {}
-    # if request and hasattr(request, "param"):
-    #     scenario = request.param
-
-    # run_id = id(request.session)
-    # cluster_name = settings.env.azext_edge_cluster or f"az-iot-ops-test-cluster-{run_id}"
-    # try:
-    #     run(f"az connectedk8s connect --name {cluster_name} -g {settings.env.azext_edge_rg}")
-    #     custom_locations_guid = run("az ad sp show --id bc313c14-388c-4e7d-a58e-70017303ee3b --query id -o tsv")
-    #     run(
-    #         f"az connectedk8s enable-features --name {cluster_name} -g {settings.env.azext_edge_rg}"
-    #         f" --features custom-locations cluster-connect --custom-locations-oid {custom_locations_guid}"
-    #     )
-    # except CLIInternalError as e:
-    #     logger.warning(e.error_msg)
-    # result = run(f"az connectedk8s show --name {cluster_name} -g {settings.env.azext_edge_rg}")
-    # resource_id_prefix = result["id"].split("Microsoft.Kubernetes")[0]
-    # tracked_resources.append(result["id"])
-    # cluster_resources.append(result["id"])
-
-    # command = f"az iot ops init --cluster {cluster_name} -g {settings.env.azext_edge_rg} "\
-    #     f"--kv-id {tracked_keyvault['id']} --no-progress --no-preflight"
-    # for arg in scenario:
-    #     command += f" {arg} {scenario[arg]}"
-    # result = run(command)
-    # # reverse the list so things can be deleted in the right order
-    # converted_resources = []
-    # for res in result["deploymentState"]["resources"][::-1]:
-    #     if not res.startswith("Microsoft.Kubernetes"):
-    #         converted_resources.append(resource_id_prefix + res)
-    # tracked_resources.extend(converted_resources)
-    # cluster_resources.extend(converted_resources)
-    # assert result["clusterName"] == cluster_name
-    # assert result["clusterNamespace"] == scenario.get("--cluster-namespace", "azure-iot-operations")
-    # assert result["deploymentLink"]
-    # assert result["deploymentName"]
-
-    # dstate = result["deploymentState"]
-    # assert dstate["correlationId"]
-    # assert dstate["opsVersion"]
-
-    # assert result["tls"]["aioTrustConfigMap"] == "aio-ca-trust-bundle-test-only"
-    # assert result["tls"]["aioTrustSecretName"] == "aio-ca-key-pair-test-only"
-
-    # # just incase
-    # run("az iot ops verify-host -y")
-    # yield result
-
-    # for res in cluster_resources:
-    #     try:
-    #         run(f"az resource delete --id {res} -v")
-    #         tracked_resources.remove(res)
-    #     except CLIInternalError:
-    #         logger.warning(f"failed to delete {res}")

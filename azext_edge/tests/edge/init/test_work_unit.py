@@ -31,6 +31,7 @@ from azext_edge.edge.providers.orchestration.work import (
     WorkCategoryKey,
     WorkManager,
     WorkStepKey,
+    get_basic_dataflow_profile,
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
 
@@ -76,6 +77,7 @@ def mock_broker_config():
     mq_insecure,
     disable_rsync_rules,
     mq_broker_config_file,
+    dataflow_profile_instances,
     """,
     [
         pytest.param(
@@ -106,6 +108,7 @@ def mock_broker_config():
             None,  # mq_insecure
             None,  # disable_rsync_rules
             None,  # mq_broker_config_file
+            None,  # dataflow_profile_instances
         ),
         pytest.param(
             None,  # instance_name
@@ -135,6 +138,7 @@ def mock_broker_config():
             None,  # mq_insecure
             None,  # disable_rsync_rules
             None,  # mq_broker_config_file
+            None,  # dataflow_profile_instances
         ),
         pytest.param(
             generate_random_string(),  # instance_name
@@ -164,6 +168,7 @@ def mock_broker_config():
             True,  # mq_insecure
             True,  # disable_rsync_rules
             str(MOCK_BROKER_CONFIG_PATH),  # mq_broker_config_file
+            randint(5, 10),  # dataflow_profile_instances
         ),
     ],
 )
@@ -199,6 +204,7 @@ def test_init_to_template_params(
     mq_insecure,
     disable_rsync_rules,
     mq_broker_config_file,
+    dataflow_profile_instances,
 ):
     kwargs = {}
 
@@ -228,6 +234,7 @@ def test_init_to_template_params(
         (mq_insecure, "mq_insecure"),
         (disable_rsync_rules, "disable_rsync_rules"),
         (mq_broker_config_file, "mq_broker_config_file"),
+        (dataflow_profile_instances, "dataflow_profile_instances"),
     ]
 
     for param_tuple in param_tuples:
@@ -343,6 +350,16 @@ def test_init_to_template_params(
     assert broker
     if mq_broker_config_file:
         assert broker["properties"] == mock_broker_config
+
+    dataflow_profiles = template_ver.get_resource_defs(
+        resource_type="Microsoft.IoTOperations/instances/dataflowProfiles", first=False
+    )
+    assert len(dataflow_profiles) == 1
+    dataflow_profile = dataflow_profiles[0]
+    df_profile_kwargs = {}
+    if dataflow_profile_instances:
+        df_profile_kwargs["instance_count"] = dataflow_profile_instances
+    assert dataflow_profile == get_basic_dataflow_profile(**df_profile_kwargs)
 
 
 @pytest.mark.parametrize(
