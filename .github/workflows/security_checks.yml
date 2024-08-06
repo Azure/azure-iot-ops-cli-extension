@@ -15,7 +15,7 @@ on:
 permissions: {}
 jobs:
   sdl:
-    continue-on-error: ${{ inputs.continue-on-error }}
+    continue-on-error: ${{ inputs.continue-on-error || false }}
     name: SDL Compliance Checks
     runs-on: windows-latest
     permissions:

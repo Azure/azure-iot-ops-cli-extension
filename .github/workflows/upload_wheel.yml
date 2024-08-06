@@ -1,5 +1,5 @@
 name: "[auto] Upload wheel to storage account"
-
+permissions: {}
 on:
   workflow_call:
     outputs:
