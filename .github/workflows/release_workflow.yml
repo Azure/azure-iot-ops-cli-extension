@@ -1,5 +1,7 @@
 name: Build and Publish Release
 run-name: Build and publish release${{ github.event.inputs.upload_wheel == 'true' &&  ' - Wheel upload' || ''}}${{ github.event.inputs.github_release == 'true' &&  ' - Stage Release' || ''}}
+permissions: {}
+
 on:
   # only manual trigger
   workflow_dispatch:
@@ -22,7 +24,6 @@ on:
 jobs:
   security:
     permissions:
-      # needed to write security info to repository
       security-events: write
       contents: read
     uses: ./.github/workflows/security_checks.yml

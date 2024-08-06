@@ -1,4 +1,5 @@
 name: "[auto] Check PR title format"
+permissions: {}
 on:
   pull_request:
     types: [
