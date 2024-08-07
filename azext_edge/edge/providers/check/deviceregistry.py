@@ -124,7 +124,7 @@ def evaluate_assets(
             endpoint_profile_uri = asset_spec.get("assetEndpointProfileUri", "")
             endpoint = get_resources_by_name(
                 api_info=DEVICEREGISTRY_API_V1,
-                kind=DeviceRegistryResourceKinds.ASSET,
+                kind=DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE,
                 resource_name=endpoint_profile_uri
             )
             spec_padding = padding + PADDING_SIZE
