@@ -40,8 +40,6 @@ jobs:
         # file path to analyze
         GDN_BANDIT_TARGET: 'azext_edge'
         GDN_BANDIT_RECURSIVE: true
-        # checkov disable - build workflow has workflow_dispatch inputs
-        GDN_CHECKOV_SKIPCHECK: CKV_GHA_7
 
       # Upload alerts to the Security tab
     - name: Upload alerts to Security tab
