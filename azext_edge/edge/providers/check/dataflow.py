@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 from knack.log import get_logger
 from rich.padding import Padding
@@ -54,7 +54,8 @@ valid_source_endpoint_types = [DataflowEndpointType.kafka.value, DataflowEndpoin
 
 
 def _process_dataflow_sourcesettings(
-    check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoint_tuples: List[Tuple[str, str]], operation: dict, detail_level: int, padding: int
+    check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoints: List[dict], operation: dict, detail_level: int, padding: int
+
 ):
     inner_padding = padding + PADDING_SIZE
     settings = operation.get("sourceSettings", {})
@@ -63,8 +64,13 @@ def _process_dataflow_sourcesettings(
     # TODO - lots of shared code for validating source/dest endpoints, consider refactoring
     endpoint_ref = settings.get("endpointRef")
 
-    endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
-    endpoint_type = endpoint_match[1] if endpoint_match else None
+    # currently we are only looking for endpoint references in the same namespace
+    # duplicate names should not exist, so check the first endpoint that matches the name ref
+    endpoint_match = next((
+        endpoint for endpoint in endpoints
+        if 'name' in endpoint and endpoint['name'] == endpoint_ref
+    ), None)
+    endpoint_type = endpoint_match['type'] if endpoint_match and 'type' in endpoint_match else None
     endpoint_type_valid = endpoint_type and endpoint_type.lower() in valid_source_endpoint_types
     endpoint_type_status = CheckTaskStatus.success if endpoint_type_valid else CheckTaskStatus.error
 
@@ -251,7 +257,7 @@ def _process_dataflow_transformationsettings(
 
 
 def _process_dataflow_destinationsettings(
-    check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoint_tuples: List[Tuple[str, str]], operation: dict, detail_level: int, padding: int
+    check_manager: CheckManager, target: str, namespace: str, dataflow_name: str, endpoints: List[dict], operation: dict, detail_level: int, padding: int
 ):
     settings = operation.get("destinationSettings", {})
     if detail_level > ResourceOutputDetailLevel.summary.value:
@@ -261,7 +267,12 @@ def _process_dataflow_destinationsettings(
     # TODO - validate endpoint ref
     endpoint_ref = settings.get("endpointRef")
 
-    endpoint_match = next((endpoint for endpoint in endpoint_tuples if endpoint[0] == endpoint_ref), None)
+    # currently we are only looking for endpoint references in the same namespace
+    # duplicate names should not exist, so check the first endpoint that matches the name ref
+    endpoint_match = next((
+        endpoint for endpoint in endpoints
+        if 'name' in endpoint and endpoint['name'] == endpoint_ref
+    ), None)
 
     endpoint_validity = "valid"
     endpoint_status = CheckTaskStatus.success
@@ -719,8 +730,13 @@ def evaluate_dataflows(
             namespace=namespace,
             resource_name=None,
         )
-        # TODO - validate allowed source endpoint types
-        endpoint_tuples = [(endpoint.get("metadata", {}).get("name"), endpoint.get("spec", {}).get("endpointType")) for endpoint in all_endpoints]
+
+        endpoints = [
+            {
+                "name": endpoint.get("metadata", {}).get("name"),
+                "type": endpoint.get("spec", {}).get("endpointType")
+            } for endpoint in all_endpoints
+        ]
 
         for dataflow in list(dataflows):
             spec = dataflow.get("spec", {})
@@ -799,7 +815,7 @@ def evaluate_dataflows(
                         target=target,
                         namespace=namespace,
                         dataflow_name=dataflow_name,
-                        endpoint_tuples=endpoint_tuples,
+                        endpoints=endpoints,
                         operation=operation,
                         detail_level=detail_level,
                         padding=operation_padding,
@@ -820,7 +836,7 @@ def evaluate_dataflows(
                         target=target,
                         namespace=namespace,
                         dataflow_name=dataflow_name,
-                        endpoint_tuples=endpoint_tuples,
+                        endpoints=endpoints,
                         operation=operation,
                         detail_level=detail_level,
                         padding=operation_padding,

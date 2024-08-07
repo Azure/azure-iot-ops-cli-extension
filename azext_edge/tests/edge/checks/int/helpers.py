@@ -238,7 +238,7 @@ def run_check_command(
     ops_service: str,
     resource_api: EdgeResourceApi,
     resource_kind: str,
-    resource_match: str,
+    resource_match: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], bool]:
     try:
         aio_check = run(f"kubectl api-resources --api-group={resource_api.group}")

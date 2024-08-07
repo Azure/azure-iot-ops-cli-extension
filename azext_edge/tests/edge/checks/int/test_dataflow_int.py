@@ -18,22 +18,18 @@ from .helpers import (
     run_check_command
 )
 from ....helpers import get_kubectl_custom_items
-from ....generators import generate_names
 
 logger = get_logger(__name__)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("resource_kind", DataflowResourceKinds.list() + [None])
-# TODO: figure out if name match should be a general test vs each service (minimize test runs)
-@pytest.mark.parametrize("resource_match", [None, "aio-dataflow-operator*", generate_names()])
-def test_dataflow_check(init_setup, detail_level, resource_match, resource_kind):
+def test_dataflow_check(init_setup, detail_level, resource_kind):
     post_deployment, dataflow_present = run_check_command(
         detail_level=detail_level,
         ops_service="dataflow",
         resource_api=DATAFLOW_API_V1B1,
-        resource_kind=resource_kind,
-        resource_match=resource_match
+        resource_kind=resource_kind
     )
 
     # overall api
@@ -51,14 +47,12 @@ def test_dataflow_check(init_setup, detail_level, resource_match, resource_kind)
             post_deployment=post_deployment,
             description_name="Dataflow",
             pod_prefix="aio-dataflow",
-            resource_match=resource_match,
         )
     else:
         assert "evalCoreServiceRuntime" not in post_deployment
 
     custom_resources = get_kubectl_custom_items(
         resource_api=DATAFLOW_API_V1B1,
-        resource_match=resource_match,
         include_plural=True
     )
     assert_eval_dataflows(
