@@ -133,11 +133,11 @@ def evaluate_assets(
             endpoint_profile_uri_status = CheckTaskStatus.success.value
             if endpoint:
                 endpoint_profile_uri_text = (
-                    f"Asset endpoint profile uri {{[bright_blue]{endpoint_profile_uri}[/bright_blue]}} property [green]detected[/green]."
+                    f"Asset endpoint profile {{[bright_blue]{endpoint_profile_uri}[/bright_blue]}} property [green]detected[/green]."
                 )
             else:
                 endpoint_profile_uri_text = (
-                    f"Asset endpoint profile uri {{[bright_blue]{endpoint_profile_uri}[/bright_blue]}} [red]not detected[/red]."
+                    f"Asset endpoint profile {{[bright_blue]{endpoint_profile_uri}[/bright_blue]}} [red]not detected[/red]."
                 )
                 endpoint_profile_uri_status = CheckTaskStatus.error.value
 
