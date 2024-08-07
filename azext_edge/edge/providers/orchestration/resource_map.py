@@ -42,7 +42,7 @@ class ClusterContainer:
 
 
 class IoTOperationsResourceMap:
-    def __init__(self, cmd, cluster_name: str, resource_group_name: str):
+    def __init__(self, cmd, cluster_name: str, resource_group_name: str, defer_refresh: bool = False):
         from azure.cli.core.commands.client_factory import get_subscription_id
 
         self.cmd = cmd
@@ -56,7 +56,8 @@ class IoTOperationsResourceMap:
             resource_group_name=self.resource_group_name,
         )
         self._cluster_container = ClusterContainer()
-        self.refresh_resource_state()
+        if not defer_refresh:
+            self.refresh_resource_state()
 
     @property
     def extensions(self) -> List[IoTOperationsResource]:

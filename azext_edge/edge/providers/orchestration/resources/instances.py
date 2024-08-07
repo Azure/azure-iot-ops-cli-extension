@@ -10,21 +10,17 @@ from knack.log import get_logger
 from rich import print
 from rich.console import Console
 
-from ....util.az_client import get_iotops_mgmt_client, parse_resource_id, wait_for_terminal_state, get_resource_client
+from ....util.az_client import (
+    get_iotops_mgmt_client,
+    get_resource_client,
+    parse_resource_id,
+    wait_for_terminal_state,
+)
 from ....util.queryable import Queryable
 from ..common import CUSTOM_LOCATIONS_API_VERSION
+from ..resource_map import IoTOperationsResourceMap
 
 logger = get_logger(__name__)
-
-
-QUERIES = {
-    "get_cl_from_instance": """
-        resources
-        | where type =~ 'microsoft.extendedlocation/customlocations'
-        | where id =~ '{resource_id}'
-        | project id, name, properties
-        """
-}
 
 
 class Instances(Queryable):
@@ -52,30 +48,26 @@ class Instances(Queryable):
         return self.iotops_mgmt_client.instance.list_by_subscription()
 
     def _show_tree(self, instance: dict):
-        custom_location = self.get_associated_cl(instance)
-        # TODO @digimaun
-        if not custom_location:
-            logger.warning("Unable to process the resource tree.")
-            return
-
-        resource_id_container = parse_resource_id(custom_location["properties"]["hostResourceId"])
-
-        # Currently resource map will query cluster state upon init
-        # therefore we only use it when necessary to save cycles.
-        from ..resource_map import IoTOperationsResourceMap
-
+        resource_map = self.get_resource_map(instance)
         with self.console.status("Working..."):
-            resource_map = IoTOperationsResourceMap(
-                cmd=self.cmd,
-                cluster_name=resource_id_container.resource_name,
-                resource_group_name=resource_id_container.resource_group_name,
-            )
+            resource_map.refresh_resource_state()
         print(resource_map.build_tree(category_color="cyan"))
 
     def get_associated_cl(self, instance: dict) -> dict:
         return self.resource_client.resources.get_by_id(
             resource_id=instance["extendedLocation"]["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
         ).as_dict()
+
+    def get_resource_map(self, instance: dict, defer_refresh: bool = True) -> IoTOperationsResourceMap:
+        custom_location = self.get_associated_cl(instance)
+        resource_id_container = parse_resource_id(custom_location["properties"]["hostResourceId"])
+
+        return IoTOperationsResourceMap(
+            cmd=self.cmd,
+            cluster_name=resource_id_container.resource_name,
+            resource_group_name=resource_id_container.resource_group_name,
+            defer_refresh=defer_refresh,
+        )
 
     def update(
         self,
