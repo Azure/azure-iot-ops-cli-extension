@@ -91,7 +91,7 @@ def test_instance_show(mocked_cmd, mocked_responses: responses):
     assert len(mocked_responses.calls) == 1
 
 
-def test_instance_get_associated_cl(mocked_cmd, mocked_responses: responses):
+def test_instance_get_resource_map(mocker, mocked_cmd, mocked_responses: responses):
     cl_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -107,9 +107,16 @@ def test_instance_get_associated_cl(mocked_cmd, mocked_responses: responses):
         content_type="application/json",
     )
 
+    host_resource_id: str = mock_cl_record["properties"]["hostResourceId"]
+    host_resource_parts = host_resource_id.split("/")
+
     instances = Instances(mocked_cmd)
-    cl_result = instances.get_associated_cl(mock_instance_record)
-    assert cl_result == mock_cl_record
+    resource_map = instances.get_resource_map(mock_instance_record)
+    assert resource_map.subscription_id == host_resource_parts[2]
+
+    assert resource_map.connected_cluster.subscription_id == host_resource_parts[2]
+    assert resource_map.connected_cluster.resource_group_name == host_resource_parts[4]
+    assert resource_map.connected_cluster.cluster_name == host_resource_parts[-1]
     assert len(mocked_responses.calls) == 1
 
 

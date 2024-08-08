@@ -45,15 +45,12 @@ class IoTOperationsResourceMap:
     def __init__(self, cmd, cluster_name: str, resource_group_name: str, defer_refresh: bool = False):
         from azure.cli.core.commands.client_factory import get_subscription_id
 
-        self.cmd = cmd
-        self.cluster_name = cluster_name
-        self.resource_group_name = resource_group_name
         self.subscription_id = get_subscription_id(cli_ctx=cmd.cli_ctx)
         self.connected_cluster = ConnectedCluster(
             cmd=cmd,
             subscription_id=self.subscription_id,
-            cluster_name=self.cluster_name,
-            resource_group_name=self.resource_group_name,
+            cluster_name=cluster_name,
+            resource_group_name=resource_group_name,
         )
         self._cluster_container = ClusterContainer()
         if not defer_refresh:
@@ -131,7 +128,7 @@ class IoTOperationsResourceMap:
         self._cluster_container = refreshed_cluster_container
 
     def build_tree(self, category_color: str = "red") -> Tree:
-        tree = Tree(f"[green]{self.cluster_name}")
+        tree = Tree(f"[green]{self.connected_cluster.cluster_name}")
         extensions_node = tree.add(label=f"[{category_color}]extensions")
         [extensions_node.add(ext.display_name) for ext in self.extensions]
 

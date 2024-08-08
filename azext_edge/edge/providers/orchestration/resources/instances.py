@@ -53,20 +53,20 @@ class Instances(Queryable):
             resource_map.refresh_resource_state()
         print(resource_map.build_tree(category_color="cyan"))
 
-    def get_associated_cl(self, instance: dict) -> dict:
+    def _get_associated_cl(self, instance: dict) -> dict:
         return self.resource_client.resources.get_by_id(
             resource_id=instance["extendedLocation"]["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
         ).as_dict()
 
-    def get_resource_map(self, instance: dict, defer_refresh: bool = True) -> IoTOperationsResourceMap:
-        custom_location = self.get_associated_cl(instance)
+    def get_resource_map(self, instance: dict) -> IoTOperationsResourceMap:
+        custom_location = self._get_associated_cl(instance)
         resource_id_container = parse_resource_id(custom_location["properties"]["hostResourceId"])
 
         return IoTOperationsResourceMap(
             cmd=self.cmd,
             cluster_name=resource_id_container.resource_name,
             resource_group_name=resource_id_container.resource_group_name,
-            defer_refresh=defer_refresh,
+            defer_refresh=True,
         )
 
     def update(
