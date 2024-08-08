@@ -1,10 +1,16 @@
 name: "[auto] Docker Build"
+permissions: {}
 on:
   pull_request:
     paths:
       - "Dockerfile"
+  push:
+    paths:
+      - "Dockerfile"
 jobs:
   ensure-docker-build:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout source"
