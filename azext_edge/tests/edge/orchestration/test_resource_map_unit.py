@@ -42,11 +42,17 @@ def _generate_records(count: int = 1) -> List[dict]:
 
 def _assemble_connected_cluster_mock(
     cluster_mock: Mock,
+    sub: str,
+    cluster_name: str,
+    rg_name: str,
     extensions: Optional[List[dict]],
     custom_locations: Optional[List[dict]],
     resources: Optional[List[dict]],
     sync_rules: Optional[List[dict]],
 ):
+    cluster_mock().subscription_id = sub
+    cluster_mock().cluster_name = cluster_name
+    cluster_mock().resource_group_name = rg_name
     cluster_mock().get_aio_extensions.return_value = extensions
     cluster_mock().get_aio_custom_locations.return_value = custom_locations
     cluster_mock().get_aio_resources.return_value = resources
@@ -76,17 +82,20 @@ def test_resource_map(
         IoTOperationsResourceMap,
     )
 
+    sub = get_zeroed_subscription()
+    cluster_name = generate_random_string()
+    rg_name = generate_random_string()
+
     _assemble_connected_cluster_mock(
         cluster_mock=mocked_connected_cluster,
+        sub=sub,
+        cluster_name=cluster_name,
+        rg_name=rg_name,
         extensions=expected_extensions,
         custom_locations=expected_custom_locations,
         resources=expected_resources,
         sync_rules=expected_resource_sync_rules,
     )
-
-    sub = get_zeroed_subscription()
-    cluster_name = generate_random_string()
-    rg_name = generate_random_string()
 
     resource_map = IoTOperationsResourceMap(cmd=mocked_cmd, cluster_name=cluster_name, resource_group_name=rg_name)
 
