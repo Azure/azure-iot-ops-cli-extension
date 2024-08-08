@@ -122,7 +122,7 @@ def evaluate_assets(
 
             asset_spec = asset["spec"]
             endpoint_profile_uri = asset_spec.get("assetEndpointProfileUri", "")
-            endpoint = get_resources_by_name(
+            endpoint_profile = get_resources_by_name(
                 api_info=DEVICEREGISTRY_API_V1,
                 kind=DeviceRegistryResourceKinds.ASSET,
                 resource_name=endpoint_profile_uri
@@ -131,7 +131,7 @@ def evaluate_assets(
 
             endpoint_profile_uri_value = {"spec.assetEndpointProfileUri": endpoint_profile_uri}
             endpoint_profile_uri_status = CheckTaskStatus.success.value
-            if endpoint:
+            if endpoint_profile:
                 endpoint_profile_uri_text = (
                     f"Asset endpoint profile uri {{[bright_blue]{endpoint_profile_uri}[/bright_blue]}} property [green]detected[/green]."
                 )
