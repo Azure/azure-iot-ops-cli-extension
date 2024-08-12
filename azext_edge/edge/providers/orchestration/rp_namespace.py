@@ -4,8 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict
-
 from knack.log import get_logger
 
 from ...util.az_client import get_resource_client
