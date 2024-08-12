@@ -16,13 +16,13 @@ logger = get_logger(__name__)
 RP_NAMESPACE_SET = frozenset(
     [
         "Microsoft.IoTOperationsOrchestrator",
-        "Microsoft.IoTOperationsMQ",
+        "Microsoft.IoTOperations",
         "Microsoft.DeviceRegistry",
     ]
 )
 
 
-def register_providers(subscription_id: str, **kwargs) -> Dict[str, bool]:
+def register_providers(subscription_id: str, **kwargs):
     resource_client = get_resource_client(subscription_id=subscription_id)
     providers_list = resource_client.providers.list()
     for provider in providers_list:
