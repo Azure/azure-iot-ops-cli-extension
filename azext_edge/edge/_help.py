@@ -79,10 +79,6 @@ def load_iotops_help():
         - name: Include mqtt broker traces in the support bundle. This is an alias for stats trace fetch capability.
           text: >
             az iot ops support create-bundle --ops-service broker --broker-traces
-
-        - name: Include arc agents resources in the support bundle.
-          text: >
-            az iot ops support create-bundle --arc-agents
     """
 
     helps[
