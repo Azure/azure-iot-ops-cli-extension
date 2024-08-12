@@ -1019,3 +1019,40 @@ def test_verify_custom_location_namespace(
     verify_custom_location_namespace(
         connected_cluster=connected_cluster, custom_location_name=custom_location_name, namespace=namespace
     )
+
+
+@pytest.mark.parametrize(
+    "registration_state",
+    [
+        "Registered",
+        "NotRegistered",
+    ],
+)
+def test_register_providers(mocker, registration_state):
+    mocked_get_resource_client: Mock = mocker.patch(
+        "azext_edge.edge.providers.orchestration.rp_namespace.get_resource_client"
+    )
+    from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET, register_providers
+
+    class MockProvider:
+        def __init__(self, namespace: str, registration_state: str):
+            self.namespace = namespace
+            self.registration_state = registration_state
+
+        def as_dict(self):
+            return {"namespace": self.namespace, "registration_state": self.registration_state}
+
+    iot_ops_rps = ["Microsoft.IoTOperationsOrchestrator", "Microsoft.IoTOperations", "Microsoft.DeviceRegistry"]
+    mocked_get_resource_client().providers.list.return_value = [
+        MockProvider(namespace, registration_state) for namespace in iot_ops_rps
+    ]
+
+    for rp in iot_ops_rps:
+        assert rp in RP_NAMESPACE_SET
+    assert len(iot_ops_rps) == len(RP_NAMESPACE_SET)
+
+    register_providers(ZEROED_SUB)
+    mocked_get_resource_client().providers.list.assert_called_once()
+    if registration_state == "NotRegistered":
+        for rp in iot_ops_rps:
+            mocked_get_resource_client().providers.register.assert_any_call(rp)
