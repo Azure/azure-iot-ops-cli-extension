@@ -12,7 +12,6 @@ from ...common import AIO_MQ_RESOURCE_PREFIX, CheckTaskStatus
 from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
 from .base import (
     CheckManager,
-    evaluate_pod_health,
     filter_resources_by_namespace,
     filter_resources_by_name,
     get_resource_metadata_property,
@@ -246,18 +245,18 @@ def _display_connector_runtime_health(
             ),
         )
         padding += PADDING_SIZE
-        pod_name_prefixes = [
-            f"{prefix}{connector['metadata']['name']}" for connector in connectors
-        ]
-        for pod in pod_name_prefixes:
-            evaluate_pod_health(
-                check_manager=check_manager,
-                target=target,
-                namespace=namespace,
-                pod=pod,
-                display_padding=padding,
-                detail_level=detail_level,
-            )
+        # pod_name_prefixes = [
+        #     f"{prefix}{connector['metadata']['name']}" for connector in connectors
+        # ]
+        # for pod in pod_name_prefixes:
+        #     evaluate_pod_health(
+        #         check_manager=check_manager,
+        #         target=target,
+        #         namespace=namespace,
+        #         pod=pod,
+        #         display_padding=padding,
+        #         detail_level=detail_level,
+        #     )
 
 
 def _display_invalid_topic_maps(

@@ -49,32 +49,17 @@ def evaluate_pod_health(
         detail_level=detail_level,
     )
 
-# evaluate_pod_health_new(
-#     check_manager=check_manager,
-#     target=target_brokers,
-#     namespace=namespace,
-#     display_padding=12,
-#     pod_with_labels=[
-#         (AIO_MQ_DIAGNOSTICS_PROBE_PREFIX, MQ_NAME_LABEL),
-#         (AIO_MQ_FRONTEND_PREFIX, MQ_NAME_LABEL),
-#         (AIO_MQ_BACKEND_PREFIX, MQ_NAME_LABEL),
-#         (AIO_MQ_AUTH_PREFIX, MQ_NAME_LABEL),
-#         (AIO_MQ_HEALTH_MANAGER, MQ_NAME_LABEL),
-#         (AIO_MQ_DIAGNOSTICS_SERVICE, MQ_K8S_LABEL),
-#         (AIO_MQ_OPERATOR, MQ_K8S_LABEL),
-#         (AIO_MQ_FLUENT_BIT, MQ_K8S_LABEL),
-#     ],
-#     detail_level=detail_level,
-# )
+
 def evaluate_pod_health_with_table(
     check_manager: CheckManager,
     target: str,
     namespace: str,
-    display_padding: int,
+    padding: int,
     pod_with_labels: List[Tuple[str, str]],
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    pods: Optional[List[V1Pod]] = None,
 ) -> None:
-    
+
     # prep table
     table = Table(
         show_header=True, header_style="bold", show_lines=True, caption_justify="left"
@@ -85,10 +70,11 @@ def evaluate_pod_health_with_table(
         ("Conditions", "left"),
     ]:
         table.add_column(column_name, justify=f"{justify}")
-    
+
     for pod, label in pod_with_labels:
         target_service_pod = f"pod/{pod}"
-        pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=label)
+        if pods is None:
+            pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=label)
 
         process_pod_status(
             check_manager=check_manager,
@@ -96,19 +82,17 @@ def evaluate_pod_health_with_table(
             target=target,
             target_service_pod=target_service_pod,
             pods=pods,
-            display_padding=display_padding,
+            display_padding=padding,
             namespace=namespace,
             detail_level=detail_level,
         )
-    
+
     if detail_level != ResourceOutputDetailLevel.summary.value:
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding(table, (0, 0, 0, display_padding)),
+            display=Padding(table, (0, 0, 0, padding)),
         )
-
-    
 
 
 def process_pod_status(
@@ -201,10 +185,8 @@ def process_pod_status(
 
         if not conditions_readiness:
             pod_eval_status = CheckTaskStatus.error.value
-        else:
-            # add warning if there are unknown conditions when known conditions are all in good state
-            if unknown_conditions_display_list and pod_eval_status != CheckTaskStatus.error.value:
-                pod_eval_status = CheckTaskStatus.warning.value
+        elif unknown_conditions_display_list and pod_eval_status != CheckTaskStatus.error.value:
+            pod_eval_status = CheckTaskStatus.warning.value
 
         _add_pod_health_display(
             check_manager=check_manager,
@@ -258,14 +240,12 @@ def _add_pod_health_display(
     if detail_level != ResourceOutputDetailLevel.summary.value:
         pod_health_text = f"\n{pod_health_text}"
 
-    padding = display_padding + 4
-
     if detail_level == ResourceOutputDetailLevel.summary.value:
         check_manager.add_display(
-        target_name=target,
-        namespace=namespace,
-        display=Padding(pod_health_text, (0, 0, 0, display_padding)),
-    )
+            target_name=target,
+            namespace=namespace,
+            display=Padding(pod_health_text, (0, 0, 0, display_padding)),
+        )
     else:
         pod_conditions_text = "N/A"
 
@@ -282,35 +262,17 @@ def _add_pod_health_display(
                 if (detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready) or\
                    detail_level == ResourceOutputDetailLevel.verbose.value:
                     pod_conditions_text += f"{condition}\n"
-                    # check_manager.add_display(
-                    #     target_name=target,
-                    #     namespace=namespace,
-                    #     display=Padding(condition, (0, 0, 0, padding + 4)),
-                    # )
 
                     if reason:
-                        pod_conditions_text += f"\n{reason}"
-                        # check_manager.add_display(
-                        #     target_name=target,
-                        #     namespace=namespace,
-                        #     display=Padding(reason, (0, 0, 0, padding + 8)),
-                        # )
+                        pod_conditions_text += f"{reason}\n"
 
             if conditions_readiness:
                 for condition, reason in unknown_conditions_display_list:
                     condition_text: str = f"[yellow]Irregular Condition {condition} found.[/yellow]"
-                    check_manager.add_display(
-                        target_name=target,
-                        namespace=namespace,
-                        display=Padding(condition_text, (0, 0, 0, padding + 4)),
-                    )
+                    pod_conditions_text += f"{condition_text}\n"
 
                     if reason and detail_level == ResourceOutputDetailLevel.verbose.value:
-                        check_manager.add_display(
-                            target_name=target,
-                            namespace=namespace,
-                            display=Padding(reason, (0, 0, 0, padding + 8)),
-                        )
+                        pod_conditions_text += f"{reason}\n"
 
         if table:
             table.add_row(pod_name, pod_phase_deco, pod_conditions_text)

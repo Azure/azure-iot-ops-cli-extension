@@ -8,6 +8,8 @@ import re
 from rich.padding import Padding
 from typing import Any, Dict, List
 
+from azext_edge.edge.providers.check.base.pod import evaluate_pod_health_with_table
+
 from ...common import CheckTaskStatus
 
 from ..edge_api import (
@@ -25,7 +27,6 @@ from .base import (
     generate_target_resource_name,
     get_resources_by_name,
     process_dict_resource,
-    process_pod_status,
     get_resources_grouped_by_namespace,
 )
 
@@ -98,14 +99,16 @@ def evaluate_core_service_runtime(
             )
         )
 
-        process_pod_status(
+        evaluate_pod_health_with_table(
             check_manager=check_manager,
-            target_service_pod=f"pod/{AKRI_PREFIX}",
             target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
-            pods=pods,
             namespace=namespace,
             display_padding=padding + PADDING_SIZE,
+            pod_with_labels=[
+                (AKRI_PREFIX, AKRI_NAME_LABEL_V2),
+            ],
             detail_level=detail_level,
+            pods=pods,
         )
 
     return check_manager.as_dict(as_list)

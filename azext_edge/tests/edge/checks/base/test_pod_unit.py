@@ -6,12 +6,15 @@
 
 import pytest
 
+from unittest.mock import ANY
+
 from azext_edge.edge.common import CheckTaskStatus, PodState
 from azext_edge.edge.providers.check.base import (
     decorate_pod_phase,
     evaluate_pod_health,
     process_pod_status,
 )
+from azext_edge.edge.providers.check.base.pod import evaluate_pod_health_with_table
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 from azext_edge.tests.edge.checks.conftest import generate_pod_stub
 from ....generators import generate_random_string
@@ -94,6 +97,92 @@ def test_evaluate_pod_health(
         pods=pods,
         display_padding=padding,
         detail_level=detail_level,
+    )
+
+
+@pytest.mark.parametrize("target_service_pod", [generate_random_string()])
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize("namespace", [ALL_NAMESPACES_TARGET, generate_random_string()])
+@pytest.mark.parametrize("padding", [4])
+@pytest.mark.parametrize("pod_with_labels", [[(generate_random_string(), generate_random_string())]])
+@pytest.mark.parametrize(
+    "pods",
+    [
+        [],
+        [generate_pod_stub(name="mq-operator-1", phase="Running")],
+        [generate_pod_stub(name="mq-operator-1", phase="Pending")],
+        [generate_pod_stub(name="mq-operator-1", phase="Failed")],
+        [
+            generate_pod_stub(
+                name="akri-operator-1",
+                phase="Running",
+            ),
+            generate_pod_stub(
+                name="akri-operator-2",
+                phase="Pending",
+            ),
+        ],
+        [
+            generate_pod_stub(
+                name="opcua-operator-1",
+                phase="Running",
+            ),
+            generate_pod_stub(
+                name="opcua-operator-3",
+                phase="Failed",
+            ),
+        ],
+    ]
+)
+def test_evaluate_pod_health_with_table(
+    mocker,
+    mock_process_pod_status,
+    mocked_check_manager,
+    namespace,
+    padding,
+    pods,
+    target_service_pod,
+    detail_level,
+    pod_with_labels,
+):
+    target_service_pod = generate_random_string()
+    namespace = generate_random_string()
+    padding = 4
+    detail_level = ResourceOutputDetailLevel.list()
+    pods = [
+        generate_pod_stub(
+            name="akri-operator-1",
+            phase="Running",
+        ),
+        generate_pod_stub(
+            name="akri-operator-2",
+            phase="Pending",
+        ),
+    ]
+
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.check.base.pod.get_namespaced_pods_by_prefix",
+        return_value=pods,
+    )
+
+    evaluate_pod_health_with_table(
+        check_manager=mocked_check_manager,
+        namespace=namespace,
+        target=target_service_pod,
+        pod_with_labels=[(target_service_pod, generate_random_string())],
+        display_padding=padding,
+        detail_level=detail_level,
+    )
+
+    mock_process_pod_status.assert_called_once_with(
+        check_manager=mocked_check_manager,
+        namespace=namespace,
+        target=target_service_pod,
+        target_service_pod=f"pod/{target_service_pod}",
+        pods=pods,
+        display_padding=padding,
+        detail_level=detail_level,
+        table=ANY
     )
 
 
@@ -382,7 +471,6 @@ def test_process_pod_status(
 
     else:
         assert mocked_check_manager.set_target_conditions.called or mocked_check_manager.add_target_conditions.called
-        assert mocked_check_manager.add_display.called
         mocked_check_manager.add_target_eval.assert_any_call(
             target_name=target_name,
             namespace=namespace,
