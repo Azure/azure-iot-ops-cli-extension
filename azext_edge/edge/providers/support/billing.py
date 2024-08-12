@@ -9,7 +9,7 @@ from typing import Iterable
 
 from knack.log import get_logger
 
-from azext_edge.edge.providers.support.shared import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT
+from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT
 
 from ..edge_api import CLUSTER_CONFIG_API_V1, EdgeResourceApi
 from .base import (

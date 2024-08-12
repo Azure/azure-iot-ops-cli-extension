@@ -10,9 +10,6 @@ from ..k8s.config_map import get_config_map
 from ..orchestration.base import ARC_CONFIG_MAP, ARC_NAMESPACE
 from .base import process_events, process_nodes, process_storage_classes
 
-COMPONENT_LABEL_FORMAT = "app.kubernetes.io/component in ({label})"
-NAME_LABEL_FORMAT = "app.kubernetes.io/name in ({label})"
-
 logger = get_logger(__name__)
 
 

@@ -8,7 +8,7 @@ from functools import partial
 
 from knack.log import get_logger
 
-from azext_edge.edge.providers.support.shared import COMPONENT_LABEL_FORMAT
+from .common import COMPONENT_LABEL_FORMAT, HELM_MANAGED_LABEL
 
 from .base import (
     DAY_IN_SECONDS,
@@ -21,7 +21,6 @@ from .base import (
 logger = get_logger(__name__)
 
 MONIKER = "arcagents"
-ARC_AGENTS_SERVICE_LABEL = "app.kubernetes.io/managed-by in (Helm)"
 ARC_AGENTS = [
     ("cluster-identity-operator", False),  # (component, has_services)
     ("clusterconnect-agent", False),
@@ -76,7 +75,7 @@ def fetch_resources(func: callable, since_seconds: int = None) -> list:
         if func == process_services:
             if not has_service:
                 continue
-            kwargs['label_selector'] = ARC_AGENTS_SERVICE_LABEL
+            kwargs['label_selector'] = HELM_MANAGED_LABEL
             kwargs['prefix_names'] = [component]
 
         resources.extend(func(**kwargs))

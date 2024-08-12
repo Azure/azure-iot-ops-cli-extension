@@ -35,7 +35,7 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_SERVICE_LABEL,
     AKRI_WEBHOOK_LABEL,
 )
-from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, ARC_AGENTS_SERVICE_LABEL, MONIKER
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
@@ -58,7 +58,7 @@ from azext_edge.edge.providers.support.orc import (
     ORC_CONTROLLER_LABEL,
 )
 from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
-from azext_edge.edge.providers.support.shared import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT
+from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT, HELM_MANAGED_LABEL, NAME_LABEL_FORMAT
 from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
 from azext_edge.tests.edge.support.conftest import add_pod_to_mocked_pods
 
@@ -1059,7 +1059,7 @@ def test_create_bundle_arc_agents(
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=ARC_AGENTS_SERVICE_LABEL,
+                label_selector=HELM_MANAGED_LABEL,
                 directory_path=f"{MONIKER}/{component}",
                 mock_names=[f"{component}"]
             )

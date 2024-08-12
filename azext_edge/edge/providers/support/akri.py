@@ -19,7 +19,7 @@ from .base import (
     process_services,
     process_replicasets,
 )
-from .shared import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
