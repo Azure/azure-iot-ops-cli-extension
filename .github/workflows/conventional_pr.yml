@@ -1,4 +1,6 @@
 name: "[auto] Check PR title format"
+run-name: "Check PR Title: #${{ github.event.pull_request.number}}"
+permissions: {}
 on:
   pull_request:
     types: [

@@ -156,6 +156,10 @@ def test_connected_cluster_attr(
         cmd=mocked_cmd, subscription_id=sub, cluster_name=cluster_name, resource_group_name=rg_name
     )
 
+    assert connected_cluster.subscription_id == sub
+    assert connected_cluster.cluster_name == cluster_name
+    assert connected_cluster.resource_group_name == rg_name
+
     resource_id = connected_cluster.resource_id
     assert resource_id == (
         f"/subscriptions/{sub}/resourceGroups/{rg_name}"
