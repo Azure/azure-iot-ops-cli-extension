@@ -6,6 +6,8 @@
 
 from functools import partial
 from typing import List
+
+from azext_edge.edge.providers.support.billing import AIO_BILLING_USAGE_NAME_LABEL
 from ...generators import generate_random_string
 
 import pytest
@@ -14,7 +16,7 @@ import pytest
 def add_pod_to_mocked_pods(
     mocked_client, expected_pod_map, mock_names: List[str] = None, mock_init_containers: bool = False
 ):
-    from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
+    from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1PodStatus, V1ObjectMeta, V1Container
 
     current_pods = mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value
     pod_list = current_pods.items
@@ -26,7 +28,8 @@ def add_pod_to_mocked_pods(
     for pod_name in mock_names:
         container_name = generate_random_string()
         spec = V1PodSpec(containers=[V1Container(name=container_name)])
-        pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
+        status = V1PodStatus(phase="Running")
+        pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec, status=status)
 
         if mock_init_containers:
             pod.spec.init_containers = [V1Container(name="mock-init-container")]
@@ -161,7 +164,7 @@ def mocked_cluster_resources(request, mocker):
 # TODO - @digimaun make this more useful / flexible configuration.
 @pytest.fixture
 def mocked_list_pods(mocked_client):
-    from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1ObjectMeta, V1Container
+    from kubernetes.client.models import V1PodList, V1Pod, V1PodSpec, V1PodStatus, V1ObjectMeta, V1Container
 
     expected_pod_map = {}
     namespaces = [generate_random_string()]
@@ -173,9 +176,22 @@ def mocked_list_pods(mocked_client):
         for pod_name in pod_names:
             container_name = generate_random_string()
             spec = V1PodSpec(containers=[V1Container(name=container_name)])
-            pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec)
+            status = V1PodStatus(phase="Running")
+            pod = V1Pod(metadata=V1ObjectMeta(namespace=namespace, name=pod_name), spec=spec, status=status)
             pods.append(pod)
             expected_pod_map[namespace][pod_name] = {container_name: mock_log}
+
+    # add evicted pod for testing
+    evicted_pod_name = "evicted_pod"
+    evicted_pod_spec = V1PodSpec(containers=[V1Container(name=generate_random_string())])
+    evicted_pod_status = V1PodStatus(phase="Failed", reason="Evicted")
+    evicted_pod = V1Pod(
+        metadata=V1ObjectMeta(namespace=namespace, name=evicted_pod_name),
+        spec=evicted_pod_spec,
+        status=evicted_pod_status
+    )
+    pods.append(evicted_pod)
+    expected_pod_map[namespace][evicted_pod_name] = {evicted_pod.spec.containers[0].name: mock_log}
 
     pods_list = V1PodList(items=pods)
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
@@ -241,8 +257,14 @@ def mocked_list_jobs(mocked_client):
     from kubernetes.client.models import V1JobList, V1Job, V1ObjectMeta
 
     def _handle_list_jobs(*args, **kwargs):
-        job = V1Job(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_job"))
-        job_list = V1JobList(items=[job])
+        names = ["mock_job"]
+        if "label_selector" in kwargs and kwargs["label_selector"] == AIO_BILLING_USAGE_NAME_LABEL:
+            names.append("aio-usage-job")
+
+        job_list = []
+        for name in names:
+            job_list.append(V1Job(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        job_list = V1JobList(items=job_list)
 
         return job_list
 

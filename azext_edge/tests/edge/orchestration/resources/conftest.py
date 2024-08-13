@@ -65,3 +65,13 @@ def get_mock_resource(
         },
         "type": QUALIFIED_INSTANCE_TYPE,
     }
+
+
+def get_resource_id(
+    resource_path: str,
+    resource_group_name: str,
+    resource_provider: Optional[str] = RESOURCE_PROVIDER,
+) -> str:
+    return get_base_endpoint(
+        resource_group_name=resource_group_name, resource_path=resource_path, resource_provider=resource_provider
+    ).split("?")[0][len(BASE_URL) :]

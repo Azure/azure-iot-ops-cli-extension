@@ -1,15 +1,19 @@
 # TODO - currently private index is not used.
 # TODO - Trigger PRs against public index using github release artifact URL
 name: "[auto] Update Private Extension index"
-
+permissions: {}
 on:
   workflow_call:
 env:
   extensions_folder: azure-cli-extensions
   storage_container_url: ${{ secrets.storage_container_url }}
-  sas_token: ${{ secrets.sas_token }}
+  AZCOPY_AUTO_LOGIN_TYPE: "AZCLI"
+  AZCOPY_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 jobs:
   update_index:
+    permissions:
+      contents: none
+      id-token: write
     # prompt for explicit approval as this will update the index for customers
     environment: production
     runs-on:
@@ -29,6 +33,12 @@ jobs:
         run: |
           curl -so azcopy.tar.gz -L 'https://aka.ms/downloadazcopy-v10-linux'
           tar -zxvf azcopy.tar.gz --strip 1
+      - name: "Az CLI login"
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }} 
       - name: Download private index file
         run: |
           azcopy copy "${{ env.storage_container_url }}/index.json" 'index.json'
@@ -64,7 +74,7 @@ jobs:
         if: steps.duplicate_check.outputs.CONTINUE == 'true'
         run: |
           cd ${{ env.extensions_folder }}
-          url="${{ env.storage_container_url }}/index.json?${{ env.SAS_TOKEN }}"
+          url="${{ env.storage_container_url }}/index.json"
           azcopy copy 'index.json' $url
         env:
           SAS_TOKEN: ${{ secrets.SAS_TOKEN }}

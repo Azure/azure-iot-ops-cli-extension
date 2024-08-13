@@ -59,6 +59,9 @@ def load_iotops_help():
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
 
+            Note: logs from evicted pod will not be captured, as they are inaccessible. For details
+            on why a pod was evicted, please refer to the related pod and node files.
+
         examples:
         - name: Basic usage with default options. This form of the command will auto detect IoT Operations APIs and build a suitable bundle
                 capturing the last 24 hours of container logs. The bundle will be produced in the current working directory.
