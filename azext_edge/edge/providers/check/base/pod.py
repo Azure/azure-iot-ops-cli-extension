@@ -47,7 +47,7 @@ def evaluate_pod_health(
         ("Conditions", "left"),
     ]:
         table.add_column(column_name, justify=f"{justify}")
-    
+
     pods_captured = True
 
     # If pods are not provided, get them
@@ -58,7 +58,7 @@ def evaluate_pod_health(
     for pod, label in pod_with_labels:
         target_service_pod = f"pod/{pod}"
         if not pods_captured:
-            pods=get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=label)
+            pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=label)
 
         process_pod_status(
             check_manager=check_manager,
