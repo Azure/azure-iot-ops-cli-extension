@@ -7,6 +7,7 @@
 from typing import TYPE_CHECKING, Iterable, Optional
 
 from knack.log import get_logger
+from rich.prompt import Confirm
 
 from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state
 from ....util.queryable import Queryable
@@ -76,7 +77,16 @@ class SchemaRegistries(Queryable):
             return self.ops.list_by_resource_group(resource_group_name=resource_group_name)
         return self.ops.list_by_subscription()
 
-    def delete(self, name: str, resource_group_name: str, **kwargs) -> "LROPoller":
+    def delete(self, name: str, resource_group_name: str, confirm_yes: Optional[bool] = None, **kwargs):
+        # TODO @digimaun - reuse
+        should_delete = True
+        if not confirm_yes:
+            should_delete = Confirm.ask("Continue?")
+
+        if not should_delete:
+            logger.warning("Deletion cancelled.")
+            return
+
         with self.console.status("Working..."):
             poller = self.ops.begin_delete(resource_group_name=resource_group_name, schema_registry_name=name)
             return wait_for_terminal_state(poller, **kwargs)

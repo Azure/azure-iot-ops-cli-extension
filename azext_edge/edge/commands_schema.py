@@ -44,5 +44,13 @@ def list_registries(cmd, resource_group_name: Optional[str] = None) -> Iterable[
     return SchemaRegistries(cmd).list(resource_group_name=resource_group_name)
 
 
-def delete_registry(cmd, schema_registry_name: str, resource_group_name: Optional[str] = None, **kwargs):
-    return SchemaRegistries(cmd).delete(name=schema_registry_name, resource_group_name=resource_group_name, **kwargs)
+def delete_registry(
+    cmd,
+    schema_registry_name: str,
+    resource_group_name: Optional[str] = None,
+    confirm_yes: Optional[bool] = None,
+    **kwargs
+):
+    return SchemaRegistries(cmd).delete(
+        name=schema_registry_name, resource_group_name=resource_group_name, confirm_yes=confirm_yes, **kwargs
+    )

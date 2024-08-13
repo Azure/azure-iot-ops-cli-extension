@@ -120,6 +120,7 @@ def test_schema_registry_delete(mocked_cmd, mocked_responses: responses):
         cmd=mocked_cmd,
         schema_registry_name=registery_name,
         resource_group_name=resource_group_name,
+        confirm_yes=True,
         wait_sec=0.25,
     )
     assert len(mocked_responses.calls) == 1
