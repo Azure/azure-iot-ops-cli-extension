@@ -31,6 +31,7 @@ logger = get_logger(__name__)
 PADDING = 8
 INNER_PADDING = PADDING + PADDING_SIZE
 
+DEFAULT_DATAFLOW_PROFILE = "profile"
 dataflow_api_check_name = "enumerateDataflowApi"
 dataflow_api_check_desc = "Enumerate Dataflow API resources"
 
@@ -977,17 +978,18 @@ def evaluate_dataflow_profiles(
         check_name=dataflow_profile_check_name,
         check_desc=dataflow_profile_check_desc,
     )
+    target = dataflow_profile_target
+
     all_profiles = get_resources_by_name(
         api_info=DATAFLOW_API_V1B1,
         kind=DataflowResourceKinds.DATAFLOWPROFILE,
         resource_name=resource_name,
     )
-    target = dataflow_profile_target
     if not all_profiles:
         no_profiles_text = "No Dataflow Profiles detected in any namespace."
         check_manager.add_target(target_name=target)
         check_manager.add_target_eval(
-            target_name=target, status=CheckTaskStatus.skipped.value, value={"profiles": no_profiles_text}
+            target_name=target, status=CheckTaskStatus.error.value, value={"profiles": no_profiles_text}
         )
         check_manager.add_display(
             target_name=target,
@@ -995,14 +997,20 @@ def evaluate_dataflow_profiles(
         )
         return check_manager.as_dict(as_list=as_list)
     for namespace, profiles in get_resources_grouped_by_namespace(all_profiles):
-        check_manager.add_target(target_name=target, namespace=namespace, conditions=["spec.instanceCount"])
+        check_manager.add_target(target_name=target, namespace=namespace, conditions=["spec.instanceCount", f"[*].metadata.name=='{DEFAULT_DATAFLOW_PROFILE}'"])
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
             display=Padding(f"Dataflow Profiles in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, PADDING)),
         )
+
+        # warn if no default dataflow profile
+        default_profile_status = CheckTaskStatus.warning
         for profile in list(profiles):
             profile_name = profile.get("metadata", {}).get("name")
+            # check for default dataflow profile
+            if profile_name == DEFAULT_DATAFLOW_PROFILE:
+                default_profile_status = CheckTaskStatus.success
             spec = profile.get("spec", {})
             check_manager.add_display(
                 target_name=target,
@@ -1137,4 +1145,26 @@ def evaluate_dataflow_profiles(
                 display_padding=INNER_PADDING,
                 detail_level=detail_level,
             )
+
+        # default dataflow profile status, display warning if not success
+        check_manager.add_target_eval(
+            target_name=target,
+            namespace=namespace,
+            status=default_profile_status.value,
+            resource_kind=DataflowResourceKinds.DATAFLOWPROFILE.value,
+            resource_name=DEFAULT_DATAFLOW_PROFILE,
+            value={f"[*].metadata.name=='{DEFAULT_DATAFLOW_PROFILE}'": default_profile_status.value},
+        )
+        if not default_profile_status == CheckTaskStatus.success:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(
+                    COLOR_STR_FORMAT.format(
+                        color=default_profile_status.color,
+                        value=f"\nDefault DataflowProfile {{{DEFAULT_DATAFLOW_PROFILE}}} not found in namespace {{{namespace}}}"
+                    ),
+                    (0, 0, 0, PADDING)),
+            )
+
     return check_manager.as_dict(as_list=as_list)

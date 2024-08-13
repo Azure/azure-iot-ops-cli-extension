@@ -6,7 +6,9 @@
 
 
 import pytest
+from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
 from azext_edge.edge.providers.check.dataflow import (
+    DEFAULT_DATAFLOW_PROFILE,
     evaluate_dataflow_endpoints,
     evaluate_core_service_runtime,
     evaluate_dataflow_profiles,
@@ -55,9 +57,7 @@ dataflow_conditions = [
     ],
 )
 @pytest.mark.parametrize("ops_service", ["dataflow"])
-def test_check_dataflow_by_resource_types(
-    ops_service, mocker, mock_resource_types, resource_kinds
-):
+def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
             "azext_edge.edge.providers.check.dataflow.evaluate_core_service_runtime",
@@ -94,8 +94,8 @@ def test_check_dataflow_by_resource_types(
                                     "endpointRef": "dataflow-endpoint-1",
                                     "assetRef": "asset-ref",
                                     "serializationFormat": "JSON",
-                                    "dataSources": ["one", "two"]
-                                }
+                                    "dataSources": ["one", "two"],
+                                },
                             },
                             {
                                 "operationType": "builtintransformation",
@@ -106,69 +106,52 @@ def test_check_dataflow_by_resource_types(
                                             "description": "desc",
                                             "key": "key",
                                             "expression": "$1 < 20",
-                                            "inputs": [
-                                                "temperature",
-                                                "pressure"
-                                            ]
+                                            "inputs": ["temperature", "pressure"],
                                         },
                                     ],
                                     "filter": [
                                         {
                                             "expression": "$1 > 10",
                                             "type": "operationType",
-                                            "inputs": [
-                                                "temperature",
-                                                "pressure"
-                                            ]
+                                            "inputs": ["temperature", "pressure"],
                                         }
                                     ],
                                     "map": [
                                         {
                                             "description": "desc",
                                             "output": "output",
-                                            "inputs": [
-                                                "temperature",
-                                                "pressure"
-                                            ]
+                                            "inputs": ["temperature", "pressure"],
                                         }
-                                    ]
-                                }
+                                    ],
+                                },
                             },
                             {
                                 "operationType": "destination",
                                 "destinationSettings": {
                                     "endpointRef": "dataflow-endpoint-2",
-                                    "dataDestination": "destination"
-                                }
-                            }
-                        ]
+                                    "dataDestination": "destination",
+                                },
+                            },
+                        ],
                     },
                 },
             ],
             # profiles
-            [{
-                "metadata": {
-                    "name": "dataflow-profile-1"
-                }
-            }],
+            [{"metadata": {"name": "dataflow-profile-1"}}],
             # endpoints
             [
                 {
                     "metadata": {
                         "name": "dataflow-endpoint-1",
                     },
-                    "spec": {
-                        "endpointType": "mqtt"
-                    }
+                    "spec": {"endpointType": "mqtt"},
                 },
                 {
                     "metadata": {
                         "name": "dataflow-endpoint-2",
                     },
-                    "spec": {
-                        "endpointType": "kafka"
-                    }
-                }
+                    "spec": {"endpointType": "kafka"},
+                },
             ],
             # conditions
             dataflow_conditions,
@@ -176,29 +159,44 @@ def test_check_dataflow_by_resource_types(
             [
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'spec.profileRef': 'dataflow-profile-1'})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"spec.profileRef": "dataflow-profile-1"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'len(operations)': 3})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"len(operations)": 3}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'spec.operations[*].sourceSettings.endpointRef': 'dataflow-endpoint-1'})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"spec.operations[*].sourceSettings.endpointRef": "dataflow-endpoint-1"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'ref(spec.operations[*].sourceSettings.endpointRef).endpointType': 'mqtt'})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": "mqtt"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'spec.operations[*].destinationSettings.endpointRef': 'dataflow-endpoint-2'})
-                ]
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"spec.operations[*].destinationSettings.endpointRef": "dataflow-endpoint-2"}),
+                ],
             ],
         ),
         # dataflows (invalid)
@@ -219,9 +217,9 @@ def test_check_dataflow_by_resource_types(
                                 "operationType": "destination",
                                 "destinationSettings": {
                                     "endpointRef": "invalid-endpoint",
-                                }
+                                },
                             }
-                        ]
+                        ],
                     },
                 },
                 {
@@ -237,15 +235,15 @@ def test_check_dataflow_by_resource_types(
                                 "operationType": "source",
                                 "sourceSettings": {
                                     "endpointRef": "invalid-endpoint",
-                                }
+                                },
                             },
                             {
                                 "operationType": "destination",
                                 "destinationSettings": {
                                     "endpointRef": "real-endpoint",
-                                }
-                            }
-                        ]
+                                },
+                            },
+                        ],
                     },
                 },
                 {
@@ -261,18 +259,17 @@ def test_check_dataflow_by_resource_types(
                                 "operationType": "source",
                                 "sourceSettings": {
                                     "endpointRef": "bad-source-endpoint",
-                                }
+                                },
                             },
                             {
                                 "operationType": "destination",
                                 "destinationSettings": {
                                     "endpointRef": "real-endpoint",
-                                }
-                            }
-                        ]
+                                },
+                            },
+                        ],
                     },
                 },
-
                 {
                     "metadata": {
                         "name": "dataflow-4",
@@ -281,37 +278,26 @@ def test_check_dataflow_by_resource_types(
                         "mode": "Enabled",
                         "profileRef": "real-dataflow-profile",
                         # no operations
-                        "operations": [
-                        ]
+                        "operations": [],
                     },
                 },
             ],
             # profiles
-            [
-                {
-                    "metadata": {
-                        "name": "real-dataflow-profile"
-                    }
-                }
-            ],
+            [{"metadata": {"name": "real-dataflow-profile"}}],
             # endpoints
             [
                 {
                     "metadata": {
                         "name": "real-endpoint",
                     },
-                    "spec": {
-                        "endpointType": "kafka"
-                    }
+                    "spec": {"endpointType": "kafka"},
                 },
                 {
                     "metadata": {
                         "name": "bad-source-endpoint",
                     },
-                    "spec": {
-                        "endpointType": "fabriconelake"
-                    }
-                }
+                    "spec": {"endpointType": "fabriconelake"},
+                },
             ],
             # conditions
             dataflow_conditions,
@@ -319,118 +305,187 @@ def test_check_dataflow_by_resource_types(
             [
                 [
                     ("status", "error"),
-                    ('name', 'dataflow-1',),
-                    ('value', {'spec.profileRef': 'nonexistent-dataflow-profile'})
+                    (
+                        "name",
+                        "dataflow-1",
+                    ),
+                    ("value", {"spec.profileRef": "nonexistent-dataflow-profile"}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'dataflow-1',),
-                    ('value', {'len(operations)': 1})
+                    (
+                        "name",
+                        "dataflow-1",
+                    ),
+                    ("value", {"len(operations)": 1}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'dataflow-1',),
-                    ('value', {'spec.operations[*].destinationSettings.endpointRef': 'invalid-endpoint'})
+                    (
+                        "name",
+                        "dataflow-1",
+                    ),
+                    ("value", {"spec.operations[*].destinationSettings.endpointRef": "invalid-endpoint"}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'dataflow-1',),
-                    ('value', {'len(spec.operations[*].sourceSettings)': 0})
+                    (
+                        "name",
+                        "dataflow-1",
+                    ),
+                    ("value", {"len(spec.operations[*].sourceSettings)": 0}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-1',),
-                    ('value', {'len(spec.operations[*].destinationSettings)': 1})
+                    (
+                        "name",
+                        "dataflow-1",
+                    ),
+                    ("value", {"len(spec.operations[*].destinationSettings)": 1}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'spec.profileRef': 'real-dataflow-profile'})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"spec.profileRef": "real-dataflow-profile"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'len(operations)': 2})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"len(operations)": 2}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'spec.operations[*].sourceSettings.endpointRef': 'invalid-endpoint'})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"spec.operations[*].sourceSettings.endpointRef": "invalid-endpoint"}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'ref(spec.operations[*].sourceSettings.endpointRef).endpointType': None})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": None}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'spec.operations[*].destinationSettings.endpointRef': 'real-endpoint'})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"spec.operations[*].destinationSettings.endpointRef": "real-endpoint"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'len(spec.operations[*].sourceSettings)': 1})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"len(spec.operations[*].sourceSettings)": 1}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-2',),
-                    ('value', {'len(spec.operations[*].destinationSettings)': 1})
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"len(spec.operations[*].destinationSettings)": 1}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-3',),
-                    ('value', {'spec.profileRef': 'real-dataflow-profile'})
+                    (
+                        "name",
+                        "dataflow-3",
+                    ),
+                    ("value", {"spec.profileRef": "real-dataflow-profile"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-3',),
-                    ('value', {'len(operations)': 2})
+                    (
+                        "name",
+                        "dataflow-3",
+                    ),
+                    ("value", {"len(operations)": 2}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-3',),
-                    ('value', {'spec.operations[*].sourceSettings.endpointRef': 'bad-source-endpoint'})
+                    (
+                        "name",
+                        "dataflow-3",
+                    ),
+                    ("value", {"spec.operations[*].sourceSettings.endpointRef": "bad-source-endpoint"}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'dataflow-3',),
-                    ('value', {'ref(spec.operations[*].sourceSettings.endpointRef).endpointType': 'fabriconelake'})
+                    (
+                        "name",
+                        "dataflow-3",
+                    ),
+                    ("value", {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": "fabriconelake"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-3',),
-                    ('value', {'spec.operations[*].destinationSettings.endpointRef': 'real-endpoint'})
+                    (
+                        "name",
+                        "dataflow-3",
+                    ),
+                    ("value", {"spec.operations[*].destinationSettings.endpointRef": "real-endpoint"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-3',),
-                    ('value', {'len(spec.operations[*].sourceSettings)': 1})
+                    (
+                        "name",
+                        "dataflow-3",
+                    ),
+                    ("value", {"len(spec.operations[*].sourceSettings)": 1}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-3',),
-                    ('value', {'len(spec.operations[*].destinationSettings)': 1})
+                    (
+                        "name",
+                        "dataflow-3",
+                    ),
+                    ("value", {"len(spec.operations[*].destinationSettings)": 1}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'dataflow-4',),
-                    ('value', {'spec.profileRef': 'real-dataflow-profile'})
+                    (
+                        "name",
+                        "dataflow-4",
+                    ),
+                    ("value", {"spec.profileRef": "real-dataflow-profile"}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'dataflow-4',),
-                    ('value', {'len(operations)': 0})
+                    (
+                        "name",
+                        "dataflow-4",
+                    ),
+                    ("value", {"len(operations)": 0}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'dataflow-4',),
-                    ('value', {'len(spec.operations[*].sourceSettings)': 0})
+                    (
+                        "name",
+                        "dataflow-4",
+                    ),
+                    ("value", {"len(spec.operations[*].sourceSettings)": 0}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'dataflow-4',),
-                    ('value', {'len(spec.operations[*].destinationSettings)': 0})
+                    (
+                        "name",
+                        "dataflow-4",
+                    ),
+                    ("value", {"len(spec.operations[*].destinationSettings)": 0}),
                 ],
             ],
         ),
@@ -488,16 +543,9 @@ def test_evaluate_dataflows(
     target = result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
 
     for namespace in target:
-        assert (
-            namespace
-            in result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
-        )
+        assert namespace in result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
 
-        target[namespace]["conditions"] = (
-            []
-            if not target[namespace]["conditions"]
-            else target[namespace]["conditions"]
-        )
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], conditions)
         assert_evaluations(target[namespace], evaluations)
 
@@ -522,13 +570,9 @@ def test_evaluate_dataflows(
                             "consumerGroupId": None,
                             "compression": "compression",
                             "kafkaAcks": 3,
-                            "tls": {
-                                "mode": "Enabled"
-                            },
-                            "batching": {
-                                "latencyMs": 300
-                            }
-                        }
+                            "tls": {"mode": "Enabled"},
+                            "batching": {"latencyMs": 300},
+                        },
                     },
                 },
                 # localStorage
@@ -539,9 +583,7 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "localstorage",
                         "authentication": {"method": "authMethod"},
-                        "localStorageSettings": {
-                            "persistentVolumeClaimRef": "ref"
-                        }
+                        "localStorageSettings": {"persistentVolumeClaimRef": "ref"},
                     },
                 },
                 # Fabric Onelake
@@ -554,14 +596,9 @@ def test_evaluate_dataflows(
                         "authentication": {"method": "authMethod"},
                         "fabricOneLakeSettings": {
                             "host": "fabric_host",
-                            "names": {
-                                "lakehouseName": "lakehouse",
-                                "workspaceName": "workspaceName"
-                            },
-                            "batching": {
-                                "latencySeconds": 2
-                            }
-                        }
+                            "names": {"lakehouseName": "lakehouse", "workspaceName": "workspaceName"},
+                            "batching": {"latencySeconds": 2},
+                        },
                     },
                 },
                 # datalake storage
@@ -572,12 +609,7 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "datalakestorage",
                         "authentication": {"method": "authMethod"},
-                        "datalakeStorageSettings": {
-                            "host": "datalakeHost",
-                            "batching": {
-                                "latencySeconds": 12
-                            }
-                        }
+                        "datalakeStorageSettings": {"host": "datalakeHost", "batching": {"latencySeconds": 12}},
                     },
                 },
                 # dataExplorer
@@ -591,10 +623,8 @@ def test_evaluate_dataflows(
                         "dataExplorerSettings": {
                             "database": "databse",
                             "host": "data_explorer_host",
-                            "batching": {
-                                "latencySeconds": 3
-                            }
-                        }
+                            "batching": {"latencySeconds": 3},
+                        },
                     },
                 },
                 # mqtt
@@ -611,11 +641,8 @@ def test_evaluate_dataflows(
                             "clientIdPrefix": None,
                             "qos": 3,
                             "maxInflightMessages": 100,
-                            "tls": {
-                                "mode": "Enabled",
-                                "trustedCaCertificateConfigMapRef": "ref"
-                            }
-                        }
+                            "tls": {"mode": "Enabled", "trustedCaCertificateConfigMapRef": "ref"},
+                        },
                     },
                 },
                 # invalid endpoint type
@@ -626,7 +653,7 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "invalid",
                     },
-                }
+                },
             ],
             # conditions
             [
@@ -636,39 +663,60 @@ def test_evaluate_dataflows(
             [
                 [
                     ("status", "success"),
-                    ('name', 'endpoint-1',),
-                    ('value', {'spec.endpointType': 'kafka'})
+                    (
+                        "name",
+                        "endpoint-1",
+                    ),
+                    ("value", {"spec.endpointType": "kafka"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'endpoint-2',),
-                    ('value', {'spec.endpointType': 'localstorage'})
+                    (
+                        "name",
+                        "endpoint-2",
+                    ),
+                    ("value", {"spec.endpointType": "localstorage"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'endpoint-3',),
-                    ('value', {'spec.endpointType': 'fabriconelake'})
+                    (
+                        "name",
+                        "endpoint-3",
+                    ),
+                    ("value", {"spec.endpointType": "fabriconelake"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'endpoint-4',),
-                    ('value', {'spec.endpointType': 'datalakestorage'})
+                    (
+                        "name",
+                        "endpoint-4",
+                    ),
+                    ("value", {"spec.endpointType": "datalakestorage"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'endpoint-5',),
-                    ('value', {'spec.endpointType': 'dataExplorer'})
+                    (
+                        "name",
+                        "endpoint-5",
+                    ),
+                    ("value", {"spec.endpointType": "dataExplorer"}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'endpoint-6',),
-                    ('value', {'spec.endpointType': 'mqtt'})
+                    (
+                        "name",
+                        "endpoint-6",
+                    ),
+                    ("value", {"spec.endpointType": "mqtt"}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'endpoint-7',),
-                    ('value', {'spec.endpointType': 'invalid'})
-                ]
+                    (
+                        "name",
+                        "endpoint-7",
+                    ),
+                    ("value", {"spec.endpointType": "invalid"}),
+                ],
             ],
         ),
         # no endpoints
@@ -712,18 +760,9 @@ def test_evaluate_dataflow_endpoints(
     target = result["targets"]["dataflowendpoints.connectivity.iotoperations.azure.com"]
 
     for namespace in target:
-        assert (
-            namespace
-            in result["targets"][
-                "dataflowendpoints.connectivity.iotoperations.azure.com"
-            ]
-        )
+        assert namespace in result["targets"]["dataflowendpoints.connectivity.iotoperations.azure.com"]
 
-        target[namespace]["conditions"] = (
-            []
-            if not target[namespace]["conditions"]
-            else target[namespace]["conditions"]
-        )
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], conditions)
         assert_evaluations(target[namespace], evaluations)
 
@@ -732,13 +771,14 @@ def test_evaluate_dataflow_endpoints(
 @pytest.mark.parametrize(
     "profiles, pods, conditions, evaluations",
     [
+        # good default profile (name, namespace, instance count and diagnostic vals)
         (
             # profiles
             [
-                # good default profile (name, instance count and diagnostic vals)
                 {
                     "metadata": {
-                        "name": "profile",
+                        "name": DEFAULT_DATAFLOW_PROFILE,
+                        "namespace": DEFAULT_NAMESPACE,
                     },
                     "spec": {
                         "instanceCount": 1,
@@ -747,29 +787,91 @@ def test_evaluate_dataflow_endpoints(
                                 "level": "info",
                                 "openTelemetryExportConfig": {
                                     "otlpGrpcEndpoint": "endpoint",
-                                }
+                                },
                             },
                             "metrics": {
                                 "openTelemetryExportConfig": {
                                     "otlpGrpcEndpoint": "endpoint",
                                 }
-                            }
-                        }
+                            },
+                        },
                     },
-                },
-                # bad profile (warning name, no instance count)
-                {
-                    "metadata": {
-                        "name": "profile-2",
-                    },
-                    "spec": {"instanceCount": None},
                 },
             ],
             # pods
             [
                 # good profile pod
                 generate_pod_stub(
-                    name="aio-dataflow-profile-0",
+                    name=f"aio-dataflow-{DEFAULT_DATAFLOW_PROFILE}-0",
+                    phase="Running",
+                ),
+            ],
+            # conditions
+            [
+                "spec.instanceCount",
+                f"[*].metadata.name=='{DEFAULT_DATAFLOW_PROFILE}'",
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        "profile",
+                    ),
+                    ("value", {"spec.instanceCount": 1}),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        "pod/aio-dataflow-profile-0",
+                    ),
+                    ("value", {"status.phase": "Running"}),
+                ],
+            ],
+        ),
+        # good and bad profiles, no default profile warning
+        (
+            # profiles
+            [
+                {
+                    "metadata": {
+                        "name": "good-profile",
+                        "namespace": DEFAULT_NAMESPACE,
+                    },
+                    "spec": {
+                        "instanceCount": 1,
+                        "diagnostics": {
+                            "logs": {
+                                "level": "info",
+                                "openTelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "endpoint",
+                                },
+                            },
+                            "metrics": {
+                                "openTelemetryExportConfig": {
+                                    "otlpGrpcEndpoint": "endpoint",
+                                }
+                            },
+                        },
+                    },
+                },
+                {
+                    "metadata": {
+                        "name": "bad-profile",
+                        "namespace": DEFAULT_NAMESPACE,
+                    },
+                    "spec": {
+                        "instanceCount": None,
+                    },
+                },
+            ],
+            # pods
+            [
+                # good profile pod
+                generate_pod_stub(
+                    name="aio-dataflow-good-profile-0",
                     phase="Running",
                 ),
             ],
@@ -781,18 +883,38 @@ def test_evaluate_dataflow_endpoints(
             [
                 [
                     ("status", "success"),
-                    ('name', 'profile',),
-                    ('value', {'spec.instanceCount': 1})
+                    (
+                        "name",
+                        "good-profile",
+                    ),
+                    ("value", {"spec.instanceCount": 1}),
                 ],
                 [
                     ("status", "success"),
-                    ('name', 'pod/aio-dataflow-profile-0',),
-                    ('value', {'status.phase': 'Running'})
+                    (
+                        "name",
+                        "pod/aio-dataflow-good-profile-0",
+                    ),
+                    ("value", {"status.phase": "Running"}),
                 ],
                 [
                     ("status", "error"),
-                    ('name', 'profile-2',),
-                    ('value', {'spec.instanceCount': None})
+                    (
+                        "name",
+                        "bad-profile",
+                    ),
+                    ("value", {"spec.instanceCount": None}),
+                ],
+                [
+                    ("status", "warning"),
+                    ("name", "pod/aio-dataflow-bad-profile-"),
+                ],
+                [
+                    ("status", "warning"),
+                    (
+                        "value",
+                        {"[*].metadata.name=='profile'": "warning"},
+                    ),
                 ],
             ],
         ),
@@ -807,7 +929,7 @@ def test_evaluate_dataflow_endpoints(
             # evaluations
             [
                 [
-                    ("status", "skipped"),
+                    ("status", "error"),
                     (
                         "value/profiles",
                         "No Dataflow Profiles detected in any namespace.",
@@ -825,17 +947,14 @@ def test_evaluate_dataflow_profiles(
     evaluations,
     detail_level,
 ):
-    namespace = generate_random_string()
-    for profile in profiles:
-        profile["metadata"]["namespace"] = namespace
 
     mocker.patch(
-        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": profiles}]
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources", side_effect=[{"items": profiles}]
     )
     mocker.patch(
         "azext_edge.edge.providers.check.dataflow.get_namespaced_pods_by_prefix",
         return_value=pods,
+        side_effect=[pods, []],
     )
     result = evaluate_dataflow_profiles(detail_level=detail_level)
 
@@ -844,18 +963,9 @@ def test_evaluate_dataflow_profiles(
     target = result["targets"]["dataflowprofiles.connectivity.iotoperations.azure.com"]
 
     for namespace in target:
-        assert (
-            namespace
-            in result["targets"][
-                "dataflowprofiles.connectivity.iotoperations.azure.com"
-            ]
-        )
+        assert namespace in result["targets"]["dataflowprofiles.connectivity.iotoperations.azure.com"]
 
-        target[namespace]["conditions"] = (
-            []
-            if not target[namespace]["conditions"]
-            else target[namespace]["conditions"]
-        )
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], conditions)
         assert_evaluations(target[namespace], evaluations)
 
@@ -912,7 +1022,7 @@ def test_evaluate_dataflow_profiles(
             [],
             # namespace evaluations str
             [],
-        )
+        ),
     ],
 )
 def test_evaluate_core_service_runtime(
@@ -931,24 +1041,15 @@ def test_evaluate_core_service_runtime(
     namespace = generate_random_string()
     for pod in pods:
         pod.metadata.namespace = namespace
-    result = evaluate_core_service_runtime(
-        detail_level=detail_level, resource_name=resource_name
-    )
+    result = evaluate_core_service_runtime(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalCoreServiceRuntime"
     assert result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
     target = result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 
     for namespace in target:
-        assert (
-            namespace
-            in result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
-        )
+        assert namespace in result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 
-        target[namespace]["conditions"] = (
-            []
-            if not target[namespace]["conditions"]
-            else target[namespace]["conditions"]
-        )
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)
         assert_evaluations(target[namespace], namespace_evaluations)
