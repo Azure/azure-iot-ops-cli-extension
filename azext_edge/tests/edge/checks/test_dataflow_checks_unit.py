@@ -730,15 +730,15 @@ def test_evaluate_dataflow_endpoints(
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize(
-    "profiles, conditions, evaluations",
+    "profiles, pods, conditions, evaluations",
     [
         (
             # profiles
             [
-                # good profile (instance count and diagnostic vals)
+                # good default profile (name, instance count and diagnostic vals)
                 {
                     "metadata": {
-                        "name": "profile-1",
+                        "name": "profile",
                     },
                     "spec": {
                         "instanceCount": 1,
@@ -757,13 +757,21 @@ def test_evaluate_dataflow_endpoints(
                         }
                     },
                 },
-                # bad profile (no instance count)
+                # bad profile (warning name, no instance count)
                 {
                     "metadata": {
                         "name": "profile-2",
                     },
                     "spec": {"instanceCount": None},
                 },
+            ],
+            # pods
+            [
+                # good profile pod
+                generate_pod_stub(
+                    name="aio-dataflow-profile-0",
+                    phase="Running",
+                ),
             ],
             # conditions
             [
@@ -773,8 +781,13 @@ def test_evaluate_dataflow_endpoints(
             [
                 [
                     ("status", "success"),
-                    ('name', 'profile-1',),
+                    ('name', 'profile',),
                     ('value', {'spec.instanceCount': 1})
+                ],
+                [
+                    ("status", "success"),
+                    ('name', 'pod/aio-dataflow-profile-0',),
+                    ('value', {'status.phase': 'Running'})
                 ],
                 [
                     ("status", "error"),
@@ -786,6 +799,8 @@ def test_evaluate_dataflow_endpoints(
         # no profiles
         (
             # profiles
+            [],
+            # pods
             [],
             # conditions
             [],
@@ -805,18 +820,23 @@ def test_evaluate_dataflow_endpoints(
 def test_evaluate_dataflow_profiles(
     mocker,
     profiles,
+    pods,
     conditions,
     evaluations,
     detail_level,
 ):
-    mocker = mocker.patch(
-        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": profiles}],
-    )
-
     namespace = generate_random_string()
-    for endpoint in profiles:
-        endpoint["metadata"]["namespace"] = namespace
+    for profile in profiles:
+        profile["metadata"]["namespace"] = namespace
+
+    mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": profiles}]
+    )
+    mocker.patch(
+        "azext_edge.edge.providers.check.dataflow.get_namespaced_pods_by_prefix",
+        return_value=pods,
+    )
     result = evaluate_dataflow_profiles(detail_level=detail_level)
 
     assert result["name"] == "evalDataflowProfiles"

@@ -15,7 +15,7 @@ from azext_edge.edge.providers.edge_api.dataflow import DATAFLOW_API_V1B1, Dataf
 
 from ...common import CheckTaskStatus, ResourceState
 from ..base import get_namespaced_pods_by_prefix
-from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX
+from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX, DATAFLOW_PROFILE_POD_PREFIX
 from .base import CheckManager, check_post_deployment, get_resources_by_name, get_resources_grouped_by_namespace
 from .common import (
     COLOR_STR_FORMAT,
@@ -617,7 +617,7 @@ def evaluate_core_service_runtime(
     )
 
     operators = get_namespaced_pods_by_prefix(
-        prefix="",
+        prefix=DATAFLOW_OPERATOR_PREFIX,
         namespace="",
         label_selector=DATAFLOW_NAME_LABEL,
     )
@@ -642,7 +642,7 @@ def evaluate_core_service_runtime(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             namespace=namespace,
             display=Padding(
-                f"Dataflow runtime resources in namespace {{[purple]{namespace}[/purple]}}",
+                f"Dataflow operator in namespace {{[purple]{namespace}[/purple]}}",
                 (0, 0, 0, PADDING),
             ),
         )
@@ -1121,5 +1121,20 @@ def evaluate_dataflow_profiles(
                                     namespace=namespace,
                                     display=Padding(f"{label}: {val}", (0, 0, 0, log_inner_padding)),
                                 )
-                # TODO - determine status
+            # pod health - trailing `-` is important in case profiles have similar prefixes
+            pod_prefix = f"{DATAFLOW_PROFILE_POD_PREFIX}{profile_name}-"
+            profile_pods = get_namespaced_pods_by_prefix(
+                prefix=pod_prefix,
+                namespace=namespace,
+                label_selector=DATAFLOW_NAME_LABEL,
+            )
+            process_pod_status(
+                check_manager=check_manager,
+                target_service_pod=f"pod/{pod_prefix}",
+                target=target,
+                pods=profile_pods,
+                namespace=namespace,
+                display_padding=INNER_PADDING,
+                detail_level=detail_level,
+            )
     return check_manager.as_dict(as_list=as_list)
