@@ -907,10 +907,6 @@ def test_evaluate_dataflow_endpoints(
                 ],
                 [
                     ("status", "warning"),
-                    ("name", "pod/aio-dataflow-bad-profile-"),
-                ],
-                [
-                    ("status", "warning"),
                     (
                         "value",
                         {"[*].metadata.name=='profile'": "warning"},

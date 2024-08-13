@@ -1136,15 +1136,17 @@ def evaluate_dataflow_profiles(
                 namespace=namespace,
                 label_selector=DATAFLOW_NAME_LABEL,
             )
-            process_pod_status(
-                check_manager=check_manager,
-                target_service_pod=f"pod/{pod_prefix}",
-                target=target,
-                pods=profile_pods,
-                namespace=namespace,
-                display_padding=INNER_PADDING,
-                detail_level=detail_level,
-            )
+            # only show pods if they exist
+            if profile_pods:
+                process_pod_status(
+                    check_manager=check_manager,
+                    target_service_pod=f"pod/{pod_prefix}",
+                    target=target,
+                    pods=profile_pods,
+                    namespace=namespace,
+                    display_padding=INNER_PADDING,
+                    detail_level=detail_level,
+                )
 
         # default dataflow profile status, display warning if not success
         check_manager.add_target_eval(
