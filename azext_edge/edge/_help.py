@@ -1086,3 +1086,31 @@ def load_iotops_help():
             az iot ops asset endpoint certificate remove --endpoint {asset_endpoint} -g {resource_group}
             --thumbprint {thumbprint}
     """
+
+    helps[
+        "iot ops schema"
+    ] = """
+        type: group
+        short-summary: Schema management.
+    """
+
+    helps[
+        "iot ops schema registry"
+    ] = """
+        type: group
+        short-summary: Schema registry management.
+    """
+
+    helps[
+        "iot ops schema registry show"
+    ] = """
+        type: command
+        short-summary: Show details of a schema registry.
+    """
+
+    helps[
+        "iot ops schema registry list"
+    ] = """
+        type: command
+        short-summary: List schema registries in a resource group or subscription.
+    """

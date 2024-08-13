@@ -1100,3 +1100,10 @@ def load_iotops_arguments(self, _):
             options_list=["--thumbprint", "-t"],
             help="Certificate thumbprint.",
         )
+
+    with self.argument_context("iot ops schema registry") as context:
+        context.argument(
+            "schema_registry_name",
+            options_list=["--name", "-n"],
+            help="Schema Registry name.",
+        )
