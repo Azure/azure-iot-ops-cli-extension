@@ -10,9 +10,8 @@ from .display import add_display_and_eval, display_as_list, process_value_color
 from .node import check_nodes
 from .pod import (
     decorate_pod_phase,
-    evaluate_pod_health,
     process_pod_status,
-    evaluate_pod_health_with_table
+    evaluate_pod_health
 )
 from .resource import (
     decorate_resource_status,
@@ -38,7 +37,6 @@ __all__ = [
     "decorate_resource_status",
     "display_as_list",
     "evaluate_pod_health",
-    "evaluate_pod_health_with_table",
     "filter_resources_by_name",
     "filter_resources_by_namespace",
     "generate_target_resource_name",

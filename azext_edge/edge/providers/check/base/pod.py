@@ -29,29 +29,6 @@ def decorate_pod_phase(phase: str) -> Tuple[str, str]:
 
 def evaluate_pod_health(
     check_manager: CheckManager,
-    namespace: str,
-    target: str,
-    pod: str,
-    display_padding: int,
-    service_label: Optional[str] = None,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> None:
-    target_service_pod = f"pod/{pod}"
-    pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=service_label)
-
-    process_pod_status(
-        check_manager=check_manager,
-        target=target,
-        target_service_pod=target_service_pod,
-        pods=pods,
-        display_padding=display_padding,
-        namespace=namespace,
-        detail_level=detail_level,
-    )
-
-
-def evaluate_pod_health_with_table(
-    check_manager: CheckManager,
     target: str,
     namespace: str,
     padding: int,

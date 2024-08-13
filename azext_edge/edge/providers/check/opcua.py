@@ -15,7 +15,7 @@ from .base import (
     filter_resources_by_name,
     generate_target_resource_name,
     get_resources_by_name,
-    evaluate_pod_health_with_table,
+    evaluate_pod_health,
     get_resources_grouped_by_namespace,
 )
 
@@ -100,11 +100,11 @@ def evaluate_core_service_runtime(
             )
         )
 
-        evaluate_pod_health_with_table(
+        evaluate_pod_health(
             check_manager=check_manager,
             target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             namespace=namespace,
-            display_padding=padding + PADDING_SIZE,
+            padding=padding + PADDING_SIZE,
             pod_with_labels=[
                 (AIO_OPCUA_PREFIX, OPCUA_NAME_LABEL),
             ],

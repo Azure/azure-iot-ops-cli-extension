@@ -12,7 +12,7 @@ from .base import (
     CheckManager,
     decorate_resource_status,
     check_post_deployment,
-    evaluate_pod_health_with_table,
+    evaluate_pod_health,
     get_resources_by_name,
     get_resources_grouped_by_namespace
 )
@@ -457,11 +457,11 @@ def evaluate_brokers(
                 ),
             )
 
-            evaluate_pod_health_with_table(
+            evaluate_pod_health(
                 check_manager=check_manager,
                 target=target_brokers,
                 namespace=namespace,
-                display_padding=12,
+                padding=12,
                 pod_with_labels=[
                     (AIO_MQ_DIAGNOSTICS_PROBE_PREFIX, MQ_NAME_LABEL),
                     (AIO_MQ_FRONTEND_PREFIX, MQ_NAME_LABEL),
