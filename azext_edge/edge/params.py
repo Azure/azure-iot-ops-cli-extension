@@ -1105,5 +1105,37 @@ def load_iotops_arguments(self, _):
         context.argument(
             "schema_registry_name",
             options_list=["--name", "-n"],
-            help="Schema Registry name.",
+            help="Schema registry name.",
+        )
+        context.argument(
+            "namespace",
+            options_list=["--namespace"],
+            help="Schema registry namespace. Uniquely identifies a schema registry within a tenant.",
+        )
+        context.argument(
+            "tags",
+            options_list=["--tags"],
+            arg_type=tags_type,
+            help="Schema registry tags. Property bag in key-value pairs with the following format: a=b c=d",
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description for the schema registry.",
+        )
+        context.argument(
+            "display_name",
+            options_list=["--display-name"],
+            help="Display name for the schema registry.",
+        )
+        context.argument(
+            "location",
+            options_list=["--location", "-l"],
+            help="Region to create the schema registry. "
+            "If no location is provided the resource group location will be used.",
+        )
+        context.argument(
+            "storage_container_url",
+            options_list=["--sc-url"],
+            help="Storage container URL where schemas will be stored.",
         )

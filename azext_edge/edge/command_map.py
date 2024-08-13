@@ -142,5 +142,7 @@ def load_iotops_commands(self, _):
         "iot ops schema registry",
         command_type=schema_resource_ops,
     ) as cmd_group:
+        cmd_group.command("create", "create_registry")
         cmd_group.command("show", "show_registry")
         cmd_group.command("list", "list_registries")
+        cmd_group.command("delete", "delete_registry")
