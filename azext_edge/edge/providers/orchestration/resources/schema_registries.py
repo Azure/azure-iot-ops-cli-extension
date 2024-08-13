@@ -16,8 +16,6 @@ logger = get_logger(__name__)
 
 
 if TYPE_CHECKING:
-    from azure.core.polling import LROPoller
-
     from ....vendor.clients.deviceregistrymgmt.operations import (
         SchemaRegistriesOperations,
     )
