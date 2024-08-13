@@ -771,7 +771,7 @@ def evaluate_dataflows(
                 namespace=namespace,
                 display=Padding(f"Dataflow Profile: {{{COLOR_STR_FORMAT.format(color=profile_ref_status.color, value=profile_ref)}}}", (0, 0, 0, INNER_PADDING)),
             )
-            if profile_ref_status == CheckTaskStatus.error and detail_level > ResourceOutputDetailLevel.summary.value:
+            if profile_ref_status == CheckTaskStatus.error:
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
