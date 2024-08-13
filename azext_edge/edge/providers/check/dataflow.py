@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from knack.log import get_logger
 from rich.padding import Padding
@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 
 PADDING = 8
 INNER_PADDING = PADDING + PADDING_SIZE
-
+PROPERTY_DISPLAY_COLOR = "cyan"
 DEFAULT_DATAFLOW_PROFILE = "profile"
 dataflow_api_check_name = "enumerateDataflowApi"
 dataflow_api_check_desc = "Enumerate Dataflow API resources"
@@ -52,6 +52,14 @@ dataflow_endpoint_target = "dataflowendpoints.connectivity.iotoperations.azure.c
 dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com"
 
 valid_source_endpoint_types = [DataflowEndpointType.kafka.value, DataflowEndpointType.mqtt.value]
+
+
+def _format_property_string(value: str, color: str = PROPERTY_DISPLAY_COLOR) -> str:
+    return COLOR_STR_FORMAT.format(value=value, color=color)
+
+
+def _basic_property_display(label: str, value: str, color: Optional[str] = PROPERTY_DISPLAY_COLOR, padding: int = PADDING) -> Padding:
+    return Padding(f"{label}: {_format_property_string(value=value, color=color)}", (0, 0, 0, padding))
 
 
 def _process_dataflow_sourcesettings(
@@ -104,8 +112,8 @@ def _process_dataflow_sourcesettings(
         check_manager.add_display(
             target_name=target, namespace=namespace, display=Padding("\nSource:", (0, 0, 0, padding))
         )
-        endpoint_name_display = f"{{{COLOR_STR_FORMAT.format(color=endpoint_status.color, value=endpoint_ref)}}}"
-        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_type_status.color, value=endpoint_status_string)
+        endpoint_name_display = f"{{{_format_property_string(color=endpoint_status.color, value=endpoint_ref)}}}"
+        endpoint_validity_display = _format_property_string(color=endpoint_type_status.color, value=endpoint_status_string)
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -134,7 +142,7 @@ def _process_dataflow_sourcesettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
+                    display=_basic_property_display(label=label, value=val, padding=inner_padding),
                 )
 
     # data source strings - not on summary
@@ -146,7 +154,7 @@ def _process_dataflow_sourcesettings(
             )
             for data_source in data_sources:
                 check_manager.add_display(
-                    target_name=target, namespace=namespace, display=Padding(f"- {data_source}", (0, 0, 0, inner_padding + 2))
+                    target_name=target, namespace=namespace, display=Padding(f"- {_format_property_string(data_source)}", (0, 0, 0, inner_padding + 2))
                 )
 
 
@@ -183,7 +191,7 @@ def _process_dataflow_transformationsettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{datasets_label}: {val}", (0, 0, 0, padding)),
+                    display=_basic_property_display(label=datasets_label, value=val, padding=padding),
                 )
 
         # only show datasets, filters, maps on verbose
@@ -206,7 +214,7 @@ def _process_dataflow_transformationsettings(
                         check_manager.add_display(
                             target_name=target,
                             namespace=namespace,
-                            display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
+                            display=_basic_property_display(label=label, value=val, padding=inner_padding),
                         )
                 inputs = dataset.get("inputs", [])
                 _process_inputs(inputs)
@@ -228,7 +236,7 @@ def _process_dataflow_transformationsettings(
                         check_manager.add_display(
                             target_name=target,
                             namespace=namespace,
-                            display=Padding(f"{datasets_label}: {val}", (0, 0, 0, inner_padding)),
+                            display=_basic_property_display(label=datasets_label, value=val, padding=padding)
                         )
                 inputs = filter.get("inputs", [])
                 _process_inputs(inputs)
@@ -251,7 +259,7 @@ def _process_dataflow_transformationsettings(
                         check_manager.add_display(
                             target_name=target,
                             namespace=namespace,
-                            display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
+                            display=_basic_property_display(label=label, value=val, padding=inner_padding),
                         )
                 inputs = map.get("inputs", [])
                 _process_inputs(inputs)
@@ -292,8 +300,8 @@ def _process_dataflow_destinationsettings(
     # show dataflow endpoint ref on detail
     if detail_level > ResourceOutputDetailLevel.summary.value:
         padding += PADDING_SIZE
-        endpoint_name_display = f"{{{COLOR_STR_FORMAT.format(color=endpoint_status.color, value=endpoint_ref)}}}"
-        endpoint_validity_display = COLOR_STR_FORMAT.format(color=endpoint_status.color, value=endpoint_validity)
+        endpoint_name_display = f"{{{_format_property_string(color=endpoint_status.color, value=endpoint_ref)}}}"
+        endpoint_validity_display = _format_property_string(color=endpoint_status.color, value=endpoint_validity)
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -319,7 +327,7 @@ def _process_dataflow_destinationsettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                    display=_basic_property_display(label=label, value=val, padding=padding),
                 )
 
 
@@ -336,7 +344,7 @@ def _process_endpoint_mqttsettings(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                display=_basic_property_display(label=label, value=val, padding=padding),
             )
     if detail_level > ResourceOutputDetailLevel.detail.value:
         for label, key in [
@@ -352,14 +360,14 @@ def _process_endpoint_mqttsettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                    display=_basic_property_display(label=label, value=val, padding=padding),
                 )
 
         tls = settings.get("tls", {})
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding("TLS", (0, 0, 0, padding)),
+            display=Padding("TLS:", (0, 0, 0, padding)),
         )
         for label, key in [
             ("Mode", "mode"),
@@ -371,7 +379,7 @@ def _process_endpoint_mqttsettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, padding + PADDING_SIZE)),
+                    display=_basic_property_display(label=label, value=val, padding=(padding + PADDING_SIZE)),
                 )
 
 
@@ -390,7 +398,7 @@ def _process_endpoint_kafkasettings(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                display=_basic_property_display(label=label, value=val, padding=padding),
             )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -406,14 +414,14 @@ def _process_endpoint_kafkasettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                    display=_basic_property_display(label=label, value=val, padding=padding),
                 )
         # tls
         tls = settings.get("tls", {})
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding("TLS", (0, 0, 0, padding)),
+            display=Padding("TLS:", (0, 0, 0, padding)),
         )
         for label, key in [
             ("Mode", "mode"),
@@ -425,7 +433,7 @@ def _process_endpoint_kafkasettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
+                    display=_basic_property_display(label=label, value=val, padding=inner_padding),
                 )
 
         # batching
@@ -447,7 +455,7 @@ def _process_endpoint_kafkasettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, inner_padding)),
+                    display=_basic_property_display(label=label, value=val, padding=inner_padding),
                 )
 
 
@@ -461,7 +469,7 @@ def _process_endpoint_fabriconelakesettings(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                display=_basic_property_display(label=label, value=val, padding=padding),
             )
     if detail_level > ResourceOutputDetailLevel.detail.value:
         names = settings.get("names", {})
@@ -474,7 +482,7 @@ def _process_endpoint_fabriconelakesettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                    display=_basic_property_display(label=label, value=val, padding=padding),
                 )
 
         batching = settings.get("batching", {})
@@ -494,7 +502,7 @@ def _process_endpoint_fabriconelakesettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                    display=_basic_property_display(label=label, value=val, padding=padding),
                 )
 
 
@@ -508,7 +516,7 @@ def _process_endpoint_datalakestoragesettings(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                display=_basic_property_display(label=label, value=val, padding=padding),
             )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -528,7 +536,7 @@ def _process_endpoint_datalakestoragesettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                    display=_basic_property_display(label=label, value=val, padding=padding),
                 )
 
 
@@ -542,7 +550,7 @@ def _process_endpoint_dataexplorersettings(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                display=_basic_property_display(label=label, value=val, padding=padding),
             )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -563,7 +571,7 @@ def _process_endpoint_dataexplorersettings(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"{label}: {val}", (0, 0, 0, padding)),
+                    display=_basic_property_display(label=label, value=val, padding=padding),
                 )
 
 
@@ -746,7 +754,7 @@ def evaluate_dataflows(
                 target_name=target,
                 namespace=namespace,
                 display=Padding(
-                    f"\n- Dataflow {{{COLOR_STR_FORMAT.format(color='bright_blue', value=dataflow_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}",
+                    f"\n- Dataflow {{{_format_property_string(value=dataflow_name)}}} {_format_property_string(color='green', value='detected')}",
                     (0, 0, 0, PADDING),
                 ),
             )
@@ -770,18 +778,18 @@ def evaluate_dataflows(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"Dataflow Profile: {{{COLOR_STR_FORMAT.format(color=profile_ref_status.color, value=profile_ref)}}}", (0, 0, 0, INNER_PADDING)),
+                display=Padding(f"Dataflow Profile: {{{_format_property_string(color=profile_ref_status.color, value=profile_ref)}}}", (0, 0, 0, INNER_PADDING)),
             )
             if profile_ref_status == CheckTaskStatus.error:
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(COLOR_STR_FORMAT.format(color="red", value="Invalid Dataflow Profile reference"), (0, 0, 0, INNER_PADDING)),
+                    display=Padding(_format_property_string(color=profile_ref_status.color, value="Invalid Dataflow Profile reference"), (0, 0, 0, INNER_PADDING)),
                 )
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding(f"Mode: {mode}", (0, 0, 0, INNER_PADDING)),
+                display=_basic_property_display(label="Mode", value=mode, padding=INNER_PADDING),
             )
 
             operations = spec.get("operations", [])
@@ -927,9 +935,9 @@ def evaluate_dataflow_endpoints(
                 value={"spec.endpointType": endpoint_type},
             )
 
-            endpoint_string = f"Endpoint {{{COLOR_STR_FORMAT.format(color='bright_blue', value=endpoint_name)}}}"
-            detected_string = COLOR_STR_FORMAT.format(color='green', value='detected')
-            type_string = f"type: {COLOR_STR_FORMAT.format(color='bright_blue' if valid_endpoint_type else 'red', value=endpoint_type)}"
+            endpoint_string = f"Endpoint {{{_format_property_string(value=endpoint_name)}}}"
+            detected_string = _format_property_string(color='green', value='detected')
+            type_string = f"type: {_format_property_string(color=PROPERTY_DISPLAY_COLOR if valid_endpoint_type else 'red', value=endpoint_type)}"
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
@@ -946,7 +954,7 @@ def evaluate_dataflow_endpoints(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"Authentication Method: {auth_method}", (0, 0, 0, INNER_PADDING)),
+                    display=_basic_property_display(label="Authentication Method", value=auth_method, padding=INNER_PADDING),
                 )
 
                 endpoint_processor_dict = {
@@ -964,7 +972,7 @@ def evaluate_dataflow_endpoints(
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
-                        display=Padding(COLOR_STR_FORMAT.format(color="red", value=f"Unknown endpoint type: {endpoint_type}"), (0, 0, 0, INNER_PADDING)),
+                        display=Padding(_format_property_string(color="red", value=f"Unknown endpoint type: {endpoint_type}"), (0, 0, 0, INNER_PADDING)),
                     )
     return check_manager.as_dict(as_list=as_list)
 
@@ -1016,7 +1024,7 @@ def evaluate_dataflow_profiles(
                 target_name=target,
                 namespace=namespace,
                 display=Padding(
-                    f"\n- Profile {{{COLOR_STR_FORMAT.format(color='bright_blue', value=profile_name)}}} {COLOR_STR_FORMAT.format(color='green', value='detected')}",
+                    f"\n- Profile {{{_format_property_string(value=profile_name)}}} {_format_property_string(color='green', value='detected')}",
                     (0, 0, 0, PADDING),
                 ),
             )
@@ -1032,22 +1040,23 @@ def evaluate_dataflow_profiles(
                 )
             # show status description (colorized) if it exists
             if status_description:
-                status_display = f"Status: {COLOR_STR_FORMAT.format(color=ResourceState.map_to_color(status_level), value=status_description)}"
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(
-                        status_display,
-                        (0, 0, 0, PADDING + 2)
+                    display=_basic_property_display(
+                        label="Status",
+                        value=status_description,
+                        color=ResourceState.map_to_color(status_level),
+                        padding=INNER_PADDING
                     )
                 )
             instance_count = spec.get("instanceCount")
             has_instances = (instance_count is not None and int(instance_count) >= 0)
-            instance_status = CheckTaskStatus.success.value if has_instances else CheckTaskStatus.error.value
+            instance_status = CheckTaskStatus.success if has_instances else CheckTaskStatus.error
             check_manager.add_target_eval(
                 target_name=target,
                 namespace=namespace,
-                status=instance_status,
+                status=instance_status.value,
                 resource_name=profile_name,
                 resource_kind=DataflowResourceKinds.DATAFLOWPROFILE.value,
                 value={"spec.instanceCount": instance_count},
@@ -1056,7 +1065,7 @@ def evaluate_dataflow_profiles(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"Instance count: {instance_count}", (0, 0, 0, INNER_PADDING)),
+                    display=_basic_property_display(label="Instance count", value=instance_count, color=instance_status.color, padding=INNER_PADDING),
                 )
             else:
                 check_manager.add_display(
@@ -1082,7 +1091,7 @@ def evaluate_dataflow_profiles(
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
-                    display=Padding(f"Log Level: {diagnostic_log_level}", (0, 0, 0, log_inner_padding)),
+                    display=_basic_property_display(label="Log Level", value=diagnostic_log_level, padding=log_inner_padding),
                 )
 
                 if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -1098,7 +1107,7 @@ def evaluate_dataflow_profiles(
                                 check_manager.add_display(
                                     target_name=target,
                                     namespace=namespace,
-                                    display=Padding(f"{label}: {val}", (0, 0, 0, log_inner_padding)),
+                                    display=_basic_property_display(label=label, value=val, padding=log_inner_padding),
                                 )
 
                     # diagnostic metrics
@@ -1113,7 +1122,7 @@ def evaluate_dataflow_profiles(
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
-                        display=Padding(f"Prometheus Port: {diagnostic_metrics_prometheusPort}", (0, 0, 0, log_inner_padding)),
+                        display=_basic_property_display(label="Prometheus Port", value=diagnostic_metrics_prometheusPort, padding=log_inner_padding),
                     )
 
                     diagnostic_metrics_otelconfig = diagnostic_metrics.get("openTelemetryExportConfig", {})
@@ -1127,7 +1136,7 @@ def evaluate_dataflow_profiles(
                                 check_manager.add_display(
                                     target_name=target,
                                     namespace=namespace,
-                                    display=Padding(f"{label}: {val}", (0, 0, 0, log_inner_padding)),
+                                    display=_basic_property_display(label=label, value=val, padding=log_inner_padding),
                                 )
             # pod health - trailing `-` is important in case profiles have similar prefixes
             pod_prefix = f"{DATAFLOW_PROFILE_POD_PREFIX}{profile_name}-"
@@ -1162,7 +1171,7 @@ def evaluate_dataflow_profiles(
                 target_name=target,
                 namespace=namespace,
                 display=Padding(
-                    COLOR_STR_FORMAT.format(
+                    _format_property_string(
                         color=default_profile_status.color,
                         value=f"\nDefault DataflowProfile {{{DEFAULT_DATAFLOW_PROFILE}}} not found in namespace {{{namespace}}}"
                     ),
