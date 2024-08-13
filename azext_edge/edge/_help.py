@@ -1106,6 +1106,10 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Show details of a schema registry.
+        examples:
+        - name: Show details of target schema registry 'myregistry'.
+          text: >
+            az iot ops schema registry show --name myregistry -g myresourcegroup
     """
 
     helps[
@@ -1113,4 +1117,29 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: List schema registries in a resource group or subscription.
+        examples:
+        - name: List schema registeries in the resource group 'myresourcegroup'.
+          text: >
+            az iot ops schema registry list -g myresourcegroup
+        - name: List schema registeries in the default subscription filtering on a particular tag.
+          text: >
+            az iot ops schema registry list --query "[?tags.env == 'prod']"
+    """
+
+    helps[
+        "iot ops schema registry delete"
+    ] = """
+        type: command
+        short-summary: Delete a target schema registry.
+        examples:
+        - name: Delete schema registry 'myregistry'.
+          text: >
+            az iot ops schema registry delete -n myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema registry create"
+    ] = """
+        type: command
+        short-summary: Create a schema registry.
     """
