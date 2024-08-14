@@ -13,7 +13,7 @@ from azext_edge.edge.providers.check.base.pod import process_pod_status
 from azext_edge.edge.providers.check.base.resource import filter_resources_by_name
 from azext_edge.edge.providers.edge_api.dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
 
-from ...common import CheckTaskStatus, ResourceState
+from ...common import DEFAULT_DATAFLOW_PROFILE, CheckTaskStatus, ResourceState
 from ..base import get_namespaced_pods_by_prefix
 from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX, DATAFLOW_PROFILE_POD_PREFIX
 from .base import CheckManager, check_post_deployment, get_resources_by_name, get_resources_grouped_by_namespace
@@ -31,7 +31,7 @@ logger = get_logger(__name__)
 PADDING = 8
 INNER_PADDING = PADDING + PADDING_SIZE
 PROPERTY_DISPLAY_COLOR = "cyan"
-DEFAULT_DATAFLOW_PROFILE = "profile"
+
 dataflow_api_check_name = "enumerateDataflowApi"
 dataflow_api_check_desc = "Enumerate Dataflow API resources"
 

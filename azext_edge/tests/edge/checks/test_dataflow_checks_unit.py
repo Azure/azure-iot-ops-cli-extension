@@ -6,9 +6,9 @@
 
 
 import pytest
+from azext_edge.edge.common import DEFAULT_DATAFLOW_PROFILE
 from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
 from azext_edge.edge.providers.check.dataflow import (
-    DEFAULT_DATAFLOW_PROFILE,
     evaluate_dataflow_endpoints,
     evaluate_core_service_runtime,
     evaluate_dataflow_profiles,
@@ -909,7 +909,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "warning"),
                     (
                         "value",
-                        {"[*].metadata.name=='profile'": "warning"},
+                        {f"[*].metadata.name=='{DEFAULT_DATAFLOW_PROFILE}'": "warning"},
                     ),
                 ],
             ],
