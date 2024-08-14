@@ -68,15 +68,15 @@ def fetch_resources(func: callable, since_seconds: int = None) -> list:
     for component, has_service in ARC_AGENTS:
         kwargs: dict = {
             'directory_path': f"{MONIKER}/{component}",
-            'label_selector': COMPONENT_LABEL_FORMAT.format(label=component),
         }
         if since_seconds:
             kwargs['since_seconds'] = since_seconds
         if func == process_services:
             if not has_service:
                 continue
-            kwargs['label_selector'] = HELM_MANAGED_LABEL
             kwargs['prefix_names'] = [component]
+        else:
+            kwargs['label_selector'] = COMPONENT_LABEL_FORMAT.format(label=component)
 
         resources.extend(func(**kwargs))
     return resources
