@@ -127,7 +127,6 @@ def _process_dataflow_sourcesettings(
             display=Padding("[red]Invalid source endpoint reference[/red]", (0, 0, 0, padding - PADDING_SIZE)),
         )
 
-    # TODO extra properties - only on verbose
     if detail_level > ResourceOutputDetailLevel.detail.value:
         for label, key in [
             # TODO - validate asset ref / colorize
@@ -188,7 +187,6 @@ def _process_dataflow_transformationsettings(
             ("Schema Reference", "schemaRef"),
             ("Serialization Format", "serializationFormat"),
         ]:
-            # TODO - validate endpoint ref
             val = settings.get(key)
             if val:
                 check_manager.add_display(
@@ -283,7 +281,6 @@ def _process_dataflow_destinationsettings(
         check_manager.add_display(
             target_name=target, namespace=namespace, display=Padding("\nDestination:", (0, 0, 0, padding))
         )
-    # TODO - validate endpoint ref
     endpoint_ref = settings.get("endpointRef")
 
     # currently we are only looking for endpoint references in the same namespace
@@ -330,7 +327,6 @@ def _process_dataflow_destinationsettings(
         for label, key in [
             ("Data Destination", "dataDestination"),
         ]:
-            # TODO - validate endpoint ref
             val = settings.get(key)
             if val:
                 check_manager.add_display(
