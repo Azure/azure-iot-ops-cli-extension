@@ -19,6 +19,7 @@ from azure.identity import AzureCliCredential, ClientSecretCredential
 from azure.mgmt.authorization import AuthorizationManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 
+from ..vendor.clients.deviceregistrymgmt import MicrosoftDeviceRegistryManagementService
 from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
 
 AZURE_CLI_CREDENTIAL = AzureCliCredential()
@@ -32,6 +33,18 @@ logger = get_logger(__name__)
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
     from azure.mgmt.resource.resources.models import GenericResource
+
+
+def get_registry_mgmt_client(subscription_id: str, **kwargs):
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return MicrosoftDeviceRegistryManagementService(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
 
 
 def get_iotops_mgmt_client(subscription_id: str, **kwargs):

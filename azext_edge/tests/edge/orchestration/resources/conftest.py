@@ -37,20 +37,25 @@ def get_mock_resource(
     name: str,
     properties: dict,
     resource_group_name: str,
+    resource_provider: Optional[str] = None,
     resource_path: str = "",
     subscription_id: str = ZEROED_SUBSCRIPTION,
     custom_location_name: str = CUSTOM_LOCATION_NAME,
+    identity: dict = {},
+    qualified_type: Optional[str] = None,
 ) -> dict:
 
-    return {
+    resource = {
         "extendedLocation": {
             "name": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
             f"/providers/Microsoft.ExtendedLocation/customLocations/{custom_location_name}",
             "type": "CustomLocation",
         },
-        "id": get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path).split("?")[0][
-            len(BASE_URL) :
-        ],
+        "id": get_base_endpoint(
+            resource_group_name=resource_group_name,
+            resource_path=resource_path,
+            resource_provider=resource_provider or RESOURCE_PROVIDER,
+        ).split("?")[0][len(BASE_URL) :],
         "location": "northeurope",
         "name": name,
         "properties": properties,
@@ -63,8 +68,12 @@ def get_mock_resource(
             "lastModifiedBy": "",
             "lastModifiedByType": "Application",
         },
-        "type": QUALIFIED_INSTANCE_TYPE,
+        "type": qualified_type or QUALIFIED_INSTANCE_TYPE,
     }
+
+    if identity:
+        resource["identity"] = identity
+    return resource
 
 
 def get_resource_id(

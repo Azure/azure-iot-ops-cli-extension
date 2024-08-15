@@ -5,16 +5,11 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List, Optional, Union
-from azure.cli.core.azclierror import ResourceNotFoundError
+
+from rich.console import Console
+
+from .az_client import get_resource_client
 from .resource_graph import ResourceGraph
-
-
-def get_resource_group_query(name: str):
-    return f"""
-        ResourceContainers
-        | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
-        | where name =~ '{name}'
-        """
 
 
 class Queryable:
@@ -29,6 +24,8 @@ class Queryable:
 
         self.subscriptions = subscriptions
         self.resource_graph = ResourceGraph(cmd=cmd, subscriptions=self.subscriptions)
+        self.resource_client = get_resource_client(subscription_id=self.default_subscription_id)
+        self.console = Console()
 
     def _process_query_result(self, result: dict, first: bool = False) -> Optional[Union[dict, List[dict]]]:
         if "data" in result:
@@ -36,27 +33,8 @@ class Queryable:
                 return result["data"][0]
             return result["data"]
 
-    @property
-    def subscriptions_label(self) -> str:
-        joined_subs = "', '".join(self.subscriptions)
-        sub_label = "subscription"
-        if len(self.subscriptions) > 1:
-            sub_label += "s"
-
-        return f"{sub_label} '{joined_subs}'"
-
-    def _raise_on_resource_group_404(self, resource_group_name: str):
-        query = get_resource_group_query(resource_group_name)
-        result = self._process_query_result(result=self.resource_graph.query_resources(query=query))
-        if not result:
-            raise ResourceNotFoundError(
-                f"Resource group '{resource_group_name}' does not exist in {self.subscriptions_label}."
-            )
-
-    def query(
-        self, query: str, first: bool = False, resource_group_name: Optional[str] = None
-    ) -> Optional[Union[dict, List[dict]]]:
-        if resource_group_name:
-            self._raise_on_resource_group_404(resource_group_name)
-
+    def query(self, query: str, first: bool = False) -> Optional[Union[dict, List[dict]]]:
         return self._process_query_result(result=self.resource_graph.query_resources(query=query), first=first)
+
+    def get_resource_group(self, name: str) -> dict:
+        return self.resource_client.resource_groups.get(resource_group_name=name).as_dict()

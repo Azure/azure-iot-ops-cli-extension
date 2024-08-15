@@ -7,10 +7,12 @@
 from .brokers import Brokers
 from .instances import Instances
 from .dataflows import DataFlowProfiles, DataFlowEndpoints
+from .schema_registries import SchemaRegistries
 
 __all__ = [
     "Brokers",
     "Instances",
     "DataFlowProfiles",
     "DataFlowEndpoints",
+    "SchemaRegistries",
 ]

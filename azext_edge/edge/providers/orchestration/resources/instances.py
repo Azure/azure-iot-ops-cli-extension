@@ -8,11 +8,9 @@ from typing import Iterable, Optional
 
 from knack.log import get_logger
 from rich import print
-from rich.console import Console
 
 from ....util.az_client import (
     get_iotops_mgmt_client,
-    get_resource_client,
     parse_resource_id,
     wait_for_terminal_state,
 )
@@ -29,8 +27,6 @@ class Instances(Queryable):
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
-        self.resource_client = get_resource_client(subscription_id=self.default_subscription_id)
-        self.console = Console()
 
     def show(self, name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> Optional[dict]:
         result = self.iotops_mgmt_client.instance.get(instance_name=name, resource_group_name=resource_group_name)
