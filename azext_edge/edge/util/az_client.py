@@ -110,6 +110,7 @@ def get_default_logging_policy() -> HttpLoggingPolicy:
     http_logging_policy.allowed_query_params.add("api-version")
     http_logging_policy.allowed_query_params.add("$filter")
     http_logging_policy.allowed_query_params.add("$expand")
+    http_logging_policy.allowed_header_names.add("x-ms-correlation-request-id")
 
     return http_logging_policy
 

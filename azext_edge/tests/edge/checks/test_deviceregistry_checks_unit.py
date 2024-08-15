@@ -51,7 +51,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
     ]
 )
 @pytest.mark.parametrize(
-    "assets, namespace_conditions, namespace_evaluations",
+    "assets, asset_endpoint_profiles, namespace_conditions, namespace_evaluations",
     [
         (
             # assets
@@ -65,6 +65,17 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                     }
                 },
             ],
+            # asset_endpoint_profiles
+            [
+                {
+                    "metadata": {
+                        "name": "endpoint",
+                    },
+                    "spec": {
+                        "uuid": "1234",
+                    }
+                },
+            ],
             # namespace conditions str
             ["spec.assetEndpointProfileUri"],
             # namespace evaluations str
@@ -75,7 +86,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                 ],
             ]
         ),
-        # assetEndpointProfileUri not defined
+        # assetEndpointProfileUri not present
         (
             # assets
             [
@@ -87,6 +98,8 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                     }
                 },
             ],
+            # asset_endpoint_profiles
+            [],
             # namespace conditions str
             ["spec.assetEndpointProfileUri"],
             # namespace evaluations str
@@ -116,6 +129,17 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                     }
                 },
             ],
+            # asset_endpoint_profiles
+            [
+                {
+                    "metadata": {
+                        "name": "endpoint",
+                    },
+                    "spec": {
+                        "uuid": "1234",
+                    }
+                },
+            ],
             # namespace conditions str
             ["spec.assetEndpointProfileUri", 'len(spec.dataPoints)'],
             # namespace evaluations str
@@ -137,6 +161,8 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
         # no assets
         (
             # assets
+            [],
+            # asset_endpoint_profiles
             [],
             # namespace conditions str
             [],
@@ -166,6 +192,17 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                                 }
                             ]
                         }
+                    }
+                },
+            ],
+            # asset_endpoint_profiles
+            [
+                {
+                    "metadata": {
+                        "name": "endpoint",
+                    },
+                    "spec": {
+                        "uuid": "1234",
                     }
                 },
             ],
@@ -201,6 +238,17 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                     }
                 },
             ],
+            # asset_endpoint_profiles
+            [
+                {
+                    "metadata": {
+                        "name": "endpoint",
+                    },
+                    "spec": {
+                        "uuid": "1234",
+                    }
+                },
+            ],
             # namespace conditions str
             ["spec.assetEndpointProfileUri", "len(spec.events)"],
             # namespace evaluations str
@@ -224,6 +272,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
 def test_assets_checks(
     mocker,
     assets,
+    asset_endpoint_profiles,
     namespace_conditions,
     namespace_evaluations,
     mock_generate_deviceregistry_asset_target_resources,
@@ -232,7 +281,7 @@ def test_assets_checks(
 ):
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
-        side_effect=[{"items": assets}],
+        side_effect=[{"items": assets}, {"items": asset_endpoint_profiles}],
     )
 
     namespace = generate_random_string()

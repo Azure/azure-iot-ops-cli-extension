@@ -1,4 +1,5 @@
 name: "[auto] Build Wheel for Release"
+permissions: {}
 on:
   workflow_call:
 
