@@ -1024,7 +1024,7 @@ def evaluate_dataflow_profiles(
         no_profiles_text = "No Dataflow Profiles detected in any namespace."
         check_manager.add_target(target_name=target)
         check_manager.add_target_eval(
-            target_name=target, status=CheckTaskStatus.error.value, value={"profiles": no_profiles_text}
+            target_name=target, status=CheckTaskStatus.warning.value, value={"profiles": no_profiles_text}
         )
         check_manager.add_display(
             target_name=target,

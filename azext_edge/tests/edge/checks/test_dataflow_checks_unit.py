@@ -985,7 +985,7 @@ def test_evaluate_dataflow_endpoints(
             # evaluations
             [
                 [
-                    ("status", "error"),
+                    ("status", "warning"),
                     (
                         "value/profiles",
                         "No Dataflow Profiles detected in any namespace.",
