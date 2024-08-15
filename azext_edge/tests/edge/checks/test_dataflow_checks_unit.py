@@ -914,6 +914,66 @@ def test_evaluate_dataflow_endpoints(
                 ],
             ],
         ),
+        # good profile, warning status
+        (
+            # profiles
+            [
+                {
+                    "metadata": {
+                        "name": DEFAULT_DATAFLOW_PROFILE,
+                        "namespace": DEFAULT_NAMESPACE,
+                    },
+                    "spec": {
+                        "instanceCount": 1,
+                    },
+                    "status": {
+                        "configStatusLevel": "warn",
+                        "statusDescription": "this should display a warning"
+                    },
+                },
+            ],
+            # pods
+            [
+                # good profile pod
+                generate_pod_stub(
+                    name=f"aio-dataflow-{DEFAULT_DATAFLOW_PROFILE}-0",
+                    phase="Running",
+                ),
+            ],
+            # conditions
+            [
+                "spec.instanceCount",
+                f"[*].metadata.name=='{DEFAULT_DATAFLOW_PROFILE}'",
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "warning"),
+                    (
+                        "name",
+                        "profile",
+                    ),
+                    ("value/status/configStatusLevel", "warn"),
+                    ("value/status/statusDescription", "this should display a warning"),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        "profile",
+                    ),
+                    ("value", {"spec.instanceCount": 1}),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        "pod/aio-dataflow-profile-0",
+                    ),
+                    ("value", {"status.phase": "Running"}),
+                ],
+            ],
+        ),
         # no profiles
         (
             # profiles

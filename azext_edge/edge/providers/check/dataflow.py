@@ -1062,12 +1062,15 @@ def evaluate_dataflow_profiles(
             profile_status = profile.get("status", {})
             status_level = profile_status.get("configStatusLevel")
             status_description = profile_status.get("statusDescription")
-            # set status to status level if set
+            # add eval for status if present
             if profile_status:
-                check_manager.set_target_status(
+                check_manager.add_target_eval(
                     target_name=target,
                     namespace=namespace,
+                    resource_name=profile_name,
+                    resource_kind=DataflowResourceKinds.DATAFLOWPROFILE.value,
                     status=ResourceState.map_to_status(status_level).value,
+                    value={"status": profile_status},
                 )
             # show status description (colorized) if it exists
             if status_description:
