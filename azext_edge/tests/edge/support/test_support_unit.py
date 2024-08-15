@@ -58,7 +58,7 @@ from azext_edge.edge.providers.support.orc import (
     ORC_CONTROLLER_LABEL,
 )
 from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
-from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT, HELM_MANAGED_LABEL, NAME_LABEL_FORMAT
+from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT
 from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
 from azext_edge.tests.edge.support.conftest import add_pod_to_mocked_pods
 
@@ -1059,7 +1059,7 @@ def test_create_bundle_arc_agents(
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=HELM_MANAGED_LABEL,
+                label_selector=None,
                 directory_path=f"{MONIKER}/{component}",
                 mock_names=[f"{component}"]
             )

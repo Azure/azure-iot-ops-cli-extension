@@ -8,7 +8,7 @@ from functools import partial
 
 from knack.log import get_logger
 
-from .common import COMPONENT_LABEL_FORMAT, HELM_MANAGED_LABEL
+from .common import COMPONENT_LABEL_FORMAT
 
 from .base import (
     DAY_IN_SECONDS,
