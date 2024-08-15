@@ -46,7 +46,7 @@ def test_dataflow_check(init_setup, detail_level, resource_kind):
         assert_eval_core_service_runtime(
             post_deployment=post_deployment,
             description_name="Dataflow",
-            pod_prefix="aio-dataflow",
+            pod_prefix="aio-dataflow-operator-",
         )
     else:
         assert "evalCoreServiceRuntime" not in post_deployment
