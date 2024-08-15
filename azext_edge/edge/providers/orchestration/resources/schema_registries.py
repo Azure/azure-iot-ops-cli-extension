@@ -9,7 +9,12 @@ from typing import TYPE_CHECKING, Iterable, Optional
 from knack.log import get_logger
 from rich.prompt import Confirm
 
-from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state
+from ....util.az_client import (
+    get_registry_mgmt_client,
+    get_storage_mgmt_client,
+    get_authz_client,
+    wait_for_terminal_state,
+)
 from ....util.queryable import Queryable
 
 logger = get_logger(__name__)
@@ -25,6 +30,12 @@ class SchemaRegistries(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
+            subscription_id=self.default_subscription_id,
+        )
+        self.storage_mgmt_client = get_storage_mgmt_client(
+            subscription_id=self.default_subscription_id,
+        )
+        self.authz_client = get_authz_client(
             subscription_id=self.default_subscription_id,
         )
         self.ops: "SchemaRegistriesOperations" = self.registry_mgmt_client.schema_registries
@@ -46,6 +57,8 @@ class SchemaRegistries(Queryable):
         if not location:
             location = self.get_resource_group(name=resource_group_name)["location"]
 
+        blob_containers = self.storage_mgmt_client.blob_containers
+
         resource = {
             "location": location,
             "identity": {
@@ -65,7 +78,11 @@ class SchemaRegistries(Queryable):
             poller = self.ops.begin_create_or_replace(
                 resource_group_name=resource_group_name, schema_registry_name=name, resource=resource
             )
+            #self.authz_client.role_assignments.create_by_id(role_assignment_id=f"/{self.default_subscription_id}/resourceGroups/{resource_group_name}/", parameters={"properties": {"role_definition_id": "", "principal_id": ""}})
+
             return wait_for_terminal_state(poller, **kwargs)
+
+
 
     def show(self, name: str, resource_group_name: str) -> dict:
         return self.ops.get(resource_group_name=resource_group_name, schema_registry_name=name)

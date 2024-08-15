@@ -33,9 +33,26 @@ logger = get_logger(__name__)
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
     from azure.mgmt.resource.resources.models import GenericResource
+    from azure.mgmt.storage import StorageManagementClient
 
 
-def get_registry_mgmt_client(subscription_id: str, **kwargs):
+# TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
+
+
+def get_storage_mgmt_client(subscription_id: str, api_version="2022-09-01", **kwargs) -> StorageManagementClient:
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return StorageManagementClient(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        api_version=api_version,
+        **kwargs,
+    )
+
+
+def get_registry_mgmt_client(subscription_id: str, **kwargs) -> MicrosoftDeviceRegistryManagementService:
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
@@ -47,7 +64,7 @@ def get_registry_mgmt_client(subscription_id: str, **kwargs):
     )
 
 
-def get_iotops_mgmt_client(subscription_id: str, **kwargs):
+def get_iotops_mgmt_client(subscription_id: str, **kwargs) -> MicrosoftIoTOperationsManagementService:
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
@@ -72,11 +89,16 @@ def get_resource_client(subscription_id: str, api_version="2022-09-01", **kwargs
     )
 
 
-def get_authz_client(subscription_id: str) -> AuthorizationManagementClient:
+def get_authz_client(subscription_id: str, api_version="2022-04-01", **kwargs) -> AuthorizationManagementClient:
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
     return AuthorizationManagementClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        api_version=api_version,
+        **kwargs,
     )
 
 
