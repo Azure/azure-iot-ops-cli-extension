@@ -39,7 +39,9 @@ if TYPE_CHECKING:
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
 
 
-def get_storage_mgmt_client(subscription_id: str, api_version="2022-09-01", **kwargs) -> StorageManagementClient:
+def get_storage_mgmt_client(subscription_id: str, api_version="2022-09-01", **kwargs) -> "StorageManagementClient":
+    from azure.mgmt.storage import StorageManagementClient
+
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
