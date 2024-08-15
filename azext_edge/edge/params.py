@@ -121,7 +121,7 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Include mqtt broker traces in the support bundle. "
             "Usage may add considerable size to the produced bundle.",
-        ),
+        )
 
     with self.argument_context("iot ops check") as context:
         context.argument(
@@ -448,7 +448,11 @@ def load_iotops_arguments(self, _):
             "mq_insecure",
             options_list=[
                 "--add-insecure-listener",
-                context.deprecate(target="--mq-insecure", redirect="--add-insecure-listener", hide=True),
+                context.deprecate(
+                    target="--mq-insecure",
+                    redirect="--add-insecure-listener",
+                    hide=True,
+                ),
             ],
             arg_type=get_three_state_flag(),
             help="When enabled the mqtt broker deployment will include a listener "

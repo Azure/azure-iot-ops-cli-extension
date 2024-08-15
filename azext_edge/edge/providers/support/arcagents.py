@@ -35,24 +35,17 @@ ARC_AGENTS = [
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
-    processed = fetch_resources(
-        func=process_v1_pods,
-        since_seconds=since_seconds
-    )
+    processed = fetch_resources(func=process_v1_pods, since_seconds=since_seconds)
     return processed
 
 
 def fetch_deployments():
-    processed = fetch_resources(
-        func=process_deployments
-    )
+    processed = fetch_resources(func=process_deployments)
     return processed
 
 
 def fetch_replicasets():
-    processed = fetch_resources(
-        func=process_replicasets
-    )
+    processed = fetch_resources(func=process_replicasets)
     return processed
 
 
@@ -67,16 +60,16 @@ def fetch_resources(func: callable, since_seconds: int = None) -> list:
     resources = []
     for component, has_service in ARC_AGENTS:
         kwargs: dict = {
-            'directory_path': f"{MONIKER}/{component}",
+            "directory_path": f"{MONIKER}/{component}",
         }
         if since_seconds:
-            kwargs['since_seconds'] = since_seconds
+            kwargs["since_seconds"] = since_seconds
         if func == process_services:
             if not has_service:
                 continue
-            kwargs['prefix_names'] = [component]
+            kwargs["prefix_names"] = [component]
         else:
-            kwargs['label_selector'] = COMPONENT_LABEL_FORMAT.format(label=component)
+            kwargs["label_selector"] = COMPONENT_LABEL_FORMAT.format(label=component)
 
         resources.extend(func(**kwargs))
     return resources
