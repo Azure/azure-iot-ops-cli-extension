@@ -1,5 +1,5 @@
 name: "[auto] Draft Github Release"
-
+permissions: {}
 on:
   workflow_call:
 

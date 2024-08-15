@@ -1,4 +1,5 @@
 name: CI Build and Test
+run-name: "CI Build and Test"
 permissions:
   contents: read
 on:
