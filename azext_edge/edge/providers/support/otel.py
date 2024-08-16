@@ -9,7 +9,7 @@ from functools import partial
 from knack.log import get_logger
 
 from .base import DAY_IN_SECONDS, process_v1_pods, process_deployments, process_services, process_replicasets
-from .shared import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT
 from ..edge_api import EdgeResourceApi
 
 logger = get_logger(__name__)

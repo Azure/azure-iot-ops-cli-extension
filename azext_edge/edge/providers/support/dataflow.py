@@ -17,7 +17,7 @@ from .base import (
     process_replicasets,
     process_v1_pods,
 )
-from .shared import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
