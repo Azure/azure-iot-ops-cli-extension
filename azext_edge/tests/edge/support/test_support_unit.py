@@ -35,6 +35,7 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_SERVICE_LABEL,
     AKRI_WEBHOOK_LABEL,
 )
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
@@ -57,7 +58,7 @@ from azext_edge.edge.providers.support.orc import (
     ORC_CONTROLLER_LABEL,
 )
 from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
-from azext_edge.edge.providers.support.shared import NAME_LABEL_FORMAT
+from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT
 from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
 from azext_edge.tests.edge.support.conftest import add_pod_to_mocked_pods
 
@@ -988,3 +989,77 @@ def test_create_bundle_mq_traces(
     test_zipinfo.file_size = 0
     test_zipinfo.compress_size = 0
     assert_zipfile_write(mocked_zipfile, zinfo=test_zipinfo, data="trace_data")
+
+
+@pytest.mark.parametrize(
+    "mocked_cluster_resources",
+    [
+        [MQTT_BROKER_API_V1B1],
+        [MQTT_BROKER_API_V1B1, MQ_ACTIVE_API],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, AKRI_API_V0],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
+    ],
+    indirect=True,
+)
+def test_create_bundle_arc_agents(
+    mocked_client,
+    mocked_cluster_resources,
+    mocked_config,
+    mocked_os_makedirs,
+    mocked_zipfile,
+    mocked_get_custom_objects,
+    mocked_list_cron_jobs,
+    mocked_list_jobs,
+    mocked_list_deployments,
+    mocked_list_persistent_volume_claims,
+    mocked_list_pods,
+    mocked_list_replicasets,
+    mocked_list_statefulsets,
+    mocked_list_daemonsets,
+    mocked_list_nodes,
+    mocked_list_cluster_events,
+    mocked_list_storage_classes,
+    mocked_get_stats,
+    mocked_root_logger,
+    mocked_mq_active_api,
+    mocked_namespaced_custom_objects,
+    mocked_get_arc_services
+):
+    since_seconds = random.randint(86400, 172800)
+    result = support_bundle(None, bundle_dir=a_bundle_dir, log_age_seconds=since_seconds)
+
+    assert "bundlePath" in result
+    assert a_bundle_dir in result["bundlePath"]
+
+    for component, has_service in ARC_AGENTS:
+        assert_list_pods(
+            mocked_client,
+            mocked_zipfile,
+            mocked_list_pods,
+            label_selector=COMPONENT_LABEL_FORMAT.format(label=component),
+            directory_path=f"{MONIKER}/{component}",
+            since_seconds=since_seconds
+        )
+        assert_list_replica_sets(
+            mocked_client,
+            mocked_zipfile,
+            label_selector=COMPONENT_LABEL_FORMAT.format(label=component),
+            directory_path=f"{MONIKER}/{component}"
+        )
+        assert_list_deployments(
+            mocked_client,
+            mocked_zipfile,
+            label_selector=COMPONENT_LABEL_FORMAT.format(label=component),
+            directory_path=f"{MONIKER}/{component}"
+        )
+        if has_service:
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=f"{MONIKER}/{component}",
+                mock_names=[f"{component}"]
+            )

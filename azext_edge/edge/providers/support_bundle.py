@@ -57,6 +57,7 @@ def build_bundle(
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
     from .support.otel import prepare_bundle as prepare_otel_bundle
+    from .support.arcagents import prepare_bundle as prepare_arcagents_bundle
     from .support.meta import prepare_bundle as prepare_meta_bundle
 
     pending_work = {k: {} for k in OpsServiceType.list()}
@@ -107,6 +108,9 @@ def build_bundle(
     if ops_service == OpsServiceType.auto.value:
         # Only attempt to collect otel resources if any AIO service is deployed AND auto is used.
         pending_work["otel"] = prepare_otel_bundle()
+
+    # arc agent resources
+    pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
 
     # Collect common resources if any AIO service is deployed with any service selected.
     pending_work["common"] = prepare_shared_bundle()

@@ -449,7 +449,11 @@ def load_iotops_arguments(self, _):
             "mq_insecure",
             options_list=[
                 "--add-insecure-listener",
-                context.deprecate(target="--mq-insecure", redirect="--add-insecure-listener", hide=True),
+                context.deprecate(
+                    target="--mq-insecure",
+                    redirect="--add-insecure-listener",
+                    hide=True,
+                ),
             ],
             arg_type=get_three_state_flag(),
             help="When enabled the mqtt broker deployment will include a listener "
