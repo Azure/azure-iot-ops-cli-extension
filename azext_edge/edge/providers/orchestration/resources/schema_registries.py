@@ -5,18 +5,19 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import TYPE_CHECKING, Iterable, Optional
-from azure.cli.core.azclierror import ValidationError
 from uuid import uuid4
 
+from azure.cli.core.azclierror import ValidationError
+from azure.core.exceptions import ResourceNotFoundError
 from knack.log import get_logger
 from rich.prompt import Confirm
 
 from ....util.az_client import (
+    get_authz_client,
     get_registry_mgmt_client,
     get_storage_mgmt_client,
-    get_authz_client,
-    wait_for_terminal_state,
     parse_resource_id,
+    wait_for_terminal_state,
 )
 from ....util.queryable import Queryable
 
@@ -76,13 +77,21 @@ class SchemaRegistries(Queryable):
                     "Schema registry requires the storage account to have hierarchical namespace enabled."
                 )
 
-            blob_container = self.storage_mgmt_client.blob_containers.get(
-                resource_group_name=storage_id_container.resource_group_name,
-                account_name=storage_id_container.resource_name,
-                container_name=storage_container_name,
-            ).as_dict()
-            blob_container_url = f"{storage_properties['primary_endpoints']['blob']}{blob_container['name']}"
+            try:
+                blob_container = self.storage_mgmt_client.blob_containers.get(
+                    resource_group_name=storage_id_container.resource_group_name,
+                    account_name=storage_id_container.resource_name,
+                    container_name=storage_container_name,
+                ).as_dict()
+            except ResourceNotFoundError:
+                blob_container = self.storage_mgmt_client.blob_containers.create(
+                    resource_group_name=storage_id_container.resource_group_name,
+                    account_name=storage_id_container.resource_name,
+                    container_name=storage_container_name,
+                    blob_container={},
+                ).as_dict()
 
+            blob_container_url = f"{storage_properties['primary_endpoints']['blob']}{blob_container['name']}"
             resource = {
                 "location": location,
                 "identity": {

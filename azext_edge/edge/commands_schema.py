@@ -19,7 +19,7 @@ def create_registry(
     resource_group_name: str,
     namespace: str,
     storage_account_resource_id: str,
-    storage_container_name: str,
+    storage_container_name: Optional[str] = "schemas",
     location: Optional[str] = None,
     description: Optional[str] = None,
     display_name: Optional[str] = None,
