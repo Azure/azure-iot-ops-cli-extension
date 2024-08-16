@@ -179,7 +179,7 @@ def _process_dataflow_transformationsettings(
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,
-                        display=Padding(f"- {input}", (0, 0, 0, inner_padding + 2)),
+                        display=Padding(f"- {colorize_string(input)}", (0, 0, 0, inner_padding + 2)),
                     )
 
         # extra properties
@@ -1213,7 +1213,7 @@ def evaluate_dataflow_profiles(
                 display=Padding(
                     colorize_string(
                         color=default_profile_status.color,
-                        value=f"\nDefault DataflowProfile {{{DEFAULT_DATAFLOW_PROFILE}}} not found in namespace {{{namespace}}}",
+                        value=f"\nDefault Dataflow Profile '{DEFAULT_DATAFLOW_PROFILE}' not found in namespace '{namespace}'",
                     ),
                     (0, 0, 0, PADDING),
                 ),
