@@ -1146,3 +1146,9 @@ def load_iotops_arguments(self, _):
             options_list=["--sa-container"],
             help="Storage account container name where schemas will be stored.",
         )
+        context.argument(
+            "custom_role_id",
+            options_list=["--custom-role-id"],
+            help="Fully qualified role definition Id in the following format: "
+            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
+        )

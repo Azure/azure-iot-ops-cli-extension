@@ -124,3 +124,9 @@ def test_schema_registry_delete(mocked_cmd, mocked_responses: responses):
         wait_sec=0.25,
     )
     assert len(mocked_responses.calls) == 1
+
+
+def test_schema_registry_create(mocked_cmd, mocked_responses: responses):
+    registery_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    pass

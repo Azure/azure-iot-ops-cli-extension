@@ -29,9 +29,7 @@ if TYPE_CHECKING:
     )
 
 STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID = "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
-STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_DEF = (
-    f"/providers/Microsoft.Authorization/roleDefinitions/{STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID}"
-)
+ROLE_DEF_FORMAT_STR = "/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/{role_id}"
 
 
 class SchemaRegistries(Queryable):
@@ -56,70 +54,71 @@ class SchemaRegistries(Queryable):
         description: Optional[str] = None,
         display_name: Optional[str] = None,
         tags: Optional[str] = None,
+        custom_role_id: Optional[str] = None,
         **kwargs,
     ) -> dict:
-        if not location:
-            location = self.get_resource_group(name=resource_group_name)["location"]
-
-        storage_id_container = parse_resource_id(storage_account_resource_id)
-
-        self.storage_mgmt_client = get_storage_mgmt_client(
-            subscription_id=storage_id_container.subscription_id,
-        )
-        storage_properties: dict = self.storage_mgmt_client.storage_accounts.get_properties(
-            resource_group_name=storage_id_container.resource_group_name,
-            account_name=storage_id_container.resource_name,
-        ).as_dict()
-        is_hns_enabled = storage_properties.get("is_hns_enabled", False)
-        if not is_hns_enabled:
-            raise ValidationError(
-                "Schema registry requires the storage account to have hierarchical namespace enabled."
-            )
-
-        blob_container = self.storage_mgmt_client.blob_containers.get(
-            resource_group_name=storage_id_container.resource_group_name,
-            account_name=storage_id_container.resource_name,
-            container_name=storage_container_name,
-        ).as_dict()
-        blob_container_url = f"{storage_properties['primary_endpoints']['blob']}{blob_container['name']}"
-
-        resource = {
-            "location": location,
-            "identity": {
-                "type": "SystemAssigned",
-            },
-            "properties": {
-                "namespace": namespace,
-                "storageAccountContainerUrl": blob_container_url,
-                "description": description,
-                "displayName": display_name,
-            },
-        }
-        if tags:
-            resource["tags"] = tags
-
         with self.console.status("Working..."):
+            if not location:
+                location = self.get_resource_group(name=resource_group_name)["location"]
+
+            storage_id_container = parse_resource_id(storage_account_resource_id)
+
+            self.storage_mgmt_client = get_storage_mgmt_client(
+                subscription_id=storage_id_container.subscription_id,
+            )
+            storage_properties: dict = self.storage_mgmt_client.storage_accounts.get_properties(
+                resource_group_name=storage_id_container.resource_group_name,
+                account_name=storage_id_container.resource_name,
+            ).as_dict()
+            is_hns_enabled = storage_properties.get("is_hns_enabled", False)
+            if not is_hns_enabled:
+                raise ValidationError(
+                    "Schema registry requires the storage account to have hierarchical namespace enabled."
+                )
+
+            blob_container = self.storage_mgmt_client.blob_containers.get(
+                resource_group_name=storage_id_container.resource_group_name,
+                account_name=storage_id_container.resource_name,
+                container_name=storage_container_name,
+            ).as_dict()
+            blob_container_url = f"{storage_properties['primary_endpoints']['blob']}{blob_container['name']}"
+
+            resource = {
+                "location": location,
+                "identity": {
+                    "type": "SystemAssigned",
+                },
+                "properties": {
+                    "namespace": namespace,
+                    "storageAccountContainerUrl": blob_container_url,
+                    "description": description,
+                    "displayName": display_name,
+                },
+            }
+            if tags:
+                resource["tags"] = tags
+
             poller = self.ops.begin_create_or_replace(
                 resource_group_name=resource_group_name, schema_registry_name=name, resource=resource
             )
             result = wait_for_terminal_state(poller, **kwargs)
 
+            target_role_def = custom_role_id or ROLE_DEF_FORMAT_STR.format(
+                subscription_id=storage_id_container.subscription_id, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
+            )
             role_assignments_iter = self.authz_client.role_assignments.list_for_scope(
                 scope=storage_properties["id"], filter=f"principalId eq '{result['identity']['principalId']}'"
             )
             for role_assignment in role_assignments_iter:
                 role_assignment_dict = role_assignment.as_dict()
-                if (
-                    role_assignment_dict["role_definition_id"]
-                    == f"/subscriptions/{storage_id_container.subscription_id}{STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_DEF}"
-                ):
+                if role_assignment_dict["role_definition_id"] == target_role_def:
                     return result
 
             self.authz_client.role_assignments.create(
                 scope=storage_properties["id"],
                 role_assignment_name=str(uuid4()),
                 parameters={
-                    "role_definition_id": STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_DEF,
+                    "role_definition_id": target_role_def,
                     "principal_id": result["identity"]["principalId"],
                 },
             )
