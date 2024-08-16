@@ -7,6 +7,7 @@
 from functools import partial
 from typing import List
 
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from azext_edge.edge.providers.support.billing import AIO_BILLING_USAGE_NAME_LABEL
 from ...generators import generate_random_string
 
@@ -463,6 +464,23 @@ def mocked_mq_get_traces(mocker):
     patched_get_traces = mocker.patch("azext_edge.edge.providers.support.mq.get_traces")
     patched_get_traces.return_value = [(test_zipinfo, "trace_data")]
     yield patched_get_traces
+
+
+@pytest.fixture
+def mocked_get_arc_services(mocked_client):
+    from kubernetes.client.models import V1ServiceList, V1Service, V1ObjectMeta
+
+    def _handle_list_arc_services(*args, **kwargs):
+        service_list = []
+        for name, _ in ARC_AGENTS:
+            service_list.append(V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        service_list = V1ServiceList(items=service_list)
+
+        return service_list
+
+    mocked_client.CoreV1Api().list_service_for_all_namespaces.side_effect = _handle_list_arc_services
+
+    yield mocked_client
 
 
 @pytest.fixture

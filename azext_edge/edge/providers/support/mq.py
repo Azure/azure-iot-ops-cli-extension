@@ -22,7 +22,7 @@ from .base import (
     process_v1_pods,
     process_daemonsets,
 )
-from .shared import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
