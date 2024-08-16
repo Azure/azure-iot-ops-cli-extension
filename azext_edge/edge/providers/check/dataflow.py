@@ -73,29 +73,36 @@ def _process_dataflow_sourcesettings(
 
     # currently we are only looking for endpoint references in the same namespace
     # duplicate names should not exist, so check the first endpoint that matches the name ref
-    endpoint_match = next((
+    endpoint_ref_string = "not found"
+    endpoint_ref_status = endpoint_type_status = CheckTaskStatus.error
+    endpoint_type_status_string = "invalid"
+
+    found_endpoint = next((
         endpoint for endpoint in endpoints
         if "name" in endpoint and endpoint["name"] == endpoint_ref
     ), None)
-    endpoint_type = endpoint_match["type"] if endpoint_match and "type" in endpoint_match else None
-    endpoint_type_valid = endpoint_type and endpoint_type.lower() in valid_source_endpoint_types
-    endpoint_type_status = CheckTaskStatus.success if endpoint_type_valid else CheckTaskStatus.error
+    endpoint_type = found_endpoint["type"] if found_endpoint and "type" in found_endpoint else None
 
-    endpoint_status_string = "valid"
-    endpoint_status = CheckTaskStatus.success
-    if not endpoint_match or not endpoint_type_valid:
-        endpoint_status_string = "not found" if not endpoint_match else f"has invalid type: {endpoint_type}"
-        endpoint_status = CheckTaskStatus.success if endpoint_match else CheckTaskStatus.error
+    if found_endpoint:
+        endpoint_ref_status = CheckTaskStatus.success
+        endpoint_ref_string = "detected"
+        endpoint_type_valid = endpoint_type and endpoint_type.lower() in valid_source_endpoint_types
+        endpoint_type_status = CheckTaskStatus.success if endpoint_type_valid else CheckTaskStatus.error
+        endpoint_type_status_string = "valid" if endpoint_type_valid else f"has invalid type: {endpoint_type}"
+
+    endpoint_ref_display = colorize_string(value=endpoint_ref_string, color=endpoint_ref_status.color)
+    endpoint_validity_display = colorize_string(color=endpoint_type_status.color, value=endpoint_type_status_string)
 
     # valid endpoint ref eval
     check_manager.add_target_eval(
         target_name=target,
         namespace=namespace,
-        status=endpoint_status.value,
+        status=endpoint_ref_status.value,
         resource_name=dataflow_name,
         resource_kind=DataflowResourceKinds.DATAFLOW.value,
         value={"spec.operations[*].sourceSettings.endpointRef": endpoint_ref},
     )
+
     # valid source endpoint type eval
     check_manager.add_target_eval(
         target_name=target,
@@ -110,17 +117,16 @@ def _process_dataflow_sourcesettings(
         check_manager.add_display(
             target_name=target, namespace=namespace, display=Padding("\nSource:", (0, 0, 0, padding))
         )
-        endpoint_name_display = f"{{{colorize_string(color=endpoint_status.color, value=endpoint_ref)}}}"
-        endpoint_validity_display = colorize_string(color=endpoint_type_status.color, value=endpoint_status_string)
+        endpoint_name_display = f"{{{colorize_string(value=endpoint_ref)}}}"
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
             display=Padding(
-                f"Dataflow Endpoint {endpoint_name_display} {endpoint_validity_display}",
+                f"Dataflow Endpoint {endpoint_name_display} {endpoint_ref_display}, {endpoint_validity_display}",
                 (0, 0, 0, padding + PADDING_SIZE),
             ),
         )
-    elif not endpoint_match or not endpoint_type_valid:
+    elif not found_endpoint or not endpoint_type_valid:
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
@@ -306,7 +312,7 @@ def _process_dataflow_destinationsettings(
     # show dataflow endpoint ref on detail
     if detail_level > ResourceOutputDetailLevel.summary.value:
         padding += PADDING_SIZE
-        endpoint_name_display = f"{{{colorize_string(color=endpoint_status.color, value=endpoint_ref)}}}"
+        endpoint_name_display = f"{{{colorize_string(value=endpoint_ref)}}}"
         endpoint_validity_display = colorize_string(color=endpoint_status.color, value=endpoint_validity)
         check_manager.add_display(
             target_name=target,
