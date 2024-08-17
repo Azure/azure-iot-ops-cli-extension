@@ -1092,6 +1092,9 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Schema management.
+        long-summary: |
+          Schemas are documents that describe data to enable processing and contextualization.
+          Message schemas describe the format of a message and its contents.
     """
 
     helps[
@@ -1099,6 +1102,11 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Schema registry management.
+        long-summary: |
+          A schema registry is a centralized repository for managing schemas. Schema registry enables
+          schema generation and retrieval both at the edge and in the cloud. It ensures consistency
+          and compatibility across systems by providing a single source of truth for schema
+          definitions.
     """
 
     helps[

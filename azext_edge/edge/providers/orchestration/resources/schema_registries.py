@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import TYPE_CHECKING, Iterable, Optional
-from uuid import uuid4
 
 from azure.cli.core.azclierror import ValidationError
 from azure.core.exceptions import ResourceNotFoundError
@@ -20,6 +19,7 @@ from ....util.az_client import (
     wait_for_terminal_state,
 )
 from ....util.queryable import Queryable
+from ..permissions import PermissionManager
 
 logger = get_logger(__name__)
 
@@ -32,6 +32,16 @@ if TYPE_CHECKING:
 STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID = "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
 ROLE_DEF_FORMAT_STR = "/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/{role_id}"
 
+USER_MSG_RA_WARN_FORMAT_STR = """
+The logged-in principal does not have permission
+to apply role assignments to scope:
+'{scope}'
+
+The schema registry MSI principal '{principal_id}'
+needs 'Storage Blob Data Contributor' or equivalent role.
+
+Please handle this step before continuing.
+"""
 
 class SchemaRegistries(Queryable):
     def __init__(self, cmd):
@@ -58,7 +68,7 @@ class SchemaRegistries(Queryable):
         custom_role_id: Optional[str] = None,
         **kwargs,
     ) -> dict:
-        with self.console.status("Working..."):
+        with self.console.status("Working...") as c:
             if not location:
                 location = self.get_resource_group(name=resource_group_name)["location"]
 
@@ -115,22 +125,35 @@ class SchemaRegistries(Queryable):
             target_role_def = custom_role_id or ROLE_DEF_FORMAT_STR.format(
                 subscription_id=storage_id_container.subscription_id, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
             )
-            role_assignments_iter = self.authz_client.role_assignments.list_for_scope(
-                scope=storage_properties["id"], filter=f"principalId eq '{result['identity']['principalId']}'"
+            permission_manager = PermissionManager(storage_id_container.subscription_id)
+            can_apply_role_assignment = permission_manager.can_apply_role_assignment(
+                resource_group_name=storage_id_container.resource_group_name,
+                resource_provider_namespace="Microsoft.Storage",
+                parent_resource_path="",
+                resource_type="storageAccounts",
+                resource_name=storage_id_container.resource_name,
             )
-            for role_assignment in role_assignments_iter:
-                role_assignment_dict = role_assignment.as_dict()
-                if role_assignment_dict["role_definition_id"] == target_role_def:
-                    return result
+            if not can_apply_role_assignment:
+                c.stop()
+                logger.warning(
+                    USER_MSG_RA_WARN_FORMAT_STR.format(
+                        scope=storage_properties["id"], principal_id=result["identity"]["principalId"]
+                    )
+                )
+                return result
 
-            self.authz_client.role_assignments.create(
-                scope=storage_properties["id"],
-                role_assignment_name=str(uuid4()),
-                parameters={
-                    "role_definition_id": target_role_def,
-                    "principal_id": result["identity"]["principalId"],
-                },
-            )
+            try:
+                permission_manager.apply_role_assignment(
+                    scope=storage_properties["id"],
+                    principal_id=result["identity"]["principalId"],
+                    role_def_id=target_role_def,
+                )
+            except Exception:
+                logger.warning(
+                    USER_MSG_RA_WARN_FORMAT_STR.format(
+                        scope=storage_properties["id"], principal_id=result["identity"]["principalId"]
+                    )
+                )
 
             return result
 
