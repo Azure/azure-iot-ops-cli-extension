@@ -43,6 +43,7 @@ needs 'Storage Blob Data Contributor' or equivalent role.
 Please handle this step before continuing.
 """
 
+
 class SchemaRegistries(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)

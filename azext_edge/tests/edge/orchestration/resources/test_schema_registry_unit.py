@@ -127,6 +127,6 @@ def test_schema_registry_delete(mocked_cmd, mocked_responses: responses):
 
 
 def test_schema_registry_create(mocked_cmd, mocked_responses: responses):
-    registery_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    # registery_name = generate_random_string()
+    # resource_group_name = generate_random_string()
     pass
