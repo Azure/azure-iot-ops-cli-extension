@@ -19,6 +19,7 @@ def get_base_endpoint(
     resource_group_name: Optional[str] = None,
     resource_provider: Optional[str] = RESOURCE_PROVIDER,
     resource_path: Optional[str] = None,
+    api_version: Optional[str] = INSTANCES_API_VERSION,
 ) -> str:
     expected_endpoint = f"{BASE_URL}/subscriptions/{ZEROED_SUBSCRIPTION}"
     if resource_group_name:
@@ -28,8 +29,7 @@ def get_base_endpoint(
         if resource_path:
             expected_endpoint += resource_path
 
-    expected_endpoint += f"?api-version={INSTANCES_API_VERSION}"
-
+    expected_endpoint += f"?api-version={api_version}"
     return expected_endpoint
 
 

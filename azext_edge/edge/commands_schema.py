@@ -25,6 +25,7 @@ def create_registry(
     display_name: Optional[str] = None,
     tags: Optional[str] = None,
     custom_role_id: Optional[str] = None,
+    **kwargs
 ) -> dict:
     return SchemaRegistries(cmd).create(
         name=schema_registry_name,
@@ -37,6 +38,7 @@ def create_registry(
         display_name=display_name,
         tags=tags,
         custom_role_id=custom_role_id,
+        **kwargs,
     )
 
 
