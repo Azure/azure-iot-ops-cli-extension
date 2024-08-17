@@ -113,7 +113,7 @@ def mock_broker_config():
         pytest.param(
             None,  # instance_name
             None,  # instance_description
-            generate_random_string(),  # cluster_name
+            "Mixed_Cluster_Name",  # cluster_name
             generate_random_string(),  # cluster_namespace
             generate_random_string(),  # resource_group_name
             generate_random_string(),  # keyvault_spc_secret_name
@@ -258,6 +258,7 @@ def test_init_to_template_params(
 
     expected_cluster_namespace = cluster_namespace.lower() if cluster_namespace else DEFAULT_NAMESPACE
     lowered_cluster_name = cluster_name.lower()
+    safe_cluster_name = lowered_cluster_name.replace("_", "-")
 
     assert "clusterName" in parameters
     assert parameters["clusterName"]["value"] == cluster_name
@@ -266,7 +267,9 @@ def test_init_to_template_params(
     if instance_name:
         assert parameters["instanceName"]["value"] == instance_name
     else:
-        assert parameters["instanceName"]["value"] == f"{lowered_cluster_name}-ops-instance"
+        assert parameters["instanceName"]["value"] == f"{safe_cluster_name}-ops-instance"
+
+    assert template_ver.content["variables"]["OBSERVABILITY"]["targetName"] == f"{safe_cluster_name}-observability"
 
     assert parameters["clusterLocation"]["value"] == connected_cluster_location
     if location:

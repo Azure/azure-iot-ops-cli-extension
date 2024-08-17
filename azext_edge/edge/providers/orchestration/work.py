@@ -642,8 +642,9 @@ class WorkManager:
         # Covers cluster_namespace
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
 
-        # TODO @digimaun
+        # TODO @digimaun, this section will be deleted soon
         safe_cluster_name = self._cluster_name.replace("_", "-")
+        safe_cluster_name = safe_cluster_name.lower()
         template.content["variables"]["OBSERVABILITY"]["targetName"] = f"{safe_cluster_name}-observability"
 
         tls_map = work_kpis.get("tls", {})
