@@ -18,7 +18,10 @@ from azext_edge.edge.commands_schema import (
     list_registries,
     show_registry,
 )
-from azext_edge.edge.providers.orchestration.resources.schema_registries import ROLE_DEF_FORMAT_STR, STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
+from azext_edge.edge.providers.orchestration.resources.schema_registries import (
+    ROLE_DEF_FORMAT_STR,
+    STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID,
+)
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource, get_resource_id, find_request_by_url, ZEROED_SUBSCRIPTION
@@ -204,8 +207,11 @@ def test_schema_registry_delete(mocked_cmd, mocked_responses: responses):
     [True, False],
 )
 @pytest.mark.parametrize(
-    "display_name,description,tags",
-    [(None, None, None), (generate_random_string(), generate_random_string(), {"a": "b", "c": "d"})],
+    "display_name,description,tags,custom_role_id",
+    [
+        (None, None, None, None),
+        (generate_random_string(), generate_random_string(), {"a": "b", "c": "d"}, "/my/custom/role"),
+    ],
 )
 def test_schema_registry_create(
     mocked_cmd,
@@ -218,6 +224,7 @@ def test_schema_registry_create(
     is_hns_enabled: bool,
     container_fetch_code: int,
     can_apply_role_assignment: bool,
+    custom_role_id: Optional[str],
 ):
     registery_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -237,9 +244,7 @@ def test_schema_registry_create(
         )
     expected_location = location or mock_resource_group["location"]
 
-    mock_logger: Mock = mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.schema_registries.logger"
-    )
+    mock_logger: Mock = mocker.patch("azext_edge.edge.providers.orchestration.resources.schema_registries.logger")
     mock_permission_manager: Mock = mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.schema_registries.PermissionManager"
     )
@@ -271,6 +276,7 @@ def test_schema_registry_create(
         "display_name": display_name,
         "description": description,
         "tags": tags,
+        "custom_role_id": custom_role_id,
         "wait_sec": 0.25,
     }
     if not is_hns_enabled:
@@ -335,17 +341,20 @@ def test_schema_registry_create(
     mock_permission_manager.assert_called_with(ZEROED_SUBSCRIPTION)
     mock_permission_manager().can_apply_role_assignment.assert_called_with(
         resource_group_name=resource_group_name,
-        resource_provider_namespace='Microsoft.Storage',
-        parent_resource_path='',
-        resource_type='storageAccounts',
-        resource_name=storage_account_name
+        resource_provider_namespace="Microsoft.Storage",
+        parent_resource_path="",
+        resource_type="storageAccounts",
+        resource_name=storage_account_name,
     )
     if not can_apply_role_assignment:
         mock_logger.warning.assert_called_once()
         return
 
+    target_role_id = custom_role_id or ROLE_DEF_FORMAT_STR.format(
+        subscription_id=ZEROED_SUBSCRIPTION, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
+    )
     mock_permission_manager().apply_role_assignment.assert_called_with(
         scope=storage_resource_id,
         principal_id=mock_registry_record["identity"]["principalId"],
-        role_def_id=ROLE_DEF_FORMAT_STR.format(subscription_id=ZEROED_SUBSCRIPTION,role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID)
+        role_def_id=target_role_id,
     )
