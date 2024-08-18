@@ -5,7 +5,11 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import Optional
-from ....generators import get_zeroed_subscription, generate_random_string
+
+from requests.models import PreparedRequest
+from responses import CallList
+
+from ....generators import generate_random_string, get_zeroed_subscription
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 BASE_URL = "https://management.azure.com"
@@ -39,12 +43,14 @@ def get_mock_resource(
     resource_group_name: str,
     resource_provider: Optional[str] = None,
     resource_path: str = "",
+    location: Optional[str] = None,
     subscription_id: str = ZEROED_SUBSCRIPTION,
     custom_location_name: str = CUSTOM_LOCATION_NAME,
     identity: dict = {},
     qualified_type: Optional[str] = None,
 ) -> dict:
-
+    if not location:
+        location = "northeurope"
     resource = {
         "extendedLocation": {
             "name": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
@@ -56,7 +62,7 @@ def get_mock_resource(
             resource_path=resource_path,
             resource_provider=resource_provider or RESOURCE_PROVIDER,
         ).split("?")[0][len(BASE_URL) :],
-        "location": "northeurope",
+        "location": location,
         "name": name,
         "properties": properties,
         "resourceGroup": resource_group_name,
@@ -84,3 +90,9 @@ def get_resource_id(
     return get_base_endpoint(
         resource_group_name=resource_group_name, resource_path=resource_path, resource_provider=resource_provider
     ).split("?")[0][len(BASE_URL) :]
+
+
+def find_request_by_url(calls: CallList, url: str) -> Optional[PreparedRequest]:
+    for call in calls:
+        if call.request.url == url:
+            return call.request

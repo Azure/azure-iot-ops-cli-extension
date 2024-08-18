@@ -32,16 +32,15 @@ if TYPE_CHECKING:
 STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID = "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
 ROLE_DEF_FORMAT_STR = "/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/{role_id}"
 
-USER_MSG_RA_WARN_FORMAT_STR = """
-The logged-in principal does not have permission
-to apply role assignments to scope:
-'{scope}'
 
-The schema registry MSI principal '{principal_id}'
-needs 'Storage Blob Data Contributor' or equivalent role.
-
-Please handle this step before continuing.
-"""
+def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str):
+    return (
+        f"{prefix}\n\n"
+        f"The schema registry MSI principal '{principal_id}' needs\n"
+        "'Storage Blob Data Contributor' or equivalent role against scope:\n"
+        f"'{scope}'\n\n"
+        "Please handle this step before continuing."
+    )
 
 
 class SchemaRegistries(Queryable):
@@ -137,8 +136,10 @@ class SchemaRegistries(Queryable):
             if not can_apply_role_assignment:
                 c.stop()
                 logger.warning(
-                    USER_MSG_RA_WARN_FORMAT_STR.format(
-                        scope=storage_properties["id"], principal_id=result["identity"]["principalId"]
+                    get_user_msg_warn_ra(
+                        prefix="The logged-in principal is lacking permission to apply role assignment.",
+                        principal_id=result["identity"]["principalId"],
+                        scope=storage_properties["id"],
                     )
                 )
                 return result
@@ -149,10 +150,12 @@ class SchemaRegistries(Queryable):
                     principal_id=result["identity"]["principalId"],
                     role_def_id=target_role_def,
                 )
-            except Exception:
+            except Exception as e:
                 logger.warning(
-                    USER_MSG_RA_WARN_FORMAT_STR.format(
-                        scope=storage_properties["id"], principal_id=result["identity"]["principalId"]
+                    get_user_msg_warn_ra(
+                        prefix=f"Role assignment failed with:\n{str(e)}.",
+                        principal_id=result["identity"]["principalId"],
+                        scope=storage_properties["id"],
                     )
                 )
 

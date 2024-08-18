@@ -4,20 +4,24 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 from typing import Optional
+from azure.cli.core.azclierror import ValidationError
+from unittest.mock import Mock
 
 import pytest
 import responses
 
 from azext_edge.edge.commands_schema import (
+    create_registry,
     delete_registry,
     list_registries,
     show_registry,
-    create_registry,
 )
+from azext_edge.edge.providers.orchestration.resources.schema_registries import ROLE_DEF_FORMAT_STR, STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
 
 from ....generators import generate_random_string
-from .conftest import get_base_endpoint, get_mock_resource, get_resource_id
+from .conftest import get_base_endpoint, get_mock_resource, get_resource_id, find_request_by_url, ZEROED_SUBSCRIPTION
 
 SCHEMA_REGISTRY_RP = "Microsoft.DeviceRegistry"
 STORAGE_RP = "Microsoft.Storage"
@@ -57,11 +61,12 @@ def get_storage_endpoint(resource_group_name: str, account_name: str) -> str:
     )
 
 
-def get_mock_schema_registery_record(name: str, resource_group_name: str) -> dict:
+def get_mock_schema_registery_record(name: str, resource_group_name: str, location: Optional[str] = None) -> dict:
     record = get_mock_resource(
         name=name,
         resource_provider=SCHEMA_REGISTRY_RP,
         resource_path=f"/schemaRegistries/{name}",
+        location=location,
         identity={
             "principalId": "a4a1d45e-870c-40b8-97b1-4143a4665e32",
             "tenantId": "c3d87c27-b9cf-45f0-90d8-bd82377060a1",
@@ -82,7 +87,7 @@ def get_mock_schema_registery_record(name: str, resource_group_name: str) -> dic
 
 def get_mock_storage_container(account_name: str, container_name: str, resource_group_name: str) -> dict:
     record = get_mock_resource(
-        name=account_name,
+        name=container_name,
         resource_provider=STORAGE_RP,
         resource_path=f"/storageAccounts/{account_name}/blobServices/default/containers/{container_name}",
         properties={"name": container_name},
@@ -182,14 +187,63 @@ def test_schema_registry_delete(mocked_cmd, mocked_responses: responses):
     assert len(mocked_responses.calls) == 1
 
 
-def test_schema_registry_create(mocked_cmd, mocked_responses: responses, mocker):
+@pytest.mark.parametrize(
+    "location",
+    [None, generate_random_string()],
+)
+@pytest.mark.parametrize(
+    "is_hns_enabled",
+    [False, True],
+)
+@pytest.mark.parametrize(
+    "container_fetch_code",
+    [200, 404],
+)
+@pytest.mark.parametrize(
+    "can_apply_role_assignment",
+    [True, False],
+)
+@pytest.mark.parametrize(
+    "display_name,description,tags",
+    [(None, None, None), (generate_random_string(), generate_random_string(), {"a": "b", "c": "d"})],
+)
+def test_schema_registry_create(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocker,
+    location: Optional[str],
+    display_name: Optional[str],
+    description: Optional[str],
+    tags: Optional[dict],
+    is_hns_enabled: bool,
+    container_fetch_code: int,
+    can_apply_role_assignment: bool,
+):
     registery_name = generate_random_string()
     resource_group_name = generate_random_string()
     namespace = generate_random_string()
     storage_account_name = generate_random_string()
     storage_container_name = generate_random_string()
 
-    mock_permission_manager = mocker.patch("azext_edge.edge.providers.orchestration.resources.schema_registries.PermissionManager")
+    mock_resource_group = {"location": generate_random_string()}
+    if not location:
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_base_endpoint(
+                resource_group_name=resource_group_name, resource_provider="", api_version="2022-09-01"
+            ).replace("resourceGroups", "resourcegroups"),
+            json=mock_resource_group,
+            status=200,
+        )
+    expected_location = location or mock_resource_group["location"]
+
+    mock_logger: Mock = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.schema_registries.logger"
+    )
+    mock_permission_manager: Mock = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.schema_registries.PermissionManager"
+    )
+    mock_permission_manager().can_apply_role_assignment.return_value = can_apply_role_assignment
 
     storage_resource_id = get_resource_id(
         resource_path=f"/storageAccounts/{storage_account_name}",
@@ -199,49 +253,99 @@ def test_schema_registry_create(mocked_cmd, mocked_responses: responses, mocker)
     mock_storage_record = get_mock_storage_account(
         resource_group_name=resource_group_name, account_name=storage_account_name
     )
+    mock_storage_record["properties"]["isHnsEnabled"] = is_hns_enabled
     mocked_responses.add(
         method=responses.GET,
         url=get_storage_endpoint(resource_group_name=resource_group_name, account_name=storage_account_name),
         json=mock_storage_record,
         status=200,
     )
+    create_registry_kwargs = {
+        "cmd": mocked_cmd,
+        "schema_registry_name": registery_name,
+        "resource_group_name": resource_group_name,
+        "namespace": namespace,
+        "storage_account_resource_id": storage_resource_id,
+        "storage_container_name": storage_container_name,
+        "location": location,
+        "display_name": display_name,
+        "description": description,
+        "tags": tags,
+        "wait_sec": 0.25,
+    }
+    if not is_hns_enabled:
+        with pytest.raises(ValidationError):
+            create_registry(**create_registry_kwargs)
+        return
 
     mock_storage_container_record = get_mock_storage_container(
         resource_group_name=resource_group_name,
         account_name=storage_account_name,
         container_name=storage_container_name,
     )
+    storage_container_endpoint = get_storage_container_endpoint(
+        resource_group_name=resource_group_name,
+        account_name=storage_account_name,
+        container_name=storage_container_name,
+    )
     mocked_responses.add(
         method=responses.GET,
-        url=get_storage_container_endpoint(
-            resource_group_name=resource_group_name,
-            account_name=storage_account_name,
-            container_name=storage_container_name,
-        ),
+        url=storage_container_endpoint,
         json=mock_storage_container_record,
-        status=200,
+        status=container_fetch_code,
     )
+    if container_fetch_code == 404:
+        mocked_responses.add(
+            method=responses.PUT,
+            url=storage_container_endpoint,
+            json=mock_storage_container_record,
+            status=200,
+        )
 
     mock_registry_record = get_mock_schema_registery_record(
         name=registery_name, resource_group_name=resource_group_name
     )
+    create_registry_endpoint = get_schema_registry_endpoint(
+        resource_group_name=resource_group_name, registry_name=registery_name
+    )
     mocked_responses.add(
         method=responses.PUT,
-        url=get_schema_registry_endpoint(resource_group_name=resource_group_name, registry_name=registery_name),
+        url=create_registry_endpoint,
         json=mock_registry_record,
         status=200,
     )
-    result = create_registry(
-        cmd=mocked_cmd,
-        schema_registry_name=registery_name,
-        resource_group_name=resource_group_name,
-        namespace=namespace,
-        storage_account_resource_id=storage_resource_id,
-        storage_container_name=storage_container_name,
-        location="westus2",
-        wait_sec=0.25,
+
+    create_result = create_registry(**create_registry_kwargs)
+    assert create_result == mock_registry_record
+    schema_registry_create_payload = json.loads(
+        find_request_by_url(mocked_responses.calls, create_registry_endpoint).body
+    )
+    assert schema_registry_create_payload["location"] == expected_location
+    if tags:
+        assert schema_registry_create_payload["tags"] == tags
+    assert schema_registry_create_payload["identity"]["type"] == "SystemAssigned"
+    assert schema_registry_create_payload["properties"]["namespace"] == namespace
+    assert schema_registry_create_payload["properties"]["description"] == description
+    assert schema_registry_create_payload["properties"]["displayName"] == display_name
+    assert (
+        schema_registry_create_payload["properties"]["storageAccountContainerUrl"]
+        == f"{mock_storage_record['properties']['primaryEndpoints']['blob']}{storage_container_name}"
     )
 
-    assert result == mock_registry_record
-    #import pdb; pdb.set_trace()
-    pass
+    mock_permission_manager.assert_called_with(ZEROED_SUBSCRIPTION)
+    mock_permission_manager().can_apply_role_assignment.assert_called_with(
+        resource_group_name=resource_group_name,
+        resource_provider_namespace='Microsoft.Storage',
+        parent_resource_path='',
+        resource_type='storageAccounts',
+        resource_name=storage_account_name
+    )
+    if not can_apply_role_assignment:
+        mock_logger.warning.assert_called_once()
+        return
+
+    mock_permission_manager().apply_role_assignment.assert_called_with(
+        scope=storage_resource_id,
+        principal_id=mock_registry_record["identity"]["principalId"],
+        role_def_id=ROLE_DEF_FORMAT_STR.format(subscription_id=ZEROED_SUBSCRIPTION,role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID)
+    )
