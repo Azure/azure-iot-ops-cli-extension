@@ -1092,6 +1092,9 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Schema management.
+        long-summary: |
+          Schemas are documents that describe data to enable processing and contextualization.
+          Message schemas describe the format of a message and its contents.
     """
 
     helps[
@@ -1099,6 +1102,11 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Schema registry management.
+        long-summary: |
+          A schema registry is a centralized repository for managing schemas. Schema registry enables
+          schema generation and retrieval both at the edge and in the cloud. It ensures consistency
+          and compatibility across systems by providing a single source of truth for schema
+          definitions.
     """
 
     helps[
@@ -1142,4 +1150,23 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create a schema registry.
+        long-summary: |
+                      This operation will create a schema registry with system managed identity enabled.
+
+                      It will then assign the system identity the built-in "Storage Blob Data Contributor"
+                      role against the storage account scope by default. If necessary you can provide a custom
+                      role via --custom-role-id to use instead.
+
+                      If the indicated storage account container does not exist it will be created with default
+                      settings.
+        examples:
+        - name: Create a schema registry called 'myregistry' with minimum inputs.
+          text: >
+            az iot ops schema registry create -n myregistry -g myresourcegroup --namespace myschemas
+            --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID
+        - name: Create a schema registry called 'myregistry' in region westus2 with additional customization.
+          text: >
+            az iot ops schema registry create -n myregistry -g myresourcegroup --namespace myschemas
+            --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID --sa-container mycontainer
+            -l westus2 --desc 'Contoso factory X1 schemas' --display-name 'Contoso X1' --tags env=prod
     """

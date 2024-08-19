@@ -79,7 +79,8 @@ def load_iotops_arguments(self, _):
             "tags",
             options_list=["--tags"],
             arg_type=tags_type,
-            help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d",
+            help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d. "
+            "Use --tags \"\" to remove all tags.",
         )
         context.argument(
             "instance_description",
@@ -1120,7 +1121,8 @@ def load_iotops_arguments(self, _):
             "tags",
             options_list=["--tags"],
             arg_type=tags_type,
-            help="Schema registry tags. Property bag in key-value pairs with the following format: a=b c=d",
+            help="Schema registry tags. Property bag in key-value pairs with the following format: a=b c=d. "
+            "Use --tags \"\" to remove all tags.",
         )
         context.argument(
             "description",
@@ -1139,7 +1141,18 @@ def load_iotops_arguments(self, _):
             "If no location is provided the resource group location will be used.",
         )
         context.argument(
-            "storage_container_url",
-            options_list=["--sc-url"],
-            help="Storage container URL where schemas will be stored.",
+            "storage_account_resource_id",
+            options_list=["--sa-resource-id"],
+            help="Storage account resource Id to be used with the schema registry.",
+        )
+        context.argument(
+            "storage_container_name",
+            options_list=["--sa-container"],
+            help="Storage account container name where schemas will be stored.",
+        )
+        context.argument(
+            "custom_role_id",
+            options_list=["--custom-role-id"],
+            help="Fully qualified role definition Id in the following format: "
+            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
         )

@@ -18,21 +18,27 @@ def create_registry(
     schema_registry_name: str,
     resource_group_name: str,
     namespace: str,
-    storage_container_url: str,
+    storage_account_resource_id: str,
+    storage_container_name: Optional[str] = "schemas",
     location: Optional[str] = None,
     description: Optional[str] = None,
     display_name: Optional[str] = None,
     tags: Optional[str] = None,
+    custom_role_id: Optional[str] = None,
+    **kwargs
 ) -> dict:
     return SchemaRegistries(cmd).create(
         name=schema_registry_name,
         resource_group_name=resource_group_name,
         location=location,
         namespace=namespace,
-        storage_container_url=storage_container_url,
+        storage_account_resource_id=storage_account_resource_id,
+        storage_container_name=storage_container_name,
         description=description,
         display_name=display_name,
         tags=tags,
+        custom_role_id=custom_role_id,
+        **kwargs,
     )
 
 
