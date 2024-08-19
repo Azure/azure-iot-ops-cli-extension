@@ -244,7 +244,8 @@ def test_schema_registry_create(
         )
     expected_location = location or mock_resource_group["location"]
 
-    mock_logger: Mock = mocker.patch("azext_edge.edge.providers.orchestration.resources.schema_registries.logger")
+    # TODO - @digimaun
+    # mock_logger: Mock = mocker.patch("azext_edge.edge.providers.orchestration.resources.schema_registries.logger")
     mock_permission_manager: Mock = mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.schema_registries.PermissionManager"
     )
