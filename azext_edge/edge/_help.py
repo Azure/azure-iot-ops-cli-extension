@@ -1168,5 +1168,5 @@ def load_iotops_help():
           text: >
             az iot ops schema registry create -n myregistry -g myresourcegroup --namespace myschemas
             --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID --sa-container mycontainer
-            -l westus2 --desc 'Contoso factory X1 schemas" --display-name "Contoso X1" --tags env=prod
+            -l westus2 --desc 'Contoso factory X1 schemas' --display-name 'Contoso X1' --tags env=prod
     """
