@@ -228,7 +228,7 @@ def test_schema_registry_create(
 ):
     registery_name = generate_random_string()
     resource_group_name = generate_random_string()
-    namespace = generate_random_string()
+    registry_namespace = generate_random_string()
     storage_account_name = generate_random_string()
     storage_container_name = generate_random_string()
 
@@ -269,7 +269,7 @@ def test_schema_registry_create(
         "cmd": mocked_cmd,
         "schema_registry_name": registery_name,
         "resource_group_name": resource_group_name,
-        "namespace": namespace,
+        "registry_namespace": registry_namespace,
         "storage_account_resource_id": storage_resource_id,
         "storage_container_name": storage_container_name,
         "location": location,
@@ -330,7 +330,7 @@ def test_schema_registry_create(
     if tags:
         assert schema_registry_create_payload["tags"] == tags
     assert schema_registry_create_payload["identity"]["type"] == "SystemAssigned"
-    assert schema_registry_create_payload["properties"]["namespace"] == namespace
+    assert schema_registry_create_payload["properties"]["namespace"] == registry_namespace
     assert schema_registry_create_payload["properties"]["description"] == description
     assert schema_registry_create_payload["properties"]["displayName"] == display_name
     assert (

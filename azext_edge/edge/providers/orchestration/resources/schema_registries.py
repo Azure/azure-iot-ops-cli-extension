@@ -58,7 +58,7 @@ class SchemaRegistries(Queryable):
         self,
         name: str,
         resource_group_name: str,
-        namespace: str,
+        registry_namespace: str,
         storage_account_resource_id: str,
         storage_container_name: str,
         location: Optional[str] = None,
@@ -108,7 +108,7 @@ class SchemaRegistries(Queryable):
                     "type": "SystemAssigned",
                 },
                 "properties": {
-                    "namespace": namespace,
+                    "namespace": registry_namespace,
                     "storageAccountContainerUrl": blob_container_url,
                     "description": description,
                     "displayName": display_name,
