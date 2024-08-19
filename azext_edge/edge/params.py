@@ -1113,8 +1113,8 @@ def load_iotops_arguments(self, _):
             help="Schema registry name.",
         )
         context.argument(
-            "namespace",
-            options_list=["--namespace"],
+            "registry_namespace",
+            options_list=["--registry-namespace", "--rn"],
             help="Schema registry namespace. Uniquely identifies a schema registry within a tenant.",
         )
         context.argument(
