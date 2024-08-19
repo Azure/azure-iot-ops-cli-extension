@@ -126,23 +126,24 @@ class SchemaRegistries(Queryable):
                 subscription_id=storage_id_container.subscription_id, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
             )
             permission_manager = PermissionManager(storage_id_container.subscription_id)
-            can_apply_role_assignment = permission_manager.can_apply_role_assignment(
-                resource_group_name=storage_id_container.resource_group_name,
-                resource_provider_namespace="Microsoft.Storage",
-                parent_resource_path="",
-                resource_type="storageAccounts",
-                resource_name=storage_id_container.resource_name,
-            )
-            if not can_apply_role_assignment:
-                c.stop()
-                logger.warning(
-                    get_user_msg_warn_ra(
-                        prefix="The logged-in principal is lacking permission to apply role assignment.",
-                        principal_id=result["identity"]["principalId"],
-                        scope=storage_properties["id"],
-                    )
-                )
-                return result
+            # TODO - @digimaun
+            # can_apply_role_assignment = permission_manager.can_apply_role_assignment(
+            #     resource_group_name=storage_id_container.resource_group_name,
+            #     resource_provider_namespace="Microsoft.Storage",
+            #     parent_resource_path="",
+            #     resource_type="storageAccounts",
+            #     resource_name=storage_id_container.resource_name,
+            # )
+            # if not can_apply_role_assignment:
+            #     c.stop()
+            #     logger.warning(
+            #         get_user_msg_warn_ra(
+            #             prefix="The logged-in principal is lacking permission to apply role assignment.",
+            #             principal_id=result["identity"]["principalId"],
+            #             scope=storage_properties["id"],
+            #         )
+            #     )
+            #     return result
 
             try:
                 permission_manager.apply_role_assignment(
@@ -151,6 +152,7 @@ class SchemaRegistries(Queryable):
                     role_def_id=target_role_def,
                 )
             except Exception as e:
+                c.stop()
                 logger.warning(
                     get_user_msg_warn_ra(
                         prefix=f"Role assignment failed with:\n{str(e)}.",
