@@ -95,6 +95,7 @@ def load_iotops_help():
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
+            - {COMPAT_DATAFLOW_APIS.as_str()}
 
             For more information on cluster requirements, please check https://aka.ms/iot-ops-cluster-requirements
 
