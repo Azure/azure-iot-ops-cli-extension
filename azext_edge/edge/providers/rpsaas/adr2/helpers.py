@@ -18,8 +18,7 @@ class TopicRetain(Enum):
 
 
 def check_cluster_connectivity(cmd, resource: dict):
-    instance_provider = Instances(cmd=cmd)
-    connected_cluster = instance_provider.get_resource_map(resource).connected_cluster
+    connected_cluster = Instances(cmd=cmd).get_resource_map(resource).connected_cluster
     if not connected_cluster.connected:
         logger.warning(f"Cluster {connected_cluster.cluster_name} is not connected.")
 
