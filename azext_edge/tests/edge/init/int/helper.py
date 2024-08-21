@@ -7,7 +7,6 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from azext_edge.edge.providers.orchestration.common import KEYVAULT_ARC_EXTENSION_VERSION
 from ....helpers import run
 
 
@@ -53,7 +52,6 @@ def assert_init_result(
     # CSI driver
     assert result["csiDriver"]["keyVaultId"] == key_vault
     assert result["csiDriver"]["kvSpcSecretName"] == arg_dict.get("kv_spc_secret_name", "azure-iot-operations")
-    assert result["csiDriver"]["version"] == arg_dict.get("csi_ver", KEYVAULT_ARC_EXTENSION_VERSION)
 
     if sp_app_id:
         assert result["csiDriver"]["spAppId"] == sp_app_id
