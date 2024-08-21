@@ -17,9 +17,7 @@ from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
-    DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
     DEFAULT_X509_CA_VALID_DAYS,
-    KEYVAULT_ARC_EXTENSION_VERSION,
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
@@ -102,7 +100,6 @@ def init(
     instance_name: Optional[str] = None,
     instance_description: Optional[str] = None,
     cluster_namespace: str = DEFAULT_NAMESPACE,
-    keyvault_spc_secret_name: str = DEFAULT_NAMESPACE,
     custom_location_name: Optional[str] = None,
     location: Optional[str] = None,
     show_template: Optional[bool] = None,
@@ -125,15 +122,8 @@ def init(
     mq_broker_config_file: Optional[str] = None,
     mq_insecure: Optional[bool] = None,
     dataflow_profile_instances: int = 1,
-    disable_secret_rotation: Optional[bool] = None,
-    rotation_poll_interval: str = "1h",
-    csi_driver_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
-    csi_driver_config: Optional[List[str]] = None,
-    service_principal_app_id: Optional[str] = None,
-    service_principal_object_id: Optional[str] = None,
-    service_principal_secret: Optional[str] = None,
-    service_principal_secret_valid_days: int = DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
-    keyvault_resource_id: Optional[str] = None,
+    # TODO - @digimaun csi_driver_config: Optional[List[str]] = None,
+    keyvault_resource_id: Optional[str] = None,  # TODO - @digimaun
     tls_ca_path: Optional[str] = None,
     tls_ca_key_path: Optional[str] = None,
     tls_ca_dir: Optional[str] = None,
@@ -144,11 +134,12 @@ def init(
     disable_rsync_rules: Optional[bool] = None,
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
+    **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
     from .providers.orchestration import deploy
     from .util import (
-        assemble_nargs_to_dict,
+        # assemble_nargs_to_dict,
         is_env_flag_enabled,
         read_file_content,
         url_safe_random_chars,
@@ -183,9 +174,6 @@ def init(
 
         if not exists(tls_ca_key_path):
             raise InvalidArgumentValueError("Provided CA private key file does not exist.")
-
-    if csi_driver_config:
-        csi_driver_config = assemble_nargs_to_dict(csi_driver_config)
 
     # TODO - @digimaun
     mq_broker_config = None
@@ -227,20 +215,12 @@ def init(
         mq_insecure=mq_insecure,
         dataflow_profile_instances=int(dataflow_profile_instances),
         keyvault_resource_id=keyvault_resource_id,
-        keyvault_spc_secret_name=str(keyvault_spc_secret_name),
-        disable_secret_rotation=disable_secret_rotation,
-        rotation_poll_interval=str(rotation_poll_interval),
-        csi_driver_version=str(csi_driver_version),
-        csi_driver_config=csi_driver_config,
-        service_principal_app_id=service_principal_app_id,
-        service_principal_object_id=service_principal_object_id,
-        service_principal_secret=service_principal_secret,
-        service_principal_secret_valid_days=int(service_principal_secret_valid_days),
         tls_ca_path=tls_ca_path,
         tls_ca_key_path=tls_ca_key_path,
         tls_ca_dir=tls_ca_dir,
         tls_ca_valid_days=int(tls_ca_valid_days),
         template_path=template_path,
+        **kwargs,
     )
 
 
