@@ -413,7 +413,6 @@ def test_work_order(
     mocked_edge_api_keyvault_api_v1: Mock,
     mocked_verify_write_permission_against_rg: Mock,
     mocked_wait_for_terminal_state: Mock,
-    mocked_file_exists: Mock,
     mocked_connected_cluster_location: Mock,
     mocked_connected_cluster_extensions: Mock,
     mocked_verify_custom_locations_enabled: Mock,

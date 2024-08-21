@@ -75,13 +75,6 @@ def mocked_wait_for_terminal_state(mocker):
 
 
 @pytest.fixture
-def mocked_file_exists(mocker):
-    patched = mocker.patch("azext_edge.edge.commands_edge.exists", autospec=True)
-    patched.return_value = True
-    yield patched
-
-
-@pytest.fixture
 def mocked_connected_cluster_location(mocker, request):
     return_value = getattr(request, "param", None) or "mock_location"
     patched = mocker.patch(
