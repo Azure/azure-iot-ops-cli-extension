@@ -22,7 +22,6 @@ from rich.table import Table
 
 from ...util import get_timestamp_now_utc
 from ...util.az_client import wait_for_terminal_state
-from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
 from .template import (
     CURRENT_TEMPLATE,
     TemplateVer,
@@ -36,6 +35,7 @@ logger = get_logger(__name__)
 class WorkCategoryKey(IntEnum):
     PRE_FLIGHT = 1
     DEPLOY_AIO = 2
+
 
 class WorkStepKey(IntEnum):
     REG_RP = 1

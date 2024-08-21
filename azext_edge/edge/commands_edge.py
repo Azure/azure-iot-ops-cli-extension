@@ -5,11 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-from os.path import exists
 from pathlib import PurePath
 from typing import Any, Dict, Iterable, List, Optional, Union
 
-from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 
 from .common import OpsServiceType
@@ -17,7 +15,6 @@ from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
-    DEFAULT_X509_CA_VALID_DAYS,
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
