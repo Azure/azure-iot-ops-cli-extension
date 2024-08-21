@@ -10,6 +10,7 @@ from azure.cli.core.azclierror import CLIInternalError
 from ....generators import generate_random_string
 from ....helpers import run
 
+
 def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
     storage_account_name = f"teststore{generate_random_string(force_lower=True, size=6)}"
     registry_name = f"test-registry-{generate_random_string(force_lower=True, size=6)}"
@@ -129,4 +130,3 @@ def assert_schema_registry(registry: dict, **expected):
     assert registry_props["storageAccountContainerUrl"].endswith(expected.get("sa_container", "schemas"))
     assert registry_props.get("description") == expected.get("description")
     assert registry_props.get("displayName") == expected.get("display_name")
-
