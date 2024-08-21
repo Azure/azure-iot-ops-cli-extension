@@ -80,7 +80,7 @@ def load_iotops_arguments(self, _):
             options_list=["--tags"],
             arg_type=tags_type,
             help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d. "
-            "Use --tags \"\" to remove all tags.",
+            'Use --tags "" to remove all tags.',
         )
         context.argument(
             "instance_description",
@@ -514,81 +514,29 @@ def load_iotops_arguments(self, _):
         # AKV CSI Driver
         context.argument(
             "keyvault_resource_id",
-            options_list=["--kv-id"],
+            options_list=[
+                "--kv-resource-id",
+                context.deprecate(
+                    target="--kv-id",
+                    redirect="--kv-resource-id",
+                    hide=True,
+                ),
+            ],
             help="Key Vault ARM resource Id. Providing this resource Id will enable the client "
             "to setup all necessary resources and cluster side configuration to enable "
             "the Key Vault CSI driver for IoT Operations.",
             arg_group="Key Vault CSI Driver",
         )
-        context.argument(
-            "keyvault_spc_secret_name",
-            options_list=["--kv-spc-secret-name"],
-            help="The Key Vault secret **name** to use as the default SPC secret. "
-            "If the secret does not exist, it will be created with a cryptographically secure placeholder value.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "disable_secret_rotation",
-            options_list=["--disable-rotation"],
-            arg_type=get_three_state_flag(),
-            help="Flag to disable secret rotation.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "rotation_poll_interval",
-            options_list=["--rotation-int"],
-            help="Rotation poll interval.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "csi_driver_version",
-            options_list=["--csi-ver"],
-            help="CSI driver extension version.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "csi_driver_config",
-            options_list=["--csi-config"],
-            nargs="+",
-            action="extend",
-            help="CSI driver extension custom configuration. Format is space-separated key=value pairs. "
-            "--csi-config can be used one or more times.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_app_id",
-            options_list=["--sp-app-id"],
-            help="Service principal app Id. If provided will be used for CSI driver setup. "
-            "Otherwise an app registration will be created. "
-            "**Required** if the logged in principal does not have permissions to query graph.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_object_id",
-            options_list=["--sp-object-id"],
-            help="Service principal (sp) object Id. If provided will be used for CSI driver setup. "
-            "Otherwise the object Id will be queried from the app Id - creating the sp if one does not exist. "
-            "**Required** if the logged in principal does not have permissions to query graph. "
-            "Use `az ad sp show --id <app Id> --query id -o tsv` to produce the proper object Id. "
-            "Alternatively using Portal you can navigate to Enterprise Applications in your Entra Id tenant.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_secret",
-            options_list=["--sp-secret"],
-            help="The secret corresponding to the provided service principal app Id. "
-            "If provided will be used for CSI driver setup. Otherwise a new secret will be created. "
-            "**Required** if the logged in principal does not have permissions to query graph.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_secret_valid_days",
-            options_list=["--sp-secret-valid-days"],
-            help="Option to control the duration in days of the init generated service principal secret. "
-            "Applicable if --sp-secret is not provided.",
-            arg_group="Key Vault CSI Driver",
-            type=int,
-        )
+        # TODO - @digimaun - still applicable
+        # context.argument(
+        #     "csi_driver_config",
+        #     options_list=["--csi-config"],
+        #     nargs="+",
+        #     action="extend",
+        #     help="CSI driver extension custom configuration. Format is space-separated key=value pairs. "
+        #     "--csi-config can be used one or more times.",
+        #     arg_group="Key Vault CSI Driver",
+        # )
         # TLS
         context.argument(
             "tls_ca_path",
@@ -1122,7 +1070,7 @@ def load_iotops_arguments(self, _):
             options_list=["--tags"],
             arg_type=tags_type,
             help="Schema registry tags. Property bag in key-value pairs with the following format: a=b c=d. "
-            "Use --tags \"\" to remove all tags.",
+            'Use --tags "" to remove all tags.',
         )
         context.argument(
             "description",
