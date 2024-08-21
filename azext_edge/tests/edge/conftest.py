@@ -136,6 +136,13 @@ def settings():
 
 
 @pytest.fixture(scope="session")
+def settings_with_rg(settings):
+    from ..settings import EnvironmentVariables
+    settings.add_to_config(EnvironmentVariables.rg.value)
+    yield settings
+
+
+@pytest.fixture(scope="session")
 def tracked_resources():
     resources = []
     yield resources

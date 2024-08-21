@@ -10,10 +10,10 @@ from azure.cli.core.azclierror import CLIInternalError
 from ....generators import generate_random_string
 from ....helpers import run
 
-def test_schema_registry_lifecycle(tracked_resources):
+def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
     storage_account_name = f"teststore{generate_random_string(force_lower=True, size=6)}"
     registry_name = f"test-registry-{generate_random_string(force_lower=True, size=6)}"
-    registry_rg = "vilit-clusters"
+    registry_rg = settings_with_rg.env.azext_edge_rg
     registry_namespace = f"test-namespace-{generate_random_string(force_lower=True, size=6)}"
     # create the storage account and get the id
     storage_account = run(
