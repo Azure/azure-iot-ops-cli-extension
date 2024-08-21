@@ -789,7 +789,7 @@ def evaluate_dataflows(
                             value=f"{CheckTaskStatus.skipped.emoji} Skipping evaluation of disabled dataflow",
                             color=CheckTaskStatus.skipped.color,
                         ),
-                        (0, 0, 0, PADDING)
+                        (0, 0, 0, PADDING + 2)
                     ),
                 )
                 continue
