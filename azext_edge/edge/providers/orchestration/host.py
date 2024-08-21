@@ -12,7 +12,7 @@ from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
 from rich.console import Console
 
-from .common import ARM_ENDPOINT, GRAPH_ENDPOINT, MCR_ENDPOINT
+from .common import ARM_ENDPOINT, MCR_ENDPOINT
 
 logger = get_logger(__name__)
 console = Console(width=88)
@@ -107,8 +107,6 @@ def preflight_http_connections(endpoints: List[str]) -> EndpointConnections:
     return EndpointConnections(connect_map=endpoint_connect_map)
 
 
-def verify_cli_client_connections(include_graph: bool):
+def verify_cli_client_connections():
     test_endpoints = [ARM_ENDPOINT]
-    if include_graph:
-        test_endpoints.append(GRAPH_ENDPOINT)
     preflight_http_connections(test_endpoints).throw_if_failure(include_cluster=False)
