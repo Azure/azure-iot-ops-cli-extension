@@ -22,12 +22,6 @@ def mocked_deploy(mocker):
 
 
 @pytest.fixture
-def mocked_cluster_tls(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.configure_cluster_tls", autospec=True)
-    yield patched
-
-
-@pytest.fixture
 def mocked_deploy_template(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.deploy_template", autospec=True)
 
@@ -43,17 +37,6 @@ def mocked_deploy_template(mocker):
             },
             mocker.MagicMock(),
         )
-
-    patched.side_effect = handle_return
-    yield patched
-
-
-@pytest.fixture
-def mocked_prepare_ca(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.base.prepare_ca", autospec=True)
-
-    def handle_return(*args, **kwargs):
-        return ("mock_ca", "mock_private_key", "mock_secret_name", "mock_configmap")
 
     patched.side_effect = handle_return
     yield patched

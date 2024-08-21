@@ -124,13 +124,8 @@ def init(
     dataflow_profile_instances: int = 1,
     # TODO - @digimaun csi_driver_config: Optional[List[str]] = None,
     keyvault_resource_id: Optional[str] = None,  # TODO - @digimaun
-    tls_ca_path: Optional[str] = None,
-    tls_ca_key_path: Optional[str] = None,
-    tls_ca_dir: Optional[str] = None,
-    tls_ca_valid_days: int = DEFAULT_X509_CA_VALID_DAYS,
     template_path: Optional[str] = None,
     no_deploy: Optional[bool] = None,
-    no_tls: Optional[bool] = None,
     disable_rsync_rules: Optional[bool] = None,
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
@@ -147,7 +142,7 @@ def init(
 
     no_preflight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
-    if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
+    if all([not keyvault_resource_id, no_deploy, no_preflight]):
         logger.warning("Nothing to do :)")
         return
 
@@ -164,16 +159,6 @@ def init(
 
     if not custom_location_name:
         custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
-
-    if tls_ca_path:
-        if not tls_ca_key_path:
-            raise InvalidArgumentValueError("When using --ca-file, --ca-key-file is required.")
-
-        if not exists(tls_ca_path):
-            raise InvalidArgumentValueError("Provided CA file does not exist.")
-
-        if not exists(tls_ca_key_path):
-            raise InvalidArgumentValueError("Provided CA private key file does not exist.")
 
     # TODO - @digimaun
     mq_broker_config = None
@@ -196,7 +181,6 @@ def init(
         simulate_plc=simulate_plc,
         no_block=no_block,
         no_progress=no_progress,
-        no_tls=no_tls,
         no_preflight=no_preflight,
         no_deploy=no_deploy,
         disable_rsync_rules=disable_rsync_rules,
@@ -215,10 +199,6 @@ def init(
         mq_insecure=mq_insecure,
         dataflow_profile_instances=int(dataflow_profile_instances),
         keyvault_resource_id=keyvault_resource_id,
-        tls_ca_path=tls_ca_path,
-        tls_ca_key_path=tls_ca_key_path,
-        tls_ca_dir=tls_ca_dir,
-        tls_ca_valid_days=int(tls_ca_valid_days),
         template_path=template_path,
         **kwargs,
     )

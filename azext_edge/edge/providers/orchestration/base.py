@@ -4,25 +4,16 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Optional, Tuple
+from typing import Tuple
 
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
 
-from ...common import K8sSecretType
 from ...util import (
-    generate_self_signed_cert,
     get_timestamp_now_utc,
-    read_file_content,
 )
 from ...util.az_client import (
     get_resource_client,
-)
-from ..base import (
-    create_cluster_namespace,
-    create_namespaced_configmap,
-    create_namespaced_secret,
-    get_cluster_namespace,
 )
 from ..k8s.cluster_role_binding import get_bindings
 from ..k8s.config_map import get_config_map
@@ -97,65 +88,6 @@ IOT_OPERATIONS_EXTENSION_PREFIX = "microsoft.iotoperations"
 #         yaml_objects=yaml_configs,
 #         delete_first=True,
 #     )
-
-
-def prepare_ca(
-    tls_ca_path: Optional[str] = None,
-    tls_ca_key_path: Optional[str] = None,
-    tls_ca_dir: Optional[str] = None,
-    tls_ca_valid_days: Optional[int] = None,
-    **kwargs,
-) -> Tuple[bytes, bytes, str, str]:
-    from ...util import normalize_dir
-
-    public_cert = private_key = None
-    secret_name = "aio-ca-key-pair"
-    cm_name = "aio-ca-trust-bundle"
-
-    if tls_ca_path:
-        public_cert = read_file_content(file_path=tls_ca_path, read_as_binary=True)
-        if tls_ca_key_path:
-            private_key = read_file_content(file_path=tls_ca_key_path, read_as_binary=True)
-    else:
-        public_cert, private_key = generate_self_signed_cert(tls_ca_valid_days)
-        secret_name = f"{secret_name}-test-only"
-        cm_name = f"{cm_name}-test-only"
-
-        if tls_ca_dir:
-            normalized_path = normalize_dir(dir_path=tls_ca_dir)
-            test_ca_path = normalized_path.joinpath("aio-test-ca.crt")
-            test_pk_path = normalized_path.joinpath("aio-test-private.key")
-
-            with open(str(test_ca_path), "wb") as f:
-                f.write(public_cert)
-
-            with open(str(test_pk_path), "wb") as f:
-                f.write(private_key)
-
-    return public_cert, private_key, secret_name, cm_name
-
-
-def configure_cluster_tls(
-    cluster_namespace: str, public_ca: bytes, private_key: bytes, secret_name: str, cm_name: str, **kwargs
-):
-    from base64 import b64encode
-
-    if not get_cluster_namespace(namespace=cluster_namespace):
-        create_cluster_namespace(namespace=cluster_namespace)
-
-    data = {}
-    data["tls.crt"] = b64encode(public_ca).decode()
-    data["tls.key"] = b64encode(private_key).decode()
-
-    create_namespaced_secret(
-        secret_name=secret_name,
-        namespace=cluster_namespace,
-        secret_type=K8sSecretType.tls,
-        data=data,
-        delete_first=True,
-    )
-    data = {"ca.crt": public_ca.decode()}
-    create_namespaced_configmap(namespace=cluster_namespace, cm_name=cm_name, data=data, delete_first=True)
 
 
 def deploy_template(
