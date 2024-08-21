@@ -77,10 +77,9 @@ def _process_dataflow_sourcesettings(
     endpoint_ref_status = endpoint_type_status = CheckTaskStatus.error
     endpoint_type_status_string = "invalid"
 
-    found_endpoint = next((
-        endpoint for endpoint in endpoints
-        if "name" in endpoint and endpoint["name"] == endpoint_ref
-    ), None)
+    found_endpoint = next(
+        (endpoint for endpoint in endpoints if "name" in endpoint and endpoint["name"] == endpoint_ref), None
+    )
     endpoint_type = found_endpoint["type"] if found_endpoint and "type" in found_endpoint else None
 
     if found_endpoint:
@@ -752,25 +751,49 @@ def evaluate_dataflows(
         )
 
         endpoints = [
-            {
-                "name": endpoint.get("metadata", {}).get("name"),
-                "type": endpoint.get("spec", {}).get("endpointType")
-            } for endpoint in all_endpoints
+            {"name": endpoint.get("metadata", {}).get("name"), "type": endpoint.get("spec", {}).get("endpointType")}
+            for endpoint in all_endpoints
         ]
 
         for dataflow in list(dataflows):
             spec = dataflow.get("spec", {})
             dataflow_name = dataflow.get("metadata", {}).get("name")
+            mode = spec.get("mode")
+            mode_lower = str(mode).lower() if mode else "unknown"
+            dataflow_enabled = mode_lower == "enabled"
+            mode_display = colorize_string(value=mode_lower)
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
                 display=Padding(
-                    f"\n- Dataflow {{{colorize_string(value=dataflow_name)}}} {colorize_string(color='green', value='detected')}",
+                    f"\n- Dataflow {{{colorize_string(value=dataflow_name)}}} is {mode_display}",
                     (0, 0, 0, PADDING),
                 ),
             )
 
-            mode = spec.get("mode")
+            # if dataflow is disabled, skip evaluations and displays
+            if not dataflow_enabled:
+                check_manager.add_target_eval(
+                    target_name=target,
+                    namespace=namespace,
+                    status=CheckTaskStatus.skipped.value,
+                    resource_name=dataflow_name,
+                    resource_kind=DataflowResourceKinds.DATAFLOW.value,
+                    value={"spec.mode": mode},
+                )
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(
+                        colorize_string(
+                            value=f"{CheckTaskStatus.skipped.emoji} Skipping evaluation of disabled dataflow",
+                            color=CheckTaskStatus.skipped.color,
+                        ),
+                        (0, 0, 0, PADDING)
+                    ),
+                )
+                continue
+
             profile_ref = spec.get("profileRef")
             profile_ref_status = CheckTaskStatus.success
             if profile_ref and profile_ref not in profile_names:
@@ -803,11 +826,6 @@ def evaluate_dataflows(
                         (0, 0, 0, INNER_PADDING),
                     ),
                 )
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=basic_property_display(label="Mode", value=mode, padding=INNER_PADDING),
-            )
 
             operations = spec.get("operations", [])
 

@@ -54,10 +54,10 @@ def assert_eval_core_service_runtime(
 ):
     assert post_deployment["evalCoreServiceRuntime"]
     assert post_deployment["evalCoreServiceRuntime"]["description"] == f"Evaluate {description_name} core service"
-    overall_status = "success"
+    overall_status = "skipped"
     runtime_resource = post_deployment["evalCoreServiceRuntime"]["targets"]["coreServiceRuntimeResource"]
     for namespace in runtime_resource.keys():
-        namespace_status = "success"
+        namespace_status = "skipped"
         evals = runtime_resource[namespace]["evaluations"]
         kubectl_pods = get_kubectl_workload_items(
             prefixes=pod_prefix,

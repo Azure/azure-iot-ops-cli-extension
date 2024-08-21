@@ -489,6 +489,66 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                 ],
             ],
         ),
+        # disabled dataflows
+        (
+            # dataflows
+            [
+                {
+                    "metadata": {
+                        "name": "disabled-dataflow",
+                    },
+                    "spec": {
+                        "mode": "Disabled",
+                        "profileRef": "profile",
+                        "operations": [
+                            {
+                                "operationType": "source",
+                                "sourceSettings": {
+                                    "endpointRef": "dataflow-endpoint-1",
+                                },
+                            },
+                            {
+                                "operationType": "destination",
+                                "destinationSettings": {
+                                    "endpointRef": "dataflow-endpoint-2",
+                                },
+                            },
+                        ],
+                    },
+                }
+            ],
+            # profiles
+            [{"metadata": {"name": "profile"}}],
+            # endpoints
+            [
+                {
+                    "metadata": {
+                        "name": "dataflow-endpoint-1",
+                    },
+                    "spec": {"endpointType": "mqtt"},
+                },
+                {
+                    "metadata": {
+                        "name": "dataflow-endpoint-2",
+                    },
+                    "spec": {"endpointType": "kafka"},
+                },
+            ],
+            # conditions
+            dataflow_conditions,
+            # evaluations
+            [
+                [
+                    ("status", "skipped"),
+                    (
+                        "name",
+                        "disabled-dataflow",
+                    ),
+                    ("value/spec.mode", "Disabled"),
+                ]
+            ],
+
+        ),
         # no dataflows
         (
             # dataflows
