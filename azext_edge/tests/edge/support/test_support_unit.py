@@ -27,6 +27,7 @@ from azext_edge.edge.providers.edge_api import (
     DATAFLOW_API_V1B1,
     EdgeResourceApi,
 )
+from azext_edge.edge.providers.edge_api.meta import META_API_V1B1
 from azext_edge.edge.providers.support.akri import (
     AKRI_AGENT_LABEL,
     AKRI_APP_LABEL,
@@ -46,7 +47,7 @@ from azext_edge.edge.providers.support.billing import (
     ARC_BILLING_DIRECTORY_PATH,
     BILLING_RESOURCE_KIND,
 )
-from azext_edge.edge.providers.support.meta import META_NAME_LABEL
+from azext_edge.edge.providers.support.meta import META_NAME_LABEL, META_PREFIX_NAMES
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_K8S_LABEL, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
@@ -76,7 +77,6 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
 @pytest.mark.parametrize(
     "mocked_cluster_resources",
     [
-        [],
         [MQTT_BROKER_API_V1B1],
         [MQTT_BROKER_API_V1B1, MQ_ACTIVE_API],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1],
@@ -112,15 +112,6 @@ def test_create_bundle(
     mocked_namespaced_custom_objects,
     mocked_get_config_map: Mock,
 ):
-    # TODO: clean up label once all service labels become stable
-    asset_raises_not_found_error(mocked_cluster_resources)
-
-    if mocked_cluster_resources["param"] == []:
-        auto_result_no_resources = support_bundle(None, bundle_dir=a_bundle_dir)
-        mocked_root_logger.warning.assert_called_once_with("No known IoT Operations services discovered on cluster.")
-        assert auto_result_no_resources is None
-        return
-
     if CLUSTER_CONFIG_API_V1 in mocked_cluster_resources["param"]:
         add_pod_to_mocked_pods(
             mocked_client=mocked_client,
@@ -512,17 +503,42 @@ def test_create_bundle(
     mocked_get_config_map.assert_called_with(name="azure-clusterconfig", namespace="azure-arc")
 
 
-def asset_raises_not_found_error(mocked_cluster_resources):
-    for api, moniker in [
-        (MQTT_BROKER_API_V1B1, "broker"),
-        (OPCUA_API_V1, "opcua"),
-        (ORC_API_V1, "orc"),
-        (DEVICEREGISTRY_API_V1, "deviceregistry"),
-        (AKRI_API_V0, "akri"),
-    ]:
-        if not mocked_cluster_resources["param"] or api not in mocked_cluster_resources["param"]:
-            with pytest.raises(ResourceNotFoundError):
-                support_bundle(None, bundle_dir=a_bundle_dir, ops_service=moniker)
+@pytest.mark.parametrize(
+    "mocked_cluster_resources",
+    [
+        [],
+        [MQ_ACTIVE_API],
+    ],
+    indirect=True,
+)
+def test_create_bundle_crd_work(
+    mocked_client,
+    mocked_cluster_resources,
+    mocked_config,
+    mocked_os_makedirs,
+    mocked_zipfile,
+    mocked_get_custom_objects,
+    mocked_list_pods,
+    mocked_list_replicasets,
+    mocked_list_statefulsets,
+    mocked_list_daemonsets,
+    mocked_list_services,
+    mocked_list_nodes,
+    mocked_list_cluster_events,
+    mocked_list_storage_classes,
+    mocked_get_stats,
+    mocked_root_logger,
+    mocked_mq_active_api,
+    mocked_namespaced_custom_objects,
+    mocked_get_config_map: Mock,
+    mocked_assemble_crd_work,
+):
+    support_bundle(None, ops_service=OpsServiceType.mq.value, bundle_dir=a_bundle_dir)
+
+    if mocked_cluster_resources["param"] == []:
+        mocked_assemble_crd_work.assert_not_called()
+    else:
+        mocked_assemble_crd_work.assert_called_once()
 
 
 def assert_get_custom_resources(
@@ -798,15 +814,17 @@ def assert_mq_stats(mocked_zipfile):
 
 
 def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
-    for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_replica_sets]:
+    for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_jobs]:
         kwargs = {
             "mocked_client": mocked_client,
             "mocked_zipfile": mocked_zipfile,
             "label_selector": META_NAME_LABEL,
-            "directory_path": OTEL_API.moniker,
+            "directory_path": META_API_V1B1.moniker,
         }
         if assert_func == assert_list_pods:
             kwargs["mocked_list_pods"] = mocked_list_pods
+        elif assert_func == assert_list_services:
+            kwargs["mock_names"] = [META_PREFIX_NAMES]
 
         assert_func(**kwargs)
 

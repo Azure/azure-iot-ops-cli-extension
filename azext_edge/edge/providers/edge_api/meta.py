@@ -13,8 +13,5 @@ class MetaResourceKinds(ListableEnum):
 
 
 META_API_V1B1 = EdgeResourceApi(
-    group="iotoperations.azure.com",
-    version="v1beta1",
-    moniker="meta",
-    label="microsoft-iotoperations"
+    group="iotoperations.azure.com", version="v1beta1", moniker="meta", label="microsoft-iotoperations"
 )

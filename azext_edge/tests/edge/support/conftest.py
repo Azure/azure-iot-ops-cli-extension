@@ -9,6 +9,7 @@ from typing import List
 
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from azext_edge.edge.providers.support.billing import AIO_BILLING_USAGE_NAME_LABEL
+from azext_edge.edge.providers.support.meta import META_NAME_LABEL
 from ...generators import generate_random_string
 
 import pytest
@@ -218,6 +219,13 @@ def mocked_get_custom_objects(mocker):
 
 
 @pytest.fixture
+def mocked_assemble_crd_work(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.support.mq.assemble_crd_work", autospec=True)
+    patched.return_value = {}
+    yield patched
+
+
+@pytest.fixture
 def mocked_namespaced_custom_objects(mocked_client):
     def _handle_namespaced_custom_object(*args, **kwargs):
         custom_object = {
@@ -258,10 +266,7 @@ def mocked_list_jobs(mocked_client):
     from kubernetes.client.models import V1JobList, V1Job, V1ObjectMeta
 
     def _handle_list_jobs(*args, **kwargs):
-        names = ["mock_job"]
-        if "label_selector" in kwargs and kwargs["label_selector"] == AIO_BILLING_USAGE_NAME_LABEL:
-            names.append("aio-usage-job")
-
+        names = ["mock_job", "aio-usage-job"]
         job_list = []
         for name in names:
             job_list.append(V1Job(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
@@ -279,17 +284,13 @@ def mocked_list_deployments(mocked_client):
     from kubernetes.client.models import V1DeploymentList, V1Deployment, V1ObjectMeta
 
     def _handle_list_deployments(*args, **kwargs):
-        names = ["mock_deployment"]
-        if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            names.extend(
-                [
-                    "aio-opc-admission-controller",
-                    "aio-opc-supervisor",
-                    "aio-opc-opc",
-                    "opcplc-0000000",
-                ]
-            )
-
+        names = [
+            "mock_deployment",
+            "aio-opc-admission-controller",
+            "aio-opc-supervisor",
+            "aio-opc-opc",
+            "opcplc-0000000",
+        ]
         deployment_list = []
         for name in names:
             deployment_list.append(V1Deployment(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
@@ -340,14 +341,7 @@ def mocked_list_services(mocked_client):
     from kubernetes.client.models import V1ServiceList, V1Service, V1ObjectMeta
 
     def _handle_list_services(*args, **kwargs):
-        service_names = ["mock_service"]
-        if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            service_names.extend(
-                [
-                    "opcplc-0000000",
-                ]
-            )
-
+        service_names = ["mock_service", "opcplc-0000000", "aio-operator"]
         service_list = []
         for name in service_names:
             service_list.append(V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))

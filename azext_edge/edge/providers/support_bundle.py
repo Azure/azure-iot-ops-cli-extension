@@ -82,8 +82,6 @@ def build_bundle(
         OpsServiceType.dataflow.value: {"apis": COMPAT_DATAFLOW_APIS, "prepare_bundle": prepare_dataflow_bundle},
     }
 
-    # raise_on_404 = not (ops_service == OpsServiceType.auto.value)
-
     for service_moniker, api_info in api_map.items():
         if ops_service in [OpsServiceType.auto.value, service_moniker]:
             deployed_apis = api_info["apis"].get_deployed()
@@ -97,14 +95,9 @@ def build_bundle(
             elif service_moniker == OpsServiceType.mq.value:
                 bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
             else:
-                bundle = bundle_method(deployed_apis, log_age_seconds)
+                bundle = bundle_method(log_age_seconds, deployed_apis)
 
             pending_work[service_moniker].update(bundle)
-
-    # @digimaun - consider combining this work check with work count.
-    if not any(v for _, v in pending_work.items()):
-        logger.warning("No known IoT Operations services discovered on cluster.")
-        return
 
     if ops_service == OpsServiceType.auto.value:
         # Only attempt to collect otel resources if any AIO service is deployed AND auto is used.
@@ -118,7 +111,7 @@ def build_bundle(
 
     # Collect meta resources if any AIO service is deployed with any service selected.
     deployed_meta_apis = COMPAT_META_APIS.get_deployed()
-    pending_work["meta"] = prepare_meta_bundle(deployed_meta_apis, log_age_seconds)
+    pending_work["meta"] = prepare_meta_bundle(log_age_seconds, deployed_meta_apis)
 
     total_work_count = 0
     for service in pending_work:
