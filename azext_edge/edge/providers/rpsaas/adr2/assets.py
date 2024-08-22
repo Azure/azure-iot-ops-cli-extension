@@ -48,6 +48,7 @@ class Assets(Queryable):
         endpoint_profile: str,
         instance_name: str,
         resource_group_name: str,
+        custom_location_id: Optional[str] = None,  # TODO: remove
         custom_attributes: Optional[List[str]] = None,
         # dataset_file_path: Optional[str] = None,
         default_topic_path: Optional[str] = None,
@@ -81,12 +82,20 @@ class Assets(Queryable):
         # TODO: create an asset via this successfully
         # if not any([data_points, events, data_points_file_path, events_file_path]):
         #     raise RequiredArgumentMissingError(MISSING_DATA_EVENT_ERROR)
-        extended_location = get_extended_location(
-            cmd=self.cmd,
-            instance_name=instance_name,
-            instance_resource_group=instance_resource_group or resource_group_name,
-            instance_subscription=instance_subscription
-        )
+
+        if custom_location_id:
+            extended_location = {
+                "type": "CustomLocation",
+                "name": custom_location_id,
+                "cluster_location": "eastus2"
+            }
+        else:
+            extended_location = get_extended_location(
+                cmd=self.cmd,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group or resource_group_name,
+                instance_subscription=instance_subscription
+            )
         cluster_location = extended_location.pop("cluster_location")
 
         # Properties

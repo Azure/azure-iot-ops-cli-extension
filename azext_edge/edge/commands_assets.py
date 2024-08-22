@@ -19,6 +19,7 @@ def create_asset(
     endpoint_profile: str,
     instance_name: str,
     resource_group_name: str,
+    custom_location_id: Optional[str] = None,  # TODO: remove once instances have new extension
     custom_attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
     disabled: bool = False,
@@ -46,6 +47,7 @@ def create_asset(
     tags: Optional[Dict[str, str]] = None,
 ):
     return Assets(cmd).create(
+        custom_location_id=custom_location_id,
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         endpoint_profile=endpoint_profile,
