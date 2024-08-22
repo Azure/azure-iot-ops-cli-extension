@@ -72,11 +72,29 @@ class WorkDisplay:
         return self._steps
 
 
+class InitTargets:
+    def __init__(self, cluster_name: str, cluster_namespace: str, custom_location_name: str, **kwargs):
+        self.cluster_name = self._sanitize_k8s_name(cluster_name)
+        self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
+        self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
+        self.deploy_resource_sync_rules: bool = not kwargs.get("disable_rsync_rules", False)
+
+    def _sanitize_k8s_name(name: str) -> str:
+        sanitized = name.lower()
+        sanitized = sanitized.replace("_", "-")
+        return sanitized
+
+
 class WorkManager:
-    def __init__(self, **kwargs):
+    def __init__(self, cmd):
         from azure.cli.core.commands.client_factory import get_subscription_id
 
+        self.cmd = cmd
+        self.subscription: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
+
+    def _bootstrap_ux(self, show_progress: bool = False):
         self.display = WorkDisplay()
+        self._live = Live(None, transient=False, refresh_per_second=8, auto_refresh=show_progress)
         self._progress_bar = Progress(
             SpinnerColumn(),
             *Progress.get_default_columns(),
@@ -84,37 +102,12 @@ class WorkManager:
             TimeElapsedColumn(),
             transient=False,
         )
-        self._work_id = uuid4().hex
-        self._work_name = f"aziotops.init.{self._work_id}"
-        self._no_progress: bool = kwargs.get("no_progress", False)
-        self._no_block: bool = kwargs.get("no_block", False)
-        self._no_deploy: bool = kwargs.get("no_deploy", False)
-        self._no_preflight: bool = kwargs.get("no_preflight", False)
-        self._cmd = kwargs.get("cmd")
-        self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
-        if self._keyvault_resource_id:
-            self._keyvault_name = self._keyvault_resource_id.split("/")[-1]
-        self._template_path = kwargs.get("template_path")
+        self._show_progress = show_progress
         self._progress_shown = False
-        self._render_progress = not self._no_progress
-        self._live = Live(None, transient=False, refresh_per_second=8, auto_refresh=self._render_progress)
-        self._completed_steps: Dict[int, int] = {}
-        self._active_step: int = 0
-        self._subscription_id = get_subscription_id(self._cmd.cli_ctx)
-        kwargs["subscription_id"] = self._subscription_id  # TODO: temporary
-        # TODO: Make cluster target with KPIs
-        self._cluster_name: str = kwargs["cluster_name"]
-        self._cluster_namespace: str = kwargs["cluster_namespace"]
-        self._custom_location_name: str = kwargs["custom_location_name"]
-        self._deploy_rsync_rules = not kwargs.get("disable_rsync_rules", False)
-        self._connected_cluster = None
-        self._kwargs = kwargs
-
-        self._build_display()
 
     def _build_display(self):
         pre_check_cat_desc = "Pre-Flight"
-        self.display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=self._no_preflight)
+        self.display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
         self.display.add_step(
             WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered IoT Ops resource providers"
         )
@@ -123,15 +116,31 @@ class WorkManager:
         )
         self.display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.WHAT_IF, "Verify What-If deployment")
 
-        deployment_moniker = "Custom template" if self._template_path else CURRENT_TEMPLATE.moniker
         self.display.add_category(
             WorkCategoryKey.DEPLOY_AIO,
-            f"Deploy IoT Operations - '[cyan]{deployment_moniker}[/cyan]'",
-            skipped=self._no_deploy,
+            f"Deploy IoT Operations - '[cyan]{CURRENT_TEMPLATE.moniker}[/cyan]'",
         )
 
+    def execute_ops_init(self, show_progress: bool = True, block: bool = True, pre_flight: bool = True, **kwargs):
+        self._bootstrap_ux(show_progress=show_progress)
+        self._work_id = uuid4().hex
+        self._work_name = f"aziotops.init.{self._work_id}"
+        self._block = block
+        self._pre_flight = pre_flight
+
+        self._completed_steps: Dict[int, int] = {}
+        self._active_step: int = 0
+        self._targets = InitTargets(**kwargs)
+
+        # TODO - @digimaun TODO
+        self._kwargs = kwargs
+        self._build_display()
+
+        # TODO - @digimaun TODO
+        # self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
+        # self._template_path = kwargs.get("template_path")
+
     def do_work(self):  # noqa: C901
-        from ..edge_api.keyvault import KEYVAULT_API_V1
         from .base import (
             deploy_template,
             throw_if_iotops_deployed,
@@ -149,27 +158,20 @@ class WorkManager:
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             # TODO - @digimaun - self._keyvault_resource_id
-            if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
-                verify_cli_client_connections()
-                # cluster_location uses actual connected cluster location. Same applies to location IF not provided.
-                self._connected_cluster = verify_cluster_and_use_location(self._kwargs)
-                verify_arc_cluster_config(self._connected_cluster)
+            verify_cli_client_connections()
+            # cluster_location uses actual connected cluster location. Same applies to location IF not provided.
+            # TODO - @digimaun - replace
+            self._connected_cluster = verify_cluster_and_use_location(self._kwargs)
+            verify_arc_cluster_config(self._connected_cluster)
 
             # Pre-check segment
             if (
                 WorkCategoryKey.PRE_FLIGHT in self.display.categories
                 and not self.display.categories[WorkCategoryKey.PRE_FLIGHT][1]
             ):
-                self.render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
-
-                if not self._keyvault_resource_id and not KEYVAULT_API_V1.is_deployed():
-                    raise ValidationError(
-                        error_msg="--kv-id is required when the Key Vault CSI driver is not installed."
-                    )
-
                 # WorkStepKey.REG_RP
+                self.render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
                 register_providers(**self._kwargs)
-
                 self.complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.REG_RP,
@@ -179,14 +181,15 @@ class WorkManager:
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
                 if self._connected_cluster:
                     throw_if_iotops_deployed(self._connected_cluster)
-                    verify_custom_locations_enabled(self._cmd)
+                    verify_custom_locations_enabled(self.cmd)
                     verify_custom_location_namespace(
                         connected_cluster=self._connected_cluster,
-                        custom_location_name=self._custom_location_name,
-                        namespace=self._cluster_namespace,
+                        custom_location_name=self._targets.custom_location_name,
+                        namespace=self._targets.cluster_namespace,
                     )
 
-                if self._deploy_rsync_rules:
+                if self._targets.deploy_resource_sync_rules:
+                    # TODO - @digimaun
                     verify_write_permission_against_rg(
                         **self._kwargs,
                     )
@@ -216,16 +219,8 @@ class WorkManager:
                     category=WorkCategoryKey.PRE_FLIGHT, completed_step=WorkStepKey.WHAT_IF, active_step=-1
                 )
             else:
-                if not self._render_progress:
+                if not self._show_progress:
                     logger.warning("Skipped Pre-Flight as requested.")
-
-            # Deployment segment
-            if self._no_deploy:
-                if not self._render_progress:
-                    logger.warning("Skipped deployment of AIO as requested.")
-
-                if work_kpis:
-                    return work_kpis
 
             if (
                 WorkCategoryKey.DEPLOY_AIO in self.display.categories
@@ -239,9 +234,6 @@ class WorkManager:
                     template=template.content, parameters=parameters, deployment_name=self._work_name, **self._kwargs
                 )
                 work_kpis.update(deployment_result)
-
-                if self._no_block:
-                    return work_kpis
 
                 # Pattern needs work, it is this way to dynamically update UI
                 self.display.categories[WorkCategoryKey.DEPLOY_AIO][0].title = (
@@ -284,7 +276,7 @@ class WorkManager:
         if active_step:
             self._active_step = active_step
 
-        if self._render_progress:
+        if self._show_progress:
             grid = Table.grid(expand=False)
             grid.add_column()
             header_grid = Table.grid(expand=False)
@@ -343,21 +335,18 @@ class WorkManager:
             self._live.update(grid)
             sleep(0.5)  # min presentation delay
 
-        if self._render_progress and not self._live.is_started:
+        if self._show_progress and not self._live.is_started:
             self._live.start(True)
 
     def stop_display(self):
-        if self._render_progress and self._live.is_started:
+        if self._show_progress and self._live.is_started:
             if self._progress_shown:
                 self._progress_bar.update(self._task_id, description="Done.")
                 sleep(0.5)
             self._live.stop()
 
     def build_template(self, work_kpis: dict) -> Tuple[TemplateVer, dict]:
-        # TODO refactor, move out of work
-        safe_cluster_name = self._cluster_name.replace("_", "-")
-
-        template = get_current_template_copy(self._template_path)
+        template = get_current_template_copy()
         built_in_template_params = template.parameters
 
         parameters = {}
@@ -369,7 +358,6 @@ class WorkManager:
             ("location", "location"),
             ("cluster_location", "clusterLocation"),
             ("custom_location_name", "customLocationName"),
-            ("simulate_plc", "simulatePLC"),
             ("container_runtime_socket", "containerRuntimeSocket"),
             ("kubernetes_distro", "kubernetesDistro"),
             ("mq_instance_name", "mqInstanceName"),
@@ -392,26 +380,10 @@ class WorkManager:
             ):
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
 
-        # TODO - @digimaun
-        # parameters["mqSecrets"] = {
-        #     "value": {
-        #         "enabled": True,
-        #         "secretProviderClassName": self._cluster_secret_class_name,
-        #         "servicePrincipalSecretRef": self._cluster_secret_ref,
-        #     }
-        # }
-        # parameters["opcUaBrokerSecrets"] = {
-        #     "value": {"kind": "csi", "csiServicePrincipalSecretRef": self._cluster_secret_ref}
-        # }
-        parameters["deployResourceSyncRules"] = {"value": self._deploy_rsync_rules}
+        parameters["deployResourceSyncRules"] = {"value": self._targets.deploy_resource_sync_rules}
 
         # Covers cluster_namespace
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
-
-        # TODO @digimaun, this section will be deleted soon
-        safe_cluster_name = self._cluster_name.replace("_", "-")
-        safe_cluster_name = safe_cluster_name.lower()
-        template.content["variables"]["OBSERVABILITY"]["targetName"] = f"{safe_cluster_name}-observability"
 
         tls_map = work_kpis.get("tls", {})
         if "aioTrustConfigMap" in tls_map:
@@ -419,8 +391,8 @@ class WorkManager:
         if "aioTrustSecretName" in tls_map:
             template.content["variables"]["AIO_TRUST_SECRET_NAME"] = tls_map["aioTrustSecretName"]
 
-        mq_insecure = self._kwargs.get("mq_insecure")
-        if mq_insecure:
+        add_insecure_listener = self._kwargs.get("add_insecure_listener")
+        if add_insecure_listener:
             # This solution entirely relies on the form of the "standard" template.
             # Needs re-work after event
             default_listener = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers/listeners")
@@ -441,14 +413,3 @@ class WorkManager:
         deploy_resources.append(get_basic_dataflow_profile(instance_count=df_profile_instances))
 
         return template, parameters
-
-
-def deploy(
-    **kwargs,
-):
-    show_template = kwargs.get("show_template", False)
-    if show_template:
-        return CURRENT_TEMPLATE.content
-
-    manager = WorkManager(**kwargs)
-    return manager.do_work()

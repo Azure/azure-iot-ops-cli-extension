@@ -196,7 +196,7 @@ def verify_custom_locations_enabled(cmd):
         return
 
     # We are expecting one binding. Field selector pattern is used due to AKS-EE issue.
-    target_binding = target_bindings["items"][0]
+    target_binding: dict = target_bindings["items"][0]
     for subject in target_binding.get("subjects", []):
         if "name" in subject and subject["name"].lower() == cl_oid:
             return
