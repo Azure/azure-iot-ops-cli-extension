@@ -599,12 +599,11 @@ def _process_endpoint_localstoragesettings(
 
 
 def check_dataflows_deployment(
-    result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
     resource_name: str = None,
-) -> None:
+) -> List[dict]:
     evaluate_funcs = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
         DataflowResourceKinds.DATAFLOWPROFILE: evaluate_dataflow_profiles,
@@ -612,11 +611,10 @@ def check_dataflows_deployment(
         DataflowResourceKinds.DATAFLOWENDPOINT: evaluate_dataflow_endpoints,
     }
 
-    check_post_deployment(
+    return check_post_deployment(
         api_info=DATAFLOW_API_V1B1,
         check_name=dataflow_api_check_name,
         check_desc=dataflow_api_check_desc,
-        result=result,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,

@@ -48,22 +48,20 @@ from ..base import get_namespaced_service
 
 
 def check_mq_deployment(
-    result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
     resource_name: str = None,
-) -> None:
+) -> List[dict]:
     evaluate_funcs = {
         MqResourceKinds.BROKER: evaluate_brokers,
         MqResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
     }
 
-    check_post_deployment(
+    return check_post_deployment(
         api_info=MQ_ACTIVE_API,
         check_name="enumerateBrokerApi",
         check_desc="Enumerate MQTTBroker API resources",
-        result=result,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
