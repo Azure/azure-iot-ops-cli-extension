@@ -189,7 +189,7 @@ def mocked_list_pods(mocked_client):
     evicted_pod = V1Pod(
         metadata=V1ObjectMeta(namespace=namespace, name=evicted_pod_name),
         spec=evicted_pod_spec,
-        status=evicted_pod_status
+        status=evicted_pod_status,
     )
     pods.append(evicted_pod)
     expected_pod_map[namespace][evicted_pod_name] = {evicted_pod.spec.containers[0].name: mock_log}
@@ -464,6 +464,14 @@ def mocked_mq_get_traces(mocker):
     patched_get_traces = mocker.patch("azext_edge.edge.providers.support.mq.get_traces")
     patched_get_traces.return_value = [(test_zipinfo, "trace_data")]
     yield patched_get_traces
+
+
+@pytest.fixture
+def mocked_arc_active_api(mocker):
+    # Supports fetching events in support bundle as its based on MQ deployment
+    patched_active_mq_api = mocker.patch("azext_edge.edge.providers.edge_api.CLUSTER_CONFIG_API_V1")
+    patched_active_mq_api.get_resources.return_value = {"items": [{"metadata": {"namespace": "mock_namespace"}}]}
+    yield patched_active_mq_api
 
 
 @pytest.fixture

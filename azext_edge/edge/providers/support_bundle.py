@@ -82,23 +82,24 @@ def build_bundle(
         OpsServiceType.dataflow.value: {"apis": COMPAT_DATAFLOW_APIS, "prepare_bundle": prepare_dataflow_bundle},
     }
 
-    raise_on_404 = not (ops_service == OpsServiceType.auto.value)
+    # raise_on_404 = not (ops_service == OpsServiceType.auto.value)
 
     for service_moniker, api_info in api_map.items():
         if ops_service in [OpsServiceType.auto.value, service_moniker]:
-            deployed_apis = api_info["apis"].get_deployed(raise_on_404)
-            if deployed_apis:
-                bundle_method = api_info["prepare_bundle"]
-                # Check if the function takes a second argument
-                # TODO: Change to kwargs based pattern
-                if service_moniker == OpsServiceType.deviceregistry.value:
-                    bundle = bundle_method(deployed_apis)
-                elif service_moniker == OpsServiceType.mq.value:
-                    bundle = bundle_method(deployed_apis, log_age_seconds, include_mq_traces)
-                else:
-                    bundle = bundle_method(deployed_apis, log_age_seconds)
+            deployed_apis = api_info["apis"].get_deployed()
 
-                pending_work[service_moniker].update(bundle)
+            # still try fetching other resources even crds are not available due to api version mismatch
+            bundle_method = api_info["prepare_bundle"]
+            # Check if the function takes a second argument
+            # TODO: Change to kwargs based pattern
+            if service_moniker == OpsServiceType.deviceregistry.value:
+                bundle = bundle_method(deployed_apis)
+            elif service_moniker == OpsServiceType.mq.value:
+                bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
+            else:
+                bundle = bundle_method(deployed_apis, log_age_seconds)
+
+            pending_work[service_moniker].update(bundle)
 
     # @digimaun - consider combining this work check with work count.
     if not any(v for _, v in pending_work.items()):
