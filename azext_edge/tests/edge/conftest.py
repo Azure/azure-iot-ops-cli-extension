@@ -136,6 +136,15 @@ def settings():
 
 
 @pytest.fixture(scope="session")
+def settings_with_rg(settings):
+    from ..settings import EnvironmentVariables
+    settings.add_to_config(EnvironmentVariables.rg.value)
+    if not settings.env.azext_edge_rg:
+        pytest.skip("Cannot run test without resource group.")
+    yield settings
+
+
+@pytest.fixture(scope="session")
 def tracked_resources():
     resources = []
     yield resources

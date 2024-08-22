@@ -21,7 +21,7 @@ from rich.style import Style
 from rich.table import Table
 
 from ...util import get_timestamp_now_utc
-from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
+from ...util.az_client import wait_for_terminal_state
 from .template import (
     CURRENT_TEMPLATE,
     TemplateVer,
@@ -34,9 +34,7 @@ logger = get_logger(__name__)
 
 class WorkCategoryKey(IntEnum):
     PRE_FLIGHT = 1
-    CSI_DRIVER = 2
-    TLS_CA = 3
-    DEPLOY_AIO = 4
+    DEPLOY_AIO = 2
 
 
 class WorkStepKey(IntEnum):
@@ -44,25 +42,11 @@ class WorkStepKey(IntEnum):
     ENUMERATE_PRE_FLIGHT = 2
     WHAT_IF = 3
 
-    KV_CLOUD_PERM_MODEL = 4
-    SP = 5
-    KV_CLOUD_AP = 6
-    KV_CLOUD_SEC = 7
-    KV_CLOUD_TEST = 8
-    KV_CSI_DEPLOY = 9
-    KV_CSI_CLUSTER = 10
-
-    TLS_CERT = 11
-    TLS_CLUSTER = 12
-
 
 class WorkRecord:
     def __init__(self, title: str):
         self.title = title
 
-
-CLUSTER_SECRET_REF = "aio-akv-sp"
-CLUSTER_SECRET_CLASS_NAME = "aio-default-spc"
 
 PRE_FLIGHT_SUCCESS_STATUS = "succeeded"
 
@@ -105,21 +89,11 @@ class WorkManager:
         self._no_progress: bool = kwargs.get("no_progress", False)
         self._no_block: bool = kwargs.get("no_block", False)
         self._no_deploy: bool = kwargs.get("no_deploy", False)
-        self._no_tls: bool = kwargs.get("no_tls", False)
         self._no_preflight: bool = kwargs.get("no_preflight", False)
         self._cmd = kwargs.get("cmd")
         self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
         if self._keyvault_resource_id:
             self._keyvault_name = self._keyvault_resource_id.split("/")[-1]
-        self._keyvault_sat_secret_name = kwargs["keyvault_spc_secret_name"]
-        self._csi_driver_version: str = kwargs["csi_driver_version"]
-        self._csi_driver_config: Optional[Dict[str, str]] = kwargs.get("csi_driver_config")
-        self._sp_app_id = kwargs.get("service_principal_app_id")
-        self._sp_obj_id = kwargs.get("service_principal_object_id")
-        self._tls_ca_path = kwargs.get("tls_ca_path")
-        self._tls_ca_key_path = kwargs.get("tls_ca_key_path")
-        self._tls_ca_valid_days = kwargs.get("tls_ca_valid_days", DEFAULT_VALID_DAYS)
-        self._tls_insecure = kwargs.get("tls_insecure", False)
         self._template_path = kwargs.get("template_path")
         self._progress_shown = False
         self._render_progress = not self._no_progress
@@ -128,8 +102,6 @@ class WorkManager:
         self._active_step: int = 0
         self._subscription_id = get_subscription_id(self._cmd.cli_ctx)
         kwargs["subscription_id"] = self._subscription_id  # TODO: temporary
-        self._cluster_secret_ref = CLUSTER_SECRET_REF
-        self._cluster_secret_class_name = CLUSTER_SECRET_CLASS_NAME
         # TODO: Make cluster target with KPIs
         self._cluster_name: str = kwargs["cluster_name"]
         self._cluster_namespace: str = kwargs["cluster_namespace"]
@@ -151,56 +123,6 @@ class WorkManager:
         )
         self.display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.WHAT_IF, "Verify What-If deployment")
 
-        kv_csi_cat_desc = "Key Vault CSI Driver"
-        self.display.add_category(WorkCategoryKey.CSI_DRIVER, kv_csi_cat_desc, skipped=not self._keyvault_resource_id)
-
-        kv_cloud_perm_model_desc = "Verify Key Vault{}permission model"
-        kv_cloud_perm_model_desc = kv_cloud_perm_model_desc.format(
-            f" '[cyan]{self._keyvault_name}[/cyan]' " if self._keyvault_resource_id else " "
-        )
-        self.display.add_step(
-            WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_PERM_MODEL, description=kv_cloud_perm_model_desc
-        )
-
-        if self._sp_app_id:
-            sp_desc = f"Use SP app Id '[cyan]{self._sp_app_id}[/cyan]'"
-        elif self._sp_obj_id:
-            sp_desc = f"Use SP object Id '[cyan]{self._sp_obj_id}[/cyan]'"
-        else:
-            sp_desc = "To create app"
-        self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.SP, description=sp_desc)
-
-        self.display.add_step(
-            WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_AP, description="Configure access policy"
-        )
-
-        kv_cloud_sec_desc = f"Ensure default SPC secret name '[cyan]{self._keyvault_sat_secret_name}[/cyan]'"
-        self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_SEC, description=kv_cloud_sec_desc)
-
-        kv_sp_test_desc = "Test SP access"
-        self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CLOUD_TEST, description=kv_sp_test_desc)
-
-        kv_csi_deploy_desc = f"Deploy driver to cluster '[cyan]v{self._csi_driver_version}[/cyan]'"
-        self.display.add_step(WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_DEPLOY, description=kv_csi_deploy_desc)
-
-        kv_csi_configure_desc = "Configure driver"
-        self.display.add_step(
-            WorkCategoryKey.CSI_DRIVER, WorkStepKey.KV_CSI_CLUSTER, description=kv_csi_configure_desc
-        )
-
-        # TODO @digimaun - MQ insecure mode
-        self.display.add_category(WorkCategoryKey.TLS_CA, "TLS", self._no_tls)
-        if self._tls_ca_path:
-            tls_ca_desc = f"User provided CA '[cyan]{self._tls_ca_path}[/cyan]'"
-        else:
-            tls_ca_desc = (
-                f"Generate test CA using '[cyan]{DEFAULT_EC_ALGO.name}[/cyan]' "
-                f"valid for '[cyan]{self._tls_ca_valid_days}[/cyan]' days"
-            )
-
-        self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CERT, tls_ca_desc)
-        self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CLUSTER, "Configure cluster for tls")
-
         deployment_moniker = "Custom template" if self._template_path else CURRENT_TEMPLATE.moniker
         self.display.add_category(
             WorkCategoryKey.DEPLOY_AIO,
@@ -211,22 +133,12 @@ class WorkManager:
     def do_work(self):  # noqa: C901
         from ..edge_api.keyvault import KEYVAULT_API_V1
         from .base import (
-            configure_cluster_secrets,
-            configure_cluster_tls,
             deploy_template,
-            eval_secret_via_sp,
-            prepare_ca,
-            prepare_keyvault_access_policy,
-            prepare_keyvault_secret,
-            prepare_sp,
-            provision_akv_csi_driver,
             throw_if_iotops_deployed,
-            validate_keyvault_permission_model,
             verify_arc_cluster_config,
             verify_cluster_and_use_location,
             verify_custom_location_namespace,
             verify_custom_locations_enabled,
-            wait_for_terminal_state,
         )
         from .host import verify_cli_client_connections
         from .permissions import verify_write_permission_against_rg
@@ -236,8 +148,9 @@ class WorkManager:
 
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
+            # TODO - @digimaun - self._keyvault_resource_id
             if any([not self._no_preflight, not self._no_deploy, self._keyvault_resource_id]):
-                verify_cli_client_connections(include_graph=bool(self._keyvault_resource_id))
+                verify_cli_client_connections()
                 # cluster_location uses actual connected cluster location. Same applies to location IF not provided.
                 self._connected_cluster = verify_cluster_and_use_location(self._kwargs)
                 verify_arc_cluster_config(self._connected_cluster)
@@ -305,154 +218,6 @@ class WorkManager:
             else:
                 if not self._render_progress:
                     logger.warning("Skipped Pre-Flight as requested.")
-
-            # CSI driver segment
-            if self._keyvault_resource_id:
-                work_kpis["csiDriver"] = {}
-                if (
-                    WorkCategoryKey.CSI_DRIVER in self.display.categories
-                    and not self.display.categories[WorkCategoryKey.CSI_DRIVER][1]
-                ):
-                    self.render_display(
-                        category=WorkCategoryKey.CSI_DRIVER, active_step=WorkStepKey.KV_CLOUD_PERM_MODEL
-                    )
-
-                    # WorkStepKey.KV_CLOUD_PERM_MODEL
-                    keyvault_resource = validate_keyvault_permission_model(**self._kwargs)
-
-                    self.complete_step(
-                        category=WorkCategoryKey.CSI_DRIVER,
-                        completed_step=WorkStepKey.KV_CLOUD_PERM_MODEL,
-                        active_step=WorkStepKey.SP,
-                    )
-
-                    # WorkStepKey.SP
-                    sp_record = prepare_sp(deployment_name=self._work_name, **self._kwargs)
-                    if sp_record.created_app:
-                        self.display.steps[WorkCategoryKey.CSI_DRIVER][
-                            WorkStepKey.SP
-                        ].title = f"Created app '[cyan]{sp_record.client_id}[/cyan]'"
-                        self.render_display(category=WorkCategoryKey.CSI_DRIVER)
-                    work_kpis["csiDriver"]["spAppId"] = sp_record.client_id
-                    work_kpis["csiDriver"]["spObjectId"] = sp_record.object_id
-                    work_kpis["csiDriver"]["keyVaultId"] = self._keyvault_resource_id
-
-                    self.complete_step(
-                        category=WorkCategoryKey.CSI_DRIVER,
-                        completed_step=WorkStepKey.SP,
-                        active_step=WorkStepKey.KV_CLOUD_AP,
-                    )
-
-                    # WorkCategoryKey.KV_CLOUD_AP
-                    vault_uri = prepare_keyvault_access_policy(
-                        keyvault_resource=keyvault_resource,
-                        sp_record=sp_record,
-                        **self._kwargs,
-                    )
-
-                    self.complete_step(
-                        category=WorkCategoryKey.CSI_DRIVER,
-                        completed_step=WorkStepKey.KV_CLOUD_AP,
-                        active_step=WorkStepKey.KV_CLOUD_SEC,
-                    )
-
-                    # WorkStepKey.KV_CLOUD_SEC
-                    keyvault_spc_secret_name = prepare_keyvault_secret(
-                        deployment_name=self._work_name,
-                        vault_uri=vault_uri,
-                        **self._kwargs,
-                    )
-                    work_kpis["csiDriver"]["kvSpcSecretName"] = keyvault_spc_secret_name
-
-                    self.complete_step(
-                        category=WorkCategoryKey.CSI_DRIVER,
-                        completed_step=WorkStepKey.KV_CLOUD_SEC,
-                        active_step=WorkStepKey.KV_CLOUD_TEST,
-                    )
-
-                    # WorkStepKey.KV_CLOUD_TEST
-                    eval_secret_via_sp(
-                        cmd=self._cmd,
-                        vault_uri=vault_uri,
-                        keyvault_spc_secret_name=keyvault_spc_secret_name,
-                        sp_record=sp_record,
-                    )
-
-                    self.complete_step(
-                        category=WorkCategoryKey.CSI_DRIVER,
-                        completed_step=WorkStepKey.KV_CLOUD_TEST,
-                        active_step=WorkStepKey.KV_CSI_DEPLOY,
-                    )
-
-                    # WorkStepKey.KV_CSI_DEPLOY
-                    enable_secret_rotation = not self._kwargs.get("disable_secret_rotation", False)
-                    enable_secret_rotation = "true" if enable_secret_rotation else "false"
-
-                    akv_csi_driver_result = provision_akv_csi_driver(
-                        enable_secret_rotation=enable_secret_rotation,
-                        extension_version=self._csi_driver_version,
-                        extension_config=self._csi_driver_config,
-                        **self._kwargs,
-                    )
-                    work_kpis["csiDriver"]["version"] = akv_csi_driver_result["properties"]["version"]
-                    work_kpis["csiDriver"]["configurationSettings"] = akv_csi_driver_result["properties"][
-                        "configurationSettings"
-                    ]
-
-                    self.complete_step(
-                        category=WorkCategoryKey.CSI_DRIVER,
-                        completed_step=WorkStepKey.KV_CSI_DEPLOY,
-                        active_step=WorkStepKey.KV_CSI_CLUSTER,
-                    )
-
-                    # WorkStepKey.KV_CSI_CLUSTER
-                    configure_cluster_secrets(
-                        cluster_secret_ref=self._cluster_secret_ref,
-                        cluster_akv_secret_class_name=self._cluster_secret_class_name,
-                        sp_record=sp_record,
-                        **self._kwargs,
-                    )
-
-                    self.complete_step(
-                        category=WorkCategoryKey.CSI_DRIVER, completed_step=WorkStepKey.KV_CSI_CLUSTER, active_step=-1
-                    )
-            else:
-                if not self._render_progress:
-                    logger.warning("Skipped AKV CSI driver setup as requested.")
-
-            # TLS segment
-            if (
-                WorkCategoryKey.TLS_CA in self.display.categories
-                and not self.display.categories[WorkCategoryKey.TLS_CA][1]
-            ):
-                work_kpis["tls"] = {}
-                self.render_display(category=WorkCategoryKey.TLS_CA, active_step=WorkStepKey.TLS_CERT)
-
-                # WorkStepKey.TLS_CERT
-                public_ca, private_key, secret_name, cm_name = prepare_ca(**self._kwargs)
-                work_kpis["tls"]["aioTrustConfigMap"] = cm_name
-                work_kpis["tls"]["aioTrustSecretName"] = secret_name
-
-                self.complete_step(
-                    category=WorkCategoryKey.TLS_CA,
-                    completed_step=WorkStepKey.TLS_CERT,
-                    active_step=WorkStepKey.TLS_CLUSTER,
-                )
-
-                configure_cluster_tls(
-                    public_ca=public_ca,
-                    private_key=private_key,
-                    secret_name=secret_name,
-                    cm_name=cm_name,
-                    **self._kwargs,
-                )
-
-                self.complete_step(
-                    category=WorkCategoryKey.TLS_CA, completed_step=WorkStepKey.TLS_CLUSTER, active_step=-1
-                )
-            else:
-                if not self._render_progress:
-                    logger.warning("Skipped TLS config as requested.")
 
             # Deployment segment
             if self._no_deploy:
@@ -627,23 +392,25 @@ class WorkManager:
             ):
                 parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
 
-        parameters["mqSecrets"] = {
-            "value": {
-                "enabled": True,
-                "secretProviderClassName": self._cluster_secret_class_name,
-                "servicePrincipalSecretRef": self._cluster_secret_ref,
-            }
-        }
-        parameters["opcUaBrokerSecrets"] = {
-            "value": {"kind": "csi", "csiServicePrincipalSecretRef": self._cluster_secret_ref}
-        }
+        # TODO - @digimaun
+        # parameters["mqSecrets"] = {
+        #     "value": {
+        #         "enabled": True,
+        #         "secretProviderClassName": self._cluster_secret_class_name,
+        #         "servicePrincipalSecretRef": self._cluster_secret_ref,
+        #     }
+        # }
+        # parameters["opcUaBrokerSecrets"] = {
+        #     "value": {"kind": "csi", "csiServicePrincipalSecretRef": self._cluster_secret_ref}
+        # }
         parameters["deployResourceSyncRules"] = {"value": self._deploy_rsync_rules}
 
         # Covers cluster_namespace
         template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
 
-        # TODO @digimaun
+        # TODO @digimaun, this section will be deleted soon
         safe_cluster_name = self._cluster_name.replace("_", "-")
+        safe_cluster_name = safe_cluster_name.lower()
         template.content["variables"]["OBSERVABILITY"]["targetName"] = f"{safe_cluster_name}-observability"
 
         tls_map = work_kpis.get("tls", {})
