@@ -461,14 +461,6 @@ def mocked_mq_get_traces(mocker):
 
 
 @pytest.fixture
-def mocked_arc_active_api(mocker):
-    # Supports fetching events in support bundle as its based on MQ deployment
-    patched_active_mq_api = mocker.patch("azext_edge.edge.providers.edge_api.CLUSTER_CONFIG_API_V1")
-    patched_active_mq_api.get_resources.return_value = {"items": [{"metadata": {"namespace": "mock_namespace"}}]}
-    yield patched_active_mq_api
-
-
-@pytest.fixture
 def mocked_get_arc_services(mocked_client):
     from kubernetes.client.models import V1ServiceList, V1Service, V1ObjectMeta
 
