@@ -8,8 +8,6 @@ from functools import partial
 from typing import List
 
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
-from azext_edge.edge.providers.support.billing import AIO_BILLING_USAGE_NAME_LABEL
-from azext_edge.edge.providers.support.meta import META_NAME_LABEL
 from ...generators import generate_random_string
 
 import pytest

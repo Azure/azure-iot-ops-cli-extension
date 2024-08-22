@@ -12,7 +12,6 @@ from zipfile import ZipInfo
 from unittest.mock import Mock
 
 import pytest
-from azure.cli.core.azclierror import ResourceNotFoundError
 
 from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
