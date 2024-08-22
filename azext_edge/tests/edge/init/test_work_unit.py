@@ -341,11 +341,7 @@ def test_init_to_template_params(
     cluster_name,
     cluster_namespace,
     resource_group_name,
-    tls_ca_path,
-    tls_ca_key_path,
-    tls_ca_dir,
     no_deploy,
-    no_tls,
     no_preflight,
     disable_rsync_rules,
     """,
@@ -354,11 +350,7 @@ def test_init_to_template_params(
             generate_random_string(),  # cluster_name
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
-            None,  # tls_ca_path
-            None,  # tls_ca_key_path
-            None,  # tls_ca_dir
             None,  # no_deploy
-            None,  # no_tls
             None,  # no_preflight
             None,  # disable_rsync_rules
         ),
@@ -366,11 +358,7 @@ def test_init_to_template_params(
             generate_random_string(),  # cluster_name
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
-            None,  # tls_ca_path
-            None,  # tls_ca_key_path
-            None,  # tls_ca_dir
             None,  # no_deploy
-            None,  # no_tls
             None,  # no_preflight
             None,  # disable_rsync_rules
         ),
@@ -378,11 +366,7 @@ def test_init_to_template_params(
             generate_random_string(),  # cluster_name
             generate_random_string(),  # cluster_namespace
             generate_random_string(),  # resource_group_name
-            None,  # tls_ca_path
-            None,  # tls_ca_key_path
-            None,  # tls_ca_dir
             None,  # no_deploy
-            None,  # no_tls
             None,  # no_preflight
             None,  # disable_rsync_rules
         ),
@@ -390,11 +374,7 @@ def test_init_to_template_params(
             generate_random_string(),  # cluster_name
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
-            None,  # tls_ca_path
-            None,  # tls_ca_key_path
-            "/certs/",  # tls_ca_dir
             None,  # no_deploy
-            None,  # no_tls
             None,  # no_preflight
             None,  # disable_rsync_rules
         ),
@@ -402,11 +382,7 @@ def test_init_to_template_params(
             generate_random_string(),  # cluster_name
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
-            "/my/ca.crt",  # tls_ca_path
-            "/my/key.pem",  # tls_ca_key_path
-            None,  # tls_ca_dir
             True,  # no_deploy
-            None,  # no_tls
             None,  # no_preflight
             None,  # disable_rsync_rules
         ),
@@ -414,11 +390,7 @@ def test_init_to_template_params(
             generate_random_string(),  # cluster_name
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
-            None,  # tls_ca_path
-            None,  # tls_ca_key_path
-            None,  # tls_ca_dir
             True,  # no_deploy
-            True,  # no_tls
             None,  # no_preflight
             None,  # disable_rsync_rules
         ),
@@ -426,11 +398,7 @@ def test_init_to_template_params(
             generate_random_string(),  # cluster_name
             None,  # cluster_namespace
             generate_random_string(),  # resource_group_name
-            None,  # tls_ca_path
-            None,  # tls_ca_key_path
-            None,  # tls_ca_dir
             True,  # no_deploy
-            True,  # no_tls
             True,  # no_preflight
             True,  # disable_rsync_rules
         ),
@@ -439,15 +407,12 @@ def test_init_to_template_params(
 def test_work_order(
     mocked_cmd: Mock,
     mocked_config: Mock,
-    mocked_cluster_tls: Mock,
     mocked_deploy_template: Mock,
-    mocked_prepare_ca: Mock,
     mocked_register_providers: Mock,
     mocked_verify_cli_client_connections: Mock,
     mocked_edge_api_keyvault_api_v1: Mock,
     mocked_verify_write_permission_against_rg: Mock,
     mocked_wait_for_terminal_state: Mock,
-    mocked_file_exists: Mock,
     mocked_connected_cluster_location: Mock,
     mocked_connected_cluster_extensions: Mock,
     mocked_verify_custom_locations_enabled: Mock,
@@ -457,11 +422,7 @@ def test_work_order(
     cluster_name,
     cluster_namespace,
     resource_group_name,
-    tls_ca_path,
-    tls_ca_key_path,
-    tls_ca_dir,
     no_deploy,
-    no_tls,
     no_preflight,
     disable_rsync_rules,
     spy_work_displays,
@@ -473,7 +434,6 @@ def test_work_order(
         "cluster_name": cluster_name,
         "resource_group_name": resource_group_name,
         "no_deploy": no_deploy,
-        "no_tls": no_tls,
         "no_progress": True,
         "disable_rsync_rules": disable_rsync_rules,
         "wait_sec": 0.25,
@@ -484,9 +444,6 @@ def test_work_order(
 
     for param_with_default in [
         (cluster_namespace, "cluster_namespace"),
-        (tls_ca_path, "tls_ca_path"),
-        (tls_ca_key_path, "tls_ca_key_path"),
-        (tls_ca_dir, "tls_ca_dir"),
     ]:
         if param_with_default[0]:
             call_kwargs[param_with_default[1]] = param_with_default[0]
@@ -512,7 +469,6 @@ def test_work_order(
     for category_tuple in [
         (not no_preflight, WorkCategoryKey.PRE_FLIGHT),
         # (keyvault_resource_id, WorkCategoryKey.CSI_DRIVER),
-        (not no_tls, WorkCategoryKey.TLS_CA),
         (not no_deploy, WorkCategoryKey.DEPLOY_AIO),
     ]:
         if category_tuple[0]:
@@ -539,28 +495,6 @@ def test_work_order(
         mocked_connected_cluster_extensions.assert_not_called()
         mocked_verify_arc_cluster_config.assert_not_called()
         mocked_verify_custom_location_namespace.assert_not_called()
-
-    if not no_tls:
-        assert result["tls"]["aioTrustConfigMap"]  # TODO
-        assert result["tls"]["aioTrustSecretName"]  # TODO
-        mocked_prepare_ca.assert_called_once()
-        assert mocked_prepare_ca.call_args.kwargs["tls_ca_path"] == tls_ca_path
-        assert mocked_prepare_ca.call_args.kwargs["tls_ca_key_path"] == tls_ca_key_path
-        assert mocked_prepare_ca.call_args.kwargs["tls_ca_dir"] == tls_ca_dir
-
-        mocked_cluster_tls.assert_called_once()
-        assert mocked_cluster_tls.call_args.kwargs["cluster_namespace"] == expected_cluster_namespace
-
-        assert mocked_cluster_tls.call_args.kwargs["public_ca"]
-        assert mocked_cluster_tls.call_args.kwargs["private_key"]
-        assert mocked_cluster_tls.call_args.kwargs["secret_name"]
-        assert mocked_cluster_tls.call_args.kwargs["cm_name"]
-    else:
-        # TODO - @digimaun
-        # if not nothing_to_do and result:
-        #     assert "tls" not in result
-        mocked_prepare_ca.assert_not_called()
-        mocked_cluster_tls.assert_not_called()
 
     if not no_deploy:
         expected_template_copies += 1
@@ -615,17 +549,6 @@ def _assert_displays_for(work_category_set: FrozenSet[WorkCategoryKey], display_
         assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.ENUMERATE_PRE_FLIGHT}
         index += 1
         assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.WHAT_IF}
-        index += 1
-        assert render_display_call_kwargs[index] == {"active_step": -1}
-        index += 1
-
-    if WorkCategoryKey.TLS_CA in work_category_set:
-        assert render_display_call_kwargs[index] == {
-            "category": WorkCategoryKey.TLS_CA,
-            "active_step": WorkStepKey.TLS_CERT,
-        }
-        index += 1
-        assert render_display_call_kwargs[index] == {"active_step": WorkStepKey.TLS_CLUSTER}
         index += 1
         assert render_display_call_kwargs[index] == {"active_step": -1}
         index += 1
