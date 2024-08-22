@@ -22,7 +22,6 @@ from rich.table import Table
 
 from ...util import get_timestamp_now_utc
 from ...util.az_client import wait_for_terminal_state
-from ...util.x509 import DEFAULT_EC_ALGO, DEFAULT_VALID_DAYS
 from .template import (
     CURRENT_TEMPLATE,
     TemplateVer,
@@ -35,16 +34,13 @@ logger = get_logger(__name__)
 
 class WorkCategoryKey(IntEnum):
     PRE_FLIGHT = 1
-    TLS_CA = 2
-    DEPLOY_AIO = 3
+    DEPLOY_AIO = 2
 
 
 class WorkStepKey(IntEnum):
     REG_RP = 1
     ENUMERATE_PRE_FLIGHT = 2
     WHAT_IF = 3
-    TLS_CERT = 4
-    TLS_CLUSTER = 5
 
 
 class WorkRecord:
@@ -93,15 +89,11 @@ class WorkManager:
         self._no_progress: bool = kwargs.get("no_progress", False)
         self._no_block: bool = kwargs.get("no_block", False)
         self._no_deploy: bool = kwargs.get("no_deploy", False)
-        self._no_tls: bool = kwargs.get("no_tls", False)
         self._no_preflight: bool = kwargs.get("no_preflight", False)
         self._cmd = kwargs.get("cmd")
         self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
         if self._keyvault_resource_id:
             self._keyvault_name = self._keyvault_resource_id.split("/")[-1]
-        self._tls_ca_path = kwargs.get("tls_ca_path")
-        self._tls_ca_key_path = kwargs.get("tls_ca_key_path")
-        self._tls_ca_valid_days = kwargs.get("tls_ca_valid_days", DEFAULT_VALID_DAYS)
         self._template_path = kwargs.get("template_path")
         self._progress_shown = False
         self._render_progress = not self._no_progress
@@ -131,17 +123,6 @@ class WorkManager:
         )
         self.display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.WHAT_IF, "Verify What-If deployment")
 
-        self.display.add_category(WorkCategoryKey.TLS_CA, "TLS", self._no_tls)
-        if self._tls_ca_path:
-            tls_ca_desc = f"User provided CA '[cyan]{self._tls_ca_path}[/cyan]'"
-        else:
-            tls_ca_desc = (
-                f"Generate test CA using '[cyan]{DEFAULT_EC_ALGO.name}[/cyan]' "
-                f"valid for '[cyan]{self._tls_ca_valid_days}[/cyan]' days"
-            )
-        self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CERT, tls_ca_desc)
-        self.display.add_step(WorkCategoryKey.TLS_CA, WorkStepKey.TLS_CLUSTER, "Configure cluster for tls")
-
         deployment_moniker = "Custom template" if self._template_path else CURRENT_TEMPLATE.moniker
         self.display.add_category(
             WorkCategoryKey.DEPLOY_AIO,
@@ -152,9 +133,7 @@ class WorkManager:
     def do_work(self):  # noqa: C901
         from ..edge_api.keyvault import KEYVAULT_API_V1
         from .base import (
-            configure_cluster_tls,
             deploy_template,
-            prepare_ca,
             throw_if_iotops_deployed,
             verify_arc_cluster_config,
             verify_cluster_and_use_location,
@@ -239,40 +218,6 @@ class WorkManager:
             else:
                 if not self._render_progress:
                     logger.warning("Skipped Pre-Flight as requested.")
-
-            # TLS segment
-            if (
-                WorkCategoryKey.TLS_CA in self.display.categories
-                and not self.display.categories[WorkCategoryKey.TLS_CA][1]
-            ):
-                work_kpis["tls"] = {}
-                self.render_display(category=WorkCategoryKey.TLS_CA, active_step=WorkStepKey.TLS_CERT)
-
-                # WorkStepKey.TLS_CERT
-                public_ca, private_key, secret_name, cm_name = prepare_ca(**self._kwargs)
-                work_kpis["tls"]["aioTrustConfigMap"] = cm_name
-                work_kpis["tls"]["aioTrustSecretName"] = secret_name
-
-                self.complete_step(
-                    category=WorkCategoryKey.TLS_CA,
-                    completed_step=WorkStepKey.TLS_CERT,
-                    active_step=WorkStepKey.TLS_CLUSTER,
-                )
-
-                configure_cluster_tls(
-                    public_ca=public_ca,
-                    private_key=private_key,
-                    secret_name=secret_name,
-                    cm_name=cm_name,
-                    **self._kwargs,
-                )
-
-                self.complete_step(
-                    category=WorkCategoryKey.TLS_CA, completed_step=WorkStepKey.TLS_CLUSTER, active_step=-1
-                )
-            else:
-                if not self._render_progress:
-                    logger.warning("Skipped TLS config as requested.")
 
             # Deployment segment
             if self._no_deploy:
