@@ -53,7 +53,7 @@ def run_checks(
             if post_deployment
             else color.format(text="IoT Operations readiness")
         )
-        result["title"] = f"Evaluation for {title_subject}"
+        result["title"] = f"Evaluation for {title_subject}" if ops_service else "IoT Operations Summary"
 
         if pre_deployment:
             check_pre_deployment(result, as_list)
