@@ -16,8 +16,8 @@ from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
     KubernetesDistroType,
-    MqMemoryProfile,
-    MqServiceType,
+    # TODO MqMemoryProfile,
+    # TODO MqServiceType,
 )
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
@@ -149,7 +149,7 @@ def init(
     return work_manager.execute_ops_init(
         show_progress=not no_progress,
         block=not no_block,
-        pre_flight= not no_pre_flight,
+        pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         cluster_namespace=cluster_namespace,

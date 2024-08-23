@@ -24,7 +24,7 @@ from ...util import get_timestamp_now_utc, url_safe_random_chars
 from ...util.az_client import wait_for_terminal_state
 from .connected_cluster import ConnectedCluster
 from .template import (
-    CURRENT_TEMPLATE,
+    # CURRENT_TEMPLATE,
     TemplateVer,
     get_basic_dataflow_profile,
     get_current_template_copy,

@@ -6,7 +6,6 @@
 
 from typing import List, Optional, Union
 
-from ...util.az_client import get_resource_client
 from ...util.resource_graph import ResourceGraph
 
 
@@ -65,11 +64,10 @@ class ConnectedCluster:
         self.subscription_id = subscription_id
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
-        self.resource_client = get_resource_client(self.subscription_id)
         self.resource_graph = ResourceGraph(cmd=cmd, subscriptions=[self.subscription_id])
 
         # TODO - @digimaun - temp necessary due to circular import
-        from ..orchestration.resources.clusters import ConnectedClusters
+        from ..orchestration.resources import ConnectedClusters
 
         self.clusters = ConnectedClusters(cmd)
 
