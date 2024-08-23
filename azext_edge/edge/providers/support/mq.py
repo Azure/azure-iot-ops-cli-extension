@@ -136,10 +136,15 @@ support_runtime_elements = {
 
 
 def prepare_bundle(
-    apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS, include_mq_traces: Optional[bool] = None
+    log_age_seconds: int = DAY_IN_SECONDS,
+    apis: Optional[Iterable[EdgeResourceApi]] = None,
+    include_mq_traces: Optional[bool] = None,
 ) -> dict:
     mq_to_run = {}
-    mq_to_run.update(assemble_crd_work(apis))
+
+    # when apis not found, still try to fetch other resources
+    if apis:
+        mq_to_run.update(assemble_crd_work(apis))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     if include_mq_traces:
