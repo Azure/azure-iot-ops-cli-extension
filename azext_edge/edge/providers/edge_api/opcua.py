@@ -13,7 +13,7 @@ class OpcuaResourceKinds(ListableEnum):
 
 
 OPCUA_API_V1 = EdgeResourceApi(
-    group="opcuabroker.iotoperations.azure.com",
+    group="opcuabroker2.iotoperations.azure.com",
     version="v1beta1",
     moniker="opcua",
     label="microsoft-iotoperations-opcuabroker",

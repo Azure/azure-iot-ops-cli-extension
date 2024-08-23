@@ -535,6 +535,10 @@ def test_create_bundle_crd_work(
     support_bundle(None, ops_service=OpsServiceType.mq.value, bundle_dir=a_bundle_dir)
 
     if mocked_cluster_resources["param"] == []:
+        mocked_root_logger.warning.assert_called_with(
+            "Skip capturing CRD for broker since mqtt.iotoperations.azure.com/[v1beta1] is not deployed, "
+            "will try to get rest of the resources..."
+        )
         mocked_assemble_crd_work.assert_not_called()
     else:
         mocked_assemble_crd_work.assert_called_once()

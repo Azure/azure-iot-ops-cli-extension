@@ -86,6 +86,13 @@ def build_bundle(
         if ops_service in [OpsServiceType.auto.value, service_moniker]:
             deployed_apis = api_info["apis"].get_deployed()
 
+            if not deployed_apis:
+                expected_api_version = api_info["apis"].as_str()
+                logger.warning(
+                    f"Skip capturing CRD for {service_moniker} since {expected_api_version} is not deployed, "
+                    "will try to get rest of the resources..."
+                )
+
             # still try fetching other resources even crds are not available due to api version mismatch
             bundle_method = api_info["prepare_bundle"]
             # Check if the function takes a second argument
