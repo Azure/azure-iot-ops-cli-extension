@@ -34,9 +34,25 @@ if TYPE_CHECKING:
     from azure.core.polling import LROPoller
     from azure.mgmt.resource.resources.models import GenericResource
     from azure.mgmt.storage import StorageManagementClient
+    from ..vendor.clients.conectedclustermgmt import ConnectedKubernetesClient
 
 
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
+
+
+
+def get_connectedk8s_mgmt_client(subscription_id: str, **kwargs) -> "ConnectedKubernetesClient":
+    from ..vendor.clients.conectedclustermgmt import ConnectedKubernetesClient
+
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return ConnectedKubernetesClient(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
 
 
 def get_storage_mgmt_client(subscription_id: str, api_version="2022-09-01", **kwargs) -> "StorageManagementClient":

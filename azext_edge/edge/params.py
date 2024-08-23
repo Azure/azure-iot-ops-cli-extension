@@ -523,6 +523,11 @@ def load_iotops_arguments(self, _):
             help="The instance count associated with the default dataflow profile.",
             arg_group="Dataflow Profile",
         )
+        context.argument(
+            "enable_fault_tolerance",
+            arg_type=get_three_state_flag(),
+            help="Enable fault tolerance for edge storage accelerator. At least 3 cluster nodes are required.",
+        )
 
     with self.argument_context("iot ops delete") as context:
         context.argument(

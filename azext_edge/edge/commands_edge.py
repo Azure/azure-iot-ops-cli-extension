@@ -94,37 +94,40 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
+    cluster_namespace: str = DEFAULT_NAMESPACE,
+    location: Optional[str] = None,
+    custom_location_name: Optional[str] = None,
+    disable_rsync_rules: Optional[bool] = None,
     instance_name: Optional[str] = None,
     instance_description: Optional[str] = None,
-    cluster_namespace: str = DEFAULT_NAMESPACE,
-    custom_location_name: Optional[str] = None,
-    location: Optional[str] = None,
+    broker_name: str = "broker",
+    broker_config_file: Optional[str] = None,
+    broker_listener_name: str = "listener",
+    add_insecure_listener: Optional[bool] = None,
+    broker_auth_name: str = "authn",
+    dataflow_profile_instances: int = 1,
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
-    no_block: Optional[bool] = None,
+    enable_fault_tolerance: Optional[bool] = None,
     no_progress: Optional[bool] = None,
-    mq_memory_profile: str = MqMemoryProfile.medium.value,
-    mq_service_type: str = MqServiceType.cluster_ip.value,
-    mq_backend_partitions: int = 2,
-    mq_backend_workers: int = 2,
-    mq_backend_redundancy_factor: int = 2,
-    mq_frontend_workers: int = 2,
-    mq_frontend_replicas: int = 2,
-    mq_frontend_server_name: str = "mq-dmqtt-frontend",
-    mq_listener_name: str = "listener",
-    mq_broker_name: str = "broker",
-    mq_authn_name: str = "authn",
-    mq_broker_config_file: Optional[str] = None,
-    add_insecure_listener: Optional[bool] = None,
-    dataflow_profile_instances: int = 1,
-    # TODO - @digimaun csi_driver_config: Optional[List[str]] = None,
-    keyvault_resource_id: Optional[str] = None,  # TODO - @digimaun
-    template_path: Optional[str] = None,
-    no_deploy: Optional[bool] = None,
-    disable_rsync_rules: Optional[bool] = None,
+    no_block: Optional[bool] = None,
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
     **kwargs,
+
+
+    # mq_memory_profile: str = MqMemoryProfile.medium.value,
+    # mq_service_type: str = MqServiceType.cluster_ip.value,
+    # mq_backend_partitions: int = 2,
+    # mq_backend_workers: int = 2,
+    # mq_backend_redundancy_factor: int = 2,
+    # mq_frontend_workers: int = 2,
+    # mq_frontend_replicas: int = 2,
+    # mq_frontend_server_name: str = "mq-dmqtt-frontend",
+
+    # TODO - @digimaun csi_driver_config: Optional[List[str]] = None,
+    # keyvault_resource_id: Optional[str] = None,  # TODO - @digimaun
+    # template_path: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
     from .providers.orchestration import WorkManager
@@ -132,28 +135,15 @@ def init(
         # assemble_nargs_to_dict,
         is_env_flag_enabled,
         read_file_content,
-        url_safe_random_chars,
     )
-    # TODO - @digimaun
+    # TODO - @digimaun, is necessary?
     load_config_context(context_name=context_name)
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
-    # cluster namespace must be lowercase
-    cluster_namespace = str(cluster_namespace).lower()
-    cluster_name_lowered = cluster_name.lower()
     # TODO - @digimaun
-    safe_cluster_name = cluster_name_lowered.replace("_", "-")
-
-    if not instance_name:
-        instance_name = f"{safe_cluster_name}-ops-instance"
-
-    if not custom_location_name:
-        custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(3).lower()}-ops-cl"
-
-    # TODO - @digimaun
-    mq_broker_config = None
-    if mq_broker_config_file:
-        mq_broker_config = json.loads(read_file_content(file_path=mq_broker_config_file))
+    broker_config = None
+    if broker_config_file:
+        broker_config = json.loads(read_file_content(file_path=broker_config_file))
 
     work_manager = WorkManager(cmd)
     return work_manager.execute_ops_init(
@@ -162,18 +152,21 @@ def init(
         pre_flight= not no_pre_flight,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
-        location=location,
         cluster_namespace=cluster_namespace,
-        instance_name=instance_name,
-        instance_description=instance_description,
+        location=location,
         custom_location_name=custom_location_name,
         disable_rsync_rules=disable_rsync_rules,
-        container_runtime_socket=container_runtime_socket,
-        kubernetes_distro=str(kubernetes_distro),
-        dataflow_profile_instances=int(dataflow_profile_instances),
+        instance_name=instance_name,
+        instance_description=instance_description,
+        broker_name=broker_name,
+        broker_config=broker_config,
+        broker_listener_name=broker_listener_name,
         add_insecure_listener=add_insecure_listener,
-        mq_broker_name=str(mq_broker_name),
-        mq_broker_config=mq_broker_config,
+        broker_authn_name=broker_auth_name,
+        dataflow_profile_instances=dataflow_profile_instances,
+        container_runtime_socket=container_runtime_socket,
+        kubernetes_distro=kubernetes_distro,
+        enable_fault_tolerance=enable_fault_tolerance,
     )
 
     # TODO - @digimaun

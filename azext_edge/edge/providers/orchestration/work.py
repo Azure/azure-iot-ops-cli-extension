@@ -20,8 +20,9 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
-from ...util import get_timestamp_now_utc
+from ...util import get_timestamp_now_utc, url_safe_random_chars
 from ...util.az_client import wait_for_terminal_state
+from .resources.clusters import ConnectedClusters
 from .template import (
     CURRENT_TEMPLATE,
     TemplateVer,
@@ -34,7 +35,8 @@ logger = get_logger(__name__)
 
 class WorkCategoryKey(IntEnum):
     PRE_FLIGHT = 1
-    DEPLOY_AIO = 2
+    ENABLE_IOT_OPS = 2
+    DEPLOY_IOT_OPS = 3
 
 
 class WorkStepKey(IntEnum):
@@ -48,13 +50,15 @@ class WorkRecord:
         self.title = title
 
 
-PRE_FLIGHT_SUCCESS_STATUS = "succeeded"
+PROVISIONING_STATE_SUCCESS = "Succeeded"
+CONNECTIVITY_STATUS_CONNECTED = "Connected"
 
 
 class WorkDisplay:
     def __init__(self):
         self._categories: Dict[int, Tuple[WorkRecord, bool]] = {}
         self._steps: Dict[int, Dict[int, str]] = {}
+        self._headers: Dict[int, str] = {}
 
     def add_category(self, category: WorkCategoryKey, title: str, skipped: bool = False):
         self._categories[category] = (WorkRecord(title), skipped)
@@ -73,13 +77,37 @@ class WorkDisplay:
 
 
 class InitTargets:
-    def __init__(self, cluster_name: str, cluster_namespace: str, custom_location_name: str, **kwargs):
-        self.cluster_name = self._sanitize_k8s_name(cluster_name)
+    def __init__(
+        self,
+        cluster_name: str,
+        resource_group_name: str,
+        cluster_namespace: str = "azure-iot-operations",
+        location: Optional[str] = None,
+        custom_location_name: Optional[str] = None,
+        disable_rsync_rules: Optional[bool] = None,
+        instance_name: Optional[str] = None,
+        instance_description: Optional[str] = None,
+        enable_fault_tolerance: Optional[bool] = None,
+        **_,
+    ):
+        self.cluster_name = cluster_name
+        self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
+        self.resource_group_name = resource_group_name
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
-        self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
-        self.deploy_resource_sync_rules: bool = not kwargs.get("disable_rsync_rules", False)
+        self.location = location
+        self.custom_location_name = (
+            self._sanitize_k8s_name(custom_location_name)
+            or f"{self.safe_cluster_name}-{url_safe_random_chars(3).lower()}-ops-cl"
+        )
+        self.deploy_resource_sync_rules: bool = not disable_rsync_rules
+        self.instance_name = self._sanitize_k8s_name(instance_name)
+        self.instance_description = instance_description
+        self.enable_fault_tolerance = enable_fault_tolerance
 
-    def _sanitize_k8s_name(name: str) -> str:
+    def _sanitize_k8s_name(self, name: str) -> str:
+        if not name:
+            return name
+        sanitized = str(name)
         sanitized = name.lower()
         sanitized = sanitized.replace("_", "-")
         return sanitized
@@ -91,6 +119,7 @@ class WorkManager:
 
         self.cmd = cmd
         self.subscription: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
+        self.connected_clusters = ConnectedClusters(self.cmd)
 
     def _bootstrap_ux(self, show_progress: bool = False):
         self.display = WorkDisplay()
@@ -116,10 +145,38 @@ class WorkManager:
         )
         self.display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.WHAT_IF, "Verify What-If deployment")
 
+        # self.display.add_header(
+        #     WorkCategoryKey.ENABLE_IOT_OPS,
+        #     f"IoT Operations - '[cyan]{CURRENT_TEMPLATE.moniker}[/cyan]'",
+        # )
+        self.display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Install foundation")
+        deploy_iot_ops_desc = "Deploy Instance"
+        if self._targets.instance_name:
+            deploy_iot_ops_desc = f"{deploy_iot_ops_desc} - '{self._targets.instance_name}'"
         self.display.add_category(
-            WorkCategoryKey.DEPLOY_AIO,
-            f"Deploy IoT Operations - '[cyan]{CURRENT_TEMPLATE.moniker}[/cyan]'",
+            WorkCategoryKey.DEPLOY_IOT_OPS, deploy_iot_ops_desc, skipped=not self._targets.instance_name
         )
+
+    def _process_connected_cluster(self) -> dict:
+        cluster = self.connected_clusters.show(
+            resource_group_name=self._targets.resource_group_name, cluster_name=self._targets.cluster_name
+        )
+        cluster_properties: Dict[str, Union[str, dict]] = cluster["properties"]
+        cluster_validation_tuples = [
+            ("provisioningState", PROVISIONING_STATE_SUCCESS),
+            ("connectivityStatus", CONNECTIVITY_STATUS_CONNECTED),
+        ]
+        for v in cluster_validation_tuples:
+            if cluster_properties[v[0]].lower() != v[1].lower():
+                raise ValidationError(f"The connected cluster {self._targets.cluster_name}'s {v[0]} is not {v[1]}.")
+
+        if not self._targets.location:
+            self._targets.location = cluster["location"]
+
+        if self._targets.enable_fault_tolerance and cluster_properties["totalNodeCount"] < 3:
+            raise ValidationError("Edge storage accelerator fault tolerance enablement requires at least 3 nodes.")
+
+        return cluster
 
     def execute_ops_init(self, show_progress: bool = True, block: bool = True, pre_flight: bool = True, **kwargs):
         self._bootstrap_ux(show_progress=show_progress)
@@ -131,21 +188,16 @@ class WorkManager:
         self._completed_steps: Dict[int, int] = {}
         self._active_step: int = 0
         self._targets = InitTargets(**kwargs)
-
-        # TODO - @digimaun TODO
-        self._kwargs = kwargs
         self._build_display()
 
         # TODO - @digimaun TODO
-        # self._keyvault_resource_id = kwargs.get("keyvault_resource_id")
-        # self._template_path = kwargs.get("template_path")
+        self._kwargs = kwargs
+        return self._do_work()
 
-    def do_work(self):  # noqa: C901
+    def _do_work(self):  # noqa: C901
         from .base import (
             deploy_template,
             throw_if_iotops_deployed,
-            verify_arc_cluster_config,
-            verify_cluster_and_use_location,
             verify_custom_location_namespace,
             verify_custom_locations_enabled,
         )
@@ -157,13 +209,11 @@ class WorkManager:
 
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
-            # TODO - @digimaun - self._keyvault_resource_id
+            self.render_display()
             verify_cli_client_connections()
-            # cluster_location uses actual connected cluster location. Same applies to location IF not provided.
-            # TODO - @digimaun - replace
-            self._connected_cluster = verify_cluster_and_use_location(self._kwargs)
-            verify_arc_cluster_config(self._connected_cluster)
+            cluster = self._process_connected_cluster()
 
+            return cluster
             # Pre-check segment
             if (
                 WorkCategoryKey.PRE_FLIGHT in self.display.categories
@@ -179,7 +229,8 @@ class WorkManager:
                 )
 
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
-                if self._connected_cluster:
+                # TODO @digimaun
+                if False:
                     throw_if_iotops_deployed(self._connected_cluster)
                     verify_custom_locations_enabled(self.cmd)
                     verify_custom_location_namespace(
@@ -189,7 +240,7 @@ class WorkManager:
                     )
 
                 if self._targets.deploy_resource_sync_rules:
-                    # TODO - @digimaun
+                    # TODO - @digimaun use permission manager after fixing check access issue
                     verify_write_permission_against_rg(
                         **self._kwargs,
                     )
@@ -212,7 +263,7 @@ class WorkManager:
                 )
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
                 pre_flight_result: Dict[str, Union[dict, str]] = terminal_deployment.as_dict()
-                if "status" in pre_flight_result and pre_flight_result["status"].lower() != PRE_FLIGHT_SUCCESS_STATUS:
+                if "status" in pre_flight_result and pre_flight_result["status"].lower() != PROVISIONING_STATE_SUCCESS:
                     raise AzureResponseError(dumps(pre_flight_result, indent=2))
 
                 self.complete_step(
@@ -223,10 +274,10 @@ class WorkManager:
                     logger.warning("Skipped Pre-Flight as requested.")
 
             if (
-                WorkCategoryKey.DEPLOY_AIO in self.display.categories
-                and not self.display.categories[WorkCategoryKey.DEPLOY_AIO][1]
+                WorkCategoryKey.IOT_OPS in self.display.categories
+                and not self.display.categories[WorkCategoryKey.IOT_OPS][1]
             ):
-                self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
+                self.render_display(category=WorkCategoryKey.IOT_OPS)
                 template, parameters = self.build_template(work_kpis=work_kpis)
 
                 # WorkStepKey.DEPLOY_AIO_MONIKER
