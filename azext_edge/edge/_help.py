@@ -529,7 +529,7 @@ def load_iotops_help():
         long-summary: |
                       Either custom location or cluster name must be provided. This command will check
                       for the existance of the associated custom location and cluster and ensure that
-                      both are set up correctly with the <IoT> extension.
+                      both are set up correctly with the microsoft.iot.operations extension.
 
                       For examples of file formats, please see aka.ms/aziotops-assets
 
@@ -568,9 +568,9 @@ def load_iotops_help():
         short-summary: List an assets.
 
         examples:
-        - name: List discovered assets in a resource group.
+        - name: List assets in a resource group.
           text: >
-            az iot ops asset show -g myresourcegroup --discovered
+            az iot ops asset show -g myresourcegroup
     """
 
     helps[

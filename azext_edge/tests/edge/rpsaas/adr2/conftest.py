@@ -97,6 +97,7 @@ def get_asset_mgmt_uri(
     )
     return f"https://management.azure.com{asset_id}"
 
+
 def get_asset_record(
     asset_name: str,
     asset_resource_group: str,

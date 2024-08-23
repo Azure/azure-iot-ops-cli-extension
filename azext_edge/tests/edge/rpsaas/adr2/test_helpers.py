@@ -6,8 +6,6 @@
 
 import pytest
 import responses
-
-from azext_edge.edge.providers.rpsaas.adr2.helpers import check_cluster_connectivity
 from ....generators import generate_random_string, BASE_URL, generate_resource_id
 
 

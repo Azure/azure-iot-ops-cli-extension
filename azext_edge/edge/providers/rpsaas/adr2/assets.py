@@ -5,15 +5,15 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-from typing import TYPE_CHECKING, Dict, List, Iterable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Iterable, Optional, Union
 from knack.log import get_logger
 from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     RequiredArgumentMissingError,
 )
-from azure.core.exceptions import ResourceNotFoundError
+# from azure.core.exceptions import ResourceNotFoundError
 
-from .user_strings import MISSING_DATA_EVENT_ERROR, ENDPOINT_NOT_FOUND_WARNING, INVALID_OBSERVABILITY_MODE_ERROR
+from .user_strings import INVALID_OBSERVABILITY_MODE_ERROR
 from ....util import assemble_nargs_to_dict
 from ....common import FileType
 from ....util.az_client import get_registry_mgmt_client
@@ -25,12 +25,13 @@ if TYPE_CHECKING:
         DiscoveredAssetsOperations
     )
 
-logger = get_logger(__name__)
 
+logger = get_logger(__name__)
 ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/assets"
 DISCOVERED_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/discoveredAssets"
 VALID_DATA_OBSERVABILITY_MODES = ["None", "Gauge", "Counter", "Histogram", "Log"]
 VALID_EVENT_OBSERVABILITY_MODES = ["None", "Log"]
+
 
 class Assets(Queryable):
     def __init__(self, cmd):
@@ -79,9 +80,6 @@ class Assets(Queryable):
         tags: Optional[Dict[str, str]] = None,
     ):
         from .helpers import get_extended_location
-        # TODO: create an asset via this successfully
-        # if not any([data_points, events, data_points_file_path, events_file_path]):
-        #     raise RequiredArgumentMissingError(MISSING_DATA_EVENT_ERROR)
 
         if custom_location_id:
             extended_location = {
@@ -103,7 +101,7 @@ class Assets(Queryable):
             "assetEndpointProfileRef": endpoint_profile,
             "events": _process_asset_sub_points("event_notifier", events),
         }
-        # TODO: implement
+        # TODO: replace with datapoint file?
         # if dataset_file_path:
         #     properties["datasets"].extend(
         #         _process_asset_data_set_file_path(file_path=dataset_file_path)
@@ -165,25 +163,26 @@ class Assets(Queryable):
     def show(
         self, asset_name: str, resource_group_name: str, check_cluster: bool = False
     ) -> dict:
-        try:
-            asset = self.ops.get(
-                resource_group_name=resource_group_name, asset_name=asset_name
-            )
-            self.update_ops = self.ops
-        except ResourceNotFoundError:
-            try:
-                asset = self.discovered_ops.get(
-                    resource_group_name=resource_group_name, discovered_asset_name=asset_name
-                )
-                self.update_ops = self.discovered_ops
-            except ResourceNotFoundError:
-                # raise combined exception
-                raise ResourceNotFoundError(
-                    f"Niether 'Microsoft.DeviceRegistry/assets/{asset_name}' nor "
-                    f"'Microsoft.DeviceRegistry/discoveredAssets/{asset_name}' under resource group "
-                    f"'{resource_group_name}' was not found. For more details please go to "
-                    "https://aka.ms/ARMResourceNotFoundFix"
-                )
+        # TODO: re-add try except when discovered is exposed
+        # try:
+        asset = self.ops.get(
+            resource_group_name=resource_group_name, asset_name=asset_name
+        )
+        self.update_ops = self.ops
+        # except ResourceNotFoundError:
+        #     try:
+        #         asset = self.discovered_ops.get(
+        #             resource_group_name=resource_group_name, discovered_asset_name=asset_name
+        #         )
+        #         self.update_ops = self.discovered_ops
+        #     except ResourceNotFoundError:
+        #         # raise combined exception
+        #         raise ResourceNotFoundError(
+        #             f"Niether 'Microsoft.DeviceRegistry/assets/{asset_name}' nor "
+        #             f"'Microsoft.DeviceRegistry/discoveredAssets/{asset_name}' under resource group "
+        #             f"'{resource_group_name}' was not found. For more details please go to "
+        #             "https://aka.ms/ARMResourceNotFoundFix"
+        #         )
         if check_cluster:
             from .helpers import check_cluster_connectivity
             check_cluster_connectivity(self.cmd, asset)
@@ -224,50 +223,26 @@ class Assets(Queryable):
         serial_number: Optional[str] = None,
         software_revision: Optional[str] = None,
     ):
-        query_body = custom_query
-        if not custom_query:
-            query_body = ""
-            if resource_group_name:
-                query_body += f"| where resourceGroup =~ \"{resource_group_name}\""
-            if location:
-                query_body += f"| where location =~ \"{location}\""
-            if asset_name:
-                query_body += f"| where name =~ \"{asset_name}\""
-            if default_topic_path:
-                query_body += f"| where properties.defaultTopic.path =~ \"{default_topic_path}\""
-            if default_topic_retain:
-                query_body += f"| where properties.defaultTopic.retain =~ \"{default_topic_retain}\""
-            if description:
-                query_body += f"| where properties.description =~ \"{description}\""
-            if display_name:
-                query_body += f"| where properties.displayName =~ \"{display_name}\""
-            if disabled is not None:
-                query_body += f"| where properties.enabled == {not disabled}"
-            if documentation_uri:
-                query_body += f"| where properties.documentationUri =~ \"{documentation_uri}\""
-            if endpoint_profile:
-                query_body += f"| where properties.assetEndpointProfileUri =~ \"{endpoint_profile}\""
-            if external_asset_id:
-                query_body += f"| where properties.externalAssetId =~ \"{external_asset_id}\""
-            if hardware_revision:
-                query_body += f"| where properties.hardwareRevision =~ \"{hardware_revision}\""
-            if manufacturer:
-                query_body += f"| where properties.manufacturer =~ \"{manufacturer}\""
-            if manufacturer_uri:
-                query_body += f"| where properties.manufacturerUri =~ \"{manufacturer_uri}\""
-            if model:
-                query_body += f"| where properties.model =~ \"{model}\""
-            if product_code:
-                query_body += f"| where properties.productCode =~ \"{product_code}\""
-            if serial_number:
-                query_body += f"| where properties.serialNumber =~ \"{serial_number}\""
-            if software_revision:
-                query_body += f"| where properties.softwareRevision =~ \"{software_revision}\""
-
-            query_body += "| extend customLocation = tostring(extendedLocation.name) "\
-                "| extend provisioningState = properties.provisioningState "\
-                "| project id, customLocation, location, name, resourceGroup, provisioningState, tags, "\
-                "type, subscriptionId "
+        query_body = custom_query or _build_query_body(
+            asset_name=asset_name,
+            default_topic_path=default_topic_path,
+            default_topic_retain=default_topic_retain,
+            description=description,
+            disabled=disabled,
+            display_name=display_name,
+            documentation_uri=documentation_uri,
+            endpoint_profile=endpoint_profile,
+            external_asset_id=external_asset_id,
+            hardware_revision=hardware_revision,
+            location=location,
+            manufacturer=manufacturer,
+            manufacturer_uri=manufacturer_uri,
+            model=model,
+            product_code=product_code,
+            resource_group_name=resource_group_name,
+            serial_number=serial_number,
+            software_revision=software_revision
+        )
 
         if discovered is not None:
             resource_type = DISCOVERED_ASSET_RESOURCE_TYPE if discovered else ASSET_RESOURCE_TYPE
@@ -359,70 +334,71 @@ class Assets(Queryable):
         )
         return poller
 
-    def add_dataset(
-        self,
-        asset_name: str,
-        dataset_name: str,
-        resource_group_name: str,
-        data_points: Optional[List[str]] = None,  # allow for datapoint addition during dataset creation
-        data_point_file_path: Optional[str] = None,
-        queue_size: Optional[int] = None,
-        sampling_interval: Optional[int] = None,
-        publishing_interval: Optional[int] = None,  # note that the swagger mentions this but not sure if used
-        topic_path: Optional[str] = None,
-        topic_retain: Optional[str] = None
-    ):
-        asset = self.show(
-            asset_name=asset_name,
-            resource_group_name=resource_group_name,
-            check_cluster=True
-        )
-        asset["properties"]["datasets"] = asset["properties"].get("datasets", [])
+    # TODO: add when multi dataset support is added
+    # def add_dataset(
+    #     self,
+    #     asset_name: str,
+    #     dataset_name: str,
+    #     resource_group_name: str,
+    #     data_points: Optional[List[str]] = None,  # allow for datapoint addition during dataset creation
+    #     data_point_file_path: Optional[str] = None,
+    #     queue_size: Optional[int] = None,
+    #     sampling_interval: Optional[int] = None,
+    #     publishing_interval: Optional[int] = None,  # note that the swagger mentions this but not sure if used
+    #     topic_path: Optional[str] = None,
+    #     topic_retain: Optional[str] = None
+    # ):
+    #     asset = self.show(
+    #         asset_name=asset_name,
+    #         resource_group_name=resource_group_name,
+    #         check_cluster=True
+    #     )
+    #     asset["properties"]["datasets"] = asset["properties"].get("datasets", [])
 
-        dataset = {
-            "name": dataset_name,
-            "dataPoints": [],
-            "datasetConfiguration": _build_default_configuration(
-                original_configuration="{}",
-                publishing_interval=publishing_interval,
-                sampling_interval=sampling_interval,
-                queue_size=queue_size
-            )
-        }
-        if topic_path or topic_retain:
-            dataset["topic"] = _build_topic(topic_path=topic_path, topic_retain=topic_retain)
-        if data_points:
-            dataset["dataPoints"].extend(_process_asset_sub_points("event_notifier", data_points))
-        if data_point_file_path:
-            dataset["dataPoints"].extend(_process_asset_sub_points_file_path(file_path=data_point_file_path))
+    #     dataset = {
+    #         "name": dataset_name,
+    #         "dataPoints": [],
+    #         "datasetConfiguration": _build_default_configuration(
+    #             original_configuration="{}",
+    #             publishing_interval=publishing_interval,
+    #             sampling_interval=sampling_interval,
+    #             queue_size=queue_size
+    #         )
+    #     }
+    #     if topic_path or topic_retain:
+    #         dataset["topic"] = _build_topic(topic_path=topic_path, topic_retain=topic_retain)
+    #     if data_points:
+    #         dataset["dataPoints"].extend(_process_asset_sub_points("event_notifier", data_points))
+    #     if data_point_file_path:
+    #         dataset["dataPoints"].extend(_process_asset_sub_points_file_path(file_path=data_point_file_path))
 
-        poller = self.ops.begin_update(
-            resource_group_name=resource_group_name,
-            asset_name=asset_name,
-            properties=asset["properties"]
-        )
-        poller.wait()
-        asset = poller.result()
-        return _get_dataset(asset, dataset_name)
+    #     poller = self.ops.begin_update(
+    #         resource_group_name=resource_group_name,
+    #         asset_name=asset_name,
+    #         properties=asset["properties"]
+    #     )
+    #     poller.wait()
+    #     asset = poller.result()
+    #     return _get_dataset(asset, dataset_name)
 
-    def export_datasets(
-        self,
-        asset_name: str,
-        resource_group_name: str,
-        extension: str = FileType.json.value,
-        output_dir: str = ".",
-        replace: bool = False
-    ):
-        raise NotImplementedError()
+    # def export_datasets(
+    #     self,
+    #     asset_name: str,
+    #     resource_group_name: str,
+    #     extension: str = FileType.json.value,
+    #     output_dir: str = ".",
+    #     replace: bool = False
+    # ):
+    #     raise NotImplementedError()
 
-    def import_datasets(
-        self,
-        asset_name: str,
-        file_path: str,
-        resource_group_name: str,
-        replace: bool = False
-    ):
-        raise NotImplementedError()
+    # def import_datasets(
+    #     self,
+    #     asset_name: str,
+    #     file_path: str,
+    #     resource_group_name: str,
+    #     replace: bool = False
+    # ):
+    #     raise NotImplementedError()
 
     def list_datasets(
         self,
@@ -436,31 +412,32 @@ class Assets(Queryable):
         )
         return asset["properties"].get("datasets", [])
 
-    def remove_dataset(
-        self,
-        asset_name: str,
-        dataset_name: str,
-        resource_group_name: str,
-    ):
-        asset = self.show(
-            asset_name=asset_name,
-            resource_group_name=resource_group_name,
-            check_cluster=True
-        )
-        asset["properties"]["datasets"] = [
-            ds for ds in asset["properties"]["datasets"] if ds["name"] != dataset_name
-        ]
-        poller = self.update_ops.begin_update(
-            resource_group_name,
-            asset_name,
-            asset["properties"]
-        )
-        poller.wait()
-        asset = poller.result()
-        if not isinstance(asset, dict):
-            asset = asset.as_dict()
+    # TODO: add when multi dataset support is added
+    # def remove_dataset(
+    #     self,
+    #     asset_name: str,
+    #     dataset_name: str,
+    #     resource_group_name: str,
+    # ):
+    #     asset = self.show(
+    #         asset_name=asset_name,
+    #         resource_group_name=resource_group_name,
+    #         check_cluster=True
+    #     )
+    #     asset["properties"]["datasets"] = [
+    #         ds for ds in asset["properties"]["datasets"] if ds["name"] != dataset_name
+    #     ]
+    #     poller = self.update_ops.begin_update(
+    #         resource_group_name,
+    #         asset_name,
+    #         asset["properties"]
+    #     )
+    #     poller.wait()
+    #     asset = poller.result()
+    #     if not isinstance(asset, dict):
+    #         asset = asset.as_dict()
 
-        return asset["properties"]["datasets"]
+    #     return asset["properties"]["datasets"]
 
     def show_dataset(
         self,
@@ -585,7 +562,6 @@ class Assets(Queryable):
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
-
 
     def list_dataset_data_points(
         self,
@@ -833,6 +809,71 @@ def _process_asset_sub_points_file_path(
     return list(original_points.values())
 
 
+def _build_query_body(
+    asset_name: Optional[str] = None,
+    default_topic_path: Optional[str] = None,
+    default_topic_retain: Optional[str] = None,
+    description: Optional[str] = None,
+    disabled: Optional[bool] = None,
+    display_name: Optional[str] = None,
+    documentation_uri: Optional[str] = None,
+    endpoint_profile: Optional[str] = None,
+    external_asset_id: Optional[str] = None,
+    hardware_revision: Optional[str] = None,
+    location: Optional[str] = None,
+    manufacturer: Optional[str] = None,
+    manufacturer_uri: Optional[str] = None,
+    model: Optional[str] = None,
+    product_code: Optional[str] = None,
+    resource_group_name: Optional[str] = None,
+    serial_number: Optional[str] = None,
+    software_revision: Optional[str] = None,
+) -> str:
+    query_body = ""
+    if resource_group_name:
+        query_body += f"| where resourceGroup =~ \"{resource_group_name}\""
+    if location:
+        query_body += f"| where location =~ \"{location}\""
+    if asset_name:
+        query_body += f"| where name =~ \"{asset_name}\""
+    if default_topic_path:
+        query_body += f"| where properties.defaultTopic.path =~ \"{default_topic_path}\""
+    if default_topic_retain:
+        query_body += f"| where properties.defaultTopic.retain =~ \"{default_topic_retain}\""
+    if description:
+        query_body += f"| where properties.description =~ \"{description}\""
+    if display_name:
+        query_body += f"| where properties.displayName =~ \"{display_name}\""
+    if disabled is not None:
+        query_body += f"| where properties.enabled == {not disabled}"
+    if documentation_uri:
+        query_body += f"| where properties.documentationUri =~ \"{documentation_uri}\""
+    if endpoint_profile:
+        query_body += f"| where properties.assetEndpointProfileUri =~ \"{endpoint_profile}\""
+    if external_asset_id:
+        query_body += f"| where properties.externalAssetId =~ \"{external_asset_id}\""
+    if hardware_revision:
+        query_body += f"| where properties.hardwareRevision =~ \"{hardware_revision}\""
+    if manufacturer:
+        query_body += f"| where properties.manufacturer =~ \"{manufacturer}\""
+    if manufacturer_uri:
+        query_body += f"| where properties.manufacturerUri =~ \"{manufacturer_uri}\""
+    if model:
+        query_body += f"| where properties.model =~ \"{model}\""
+    if product_code:
+        query_body += f"| where properties.productCode =~ \"{product_code}\""
+    if serial_number:
+        query_body += f"| where properties.serialNumber =~ \"{serial_number}\""
+    if software_revision:
+        query_body += f"| where properties.softwareRevision =~ \"{software_revision}\""
+
+    query_body += "| extend customLocation = tostring(extendedLocation.name) "\
+        "| extend provisioningState = properties.provisioningState "\
+        "| project id, customLocation, location, name, resourceGroup, provisioningState, tags, "\
+        "type, subscriptionId "
+    return query_body
+
+
 # Helpers
 def _build_asset_sub_point(
     data_source: Optional[str] = None,
@@ -850,7 +891,7 @@ def _build_asset_sub_point(
         queue_size=queue_size
     )
     result = {"name": name}
-    observability_mode = observability_mode.capitalize() if observability_mode else  "None"
+    observability_mode = observability_mode.capitalize() if observability_mode else "None"
 
     if data_source:
         result["dataSource"] = data_source

@@ -117,7 +117,7 @@ def test_asset_create(
     assert asset_helpers_fixture["process_asset_sub_points_file_path"].called is bool(req.get("events_file_path"))
 
 
-@pytest.mark.parametrize("discovered", [False, True])
+@pytest.mark.parametrize("discovered", [False])  # TODO: discovered
 def test_asset_delete(mocked_cmd, mocked_check_cluster_connectivity, mocked_responses: responses, discovered: bool):
     asset_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -155,18 +155,17 @@ def test_asset_delete(mocked_cmd, mocked_check_cluster_connectivity, mocked_resp
     assert len(mocked_responses.calls) == (3 if discovered else 2)
 
 
-@pytest.mark.parametrize("discovered", [False, True])
 @pytest.mark.parametrize("records", [0, 2])
 @pytest.mark.parametrize("resource_group_name", [None, generate_random_string()])
 def test_asset_list(
-    mocked_cmd, mocked_responses: responses, discovered: bool, records: int, resource_group_name: Optional[str]
+    mocked_cmd, mocked_responses: responses, records: int, resource_group_name: Optional[str]
 ):
     mock_asset_records = {
         "value": [
             get_asset_record(
                 asset_name=generate_random_string(),
                 asset_resource_group=resource_group_name,
-                discovered=discovered
+                discovered=False  # TODO: discovered
             )
             for _ in range(records)
         ]
@@ -175,19 +174,19 @@ def test_asset_list(
     mocked_responses.add(
         method=responses.GET,
         url=get_asset_mgmt_uri(
-            asset_name="", asset_resource_group=resource_group_name, discovered=discovered
+            asset_name="", asset_resource_group=resource_group_name, discovered=False
         ),
         json=mock_asset_records,
         status=200,
         content_type="application/json",
     )
 
-    result = list(list_assets(cmd=mocked_cmd, resource_group_name=resource_group_name, discovered=discovered))
+    result = list(list_assets(cmd=mocked_cmd, resource_group_name=resource_group_name))
     assert result == mock_asset_records["value"]
     assert len(mocked_responses.calls) == 1
 
 
-@pytest.mark.parametrize("discovered", [False, True])
+@pytest.mark.parametrize("discovered", [False])  # TODO: discovered
 def test_asset_show(mocked_cmd, mocked_responses: responses, discovered: bool):
     asset_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -300,4 +299,3 @@ def test_asset_update(
     for arg in patched_up.call_args.kwargs:
         assert patched_up.call_args.kwargs[arg] == req.get(arg)
         assert call_body_props.get(arg) is None
-

@@ -11,6 +11,7 @@ from ...orchestration.resources import Instances
 
 logger = get_logger(__name__)
 
+
 class TopicRetain(Enum):
     "Set the retain flag for messages published to an MQTT broker."
     keep = "Keep"

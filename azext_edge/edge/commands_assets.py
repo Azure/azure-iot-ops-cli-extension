@@ -90,10 +90,10 @@ def delete_asset(
 
 def list_assets(
     cmd,
-    discovered: bool = False,
+    # discovered: bool = False,  # TODO: discovered
     resource_group_name: str = None,
 ) -> List[dict]:
-    return Assets(cmd).list(discovered=discovered, resource_group_name=resource_group_name)
+    return Assets(cmd).list(discovered=False, resource_group_name=resource_group_name)
 
 
 def query_assets(
@@ -104,7 +104,7 @@ def query_assets(
     default_topic_retain: Optional[str] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
-    discovered: Optional[bool] = None,
+    # discovered: Optional[bool] = None,  # TODO: discovered
     display_name: Optional[str] = None,
     documentation_uri: Optional[str] = None,
     endpoint_profile: Optional[str] = None,
@@ -128,7 +128,7 @@ def query_assets(
         default_topic_retain=default_topic_retain,
         description=description,
         display_name=display_name,
-        discovered=discovered,
+        discovered=False,
         disabled=disabled,
         documentation_uri=documentation_uri,
         endpoint_profile=endpoint_profile,
@@ -209,63 +209,64 @@ def update_asset(
 
 
 # Dataset commands
-def add_asset_dataset(
-    cmd,
-    asset_name: str,
-    dataset_name: str,
-    resource_group_name: str,
-    data_points: Optional[List[str]] = None,
-    data_point_file_path: Optional[str] = None,
-    queue_size: Optional[int] = None,
-    sampling_interval: Optional[int] = None,
-    publishing_interval: Optional[int] = None,
-    topic_path: Optional[str] = None,
-    topic_retain: Optional[str] = None
-):
-    return Assets(cmd).add_dataset(
-        asset_name=asset_name,
-        dataset_name=dataset_name,
-        resource_group_name=resource_group_name,
-        data_points=data_points,
-        data_point_file_path=data_point_file_path,
-        queue_size=queue_size,
-        sampling_interval=sampling_interval,
-        publishing_interval=publishing_interval,
-        topic_path=topic_path,
-        topic_retain=topic_retain,
-    )
+# TODO: multi dataset support
+# def add_asset_dataset(
+#     cmd,
+#     asset_name: str,
+#     dataset_name: str,
+#     resource_group_name: str,
+#     data_points: Optional[List[str]] = None,
+#     data_point_file_path: Optional[str] = None,
+#     queue_size: Optional[int] = None,
+#     sampling_interval: Optional[int] = None,
+#     publishing_interval: Optional[int] = None,
+#     topic_path: Optional[str] = None,
+#     topic_retain: Optional[str] = None
+# ):
+#     return Assets(cmd).add_dataset(
+#         asset_name=asset_name,
+#         dataset_name=dataset_name,
+#         resource_group_name=resource_group_name,
+#         data_points=data_points,
+#         data_point_file_path=data_point_file_path,
+#         queue_size=queue_size,
+#         sampling_interval=sampling_interval,
+#         publishing_interval=publishing_interval,
+#         topic_path=topic_path,
+#         topic_retain=topic_retain,
+#     )
 
 
-def export_datasets(
-    cmd,
-    asset_name: str,
-    resource_group_name: str,
-    extension: str = "json",
-    output_dir: str = ".",
-    replace: bool = False
-):
-    return Assets(cmd).export_datasets(
-        asset_name=asset_name,
-        resource_group_name=resource_group_name,
-        extension=extension,
-        output_dir=output_dir,
-        replace=replace
-    )
+# def export_datasets(
+#     cmd,
+#     asset_name: str,
+#     resource_group_name: str,
+#     extension: str = "json",
+#     output_dir: str = ".",
+#     replace: bool = False
+# ):
+#     return Assets(cmd).export_datasets(
+#         asset_name=asset_name,
+#         resource_group_name=resource_group_name,
+#         extension=extension,
+#         output_dir=output_dir,
+#         replace=replace
+#     )
 
 
-def import_datasets(
-    cmd,
-    asset_name: str,
-    file_path: str,
-    resource_group_name: str,
-    replace: bool = False
-):
-    return Assets(cmd).import_datasets(
-        asset_name=asset_name,
-        file_path=file_path,
-        resource_group_name=resource_group_name,
-        replace=replace
-    )
+# def import_datasets(
+#     cmd,
+#     asset_name: str,
+#     file_path: str,
+#     resource_group_name: str,
+#     replace: bool = False
+# ):
+#     return Assets(cmd).import_datasets(
+#         asset_name=asset_name,
+#         file_path=file_path,
+#         resource_group_name=resource_group_name,
+#         replace=replace
+#     )
 
 
 def list_datasets(
@@ -292,17 +293,17 @@ def show_dataset(
     )
 
 
-def remove_dataset(
-    cmd,
-    asset_name: str,
-    dataset_name: str,
-    resource_group_name: str
-):
-    return Assets(cmd).remove_dataset(
-        asset_name=asset_name,
-        dataset_name=dataset_name,
-        resource_group_name=resource_group_name
-    )
+# def remove_dataset(
+#     cmd,
+#     asset_name: str,
+#     dataset_name: str,
+#     resource_group_name: str
+# ):
+#     return Assets(cmd).remove_dataset(
+#         asset_name=asset_name,
+#         dataset_name=dataset_name,
+#         resource_group_name=resource_group_name
+#     )
 
 
 # Data Point sub commands
@@ -406,8 +407,8 @@ def add_asset_event(
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
     publishing_interval: Optional[int] = None,
-    topic_path: Optional[str] = None,
-    topic_retain: Optional[str] = None
+    # topic_path: Optional[str] = None,  # TODO: hide non asset topics
+    # topic_retain: Optional[str] = None
 ):
     return Assets(cmd).add_event(
         asset_name=asset_name,
@@ -418,8 +419,8 @@ def add_asset_event(
         sampling_interval=sampling_interval,
         publishing_interval=publishing_interval,
         resource_group_name=resource_group_name,
-        topic_path=topic_path,
-        topic_retain=topic_retain
+        # topic_path=topic_path,
+        # topic_retain=topic_retain
     )
 
 
