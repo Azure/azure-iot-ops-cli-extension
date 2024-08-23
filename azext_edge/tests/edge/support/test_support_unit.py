@@ -36,8 +36,6 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_SERVICE_LABEL,
     AKRI_WEBHOOK_LABEL,
 )
-
-# TODO - @elsie4ever
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.billing import (
@@ -912,7 +910,6 @@ def test_get_bundle_path(mocked_os_makedirs):
     assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
 
 
-# TODO - @elsie4ever
 @pytest.mark.parametrize(
     "mocked_cluster_resources",
     [
