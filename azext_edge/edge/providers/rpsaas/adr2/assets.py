@@ -246,7 +246,7 @@ class Assets(Queryable):
 
         if discovered is not None:
             resource_type = DISCOVERED_ASSET_RESOURCE_TYPE if discovered else ASSET_RESOURCE_TYPE
-            query = f"Resource | where type =~\"{resource_type}\" " + query_body
+            query = f"Resources | where type =~\"{resource_type}\" " + query_body
         else:
             # we put the query body into the each type query and then union to avoid the union result from
             # becoming too big

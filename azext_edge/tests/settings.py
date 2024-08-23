@@ -13,6 +13,7 @@ from enum import Enum
 class EnvironmentVariables(Enum):
     rg = "azext_edge_rg"
     cluster = "azext_edge_cluster"
+    instance = "azext_edge_instance"
     context_name = "azext_edge_context_name"
     kv = "azext_edge_kv"
     sp_app_id = "azext_edge_sp_app_id"
