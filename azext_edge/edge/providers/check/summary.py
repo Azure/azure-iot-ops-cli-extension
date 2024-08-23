@@ -1,3 +1,9 @@
+# coding=utf-8
+# ----------------------------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License file in the project root for license information.
+# ----------------------------------------------------------------------------------------------
+
 from typing import List
 
 from rich.padding import Padding
@@ -47,7 +53,7 @@ def check_summary(
             "check": check_dataflows_deployment,
         },
     ]
-    check_manager = CheckManager(check_name="evalAIOSummary", check_desc=f"Evaluate AIO components")
+    check_manager = CheckManager(check_name="evalAIOSummary", check_desc="AIO components")
     for check in service_checks:
         service_name = check["title"]
         check_func = check["check"]

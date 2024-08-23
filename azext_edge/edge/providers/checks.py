@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import imp
 from typing import Any, Dict, List, Optional
 
 from azure.cli.core.azclierror import ArgumentUsageError
@@ -30,7 +29,7 @@ console = Console(width=100, highlight=False)
 
 def run_checks(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    ops_service: Optional[str]= None,
+    ops_service: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
     as_list: bool = False,
@@ -69,11 +68,11 @@ def run_checks(
                 None: check_summary
             }
             service_result = service_check_dict[ops_service](
-                    detail_level=detail_level,
-                    resource_name=resource_name,
-                    as_list=as_list,
-                    resource_kinds=resource_kinds
-                )
+                detail_level=detail_level,
+                resource_name=resource_name,
+                as_list=as_list,
+                resource_kinds=resource_kinds
+            )
             if isinstance(service_result, list):
                 for obj in service_result:
                     result["postDeployment"].append(obj)
