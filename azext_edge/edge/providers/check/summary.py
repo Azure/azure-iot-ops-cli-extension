@@ -1,15 +1,13 @@
-from tabnanny import check
-from turtle import color
-from typing import Any, Dict, List
+from typing import List
 
 from rich.padding import Padding
+from rich.table import Table
 
-from azext_edge.edge.common import CheckTaskStatus
-from azext_edge.edge.providers.check.base.display import colorize_string
-
-from .common import PADDING_SIZE, ResourceOutputDetailLevel
-from .base import CheckManager
+from ...common import CheckTaskStatus, OpsServiceType
 from .akri import check_akri_deployment
+from .base import CheckManager
+from .base.display import colorize_string
+from .common import ResourceOutputDetailLevel
 from .dataflow import PADDING, check_dataflows_deployment
 from .deviceregistry import check_deviceregistry_deployment
 from .mq import check_mq_deployment
@@ -19,18 +17,42 @@ from .opcua import check_opcua_deployment
 def check_summary(
     resource_name: str,
     resource_kinds: List[str],
-    detail_level = ResourceOutputDetailLevel.summary.value,
+    detail_level=ResourceOutputDetailLevel.summary.value,
     as_list: bool = False,
 ) -> None:
-    service_check_dict = {
-        "Akri": check_akri_deployment,
-        "Broker": check_mq_deployment,
-        "DeviceRegistry": check_deviceregistry_deployment,
-        "OPCUA": check_opcua_deployment,
-        "Dataflow": check_dataflows_deployment,
-    }
+    service_checks = [
+        {
+            "svc": OpsServiceType.akri.value,
+            "title": "Akri",
+            "check": check_akri_deployment,
+        },
+        {
+            "svc": OpsServiceType.mq.value,
+            "title": "Broker",
+            "check": check_mq_deployment,
+        },
+        {
+            "svc": OpsServiceType.deviceregistry.value,
+            "title": "DeviceRegistry",
+            "check": check_deviceregistry_deployment,
+        },
+        {
+            "svc": OpsServiceType.opcua.value,
+            "title": "OPCUA",
+            "check": check_opcua_deployment,
+        },
+        {
+            "svc": OpsServiceType.dataflow.value,
+            "title": "Dataflow",
+            "check": check_dataflows_deployment,
+        },
+    ]
     check_manager = CheckManager(check_name="evalAIOSummary", check_desc=f"Evaluate AIO components")
-    for service_name, check_func in service_check_dict.items():
+    for check in service_checks:
+        service_name = check["title"]
+        check_func = check["check"]
+        svc = check["svc"]
+
         result = check_func(
             detail_level=ResourceOutputDetailLevel.summary.value,
             resource_name=resource_name,
@@ -42,25 +64,30 @@ def check_summary(
         check_manager.add_display(
             target_name=target,
             display=Padding(
-                f"{service_name} checks",
+                service_name,
                 (0, 0, 0, PADDING),
-            )
+            ),
         )
+        grid = Table.grid(padding=(0, 0, 0, 2))
+        add_footer = False
         for obj in result:
             status = obj["status"]
             status_obj = CheckTaskStatus(status)
+            if status_obj == CheckTaskStatus.error or status_obj == CheckTaskStatus.warning:
+                add_footer = True
             emoji = status_obj.emoji
             color = status_obj.color
-
-            # TODO - if status is not success or skipped, add directions to run --svc check
             description = obj["description"]
             check_manager.add_target_eval(
                 target_name=target,
                 status=status,
                 value=obj,
             )
-            # TODO - build a table for each svc
-            check_manager.add_display(target_name=target, display=Padding(
-                f"- {colorize_string(value=emoji, color=color)} {description}", (0, 0, 0, PADDING)
-            ))
+            grid.add_row(colorize_string(value=emoji, color=color), description)
+        # display table
+        check_manager.add_display(target_name=target, display=Padding(grid, (0, 0, 0, PADDING)))
+        # service check suggestion footer
+        if add_footer:
+            footer = f"See details by running: az iot ops check --svc {svc}"
+            check_manager.add_display(target_name=target, display=Padding(footer, (0, 0, 0, PADDING)))
     return check_manager.as_dict(as_list=as_list)
