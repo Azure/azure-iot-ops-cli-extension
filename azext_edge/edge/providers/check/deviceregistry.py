@@ -69,7 +69,7 @@ def evaluate_assets(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalAssets", check_desc="Evaluate Device Registry instances")
 
-    asset_namespace_conditions = ["spec.assetEndpointProfileUri"]
+    asset_namespace_conditions = ["spec.assetEndpointProfileRef"]
 
     target_assets = generate_target_resource_name(api_info=DEVICEREGISTRY_API_V1, resource_kind=DeviceRegistryResourceKinds.ASSET.value)
 
@@ -153,7 +153,11 @@ def evaluate_assets(
             )
 
             # data points
-            data_points = asset_spec.get("dataPoints", [])
+            # all should be under one dataset
+            dataset = asset_spec.get("dataset", [])
+            data_points = []
+            if dataset:
+                data_points = dataset[0].get("dataPoints", [])
 
             if data_points:
                 if not added_datapoint_conditions:
