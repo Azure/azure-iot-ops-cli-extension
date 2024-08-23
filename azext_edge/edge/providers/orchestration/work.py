@@ -22,7 +22,7 @@ from rich.table import Table
 
 from ...util import get_timestamp_now_utc, url_safe_random_chars
 from ...util.az_client import wait_for_terminal_state
-from .resources.clusters import ConnectedClusters
+from .connected_cluster import ConnectedCluster
 from .template import (
     CURRENT_TEMPLATE,
     TemplateVer,
@@ -118,8 +118,7 @@ class WorkManager:
         from azure.cli.core.commands.client_factory import get_subscription_id
 
         self.cmd = cmd
-        self.subscription: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
-        self.connected_clusters = ConnectedClusters(self.cmd)
+        self.subscription_id: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
 
     def _bootstrap_ux(self, show_progress: bool = False):
         self.display = WorkDisplay()
@@ -145,10 +144,6 @@ class WorkManager:
         )
         self.display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.WHAT_IF, "Verify What-If deployment")
 
-        # self.display.add_header(
-        #     WorkCategoryKey.ENABLE_IOT_OPS,
-        #     f"IoT Operations - '[cyan]{CURRENT_TEMPLATE.moniker}[/cyan]'",
-        # )
         self.display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Install foundation")
         deploy_iot_ops_desc = "Deploy Instance"
         if self._targets.instance_name:
@@ -157,10 +152,15 @@ class WorkManager:
             WorkCategoryKey.DEPLOY_IOT_OPS, deploy_iot_ops_desc, skipped=not self._targets.instance_name
         )
 
-    def _process_connected_cluster(self) -> dict:
-        cluster = self.connected_clusters.show(
-            resource_group_name=self._targets.resource_group_name, cluster_name=self._targets.cluster_name
+    def _process_connected_cluster(self) -> ConnectedCluster:
+        connected_cluster = ConnectedCluster(
+            cmd=self.cmd,
+            subscription_id=self.subscription_id,
+            cluster_name=self._targets.cluster_name,
+            resource_group_name=self._targets.resource_group_name,
         )
+
+        cluster = connected_cluster.resource
         cluster_properties: Dict[str, Union[str, dict]] = cluster["properties"]
         cluster_validation_tuples = [
             ("provisioningState", PROVISIONING_STATE_SUCCESS),
@@ -176,7 +176,7 @@ class WorkManager:
         if self._targets.enable_fault_tolerance and cluster_properties["totalNodeCount"] < 3:
             raise ValidationError("Edge storage accelerator fault tolerance enablement requires at least 3 nodes.")
 
-        return cluster
+        return connected_cluster
 
     def execute_ops_init(self, show_progress: bool = True, block: bool = True, pre_flight: bool = True, **kwargs):
         self._bootstrap_ux(show_progress=show_progress)
@@ -211,9 +211,9 @@ class WorkManager:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             self.render_display()
             verify_cli_client_connections()
-            cluster = self._process_connected_cluster()
+            connected_cluster = self._process_connected_cluster()
 
-            return cluster
+            return connected_cluster.resource
             # Pre-check segment
             if (
                 WorkCategoryKey.PRE_FLIGHT in self.display.categories

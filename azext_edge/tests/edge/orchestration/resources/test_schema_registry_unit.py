@@ -27,7 +27,9 @@ from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource, get_resource_id, find_request_by_url, ZEROED_SUBSCRIPTION
 
 SCHEMA_REGISTRY_RP = "Microsoft.DeviceRegistry"
+SCHEMA_REGISTRY_RP_API_VERSION = "2024-07-01-preview"
 STORAGE_RP = "Microsoft.Storage"
+STORAGE_API_VERSION = "2023-05-01"
 
 
 def get_schema_registry_endpoint(
@@ -40,7 +42,7 @@ def get_schema_registry_endpoint(
         resource_group_name=resource_group_name,
         resource_path=resource_path,
         resource_provider=SCHEMA_REGISTRY_RP,
-        api_version="2024-07-01-preview",
+        api_version=SCHEMA_REGISTRY_RP_API_VERSION,
     )
 
 
@@ -50,7 +52,7 @@ def get_storage_container_endpoint(resource_group_name: str, account_name: str, 
         resource_group_name=resource_group_name,
         resource_path=resource_path,
         resource_provider=STORAGE_RP,
-        api_version="2022-09-01",
+        api_version=STORAGE_API_VERSION,
     )
 
 
@@ -60,7 +62,7 @@ def get_storage_endpoint(resource_group_name: str, account_name: str) -> str:
         resource_group_name=resource_group_name,
         resource_path=resource_path,
         resource_provider=STORAGE_RP,
-        api_version="2022-09-01",
+        api_version=STORAGE_API_VERSION,
     )
 
 

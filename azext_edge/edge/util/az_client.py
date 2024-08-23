@@ -33,16 +33,30 @@ logger = get_logger(__name__)
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
     from azure.mgmt.resource.resources.models import GenericResource
-    from azure.mgmt.storage import StorageManagementClient
-    from ..vendor.clients.conectedclustermgmt import ConnectedKubernetesClient
+    from ..vendor.clients.storagemgmt import StorageManagementClient
+    from ..vendor.clients.connectedclustermgmt import ConnectedKubernetesClient
+    from ..vendor.clients.clusterconfigmgmt import KubernetesConfigurationClient
 
 
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
 
 
+def get_clusterconfig_mgmt_client(subscription_id: str, **kwargs) -> "KubernetesConfigurationClient":
+    from ..vendor.clients.clusterconfigmgmt import KubernetesConfigurationClient
+
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return KubernetesConfigurationClient(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
+
 
 def get_connectedk8s_mgmt_client(subscription_id: str, **kwargs) -> "ConnectedKubernetesClient":
-    from ..vendor.clients.conectedclustermgmt import ConnectedKubernetesClient
+    from ..vendor.clients.connectedclustermgmt import ConnectedKubernetesClient
 
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
@@ -55,8 +69,8 @@ def get_connectedk8s_mgmt_client(subscription_id: str, **kwargs) -> "ConnectedKu
     )
 
 
-def get_storage_mgmt_client(subscription_id: str, api_version="2022-09-01", **kwargs) -> "StorageManagementClient":
-    from azure.mgmt.storage import StorageManagementClient
+def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagementClient":
+    from ..vendor.clients.storagemgmt import StorageManagementClient
 
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
@@ -65,7 +79,6 @@ def get_storage_mgmt_client(subscription_id: str, api_version="2022-09-01", **kw
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
-        api_version=api_version,
         **kwargs,
     )
 

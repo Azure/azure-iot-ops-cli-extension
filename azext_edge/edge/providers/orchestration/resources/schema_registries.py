@@ -77,11 +77,12 @@ class SchemaRegistries(Queryable):
             self.storage_mgmt_client = get_storage_mgmt_client(
                 subscription_id=storage_id_container.subscription_id,
             )
-            storage_properties: dict = self.storage_mgmt_client.storage_accounts.get_properties(
+            storage_account: dict = self.storage_mgmt_client.storage_accounts.get_properties(
                 resource_group_name=storage_id_container.resource_group_name,
                 account_name=storage_id_container.resource_name,
-            ).as_dict()
-            is_hns_enabled = storage_properties.get("is_hns_enabled", False)
+            )
+            storage_properties: dict = storage_account["properties"]
+            is_hns_enabled = storage_properties.get("isHnsEnabled", False)
             if not is_hns_enabled:
                 raise ValidationError(
                     "Schema registry requires the storage account to have hierarchical namespace enabled."
@@ -92,16 +93,16 @@ class SchemaRegistries(Queryable):
                     resource_group_name=storage_id_container.resource_group_name,
                     account_name=storage_id_container.resource_name,
                     container_name=storage_container_name,
-                ).as_dict()
+                )
             except ResourceNotFoundError:
                 blob_container = self.storage_mgmt_client.blob_containers.create(
                     resource_group_name=storage_id_container.resource_group_name,
                     account_name=storage_id_container.resource_name,
                     container_name=storage_container_name,
                     blob_container={},
-                ).as_dict()
+                )
 
-            blob_container_url = f"{storage_properties['primary_endpoints']['blob']}{blob_container['name']}"
+            blob_container_url = f"{storage_properties['primaryEndpoints']['blob']}{blob_container['name']}"
             resource = {
                 "location": location,
                 "identity": {
@@ -126,28 +127,9 @@ class SchemaRegistries(Queryable):
                 subscription_id=storage_id_container.subscription_id, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
             )
             permission_manager = PermissionManager(storage_id_container.subscription_id)
-            # TODO - @digimaun
-            # can_apply_role_assignment = permission_manager.can_apply_role_assignment(
-            #     resource_group_name=storage_id_container.resource_group_name,
-            #     resource_provider_namespace="Microsoft.Storage",
-            #     parent_resource_path="",
-            #     resource_type="storageAccounts",
-            #     resource_name=storage_id_container.resource_name,
-            # )
-            # if not can_apply_role_assignment:
-            #     c.stop()
-            #     logger.warning(
-            #         get_user_msg_warn_ra(
-            #             prefix="The logged-in principal is lacking permission to apply role assignment.",
-            #             principal_id=result["identity"]["principalId"],
-            #             scope=storage_properties["id"],
-            #         )
-            #     )
-            #     return result
-
             try:
                 permission_manager.apply_role_assignment(
-                    scope=storage_properties["id"],
+                    scope=storage_account["id"],
                     principal_id=result["identity"]["principalId"],
                     role_def_id=target_role_def,
                 )
@@ -157,7 +139,7 @@ class SchemaRegistries(Queryable):
                     get_user_msg_warn_ra(
                         prefix=f"Role assignment failed with:\n{str(e)}.",
                         principal_id=result["identity"]["principalId"],
-                        scope=storage_properties["id"],
+                        scope=storage_account["id"],
                     )
                 )
 
