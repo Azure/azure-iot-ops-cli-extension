@@ -89,8 +89,9 @@ def build_bundle(
             if not deployed_apis:
                 expected_api_version = api_info["apis"].as_str()
                 logger.warning(
-                    f"Skip capturing CRD for {service_moniker} since {expected_api_version} is not deployed, "
-                    "will try to get rest of the resources..."
+                    f"The following API(s) were not detected {expected_api_version}. "
+                    f"CR capture for {service_moniker} will be skipped. "
+                    "Still attempting capture of runtime resources..."
                 )
 
             # still try fetching other resources even crds are not available due to api version mismatch
