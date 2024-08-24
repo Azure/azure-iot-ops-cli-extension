@@ -111,7 +111,7 @@ class InitTargets:
         if not name:
             return name
         sanitized = str(name)
-        sanitized = name.lower()
+        sanitized = sanitized.lower()
         sanitized = sanitized.replace("_", "-")
         return sanitized
 
