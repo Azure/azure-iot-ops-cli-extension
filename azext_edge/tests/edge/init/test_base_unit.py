@@ -102,38 +102,6 @@ def test_deploy_template(mocked_resource_management_client, pre_flight):
         assert deployment == mocked_resource_management_client.deployments.begin_create_or_update.return_value
 
 
-@pytest.mark.parametrize("mocked_connected_cluster_location", ["westus2", "WestUS2"], indirect=True)
-@pytest.mark.parametrize("location", [None, generate_random_string()])
-def test_verify_cluster_and_use_location(mocked_connected_cluster_location, mocked_cmd, location):
-    kwargs = {
-        "cmd": mocked_cmd,
-        "cluster_location": None,
-        "location": location,
-        "cluster_name": generate_random_string(),
-        "subscription_id": generate_random_string(),
-        "resource_group_name": generate_random_string(),
-    }
-    from azext_edge.edge.providers.orchestration.base import (
-        verify_cluster_and_use_location,
-    )
-
-    connected_cluster = verify_cluster_and_use_location(kwargs)
-
-    connected_cluster.cluster_name == kwargs["cluster_name"]
-    connected_cluster.subscription_id == kwargs["subscription_id"]
-    connected_cluster.resource_group_name == kwargs["resource_group_name"]
-
-    mocked_connected_cluster_location.assert_called_once()
-
-    lowered_cluster_location = mocked_connected_cluster_location.return_value.lower()
-    assert kwargs["cluster_location"] == lowered_cluster_location
-
-    if location:
-        assert kwargs["location"] == location
-    else:
-        assert kwargs["location"] == lowered_cluster_location
-
-
 @pytest.mark.parametrize(
     "mocked_connected_cluster_extensions",
     [
@@ -417,7 +385,12 @@ def test_register_providers(mocker, registration_state):
         def as_dict(self):
             return {"namespace": self.namespace, "registration_state": self.registration_state}
 
-    iot_ops_rps = ["Microsoft.IoTOperationsOrchestrator", "Microsoft.IoTOperations", "Microsoft.DeviceRegistry"]
+    iot_ops_rps = [
+        "Microsoft.IoTOperationsOrchestrator",
+        "Microsoft.IoTOperations",
+        "Microsoft.DeviceRegistry",
+        "Microsoft.SecretSyncController",
+    ]
     mocked_get_resource_client().providers.list.return_value = [
         MockProvider(namespace, registration_state) for namespace in iot_ops_rps
     ]

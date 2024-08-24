@@ -137,31 +137,6 @@ def deploy_template(
     return result, deployment
 
 
-def verify_cluster_and_use_location(kwargs: dict) -> ConnectedCluster:
-    # TODO: Note kwargs is not expanded to keep as mutable dict until next TODO resolved.
-    # TODO: Use intermediate object to store KPIs / refactor out of kwargs.
-    location = kwargs["location"]
-    cluster_name = kwargs["cluster_name"]
-    subscription_id = kwargs["subscription_id"]
-    resource_group_name = kwargs["resource_group_name"]
-
-    from .connected_cluster import ConnectedCluster
-
-    connected_cluster = ConnectedCluster(
-        cmd=kwargs["cmd"],
-        subscription_id=subscription_id,
-        cluster_name=cluster_name,
-        resource_group_name=resource_group_name,
-    )
-    connected_cluster_location = connected_cluster.location.lower()
-
-    kwargs["cluster_location"] = connected_cluster_location
-    if not location:
-        kwargs["location"] = connected_cluster_location
-
-    return connected_cluster
-
-
 def throw_if_iotops_deployed(connected_cluster: ConnectedCluster):
     connected_cluster_extensions = connected_cluster.extensions
     for extension in connected_cluster_extensions:
@@ -196,7 +171,7 @@ def verify_custom_locations_enabled(cmd):
         return
 
     # We are expecting one binding. Field selector pattern is used due to AKS-EE issue.
-    target_binding = target_bindings["items"][0]
+    target_binding: dict = target_bindings["items"][0]
     for subject in target_binding.get("subjects", []):
         if "name" in subject and subject["name"].lower() == cl_oid:
             return
@@ -204,6 +179,7 @@ def verify_custom_locations_enabled(cmd):
     raise ValidationError(f"Invalid OID used for custom locations feature enablement. Use '{cl_oid}'.")
 
 
+# TODO: @digimaun - can be useful for cluster side checks.
 def verify_arc_cluster_config(connected_cluster: ConnectedCluster):
     connect_config_map = get_config_map(name=ARC_CONFIG_MAP, namespace=ARC_NAMESPACE)
     if not connect_config_map:

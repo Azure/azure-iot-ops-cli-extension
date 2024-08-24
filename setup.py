@@ -34,7 +34,6 @@ DEPENDENCIES = [
     "protobuf~=4.25.0",
     "opentelemetry-proto~=1.20.0",
     "packaging>=23.2",
-    "azure-mgmt-storage~=21.1.0",
 ]
 
 CLASSIFIERS = [
