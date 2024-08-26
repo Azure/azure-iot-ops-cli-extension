@@ -323,10 +323,10 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops broker authn delete"
+        "iot ops broker authz delete"
     ] = """
         type: command
-        short-summary: Delete an mqtt broker authentication resource.
+        short-summary: Delete an mqtt broker authorization resource.
 
         examples:
         - name: Delete the broker authorization resource called 'authz' associated with broker 'broker'.
