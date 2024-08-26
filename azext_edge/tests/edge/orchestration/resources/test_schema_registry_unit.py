@@ -342,18 +342,6 @@ def test_schema_registry_create(
     )
 
     mock_permission_manager.assert_called_with(ZEROED_SUBSCRIPTION)
-    # TODO - @digimaun
-    # mock_permission_manager().can_apply_role_assignment.assert_called_with(
-    #     resource_group_name=resource_group_name,
-    #     resource_provider_namespace="Microsoft.Storage",
-    #     parent_resource_path="",
-    #     resource_type="storageAccounts",
-    #     resource_name=storage_account_name,
-    # )
-    # if not can_apply_role_assignment:
-    #     mock_logger.warning.assert_called_once()
-    #     return
-
     target_role_id = custom_role_id or ROLE_DEF_FORMAT_STR.format(
         subscription_id=ZEROED_SUBSCRIPTION, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
     )

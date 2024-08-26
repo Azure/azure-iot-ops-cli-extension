@@ -196,3 +196,13 @@ def is_enabled_str(value: Optional[str]) -> bool:
         return value.lower() == "enabled"
 
     return False
+
+
+def should_continue_prompt(confirm_yes: Optional[bool] = None, context: str = "Deletion") -> bool:
+    from rich.prompt import Confirm
+
+    if not confirm_yes and not Confirm.ask("Continue?"):
+        logger.warning(f"{context} cancelled.")
+        return False
+
+    return True

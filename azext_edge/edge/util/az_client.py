@@ -150,7 +150,7 @@ def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC) 
 
 
 def wait_for_terminal_states(
-    *pollers: "LROPoller", retries: int = POLL_RETRIES, wait_sec: int = POLL_WAIT_SEC
+    *pollers: "LROPoller", retries: int = POLL_RETRIES, wait_sec: int = POLL_WAIT_SEC, **_
 ) -> Tuple["LROPoller"]:
     counter = 0
     while counter < retries:

@@ -71,11 +71,6 @@ def load_iotops_arguments(self, _):
             help="Force the operation to execute.",
         )
         context.argument(
-            "instance_name",
-            options_list=["--name", "-n"],
-            help="IoT Operations instance name.",
-        )
-        context.argument(
             "tags",
             options_list=["--tags"],
             arg_type=tags_type,
@@ -83,9 +78,19 @@ def load_iotops_arguments(self, _):
             'Use --tags "" to remove all tags.',
         )
         context.argument(
+            "instance_name",
+            options_list=["--name", "-n"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
             "instance_description",
             options_list=["--desc"],
             help="Description of the IoT Operations instance.",
+        )
+        context.argument(
+            "broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
         )
 
     with self.argument_context("iot ops show") as context:
@@ -229,7 +234,7 @@ def load_iotops_arguments(self, _):
             help="IoT Operations instance name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--name", "-n"],
             help="Mqtt broker name.",
         )
@@ -241,7 +246,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker listener name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -253,7 +258,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker authentication resource name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -265,7 +270,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker authorization resource name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -327,7 +332,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "instance_name",
             options_list=["--name", "-n"],
-            help="IoT Operations instance name. The default is in the form '{cluster_name}-ops-instance'.",
+            help="IoT Operations instance name. An instance name must be provided to "
+            "deploy an instance during init orchestration.",
         )
         context.argument(
             "cluster_name",
@@ -343,7 +349,7 @@ def load_iotops_arguments(self, _):
             "custom_location_name",
             options_list=["--custom-location"],
             help="The custom location name corresponding to the IoT Operations deployment. "
-            "The default is in the form '{cluster_name}-{token}-ops-init-cl'.",
+            "The default is in the form '{cluster_name}-{token}-ops-cl'.",
         )
         context.argument(
             "location",
@@ -394,28 +400,21 @@ def load_iotops_arguments(self, _):
             arg_group="Broker",
         )
         context.argument(
-            "mq_frontend_server_name",
-            options_list=["--broker-frontend-server"],
-            help="The mqtt broker frontend server name.",
+            "broker_name",
+            options_list=["--broker"],
+            help="Mqtt broker name.",
             arg_group="Broker",
-            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "broker_listener_name",
             options_list=["--broker-listener"],
-            help="The mqtt broker listener name.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "broker_name",
-            options_list=["--broker"],
-            help="The mqtt broker name.",
+            help="Mqtt broker listener name.",
             arg_group="Broker",
         )
         context.argument(
             "broker_authn_name",
             options_list=["--broker-authn"],
-            help="The mqtt broker authN name.",
+            help="Mqtt broker authentication name.",
             arg_group="Broker",
         )
         context.argument(

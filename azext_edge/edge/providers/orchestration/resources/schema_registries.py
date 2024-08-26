@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Iterable, Optional
 from azure.cli.core.azclierror import ValidationError
 from azure.core.exceptions import ResourceNotFoundError
 from knack.log import get_logger
-from rich.prompt import Confirm
+from rich.console import Console
 
 from ....util.az_client import (
     get_authz_client,
@@ -18,10 +18,13 @@ from ....util.az_client import (
     parse_resource_id,
     wait_for_terminal_state,
 )
+from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
 from ..permissions import PermissionManager
 
 logger = get_logger(__name__)
+
+console = Console()
 
 
 if TYPE_CHECKING:
@@ -68,7 +71,7 @@ class SchemaRegistries(Queryable):
         custom_role_id: Optional[str] = None,
         **kwargs,
     ) -> dict:
-        with self.console.status("Working...") as c:
+        with console.status("Working...") as c:
             if not location:
                 location = self.get_resource_group(name=resource_group_name)["location"]
 
@@ -154,15 +157,10 @@ class SchemaRegistries(Queryable):
         return self.ops.list_by_subscription()
 
     def delete(self, name: str, resource_group_name: str, confirm_yes: Optional[bool] = None, **kwargs):
-        # TODO @digimaun - reuse
-        should_delete = True
-        if not confirm_yes:
-            should_delete = Confirm.ask("Continue?")
-
-        if not should_delete:
-            logger.warning("Deletion cancelled.")
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
+        if should_bail:
             return
 
-        with self.console.status("Working..."):
+        with console.status("Working..."):
             poller = self.ops.begin_delete(resource_group_name=resource_group_name, schema_registry_name=name)
             return wait_for_terminal_state(poller, **kwargs)

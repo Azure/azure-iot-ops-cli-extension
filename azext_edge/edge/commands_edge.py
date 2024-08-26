@@ -123,7 +123,7 @@ def init(
     # mq_backend_redundancy_factor: int = 2,
     # mq_frontend_workers: int = 2,
     # mq_frontend_replicas: int = 2,
-    # mq_frontend_server_name: str = "mq-dmqtt-frontend",
+
 
     # TODO - @digimaun csi_driver_config: Optional[List[str]] = None,
     # keyvault_resource_id: Optional[str] = None,  # TODO - @digimaun
@@ -178,7 +178,6 @@ def init(
     #     mq_backend_redundancy_factor=int(mq_backend_redundancy_factor),
     #     mq_frontend_replicas=int(mq_frontend_replicas),
     #     mq_frontend_workers=int(mq_frontend_workers),
-    #     mq_frontend_server_name=str(mq_frontend_server_name),
     #     mq_listener_name=str(mq_listener_name),
     #     mq_authn_name=str(mq_authn_name),
     #     keyvault_resource_id=keyvault_resource_id,
