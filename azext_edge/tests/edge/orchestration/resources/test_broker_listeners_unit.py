@@ -9,7 +9,7 @@ from typing import Optional
 import pytest
 import responses
 
-from azext_edge.edge.commands_mq import list_broker_listeners, show_broker_listener
+from azext_edge.edge.commands_mq import list_broker_listeners, show_broker_listener, delete_broker_listener
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
@@ -132,4 +132,32 @@ def test_broker_list(mocked_cmd, mocked_responses: responses, records: int):
     )
 
     assert result == mock_broker_listener_records["value"]
+    assert len(mocked_responses.calls) == 1
+
+
+def test_broker_listener_delete(mocked_cmd, mocked_responses: responses):
+    listener_name = generate_random_string()
+    broker_name = generate_random_string()
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+
+    mocked_responses.add(
+        method=responses.DELETE,
+        url=get_broker_listener_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            broker_name=broker_name,
+            listener_name=listener_name,
+        ),
+        status=204,
+    )
+    delete_broker_listener(
+        cmd=mocked_cmd,
+        listener_name=listener_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=True,
+        wait_sec=0.25,
+    )
     assert len(mocked_responses.calls) == 1

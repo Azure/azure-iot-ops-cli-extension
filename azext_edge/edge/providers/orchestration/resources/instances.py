@@ -8,6 +8,7 @@ from typing import Iterable, Optional
 
 from knack.log import get_logger
 from rich import print
+from rich.console import Console
 
 from ....util.az_client import (
     get_iotops_mgmt_client,
@@ -19,6 +20,8 @@ from ..common import CUSTOM_LOCATIONS_API_VERSION
 from ..resource_map import IoTOperationsResourceMap
 
 logger = get_logger(__name__)
+
+console = Console()
 
 
 class Instances(Queryable):
@@ -45,7 +48,7 @@ class Instances(Queryable):
 
     def _show_tree(self, instance: dict):
         resource_map = self.get_resource_map(instance)
-        with self.console.status("Working..."):
+        with console.status("Working..."):
             resource_map.refresh_resource_state()
         print(resource_map.build_tree(category_color="cyan"))
 
@@ -81,7 +84,7 @@ class Instances(Queryable):
         if tags or tags == {}:
             instance["tags"] = tags
 
-        with self.console.status("Working..."):
+        with console.status("Working..."):
             poller = self.iotops_mgmt_client.instance.begin_create_or_update(
                 instance_name=name,
                 resource_group_name=resource_group_name,

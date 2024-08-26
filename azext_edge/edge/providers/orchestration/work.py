@@ -162,7 +162,6 @@ class WorkManager:
             cluster_name=self._targets.cluster_name,
             resource_group_name=self._targets.resource_group_name,
         )
-
         cluster = connected_cluster.resource
         cluster_properties: Dict[str, Union[str, dict]] = cluster["properties"]
         cluster_validation_tuples = [

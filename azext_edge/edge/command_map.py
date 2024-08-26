@@ -47,6 +47,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("stats", "stats")
         cmd_group.show_command("show", "show_broker")
         cmd_group.command("list", "list_brokers")
+        cmd_group.command("delete", "delete_broker")
 
     with self.command_group(
         "iot ops broker listener",
@@ -54,6 +55,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_broker_listener")
         cmd_group.command("list", "list_broker_listeners")
+        cmd_group.command("delete", "delete_broker_listener")
 
     with self.command_group(
         "iot ops broker authn",
@@ -61,6 +63,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_broker_authn")
         cmd_group.command("list", "list_broker_authns")
+        cmd_group.command("delete", "delete_broker_authn")
 
     with self.command_group(
         "iot ops broker authz",
@@ -68,6 +71,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_broker_authz")
         cmd_group.command("list", "list_broker_authzs")
+        cmd_group.command("delete", "delete_broker_authz")
 
     with self.command_group(
         "iot ops dataflow",
