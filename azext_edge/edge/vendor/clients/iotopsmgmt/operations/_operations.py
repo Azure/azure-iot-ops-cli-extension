@@ -48,7 +48,7 @@ def build_operations_list_request(**kwargs: Any) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -67,7 +67,7 @@ def build_instance_list_by_subscription_request(subscription_id: str, **kwargs: 
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -93,7 +93,7 @@ def build_instance_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -124,7 +124,7 @@ def build_instance_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -157,7 +157,7 @@ def build_instance_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -192,7 +192,7 @@ def build_instance_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -226,7 +226,7 @@ def build_instance_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -252,13 +252,13 @@ def build_instance_delete_request(
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_broker_list_by_instance_resource_request(
+def build_broker_list_by_resource_group_request(
     resource_group_name: str, instance_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -290,7 +290,7 @@ def build_broker_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -326,7 +326,7 @@ def build_broker_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -363,7 +363,7 @@ def build_broker_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -392,13 +392,13 @@ def build_broker_delete_request(
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_broker_authentication_list_by_broker_resource_request(
+def build_broker_authentication_list_by_resource_group_request(
     resource_group_name: str, instance_name: str, broker_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -438,7 +438,7 @@ def build_broker_authentication_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -487,7 +487,7 @@ def build_broker_authentication_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -537,7 +537,7 @@ def build_broker_authentication_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -574,13 +574,13 @@ def build_broker_authentication_delete_request(
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_broker_authorization_list_by_broker_resource_request(
+def build_broker_authorization_list_by_resource_group_request(
     resource_group_name: str, instance_name: str, broker_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -620,7 +620,7 @@ def build_broker_authorization_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -669,7 +669,7 @@ def build_broker_authorization_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -719,7 +719,7 @@ def build_broker_authorization_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -756,13 +756,13 @@ def build_broker_authorization_delete_request(
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_broker_listener_list_by_broker_resource_request(
+def build_broker_listener_list_by_resource_group_request(
     resource_group_name: str, instance_name: str, broker_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -802,7 +802,7 @@ def build_broker_listener_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -846,7 +846,7 @@ def build_broker_listener_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -891,7 +891,7 @@ def build_broker_listener_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -923,13 +923,13 @@ def build_broker_listener_delete_request(
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_endpoint_list_by_instance_resource_request(
+def build_dataflow_endpoint_list_by_resource_group_request(
     resource_group_name: str, instance_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -955,13 +955,13 @@ def build_data_flow_endpoint_list_by_instance_resource_request(
     return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_endpoint_get_request(
+def build_dataflow_endpoint_get_request(
     resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -995,14 +995,14 @@ def build_data_flow_endpoint_get_request(
     return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_endpoint_create_or_update_request(
+def build_dataflow_endpoint_create_or_update_request(
     resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1038,13 +1038,13 @@ def build_data_flow_endpoint_create_or_update_request(
     return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_endpoint_delete_request(
+def build_dataflow_endpoint_delete_request(
     resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1078,13 +1078,13 @@ def build_data_flow_endpoint_delete_request(
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_profile_list_by_instance_resource_request(
+def build_dataflow_profile_list_by_resource_group_request(
     resource_group_name: str, instance_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1110,13 +1110,13 @@ def build_data_flow_profile_list_by_instance_resource_request(
     return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_profile_get_request(
+def build_dataflow_profile_get_request(
     resource_group_name: str, instance_name: str, dataflow_profile_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1150,14 +1150,14 @@ def build_data_flow_profile_get_request(
     return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_profile_create_or_update_request(
+def build_dataflow_profile_create_or_update_request(
     resource_group_name: str, instance_name: str, dataflow_profile_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1193,13 +1193,13 @@ def build_data_flow_profile_create_or_update_request(
     return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_profile_delete_request(
+def build_dataflow_profile_delete_request(
     resource_group_name: str, instance_name: str, dataflow_profile_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1233,13 +1233,13 @@ def build_data_flow_profile_delete_request(
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_list_by_profile_resource_request(
+def build_dataflow_list_by_profile_resource_request(
     resource_group_name: str, instance_name: str, dataflow_profile_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1273,7 +1273,7 @@ def build_data_flow_list_by_profile_resource_request(
     return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_get_request(
+def build_dataflow_get_request(
     resource_group_name: str,
     instance_name: str,
     dataflow_profile_name: str,
@@ -1284,7 +1284,7 @@ def build_data_flow_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1321,7 +1321,7 @@ def build_data_flow_get_request(
     return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_create_or_update_request(
+def build_dataflow_create_or_update_request(
     resource_group_name: str,
     instance_name: str,
     dataflow_profile_name: str,
@@ -1333,7 +1333,7 @@ def build_data_flow_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1372,7 +1372,7 @@ def build_data_flow_create_or_update_request(
     return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_data_flow_delete_request(
+def build_dataflow_delete_request(
     resource_group_name: str,
     instance_name: str,
     dataflow_profile_name: str,
@@ -1383,7 +1383,7 @@ def build_data_flow_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-08-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1426,7 +1426,7 @@ class Operations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`operations` attribute.
     """
 
@@ -1547,7 +1547,7 @@ class InstanceOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`instance` attribute.
     """
 
@@ -1578,8 +1578,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -1698,8 +1744,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -1821,8 +1913,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -2014,8 +2152,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -2055,8 +2239,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -2133,8 +2363,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -2205,8 +2481,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -2246,8 +2568,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -2357,6 +2725,25 @@ class InstanceOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
                     }
@@ -2371,8 +2758,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -2442,8 +2875,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -2499,6 +2978,25 @@ class InstanceOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
                     }
@@ -2513,8 +3011,54 @@ class InstanceOperations:
                     "location": "str",  # The geo-location where the resource lives. Required.
                     "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
+                    "identity": {
+                        "type": "str",  # Type of managed service identity (where both
+                          SystemAssigned and UserAssigned types are allowed). Required. Known values
+                          are: "None", "SystemAssigned", "UserAssigned", and
+                          "SystemAssigned,UserAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str",  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
+                        "userAssignedIdentities": {
+                            "str": {
+                                "clientId": "str",  # Optional. The client ID of the
+                                  assigned identity.
+                                "principalId": "str"  # Optional. The principal ID of
+                                  the assigned identity.
+                            }
+                        }
+                    },
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "schemaRegistryNamespace": "str",  # The reference to the Schema
+                          Registry for this AIO Instance. Required.
+                        "components": {
+                            "adr": {
+                                "state": "str"  # This determines if the ADR service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "akri": {
+                                "state": "str"  # This determines if the AKRI service
+                                  is enabled. Required. Known values are: "Enabled" and "Disabled".
+                            },
+                            "connectors": {
+                                "state": "str"  # This determines if the Connector
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "dataflows": {
+                                "state": "str"  # This determines if the Dataflow
+                                  service is enabled. Required. Known values are: "Enabled" and
+                                  "Disabled".
+                            },
+                            "schemaRegistry": {
+                                "state": "str"  # This determines if the Schema
+                                  Registry service is enabled. Required. Known values are: "Enabled"
+                                  and "Disabled".
+                            }
+                        },
                         "description": "str",  # Optional. Detailed description of the
                           Instance.
                         "provisioningState": "str",  # Optional. The status of the last
@@ -2712,7 +3256,7 @@ class BrokerOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker` attribute.
     """
 
@@ -2724,7 +3268,7 @@ class BrokerOperations:
         self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
 
     @distributed_trace
-    def list_by_instance_resource(self, resource_group_name: str, instance_name: str, **kwargs: Any) -> Iterable[JSON]:
+    def list_by_resource_group(self, resource_group_name: str, instance_name: str, **kwargs: Any) -> Iterable[JSON]:
         """List BrokerResource resources by InstanceResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
@@ -3086,7 +3630,7 @@ class BrokerOperations:
         def prepare_request(next_link=None):
             if not next_link:
 
-                request = build_broker_list_by_instance_resource_request(
+                request = build_broker_list_by_resource_group_request(
                     resource_group_name=resource_group_name,
                     instance_name=instance_name,
                     subscription_id=self._config.subscription_id,
@@ -5537,7 +6081,7 @@ class BrokerAuthenticationOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_authentication` attribute.
     """
 
@@ -5549,7 +6093,7 @@ class BrokerAuthenticationOperations:
         self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
 
     @distributed_trace
-    def list_by_broker_resource(
+    def list_by_resource_group(
         self, resource_group_name: str, instance_name: str, broker_name: str, **kwargs: Any
     ) -> Iterable[JSON]:
         """List BrokerAuthenticationResource resources by BrokerResource.
@@ -5582,8 +6126,8 @@ class BrokerAuthenticationOperations:
                             {
                                 "method": "str",  # Custom authentication
                                   configuration. Required. Known values are: "Custom",
-                                  "ServiceAccountToken", and "X509Credentials".
-                                "custom": {
+                                  "ServiceAccountToken", and "X509".
+                                "customSettings": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
@@ -5602,13 +6146,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "serviceAccountToken": {
+                                "serviceAccountTokenSettings": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509Credentials": {
+                                "x509Settings": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -5665,7 +6209,7 @@ class BrokerAuthenticationOperations:
         def prepare_request(next_link=None):
             if not next_link:
 
-                request = build_broker_authentication_list_by_broker_resource_request(
+                request = build_broker_authentication_list_by_resource_group_request(
                     resource_group_name=resource_group_name,
                     instance_name=instance_name,
                     broker_name=broker_name,
@@ -5753,8 +6297,8 @@ class BrokerAuthenticationOperations:
                             {
                                 "method": "str",  # Custom authentication
                                   configuration. Required. Known values are: "Custom",
-                                  "ServiceAccountToken", and "X509Credentials".
-                                "custom": {
+                                  "ServiceAccountToken", and "X509".
+                                "customSettings": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
@@ -5773,13 +6317,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "serviceAccountToken": {
+                                "serviceAccountTokenSettings": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509Credentials": {
+                                "x509Settings": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -6002,8 +6546,8 @@ class BrokerAuthenticationOperations:
                             {
                                 "method": "str",  # Custom authentication
                                   configuration. Required. Known values are: "Custom",
-                                  "ServiceAccountToken", and "X509Credentials".
-                                "custom": {
+                                  "ServiceAccountToken", and "X509".
+                                "customSettings": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
@@ -6022,13 +6566,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "serviceAccountToken": {
+                                "serviceAccountTokenSettings": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509Credentials": {
+                                "x509Settings": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -6083,8 +6627,8 @@ class BrokerAuthenticationOperations:
                             {
                                 "method": "str",  # Custom authentication
                                   configuration. Required. Known values are: "Custom",
-                                  "ServiceAccountToken", and "X509Credentials".
-                                "custom": {
+                                  "ServiceAccountToken", and "X509".
+                                "customSettings": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
@@ -6103,13 +6647,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "serviceAccountToken": {
+                                "serviceAccountTokenSettings": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509Credentials": {
+                                "x509Settings": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -6207,8 +6751,8 @@ class BrokerAuthenticationOperations:
                             {
                                 "method": "str",  # Custom authentication
                                   configuration. Required. Known values are: "Custom",
-                                  "ServiceAccountToken", and "X509Credentials".
-                                "custom": {
+                                  "ServiceAccountToken", and "X509".
+                                "customSettings": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
@@ -6227,13 +6771,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "serviceAccountToken": {
+                                "serviceAccountTokenSettings": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509Credentials": {
+                                "x509Settings": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -6329,8 +6873,8 @@ class BrokerAuthenticationOperations:
                             {
                                 "method": "str",  # Custom authentication
                                   configuration. Required. Known values are: "Custom",
-                                  "ServiceAccountToken", and "X509Credentials".
-                                "custom": {
+                                  "ServiceAccountToken", and "X509".
+                                "customSettings": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
@@ -6349,13 +6893,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "serviceAccountToken": {
+                                "serviceAccountTokenSettings": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509Credentials": {
+                                "x509Settings": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -6410,8 +6954,8 @@ class BrokerAuthenticationOperations:
                             {
                                 "method": "str",  # Custom authentication
                                   configuration. Required. Known values are: "Custom",
-                                  "ServiceAccountToken", and "X509Credentials".
-                                "custom": {
+                                  "ServiceAccountToken", and "X509".
+                                "customSettings": {
                                     "endpoint": "str",  # Endpoint of the custom
                                       authentication server. Must be an HTTPS endpoint. Required.
                                     "auth": {
@@ -6430,13 +6974,13 @@ class BrokerAuthenticationOperations:
                                           HTTP headers to pass to the custom authentication server.
                                     }
                                 },
-                                "serviceAccountToken": {
+                                "serviceAccountTokenSettings": {
                                     "audiences": [
                                         "str"  # List of allowed audience.
                                           Required.
                                     ]
                                 },
-                                "x509Credentials": {
+                                "x509Settings": {
                                     "authorizationAttributes": {
                                         "str": {
                                             "attributes": {
@@ -6648,7 +7192,7 @@ class BrokerAuthorizationOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_authorization` attribute.
     """
 
@@ -6660,7 +7204,7 @@ class BrokerAuthorizationOperations:
         self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
 
     @distributed_trace
-    def list_by_broker_resource(
+    def list_by_resource_group(
         self, resource_group_name: str, instance_name: str, broker_name: str, **kwargs: Any
     ) -> Iterable[JSON]:
         """List BrokerAuthorizationResource resources by BrokerResource.
@@ -6700,6 +7244,13 @@ class BrokerAuthorizationOperations:
                                               access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
+                                            "clientIds": [
+                                                "str"  # Optional. A
+                                                  list of client IDs that match the clients. The client
+                                                  IDs are case-sensitive and must match the client IDs
+                                                  provided by the clients during connection. This
+                                                  subfield may be set if the method is Connect.
+                                            ],
                                             "topics": [
                                                 "str"  # Optional. A
                                                   list of topics or topic patterns that match the
@@ -6795,7 +7346,7 @@ class BrokerAuthorizationOperations:
         def prepare_request(next_link=None):
             if not next_link:
 
-                request = build_broker_authorization_list_by_broker_resource_request(
+                request = build_broker_authorization_list_by_resource_group_request(
                     resource_group_name=resource_group_name,
                     instance_name=instance_name,
                     broker_name=broker_name,
@@ -6890,6 +7441,13 @@ class BrokerAuthorizationOperations:
                                               access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
+                                            "clientIds": [
+                                                "str"  # Optional. A
+                                                  list of client IDs that match the clients. The client
+                                                  IDs are case-sensitive and must match the client IDs
+                                                  provided by the clients during connection. This
+                                                  subfield may be set if the method is Connect.
+                                            ],
                                             "topics": [
                                                 "str"  # Optional. A
                                                   list of topics or topic patterns that match the
@@ -7158,6 +7716,13 @@ class BrokerAuthorizationOperations:
                                               access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
+                                            "clientIds": [
+                                                "str"  # Optional. A
+                                                  list of client IDs that match the clients. The client
+                                                  IDs are case-sensitive and must match the client IDs
+                                                  provided by the clients during connection. This
+                                                  subfield may be set if the method is Connect.
+                                            ],
                                             "topics": [
                                                 "str"  # Optional. A
                                                   list of topics or topic patterns that match the
@@ -7258,6 +7823,13 @@ class BrokerAuthorizationOperations:
                                               access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
+                                            "clientIds": [
+                                                "str"  # Optional. A
+                                                  list of client IDs that match the clients. The client
+                                                  IDs are case-sensitive and must match the client IDs
+                                                  provided by the clients during connection. This
+                                                  subfield may be set if the method is Connect.
+                                            ],
                                             "topics": [
                                                 "str"  # Optional. A
                                                   list of topics or topic patterns that match the
@@ -7401,6 +7973,13 @@ class BrokerAuthorizationOperations:
                                               access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
+                                            "clientIds": [
+                                                "str"  # Optional. A
+                                                  list of client IDs that match the clients. The client
+                                                  IDs are case-sensitive and must match the client IDs
+                                                  provided by the clients during connection. This
+                                                  subfield may be set if the method is Connect.
+                                            ],
                                             "topics": [
                                                 "str"  # Optional. A
                                                   list of topics or topic patterns that match the
@@ -7542,6 +8121,13 @@ class BrokerAuthorizationOperations:
                                               access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
+                                            "clientIds": [
+                                                "str"  # Optional. A
+                                                  list of client IDs that match the clients. The client
+                                                  IDs are case-sensitive and must match the client IDs
+                                                  provided by the clients during connection. This
+                                                  subfield may be set if the method is Connect.
+                                            ],
                                             "topics": [
                                                 "str"  # Optional. A
                                                   list of topics or topic patterns that match the
@@ -7642,6 +8228,13 @@ class BrokerAuthorizationOperations:
                                               access for a Broker method (i.e., Connect, Subscribe, or
                                               Publish). Required. Known values are: "Connect",
                                               "Publish", and "Subscribe".
+                                            "clientIds": [
+                                                "str"  # Optional. A
+                                                  list of client IDs that match the clients. The client
+                                                  IDs are case-sensitive and must match the client IDs
+                                                  provided by the clients during connection. This
+                                                  subfield may be set if the method is Connect.
+                                            ],
                                             "topics": [
                                                 "str"  # Optional. A
                                                   list of topics or topic patterns that match the
@@ -7892,7 +8485,7 @@ class BrokerListenerOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_listener` attribute.
     """
 
@@ -7904,7 +8497,7 @@ class BrokerListenerOperations:
         self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
 
     @distributed_trace
-    def list_by_broker_resource(
+    def list_by_resource_group(
         self, resource_group_name: str, instance_name: str, broker_name: str, **kwargs: Any
     ) -> Iterable[JSON]:
         """List BrokerListenerResource resources by BrokerResource.
@@ -7933,8 +8526,6 @@ class BrokerListenerOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "brokerRef": "str",  # Broker associated with this listener.
-                          Required.
                         "ports": [
                             {
                                 "port": 0,  # TCP port for accepting client
@@ -7952,11 +8543,10 @@ class BrokerListenerOperations:
                                     "mode": "str",  # Mode of TLS server
                                       certificate management. Required. Known values are: "Automatic"
                                       and "Manual".
-                                    "automatic": {
+                                    "certManagerCertificateSpec": {
                                         "issuerRef": {
-                                            "apiGroup":
-                                              "cert-manager.io",  # Default value is "cert-manager.io".
-                                              group of issuer.
+                                            "group": "cert-manager.io",
+                                              # Default value is "cert-manager.io". group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -7990,7 +8580,7 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretRef": "str"  # Optional.
+                                        "secretName": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
@@ -8048,7 +8638,7 @@ class BrokerListenerOperations:
         def prepare_request(next_link=None):
             if not next_link:
 
-                request = build_broker_listener_list_by_broker_resource_request(
+                request = build_broker_listener_list_by_resource_group_request(
                     resource_group_name=resource_group_name,
                     instance_name=instance_name,
                     broker_name=broker_name,
@@ -8132,8 +8722,6 @@ class BrokerListenerOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "brokerRef": "str",  # Broker associated with this listener.
-                          Required.
                         "ports": [
                             {
                                 "port": 0,  # TCP port for accepting client
@@ -8151,11 +8739,10 @@ class BrokerListenerOperations:
                                     "mode": "str",  # Mode of TLS server
                                       certificate management. Required. Known values are: "Automatic"
                                       and "Manual".
-                                    "automatic": {
+                                    "certManagerCertificateSpec": {
                                         "issuerRef": {
-                                            "apiGroup":
-                                              "cert-manager.io",  # Default value is "cert-manager.io".
-                                              group of issuer.
+                                            "group": "cert-manager.io",
+                                              # Default value is "cert-manager.io". group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -8189,7 +8776,7 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretRef": "str"  # Optional.
+                                        "secretName": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
@@ -8409,8 +8996,6 @@ class BrokerListenerOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "brokerRef": "str",  # Broker associated with this listener.
-                          Required.
                         "ports": [
                             {
                                 "port": 0,  # TCP port for accepting client
@@ -8428,11 +9013,10 @@ class BrokerListenerOperations:
                                     "mode": "str",  # Mode of TLS server
                                       certificate management. Required. Known values are: "Automatic"
                                       and "Manual".
-                                    "automatic": {
+                                    "certManagerCertificateSpec": {
                                         "issuerRef": {
-                                            "apiGroup":
-                                              "cert-manager.io",  # Default value is "cert-manager.io".
-                                              group of issuer.
+                                            "group": "cert-manager.io",
+                                              # Default value is "cert-manager.io". group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -8466,7 +9050,7 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretRef": "str"  # Optional.
+                                        "secretName": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
@@ -8518,8 +9102,6 @@ class BrokerListenerOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "brokerRef": "str",  # Broker associated with this listener.
-                          Required.
                         "ports": [
                             {
                                 "port": 0,  # TCP port for accepting client
@@ -8537,11 +9119,10 @@ class BrokerListenerOperations:
                                     "mode": "str",  # Mode of TLS server
                                       certificate management. Required. Known values are: "Automatic"
                                       and "Manual".
-                                    "automatic": {
+                                    "certManagerCertificateSpec": {
                                         "issuerRef": {
-                                            "apiGroup":
-                                              "cert-manager.io",  # Default value is "cert-manager.io".
-                                              group of issuer.
+                                            "group": "cert-manager.io",
+                                              # Default value is "cert-manager.io". group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -8575,7 +9156,7 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretRef": "str"  # Optional.
+                                        "secretName": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
@@ -8670,8 +9251,6 @@ class BrokerListenerOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "brokerRef": "str",  # Broker associated with this listener.
-                          Required.
                         "ports": [
                             {
                                 "port": 0,  # TCP port for accepting client
@@ -8689,11 +9268,10 @@ class BrokerListenerOperations:
                                     "mode": "str",  # Mode of TLS server
                                       certificate management. Required. Known values are: "Automatic"
                                       and "Manual".
-                                    "automatic": {
+                                    "certManagerCertificateSpec": {
                                         "issuerRef": {
-                                            "apiGroup":
-                                              "cert-manager.io",  # Default value is "cert-manager.io".
-                                              group of issuer.
+                                            "group": "cert-manager.io",
+                                              # Default value is "cert-manager.io". group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -8727,7 +9305,7 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretRef": "str"  # Optional.
+                                        "secretName": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
@@ -8820,8 +9398,6 @@ class BrokerListenerOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "brokerRef": "str",  # Broker associated with this listener.
-                          Required.
                         "ports": [
                             {
                                 "port": 0,  # TCP port for accepting client
@@ -8839,11 +9415,10 @@ class BrokerListenerOperations:
                                     "mode": "str",  # Mode of TLS server
                                       certificate management. Required. Known values are: "Automatic"
                                       and "Manual".
-                                    "automatic": {
+                                    "certManagerCertificateSpec": {
                                         "issuerRef": {
-                                            "apiGroup":
-                                              "cert-manager.io",  # Default value is "cert-manager.io".
-                                              group of issuer.
+                                            "group": "cert-manager.io",
+                                              # Default value is "cert-manager.io". group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -8877,7 +9452,7 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretRef": "str"  # Optional.
+                                        "secretName": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
@@ -8929,8 +9504,6 @@ class BrokerListenerOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "brokerRef": "str",  # Broker associated with this listener.
-                          Required.
                         "ports": [
                             {
                                 "port": 0,  # TCP port for accepting client
@@ -8948,11 +9521,10 @@ class BrokerListenerOperations:
                                     "mode": "str",  # Mode of TLS server
                                       certificate management. Required. Known values are: "Automatic"
                                       and "Manual".
-                                    "automatic": {
+                                    "certManagerCertificateSpec": {
                                         "issuerRef": {
-                                            "apiGroup":
-                                              "cert-manager.io",  # Default value is "cert-manager.io".
-                                              group of issuer.
+                                            "group": "cert-manager.io",
+                                              # Default value is "cert-manager.io". group of issuer.
                                             "kind": "str",  # kind of
                                               issuer (Issuer or ClusterIssuer). Required. Known values
                                               are: "Issuer" and "ClusterIssuer".
@@ -8986,7 +9558,7 @@ class BrokerListenerOperations:
                                                   SANs. Required.
                                             ]
                                         },
-                                        "secretRef": "str"  # Optional.
+                                        "secretName": "str"  # Optional.
                                           Secret for storing server certificate. Any existing data will
                                           be overwritten. This is a reference to the secret through an
                                           identifying name, not the secret itself.
@@ -9193,14 +9765,14 @@ class BrokerListenerOperations:
         return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
 
 
-class DataFlowEndpointOperations:
+class DataflowEndpointOperations:
     """
     .. warning::
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
-        :attr:`data_flow_endpoint` attribute.
+        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :attr:`dataflow_endpoint` attribute.
     """
 
     def __init__(self, *args, **kwargs):
@@ -9211,8 +9783,8 @@ class DataFlowEndpointOperations:
         self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
 
     @distributed_trace
-    def list_by_instance_resource(self, resource_group_name: str, instance_name: str, **kwargs: Any) -> Iterable[JSON]:
-        """List DataFlowEndpointResource resources by InstanceResource.
+    def list_by_resource_group(self, resource_group_name: str, instance_name: str, **kwargs: Any) -> Iterable[JSON]:
+        """List DataflowEndpointResource resources by InstanceResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -9236,47 +9808,28 @@ class DataFlowEndpointOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "authentication": {
-                            "method": "str",  # Mode of Authentication. Required. Known
-                              values are: "SystemAssignedManagedIdentity",
-                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
-                              "X509Credentials".
-                            "accessTokenSecretRef": "str",  # Optional. SAS token
-                              authentication.
-                            "saslSettings": {
-                                "saslType": "str",  # Type of SASL authentication.
-                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
-                                  are: "Plain", "ScramSha256", and "ScramSha512".
-                                "tokenSecretRef": "str"  # Token secret name.
-                                  Required.
-                            },
-                            "serviceAccountTokenSettings": {
-                                "audience": "str"  # Audience of the service account.
-                                  Optional, defaults to the broker internal service account audience.
-                                  Required.
-                            },
-                            "systemAssignedManagedIdentitySettings": {
-                                "audience": "str"  # Audience of the service to
-                                  authenticate against. Optional; defaults to the audience for Service
-                                  host configuration. Required.
-                            },
-                            "userAssignedManagedIdentitySettings": {
-                                "audience": "str",  # Resource identifier
-                                  (application ID URI) of the resource, affixed with the .default
-                                  suffix. Required.
-                                "clientId": "str",  # Client ID for the user-assigned
-                                  managed identity. Required.
-                                "tenantId": "str"  # Tenant ID. Required.
-                            },
-                            "x509CredentialsSettings": {
-                                "secretRef": "str"  # Secret reference of the X.509
-                                  certificate. Required.
-                            }
-                        },
                         "endpointType": "str",  # Endpoint Type. Required. Known values are:
                           "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
                           and "Mqtt".
                         "dataExplorerSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "database": "str",  # Database name. Required.
                             "host": "str",  # Host of the Azure Data Explorer in the form
                               of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
@@ -9288,6 +9841,28 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "dataLakeStorageSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", and "AccessToken".
+                                "accessTokenSettings": {
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Azure Data Lake in the form of
                               :code:`<account>`.blob.core.windows.net . Required.
                             "batching": {
@@ -9298,6 +9873,24 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "fabricOneLakeSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Microsoft Fabric in the form of
                               https://:code:`<host>`.fabric.microsoft.com. Required.
                             "names": {
@@ -9315,11 +9908,36 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "kafkaSettings": {
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "saslSettings": {
+                                    "saslType": "str",  # Type of SASL
+                                      authentication. Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512.
+                                      Required. Known values are: "Plain", "ScramSha256", and
+                                      "ScramSha512".
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
                             },
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
@@ -9331,6 +9949,8 @@ class DataFlowEndpointOperations:
                                 "mode": "str"  # Optional. Mode for batching. Known
                                   values are: "Enabled" and "Disabled".
                             },
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
                             "compression": "str",  # Optional. Compression. Can be none,
                               gzip, lz4, or snappy. No effect if the endpoint is used as a source.
                               Known values are: "None", "Gzip", "Snappy", and "Lz4".
@@ -9343,20 +9963,56 @@ class DataFlowEndpointOperations:
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
-                            "partitionStrategy": "str"  # Optional. Partition handling
+                            "partitionStrategy": "str",  # Optional. Partition handling
                               strategy. Can be default or static. No effect if the endpoint is used as
                               a source. Known values are: "Default", "Static", "Topic", and "Property".
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
                         },
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "str"  # Persistent volume claim
                               name. Required.
                         },
                         "mqttSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "serviceAccountTokenSettings": {
+                                    "audience": "str"  # Audience of the service
+                                      account. Optional, defaults to the broker internal service
+                                      account audience. Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
+                            },
                             "clientIdPrefix": "str",  # Optional. Client ID prefix.
                               Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
                               prefix if omitted.
-                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
+                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -9420,7 +10076,7 @@ class DataFlowEndpointOperations:
         def prepare_request(next_link=None):
             if not next_link:
 
-                request = build_data_flow_endpoint_list_by_instance_resource_request(
+                request = build_dataflow_endpoint_list_by_resource_group_request(
                     resource_group_name=resource_group_name,
                     instance_name=instance_name,
                     subscription_id=self._config.subscription_id,
@@ -9473,7 +10129,7 @@ class DataFlowEndpointOperations:
 
     @distributed_trace
     def get(self, resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, **kwargs: Any) -> JSON:
-        """Get a DataFlowEndpointResource.
+        """Get a DataflowEndpointResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -9499,47 +10155,28 @@ class DataFlowEndpointOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "authentication": {
-                            "method": "str",  # Mode of Authentication. Required. Known
-                              values are: "SystemAssignedManagedIdentity",
-                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
-                              "X509Credentials".
-                            "accessTokenSecretRef": "str",  # Optional. SAS token
-                              authentication.
-                            "saslSettings": {
-                                "saslType": "str",  # Type of SASL authentication.
-                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
-                                  are: "Plain", "ScramSha256", and "ScramSha512".
-                                "tokenSecretRef": "str"  # Token secret name.
-                                  Required.
-                            },
-                            "serviceAccountTokenSettings": {
-                                "audience": "str"  # Audience of the service account.
-                                  Optional, defaults to the broker internal service account audience.
-                                  Required.
-                            },
-                            "systemAssignedManagedIdentitySettings": {
-                                "audience": "str"  # Audience of the service to
-                                  authenticate against. Optional; defaults to the audience for Service
-                                  host configuration. Required.
-                            },
-                            "userAssignedManagedIdentitySettings": {
-                                "audience": "str",  # Resource identifier
-                                  (application ID URI) of the resource, affixed with the .default
-                                  suffix. Required.
-                                "clientId": "str",  # Client ID for the user-assigned
-                                  managed identity. Required.
-                                "tenantId": "str"  # Tenant ID. Required.
-                            },
-                            "x509CredentialsSettings": {
-                                "secretRef": "str"  # Secret reference of the X.509
-                                  certificate. Required.
-                            }
-                        },
                         "endpointType": "str",  # Endpoint Type. Required. Known values are:
                           "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
                           and "Mqtt".
                         "dataExplorerSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "database": "str",  # Database name. Required.
                             "host": "str",  # Host of the Azure Data Explorer in the form
                               of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
@@ -9551,6 +10188,28 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "dataLakeStorageSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", and "AccessToken".
+                                "accessTokenSettings": {
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Azure Data Lake in the form of
                               :code:`<account>`.blob.core.windows.net . Required.
                             "batching": {
@@ -9561,6 +10220,24 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "fabricOneLakeSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Microsoft Fabric in the form of
                               https://:code:`<host>`.fabric.microsoft.com. Required.
                             "names": {
@@ -9578,11 +10255,36 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "kafkaSettings": {
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "saslSettings": {
+                                    "saslType": "str",  # Type of SASL
+                                      authentication. Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512.
+                                      Required. Known values are: "Plain", "ScramSha256", and
+                                      "ScramSha512".
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
                             },
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
@@ -9594,6 +10296,8 @@ class DataFlowEndpointOperations:
                                 "mode": "str"  # Optional. Mode for batching. Known
                                   values are: "Enabled" and "Disabled".
                             },
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
                             "compression": "str",  # Optional. Compression. Can be none,
                               gzip, lz4, or snappy. No effect if the endpoint is used as a source.
                               Known values are: "None", "Gzip", "Snappy", and "Lz4".
@@ -9606,20 +10310,56 @@ class DataFlowEndpointOperations:
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
-                            "partitionStrategy": "str"  # Optional. Partition handling
+                            "partitionStrategy": "str",  # Optional. Partition handling
                               strategy. Can be default or static. No effect if the endpoint is used as
                               a source. Known values are: "Default", "Static", "Topic", and "Property".
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
                         },
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "str"  # Persistent volume claim
                               name. Required.
                         },
                         "mqttSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "serviceAccountTokenSettings": {
+                                    "audience": "str"  # Audience of the service
+                                      account. Optional, defaults to the broker internal service
+                                      account audience. Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
+                            },
                             "clientIdPrefix": "str",  # Optional. Client ID prefix.
                               Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
                               prefix if omitted.
-                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
+                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -9680,7 +10420,7 @@ class DataFlowEndpointOperations:
 
         cls: ClsType[JSON] = kwargs.pop("cls", None)
 
-        request = build_data_flow_endpoint_get_request(
+        request = build_dataflow_endpoint_get_request(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_endpoint_name=dataflow_endpoint_name,
@@ -9742,7 +10482,7 @@ class DataFlowEndpointOperations:
         else:
             _json = resource
 
-        request = build_data_flow_endpoint_create_or_update_request(
+        request = build_dataflow_endpoint_create_or_update_request(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_endpoint_name=dataflow_endpoint_name,
@@ -9801,7 +10541,7 @@ class DataFlowEndpointOperations:
         content_type: str = "application/json",
         **kwargs: Any
     ) -> LROPoller[JSON]:
-        """Create a DataFlowEndpointResource.
+        """Create a DataflowEndpointResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -9839,47 +10579,28 @@ class DataFlowEndpointOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "authentication": {
-                            "method": "str",  # Mode of Authentication. Required. Known
-                              values are: "SystemAssignedManagedIdentity",
-                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
-                              "X509Credentials".
-                            "accessTokenSecretRef": "str",  # Optional. SAS token
-                              authentication.
-                            "saslSettings": {
-                                "saslType": "str",  # Type of SASL authentication.
-                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
-                                  are: "Plain", "ScramSha256", and "ScramSha512".
-                                "tokenSecretRef": "str"  # Token secret name.
-                                  Required.
-                            },
-                            "serviceAccountTokenSettings": {
-                                "audience": "str"  # Audience of the service account.
-                                  Optional, defaults to the broker internal service account audience.
-                                  Required.
-                            },
-                            "systemAssignedManagedIdentitySettings": {
-                                "audience": "str"  # Audience of the service to
-                                  authenticate against. Optional; defaults to the audience for Service
-                                  host configuration. Required.
-                            },
-                            "userAssignedManagedIdentitySettings": {
-                                "audience": "str",  # Resource identifier
-                                  (application ID URI) of the resource, affixed with the .default
-                                  suffix. Required.
-                                "clientId": "str",  # Client ID for the user-assigned
-                                  managed identity. Required.
-                                "tenantId": "str"  # Tenant ID. Required.
-                            },
-                            "x509CredentialsSettings": {
-                                "secretRef": "str"  # Secret reference of the X.509
-                                  certificate. Required.
-                            }
-                        },
                         "endpointType": "str",  # Endpoint Type. Required. Known values are:
                           "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
                           and "Mqtt".
                         "dataExplorerSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "database": "str",  # Database name. Required.
                             "host": "str",  # Host of the Azure Data Explorer in the form
                               of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
@@ -9891,6 +10612,28 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "dataLakeStorageSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", and "AccessToken".
+                                "accessTokenSettings": {
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Azure Data Lake in the form of
                               :code:`<account>`.blob.core.windows.net . Required.
                             "batching": {
@@ -9901,6 +10644,24 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "fabricOneLakeSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Microsoft Fabric in the form of
                               https://:code:`<host>`.fabric.microsoft.com. Required.
                             "names": {
@@ -9918,11 +10679,36 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "kafkaSettings": {
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "saslSettings": {
+                                    "saslType": "str",  # Type of SASL
+                                      authentication. Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512.
+                                      Required. Known values are: "Plain", "ScramSha256", and
+                                      "ScramSha512".
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
                             },
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
@@ -9934,6 +10720,8 @@ class DataFlowEndpointOperations:
                                 "mode": "str"  # Optional. Mode for batching. Known
                                   values are: "Enabled" and "Disabled".
                             },
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
                             "compression": "str",  # Optional. Compression. Can be none,
                               gzip, lz4, or snappy. No effect if the endpoint is used as a source.
                               Known values are: "None", "Gzip", "Snappy", and "Lz4".
@@ -9946,20 +10734,56 @@ class DataFlowEndpointOperations:
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
-                            "partitionStrategy": "str"  # Optional. Partition handling
+                            "partitionStrategy": "str",  # Optional. Partition handling
                               strategy. Can be default or static. No effect if the endpoint is used as
                               a source. Known values are: "Default", "Static", "Topic", and "Property".
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
                         },
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "str"  # Persistent volume claim
                               name. Required.
                         },
                         "mqttSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "serviceAccountTokenSettings": {
+                                    "audience": "str"  # Audience of the service
+                                      account. Optional, defaults to the broker internal service
+                                      account audience. Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
+                            },
                             "clientIdPrefix": "str",  # Optional. Client ID prefix.
                               Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
                               prefix if omitted.
-                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
+                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -10017,47 +10841,28 @@ class DataFlowEndpointOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "authentication": {
-                            "method": "str",  # Mode of Authentication. Required. Known
-                              values are: "SystemAssignedManagedIdentity",
-                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
-                              "X509Credentials".
-                            "accessTokenSecretRef": "str",  # Optional. SAS token
-                              authentication.
-                            "saslSettings": {
-                                "saslType": "str",  # Type of SASL authentication.
-                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
-                                  are: "Plain", "ScramSha256", and "ScramSha512".
-                                "tokenSecretRef": "str"  # Token secret name.
-                                  Required.
-                            },
-                            "serviceAccountTokenSettings": {
-                                "audience": "str"  # Audience of the service account.
-                                  Optional, defaults to the broker internal service account audience.
-                                  Required.
-                            },
-                            "systemAssignedManagedIdentitySettings": {
-                                "audience": "str"  # Audience of the service to
-                                  authenticate against. Optional; defaults to the audience for Service
-                                  host configuration. Required.
-                            },
-                            "userAssignedManagedIdentitySettings": {
-                                "audience": "str",  # Resource identifier
-                                  (application ID URI) of the resource, affixed with the .default
-                                  suffix. Required.
-                                "clientId": "str",  # Client ID for the user-assigned
-                                  managed identity. Required.
-                                "tenantId": "str"  # Tenant ID. Required.
-                            },
-                            "x509CredentialsSettings": {
-                                "secretRef": "str"  # Secret reference of the X.509
-                                  certificate. Required.
-                            }
-                        },
                         "endpointType": "str",  # Endpoint Type. Required. Known values are:
                           "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
                           and "Mqtt".
                         "dataExplorerSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "database": "str",  # Database name. Required.
                             "host": "str",  # Host of the Azure Data Explorer in the form
                               of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
@@ -10069,6 +10874,28 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "dataLakeStorageSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", and "AccessToken".
+                                "accessTokenSettings": {
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Azure Data Lake in the form of
                               :code:`<account>`.blob.core.windows.net . Required.
                             "batching": {
@@ -10079,6 +10906,24 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "fabricOneLakeSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Microsoft Fabric in the form of
                               https://:code:`<host>`.fabric.microsoft.com. Required.
                             "names": {
@@ -10096,11 +10941,36 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "kafkaSettings": {
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "saslSettings": {
+                                    "saslType": "str",  # Type of SASL
+                                      authentication. Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512.
+                                      Required. Known values are: "Plain", "ScramSha256", and
+                                      "ScramSha512".
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
                             },
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
@@ -10112,6 +10982,8 @@ class DataFlowEndpointOperations:
                                 "mode": "str"  # Optional. Mode for batching. Known
                                   values are: "Enabled" and "Disabled".
                             },
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
                             "compression": "str",  # Optional. Compression. Can be none,
                               gzip, lz4, or snappy. No effect if the endpoint is used as a source.
                               Known values are: "None", "Gzip", "Snappy", and "Lz4".
@@ -10124,20 +10996,56 @@ class DataFlowEndpointOperations:
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
-                            "partitionStrategy": "str"  # Optional. Partition handling
+                            "partitionStrategy": "str",  # Optional. Partition handling
                               strategy. Can be default or static. No effect if the endpoint is used as
                               a source. Known values are: "Default", "Static", "Topic", and "Property".
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
                         },
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "str"  # Persistent volume claim
                               name. Required.
                         },
                         "mqttSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "serviceAccountTokenSettings": {
+                                    "audience": "str"  # Audience of the service
+                                      account. Optional, defaults to the broker internal service
+                                      account audience. Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
+                            },
                             "clientIdPrefix": "str",  # Optional. Client ID prefix.
                               Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
                               prefix if omitted.
-                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
+                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -10197,7 +11105,7 @@ class DataFlowEndpointOperations:
         content_type: str = "application/json",
         **kwargs: Any
     ) -> LROPoller[JSON]:
-        """Create a DataFlowEndpointResource.
+        """Create a DataflowEndpointResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -10235,47 +11143,28 @@ class DataFlowEndpointOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "authentication": {
-                            "method": "str",  # Mode of Authentication. Required. Known
-                              values are: "SystemAssignedManagedIdentity",
-                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
-                              "X509Credentials".
-                            "accessTokenSecretRef": "str",  # Optional. SAS token
-                              authentication.
-                            "saslSettings": {
-                                "saslType": "str",  # Type of SASL authentication.
-                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
-                                  are: "Plain", "ScramSha256", and "ScramSha512".
-                                "tokenSecretRef": "str"  # Token secret name.
-                                  Required.
-                            },
-                            "serviceAccountTokenSettings": {
-                                "audience": "str"  # Audience of the service account.
-                                  Optional, defaults to the broker internal service account audience.
-                                  Required.
-                            },
-                            "systemAssignedManagedIdentitySettings": {
-                                "audience": "str"  # Audience of the service to
-                                  authenticate against. Optional; defaults to the audience for Service
-                                  host configuration. Required.
-                            },
-                            "userAssignedManagedIdentitySettings": {
-                                "audience": "str",  # Resource identifier
-                                  (application ID URI) of the resource, affixed with the .default
-                                  suffix. Required.
-                                "clientId": "str",  # Client ID for the user-assigned
-                                  managed identity. Required.
-                                "tenantId": "str"  # Tenant ID. Required.
-                            },
-                            "x509CredentialsSettings": {
-                                "secretRef": "str"  # Secret reference of the X.509
-                                  certificate. Required.
-                            }
-                        },
                         "endpointType": "str",  # Endpoint Type. Required. Known values are:
                           "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
                           and "Mqtt".
                         "dataExplorerSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "database": "str",  # Database name. Required.
                             "host": "str",  # Host of the Azure Data Explorer in the form
                               of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
@@ -10287,6 +11176,28 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "dataLakeStorageSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", and "AccessToken".
+                                "accessTokenSettings": {
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Azure Data Lake in the form of
                               :code:`<account>`.blob.core.windows.net . Required.
                             "batching": {
@@ -10297,6 +11208,24 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "fabricOneLakeSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Microsoft Fabric in the form of
                               https://:code:`<host>`.fabric.microsoft.com. Required.
                             "names": {
@@ -10314,11 +11243,36 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "kafkaSettings": {
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "saslSettings": {
+                                    "saslType": "str",  # Type of SASL
+                                      authentication. Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512.
+                                      Required. Known values are: "Plain", "ScramSha256", and
+                                      "ScramSha512".
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
                             },
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
@@ -10330,6 +11284,8 @@ class DataFlowEndpointOperations:
                                 "mode": "str"  # Optional. Mode for batching. Known
                                   values are: "Enabled" and "Disabled".
                             },
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
                             "compression": "str",  # Optional. Compression. Can be none,
                               gzip, lz4, or snappy. No effect if the endpoint is used as a source.
                               Known values are: "None", "Gzip", "Snappy", and "Lz4".
@@ -10342,20 +11298,56 @@ class DataFlowEndpointOperations:
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
-                            "partitionStrategy": "str"  # Optional. Partition handling
+                            "partitionStrategy": "str",  # Optional. Partition handling
                               strategy. Can be default or static. No effect if the endpoint is used as
                               a source. Known values are: "Default", "Static", "Topic", and "Property".
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
                         },
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "str"  # Persistent volume claim
                               name. Required.
                         },
                         "mqttSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "serviceAccountTokenSettings": {
+                                    "audience": "str"  # Audience of the service
+                                      account. Optional, defaults to the broker internal service
+                                      account audience. Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
+                            },
                             "clientIdPrefix": "str",  # Optional. Client ID prefix.
                               Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
                               prefix if omitted.
-                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
+                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -10413,7 +11405,7 @@ class DataFlowEndpointOperations:
         resource: Union[JSON, IO],
         **kwargs: Any
     ) -> LROPoller[JSON]:
-        """Create a DataFlowEndpointResource.
+        """Create a DataflowEndpointResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -10451,47 +11443,28 @@ class DataFlowEndpointOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "authentication": {
-                            "method": "str",  # Mode of Authentication. Required. Known
-                              values are: "SystemAssignedManagedIdentity",
-                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
-                              "X509Credentials".
-                            "accessTokenSecretRef": "str",  # Optional. SAS token
-                              authentication.
-                            "saslSettings": {
-                                "saslType": "str",  # Type of SASL authentication.
-                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
-                                  are: "Plain", "ScramSha256", and "ScramSha512".
-                                "tokenSecretRef": "str"  # Token secret name.
-                                  Required.
-                            },
-                            "serviceAccountTokenSettings": {
-                                "audience": "str"  # Audience of the service account.
-                                  Optional, defaults to the broker internal service account audience.
-                                  Required.
-                            },
-                            "systemAssignedManagedIdentitySettings": {
-                                "audience": "str"  # Audience of the service to
-                                  authenticate against. Optional; defaults to the audience for Service
-                                  host configuration. Required.
-                            },
-                            "userAssignedManagedIdentitySettings": {
-                                "audience": "str",  # Resource identifier
-                                  (application ID URI) of the resource, affixed with the .default
-                                  suffix. Required.
-                                "clientId": "str",  # Client ID for the user-assigned
-                                  managed identity. Required.
-                                "tenantId": "str"  # Tenant ID. Required.
-                            },
-                            "x509CredentialsSettings": {
-                                "secretRef": "str"  # Secret reference of the X.509
-                                  certificate. Required.
-                            }
-                        },
                         "endpointType": "str",  # Endpoint Type. Required. Known values are:
                           "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
                           and "Mqtt".
                         "dataExplorerSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "database": "str",  # Database name. Required.
                             "host": "str",  # Host of the Azure Data Explorer in the form
                               of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
@@ -10503,6 +11476,28 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "dataLakeStorageSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", and "AccessToken".
+                                "accessTokenSettings": {
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Azure Data Lake in the form of
                               :code:`<account>`.blob.core.windows.net . Required.
                             "batching": {
@@ -10513,6 +11508,24 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "fabricOneLakeSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Microsoft Fabric in the form of
                               https://:code:`<host>`.fabric.microsoft.com. Required.
                             "names": {
@@ -10530,11 +11543,36 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "kafkaSettings": {
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "saslSettings": {
+                                    "saslType": "str",  # Type of SASL
+                                      authentication. Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512.
+                                      Required. Known values are: "Plain", "ScramSha256", and
+                                      "ScramSha512".
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
                             },
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
@@ -10546,6 +11584,8 @@ class DataFlowEndpointOperations:
                                 "mode": "str"  # Optional. Mode for batching. Known
                                   values are: "Enabled" and "Disabled".
                             },
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
                             "compression": "str",  # Optional. Compression. Can be none,
                               gzip, lz4, or snappy. No effect if the endpoint is used as a source.
                               Known values are: "None", "Gzip", "Snappy", and "Lz4".
@@ -10558,20 +11598,56 @@ class DataFlowEndpointOperations:
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
-                            "partitionStrategy": "str"  # Optional. Partition handling
+                            "partitionStrategy": "str",  # Optional. Partition handling
                               strategy. Can be default or static. No effect if the endpoint is used as
                               a source. Known values are: "Default", "Static", "Topic", and "Property".
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
                         },
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "str"  # Persistent volume claim
                               name. Required.
                         },
                         "mqttSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "serviceAccountTokenSettings": {
+                                    "audience": "str"  # Audience of the service
+                                      account. Optional, defaults to the broker internal service
+                                      account audience. Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
+                            },
                             "clientIdPrefix": "str",  # Optional. Client ID prefix.
                               Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
                               prefix if omitted.
-                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
+                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -10629,47 +11705,28 @@ class DataFlowEndpointOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
-                        "authentication": {
-                            "method": "str",  # Mode of Authentication. Required. Known
-                              values are: "SystemAssignedManagedIdentity",
-                              "UserAssignedManagedIdentity", "AccessToken", "Sasl", and
-                              "X509Credentials".
-                            "accessTokenSecretRef": "str",  # Optional. SAS token
-                              authentication.
-                            "saslSettings": {
-                                "saslType": "str",  # Type of SASL authentication.
-                                  Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512. Required. Known values
-                                  are: "Plain", "ScramSha256", and "ScramSha512".
-                                "tokenSecretRef": "str"  # Token secret name.
-                                  Required.
-                            },
-                            "serviceAccountTokenSettings": {
-                                "audience": "str"  # Audience of the service account.
-                                  Optional, defaults to the broker internal service account audience.
-                                  Required.
-                            },
-                            "systemAssignedManagedIdentitySettings": {
-                                "audience": "str"  # Audience of the service to
-                                  authenticate against. Optional; defaults to the audience for Service
-                                  host configuration. Required.
-                            },
-                            "userAssignedManagedIdentitySettings": {
-                                "audience": "str",  # Resource identifier
-                                  (application ID URI) of the resource, affixed with the .default
-                                  suffix. Required.
-                                "clientId": "str",  # Client ID for the user-assigned
-                                  managed identity. Required.
-                                "tenantId": "str"  # Tenant ID. Required.
-                            },
-                            "x509CredentialsSettings": {
-                                "secretRef": "str"  # Secret reference of the X.509
-                                  certificate. Required.
-                            }
-                        },
                         "endpointType": "str",  # Endpoint Type. Required. Known values are:
                           "DataExplorer", "DataLakeStorage", "FabricOneLake", "Kafka", "LocalStorage",
                           and "Mqtt".
                         "dataExplorerSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "database": "str",  # Database name. Required.
                             "host": "str",  # Host of the Azure Data Explorer in the form
                               of :code:`<cluster>`.:code:`<region>`.kusto.windows.net . Required.
@@ -10681,6 +11738,28 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "dataLakeStorageSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", and "AccessToken".
+                                "accessTokenSettings": {
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Azure Data Lake in the form of
                               :code:`<account>`.blob.core.windows.net . Required.
                             "batching": {
@@ -10691,6 +11770,24 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "fabricOneLakeSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity" and
+                                  "UserAssignedManagedIdentity".
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                }
+                            },
                             "host": "str",  # Host of the Microsoft Fabric in the form of
                               https://:code:`<host>`.fabric.microsoft.com. Required.
                             "names": {
@@ -10708,11 +11805,36 @@ class DataFlowEndpointOperations:
                             }
                         },
                         "kafkaSettings": {
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "saslSettings": {
+                                    "saslType": "str",  # Type of SASL
+                                      authentication. Can be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512.
+                                      Required. Known values are: "Plain", "ScramSha256", and
+                                      "ScramSha512".
+                                    "secretRef": "str"  # Token secret name.
+                                      Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
                             },
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
@@ -10724,6 +11846,8 @@ class DataFlowEndpointOperations:
                                 "mode": "str"  # Optional. Mode for batching. Known
                                   values are: "Enabled" and "Disabled".
                             },
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
                             "compression": "str",  # Optional. Compression. Can be none,
                               gzip, lz4, or snappy. No effect if the endpoint is used as a source.
                               Known values are: "None", "Gzip", "Snappy", and "Lz4".
@@ -10736,20 +11860,56 @@ class DataFlowEndpointOperations:
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
-                            "partitionStrategy": "str"  # Optional. Partition handling
+                            "partitionStrategy": "str",  # Optional. Partition handling
                               strategy. Can be default or static. No effect if the endpoint is used as
                               a source. Known values are: "Default", "Static", "Topic", and "Property".
+                            "tls": {
+                                "mode": "str",  # Optional. Mode for TLS. Known
+                                  values are: "Enabled" and "Disabled".
+                                "trustedCaCertificateConfigMapRef": "str"  #
+                                  Optional. Trusted CA certificate config map.
+                            }
                         },
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "str"  # Persistent volume claim
                               name. Required.
                         },
                         "mqttSettings": {
+                            "authentication": {
+                                "method": "str",  # Mode of Authentication. Required.
+                                  Known values are: "SystemAssignedManagedIdentity",
+                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
+                                  "Anonymous".
+                                "serviceAccountTokenSettings": {
+                                    "audience": "str"  # Audience of the service
+                                      account. Optional, defaults to the broker internal service
+                                      account audience. Required.
+                                },
+                                "systemAssignedManagedIdentitySettings": {
+                                    "audience": "str"  # Optional. Audience of
+                                      the service to authenticate against. Optional; defaults to the
+                                      audience for Service host configuration.
+                                },
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "str",  # Client ID for the
+                                      user-assigned managed identity. Required.
+                                    "tenantId": "str",  # Tenant ID. Required.
+                                    "scope": "str"  # Optional. Resource
+                                      identifier (application ID URI) of the resource, affixed with the
+                                      .default suffix.
+                                },
+                                "x509CertificateSettings": {
+                                    "secretRef": "str"  # Secret reference of the
+                                      X.509 certificate. Required.
+                                }
+                            },
                             "clientIdPrefix": "str",  # Optional. Client ID prefix.
                               Client ID generated by the dataflow is :code:`<prefix>`-TBD. Optional; no
                               prefix if omitted.
-                            "host": "aio-mq-dmqtt-frontend:1883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:1883". Host of the Broker in the form of
+                            "cloudEventAttributes": "str",  # Optional. Cloud event
+                              mapping config. Known values are: "Propagate" and "CreateOrRemap".
+                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
+                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -10862,7 +12022,7 @@ class DataFlowEndpointOperations:
 
         cls: ClsType[None] = kwargs.pop("cls", None)
 
-        request = build_data_flow_endpoint_delete_request(
+        request = build_dataflow_endpoint_delete_request(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_endpoint_name=dataflow_endpoint_name,
@@ -10896,7 +12056,7 @@ class DataFlowEndpointOperations:
     def begin_delete(
         self, resource_group_name: str, instance_name: str, dataflow_endpoint_name: str, **kwargs: Any
     ) -> LROPoller[None]:
-        """Delete a DataFlowEndpointResource.
+        """Delete a DataflowEndpointResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -10957,14 +12117,14 @@ class DataFlowEndpointOperations:
         return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
 
 
-class DataFlowProfileOperations:
+class DataflowProfileOperations:
     """
     .. warning::
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
-        :attr:`data_flow_profile` attribute.
+        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :attr:`dataflow_profile` attribute.
     """
 
     def __init__(self, *args, **kwargs):
@@ -10975,8 +12135,8 @@ class DataFlowProfileOperations:
         self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
 
     @distributed_trace
-    def list_by_instance_resource(self, resource_group_name: str, instance_name: str, **kwargs: Any) -> Iterable[JSON]:
-        """List DataFlowProfileResource resources by InstanceResource.
+    def list_by_resource_group(self, resource_group_name: str, instance_name: str, **kwargs: Any) -> Iterable[JSON]:
+        """List DataflowProfileResource resources by InstanceResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -11028,8 +12188,9 @@ class DataFlowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
-                        "instanceCount": 0,  # Optional. To manually scale the dataflow
-                          profile, specify the maximum number of instances you want to run.
+                        "instanceCount": 1,  # Optional. Default value is 1. To manually
+                          scale the dataflow profile, specify the maximum number of instances you want
+                          to run.
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -11070,7 +12231,7 @@ class DataFlowProfileOperations:
         def prepare_request(next_link=None):
             if not next_link:
 
-                request = build_data_flow_profile_list_by_instance_resource_request(
+                request = build_dataflow_profile_list_by_resource_group_request(
                     resource_group_name=resource_group_name,
                     instance_name=instance_name,
                     subscription_id=self._config.subscription_id,
@@ -11123,7 +12284,7 @@ class DataFlowProfileOperations:
 
     @distributed_trace
     def get(self, resource_group_name: str, instance_name: str, dataflow_profile_name: str, **kwargs: Any) -> JSON:
-        """Get a DataFlowProfileResource.
+        """Get a DataflowProfileResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -11177,8 +12338,9 @@ class DataFlowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
-                        "instanceCount": 0,  # Optional. To manually scale the dataflow
-                          profile, specify the maximum number of instances you want to run.
+                        "instanceCount": 1,  # Optional. Default value is 1. To manually
+                          scale the dataflow profile, specify the maximum number of instances you want
+                          to run.
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -11216,7 +12378,7 @@ class DataFlowProfileOperations:
 
         cls: ClsType[JSON] = kwargs.pop("cls", None)
 
-        request = build_data_flow_profile_get_request(
+        request = build_dataflow_profile_get_request(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_profile_name=dataflow_profile_name,
@@ -11278,7 +12440,7 @@ class DataFlowProfileOperations:
         else:
             _json = resource
 
-        request = build_data_flow_profile_create_or_update_request(
+        request = build_dataflow_profile_create_or_update_request(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_profile_name=dataflow_profile_name,
@@ -11337,7 +12499,7 @@ class DataFlowProfileOperations:
         content_type: str = "application/json",
         **kwargs: Any
     ) -> LROPoller[JSON]:
-        """Create a DataFlowProfileResource.
+        """Create a DataflowProfileResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -11403,8 +12565,9 @@ class DataFlowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
-                        "instanceCount": 0,  # Optional. To manually scale the dataflow
-                          profile, specify the maximum number of instances you want to run.
+                        "instanceCount": 1,  # Optional. Default value is 1. To manually
+                          scale the dataflow profile, specify the maximum number of instances you want
+                          to run.
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -11467,8 +12630,9 @@ class DataFlowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
-                        "instanceCount": 0,  # Optional. To manually scale the dataflow
-                          profile, specify the maximum number of instances you want to run.
+                        "instanceCount": 1,  # Optional. Default value is 1. To manually
+                          scale the dataflow profile, specify the maximum number of instances you want
+                          to run.
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -11505,7 +12669,7 @@ class DataFlowProfileOperations:
         content_type: str = "application/json",
         **kwargs: Any
     ) -> LROPoller[JSON]:
-        """Create a DataFlowProfileResource.
+        """Create a DataflowProfileResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -11571,8 +12735,9 @@ class DataFlowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
-                        "instanceCount": 0,  # Optional. To manually scale the dataflow
-                          profile, specify the maximum number of instances you want to run.
+                        "instanceCount": 1,  # Optional. Default value is 1. To manually
+                          scale the dataflow profile, specify the maximum number of instances you want
+                          to run.
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -11607,7 +12772,7 @@ class DataFlowProfileOperations:
         resource: Union[JSON, IO],
         **kwargs: Any
     ) -> LROPoller[JSON]:
-        """Create a DataFlowProfileResource.
+        """Create a DataflowProfileResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -11673,8 +12838,9 @@ class DataFlowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
-                        "instanceCount": 0,  # Optional. To manually scale the dataflow
-                          profile, specify the maximum number of instances you want to run.
+                        "instanceCount": 1,  # Optional. Default value is 1. To manually
+                          scale the dataflow profile, specify the maximum number of instances you want
+                          to run.
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -11737,8 +12903,9 @@ class DataFlowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
-                        "instanceCount": 0,  # Optional. To manually scale the dataflow
-                          profile, specify the maximum number of instances you want to run.
+                        "instanceCount": 1,  # Optional. Default value is 1. To manually
+                          scale the dataflow profile, specify the maximum number of instances you want
+                          to run.
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -11828,7 +12995,7 @@ class DataFlowProfileOperations:
 
         cls: ClsType[None] = kwargs.pop("cls", None)
 
-        request = build_data_flow_profile_delete_request(
+        request = build_dataflow_profile_delete_request(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_profile_name=dataflow_profile_name,
@@ -11862,7 +13029,7 @@ class DataFlowProfileOperations:
     def begin_delete(
         self, resource_group_name: str, instance_name: str, dataflow_profile_name: str, **kwargs: Any
     ) -> LROPoller[None]:
-        """Delete a DataFlowProfileResource.
+        """Delete a DataflowProfileResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -11923,14 +13090,14 @@ class DataFlowProfileOperations:
         return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
 
 
-class DataFlowOperations:
+class DataflowOperations:
     """
     .. warning::
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
-        :attr:`data_flow` attribute.
+        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :attr:`dataflow` attribute.
     """
 
     def __init__(self, *args, **kwargs):
@@ -11944,7 +13111,7 @@ class DataFlowOperations:
     def list_by_profile_resource(
         self, resource_group_name: str, instance_name: str, dataflow_profile_name: str, **kwargs: Any
     ) -> Iterable[JSON]:
-        """List DataFlowResource resources by DataFlowProfileResource.
+        """List DataflowResource resources by DataflowProfileResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -11972,36 +13139,9 @@ class DataFlowOperations:
                     "properties": {
                         "operations": [
                             {
-                                "destinationSettings": {
-                                    "dataDestination": "str",  # Destination
-                                      location, can be a topic or table name. Supports dynamic values
-                                      with $topic, $systemProperties, $userProperties, $payload,
-                                      $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
-                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
-                                      Required.
-                                },
                                 "operationType": "str",  # Type of operation.
                                   Required. Known values are: "Source", "Destination", and
                                   "BuiltInTransformation".
-                                "sourceSettings": {
-                                    "dataSources": [
-                                        "str"  # List of source locations.
-                                          Can be Broker or Kafka topics. Supports wildcards # and +.
-                                          Required.
-                                    ],
-                                    "endpointRef": "str",  # Reference to the
-                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
-                                      Required.
-                                    "assetRef": "str",  # Optional. Reference to
-                                      the resource in Azure Device Registry where the data in the
-                                      endpoint originates from.
-                                    "schemaRef": "str",  # Optional. Schema CR
-                                      reference. Data will be deserialized according to the schema, and
-                                      dropped if it doesn't match.
-                                    "serializationFormat": "str"  # Optional.
-                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
-                                },
                                 "builtInTransformationSettings": {
                                     "datasets": [
                                         {
@@ -12072,13 +13212,38 @@ class DataFlowOperations:
                                       JSON Schema/draft-7, Parquet. Default: Json. Known values are:
                                       "Delta", "Json", and "Parquet".
                                 },
-                                "name": "str"  # Optional. Optional user provided
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                }
                             }
                         ],
-                        "profileRef": "str",  # Reference to the DataflowProfile CR.
-                          Required.
-                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                        "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
@@ -12120,7 +13285,7 @@ class DataFlowOperations:
         def prepare_request(next_link=None):
             if not next_link:
 
-                request = build_data_flow_list_by_profile_resource_request(
+                request = build_dataflow_list_by_profile_resource_request(
                     resource_group_name=resource_group_name,
                     instance_name=instance_name,
                     dataflow_profile_name=dataflow_profile_name,
@@ -12181,7 +13346,7 @@ class DataFlowOperations:
         dataflow_name: str,
         **kwargs: Any
     ) -> JSON:
-        """Get a DataFlowResource.
+        """Get a DataflowResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -12211,36 +13376,9 @@ class DataFlowOperations:
                     "properties": {
                         "operations": [
                             {
-                                "destinationSettings": {
-                                    "dataDestination": "str",  # Destination
-                                      location, can be a topic or table name. Supports dynamic values
-                                      with $topic, $systemProperties, $userProperties, $payload,
-                                      $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
-                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
-                                      Required.
-                                },
                                 "operationType": "str",  # Type of operation.
                                   Required. Known values are: "Source", "Destination", and
                                   "BuiltInTransformation".
-                                "sourceSettings": {
-                                    "dataSources": [
-                                        "str"  # List of source locations.
-                                          Can be Broker or Kafka topics. Supports wildcards # and +.
-                                          Required.
-                                    ],
-                                    "endpointRef": "str",  # Reference to the
-                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
-                                      Required.
-                                    "assetRef": "str",  # Optional. Reference to
-                                      the resource in Azure Device Registry where the data in the
-                                      endpoint originates from.
-                                    "schemaRef": "str",  # Optional. Schema CR
-                                      reference. Data will be deserialized according to the schema, and
-                                      dropped if it doesn't match.
-                                    "serializationFormat": "str"  # Optional.
-                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
-                                },
                                 "builtInTransformationSettings": {
                                     "datasets": [
                                         {
@@ -12311,13 +13449,38 @@ class DataFlowOperations:
                                       JSON Schema/draft-7, Parquet. Default: Json. Known values are:
                                       "Delta", "Json", and "Parquet".
                                 },
-                                "name": "str"  # Optional. Optional user provided
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                }
                             }
                         ],
-                        "profileRef": "str",  # Reference to the DataflowProfile CR.
-                          Required.
-                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                        "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
@@ -12356,7 +13519,7 @@ class DataFlowOperations:
 
         cls: ClsType[JSON] = kwargs.pop("cls", None)
 
-        request = build_data_flow_get_request(
+        request = build_dataflow_get_request(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_profile_name=dataflow_profile_name,
@@ -12420,7 +13583,7 @@ class DataFlowOperations:
         else:
             _json = resource
 
-        request = build_data_flow_create_or_update_request(
+        request = build_dataflow_create_or_update_request(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_profile_name=dataflow_profile_name,
@@ -12481,7 +13644,7 @@ class DataFlowOperations:
         content_type: str = "application/json",
         **kwargs: Any
     ) -> LROPoller[JSON]:
-        """Create a DataFlowResource.
+        """Create a DataflowResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -12523,36 +13686,9 @@ class DataFlowOperations:
                     "properties": {
                         "operations": [
                             {
-                                "destinationSettings": {
-                                    "dataDestination": "str",  # Destination
-                                      location, can be a topic or table name. Supports dynamic values
-                                      with $topic, $systemProperties, $userProperties, $payload,
-                                      $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
-                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
-                                      Required.
-                                },
                                 "operationType": "str",  # Type of operation.
                                   Required. Known values are: "Source", "Destination", and
                                   "BuiltInTransformation".
-                                "sourceSettings": {
-                                    "dataSources": [
-                                        "str"  # List of source locations.
-                                          Can be Broker or Kafka topics. Supports wildcards # and +.
-                                          Required.
-                                    ],
-                                    "endpointRef": "str",  # Reference to the
-                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
-                                      Required.
-                                    "assetRef": "str",  # Optional. Reference to
-                                      the resource in Azure Device Registry where the data in the
-                                      endpoint originates from.
-                                    "schemaRef": "str",  # Optional. Schema CR
-                                      reference. Data will be deserialized according to the schema, and
-                                      dropped if it doesn't match.
-                                    "serializationFormat": "str"  # Optional.
-                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
-                                },
                                 "builtInTransformationSettings": {
                                     "datasets": [
                                         {
@@ -12623,13 +13759,38 @@ class DataFlowOperations:
                                       JSON Schema/draft-7, Parquet. Default: Json. Known values are:
                                       "Delta", "Json", and "Parquet".
                                 },
-                                "name": "str"  # Optional. Optional user provided
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                }
                             }
                         ],
-                        "profileRef": "str",  # Reference to the DataflowProfile CR.
-                          Required.
-                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                        "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
@@ -12667,36 +13828,9 @@ class DataFlowOperations:
                     "properties": {
                         "operations": [
                             {
-                                "destinationSettings": {
-                                    "dataDestination": "str",  # Destination
-                                      location, can be a topic or table name. Supports dynamic values
-                                      with $topic, $systemProperties, $userProperties, $payload,
-                                      $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
-                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
-                                      Required.
-                                },
                                 "operationType": "str",  # Type of operation.
                                   Required. Known values are: "Source", "Destination", and
                                   "BuiltInTransformation".
-                                "sourceSettings": {
-                                    "dataSources": [
-                                        "str"  # List of source locations.
-                                          Can be Broker or Kafka topics. Supports wildcards # and +.
-                                          Required.
-                                    ],
-                                    "endpointRef": "str",  # Reference to the
-                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
-                                      Required.
-                                    "assetRef": "str",  # Optional. Reference to
-                                      the resource in Azure Device Registry where the data in the
-                                      endpoint originates from.
-                                    "schemaRef": "str",  # Optional. Schema CR
-                                      reference. Data will be deserialized according to the schema, and
-                                      dropped if it doesn't match.
-                                    "serializationFormat": "str"  # Optional.
-                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
-                                },
                                 "builtInTransformationSettings": {
                                     "datasets": [
                                         {
@@ -12767,13 +13901,38 @@ class DataFlowOperations:
                                       JSON Schema/draft-7, Parquet. Default: Json. Known values are:
                                       "Delta", "Json", and "Parquet".
                                 },
-                                "name": "str"  # Optional. Optional user provided
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                }
                             }
                         ],
-                        "profileRef": "str",  # Reference to the DataflowProfile CR.
-                          Required.
-                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                        "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
@@ -12812,7 +13971,7 @@ class DataFlowOperations:
         content_type: str = "application/json",
         **kwargs: Any
     ) -> LROPoller[JSON]:
-        """Create a DataFlowResource.
+        """Create a DataflowResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -12854,36 +14013,9 @@ class DataFlowOperations:
                     "properties": {
                         "operations": [
                             {
-                                "destinationSettings": {
-                                    "dataDestination": "str",  # Destination
-                                      location, can be a topic or table name. Supports dynamic values
-                                      with $topic, $systemProperties, $userProperties, $payload,
-                                      $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
-                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
-                                      Required.
-                                },
                                 "operationType": "str",  # Type of operation.
                                   Required. Known values are: "Source", "Destination", and
                                   "BuiltInTransformation".
-                                "sourceSettings": {
-                                    "dataSources": [
-                                        "str"  # List of source locations.
-                                          Can be Broker or Kafka topics. Supports wildcards # and +.
-                                          Required.
-                                    ],
-                                    "endpointRef": "str",  # Reference to the
-                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
-                                      Required.
-                                    "assetRef": "str",  # Optional. Reference to
-                                      the resource in Azure Device Registry where the data in the
-                                      endpoint originates from.
-                                    "schemaRef": "str",  # Optional. Schema CR
-                                      reference. Data will be deserialized according to the schema, and
-                                      dropped if it doesn't match.
-                                    "serializationFormat": "str"  # Optional.
-                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
-                                },
                                 "builtInTransformationSettings": {
                                     "datasets": [
                                         {
@@ -12954,13 +14086,38 @@ class DataFlowOperations:
                                       JSON Schema/draft-7, Parquet. Default: Json. Known values are:
                                       "Delta", "Json", and "Parquet".
                                 },
-                                "name": "str"  # Optional. Optional user provided
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                }
                             }
                         ],
-                        "profileRef": "str",  # Reference to the DataflowProfile CR.
-                          Required.
-                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                        "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
@@ -12997,7 +14154,7 @@ class DataFlowOperations:
         resource: Union[JSON, IO],
         **kwargs: Any
     ) -> LROPoller[JSON]:
-        """Create a DataFlowResource.
+        """Create a DataflowResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
@@ -13039,36 +14196,9 @@ class DataFlowOperations:
                     "properties": {
                         "operations": [
                             {
-                                "destinationSettings": {
-                                    "dataDestination": "str",  # Destination
-                                      location, can be a topic or table name. Supports dynamic values
-                                      with $topic, $systemProperties, $userProperties, $payload,
-                                      $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
-                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
-                                      Required.
-                                },
                                 "operationType": "str",  # Type of operation.
                                   Required. Known values are: "Source", "Destination", and
                                   "BuiltInTransformation".
-                                "sourceSettings": {
-                                    "dataSources": [
-                                        "str"  # List of source locations.
-                                          Can be Broker or Kafka topics. Supports wildcards # and +.
-                                          Required.
-                                    ],
-                                    "endpointRef": "str",  # Reference to the
-                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
-                                      Required.
-                                    "assetRef": "str",  # Optional. Reference to
-                                      the resource in Azure Device Registry where the data in the
-                                      endpoint originates from.
-                                    "schemaRef": "str",  # Optional. Schema CR
-                                      reference. Data will be deserialized according to the schema, and
-                                      dropped if it doesn't match.
-                                    "serializationFormat": "str"  # Optional.
-                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
-                                },
                                 "builtInTransformationSettings": {
                                     "datasets": [
                                         {
@@ -13139,13 +14269,38 @@ class DataFlowOperations:
                                       JSON Schema/draft-7, Parquet. Default: Json. Known values are:
                                       "Delta", "Json", and "Parquet".
                                 },
-                                "name": "str"  # Optional. Optional user provided
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                }
                             }
                         ],
-                        "profileRef": "str",  # Reference to the DataflowProfile CR.
-                          Required.
-                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                        "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
@@ -13183,36 +14338,9 @@ class DataFlowOperations:
                     "properties": {
                         "operations": [
                             {
-                                "destinationSettings": {
-                                    "dataDestination": "str",  # Destination
-                                      location, can be a topic or table name. Supports dynamic values
-                                      with $topic, $systemProperties, $userProperties, $payload,
-                                      $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
-                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
-                                      Required.
-                                },
                                 "operationType": "str",  # Type of operation.
                                   Required. Known values are: "Source", "Destination", and
                                   "BuiltInTransformation".
-                                "sourceSettings": {
-                                    "dataSources": [
-                                        "str"  # List of source locations.
-                                          Can be Broker or Kafka topics. Supports wildcards # and +.
-                                          Required.
-                                    ],
-                                    "endpointRef": "str",  # Reference to the
-                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
-                                      Required.
-                                    "assetRef": "str",  # Optional. Reference to
-                                      the resource in Azure Device Registry where the data in the
-                                      endpoint originates from.
-                                    "schemaRef": "str",  # Optional. Schema CR
-                                      reference. Data will be deserialized according to the schema, and
-                                      dropped if it doesn't match.
-                                    "serializationFormat": "str"  # Optional.
-                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
-                                },
                                 "builtInTransformationSettings": {
                                     "datasets": [
                                         {
@@ -13283,13 +14411,38 @@ class DataFlowOperations:
                                       JSON Schema/draft-7, Parquet. Default: Json. Known values are:
                                       "Delta", "Json", and "Parquet".
                                 },
-                                "name": "str"  # Optional. Optional user provided
+                                "destinationSettings": {
+                                    "dataDestination": "str",  # Destination
+                                      location, can be a topic or table name. Supports dynamic values
+                                      with $topic, $systemProperties, $userProperties, $payload,
+                                      $context, and $subscription. Required.
+                                    "endpointRef": "str"  # Reference to the
+                                      Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
+                                      Required.
+                                },
+                                "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
+                                "sourceSettings": {
+                                    "dataSources": [
+                                        "str"  # List of source locations.
+                                          Can be Broker or Kafka topics. Supports wildcards # and +.
+                                          Required.
+                                    ],
+                                    "endpointRef": "str",  # Reference to the
+                                      Dataflow Endpoint resource. Can only be of Broker and Kafka type.
+                                      Required.
+                                    "assetRef": "str",  # Optional. Reference to
+                                      the resource in Azure Device Registry where the data in the
+                                      endpoint originates from.
+                                    "schemaRef": "str",  # Optional. Schema CR
+                                      reference. Data will be deserialized according to the schema, and
+                                      dropped if it doesn't match.
+                                    "serializationFormat": "str"  # Optional.
+                                      Content is a JSON Schema. Allowed: JSON Schema/draft-7. "Json"
+                                }
                             }
                         ],
-                        "profileRef": "str",  # Reference to the DataflowProfile CR.
-                          Required.
-                        "mode": "str",  # Optional. Mode for DataFlow. Optional; defaults to
+                        "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
@@ -13386,7 +14539,7 @@ class DataFlowOperations:
 
         cls: ClsType[None] = kwargs.pop("cls", None)
 
-        request = build_data_flow_delete_request(
+        request = build_dataflow_delete_request(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_profile_name=dataflow_profile_name,
@@ -13426,7 +14579,7 @@ class DataFlowOperations:
         dataflow_name: str,
         **kwargs: Any
     ) -> LROPoller[None]:
-        """Delete a DataFlowResource.
+        """Delete a DataflowResource.
 
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
