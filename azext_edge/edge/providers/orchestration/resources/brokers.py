@@ -42,7 +42,7 @@ class Brokers(Queryable):
         return self.ops.get(resource_group_name=resource_group_name, instance_name=instance_name, broker_name=name)
 
     def list(self, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_instance_resource(resource_group_name=resource_group_name, instance_name=instance_name)
+        return self.ops.list_by_resource_group(resource_group_name=resource_group_name, instance_name=instance_name)
 
     def delete(
         self, name: str, instance_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None, **kwargs
@@ -73,7 +73,7 @@ class BrokerListeners:
         )
 
     def list(self, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_broker_resource(
+        return self.ops.list_by_resource_group(
             resource_group_name=resource_group_name, instance_name=instance_name, broker_name=broker_name
         )
 
@@ -113,7 +113,7 @@ class BrokerAuthn:
         )
 
     def list(self, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_broker_resource(
+        return self.ops.list_by_resource_group(
             resource_group_name=resource_group_name, instance_name=instance_name, broker_name=broker_name
         )
 
@@ -153,7 +153,7 @@ class BrokerAuthz:
         )
 
     def list(self, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_broker_resource(
+        return self.ops.list_by_resource_group(
             resource_group_name=resource_group_name, instance_name=instance_name, broker_name=broker_name
         )
 

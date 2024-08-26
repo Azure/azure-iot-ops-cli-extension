@@ -19,9 +19,9 @@ from .operations import (
     BrokerAuthorizationOperations,
     BrokerListenerOperations,
     BrokerOperations,
-    DataFlowEndpointOperations,
-    DataFlowOperations,
-    DataFlowProfileOperations,
+    DataflowEndpointOperations,
+    DataflowOperations,
+    DataflowProfileOperations,
     InstanceOperations,
     Operations,
 )
@@ -35,30 +35,30 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
     """Microsoft.IoTOperations Resource Provider management API.
 
     :ivar operations: Operations operations
-    :vartype operations: aziotops.mgmt.operations.Operations
+    :vartype operations: storage.mgmt.operations.Operations
     :ivar instance: InstanceOperations operations
-    :vartype instance: aziotops.mgmt.operations.InstanceOperations
+    :vartype instance: storage.mgmt.operations.InstanceOperations
     :ivar broker: BrokerOperations operations
-    :vartype broker: aziotops.mgmt.operations.BrokerOperations
+    :vartype broker: storage.mgmt.operations.BrokerOperations
     :ivar broker_authentication: BrokerAuthenticationOperations operations
-    :vartype broker_authentication: aziotops.mgmt.operations.BrokerAuthenticationOperations
+    :vartype broker_authentication: storage.mgmt.operations.BrokerAuthenticationOperations
     :ivar broker_authorization: BrokerAuthorizationOperations operations
-    :vartype broker_authorization: aziotops.mgmt.operations.BrokerAuthorizationOperations
+    :vartype broker_authorization: storage.mgmt.operations.BrokerAuthorizationOperations
     :ivar broker_listener: BrokerListenerOperations operations
-    :vartype broker_listener: aziotops.mgmt.operations.BrokerListenerOperations
-    :ivar data_flow_endpoint: DataFlowEndpointOperations operations
-    :vartype data_flow_endpoint: aziotops.mgmt.operations.DataFlowEndpointOperations
-    :ivar data_flow_profile: DataFlowProfileOperations operations
-    :vartype data_flow_profile: aziotops.mgmt.operations.DataFlowProfileOperations
-    :ivar data_flow: DataFlowOperations operations
-    :vartype data_flow: aziotops.mgmt.operations.DataFlowOperations
+    :vartype broker_listener: storage.mgmt.operations.BrokerListenerOperations
+    :ivar dataflow_endpoint: DataflowEndpointOperations operations
+    :vartype dataflow_endpoint: storage.mgmt.operations.DataflowEndpointOperations
+    :ivar dataflow_profile: DataflowProfileOperations operations
+    :vartype dataflow_profile: storage.mgmt.operations.DataflowProfileOperations
+    :ivar dataflow: DataflowOperations operations
+    :vartype dataflow: storage.mgmt.operations.DataflowOperations
     :param subscription_id: The ID of the target subscription. The value must be an UUID. Required.
     :type subscription_id: str
     :param credential: Credential needed for the client to connect to Azure. Required.
     :type credential: ~azure.core.credentials.TokenCredential
     :keyword endpoint: Service URL. Default value is "https://management.azure.com".
     :paramtype endpoint: str
-    :keyword api_version: Api Version. Default value is "2024-07-01-preview". Note that overriding
+    :keyword api_version: Api Version. Default value is "2024-08-15-preview". Note that overriding
      this default value may result in unsupported behavior.
     :paramtype api_version: str
     :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
@@ -91,13 +91,13 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
             self._client, self._config, self._serialize, self._deserialize
         )
         self.broker_listener = BrokerListenerOperations(self._client, self._config, self._serialize, self._deserialize)
-        self.data_flow_endpoint = DataFlowEndpointOperations(
+        self.dataflow_endpoint = DataflowEndpointOperations(
             self._client, self._config, self._serialize, self._deserialize
         )
-        self.data_flow_profile = DataFlowProfileOperations(
+        self.dataflow_profile = DataflowProfileOperations(
             self._client, self._config, self._serialize, self._deserialize
         )
-        self.data_flow = DataFlowOperations(self._client, self._config, self._serialize, self._deserialize)
+        self.dataflow = DataflowOperations(self._client, self._config, self._serialize, self._deserialize)
 
     def send_request(self, request: HttpRequest, **kwargs: Any) -> HttpResponse:
         """Runs the network request through the client's chained policies.
