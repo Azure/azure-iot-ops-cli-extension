@@ -185,6 +185,21 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker.
+
+        examples:
+        - name: Delete the broker called 'broker' in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops broker delete -n broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker delete -n broker --in mycluster-ops-instance -g myresourcegroup -y
+    """
+
+    helps[
         "iot ops broker listener"
     ] = """
         type: group
@@ -213,6 +228,21 @@ def load_iotops_help():
         - name: Enumerate all broker listeners associated with the default broker.
           text: >
             az iot ops broker listener list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker listener delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker listener.
+
+        examples:
+        - name: Delete the broker listener called 'listener' associated with broker 'broker'.
+          text: >
+            az iot ops broker listener delete -n listener -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker listener delete -n listener -b broker --in mycluster-ops-instance -g myresourcegroup -y
     """
 
     helps[
@@ -247,6 +277,21 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker authn delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker authentication resource.
+
+        examples:
+        - name: Delete the broker authentication resource called 'authn' associated with broker 'broker'.
+          text: >
+            az iot ops broker authn delete -n authn -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker authn delete -n authn -b broker --in mycluster-ops-instance -g myresourcegroup -y
+    """
+
+    helps[
         "iot ops broker authz"
     ] = """
         type: group
@@ -275,6 +320,21 @@ def load_iotops_help():
         - name: Enumerate all broker authorization resources associated with the default broker.
           text: >
             az iot ops broker authz list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker authn delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker authentication resource.
+
+        examples:
+        - name: Delete the broker authorization resource called 'authz' associated with broker 'broker'.
+          text: >
+            az iot ops broker authz delete -n authz -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker authz delete -n authz -b broker --in mycluster-ops-instance -g myresourcegroup -y
     """
 
     helps[

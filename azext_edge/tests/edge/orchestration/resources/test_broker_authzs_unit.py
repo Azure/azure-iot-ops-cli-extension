@@ -74,7 +74,7 @@ def test_broker_authz_show(mocked_cmd, mocked_responses: responses):
     result = show_broker_authz(
         cmd=mocked_cmd,
         authz_name=authz_name,
-        mq_broker_name=broker_name,
+        broker_name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )
@@ -117,7 +117,7 @@ def test_broker_authz_list(mocked_cmd, mocked_responses: responses, records: int
     result = list(
         list_broker_authzs(
             cmd=mocked_cmd,
-            mq_broker_name=broker_name,
+            broker_name=broker_name,
             instance_name=instance_name,
             resource_group_name=resource_group_name,
         )

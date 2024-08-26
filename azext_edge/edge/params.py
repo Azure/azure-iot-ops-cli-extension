@@ -233,12 +233,22 @@ def load_iotops_arguments(self, _):
             options_list=["--instance", "-i"],
             help="IoT Operations instance name.",
         )
+        context.argument(
+            "broker_name",
+            options_list=["--name", "-n"],
+            help="Mqtt broker name.",
+        )
 
     with self.argument_context("iot ops broker listener") as context:
         context.argument(
             "listener_name",
             options_list=["--name", "-n"],
             help="Mqtt broker listener name.",
+        )
+        context.argument(
+            "broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
         )
 
     with self.argument_context("iot ops broker authn") as context:
@@ -247,12 +257,22 @@ def load_iotops_arguments(self, _):
             options_list=["--name", "-n"],
             help="Mqtt broker authentication resource name.",
         )
+        context.argument(
+            "broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
+        )
 
     with self.argument_context("iot ops broker authz") as context:
         context.argument(
             "authz_name",
             options_list=["--name", "-n"],
             help="Mqtt broker authorization resource name.",
+        )
+        context.argument(
+            "broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
         )
 
     with self.argument_context("iot ops broker stats") as context:

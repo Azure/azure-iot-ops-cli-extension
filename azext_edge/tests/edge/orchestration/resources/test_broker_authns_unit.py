@@ -69,7 +69,7 @@ def test_broker_authn_show(mocked_cmd, mocked_responses: responses):
     result = show_broker_authn(
         cmd=mocked_cmd,
         authn_name=authn_name,
-        mq_broker_name=broker_name,
+        broker_name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )
@@ -112,7 +112,7 @@ def test_broker_authn_list(mocked_cmd, mocked_responses: responses, records: int
     result = list(
         list_broker_authns(
             cmd=mocked_cmd,
-            mq_broker_name=broker_name,
+            broker_name=broker_name,
             instance_name=instance_name,
             resource_group_name=resource_group_name,
         )

@@ -82,7 +82,7 @@ def test_broker_listener_show(mocked_cmd, mocked_responses: responses):
     result = show_broker_listener(
         cmd=mocked_cmd,
         listener_name=listener_name,
-        mq_broker_name=broker_name,
+        broker_name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )
@@ -125,7 +125,7 @@ def test_broker_list(mocked_cmd, mocked_responses: responses, records: int):
     result = list(
         list_broker_listeners(
             cmd=mocked_cmd,
-            mq_broker_name=broker_name,
+            broker_name=broker_name,
             instance_name=instance_name,
             resource_group_name=resource_group_name,
         )

@@ -71,7 +71,7 @@ def test_broker_show(mocked_cmd, mocked_responses: responses):
 
     result = show_broker(
         cmd=mocked_cmd,
-        mq_broker_name=broker_name,
+        broker_name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )
