@@ -37,7 +37,6 @@ def get_mock_dataflow_record(
                     "destinationSettings": {"dataDestination": "$topic", "endpointRef": "mykafkaendpoint"},
                 }
             ],
-            "profileRef": "mydataflowprofile",
             "mode": "Enabled",
             "provisioningState": "Succeeded",
         },
