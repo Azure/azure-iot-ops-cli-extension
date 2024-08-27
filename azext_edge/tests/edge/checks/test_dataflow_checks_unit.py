@@ -566,9 +566,9 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "kafka",
-                        "authentication": {"method": "authMethod"},
                         "kafkaSettings": {
                             "host": "kafkaHost",
+                            "authentication": {"method": "authMethod"},
                             "consumerGroupId": None,
                             "compression": "compression",
                             "kafkaAcks": 3,
@@ -584,8 +584,7 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "localstorage",
-                        "authentication": {"method": "authMethod"},
-                        "localStorageSettings": {"persistentVolumeClaimRef": "ref"},
+                        "localStorageSettings": {"persistentVolumeClaimRef": "ref", "authentication": {"method": "authMethod"},},
                     },
                 },
                 # Fabric Onelake
@@ -595,9 +594,9 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "fabriconelake",
-                        "authentication": {"method": "authMethod"},
                         "fabricOneLakeSettings": {
                             "host": "fabric_host",
+                            "authentication": {"method": "authMethod"},
                             "names": {"lakehouseName": "lakehouse", "workspaceName": "workspaceName"},
                             "batching": {"latencySeconds": 2},
                         },
@@ -610,8 +609,7 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "datalakestorage",
-                        "authentication": {"method": "authMethod"},
-                        "datalakeStorageSettings": {"host": "datalakeHost", "batching": {"latencySeconds": 12}},
+                        "datalakeStorageSettings": {"host": "datalakeHost", "authentication": {"method": "authMethod"}, "batching": {"latencySeconds": 12}},
                     },
                 },
                 # dataExplorer
@@ -621,8 +619,8 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "dataExplorer",
-                        "authentication": {"method": "authMethod"},
                         "dataExplorerSettings": {
+                            "authentication": {"method": "authMethod"},
                             "database": "databse",
                             "host": "data_explorer_host",
                             "batching": {"latencySeconds": 3},
@@ -636,8 +634,8 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "mqtt",
-                        "authentication": {"method": "authMethod"},
                         "mqttSettings": {
+                            "authentication": {"method": "authMethod"},
                             "host": "mqttHost",
                             "protocol": "Websockets",
                             "clientIdPrefix": None,

@@ -341,6 +341,18 @@ def _process_dataflow_destinationsettings(
                 )
 
 
+def _process_endpoint_authentication(endpoint_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int) -> None:
+    auth = endpoint_settings.get("authentication", {})
+    auth_method = auth.get("method")
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=basic_property_display(
+            label="Authentication Method", value=auth_method, padding=padding
+        ),
+    )
+    # TODO - add displays for various auth types (refs, identity names, etc)
+
 def _process_endpoint_mqttsettings(
     check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
 ) -> None:
@@ -356,6 +368,10 @@ def _process_endpoint_mqttsettings(
                 namespace=namespace,
                 display=basic_property_display(label=label, value=val, padding=padding),
             )
+
+    # endpoint authentication details
+    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
+
     if detail_level > ResourceOutputDetailLevel.detail.value:
         for label, key in [
             ("Client ID Prefix", "clientIdPrefix"),
@@ -410,6 +426,9 @@ def _process_endpoint_kafkasettings(
                 namespace=namespace,
                 display=basic_property_display(label=label, value=val, padding=padding),
             )
+
+    # endpoint authentication details
+    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
         # extra properties
@@ -481,6 +500,10 @@ def _process_endpoint_fabriconelakesettings(
                 namespace=namespace,
                 display=basic_property_display(label=label, value=val, padding=padding),
             )
+    
+    # endpoint authentication details
+    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
+
     if detail_level > ResourceOutputDetailLevel.detail.value:
         names = settings.get("names", {})
         for label, key in [
@@ -529,6 +552,9 @@ def _process_endpoint_datalakestoragesettings(
                 display=basic_property_display(label=label, value=val, padding=padding),
             )
 
+    # endpoint authentication details
+    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
+
     if detail_level > ResourceOutputDetailLevel.detail.value:
         batching = settings.get("batching", {})
         check_manager.add_display(
@@ -563,6 +589,9 @@ def _process_endpoint_dataexplorersettings(
                 display=basic_property_display(label=label, value=val, padding=padding),
             )
 
+    # endpoint authentication details
+    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
+
     if detail_level > ResourceOutputDetailLevel.detail.value:
         batching = settings.get("batching", {})
         check_manager.add_display(
@@ -596,6 +625,8 @@ def _process_endpoint_localstoragesettings(
         namespace=namespace,
         display=Padding(f"Persistent Volume Claim: {persistent_volume_claim}", (0, 0, 0, padding)),
     )
+    # endpoint authentication details
+    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
 
 
 def check_dataflows_deployment(
@@ -943,17 +974,8 @@ def evaluate_dataflow_endpoints(
                 ),
             )
 
-            # endpoint auth
+            # endpoint details at higher detail levels
             if detail_level > ResourceOutputDetailLevel.summary.value:
-                auth = spec.get("authentication", {})
-                auth_method = auth.get("method")
-                check_manager.add_display(
-                    target_name=target,
-                    namespace=namespace,
-                    display=basic_property_display(
-                        label="Authentication Method", value=auth_method, padding=INNER_PADDING
-                    ),
-                )
 
                 endpoint_processor_dict = {
                     DataflowEndpointType.mqtt.value: _process_endpoint_mqttsettings,
