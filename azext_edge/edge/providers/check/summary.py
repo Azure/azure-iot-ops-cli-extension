@@ -26,6 +26,7 @@ def check_summary(
     detail_level=ResourceOutputDetailLevel.summary.value,
     as_list: bool = False,
 ) -> None:
+    # define checks
     service_checks = [
         {
             "svc": OpsServiceType.akri.value,
@@ -53,18 +54,22 @@ def check_summary(
             "check": check_dataflows_deployment,
         },
     ]
+
     check_manager = CheckManager(check_name="evalAIOSummary", check_desc="AIO components")
     for check in service_checks:
-        service_name = check["title"]
-        check_func = check["check"]
-        svc = check["svc"]
+        service_name = check.get("title")
+        check_func = check.get("check")
+        svc = check.get("svc")
 
+        # run checks for service
         result = check_func(
             detail_level=ResourceOutputDetailLevel.summary.value,
             resource_name=resource_name,
             as_list=as_list,
             resource_kinds=resource_kinds,
         )
+
+        # add service check results to check manager
         target = f"{service_name}"
         check_manager.add_target(target_name=target)
         check_manager.add_display(
@@ -74,26 +79,34 @@ def check_summary(
                 (0, 0, 0, PADDING),
             ),
         )
+
+        # create grid for service check results
         grid = Table.grid(padding=(0, 0, 0, 2))
         add_footer = False
+
+        # parse check results
         for obj in result:
-            status = obj["status"]
+            status = obj.get("status")
             status_obj = CheckTaskStatus(status)
             if status_obj == CheckTaskStatus.error or status_obj == CheckTaskStatus.warning:
                 add_footer = True
             emoji = status_obj.emoji
             color = status_obj.color
-            description = obj["description"]
+            description = obj.get("description")
             check_manager.add_target_eval(
                 target_name=target,
                 status=status,
                 value=obj,
             )
+            # add row to grid
             grid.add_row(colorize_string(value=emoji, color=color), description)
-        # display table
+
+        # display grid
         check_manager.add_display(target_name=target, display=Padding(grid, (0, 0, 0, PADDING)))
+
         # service check suggestion footer
         if add_footer:
             footer = f"See details by running: az iot ops check --svc {svc}"
             check_manager.add_display(target_name=target, display=Padding(footer, (0, 0, 0, PADDING)))
+
     return check_manager.as_dict(as_list=as_list)

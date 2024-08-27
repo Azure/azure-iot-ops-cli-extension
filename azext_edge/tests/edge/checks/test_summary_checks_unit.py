@@ -7,6 +7,9 @@
 import pytest
 
 from azext_edge.edge.providers.checks import run_checks
+from azext_edge.edge.commands_edge import check
+
+from azure.cli.core.azclierror import ArgumentUsageError
 
 
 @pytest.mark.parametrize(
@@ -273,3 +276,36 @@ def test_summary_checks(
     ]:
         assert service in result["postDeployment"][0]["targets"]
         assert result["postDeployment"][0]["targets"][service]["_all_"]["status"] == status
+
+
+@pytest.mark.parametrize(
+    "resource_kinds",
+    [
+        ["broker", "dataflowprofile"],
+        ["brokerlistener", "dataflowendpoint", "dataflow"],
+    ]
+)
+@pytest.mark.parametrize(
+    "resource_name",
+    ["broker", "dataflowprofile"]
+)
+@pytest.mark.parametrize("detail_level", [0, 1, 2])
+@pytest.mark.parametrize("ops_service", [None])
+@pytest.mark.parametrize("as_object", [True, False])
+def test_summary_input_errors(
+    mocked_cmd,
+    as_object,
+    ops_service,
+    detail_level,
+    resource_kinds,
+    resource_name
+):
+    with pytest.raises(ArgumentUsageError):
+        check(
+            cmd=mocked_cmd,
+            detail_level=detail_level,
+            as_object=as_object,
+            ops_service=ops_service,
+            resource_kinds=resource_kinds,
+            resource_name=resource_name
+        )

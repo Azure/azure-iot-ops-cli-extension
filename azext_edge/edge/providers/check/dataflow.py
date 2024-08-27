@@ -1045,8 +1045,10 @@ def evaluate_dataflow_profiles(
     if not all_profiles:
         no_profiles_text = "No Dataflow Profiles detected in any namespace."
         check_manager.add_target(target_name=target)
+        # if we may have manually filtered out the default profile by input, skip instead of warn
+        default_profile_status = CheckTaskStatus.skipped if resource_name else CheckTaskStatus.warning
         check_manager.add_target_eval(
-            target_name=target, status=CheckTaskStatus.warning.value, value={"profiles": no_profiles_text}
+            target_name=target, status=default_profile_status.value, value={"profiles": no_profiles_text}
         )
         check_manager.add_display(
             target_name=target,
@@ -1065,8 +1067,8 @@ def evaluate_dataflow_profiles(
             display=Padding(f"Dataflow Profiles in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, PADDING)),
         )
 
-        # warn if no default dataflow profile
-        default_profile_status = CheckTaskStatus.warning
+        # warn if no default dataflow profile (unless possibly filtered)
+        default_profile_status = CheckTaskStatus.skipped if resource_name else CheckTaskStatus.warning
         for profile in list(profiles):
             profile_name = profile.get("metadata", {}).get("name")
             # check for default dataflow profile
@@ -1228,7 +1230,7 @@ def evaluate_dataflow_profiles(
             resource_name=DEFAULT_DATAFLOW_PROFILE,
             value={f"[*].metadata.name=='{DEFAULT_DATAFLOW_PROFILE}'": default_profile_status.value},
         )
-        if not default_profile_status == CheckTaskStatus.success:
+        if default_profile_status not in [CheckTaskStatus.success, CheckTaskStatus.skipped]:
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
