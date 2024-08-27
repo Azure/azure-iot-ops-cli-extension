@@ -119,6 +119,15 @@ def mock_resource_types(mocker, ops_service):
                 "AssetEndpointProfile": [{}],
             }
         )
+    elif ops_service == "dataflow":
+        patched.return_value = (
+            {},
+            {
+                "Dataflow": [{}],
+                "DataflowEndpoint": [{}],
+                "DataflowProfile": [{}],
+            }
+        )
 
     yield patched
 

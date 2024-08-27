@@ -17,7 +17,11 @@ def test_check_manager():
     namespace = generate_random_string()
     check_manager = CheckManager(check_name=name, check_desc=desc)
     assert_check_manager_dict(
-        check_manager=check_manager, expected_name=name, expected_namespace=namespace, expected_desc=desc
+        check_manager=check_manager,
+        expected_name=name,
+        expected_namespace=namespace,
+        expected_desc=desc,
+        expected_status=CheckTaskStatus.skipped.value,
     )
 
     target_1 = generate_random_string()
@@ -54,9 +58,7 @@ def test_check_manager():
         expected_targets=expected_targets,
         expected_target_displays={target_1: [target_1_display_1]},
     )
-    check_manager.add_target_eval(
-        target_name=target_1, namespace=namespace, status=CheckTaskStatus.warning.value
-    )
+    check_manager.add_target_eval(target_name=target_1, namespace=namespace, status=CheckTaskStatus.warning.value)
     expected_targets = {
         target_1: {
             "conditions": target_1_conditions,
@@ -83,9 +85,7 @@ def test_check_manager():
     target_2_condition_1 = generate_random_string()
     target_2_conditions = [target_2_condition_1]
     check_manager.add_target(target_name=target_2, namespace=namespace, conditions=target_2_conditions)
-    check_manager.add_target_eval(
-        target_name=target_2, namespace=namespace, status=CheckTaskStatus.error.value
-    )
+    check_manager.add_target_eval(target_name=target_2, namespace=namespace, status=CheckTaskStatus.error.value)
 
     expected_targets = {
         target_1: {
