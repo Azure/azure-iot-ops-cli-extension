@@ -4,12 +4,19 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List
+from typing import List, NamedTuple
 
 from rich.padding import Padding
 from rich.table import Table
 
 from ...common import CheckTaskStatus, OpsServiceType
+from ...providers.edge_api import (
+    AKRI_API_V0,
+    DATAFLOW_API_V1B1,
+    DEVICEREGISTRY_API_V1,
+    MQ_ACTIVE_API,
+    OPCUA_API_V1
+)
 from .akri import check_akri_deployment
 from .base import CheckManager
 from .base.display import colorize_string
@@ -20,6 +27,13 @@ from .mq import check_mq_deployment
 from .opcua import check_opcua_deployment
 
 
+class ServiceCheck(NamedTuple):
+    svc: str
+    title: str
+    target: str
+    check_func: callable
+
+
 def check_summary(
     resource_name: str,
     resource_kinds: List[str],
@@ -27,42 +41,44 @@ def check_summary(
     as_list: bool = False,
 ) -> None:
     # define checks
-    service_checks = [
-        {
-            "svc": OpsServiceType.akri.value,
-            "title": "Akri",
-            "check": check_akri_deployment,
-        },
-        {
-            "svc": OpsServiceType.mq.value,
-            "title": "Broker",
-            "check": check_mq_deployment,
-        },
-        {
-            "svc": OpsServiceType.deviceregistry.value,
-            "title": "DeviceRegistry",
-            "check": check_deviceregistry_deployment,
-        },
-        {
-            "svc": OpsServiceType.opcua.value,
-            "title": "OPCUA",
-            "check": check_opcua_deployment,
-        },
-        {
-            "svc": OpsServiceType.dataflow.value,
-            "title": "Dataflow",
-            "check": check_dataflows_deployment,
-        },
+    service_checks: List[ServiceCheck] = [
+        ServiceCheck(
+            svc=OpsServiceType.akri.value,
+            title="Akri",
+            target=AKRI_API_V0.as_str(),
+            check_func=check_akri_deployment,
+        ),
+        ServiceCheck(
+            svc=OpsServiceType.mq.value,
+            title="Broker",
+            target=MQ_ACTIVE_API.as_str(),
+            check_func=check_mq_deployment,
+        ),
+        ServiceCheck(
+            svc=OpsServiceType.deviceregistry.value,
+            title="DeviceRegistry",
+            target=DEVICEREGISTRY_API_V1.as_str(),
+            check_func=check_deviceregistry_deployment,
+        ),
+        ServiceCheck(
+            svc=OpsServiceType.opcua.value,
+            title="OPCUA",
+            target=OPCUA_API_V1.as_str(),
+            check_func=check_opcua_deployment,
+        ),
+        ServiceCheck(
+            svc=OpsServiceType.dataflow.value,
+            title="Dataflow",
+            target=DATAFLOW_API_V1B1.as_str(),
+            check_func=check_dataflows_deployment,
+        ),
     ]
 
     check_manager = CheckManager(check_name="evalAIOSummary", check_desc="AIO components")
     for check in service_checks:
-        service_name = check.get("title")
-        check_func = check.get("check")
-        svc = check.get("svc")
 
         # run checks for service
-        result = check_func(
+        result = check.check_func(
             detail_level=ResourceOutputDetailLevel.summary.value,
             resource_name=resource_name,
             as_list=as_list,
@@ -70,12 +86,12 @@ def check_summary(
         )
 
         # add service check results to check manager
-        target = f"{service_name}"
+        target = check.target
         check_manager.add_target(target_name=target)
         check_manager.add_display(
             target_name=target,
             display=Padding(
-                service_name,
+                check.title,
                 (0, 0, 0, PADDING),
             ),
         )
@@ -96,9 +112,7 @@ def check_summary(
             check_manager.add_target_eval(
                 target_name=target,
                 status=status,
-                value={
-                    obj.get("name", "checkResult"): status
-                },
+                value={obj.get("name", "checkResult"): status},
             )
             # add row to grid
             grid.add_row(colorize_string(value=emoji, color=color), description)
@@ -108,7 +122,7 @@ def check_summary(
 
         # service check suggestion footer
         if add_footer:
-            footer = f"See details by running: az iot ops check --svc {svc}"
+            footer = f"See details by running: az iot ops check --svc {check.svc}"
             check_manager.add_display(target_name=target, display=Padding(footer, (0, 0, 0, PADDING)))
 
     return check_manager.as_dict(as_list=as_list)

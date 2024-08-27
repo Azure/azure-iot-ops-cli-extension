@@ -5,11 +5,17 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-
-from azext_edge.edge.providers.checks import run_checks
-from azext_edge.edge.commands_edge import check
-
 from azure.cli.core.azclierror import ArgumentUsageError
+
+from azext_edge.edge.commands_edge import check
+from azext_edge.edge.providers.checks import run_checks
+from azext_edge.edge.providers.edge_api import (
+    AKRI_API_V0,
+    DATAFLOW_API_V1B1,
+    DEVICEREGISTRY_API_V1,
+    MQ_ACTIVE_API,
+    OPCUA_API_V1,
+)
 
 
 @pytest.mark.parametrize(
@@ -268,11 +274,11 @@ def test_summary_checks(
             expected_status = status
     assert result["postDeployment"][0]["status"] == expected_status
     for service, status in [
-        ("Akri", akri_status),
-        ("Broker", broker_status),
-        ("DeviceRegistry", deviceregistry_status),
-        ("OPCUA", opcua_status),
-        ("Dataflow", dataflow_status),
+        (AKRI_API_V0.as_str(), akri_status),
+        (MQ_ACTIVE_API.as_str(), broker_status),
+        (DEVICEREGISTRY_API_V1.as_str(), deviceregistry_status),
+        (OPCUA_API_V1.as_str(), opcua_status),
+        (DATAFLOW_API_V1B1.as_str(), dataflow_status),
     ]:
         assert service in result["postDeployment"][0]["targets"]
         assert result["postDeployment"][0]["targets"][service]["_all_"]["status"] == status
@@ -283,23 +289,13 @@ def test_summary_checks(
     [
         ["broker", "dataflowprofile"],
         ["brokerlistener", "dataflowendpoint", "dataflow"],
-    ]
+    ],
 )
-@pytest.mark.parametrize(
-    "resource_name",
-    ["broker", "dataflowprofile"]
-)
+@pytest.mark.parametrize("resource_name", ["broker", "dataflowprofile"])
 @pytest.mark.parametrize("detail_level", [0, 1, 2])
 @pytest.mark.parametrize("ops_service", [None])
 @pytest.mark.parametrize("as_object", [True, False])
-def test_summary_input_errors(
-    mocked_cmd,
-    as_object,
-    ops_service,
-    detail_level,
-    resource_kinds,
-    resource_name
-):
+def test_summary_input_errors(mocked_cmd, as_object, ops_service, detail_level, resource_kinds, resource_name):
     with pytest.raises(ArgumentUsageError):
         check(
             cmd=mocked_cmd,
@@ -307,5 +303,5 @@ def test_summary_input_errors(
             as_object=as_object,
             ops_service=ops_service,
             resource_kinds=resource_kinds,
-            resource_name=resource_name
+            resource_name=resource_name,
         )

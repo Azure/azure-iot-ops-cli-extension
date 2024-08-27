@@ -5,6 +5,13 @@
 # ----------------------------------------------------------------------------------------------
 
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
+from azext_edge.edge.providers.edge_api import (
+    AKRI_API_V0,
+    DATAFLOW_API_V1B1,
+    DEVICEREGISTRY_API_V1,
+    MQ_ACTIVE_API,
+    OPCUA_API_V1,
+)
 
 from ....helpers import run
 
@@ -23,7 +30,7 @@ def test_summary_checks():
     assert checks["status"] in ["success", "skipped"]
 
     # assert each service check is either success or skipped
-    for service in ["Akri", "Broker", "OPCUA", "Dataflow", "DeviceRegistry"]:
-        assert service in checks["targets"]
-        service_checks = checks["targets"][service]
+    for api in [AKRI_API_V0, MQ_ACTIVE_API, OPCUA_API_V1, DATAFLOW_API_V1B1, DEVICEREGISTRY_API_V1]:
+        assert api.as_str() in checks["targets"]
+        service_checks = checks["targets"][api]
         assert service_checks.get(ALL_NAMESPACES_TARGET, {}).get("status") in ["success", "skipped"]
