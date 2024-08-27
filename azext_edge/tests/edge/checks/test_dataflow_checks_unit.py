@@ -569,6 +569,7 @@ def test_evaluate_dataflows(
                         "kafkaSettings": {
                             "host": "kafkaHost",
                             "authentication": {"method": "authMethod"},
+                            "cloudEventAttributes": "Propagate",
                             "consumerGroupId": None,
                             "compression": "compression",
                             "kafkaAcks": 3,
@@ -638,6 +639,7 @@ def test_evaluate_dataflows(
                             "authentication": {"method": "authMethod"},
                             "host": "mqttHost",
                             "protocol": "Websockets",
+                            "cloudEventAttributes": "CreateOrRemap",
                             "clientIdPrefix": None,
                             "qos": 3,
                             "maxInflightMessages": 100,

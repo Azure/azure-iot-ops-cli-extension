@@ -393,6 +393,7 @@ def _process_endpoint_mqttsettings(
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
         for label, key in [
+            ("Cloud Event Attributes", "cloudEventAttributes"),
             ("Client ID Prefix", "clientIdPrefix"),
             ("Keep Alive (s)", "keepAliveSeconds"),
             ("Max Inflight Messages", "maxInflightMessages"),
@@ -438,6 +439,7 @@ def _process_endpoint_kafkasettings(
     if detail_level > ResourceOutputDetailLevel.detail.value:
         # extra properties
         for label, key in [
+            ("Cloud Event Attributes", "cloudEventAttributes"),
             ("Compression", "compression"),
             ("Copy MQTT Properties", "copyMqttProperties"),
             ("Acks", "kafkaAcks"),
