@@ -7,6 +7,7 @@
 from typing import Any, Dict, List
 
 from azure.cli.core.azclierror import ArgumentUsageError
+from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 from rich.console import Console
 
 from ..common import ListableEnum, OpsServiceType
@@ -18,6 +19,7 @@ from .check.opcua import check_opcua_deployment
 from .edge_api.deviceregistry import DeviceRegistryResourceKinds
 from .edge_api.mq import MqResourceKinds
 from .check.akri import check_akri_deployment
+from .check.dataflow import check_dataflows_deployment
 from .edge_api.akri import AkriResourceKinds
 from .edge_api.opcua import OpcuaResourceKinds
 
@@ -61,6 +63,7 @@ def run_checks(
                 OpsServiceType.mq.value: check_mq_deployment,
                 OpsServiceType.deviceregistry.value: check_deviceregistry_deployment,
                 OpsServiceType.opcua.value: check_opcua_deployment,
+                OpsServiceType.dataflow.value: check_dataflows_deployment,
             }
             service_check_dict[ops_service](
                 detail_level=detail_level,
@@ -81,6 +84,7 @@ def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: Lis
         OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
         OpsServiceType.opcua.value: OpcuaResourceKinds,
+        OpsServiceType.dataflow.value: DataflowResourceKinds,
     }
 
     valid_resource_kinds = service_kinds_dict[ops_service].list() if ops_service in service_kinds_dict else []

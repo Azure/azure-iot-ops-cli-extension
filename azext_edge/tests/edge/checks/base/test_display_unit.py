@@ -6,7 +6,11 @@
 
 import pytest
 from azext_edge.edge.common import CheckTaskStatus
-from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
+from azext_edge.edge.providers.check.common import (
+    ALL_NAMESPACES_TARGET,
+    DEFAULT_PADDING,
+    DEFAULT_PROPERTY_DISPLAY_COLOR
+)
 
 from ....generators import generate_random_string
 
@@ -73,3 +77,35 @@ def test_process_value_color(mocked_check_manager, key, value):
         )
     else:
         assert result.startswith("[cyan]")
+
+
+@pytest.mark.parametrize("color", ["red", "yellow", "green", "cyan", None])
+@pytest.mark.parametrize("value", [generate_random_string()])
+def test_colorize_string(value, color):
+    from azext_edge.edge.providers.check.base.display import colorize_string
+    result = colorize_string(value=value, color=color)
+    if not color:
+        color = DEFAULT_PROPERTY_DISPLAY_COLOR
+    assert result == f"[{color}]{value}[/{color}]"
+
+
+@pytest.mark.parametrize("label", [generate_random_string()])
+@pytest.mark.parametrize("value", [generate_random_string()])
+@pytest.mark.parametrize("color", ["red", "yellow", "green", "cyan", None])
+@pytest.mark.parametrize("padding", [4, 8, -1, 0, None])
+def test_basic_property_display(label, value, color, padding):
+    from azext_edge.edge.providers.check.base.display import basic_property_display
+    result = basic_property_display(
+        label=label, value=value, color=color, padding=padding
+    )
+    if not color:
+        color = DEFAULT_PROPERTY_DISPLAY_COLOR
+    if not padding:
+        padding = DEFAULT_PADDING
+    assert result.renderable == f"{label}: [{color}]{value}[/{color}]"
+    assert (
+        result.top,
+        result.right,
+        result.bottom,
+        result.left
+    ) == (0, 0, 0, padding)
