@@ -136,27 +136,17 @@ def build_bundle(
         )
 
         def visually_process(description: str, support_segment: dict, ops_service: str):
-            # namespace_task = uber_progress.add_task(f"[cyan]{description}", total=len(support_segment))
-            header = f"Fetching [medium_purple4]{ops_service}[/medium_purple4] data..."
-            grid = Table.grid(expand=False)
-            grid.add_column()
-
-            grid.add_row(NewLine(1))
-            grid.add_row(header)
-            grid.add_row(NewLine(1))
-            grid.add_row(uber_progress)
-            live.update(grid, refresh=True)
-
+            namespace_task = uber_progress.add_task(f"[cyan]{description}", total=len(support_segment))
             for element in support_segment:
-                # header = f"Fetching [medium_purple4]{element}[/medium_purple4] data..."
-                # grid = Table.grid(expand=False)
-                # grid.add_column()
+                header = f"Fetching [medium_purple4]{element}[/medium_purple4] data..."
+                grid = Table.grid(expand=False)
+                grid.add_column()
 
-                # grid.add_row(NewLine(1))
-                # grid.add_row(header)
-                # grid.add_row(NewLine(1))
-                # grid.add_row(uber_progress)
-                # live.update(grid, refresh=True)
+                grid.add_row(NewLine(1))
+                grid.add_row(header)
+                grid.add_row(NewLine(1))
+                grid.add_row(uber_progress)
+                live.update(grid, refresh=True)
 
                 try:
                     # Produce as much support collateral as possible.
@@ -166,7 +156,7 @@ def build_bundle(
                     logger.debug(f"Unable to process {ops_service} {element}:\n{e}")
                 finally:
                     if not uber_progress.finished:
-                        # uber_progress.update(namespace_task, advance=1)
+                        uber_progress.update(namespace_task, advance=1)
                         uber_progress.update(uber_task, advance=1)
 
         for service in pending_work:
