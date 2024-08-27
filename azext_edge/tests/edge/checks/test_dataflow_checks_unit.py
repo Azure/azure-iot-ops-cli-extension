@@ -493,7 +493,6 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     ("value/spec.mode", "Disabled"),
                 ]
             ],
-
         ),
         # no dataflows
         (
@@ -585,7 +584,10 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "localstorage",
-                        "localStorageSettings": {"persistentVolumeClaimRef": "ref", "authentication": {"method": "authMethod"},},
+                        "localStorageSettings": {
+                            "persistentVolumeClaimRef": "ref",
+                            "authentication": {"method": "authMethod"},
+                        },
                     },
                 },
                 # Fabric Onelake
@@ -610,7 +612,11 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "datalakestorage",
-                        "datalakeStorageSettings": {"host": "datalakeHost", "authentication": {"method": "authMethod"}, "batching": {"latencySeconds": 12}},
+                        "datalakeStorageSettings": {
+                            "host": "datalakeHost",
+                            "authentication": {"method": "authMethod"},
+                            "batching": {"latencySeconds": 12},
+                        },
                     },
                 },
                 # dataExplorer
@@ -928,10 +934,7 @@ def test_evaluate_dataflow_endpoints(
                     "spec": {
                         "instanceCount": 1,
                     },
-                    "status": {
-                        "configStatusLevel": "warn",
-                        "statusDescription": "this should display a warning"
-                    },
+                    "status": {"configStatusLevel": "warn", "statusDescription": "this should display a warning"},
                 },
             ],
             # pods

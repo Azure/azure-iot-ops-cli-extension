@@ -341,36 +341,40 @@ def _process_dataflow_destinationsettings(
                 )
 
 
-def _process_endpoint_authentication(endpoint_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int) -> None:
+def _process_endpoint_authentication(
+    endpoint_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int
+) -> None:
     auth = endpoint_settings.get("authentication", {})
     auth_method = auth.get("method")
     check_manager.add_display(
         target_name=target,
         namespace=namespace,
-        display=basic_property_display(
-            label="Authentication Method", value=auth_method, padding=padding
-        ),
+        display=basic_property_display(label="Authentication Method", value=auth_method, padding=padding),
     )
     # TODO - add displays for various auth types (refs, identity names, etc)
 
-def _process_endpoint_TLS(tls_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int) -> None:
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding("TLS:", (0, 0, 0, padding)),
-        )
-        for label, key in [
-            ("Mode", "mode"),
-            ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
-        ]:
-            # TODO - validate ref?
-            val = tls_settings.get(key)
-            if val:
-                check_manager.add_display(
-                    target_name=target,
-                    namespace=namespace,
-                    display=basic_property_display(label=label, value=val, padding=(padding + PADDING_SIZE)),
-                )
+
+def _process_endpoint_TLS(
+    tls_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int
+) -> None:
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding("TLS:", (0, 0, 0, padding)),
+    )
+    for label, key in [
+        ("Mode", "mode"),
+        ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
+    ]:
+        # TODO - validate ref?
+        val = tls_settings.get(key)
+        if val:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=basic_property_display(label=label, value=val, padding=(padding + PADDING_SIZE)),
+            )
+
 
 def _process_endpoint_mqttsettings(
     check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
@@ -389,7 +393,13 @@ def _process_endpoint_mqttsettings(
             )
 
     # endpoint authentication details
-    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
+    _process_endpoint_authentication(
+        endpoint_settings=settings,
+        check_manager=check_manager,
+        target=target,
+        namespace=namespace,
+        padding=INNER_PADDING,
+    )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
         for label, key in [
@@ -412,7 +422,9 @@ def _process_endpoint_mqttsettings(
         # TLS
         tls = settings.get("tls", {})
         if tls:
-            _process_endpoint_TLS(tls_settings=tls, check_manager=check_manager, target=target, namespace=namespace, padding=padding)
+            _process_endpoint_TLS(
+                tls_settings=tls, check_manager=check_manager, target=target, namespace=namespace, padding=padding
+            )
 
 
 def _process_endpoint_kafkasettings(
@@ -434,7 +446,13 @@ def _process_endpoint_kafkasettings(
             )
 
     # endpoint authentication details
-    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
+    _process_endpoint_authentication(
+        endpoint_settings=settings,
+        check_manager=check_manager,
+        target=target,
+        namespace=namespace,
+        padding=INNER_PADDING,
+    )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
         # extra properties
@@ -455,7 +473,9 @@ def _process_endpoint_kafkasettings(
         # TLS
         tls = settings.get("tls", {})
         if tls:
-            _process_endpoint_TLS(tls_settings=tls, check_manager=check_manager, target=target, namespace=namespace, padding=padding)
+            _process_endpoint_TLS(
+                tls_settings=tls, check_manager=check_manager, target=target, namespace=namespace, padding=padding
+            )
 
         # batching
         batching = settings.get("batching", {})
@@ -492,9 +512,15 @@ def _process_endpoint_fabriconelakesettings(
                 namespace=namespace,
                 display=basic_property_display(label=label, value=val, padding=padding),
             )
-    
+
     # endpoint authentication details
-    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
+    _process_endpoint_authentication(
+        endpoint_settings=settings,
+        check_manager=check_manager,
+        target=target,
+        namespace=namespace,
+        padding=INNER_PADDING,
+    )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
         names = settings.get("names", {})
@@ -545,7 +571,13 @@ def _process_endpoint_datalakestoragesettings(
             )
 
     # endpoint authentication details
-    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
+    _process_endpoint_authentication(
+        endpoint_settings=settings,
+        check_manager=check_manager,
+        target=target,
+        namespace=namespace,
+        padding=INNER_PADDING,
+    )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
         batching = settings.get("batching", {})
@@ -582,7 +614,13 @@ def _process_endpoint_dataexplorersettings(
             )
 
     # endpoint authentication details
-    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
+    _process_endpoint_authentication(
+        endpoint_settings=settings,
+        check_manager=check_manager,
+        target=target,
+        namespace=namespace,
+        padding=INNER_PADDING,
+    )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
         batching = settings.get("batching", {})
@@ -618,7 +656,13 @@ def _process_endpoint_localstoragesettings(
         display=Padding(f"Persistent Volume Claim: {persistent_volume_claim}", (0, 0, 0, padding)),
     )
     # endpoint authentication details
-    _process_endpoint_authentication(endpoint_settings=settings, check_manager=check_manager, target=target, namespace=namespace, padding=INNER_PADDING)
+    _process_endpoint_authentication(
+        endpoint_settings=settings,
+        check_manager=check_manager,
+        target=target,
+        namespace=namespace,
+        padding=INNER_PADDING,
+    )
 
 
 def check_dataflows_deployment(
@@ -802,7 +846,7 @@ def evaluate_dataflows(
                             value=f"{CheckTaskStatus.skipped.emoji} Skipping evaluation of disabled dataflow",
                             color=CheckTaskStatus.skipped.color,
                         ),
-                        (0, 0, 0, PADDING + 2)
+                        (0, 0, 0, PADDING + 2),
                     ),
                 )
                 continue
