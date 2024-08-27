@@ -353,6 +353,25 @@ def _process_endpoint_authentication(endpoint_settings: dict, check_manager: Che
     )
     # TODO - add displays for various auth types (refs, identity names, etc)
 
+def _process_endpoint_TLS(tls_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int) -> None:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding("TLS:", (0, 0, 0, padding)),
+        )
+        for label, key in [
+            ("Mode", "mode"),
+            ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
+        ]:
+            # TODO - validate ref?
+            val = tls_settings.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=basic_property_display(label=label, value=val, padding=(padding + PADDING_SIZE)),
+                )
+
 def _process_endpoint_mqttsettings(
     check_manager: CheckManager, target: str, namespace: str, spec: dict, detail_level: int, padding: int
 ) -> None:
@@ -389,24 +408,10 @@ def _process_endpoint_mqttsettings(
                     display=basic_property_display(label=label, value=val, padding=padding),
                 )
 
+        # TLS
         tls = settings.get("tls", {})
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding("TLS:", (0, 0, 0, padding)),
-        )
-        for label, key in [
-            ("Mode", "mode"),
-            ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
-        ]:
-            # TODO - validate ref?
-            val = tls.get(key)
-            if val:
-                check_manager.add_display(
-                    target_name=target,
-                    namespace=namespace,
-                    display=basic_property_display(label=label, value=val, padding=(padding + PADDING_SIZE)),
-                )
+        if tls:
+            _process_endpoint_TLS(tls_settings=tls, check_manager=check_manager, target=target, namespace=namespace, padding=padding)
 
 
 def _process_endpoint_kafkasettings(
@@ -445,25 +450,10 @@ def _process_endpoint_kafkasettings(
                     namespace=namespace,
                     display=basic_property_display(label=label, value=val, padding=padding),
                 )
-        # tls
+        # TLS
         tls = settings.get("tls", {})
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding("TLS:", (0, 0, 0, padding)),
-        )
-        for label, key in [
-            ("Mode", "mode"),
-            ("Trusted CA ConfigMap", "trustedCaCertificateConfigMapRef"),
-        ]:
-            # TODO - validate ref?
-            val = tls.get(key)
-            if val:
-                check_manager.add_display(
-                    target_name=target,
-                    namespace=namespace,
-                    display=basic_property_display(label=label, value=val, padding=inner_padding),
-                )
+        if tls:
+            _process_endpoint_TLS(tls_settings=tls, check_manager=check_manager, target=target, namespace=namespace, padding=padding)
 
         # batching
         batching = settings.get("batching", {})

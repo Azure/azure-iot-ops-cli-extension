@@ -572,7 +572,7 @@ def test_evaluate_dataflows(
                             "consumerGroupId": None,
                             "compression": "compression",
                             "kafkaAcks": 3,
-                            "tls": {"mode": "Enabled"},
+                            # no TLS
                             "batching": {"latencyMs": 300},
                         },
                     },
