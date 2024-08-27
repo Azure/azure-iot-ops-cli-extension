@@ -96,7 +96,9 @@ def check_summary(
             check_manager.add_target_eval(
                 target_name=target,
                 status=status,
-                value=obj,
+                value={
+                    obj.get("name", "checkResult"): status
+                },
             )
             # add row to grid
             grid.add_row(colorize_string(value=emoji, color=color), description)
