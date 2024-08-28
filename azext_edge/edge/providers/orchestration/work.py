@@ -7,7 +7,7 @@
 from enum import IntEnum
 from json import dumps
 from time import sleep
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union, TYPE_CHECKING
 from uuid import uuid4
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
@@ -20,12 +20,14 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
-from ...util import get_timestamp_now_utc
 from ...util.az_client import wait_for_terminal_state, get_resource_client
 from .connected_cluster import ConnectedCluster
 from .targets import InitTargets
 
 logger = get_logger(__name__)
+
+if TYPE_CHECKING:
+    from azure.core.polling import LROPoller
 
 
 class WorkCategoryKey(IntEnum):
@@ -149,15 +151,15 @@ class WorkManager:
         parameters: dict,
         deployment_name: str,
         what_if: bool = False,
-    ) -> Optional[Tuple[str, str]]:
+    ) -> Optional["LROPoller"]:
         deployment_params = {"properties": {"mode": "Incremental", "template": content, "parameters": parameters}}
         if what_if:
-            poller = self.resource_client.deployments.begin_what_if(
+            what_if_poller = self.resource_client.deployments.begin_what_if(
                 resource_group_name=self._targets.resource_group_name,
                 deployment_name=deployment_name,
                 parameters=deployment_params,
             )
-            terminal_what_if_deployment = wait_for_terminal_state(poller)
+            terminal_what_if_deployment = wait_for_terminal_state(what_if_poller)
             if (
                 "status" in terminal_what_if_deployment
                 and terminal_what_if_deployment["status"].lower() != PROVISIONING_STATE_SUCCESS.lower()
@@ -165,34 +167,16 @@ class WorkManager:
                 raise AzureResponseError(dumps(terminal_what_if_deployment, indent=2))
             return
 
-        deployment = self.resource_client.deployments.begin_create_or_update(
+        return self.resource_client.deployments.begin_create_or_update(
             resource_group_name=self._targets.resource_group_name,
             deployment_name=deployment_name,
             parameters=deployment_params,
         )
 
-        deploy_link = (
-            "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
-            f"%2Fsubscriptions%2F{self.subscription_id}%2FresourceGroups%2F{self._targets.resource_group_name}"
-            f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{deployment_name}"
-        )
-
-        result = {
-            "clusterName": self._targets.cluster_name,
-            "clusterNamespace": self._targets.cluster_namespace,
-            "deploymentLink": deploy_link,
-            "deploymentName": deployment_name,
-            "deploymentState": {"timestampUtc": {"started": get_timestamp_now_utc()}, "status": deployment.status()},
-            "instanceName": self._targets.instance_name,
-            "resourceGroup": self._targets.resource_group_name,
-            "subscriptionId": self.subscription_id,
-        }
-        return result, deployment
-
     def execute_ops_init(self, show_progress: bool = True, block: bool = True, pre_flight: bool = True, **kwargs):
         self._bootstrap_ux(show_progress=show_progress)
         self._work_id = uuid4().hex
-        self._work_name = f"aziotops.init.{self._work_id}"
+        self._work_format_str = f"aziotops.init.{{op}}.{self._work_id}"
         self._block = block
         self._pre_flight = pre_flight
 
@@ -220,11 +204,8 @@ class WorkManager:
             verify_cli_client_connections()
             self._process_connected_cluster()
 
-            # Pre-check segment
-            if (
-                WorkCategoryKey.PRE_FLIGHT in self.display.categories
-                and not self.display.categories[WorkCategoryKey.PRE_FLIGHT][1]
-            ):
+            # Pre-Flight workflow
+            if self._pre_flight:
                 # WorkStepKey.REG_RP
                 self.render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
                 register_providers(self.subscription_id)
@@ -243,72 +224,93 @@ class WorkManager:
                         custom_location_name=self._targets.custom_location_name,
                         namespace=self._targets.cluster_namespace,
                     )
-
                 if self._targets.deploy_resource_sync_rules and self._targets.instance_name:
                     # TODO - @digimaun use permission manager after fixing check access issue
                     verify_write_permission_against_rg(
                         subscription_id=self.subscription_id, resource_group_name=self._targets.resource_group_name
                     )
-
                 self.complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
                     active_step=WorkStepKey.WHAT_IF_ENABLEMENT,
                 )
 
-            else:
-                if not self._show_progress:
-                    logger.warning("Skipped Pre-Flight as requested.")
+            # Enable IoT Ops workflow
+            enablement_work_name = self._work_format_str.format(op="enablement")
+            self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT)
+            enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
+            self._deploy_template(
+                content=enablement_content,
+                parameters=enablement_parameters,
+                deployment_name=enablement_work_name,
+                what_if=True,
+            )
+            self.complete_step(
+                category=WorkCategoryKey.ENABLE_IOT_OPS,
+                completed_step=WorkStepKey.WHAT_IF_ENABLEMENT,
+                active_step=WorkStepKey.DEPLOY_ENABLEMENT,
+            )
+            enablement_poller = self._deploy_template(
+                content=enablement_content,
+                parameters=enablement_parameters,
+                deployment_name=enablement_work_name,
+            )
+            enablement_deploy_link = (
+                "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
+                f"%2Fsubscriptions%2F{self.subscription_id}%2FresourceGroups%2F{self._targets.resource_group_name}"
+                f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{enablement_work_name}"
+            )
+            # Pattern needs work, it is this way to dynamically update UI
+            self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title = (
+                f"[link={enablement_deploy_link}]"
+                f"{self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title}[/link]"
+            )
+            self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
+            enablement_result = wait_for_terminal_state(enablement_poller)
 
-            if (
-                WorkCategoryKey.ENABLE_IOT_OPS in self.display.categories
-                and not self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][1]
-            ):
-                self.render_display(
-                    category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
-                )
-                enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
+            # TODO - @digimaun
+            # AIO -> SR identity
+
+            self.complete_step(
+                category=WorkCategoryKey.ENABLE_IOT_OPS,
+                completed_step=WorkStepKey.DEPLOY_ENABLEMENT
+            )
+
+            # Deploy IoT Ops workflow
+            if self._targets.instance_name:
+                instance_work_name = self._work_format_str.format(op="instance")
+                self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)
+                instance_content, instance_parameters = self._targets.get_ops_instance_template()
                 self._deploy_template(
-                    content=enablement_content,
-                    parameters=enablement_parameters,
-                    deployment_name=self._work_name,
+                    content=instance_content,
+                    parameters=instance_parameters,
+                    deployment_name=instance_work_name,
                     what_if=True,
                 )
                 self.complete_step(
-                    category=WorkCategoryKey.ENABLE_IOT_OPS,
-                    completed_step=WorkStepKey.WHAT_IF_ENABLEMENT,
-                    active_step=WorkStepKey.DEPLOY_ENABLEMENT,
+                    category=WorkCategoryKey.DEPLOY_IOT_OPS,
+                    completed_step=WorkStepKey.WHAT_IF_INSTANCE,
+                    active_step=WorkStepKey.DEPLOY_INSTANCE,
                 )
-                deployment_result, deployment_poller = self._deploy_template(
-                    content=enablement_content,
-                    parameters=enablement_parameters,
-                    deployment_name=self._work_name,
+                instance_poller = self._deploy_template(
+                    content=instance_content,
+                    parameters=instance_parameters,
+                    deployment_name=instance_work_name,
                 )
-                work_kpis.update(deployment_result)
-
+                instance_deploy_link = (
+                    "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
+                    f"%2Fsubscriptions%2F{self.subscription_id}%2FresourceGroups%2F{self._targets.resource_group_name}"
+                    f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{instance_work_name}"
+                )
                 # Pattern needs work, it is this way to dynamically update UI
-                self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title = (
-                    f"[link={deployment_result['deploymentLink']}]"
-                    f"{self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title}[/link]"
+                self.display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title = (
+                    f"[link={instance_deploy_link}]"
+                    f"{self.display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title}[/link]"
                 )
-                self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
+                self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS)
+                instance_result = wait_for_terminal_state(instance_poller)
 
-                terminal_deployment = wait_for_terminal_state(deployment_poller)
-                deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
-                deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
-                # TODO @digimaun
-                # deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers()
-                deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
-                deployment_result["deploymentState"]["resources"] = [
-                    resource.id.split(
-                        f"/subscriptions/{self.subscription_id}/resourceGroups/"
-                        f"{self._targets.resource_group_name}/providers/"
-                    )[1]
-                    for resource in terminal_deployment.properties.output_resources
-                ]
-                work_kpis.update(deployment_result)
-
-                return work_kpis
+            return work_kpis
 
         except HttpResponseError as e:
             # TODO: repeated error messages.
@@ -336,7 +338,7 @@ class WorkManager:
 
             header_grid.add_row(NewLine(1))
             header_grid.add_row("[light_slate_gray]Azure IoT Operations init", style=Style(bold=True))
-            header_grid.add_row(f"Workflow Id: [dark_orange3]{self._work_name.split('.')[2]}")
+            header_grid.add_row(f"Workflow Id: [dark_orange3]{self._work_id}")
             header_grid.add_row(NewLine(1))
 
             content_grid = Table.grid(expand=False)
