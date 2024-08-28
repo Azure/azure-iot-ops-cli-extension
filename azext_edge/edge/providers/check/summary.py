@@ -39,7 +39,7 @@ def check_summary(
     resource_kinds: List[str],
     detail_level=ResourceOutputDetailLevel.summary.value,
     as_list: bool = False,
-) -> None:
+) -> dict:
     # define checks
     service_checks: List[ServiceCheck] = [
         ServiceCheck(
