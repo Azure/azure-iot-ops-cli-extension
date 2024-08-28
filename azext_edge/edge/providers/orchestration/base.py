@@ -137,17 +137,6 @@ def deploy_template(
     return result, deployment
 
 
-def throw_if_iotops_deployed(connected_cluster: ConnectedCluster):
-    connected_cluster_extensions = connected_cluster.extensions
-    for extension in connected_cluster_extensions:
-        if "properties" in extension and "extensionType" in extension["properties"]:
-            if extension["properties"]["extensionType"].lower().startswith(IOT_OPERATIONS_EXTENSION_PREFIX):
-                raise ValidationError(
-                    "Detected existing IoT Operations deployment. "
-                    "Remove IoT Operations or use a different connected cluster to continue.\n"
-                )
-
-
 def verify_custom_locations_enabled(cmd):
     from azure.cli.core.util import send_raw_request
 

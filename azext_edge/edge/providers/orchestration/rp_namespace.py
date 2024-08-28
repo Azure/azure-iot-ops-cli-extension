@@ -21,7 +21,7 @@ RP_NAMESPACE_SET = frozenset(
 )
 
 
-def register_providers(subscription_id: str, **kwargs):
+def register_providers(subscription_id: str):
     resource_client = get_resource_client(subscription_id=subscription_id)
     providers_list = resource_client.providers.list()
     for provider in providers_list:

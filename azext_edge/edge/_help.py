@@ -150,7 +150,7 @@ def load_iotops_help():
           text: >
             az iot ops broker stats --raw
 
-        - name: Fetch all available mq traces from the diagnostics Protobuf endpoint.
+        - name: Fetch all available mqtt broker traces from the diagnostics Protobuf endpoint.
                 This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
                 A trace files last modified attribute will match the trace timestamp.
           text: >

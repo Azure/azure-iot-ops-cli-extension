@@ -3,14 +3,13 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
-# pylint: disable=W0101,E1101
 # TODO - @digimaun
 
 
 from enum import IntEnum
 from json import dumps
 from time import sleep
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 from uuid import uuid4
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
@@ -23,15 +22,11 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
-from ...util import get_timestamp_now_utc, url_safe_random_chars
+from ...util import get_timestamp_now_utc
 from ...util.az_client import wait_for_terminal_state
 from .connected_cluster import ConnectedCluster
-from .template import (
-    # CURRENT_TEMPLATE,
-    TemplateVer,
-    get_basic_dataflow_profile,
-    get_current_template_copy,
-)
+from .targets import InitTargets
+from .template import TemplateVer
 
 logger = get_logger(__name__)
 
@@ -45,7 +40,10 @@ class WorkCategoryKey(IntEnum):
 class WorkStepKey(IntEnum):
     REG_RP = 1
     ENUMERATE_PRE_FLIGHT = 2
-    WHAT_IF = 3
+    WHAT_IF_ENABLEMENT = 3
+    DEPLOY_ENABLEMENT = 4
+    WHAT_IF_INSTANCE = 5
+    DEPLOY_INSTANCE = 6
 
 
 class WorkRecord:
@@ -79,43 +77,6 @@ class WorkDisplay:
         return self._steps
 
 
-class InitTargets:
-    def __init__(
-        self,
-        cluster_name: str,
-        resource_group_name: str,
-        cluster_namespace: str = "azure-iot-operations",
-        location: Optional[str] = None,
-        custom_location_name: Optional[str] = None,
-        disable_rsync_rules: Optional[bool] = None,
-        instance_name: Optional[str] = None,
-        instance_description: Optional[str] = None,
-        enable_fault_tolerance: Optional[bool] = None,
-        **_,
-    ):
-        self.cluster_name = cluster_name
-        self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
-        self.resource_group_name = resource_group_name
-        self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
-        self.location = location
-        self.custom_location_name = (
-            self._sanitize_k8s_name(custom_location_name)
-            or f"{self.safe_cluster_name}-{url_safe_random_chars(3).lower()}-ops-cl"
-        )
-        self.deploy_resource_sync_rules: bool = not disable_rsync_rules
-        self.instance_name = self._sanitize_k8s_name(instance_name)
-        self.instance_description = instance_description
-        self.enable_fault_tolerance = enable_fault_tolerance
-
-    def _sanitize_k8s_name(self, name: str) -> str:
-        if not name:
-            return name
-        sanitized = str(name)
-        sanitized = sanitized.lower()
-        sanitized = sanitized.replace("_", "-")
-        return sanitized
-
-
 class WorkManager:
     def __init__(self, cmd):
         from azure.cli.core.commands.client_factory import get_subscription_id
@@ -139,21 +100,25 @@ class WorkManager:
     def _build_display(self):
         pre_check_cat_desc = "Pre-Flight"
         self.display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
-        self.display.add_step(
-            WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered IoT Ops resource providers"
-        )
+        self.display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers")
         self.display.add_step(
             WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
         )
-        self.display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.WHAT_IF, "Verify What-If deployment")
 
-        self.display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Install foundation")
-        deploy_iot_ops_desc = "Deploy Instance"
-        if self._targets.instance_name:
-            deploy_iot_ops_desc = f"{deploy_iot_ops_desc} - '{self._targets.instance_name}'"
-        self.display.add_category(
-            WorkCategoryKey.DEPLOY_IOT_OPS, deploy_iot_ops_desc, skipped=not self._targets.instance_name
+        self.display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
+        self.display.add_step(WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation")
+        self.display.add_step(
+            WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.DEPLOY_ENABLEMENT, "Install foundation layer"
         )
+
+        create_instance_desc = "Create instance"
+        if self._targets.instance_name:
+            create_instance_desc = f"{create_instance_desc}: [cyan]{self._targets.instance_name}[/cyan]"
+        self.display.add_category(
+            WorkCategoryKey.DEPLOY_IOT_OPS, "Deploy IoT Operations", skipped=not self._targets.instance_name
+        )
+        self.display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.WHAT_IF_INSTANCE, "What-If evaluation")
+        self.display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.DEPLOY_INSTANCE, create_instance_desc)
 
     def _process_connected_cluster(self) -> ConnectedCluster:
         connected_cluster = ConnectedCluster(
@@ -192,14 +157,11 @@ class WorkManager:
         self._targets = InitTargets(**kwargs)
         self._build_display()
 
-        # TODO - @digimaun TODO
-        self._kwargs = kwargs
         return self._do_work()
 
     def _do_work(self):  # noqa: C901
         from .base import (
             deploy_template,
-            throw_if_iotops_deployed,
             verify_custom_location_namespace,
             verify_custom_locations_enabled,
         )
@@ -215,7 +177,6 @@ class WorkManager:
             verify_cli_client_connections()
             connected_cluster = self._process_connected_cluster()
 
-            return connected_cluster.resource
             # Pre-check segment
             if (
                 WorkCategoryKey.PRE_FLIGHT in self.display.categories
@@ -223,7 +184,7 @@ class WorkManager:
             ):
                 # WorkStepKey.REG_RP
                 self.render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
-                register_providers(**self._kwargs)
+                register_providers(self.subscription_id)
                 self.complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.REG_RP,
@@ -231,9 +192,8 @@ class WorkManager:
                 )
 
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
-                # TODO @digimaun
+                # TODO @digimaun - cluster checks
                 if False:
-                    throw_if_iotops_deployed(self._connected_cluster)
                     verify_custom_locations_enabled(self.cmd)
                     verify_custom_location_namespace(
                         connected_cluster=self._connected_cluster,
@@ -241,50 +201,52 @@ class WorkManager:
                         namespace=self._targets.cluster_namespace,
                     )
 
-                if self._targets.deploy_resource_sync_rules:
+                if self._targets.deploy_resource_sync_rules and self._targets.instance_name:
                     # TODO - @digimaun use permission manager after fixing check access issue
                     verify_write_permission_against_rg(
-                        **self._kwargs,
+                        subscription_id=self.subscription_id, resource_group_name=self._targets.resource_group_name
                     )
 
                 self.complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
-                    active_step=WorkStepKey.WHAT_IF,
+                    active_step=WorkStepKey.WHAT_IF_ENABLEMENT,
                 )
 
-                # WorkStepKey.WHAT_IF
-                # Execute What-If deployment to allow RPs to evaluate deployment
-                template, parameters = self.build_template(work_kpis=work_kpis)
-                deployment_result, deployment_poller = deploy_template(
-                    template=template.content,
-                    parameters=parameters,
-                    deployment_name=self._work_name,
-                    pre_flight=True,
-                    **self._kwargs,
-                )
-                terminal_deployment = wait_for_terminal_state(deployment_poller)
-                pre_flight_result: Dict[str, Union[dict, str]] = terminal_deployment.as_dict()
-                if "status" in pre_flight_result and pre_flight_result["status"].lower() != PROVISIONING_STATE_SUCCESS:
-                    raise AzureResponseError(dumps(pre_flight_result, indent=2))
+                # # WorkStepKey.WHAT_IF_ENABLEMENT
+                # # Execute What-If deployment to allow RPs to evaluate deployment
+                # template, parameters = self.build_template(work_kpis=work_kpis)
+                # deployment_result, deployment_poller = deploy_template(
+                #     template=template.content,
+                #     parameters=parameters,
+                #     deployment_name=self._work_name,
+                #     pre_flight=True,
+                #     **self._kwargs,
+                # )
+                # terminal_deployment = wait_for_terminal_state(deployment_poller)
+                # pre_flight_result: Dict[str, Union[dict, str]] = terminal_deployment.as_dict()
+                # if "status" in pre_flight_result and pre_flight_result["status"].lower() != PROVISIONING_STATE_SUCCESS:
+                #     raise AzureResponseError(dumps(pre_flight_result, indent=2))
 
-                self.complete_step(
-                    category=WorkCategoryKey.PRE_FLIGHT, completed_step=WorkStepKey.WHAT_IF, active_step=-1
-                )
+                # self.complete_step(
+                #     category=WorkCategoryKey.PRE_FLIGHT, completed_step=WorkStepKey.WHAT_IF, active_step=-1
+                # )
             else:
                 if not self._show_progress:
                     logger.warning("Skipped Pre-Flight as requested.")
 
+            return connected_cluster.resource
+
             if (
-                WorkCategoryKey.IOT_OPS in self.display.categories
-                and not self.display.categories[WorkCategoryKey.IOT_OPS][1]
+                WorkCategoryKey.ENABLE_IOT_OPS in self.display.categories
+                and not self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][1]
             ):
-                self.render_display(category=WorkCategoryKey.IOT_OPS)
-                template, parameters = self.build_template(work_kpis=work_kpis)
+                self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
+                content, parameters = self._targets.get_ops_enablement_template(work_kpis=work_kpis)
 
                 # WorkStepKey.DEPLOY_AIO_MONIKER
                 deployment_result, deployment_poller = deploy_template(
-                    template=template.content, parameters=parameters, deployment_name=self._work_name, **self._kwargs
+                    template=content, parameters=parameters, deployment_name=self._work_name, **self._kwargs
                 )
                 work_kpis.update(deployment_result)
 
@@ -397,72 +359,3 @@ class WorkManager:
                 self._progress_bar.update(self._task_id, description="Done.")
                 sleep(0.5)
             self._live.stop()
-
-    def build_template(self, work_kpis: dict) -> Tuple[TemplateVer, dict]:
-        template = get_current_template_copy()
-        built_in_template_params = template.parameters
-
-        parameters = {}
-
-        for template_pair in [
-            ("instance_name", "instanceName"),
-            ("instance_description", "instanceDescription"),
-            ("cluster_name", "clusterName"),
-            ("location", "location"),
-            ("cluster_location", "clusterLocation"),
-            ("custom_location_name", "customLocationName"),
-            ("container_runtime_socket", "containerRuntimeSocket"),
-            ("kubernetes_distro", "kubernetesDistro"),
-            ("mq_instance_name", "mqInstanceName"),
-            ("mq_frontend_server_name", "mqFrontendServer"),
-            ("mq_listener_name", "mqListenerName"),
-            ("mq_broker_name", "mqBrokerName"),
-            ("mq_authn_name", "mqAuthnName"),
-            ("mq_frontend_replicas", "mqFrontendReplicas"),
-            ("mq_frontend_workers", "mqFrontendWorkers"),
-            ("mq_backend_redundancy_factor", "mqBackendRedundancyFactor"),
-            ("mq_backend_workers", "mqBackendWorkers"),
-            ("mq_backend_partitions", "mqBackendPartitions"),
-            ("mq_memory_profile", "mqMemoryProfile"),
-            ("mq_service_type", "mqServiceType"),
-        ]:
-            if (
-                template_pair[0] in self._kwargs
-                and self._kwargs[template_pair[0]] is not None
-                and template_pair[1] in built_in_template_params
-            ):
-                parameters[template_pair[1]] = {"value": self._kwargs[template_pair[0]]}
-
-        parameters["deployResourceSyncRules"] = {"value": self._targets.deploy_resource_sync_rules}
-
-        # Covers cluster_namespace
-        template.content["variables"]["AIO_CLUSTER_RELEASE_NAMESPACE"] = self._kwargs["cluster_namespace"]
-
-        tls_map = work_kpis.get("tls", {})
-        if "aioTrustConfigMap" in tls_map:
-            template.content["variables"]["AIO_TRUST_CONFIG_MAP"] = tls_map["aioTrustConfigMap"]
-        if "aioTrustSecretName" in tls_map:
-            template.content["variables"]["AIO_TRUST_SECRET_NAME"] = tls_map["aioTrustSecretName"]
-
-        add_insecure_listener = self._kwargs.get("add_insecure_listener")
-        if add_insecure_listener:
-            # This solution entirely relies on the form of the "standard" template.
-            # Needs re-work after event
-            default_listener = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers/listeners")
-            if default_listener:
-                ports: list = default_listener["properties"]["ports"]
-                ports.append({"port": 1883})
-
-        mq_broker_config = self._kwargs.get("mq_broker_config")
-        if mq_broker_config:
-            if "properties" in mq_broker_config:
-                mq_broker_config = mq_broker_config["properties"]
-            broker: dict = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers")
-            broker["properties"] = mq_broker_config
-
-        # Default dataflow profile
-        deploy_resources: List[dict] = template.content.get("resources", [])
-        df_profile_instances = self._kwargs.get("dataflow_profile_instances", 1)
-        deploy_resources.append(get_basic_dataflow_profile(instance_count=df_profile_instances))
-
-        return template, parameters
