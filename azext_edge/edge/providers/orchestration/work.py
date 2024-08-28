@@ -266,7 +266,7 @@ class WorkManager:
                 f"{self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title}[/link]"
             )
             self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
-            enablement_result = wait_for_terminal_state(enablement_poller)
+            _ = wait_for_terminal_state(enablement_poller)
 
             # TODO - @digimaun
             # AIO -> SR identity
@@ -308,7 +308,9 @@ class WorkManager:
                     f"{self.display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title}[/link]"
                 )
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS)
-                instance_result = wait_for_terminal_state(instance_poller)
+                _ = wait_for_terminal_state(instance_poller)
+
+                # TODO @digimaun - work_kpis
 
             return work_kpis
 

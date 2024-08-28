@@ -333,14 +333,6 @@ def test_register_providers(mocker, registration_state):
         register_providers,
     )
 
-    class MockProvider:
-        def __init__(self, namespace: str, registration_state: str):
-            self.namespace = namespace
-            self.registration_state = registration_state
-
-        def as_dict(self):
-            return {"namespace": self.namespace, "registration_state": self.registration_state}
-
     iot_ops_rps = [
         "Microsoft.IoTOperationsOrchestrator",
         "Microsoft.IoTOperations",
@@ -348,7 +340,7 @@ def test_register_providers(mocker, registration_state):
         "Microsoft.SecretSyncController",
     ]
     mocked_get_resource_client().providers.list.return_value = [
-        MockProvider(namespace, registration_state) for namespace in iot_ops_rps
+        {"namespace": namespace, "registrationState": registration_state} for namespace in iot_ops_rps
     ]
 
     for rp in iot_ops_rps:
