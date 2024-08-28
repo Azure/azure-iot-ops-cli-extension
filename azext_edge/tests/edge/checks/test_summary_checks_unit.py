@@ -295,7 +295,9 @@ def test_summary_checks(
 @pytest.mark.parametrize("detail_level", [0, 1, 2])
 @pytest.mark.parametrize("ops_service", [None])
 @pytest.mark.parametrize("as_object", [True, False])
-def test_summary_input_errors(mocked_cmd, mocked_client, mocked_config, as_object, ops_service, detail_level, resource_kinds, resource_name):
+def test_summary_input_errors(
+    mocked_cmd, mocked_client, mocked_config, as_object, ops_service, detail_level, resource_kinds, resource_name
+):
     with pytest.raises(ArgumentUsageError):
         check(
             cmd=mocked_cmd,
