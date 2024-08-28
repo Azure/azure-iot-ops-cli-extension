@@ -30,6 +30,7 @@ SCHEMA_REGISTRY_RP = "Microsoft.DeviceRegistry"
 SCHEMA_REGISTRY_RP_API_VERSION = "2024-07-01-preview"
 STORAGE_RP = "Microsoft.Storage"
 STORAGE_API_VERSION = "2023-05-01"
+RESOURCES_API_VERSION = "2024-03-01"
 
 
 def get_schema_registry_endpoint(
@@ -239,7 +240,7 @@ def test_schema_registry_create(
         mocked_responses.add(
             method=responses.GET,
             url=get_base_endpoint(
-                resource_group_name=resource_group_name, resource_provider="", api_version="2022-09-01"
+                resource_group_name=resource_group_name, resource_provider="", api_version=RESOURCES_API_VERSION
             ).replace("resourceGroups", "resourcegroups"),
             json=mock_resource_group,
             status=200,
