@@ -81,7 +81,8 @@ def test_check_pre_post(init_setup, post, pre):
     assert "_all_" in node_result["targets"]["cluster/nodes"]
     node_count_target = node_result["targets"]["cluster/nodes"]["_all_"]
     assert node_count_target["conditions"] == ["len(cluster/nodes)>=1"]
-    assert not node_count_target["evaluations"]
+    assert node_count_target["evaluations"][0]["status"] == expected_status(success_or_fail=len(kubectl_nodes) >= 1)
+    assert node_count_target["evaluations"][0]["value"] == {"len(cluster/nodes)": len(kubectl_nodes)}
     final_status = expected_status(success_or_fail=len(kubectl_nodes) >= 1)
     assert node_count_target["status"] == final_status
 

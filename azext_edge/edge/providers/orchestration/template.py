@@ -6,8 +6,9 @@
 
 import json
 from copy import deepcopy
-from typing import NamedTuple, Optional, List, Union
+from typing import List, NamedTuple, Optional, Union
 
+from ...common import DEFAULT_DATAFLOW_PROFILE
 from ...util import read_file_content
 
 
@@ -521,7 +522,7 @@ def get_current_template_copy(custom_template_path: Optional[str] = None) -> Tem
     )
 
 
-def get_basic_dataflow_profile(profile_name: str = "profile", instance_count: int = 1):
+def get_basic_dataflow_profile(profile_name: str = DEFAULT_DATAFLOW_PROFILE, instance_count: int = 1):
     return {
         "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
         "apiVersion": "2024-07-01-preview",
