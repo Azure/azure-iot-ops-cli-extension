@@ -218,7 +218,7 @@ class WorkManager:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             self.render_display()
             verify_cli_client_connections()
-            connected_cluster = self._process_connected_cluster()
+            self._process_connected_cluster()
 
             # Pre-check segment
             if (
@@ -267,16 +267,14 @@ class WorkManager:
                 self.render_display(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
                 )
-                enablement_content, enablement_parameters = self._targets.get_ops_enablement_template(
-                    work_kpis=work_kpis
-                )
+                enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
                 self._deploy_template(
                     content=enablement_content,
                     parameters=enablement_parameters,
                     deployment_name=self._work_name,
                     what_if=True,
                 )
-                self.render_display(
+                self.complete_step(
                     category=WorkCategoryKey.ENABLE_IOT_OPS,
                     completed_step=WorkStepKey.WHAT_IF_ENABLEMENT,
                     active_step=WorkStepKey.DEPLOY_ENABLEMENT,
@@ -299,12 +297,12 @@ class WorkManager:
                 deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
                 deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
                 # TODO @digimaun
-                #deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers()
+                # deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers()
                 deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
                 deployment_result["deploymentState"]["resources"] = [
                     resource.id.split(
-                        f"/subscriptions/{self._subscription_id}/resourceGroups/"
-                        f"{self._kwargs['resource_group_name']}/providers/"
+                        f"/subscriptions/{self.subscription_id}/resourceGroups/"
+                        f"{self._targets.resource_group_name}/providers/"
                     )[1]
                     for resource in terminal_deployment.properties.output_resources
                 ]
