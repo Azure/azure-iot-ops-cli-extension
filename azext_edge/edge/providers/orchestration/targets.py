@@ -4,9 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
+
 from ...util import url_safe_random_chars
-from .template import TemplateVer, get_basic_dataflow_profile, M2_ENABLEMENT_TEMPLATE, M2_INSTANCE_TEMPLATE
+from .template import (
+    M2_ENABLEMENT_TEMPLATE,
+    M2_INSTANCE_TEMPLATE,
+    TemplateVer,
+    get_basic_dataflow_profile,
+)
 
 
 class InitTargets:

@@ -55,7 +55,7 @@ class Instances(Queryable):
     def _get_associated_cl(self, instance: dict) -> dict:
         return self.resource_client.resources.get_by_id(
             resource_id=instance["extendedLocation"]["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
-        ).as_dict()
+        )
 
     def get_resource_map(self, instance: dict) -> IoTOperationsResourceMap:
         custom_location = self._get_associated_cl(instance)

@@ -3,8 +3,6 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
-# TODO - @digimaun
-
 
 from enum import IntEnum
 from json import dumps
@@ -23,10 +21,9 @@ from rich.style import Style
 from rich.table import Table
 
 from ...util import get_timestamp_now_utc
-from ...util.az_client import wait_for_terminal_state
+from ...util.az_client import wait_for_terminal_state, get_resource_client
 from .connected_cluster import ConnectedCluster
 from .targets import InitTargets
-from .template import TemplateVer
 
 logger = get_logger(__name__)
 
@@ -83,6 +80,7 @@ class WorkManager:
 
         self.cmd = cmd
         self.subscription_id: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
+        self.resource_client = get_resource_client(subscription_id=self.subscription_id)
 
     def _bootstrap_ux(self, show_progress: bool = False):
         self.display = WorkDisplay()
@@ -145,6 +143,52 @@ class WorkManager:
 
         return connected_cluster
 
+    def _deploy_template(
+        self,
+        content: dict,
+        parameters: dict,
+        deployment_name: str,
+        what_if: bool = False,
+    ) -> Optional[Tuple[str, str]]:
+        deployment_params = {"properties": {"mode": "Incremental", "template": content, "parameters": parameters}}
+        if what_if:
+            poller = self.resource_client.deployments.begin_what_if(
+                resource_group_name=self._targets.resource_group_name,
+                deployment_name=deployment_name,
+                parameters=deployment_params,
+            )
+            terminal_what_if_deployment = wait_for_terminal_state(poller)
+            if (
+                "status" in terminal_what_if_deployment
+                and terminal_what_if_deployment["status"].lower() != PROVISIONING_STATE_SUCCESS.lower()
+            ):
+                raise AzureResponseError(dumps(terminal_what_if_deployment, indent=2))
+            return
+
+        deployment = self.resource_client.deployments.begin_create_or_update(
+            resource_group_name=self._targets.resource_group_name,
+            deployment_name=deployment_name,
+            parameters=deployment_params,
+        )
+
+        deploy_link = (
+            "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
+            f"%2Fsubscriptions%2F{self.subscription_id}%2FresourceGroups%2F{self._targets.resource_group_name}"
+            f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{deployment_name}"
+        )
+
+        result = {
+            "clusterName": self._targets.cluster_name,
+            "clusterNamespace": self._targets.cluster_namespace,
+            "deploymentLink": deploy_link,
+            "deploymentName": deployment_name,
+            "deploymentState": {"timestampUtc": {"started": get_timestamp_now_utc()}, "status": deployment.status()},
+            "instanceName": self._targets.instance_name,
+            "resourceGroup": self._targets.resource_group_name,
+            "subscriptionId": self.subscription_id,
+        }
+        return result, deployment
+
     def execute_ops_init(self, show_progress: bool = True, block: bool = True, pre_flight: bool = True, **kwargs):
         self._bootstrap_ux(show_progress=show_progress)
         self._work_id = uuid4().hex
@@ -154,14 +198,13 @@ class WorkManager:
 
         self._completed_steps: Dict[int, int] = {}
         self._active_step: int = 0
-        self._targets = InitTargets(**kwargs)
+        self._targets = InitTargets(subscription_id=self.subscription_id, **kwargs)
         self._build_display()
 
         return self._do_work()
 
     def _do_work(self):  # noqa: C901
         from .base import (
-            deploy_template,
             verify_custom_location_namespace,
             verify_custom_locations_enabled,
         )
@@ -213,54 +256,50 @@ class WorkManager:
                     active_step=WorkStepKey.WHAT_IF_ENABLEMENT,
                 )
 
-                # # WorkStepKey.WHAT_IF_ENABLEMENT
-                # # Execute What-If deployment to allow RPs to evaluate deployment
-                # template, parameters = self.build_template(work_kpis=work_kpis)
-                # deployment_result, deployment_poller = deploy_template(
-                #     template=template.content,
-                #     parameters=parameters,
-                #     deployment_name=self._work_name,
-                #     pre_flight=True,
-                #     **self._kwargs,
-                # )
-                # terminal_deployment = wait_for_terminal_state(deployment_poller)
-                # pre_flight_result: Dict[str, Union[dict, str]] = terminal_deployment.as_dict()
-                # if "status" in pre_flight_result and pre_flight_result["status"].lower() != PROVISIONING_STATE_SUCCESS:
-                #     raise AzureResponseError(dumps(pre_flight_result, indent=2))
-
-                # self.complete_step(
-                #     category=WorkCategoryKey.PRE_FLIGHT, completed_step=WorkStepKey.WHAT_IF, active_step=-1
-                # )
             else:
                 if not self._show_progress:
                     logger.warning("Skipped Pre-Flight as requested.")
-
-            return connected_cluster.resource
 
             if (
                 WorkCategoryKey.ENABLE_IOT_OPS in self.display.categories
                 and not self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][1]
             ):
-                self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
-                content, parameters = self._targets.get_ops_enablement_template(work_kpis=work_kpis)
-
-                # WorkStepKey.DEPLOY_AIO_MONIKER
-                deployment_result, deployment_poller = deploy_template(
-                    template=content, parameters=parameters, deployment_name=self._work_name, **self._kwargs
+                self.render_display(
+                    category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
+                )
+                enablement_content, enablement_parameters = self._targets.get_ops_enablement_template(
+                    work_kpis=work_kpis
+                )
+                self._deploy_template(
+                    content=enablement_content,
+                    parameters=enablement_parameters,
+                    deployment_name=self._work_name,
+                    what_if=True,
+                )
+                self.render_display(
+                    category=WorkCategoryKey.ENABLE_IOT_OPS,
+                    completed_step=WorkStepKey.WHAT_IF_ENABLEMENT,
+                    active_step=WorkStepKey.DEPLOY_ENABLEMENT,
+                )
+                deployment_result, deployment_poller = self._deploy_template(
+                    content=enablement_content,
+                    parameters=enablement_parameters,
+                    deployment_name=self._work_name,
                 )
                 work_kpis.update(deployment_result)
 
                 # Pattern needs work, it is this way to dynamically update UI
-                self.display.categories[WorkCategoryKey.DEPLOY_AIO][0].title = (
+                self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title = (
                     f"[link={deployment_result['deploymentLink']}]"
-                    f"{self.display.categories[WorkCategoryKey.DEPLOY_AIO][0].title}[/link]"
+                    f"{self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title}[/link]"
                 )
-                self.render_display(category=WorkCategoryKey.DEPLOY_AIO)
+                self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
 
                 terminal_deployment = wait_for_terminal_state(deployment_poller)
                 deployment_result["deploymentState"]["status"] = terminal_deployment.properties.provisioning_state
                 deployment_result["deploymentState"]["correlationId"] = terminal_deployment.properties.correlation_id
-                deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers()
+                # TODO @digimaun
+                #deployment_result["deploymentState"]["opsVersion"] = template.get_component_vers()
                 deployment_result["deploymentState"]["timestampUtc"]["ended"] = get_timestamp_now_utc()
                 deployment_result["deploymentState"]["resources"] = [
                     resource.id.split(
