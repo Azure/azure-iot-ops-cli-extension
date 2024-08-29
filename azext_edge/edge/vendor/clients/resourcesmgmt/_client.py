@@ -12,18 +12,17 @@ from typing import Any, TYPE_CHECKING
 from azure.core.rest import HttpRequest, HttpResponse
 from azure.mgmt.core import ARMPipelineClient
 
-from ._configuration import MicrosoftIoTOperationsManagementServiceConfiguration
+from ._configuration import ResourceManagementClientConfiguration
 from ._serialization import Deserializer, Serializer
 from .operations import (
-    BrokerAuthenticationOperations,
-    BrokerAuthorizationOperations,
-    BrokerListenerOperations,
-    BrokerOperations,
-    DataflowEndpointOperations,
-    DataflowOperations,
-    DataflowProfileOperations,
-    InstanceOperations,
+    DeploymentOperationsOperations,
+    DeploymentsOperations,
     Operations,
+    ProviderResourceTypesOperations,
+    ProvidersOperations,
+    ResourceGroupsOperations,
+    ResourcesOperations,
+    TagsOperations,
 )
 
 if TYPE_CHECKING:
@@ -31,35 +30,33 @@ if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
 
 
-class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts-api-version-keyword,too-many-instance-attributes
-    """Microsoft.IoTOperations Resource Provider management API.
+class ResourceManagementClient:  # pylint: disable=client-accepts-api-version-keyword,too-many-instance-attributes
+    """Provides operations for working with resources and resource groups.
 
     :ivar operations: Operations operations
-    :vartype operations: aziotops.mgmt.operations.Operations
-    :ivar instance: InstanceOperations operations
-    :vartype instance: aziotops.mgmt.operations.InstanceOperations
-    :ivar broker: BrokerOperations operations
-    :vartype broker: aziotops.mgmt.operations.BrokerOperations
-    :ivar broker_authentication: BrokerAuthenticationOperations operations
-    :vartype broker_authentication: aziotops.mgmt.operations.BrokerAuthenticationOperations
-    :ivar broker_authorization: BrokerAuthorizationOperations operations
-    :vartype broker_authorization: aziotops.mgmt.operations.BrokerAuthorizationOperations
-    :ivar broker_listener: BrokerListenerOperations operations
-    :vartype broker_listener: aziotops.mgmt.operations.BrokerListenerOperations
-    :ivar dataflow_endpoint: DataflowEndpointOperations operations
-    :vartype dataflow_endpoint: aziotops.mgmt.operations.DataflowEndpointOperations
-    :ivar dataflow_profile: DataflowProfileOperations operations
-    :vartype dataflow_profile: aziotops.mgmt.operations.DataflowProfileOperations
-    :ivar dataflow: DataflowOperations operations
-    :vartype dataflow: aziotops.mgmt.operations.DataflowOperations
-    :param subscription_id: The ID of the target subscription. The value must be an UUID. Required.
+    :vartype operations: resources.mgmt.operations.Operations
+    :ivar deployments: DeploymentsOperations operations
+    :vartype deployments: resources.mgmt.operations.DeploymentsOperations
+    :ivar providers: ProvidersOperations operations
+    :vartype providers: resources.mgmt.operations.ProvidersOperations
+    :ivar provider_resource_types: ProviderResourceTypesOperations operations
+    :vartype provider_resource_types: resources.mgmt.operations.ProviderResourceTypesOperations
+    :ivar resources: ResourcesOperations operations
+    :vartype resources: resources.mgmt.operations.ResourcesOperations
+    :ivar resource_groups: ResourceGroupsOperations operations
+    :vartype resource_groups: resources.mgmt.operations.ResourceGroupsOperations
+    :ivar tags: TagsOperations operations
+    :vartype tags: resources.mgmt.operations.TagsOperations
+    :ivar deployment_operations: DeploymentOperationsOperations operations
+    :vartype deployment_operations: resources.mgmt.operations.DeploymentOperationsOperations
+    :param subscription_id: The Microsoft Azure subscription ID. Required.
     :type subscription_id: str
     :param credential: Credential needed for the client to connect to Azure. Required.
     :type credential: ~azure.core.credentials.TokenCredential
     :keyword endpoint: Service URL. Default value is "https://management.azure.com".
     :paramtype endpoint: str
-    :keyword api_version: Api Version. Default value is "2024-08-15-preview". Note that overriding
-     this default value may result in unsupported behavior.
+    :keyword api_version: Api Version. Default value is "2024-03-01". Note that overriding this
+     default value may result in unsupported behavior.
     :paramtype api_version: str
     :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
      Retry-After header is present.
@@ -73,7 +70,7 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
         endpoint: str = "https://management.azure.com",
         **kwargs: Any
     ) -> None:
-        self._config = MicrosoftIoTOperationsManagementServiceConfiguration(
+        self._config = ResourceManagementClientConfiguration(
             subscription_id=subscription_id, credential=credential, **kwargs
         )
         self._client: ARMPipelineClient = ARMPipelineClient(base_url=endpoint, config=self._config, **kwargs)
@@ -82,22 +79,17 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
         self._deserialize = Deserializer()
         self._serialize.client_side_validation = False
         self.operations = Operations(self._client, self._config, self._serialize, self._deserialize)
-        self.instance = InstanceOperations(self._client, self._config, self._serialize, self._deserialize)
-        self.broker = BrokerOperations(self._client, self._config, self._serialize, self._deserialize)
-        self.broker_authentication = BrokerAuthenticationOperations(
+        self.deployments = DeploymentsOperations(self._client, self._config, self._serialize, self._deserialize)
+        self.providers = ProvidersOperations(self._client, self._config, self._serialize, self._deserialize)
+        self.provider_resource_types = ProviderResourceTypesOperations(
             self._client, self._config, self._serialize, self._deserialize
         )
-        self.broker_authorization = BrokerAuthorizationOperations(
+        self.resources = ResourcesOperations(self._client, self._config, self._serialize, self._deserialize)
+        self.resource_groups = ResourceGroupsOperations(self._client, self._config, self._serialize, self._deserialize)
+        self.tags = TagsOperations(self._client, self._config, self._serialize, self._deserialize)
+        self.deployment_operations = DeploymentOperationsOperations(
             self._client, self._config, self._serialize, self._deserialize
         )
-        self.broker_listener = BrokerListenerOperations(self._client, self._config, self._serialize, self._deserialize)
-        self.dataflow_endpoint = DataflowEndpointOperations(
-            self._client, self._config, self._serialize, self._deserialize
-        )
-        self.dataflow_profile = DataflowProfileOperations(
-            self._client, self._config, self._serialize, self._deserialize
-        )
-        self.dataflow = DataflowOperations(self._client, self._config, self._serialize, self._deserialize)
 
     def send_request(self, request: HttpRequest, **kwargs: Any) -> HttpResponse:
         """Runs the network request through the client's chained policies.
@@ -124,7 +116,7 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
     def close(self) -> None:
         self._client.close()
 
-    def __enter__(self) -> "MicrosoftIoTOperationsManagementService":
+    def __enter__(self) -> "ResourceManagementClient":
         self._client.__enter__()
         return self
 
