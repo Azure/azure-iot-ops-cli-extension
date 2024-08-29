@@ -44,15 +44,11 @@ def enumerate_ops_service_resources(
     check_manager = CheckManager(check_name=check_name, check_desc=check_desc)
     check_manager.add_target(target_name=target_api)
 
-    api_resources: V1APIResourceList = get_cluster_custom_api(
-        group=api_info.group, version=api_info.version
-    )
+    api_resources: V1APIResourceList = get_cluster_custom_api(group=api_info.group, version=api_info.version)
 
     if not api_resources:
         check_manager.add_target_eval(target_name=target_api, status=CheckTaskStatus.error.value)
-        missing_api_text = (
-            f"[bright_blue]{target_api}[/bright_blue] API resources [red]not[/red] detected."
-        )
+        missing_api_text = f"[bright_blue]{target_api}[/bright_blue] API resources [red]not[/red] detected."
         check_manager.add_display(target_name=target_api, display=Padding(missing_api_text, (0, 0, 0, 8)))
         return check_manager.as_dict(as_list), resource_kind_map
 
@@ -139,28 +135,24 @@ def process_dict_resource(
     resource: dict,
     namespace: str,
     padding: int,
-    prop_name: Optional[str] = None
+    prop_name: Optional[str] = None,
 ) -> None:
     if prop_name:
         check_manager.add_display(
-            target_name=target_name,
-            namespace=namespace,
-            display=Padding(f"{prop_name}:", (0, 0, 0, padding))
+            target_name=target_name, namespace=namespace, display=Padding(f"{prop_name}:", (0, 0, 0, padding))
         )
         padding += PADDING_SIZE
     for key, value in resource.items():
         if isinstance(value, dict):
             check_manager.add_display(
-                target_name=target_name,
-                namespace=namespace,
-                display=Padding(f"{key}:", (0, 0, 0, padding))
+                target_name=target_name, namespace=namespace, display=Padding(f"{key}:", (0, 0, 0, padding))
             )
             process_dict_resource(
                 check_manager=check_manager,
                 target_name=target_name,
                 resource=value,
                 namespace=namespace,
-                padding=padding + PADDING_SIZE
+                padding=padding + PADDING_SIZE,
             )
         elif isinstance(value, list):
             if len(value) == 0:
@@ -168,9 +160,7 @@ def process_dict_resource(
 
             display_text = f"{key}:"
             check_manager.add_display(
-                target_name=target_name,
-                namespace=namespace,
-                display=Padding(display_text, (0, 0, 0, padding))
+                target_name=target_name, namespace=namespace, display=Padding(display_text, (0, 0, 0, padding))
             )
 
             process_list_resource(
@@ -178,38 +168,27 @@ def process_dict_resource(
                 target_name=target_name,
                 resource=value,
                 namespace=namespace,
-                padding=padding + PADDING_SIZE
+                padding=padding + PADDING_SIZE,
             )
         else:
             display_text = f"{key}: "
             value_padding = padding
             if isinstance(value, str) and len(value) > 50:
                 check_manager.add_display(
-                    target_name=target_name,
-                    namespace=namespace,
-                    display=Padding(display_text, (0, 0, 0, padding))
+                    target_name=target_name, namespace=namespace, display=Padding(display_text, (0, 0, 0, padding))
                 )
                 value_padding += PADDING_SIZE
                 display_text = ""
             display_text += process_value_color(
-                check_manager=check_manager,
-                target_name=target_name,
-                key=key,
-                value=value
+                check_manager=check_manager, target_name=target_name, key=key, value=value
             )
             check_manager.add_display(
-                target_name=target_name,
-                namespace=namespace,
-                display=Padding(display_text, (0, 0, 0, value_padding))
+                target_name=target_name, namespace=namespace, display=Padding(display_text, (0, 0, 0, value_padding))
             )
 
 
 def process_list_resource(
-    check_manager: CheckManager,
-    target_name: str,
-    resource: List[dict],
-    namespace: str,
-    padding: int
+    check_manager: CheckManager, target_name: str, resource: List[dict], namespace: str, padding: int
 ) -> None:
     for item in resource:
         name = item.pop("name", None)
@@ -219,13 +198,13 @@ def process_list_resource(
             check_manager.add_display(
                 target_name=target_name,
                 namespace=namespace,
-                display=Padding(f"- name: [cyan]{name}[/cyan]", (0, 0, 0, padding))
+                display=Padding(f"- name: [cyan]{name}[/cyan]", (0, 0, 0, padding)),
             )
         else:
             check_manager.add_display(
                 target_name=target_name,
                 namespace=namespace,
-                display=Padding(f"- item {resource.index(item) + 1}", (0, 0, 0, padding))
+                display=Padding(f"- item {resource.index(item) + 1}", (0, 0, 0, padding)),
             )
 
         if isinstance(item, dict):
@@ -234,13 +213,13 @@ def process_list_resource(
                 target_name=target_name,
                 resource=item,
                 namespace=namespace,
-                padding=padding + 2
+                padding=padding + 2,
             )
         elif isinstance(item, str):
             check_manager.add_display(
                 target_name=target_name,
                 namespace=namespace,
-                display=Padding(f"[cyan]{item}[/cyan]", (0, 0, 0, padding + 2))
+                display=Padding(f"[cyan]{item}[/cyan]", (0, 0, 0, padding + 2)),
             )
 
 
@@ -251,13 +230,13 @@ def process_resource_properties(
     prop_value: Dict[str, Any],
     properties: Dict[str, Any],
     namespace: str,
-    padding: tuple
+    padding: tuple,
 ) -> None:
     if not prop_value:
         return
 
     for prop, display_name, verbose_only in properties:
-        keys = prop.split('.')
+        keys = prop.split(".")
         value = prop_value
         for key in keys:
             value = value.get(key)
@@ -273,17 +252,12 @@ def process_resource_properties(
             properties=value,
             display_name=display_name,
             namespace=namespace,
-            padding=padding
+            padding=padding,
         )
 
 
 def process_resource_property_by_type(
-    check_manager: CheckManager,
-    target_name: str,
-    properties: Any,
-    display_name: str,
-    namespace: str,
-    padding: tuple
+    check_manager: CheckManager, target_name: str, properties: Any, display_name: str, namespace: str, padding: tuple
 ) -> None:
     padding_left = padding[3]
     if isinstance(properties, list):
@@ -291,25 +265,21 @@ def process_resource_property_by_type(
             return
 
         display_text = f"{display_name}:"
-        check_manager.add_display(
-            target_name=target_name,
-            namespace=namespace,
-            display=Padding(display_text, padding)
-        )
+        check_manager.add_display(target_name=target_name, namespace=namespace, display=Padding(display_text, padding))
 
         for property in properties:
             display_text = f"- {display_name} {properties.index(property) + 1}"
             check_manager.add_display(
                 target_name=target_name,
                 namespace=namespace,
-                display=Padding(display_text, (0, 0, 0, padding_left + 2))
+                display=Padding(display_text, (0, 0, 0, padding_left + 2)),
             )
             for prop, value in property.items():
                 display_text = f"{prop}: [cyan]{value}[/cyan]"
                 check_manager.add_display(
                     target_name=target_name,
                     namespace=namespace,
-                    display=Padding(display_text, (0, 0, 0, padding_left + PADDING_SIZE))
+                    display=Padding(display_text, (0, 0, 0, padding_left + PADDING_SIZE)),
                 )
     elif isinstance(properties, str) or isinstance(properties, bool) or isinstance(properties, int):
         properties = str(properties) if properties else "undefined"
@@ -317,29 +287,61 @@ def process_resource_property_by_type(
             display_text = f"{display_name}: [cyan]{properties}[/cyan]"
         else:
             check_manager.add_display(
-                target_name=target_name,
-                namespace=namespace,
-                display=Padding(f"{display_name}:", padding)
+                target_name=target_name, namespace=namespace, display=Padding(f"{display_name}:", padding)
             )
             display_text = f"[cyan]{properties}[/cyan]"
             padding = (0, 0, 0, padding_left + 4)
 
-        check_manager.add_display(
-            target_name=target_name,
-            namespace=namespace,
-            display=Padding(display_text, padding)
-        )
+        check_manager.add_display(target_name=target_name, namespace=namespace, display=Padding(display_text, padding))
     elif isinstance(properties, dict):
         display_text = f"{display_name}:"
-        check_manager.add_display(
-            target_name=target_name,
-            namespace=namespace,
-            display=Padding(display_text, padding)
-        )
+        check_manager.add_display(target_name=target_name, namespace=namespace, display=Padding(display_text, padding))
         for prop, value in properties.items():
             display_text = f"{prop}: [cyan]{value}[/cyan]"
             check_manager.add_display(
                 target_name=target_name,
                 namespace=namespace,
-                display=Padding(display_text, (0, 0, 0, padding_left + 2))
+                display=Padding(display_text, (0, 0, 0, padding_left + 2)),
             )
+
+
+def validate_one_of_conditions(
+    conditions: List[tuple],
+    check_manager: CheckManager,
+    eval_value: dict,
+    namespace: str,
+    target_name: str,
+    padding: int,
+) -> None:
+    if len(conditions) == 1:
+        return
+
+    non_empty_conditions_count = len([condition for condition in conditions if condition[1]])
+
+    eval_status = CheckTaskStatus.success.value
+    conditions_names = ", ".join([f"'{condition[0]}'" for condition in conditions])
+    if non_empty_conditions_count == 0:
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(
+                f"One of {conditions_names} should be specified",
+                (0, 0, 0, padding),
+            ),
+        )
+        eval_status = CheckTaskStatus.error.value
+    elif non_empty_conditions_count > 1:
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(
+                f"Only one of {conditions_names} should be specified",
+                (0, 0, 0, padding),
+            ),
+        )
+        eval_status = CheckTaskStatus.error.value
+
+    check_manager.add_target_conditions(
+        target_name=target_name, namespace=namespace, conditions=[condition[0] for condition in conditions]
+    )
+    check_manager.add_target_eval(target_name=target_name, namespace=namespace, status=eval_status, value=eval_value)

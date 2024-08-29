@@ -66,7 +66,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     },
                     "mode": "distributed",
                 },
-                status={"status": ResourceState.running.value, "statusDescription": ""},
+                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
             ),
             # service obj
             generate_resource_stub(
@@ -74,31 +74,16 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 spec={
                     "clusterIP": "10.0.222.134",
                     "ports": [
-                        {
-                            "name": "bincode-listener-service",
-                            "port": 9700,
-                            "protocol": "TCP",
-                            "targetPort": 9700
-                        },
-                        {
-                            "name": "protobuf-listener-service",
-                            "port": 9800,
-                            "protocol": "TCP",
-                            "targetPort": 9800
-                        },
-                        {
-                            "name": "aio-mq-metrics-service",
-                            "port": 9600,
-                            "protocol": "TCP",
-                            "targetPort": 9600
-                        }
-                    ]
-                }
+                        {"name": "bincode-listener-service", "port": 9700, "protocol": "TCP", "targetPort": 9700},
+                        {"name": "protobuf-listener-service", "port": 9800, "protocol": "TCP", "targetPort": 9800},
+                        {"name": "aio-mq-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
+                    ],
+                },
             ),
             # conditions str
             [
                 "len(brokers)==1",
-                "status",
+                "runtimeStatus",
                 "spec.mode",
                 "spec.diagnostics",
                 "spec.cardinality",
@@ -111,7 +96,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 [
                     ("status", "warning"),
                     ("name", "mock-name"),
-                    ("value/status/status", "Running"),
+                    ("value/runtimeStatus/status", "Running"),
                     ("value/spec.diagnostics", {}),
                     ("value/spec.cardinality/backendChain/partitions", 1),
                     ("value/spec.cardinality/backendChain/redundancyFactor", 2),
@@ -137,8 +122,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     },
                 },
                 status={
-                    "status": ResourceState.starting.value,
-                    "statusDescription": "",
+                    "runtimeStatus": {"status": ResourceState.starting.value, "statusDescription": ""},
                 },
             ),
             # service obj
@@ -147,31 +131,16 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 spec={
                     "clusterIP": "10.0.222.134",
                     "ports": [
-                        {
-                            "name": "bincode-listener-service",
-                            "port": 9700,
-                            "protocol": "TCP",
-                            "targetPort": 9700
-                        },
-                        {
-                            "name": "protobuf-listener-service",
-                            "port": 9800,
-                            "protocol": "TCP",
-                            "targetPort": 9800
-                        },
-                        {
-                            "name": "aio-mq-metrics-service",
-                            "port": 9600,
-                            "protocol": "TCP",
-                            "targetPort": 9600
-                        }
-                    ]
-                }
+                        {"name": "bincode-listener-service", "port": 9700, "protocol": "TCP", "targetPort": 9700},
+                        {"name": "protobuf-listener-service", "port": 9800, "protocol": "TCP", "targetPort": 9800},
+                        {"name": "aio-mq-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
+                    ],
+                },
             ),
             # conditions
             [
                 "len(brokers)==1",
-                "status",
+                "runtimeStatus",
                 "spec.mode",
             ],
             # evaluations
@@ -179,7 +148,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 [
                     ("status", "error"),  # error: no backendChain.redundancyFactor
                     ("name", "mock-name"),
-                    ("value/status/status", "Starting"),
+                    ("value/runtimeStatus/status", "Starting"),
                     ("value/spec.cardinality/backendChain/partitions", 1),
                     ("value/spec.cardinality/backendChain/replicas", 2),
                     ("value/spec.cardinality/backendChain/workers", 1),
@@ -194,7 +163,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     "diagnostics": {
                         "logs": {
                             "exportIntervalSeconds": 30,
-                            "exportLevel" : "info",
+                            "exportLevel": "info",
                             "level": "info",
                             "openTelemetryCollectorAddress": None,
                         }
@@ -209,7 +178,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     },
                     "mode": "distributed",
                 },
-                status={"status": ResourceState.running.value, "statusDescription": ""},
+                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
             ),
             # service obj
             generate_resource_stub(
@@ -217,31 +186,16 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 spec={
                     "clusterIP": "10.0.222.134",
                     "ports": [
-                        {
-                            "name": "bincode-listener-service",
-                            "port": 9700,
-                            "protocol": "TCP",
-                            "targetPort": 9700
-                        },
-                        {
-                            "name": "protobuf-listener-service",
-                            "port": 9800,
-                            "protocol": "TCP",
-                            "targetPort": 9800
-                        },
-                        {
-                            "name": "aio-mq-metrics-service",
-                            "port": 9600,
-                            "protocol": "TCP",
-                            "targetPort": 9600
-                        }
-                    ]
-                }
+                        {"name": "bincode-listener-service", "port": 9700, "protocol": "TCP", "targetPort": 9700},
+                        {"name": "protobuf-listener-service", "port": 9800, "protocol": "TCP", "targetPort": 9800},
+                        {"name": "aio-mq-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
+                    ],
+                },
             ),
             # conditions str
             [
                 "len(brokers)==1",
-                "status",
+                "runtimeStatus",
                 "spec.mode",
                 "spec.diagnostics",
                 "spec.cardinality",
@@ -254,7 +208,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 [
                     ("status", "success"),
                     ("name", "mock-name"),
-                    ("value/status/status", "Running"),
+                    ("value/runtimeStatus/status", "Running"),
                     ("value/spec.cardinality/backendChain/partitions", 1),
                     ("value/spec.cardinality/backendChain/redundancyFactor", 2),
                     ("value/spec.cardinality/backendChain/workers", 1),
@@ -265,18 +219,11 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     ("value/spec.diagnostics/logs/openTelemetryCollectorAddress", None),
                 ],
             ],
-        )
+        ),
     ],
 )
 def test_broker_checks(
-    mocker,
-    mock_evaluate_mq_pod_health,
-    broker,
-    service,
-    conditions,
-    evaluations,
-    detail_level,
-    resource_name
+    mocker, mock_evaluate_mq_pod_health, broker, service, conditions, evaluations, detail_level, resource_name
 ):
     namespace = generate_random_string()
     broker["metadata"]["namespace"] = namespace
@@ -305,12 +252,11 @@ def test_broker_checks(
     "listener, service, conditions, evaluations",
     [
         (
-            # listener with valid broker ref
+            # listener
             generate_resource_stub(
                 spec={
                     "serviceName": "name",
                     "serviceType": "loadbalancer",
-                    "brokerRef": "mock-broker",
                     "port": 8080,
                     "authenticationEnabled": "True",
                 },
@@ -325,7 +271,6 @@ def test_broker_checks(
             [
                 "len(brokerlisteners)>=1",
                 "spec",
-                "valid(spec.brokerRef)",
                 "spec.serviceName",
                 "status",
             ],
@@ -336,20 +281,17 @@ def test_broker_checks(
                     ("name", "mock-name"),
                     ("value/spec/serviceName", "name"),
                     ("value/spec/serviceType", "loadbalancer"),
-                    ("value/spec/brokerRef", "mock-broker"),
                     ("value/spec/port", 8080),
                     ("value/spec/authenticationEnabled", "True"),
-                    ("value/valid(spec.brokerRef)", True),
                 ],
             ],
         ),
         (
-            # listener with valid broker ref
+            # listener
             generate_resource_stub(
                 spec={
                     "serviceName": "name",
                     "serviceType": "clusterip",
-                    "brokerRef": "mock-broker",
                     "port": 8080,
                     "authenticationEnabled": "True",
                 },
@@ -364,7 +306,6 @@ def test_broker_checks(
             [
                 "len(brokerlisteners)>=1",
                 "spec",
-                "valid(spec.brokerRef)",
                 "spec.serviceName",
                 "status",
             ],
@@ -375,10 +316,8 @@ def test_broker_checks(
                     ("name", "mock-name"),
                     ("value/spec/serviceName", "name"),
                     ("value/spec/serviceType", "clusterip"),
-                    ("value/spec/brokerRef", "mock-broker"),
                     ("value/spec/port", 8080),
                     ("value/spec/authenticationEnabled", "True"),
-                    ("value/valid(spec.brokerRef)", True),
                 ],
             ],
         ),
@@ -401,11 +340,6 @@ def test_broker_listener_checks(
     mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
         return_value={"items": [listener]},
-    )
-    # broker ref
-    mocker.patch(
-        "azext_edge.edge.providers.check.mq._get_valid_references",
-        return_value={"mock-broker": True},
     )
     mocker.patch(
         "azext_edge.edge.providers.check.mq.get_namespaced_service",

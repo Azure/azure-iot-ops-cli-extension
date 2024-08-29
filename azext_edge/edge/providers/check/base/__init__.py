@@ -20,7 +20,8 @@ from .resource import (
     process_dict_resource,
     process_list_resource,
     process_resource_properties,
-    process_resource_property_by_type
+    process_resource_property_by_type,
+    validate_one_of_conditions,
 )
 
 __all__ = [
@@ -44,5 +45,6 @@ __all__ = [
     "process_pod_status",
     "process_resource_properties",
     "process_resource_property_by_type",
-    "process_value_color"
+    "process_value_color",
+    "validate_one_of_conditions",
 ]
