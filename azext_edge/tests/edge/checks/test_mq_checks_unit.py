@@ -83,7 +83,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
             # conditions str
             [
                 "len(brokers)==1",
-                "runtimeStatus",
+                "status",
                 "spec.mode",
                 "spec.diagnostics",
                 "spec.cardinality",
@@ -94,9 +94,16 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
             # evaluations
             [
                 [
+                    ("status", "success"),
+                    ("name", "mock-name"),
+                    (
+                        "value/status",
+                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                    ),
+                ],
+                [
                     ("status", "warning"),
                     ("name", "mock-name"),
-                    ("value/runtimeStatus/status", "Running"),
                     ("value/spec.diagnostics", {}),
                     ("value/spec.cardinality/backendChain/partitions", 1),
                     ("value/spec.cardinality/backendChain/redundancyFactor", 2),
@@ -140,15 +147,22 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
             # conditions
             [
                 "len(brokers)==1",
-                "runtimeStatus",
+                "status",
                 "spec.mode",
             ],
             # evaluations
             [
                 [
+                    ("status", "warning"),  # error: no backendChain.redundancyFactor
+                    ("name", "mock-name"),
+                    (
+                        "value/status",
+                        {"runtimeStatus": {"status": ResourceState.starting.value, "statusDescription": ""}},
+                    ),
+                ],
+                [
                     ("status", "error"),  # error: no backendChain.redundancyFactor
                     ("name", "mock-name"),
-                    ("value/runtimeStatus/status", "Starting"),
                     ("value/spec.cardinality/backendChain/partitions", 1),
                     ("value/spec.cardinality/backendChain/replicas", 2),
                     ("value/spec.cardinality/backendChain/workers", 1),
@@ -195,7 +209,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
             # conditions str
             [
                 "len(brokers)==1",
-                "runtimeStatus",
+                "status",
                 "spec.mode",
                 "spec.diagnostics",
                 "spec.cardinality",
@@ -208,7 +222,14 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 [
                     ("status", "success"),
                     ("name", "mock-name"),
-                    ("value/runtimeStatus/status", "Running"),
+                    (
+                        "value/status",
+                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                    ),
+                ],
+                [
+                    ("status", "success"),
+                    ("name", "mock-name"),
                     ("value/spec.cardinality/backendChain/partitions", 1),
                     ("value/spec.cardinality/backendChain/redundancyFactor", 2),
                     ("value/spec.cardinality/backendChain/workers", 1),
@@ -260,7 +281,7 @@ def test_broker_checks(
                     "port": 8080,
                     "authenticationEnabled": "True",
                 },
-                status={"status": ResourceState.running.value, "statusDescription": ""},
+                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
             ),
             # service obj
             generate_resource_stub(
@@ -270,12 +291,21 @@ def test_broker_checks(
             # conditions str
             [
                 "len(brokerlisteners)>=1",
+                "status",
                 "spec",
                 "spec.serviceName",
                 "status",
             ],
             # evaluations
             [
+                [
+                    ("status", "success"),
+                    ("name", "mock-name"),
+                    (
+                        "value/status",
+                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                    ),
+                ],
                 [
                     ("status", "success"),
                     ("name", "mock-name"),
@@ -295,7 +325,7 @@ def test_broker_checks(
                     "port": 8080,
                     "authenticationEnabled": "True",
                 },
-                status={"status": ResourceState.running.value, "statusDescription": ""},
+                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
             ),
             # service obj
             generate_resource_stub(
@@ -305,12 +335,21 @@ def test_broker_checks(
             # conditions str
             [
                 "len(brokerlisteners)>=1",
+                "status",
                 "spec",
                 "spec.serviceName",
                 "status",
             ],
             # evaluations
             [
+                [
+                    ("status", "success"),
+                    ("name", "mock-name"),
+                    (
+                        "value/status",
+                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                    ),
+                ],
                 [
                     ("status", "success"),
                     ("name", "mock-name"),

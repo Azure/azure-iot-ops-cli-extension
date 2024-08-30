@@ -19,7 +19,7 @@ from .display import process_value_color
 from ..common import COLOR_STR_FORMAT, PADDING_SIZE, ResourceOutputDetailLevel
 from ...base import get_cluster_custom_api
 from ...edge_api import EdgeResourceApi
-from ....common import CheckTaskStatus
+from ....common import CheckTaskStatus, ResourceState
 
 # TODO: unit test + refactor
 logger = get_logger(__name__)
@@ -312,6 +312,7 @@ def validate_one_of_conditions(
     namespace: str,
     target_name: str,
     padding: int,
+    resource_name: Optional[str] = None,
 ) -> None:
     if len(conditions) == 1:
         return
@@ -341,7 +342,102 @@ def validate_one_of_conditions(
         )
         eval_status = CheckTaskStatus.error.value
 
-    check_manager.add_target_conditions(
-        target_name=target_name, namespace=namespace, conditions=[condition[0] for condition in conditions]
+    one_of_condition = f"oneOf({conditions_names})"
+    check_manager.add_target_conditions(target_name=target_name, namespace=namespace, conditions=[one_of_condition])
+    check_manager.add_target_eval(
+        target_name=target_name, namespace=namespace, status=eval_status, value=eval_value, resource_name=resource_name
     )
-    check_manager.add_target_eval(target_name=target_name, namespace=namespace, status=eval_status, value=eval_value)
+
+
+def combine_statuses(status_list: List[str]):
+    # lower case status list
+    status_list = [status.lower() for status in status_list]
+    final_status = "success"
+    for status in status_list:
+        if final_status == "success" and status not in ["running", "succeeded", "ok"]:
+            final_status = status
+        elif final_status in ["warning", "skipped", "warn", "starting", "recovering"] and status == "error":
+            final_status = status
+    return final_status
+
+
+def calculate_status(resource_state: str) -> str:
+    return ResourceState.map_to_status(resource_state).value
+
+
+def process_status(
+    check_manager: CheckManager,
+    status: dict,
+    target_name: str,
+    namespace: str,
+    resource_name: str,
+    padding: int,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> None:
+    runtime_status = status.get("runtimeStatus", {})
+    provisioning_status = status.get("provisioningStatus", {})
+    check_manager.add_target_conditions(
+        target_name=target_name,
+        conditions=["status"],
+        namespace=namespace,
+    )
+
+    status_eval_value = {"status": status}
+    status_list = []
+    if runtime_status:
+        runtime_status_state = runtime_status.get("status")
+        status_list.append(calculate_status(runtime_status_state))
+
+    if provisioning_status:
+        provisioning_status_state = provisioning_status.get("status")
+        status_list.append(calculate_status(provisioning_status_state))
+
+    # combine runtime and provisioning status
+    status_eval_status = combine_statuses(status_list)
+    check_manager.add_target_eval(
+        target_name=target_name,
+        namespace=namespace,
+        status=status_eval_status,
+        value=status_eval_value,
+        resource_name=resource_name,
+    )
+
+    if detail_level == ResourceOutputDetailLevel.summary.value:
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(
+                f"Status {{{decorate_resource_status(status_eval_status)}}}.",
+                (0, 0, 0, padding),
+            ),
+        )
+    else:
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding("Status:", (0, 0, 0, padding)),
+        )
+
+        for prop_name, prop_value in {
+            "Provisioning Status": provisioning_status,
+            "Runtime Status": runtime_status,
+        }.items():
+            if prop_value:
+                check_manager.add_display(
+                    target_name=target_name,
+                    namespace=namespace,
+                    display=Padding(
+                        f"{prop_name}: {{{decorate_resource_status(prop_value.get('status'))}}}.",
+                        (0, 0, 0, padding + 4),
+                    ),
+                )
+
+                status_description = prop_value.get("statusDescription") or prop_value.get("output", {}).get("message")
+                if detail_level == ResourceOutputDetailLevel.verbose.value and status_description:
+                    check_manager.add_display(
+                        target_name=target_name,
+                        namespace=namespace,
+                        display=Padding(
+                            f"{prop_name} Description: [cyan]{status_description}[/cyan]", (0, 0, 0, padding + 4)
+                        ),
+                    )

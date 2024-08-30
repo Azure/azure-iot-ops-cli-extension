@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 
 from .base import (
     CheckManager,
-    decorate_resource_status,
     check_post_deployment,
     evaluate_pod_health,
     get_resources_by_name,
@@ -16,6 +15,7 @@ from .base import (
     process_dict_resource,
     process_resource_properties,
     validate_one_of_conditions,
+    process_status,
 )
 
 from rich.console import NewLine
@@ -85,7 +85,6 @@ def evaluate_broker_listeners(
         "len(brokerlisteners)>=1",
         "spec",
         "spec.serviceName",
-        "status",
     ]
 
     all_listeners = get_resources_by_name(
@@ -143,14 +142,24 @@ def evaluate_broker_listeners(
             listener_name: str = listener["metadata"]["name"]
             listener_spec = listener["spec"]
             listener_spec_service_name: str = listener_spec["serviceName"]
+            listener_status_state = listener.get("status", {})
 
             listener_eval_value = {}
-            # TODO: why adding spec here IN EVAL? don't see a big scope check for this, remove?
             listener_eval_value["spec"] = listener_spec
 
             listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}."
             check_manager.add_display(
                 target_name=target_listeners, namespace=namespace, display=Padding(listener_desc, (0, 0, 0, 8))
+            )
+
+            process_status(
+                check_manager=check_manager,
+                status=listener_status_state,
+                target_name=target_listeners,
+                namespace=namespace,
+                resource_name=listener_name,
+                padding=12,
+                detail_level=detail_level,
             )
 
             ports = listener_spec.get("ports", [])
@@ -180,21 +189,32 @@ def evaluate_broker_listeners(
                 if tls:
                     # "certManagerCertificateSpec" and "manual" are mutually exclusive
                     cert_spec = tls.get("certManagerCertificateSpec", {})
+                    cert_spec_condition = "spec.ports[*].tls.certManagerCertificateSpec"
                     manual = tls.get("manual", {})
+                    manual_condition = "spec.ports[*].tls.manual"
                     tls_eval_value = {
-                        "spec.ports[*].tls.certManagerCertificateSpec": cert_spec,
-                        "spec.ports[*].tls.manual": manual,
+                        cert_spec_condition: cert_spec,
+                        manual_condition: manual,
                     }
                     validate_one_of_conditions(
-                        conditions=[("certManagerCertificateSpec", cert_spec), ("manual", manual)],
+                        conditions=[
+                            (cert_spec_condition, cert_spec),
+                            (manual_condition, manual),
+                        ],
                         check_manager=check_manager,
                         eval_value=tls_eval_value,
                         namespace=namespace,
                         target_name=target_listeners,
+                        resource_name=listener_name,
                         padding=12,
                     )
 
                     if detail_level == ResourceOutputDetailLevel.verbose.value:
+                        check_manager.add_display(
+                            target_name=target_listeners,
+                            namespace=namespace,
+                            display=Padding("TLS:", (0, 0, 0, 12)),
+                        )
                         for prop_name, prop_value in {
                             "Cert Manager certificate spec": cert_spec,
                             "Manual": manual,
@@ -205,7 +225,7 @@ def evaluate_broker_listeners(
                                     target_name=target_listeners,
                                     resource=prop_value,
                                     namespace=namespace,
-                                    padding=16,
+                                    padding=14,
                                     prop_name=prop_name,
                                 )
 
@@ -238,7 +258,7 @@ def evaluate_brokers(
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate MQTT Brokers")
 
     target_brokers = "brokers.mqttbroker.iotoperations.azure.com"
-    broker_conditions = ["len(brokers)==1", "runtimeStatus", "spec.mode"]
+    broker_conditions = ["len(brokers)==1", "spec.mode"]
     all_brokers: dict = get_resources_by_name(
         api_info=MQ_ACTIVE_API,
         kind=MqResourceKinds.BROKER,
@@ -290,16 +310,6 @@ def evaluate_brokers(
             broker_spec: dict = b["spec"]
             broker_diagnostics = broker_spec["diagnostics"]
             broker_status_state = b.get("status", {})
-            broker_runtime_status = broker_status_state.get("runtimeStatus", {})
-            broker_runtime_status_state = broker_runtime_status.get("status", "N/A")
-            broker_runtime_status_desc = broker_runtime_status.get("statusDescription")
-            # TODO: unsure about the structure under "provisioningStatus"
-            # broker_provisioning_status = broker_status_state.get("provisioningStatus", {})
-
-            status_display_text = f"Runtime Status {{{decorate_resource_status(broker_runtime_status_state)}}}."
-
-            if broker_status_state:
-                status_display_text = f"{status_display_text} {broker_runtime_status_desc}."
 
             target_broker_text = f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}}"
             check_manager.add_display(
@@ -308,20 +318,17 @@ def evaluate_brokers(
                 display=Padding(target_broker_text, (0, 0, 0, 8)),
             )
 
-            broker_eval_value = {
-                "runtimeStatus": {
-                    "status": broker_runtime_status_state,
-                    "statusDescription": broker_runtime_status_desc,
-                }
-            }
-            broker_eval_status = _calculate_status(broker_runtime_status_state)
-
-            check_manager.add_display(
+            process_status(
+                check_manager=check_manager,
+                status=broker_status_state,
                 target_name=target_brokers,
                 namespace=namespace,
-                display=Padding(status_display_text, (0, 0, 0, 12)),
+                resource_name=broker_name,
+                padding=12,
+                detail_level=detail_level,
             )
 
+            broker_eval_value = {}
             if not added_distributed_conditions:
                 # TODO - conditional evaluations
                 broker_conditions.append("spec.cardinality")
@@ -518,10 +525,6 @@ def evaluate_brokers(
             )
 
     return check_manager.as_dict(as_list)
-
-
-def _calculate_status(resource_state: str) -> str:
-    return ResourceState.map_to_status(resource_state).value
 
 
 def _evaluate_listener_service(

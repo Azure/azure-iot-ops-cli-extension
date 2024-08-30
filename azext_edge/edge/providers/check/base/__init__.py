@@ -22,6 +22,7 @@ from .resource import (
     process_resource_properties,
     process_resource_property_by_type,
     validate_one_of_conditions,
+    process_status,
 )
 
 __all__ = [
@@ -47,4 +48,5 @@ __all__ = [
     "process_resource_property_by_type",
     "process_value_color",
     "validate_one_of_conditions",
+    "process_status",
 ]
