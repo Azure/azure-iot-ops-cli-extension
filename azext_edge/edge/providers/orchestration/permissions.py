@@ -19,22 +19,23 @@ VALID_PERM_FORMS = frozenset(
     ["*", "*/write", "microsoft.authorization/roleassignments/write", "microsoft.authorization/*/write"]
 )
 
+ROLE_DEF_FORMAT_STR = "/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/{role_id}"
+
 
 # TODO: one-off for time, make generic
 def verify_write_permission_against_rg(subscription_id: str, resource_group_name: str):
     for permission in get_principal_permissions_for_group(
         subscription_id=subscription_id, resource_group_name=resource_group_name
     ):
-        permission_dict = permission.as_dict()
         action_result = False
         negate_action_result = False
 
-        for action in permission_dict.get("actions", []):
+        for action in permission.get("actions", []):
             if action.lower() in VALID_PERM_FORMS:
                 action_result = True
                 break
 
-        for not_action in permission_dict.get("not_actions", []):
+        for not_action in permission.get("notActions", []):
             if not_action.lower() in VALID_PERM_FORMS:
                 negate_action_result = True
                 break
@@ -50,7 +51,7 @@ def verify_write_permission_against_rg(subscription_id: str, resource_group_name
     )
 
 
-def get_principal_permissions_for_group(subscription_id: str, resource_group_name: str) -> Iterable:
+def get_principal_permissions_for_group(subscription_id: str, resource_group_name: str) -> Iterable[dict]:
     authz_client = get_authz_client(subscription_id=subscription_id)
     return authz_client.permissions.list_for_resource_group(resource_group_name)
 
@@ -72,16 +73,17 @@ class PermissionManager:
             scope=scope, filter=f"principalId eq '{principal_id}'"
         )
         for role_assignment in role_assignments_iter:
-            role_assignment_dict = role_assignment.as_dict()
-            if role_assignment_dict["role_definition_id"] == role_def_id:
+            if role_assignment["properties"]["roleDefinitionId"] == role_def_id:
                 return
 
         return self.authz_client.role_assignments.create(
             scope=scope,
             role_assignment_name=str(uuid4()),
             parameters={
-                "role_definition_id": role_def_id,
-                "principal_id": principal_id,
+                "properties": {
+                    "roleDefinitionId": role_def_id,
+                    "principalId": principal_id,
+                }
             },
         )
 
@@ -102,8 +104,7 @@ class PermissionManager:
         )
         action_allowed = None
         for permission in permissions:
-            permission_dict = permission.as_dict()
-            action_result = self._calculate_action(permission_dict=permission_dict, valid_permissions=VALID_PERM_FORMS)
+            action_result = self._calculate_action(permission=permission, valid_permissions=VALID_PERM_FORMS)
 
             if action_result == PermissionState.ActionAllowed and action_allowed is not False:
                 action_allowed = True
@@ -128,16 +129,16 @@ class PermissionManager:
             resource_name=resource_name,
         )
 
-    def _calculate_action(self, permission_dict: dict, valid_permissions: frozenset) -> PermissionState:
+    def _calculate_action(self, permission: dict, valid_permissions: frozenset) -> PermissionState:
         action_result = False
         negate_action_result = False
 
-        for action in permission_dict.get("actions", []):
+        for action in permission.get("actions", []):
             if action.lower() in valid_permissions:
                 action_result = True
                 break
 
-        for not_action in permission_dict.get("not_actions", []):
+        for not_action in permission.get("notActions", []):
             if not_action.lower() in valid_permissions:
                 negate_action_result = True
                 break
