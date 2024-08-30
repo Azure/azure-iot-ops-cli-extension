@@ -6,12 +6,10 @@
 
 from typing import List, Optional, Tuple
 
-from ...util import url_safe_random_chars
 from .template import (
     M2_ENABLEMENT_TEMPLATE,
     M2_INSTANCE_TEMPLATE,
     TemplateBlueprint,
-    get_basic_dataflow_profile,
 )
 from .common import KubernetesDistroType, TrustSourceType
 
