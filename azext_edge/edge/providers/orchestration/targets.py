@@ -10,6 +10,7 @@ from .template import (
     M2_ENABLEMENT_TEMPLATE,
     M2_INSTANCE_TEMPLATE,
     TemplateBlueprint,
+    get_basic_dataflow_profile,
 )
 from .common import KubernetesDistroType, TrustSourceType
 
@@ -113,7 +114,18 @@ class InitTargets:
         )
         instance = template.get_resource_by_key("aioInstance")
         instance["properties"]["description"] = self.instance_description
-        instance["properties"]["name"] = self.instance_name
+
+        broker = template.get_resource_by_key("broker")
+        broker_authn = template.get_resource_by_key("broker_authn")
+        broker_listener = template.get_resource_by_key("broker_listener")
+
+        if self.instance_name:
+            instance["name"] = self.instance_name
+            broker["name"] = f"{self.instance_name}/broker"
+            broker_authn["name"] = f"{self.instance_name}/broker/broker-authn"
+            broker_listener["name"] = f"{self.instance_name}/broker/broker-listener"
+
+            template.add_resource("dataflowProfile", get_basic_dataflow_profile(instance_name=self.instance_name))
 
         if self.mi_user_assigned_identities:
             mi_user_payload = {}

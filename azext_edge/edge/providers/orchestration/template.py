@@ -732,11 +732,13 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
 )
 
 
-def get_basic_dataflow_profile(profile_name: str = DEFAULT_DATAFLOW_PROFILE, instance_count: int = 1) -> dict:
+def get_basic_dataflow_profile(
+    instance_name: str, profile_name: str = DEFAULT_DATAFLOW_PROFILE, instance_count: int = 1
+) -> dict:
     return {
         "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
-        "apiVersion": "2024-07-01-preview",
-        "name": f"[format('{{0}}/{{1}}', parameters('instanceName'), '{profile_name}')]",
+        "apiVersion": "2024-08-15-preview",
+        "name": f"{instance_name}/{profile_name}",
         "extendedLocation": {
             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
             "type": "CustomLocation",
@@ -744,12 +746,10 @@ def get_basic_dataflow_profile(profile_name: str = DEFAULT_DATAFLOW_PROFILE, ins
         "properties": {
             "instanceCount": instance_count,
         },
-        "dependsOn": [
-            "[resourceId('Microsoft.IoTOperations/instances', parameters('instanceName'))]",
-            "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-        ],
+        "dependsOn": ["aioInstance", "customLocation"],
     }
 
 
+# TODO - @digimaun
 def get_basic_listener(listener_name: str = "") -> dict:
     return {}
