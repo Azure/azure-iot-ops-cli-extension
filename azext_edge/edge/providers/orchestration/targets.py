@@ -15,6 +15,11 @@ from .template import (
 from .common import KubernetesDistroType, TrustSourceType
 
 
+BROKER_NAME = "broker"
+BROKER_AUTHN_NAME = "broker-authn"
+BROKER_LISTENER_NAME = "broker-listener"
+
+
 class InitTargets:
     def __init__(
         self,
@@ -121,9 +126,9 @@ class InitTargets:
 
         if self.instance_name:
             instance["name"] = self.instance_name
-            broker["name"] = f"{self.instance_name}/broker"
-            broker_authn["name"] = f"{self.instance_name}/broker/broker-authn"
-            broker_listener["name"] = f"{self.instance_name}/broker/broker-listener"
+            broker["name"] = f"{self.instance_name}/{BROKER_NAME}"
+            broker_authn["name"] = f"{self.instance_name}/{BROKER_NAME}/{BROKER_AUTHN_NAME}"
+            broker_listener["name"] = f"{self.instance_name}/{BROKER_NAME}/{BROKER_LISTENER_NAME}"
 
             template.add_resource("dataflowProfile", get_basic_dataflow_profile(instance_name=self.instance_name))
 
@@ -134,10 +139,6 @@ class InitTargets:
             instance["identity"] = {}
             instance["identity"]["type"] = "UserAssigned"
             instance["identity"]["userAssignedIdentities"] = mi_user_payload
-
-        # deploy_resources: List[dict] = content.get("resources", [])
-        # df_profile_instances = self.dataflow_profile_instances
-        # deploy_resources.append(get_basic_dataflow_profile(instance_count=df_profile_instances))
 
         # if self.broker_config:
         #     broker_config = self.broker_config
