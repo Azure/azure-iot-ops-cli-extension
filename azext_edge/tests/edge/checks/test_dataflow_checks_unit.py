@@ -498,7 +498,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                     "spec": {
                         "mode": "Disabled",
-                        "profileRef": "profile",
+                        "profileRef": DEFAULT_DATAFLOW_PROFILE,
                         "operations": [
                             {
                                 "operationType": "source",
@@ -517,7 +517,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                 }
             ],
             # profiles
-            [{"metadata": {"name": "profile"}}],
+            [{"metadata": {"name": DEFAULT_DATAFLOW_PROFILE}}],
             # endpoints
             [
                 {
@@ -882,7 +882,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "success"),
                     (
                         "name",
-                        "profile",
+                        DEFAULT_DATAFLOW_PROFILE,
                     ),
                     ("value", {"spec.instanceCount": 1}),
                 ],
@@ -1013,7 +1013,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "warning"),
                     (
                         "name",
-                        "profile",
+                        DEFAULT_DATAFLOW_PROFILE,
                     ),
                     ("value/status/configStatusLevel", "warn"),
                     ("value/status/statusDescription", "this should display a warning"),
@@ -1022,7 +1022,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "success"),
                     (
                         "name",
-                        "profile",
+                        DEFAULT_DATAFLOW_PROFILE,
                     ),
                     ("value", {"spec.instanceCount": 1}),
                 ],
