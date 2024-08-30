@@ -8,6 +8,7 @@ from typing import List, NamedTuple
 
 from rich.padding import Padding
 from rich.table import Table
+from rich.console import NewLine
 
 from ...common import CheckTaskStatus, OpsServiceType
 from ...providers.edge_api import (
@@ -122,7 +123,10 @@ def check_summary(
 
         # service check suggestion footer
         if add_footer:
-            footer = f"See details by running: az iot ops check --svc {check.svc}"
+            footer = ":magnifying_glass_tilted_left:" + colorize_string(
+                f" See details by running: az iot ops check --svc {check.svc}"
+            )
+            check_manager.add_display(target_name=target, display=NewLine())
             check_manager.add_display(target_name=target, display=Padding(footer, (0, 0, 0, PADDING)))
 
     return check_manager.as_dict(as_list=as_list)
