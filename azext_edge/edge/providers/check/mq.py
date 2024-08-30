@@ -61,7 +61,7 @@ def check_mq_deployment(
     return check_post_deployment(
         api_info=MQ_ACTIVE_API,
         check_name="enumerateBrokerApi",
-        check_desc="Enumerate MQTTBroker API resources",
+        check_desc="Enumerate MQTT Broker API resources",
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
