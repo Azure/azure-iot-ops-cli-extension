@@ -53,8 +53,8 @@ class WorkRecord:
 
 PROVISIONING_STATE_SUCCESS = "Succeeded"
 CONNECTIVITY_STATUS_CONNECTED = "Connected"
-IOT_OPS_EXTENSION_TYPE = "Microsoft.IoTOperations"
-IOT_OPS_PLAT_EXTENSION_TYPE = "Microsoft.IoTOperations.Platform"
+IOT_OPS_EXTENSION_TYPE = "microsoft.iotoperations"
+IOT_OPS_PLAT_EXTENSION_TYPE = "microsoft.iotoperations.platform"
 CONTRIBUTOR_ROLE_ID = "b24988ac-6180-42a0-ab88-20f7382dd24c"
 
 
@@ -292,11 +292,15 @@ class WorkManager:
                     self._extension_map = connected_cluster.get_extensions_by_type(
                         IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE
                     )
+                    if not self._extension_map:
+                        raise ValidationError(
+                            "Foundational services not detected. Instance deployment will not continue."
+                        )
 
                 instance_work_name = self._work_format_str.format(op="instance")
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)
                 instance_content, instance_parameters = self._targets.get_ops_instance_template(
-                    cl_extension_ids=[ext["id"] for ext in self._extension_map]
+                    cl_extension_ids=[self._extension_map[ext]["id"] for ext in self._extension_map]
                 )
                 self._deploy_template(
                     content=instance_content,
@@ -326,6 +330,10 @@ class WorkManager:
                 )
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS)
                 _ = wait_for_terminal_state(instance_poller)
+                self.complete_step(
+                    category=WorkCategoryKey.DEPLOY_IOT_OPS,
+                    completed_step=WorkStepKey.DEPLOY_INSTANCE,
+                )
 
                 # TODO @digimaun - work_kpis
 

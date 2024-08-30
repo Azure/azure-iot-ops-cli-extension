@@ -24,6 +24,9 @@ QUERIES = {
         | where properties.ExtensionType startswith 'microsoft.iotoperations'
             or properties.ExtensionType =~ 'microsoft.deviceregistry.assets'
             or properties.ExtensionType =~ 'microsoft.azurekeyvaultsecretsprovider'
+            or properties.ExtensionType =~ 'microsoft.secretsynccontroller'
+            or properties.ExtensionType =~ 'microsoft.openservicemesh'
+            or properties.ExtensionType =~ 'microsoft.edgestorageaccelerator'
         | project id, name, apiVersion
         """,
     "get_aio_custom_locations": """

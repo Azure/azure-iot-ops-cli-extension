@@ -24,7 +24,7 @@ class TemplateBlueprint(NamedTuple):
         return self.content["parameters"]
 
     def get_resource_by_key(self, key: str) -> Optional[dict]:
-        return self.content["resource"].get(key)
+        return self.content["resources"].get(key)
 
     def get_resource_by_type(self, type_name: str, first=True) -> Optional[Union[List[dict], dict]]:
         r = []

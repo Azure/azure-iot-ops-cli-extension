@@ -115,6 +115,7 @@ class InitTargets:
         )
         instance = template.get_resource_by_key("aioInstance")
         instance["properties"]["description"] = self.instance_description
+        instance["properties"]["name"] = self.instance_name
 
         if self.mi_user_assigned_identities:
             mi_user_payload = {}
@@ -123,7 +124,6 @@ class InitTargets:
             instance["identity"] = {}
             instance["identity"]["type"] = "UserAssigned"
             instance["identity"]["userAssignedIdentities"] = mi_user_payload
-
 
         # deploy_resources: List[dict] = content.get("resources", [])
         # df_profile_instances = self.dataflow_profile_instances
