@@ -73,7 +73,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize(
-    "dataflows, endpoints, conditions, evaluations",
+    "dataflows, profiles, endpoints, conditions, evaluations",
     [
         # dataflows (valid)
         (
@@ -85,6 +85,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                     "spec": {
                         "mode": "Enabled",
+                        "profileRef": "dataflow-profile-1",
                         "operations": [
                             {
                                 "operationType": "source",
@@ -134,6 +135,8 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                 },
             ],
+            # profiles
+            [{"metadata": {"name": "dataflow-profile-1"}}],
             # endpoints
             [
                 {
@@ -153,6 +156,14 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
             dataflow_conditions,
             # evaluations
             [
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"spec.profileRef": "dataflow-profile-1"}),
+                ],
                 [
                     ("status", "success"),
                     (
@@ -197,6 +208,8 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                     "spec": {
                         "mode": "Enabled",
+                        # invalid profileRef
+                        "profileRef": "nonexistent-dataflow-profile",
                         "operations": [
                             # only one destination
                             {
@@ -214,6 +227,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                     "spec": {
                         "mode": "Enabled",
+                        "profileRef": "real-dataflow-profile",
                         "operations": [
                             # good destination, bad source
                             {
@@ -237,6 +251,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                     "spec": {
                         "mode": "Enabled",
+                        "profileRef": "real-dataflow-profile",
                         "operations": [
                             # invalid source type
                             {
@@ -260,11 +275,14 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                     "spec": {
                         "mode": "Enabled",
+                        "profileRef": "real-dataflow-profile",
                         # no operations
                         "operations": [],
                     },
                 },
             ],
+            # profiles
+            [{"metadata": {"name": "real-dataflow-profile"}}],
             # endpoints
             [
                 {
@@ -284,6 +302,14 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
             dataflow_conditions,
             # evaluations
             [
+                [
+                    ("status", "error"),
+                    (
+                        "name",
+                        "dataflow-1",
+                    ),
+                    ("value", {"spec.profileRef": "nonexistent-dataflow-profile"}),
+                ],
                 [
                     ("status", "error"),
                     (
@@ -315,6 +341,14 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "dataflow-1",
                     ),
                     ("value", {"len(spec.operations[*].destinationSettings)": 1}),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        "dataflow-2",
+                    ),
+                    ("value", {"spec.profileRef": "real-dataflow-profile"}),
                 ],
                 [
                     ("status", "success"),
@@ -370,6 +404,14 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-3",
                     ),
+                    ("value", {"spec.profileRef": "real-dataflow-profile"}),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        "dataflow-3",
+                    ),
                     ("value", {"len(operations)": 2}),
                 ],
                 [
@@ -413,6 +455,14 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     ("value", {"len(spec.operations[*].destinationSettings)": 1}),
                 ],
                 [
+                    ("status", "success"),
+                    (
+                        "name",
+                        "dataflow-4",
+                    ),
+                    ("value", {"spec.profileRef": "real-dataflow-profile"}),
+                ],
+                [
                     ("status", "error"),
                     (
                         "name",
@@ -448,6 +498,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                     "spec": {
                         "mode": "Disabled",
+                        "profileRef": "profile",
                         "operations": [
                             {
                                 "operationType": "source",
@@ -465,6 +516,8 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                 }
             ],
+            # profiles
+            [{"metadata": {"name": "profile"}}],
             # endpoints
             [
                 {
@@ -498,6 +551,8 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
         (
             # dataflows
             [],
+            # profiles
+            [],
             # endpoints
             [],
             # conditions
@@ -518,19 +573,21 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
 def test_evaluate_dataflows(
     mocker,
     dataflows,
+    profiles,
     endpoints,
     conditions,
     evaluations,
     detail_level,
 ):
     namespace = generate_random_string()
-    for resource in [dataflows, endpoints]:
+    for resource in [dataflows, profiles, endpoints]:
         for item in resource:
             item["metadata"]["namespace"] = namespace
     # this expects the logic to follow this path:
     # 1. get all dataflows
-    # 2. get all endpoints
-    side_effects = [{"items": dataflows}, {"items": endpoints}]
+    # 2. get all profiles
+    # 3. get all endpoints
+    side_effects = [{"items": dataflows}, {"items": profiles}, {"items": endpoints}]
 
     mocker = mocker.patch(
         "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",

@@ -739,7 +739,7 @@ def evaluate_core_service_runtime(
             target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             pods=pods,
             namespace=namespace,
-            display_padding=INNER_PADDING,
+            display_padding=PADDING + 2,
             detail_level=detail_level,
         )
 
@@ -799,7 +799,15 @@ def evaluate_dataflows(
             ],
         )
 
-        # all endpoints for reference lookup
+        # profile names for reference lookup
+        all_profiles = get_resources_by_name(
+            api_info=DATAFLOW_API_V1B1,
+            kind=DataflowResourceKinds.DATAFLOWPROFILE,
+            namespace=namespace,
+            resource_name=None,
+        )
+        profile_names = {profile.get("metadata", {}).get("name") for profile in all_profiles}
+
         all_endpoints = get_resources_by_name(
             api_info=DATAFLOW_API_V1B1,
             kind=DataflowResourceKinds.DATAFLOWENDPOINT,
@@ -850,6 +858,39 @@ def evaluate_dataflows(
                     ),
                 )
                 continue
+
+            profile_ref = spec.get("profileRef")
+            # profileRef is optional, only show an error if it exists but is invalid
+            if profile_ref:
+                profile_ref_status = CheckTaskStatus.error if profile_ref not in profile_names else CheckTaskStatus.success
+
+                # valid profileRef eval
+                check_manager.add_target_eval(
+                    target_name=target,
+                    namespace=namespace,
+                    status=profile_ref_status.value,
+                    resource_name=dataflow_name,
+                    resource_kind=DataflowResourceKinds.DATAFLOW.value,
+                    value={"spec.profileRef": profile_ref},
+                )
+
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding(
+                        f"Dataflow Profile: {{{colorize_string(color=profile_ref_status.color, value=profile_ref)}}}",
+                        (0, 0, 0, INNER_PADDING),
+                    ),
+                )
+                if profile_ref_status == CheckTaskStatus.error:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=Padding(
+                            colorize_string(color=profile_ref_status.color, value="Invalid Dataflow Profile reference"),
+                            (0, 0, 0, INNER_PADDING),
+                        ),
+                    )
 
             operations = spec.get("operations", [])
 
