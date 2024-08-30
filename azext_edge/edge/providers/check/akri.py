@@ -38,23 +38,21 @@ from .common import (
 
 
 def check_akri_deployment(
-    result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
     resource_name: str = None,
-) -> None:
+) -> List[dict]:
     evaluate_funcs = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
         AkriResourceKinds.CONFIGURATION: evaluate_configurations,
         AkriResourceKinds.INSTANCE: evaluate_instances,
     }
 
-    check_post_deployment(
+    return check_post_deployment(
         api_info=AKRI_API_V0,
         check_name="enumerateAkriApi",
         check_desc="Enumerate Akri API resources",
-        result=result,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,

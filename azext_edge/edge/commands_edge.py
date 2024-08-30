@@ -5,11 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-from os.path import exists
 from pathlib import PurePath
 from typing import Any, Dict, Iterable, List, Optional, Union
 
-from azure.cli.core.azclierror import InvalidArgumentValueError
+from azure.cli.core.azclierror import ArgumentUsageError
 from knack.log import get_logger
 
 from .common import OpsServiceType
@@ -17,12 +16,9 @@ from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
-    DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
-    DEFAULT_X509_CA_VALID_DAYS,
-    KEYVAULT_ARC_EXTENSION_VERSION,
     KubernetesDistroType,
-    MqMemoryProfile,
-    MqServiceType,
+    # TODO MqMemoryProfile,
+    # TODO MqServiceType,
 )
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
@@ -57,7 +53,7 @@ def check(
     post_deployment_checks: Optional[bool] = None,
     as_object=None,
     context_name=None,
-    ops_service: str = OpsServiceType.mq.value,
+    ops_service: Optional[str] = None,
     resource_kinds: List[str] = None,
     resource_name: str = None,
 ) -> Union[Dict[str, Any], None]:
@@ -73,6 +69,20 @@ def check(
         run_post = False
     if post_deployment_checks and not pre_deployment_checks:
         run_pre = False
+
+    # error if resource_name provided without ops_service
+    if resource_name and not ops_service:
+        raise ArgumentUsageError(
+            "Resource name filtering (--resource-name) can only be used with service name (--svc)."
+        )
+
+    if resource_kinds and not ops_service:
+        raise ArgumentUsageError(
+            "Service name (--svc) is required to specify individual resource kind checks."
+        )
+
+    if detail_level != ResourceOutputDetailLevel.summary.value and not ops_service:
+        logger.warning("Detail level (--detail-level) will only affect individual service checks with '--svc'")
 
     return run_checks(
         ops_service=ops_service,
@@ -99,149 +109,96 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
+    cluster_namespace: str = DEFAULT_NAMESPACE,
+    location: Optional[str] = None,
+    custom_location_name: Optional[str] = None,
+    disable_rsync_rules: Optional[bool] = None,
     instance_name: Optional[str] = None,
     instance_description: Optional[str] = None,
-    cluster_namespace: str = DEFAULT_NAMESPACE,
-    keyvault_spc_secret_name: str = DEFAULT_NAMESPACE,
-    custom_location_name: Optional[str] = None,
-    location: Optional[str] = None,
-    show_template: Optional[bool] = None,
-    simulate_plc: Optional[bool] = None,
+    broker_name: str = "broker",
+    broker_config_file: Optional[str] = None,
+    broker_listener_name: str = "listener",
+    add_insecure_listener: Optional[bool] = None,
+    broker_authn_name: str = "authn",
+    dataflow_profile_instances: int = 1,
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
-    no_block: Optional[bool] = None,
+    enable_fault_tolerance: Optional[bool] = None,
     no_progress: Optional[bool] = None,
-    mq_memory_profile: str = MqMemoryProfile.medium.value,
-    mq_service_type: str = MqServiceType.cluster_ip.value,
-    mq_backend_partitions: int = 2,
-    mq_backend_workers: int = 2,
-    mq_backend_redundancy_factor: int = 2,
-    mq_frontend_workers: int = 2,
-    mq_frontend_replicas: int = 2,
-    mq_frontend_server_name: str = "mq-dmqtt-frontend",
-    mq_listener_name: str = "listener",
-    mq_broker_name: str = "broker",
-    mq_authn_name: str = "authn",
-    mq_broker_config_file: Optional[str] = None,
-    mq_insecure: Optional[bool] = None,
-    dataflow_profile_instances: int = 1,
-    disable_secret_rotation: Optional[bool] = None,
-    rotation_poll_interval: str = "1h",
-    csi_driver_version: str = KEYVAULT_ARC_EXTENSION_VERSION,
-    csi_driver_config: Optional[List[str]] = None,
-    service_principal_app_id: Optional[str] = None,
-    service_principal_object_id: Optional[str] = None,
-    service_principal_secret: Optional[str] = None,
-    service_principal_secret_valid_days: int = DEFAULT_SERVICE_PRINCIPAL_SECRET_DAYS,
-    keyvault_resource_id: Optional[str] = None,
-    tls_ca_path: Optional[str] = None,
-    tls_ca_key_path: Optional[str] = None,
-    tls_ca_dir: Optional[str] = None,
-    tls_ca_valid_days: int = DEFAULT_X509_CA_VALID_DAYS,
-    template_path: Optional[str] = None,
-    no_deploy: Optional[bool] = None,
-    no_tls: Optional[bool] = None,
-    disable_rsync_rules: Optional[bool] = None,
+    no_block: Optional[bool] = None,
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
+    **kwargs,
+
+
+    # mq_memory_profile: str = MqMemoryProfile.medium.value,
+    # mq_service_type: str = MqServiceType.cluster_ip.value,
+    # mq_backend_partitions: int = 2,
+    # mq_backend_workers: int = 2,
+    # mq_backend_redundancy_factor: int = 2,
+    # mq_frontend_workers: int = 2,
+    # mq_frontend_replicas: int = 2,
+
+
+    # TODO - @digimaun csi_driver_config: Optional[List[str]] = None,
+    # keyvault_resource_id: Optional[str] = None,  # TODO - @digimaun
+    # template_path: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
-    from .providers.orchestration import deploy
+    from .providers.orchestration import WorkManager
     from .util import (
-        assemble_nargs_to_dict,
+        # assemble_nargs_to_dict,
         is_env_flag_enabled,
         read_file_content,
-        url_safe_random_chars,
     )
-
-    no_preflight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
-
-    if all([no_tls, not keyvault_resource_id, no_deploy, no_preflight]):
-        logger.warning("Nothing to do :)")
-        return
-
+    # TODO - @digimaun, is necessary?
     load_config_context(context_name=context_name)
-
-    # cluster namespace must be lowercase
-    cluster_namespace = str(cluster_namespace).lower()
-    cluster_name_lowered = cluster_name.lower()
-    # TODO - @digimaun
-    safe_cluster_name = cluster_name_lowered.replace("_", "-")
-
-    if not instance_name:
-        instance_name = f"{safe_cluster_name}-ops-instance"
-
-    if not custom_location_name:
-        custom_location_name = f"{cluster_name_lowered}-{url_safe_random_chars(5).lower()}-ops-init-cl"
-
-    if tls_ca_path:
-        if not tls_ca_key_path:
-            raise InvalidArgumentValueError("When using --ca-file, --ca-key-file is required.")
-
-        if not exists(tls_ca_path):
-            raise InvalidArgumentValueError("Provided CA file does not exist.")
-
-        if not exists(tls_ca_key_path):
-            raise InvalidArgumentValueError("Provided CA private key file does not exist.")
-
-    if csi_driver_config:
-        csi_driver_config = assemble_nargs_to_dict(csi_driver_config)
+    no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
     # TODO - @digimaun
-    mq_broker_config = None
-    if mq_broker_config_file:
-        mq_broker_config = json.loads(read_file_content(file_path=mq_broker_config_file))
+    broker_config = None
+    if broker_config_file:
+        broker_config = json.loads(read_file_content(file_path=broker_config_file))
 
-    return deploy(
-        cmd=cmd,
+    work_manager = WorkManager(cmd)
+    return work_manager.execute_ops_init(
+        show_progress=not no_progress,
+        block=not no_block,
+        pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
+        resource_group_name=resource_group_name,
         cluster_namespace=cluster_namespace,
+        location=location,
+        custom_location_name=custom_location_name,
+        disable_rsync_rules=disable_rsync_rules,
         instance_name=instance_name,
         instance_description=instance_description,
-        cluster_location=None,  # Effectively always fetch connected cluster location
-        custom_location_name=custom_location_name,
-        resource_group_name=resource_group_name,
-        location=location,
-        show_template=show_template,
+        broker_name=broker_name,
+        broker_config=broker_config,
+        broker_listener_name=broker_listener_name,
+        add_insecure_listener=add_insecure_listener,
+        broker_authn_name=broker_authn_name,
+        dataflow_profile_instances=dataflow_profile_instances,
         container_runtime_socket=container_runtime_socket,
-        kubernetes_distro=str(kubernetes_distro),
-        simulate_plc=simulate_plc,
-        no_block=no_block,
-        no_progress=no_progress,
-        no_tls=no_tls,
-        no_preflight=no_preflight,
-        no_deploy=no_deploy,
-        disable_rsync_rules=disable_rsync_rules,
-        mq_broker_config=mq_broker_config,
-        mq_memory_profile=str(mq_memory_profile),
-        mq_service_type=str(mq_service_type),
-        mq_backend_partitions=int(mq_backend_partitions),
-        mq_backend_workers=int(mq_backend_workers),
-        mq_backend_redundancy_factor=int(mq_backend_redundancy_factor),
-        mq_frontend_replicas=int(mq_frontend_replicas),
-        mq_frontend_workers=int(mq_frontend_workers),
-        mq_frontend_server_name=str(mq_frontend_server_name),
-        mq_listener_name=str(mq_listener_name),
-        mq_broker_name=str(mq_broker_name),
-        mq_authn_name=str(mq_authn_name),
-        mq_insecure=mq_insecure,
-        dataflow_profile_instances=int(dataflow_profile_instances),
-        keyvault_resource_id=keyvault_resource_id,
-        keyvault_spc_secret_name=str(keyvault_spc_secret_name),
-        disable_secret_rotation=disable_secret_rotation,
-        rotation_poll_interval=str(rotation_poll_interval),
-        csi_driver_version=str(csi_driver_version),
-        csi_driver_config=csi_driver_config,
-        service_principal_app_id=service_principal_app_id,
-        service_principal_object_id=service_principal_object_id,
-        service_principal_secret=service_principal_secret,
-        service_principal_secret_valid_days=int(service_principal_secret_valid_days),
-        tls_ca_path=tls_ca_path,
-        tls_ca_key_path=tls_ca_key_path,
-        tls_ca_dir=tls_ca_dir,
-        tls_ca_valid_days=int(tls_ca_valid_days),
-        template_path=template_path,
+        kubernetes_distro=kubernetes_distro,
+        enable_fault_tolerance=enable_fault_tolerance,
     )
+
+    # TODO - @digimaun
+    # work_manager = WorkManager(
+    #     mq_memory_profile=str(mq_memory_profile),
+    #     mq_service_type=str(mq_service_type),
+    #     mq_backend_partitions=int(mq_backend_partitions),
+    #     mq_backend_workers=int(mq_backend_workers),
+    #     mq_backend_redundancy_factor=int(mq_backend_redundancy_factor),
+    #     mq_frontend_replicas=int(mq_frontend_replicas),
+    #     mq_frontend_workers=int(mq_frontend_workers),
+    #     mq_listener_name=str(mq_listener_name),
+    #     mq_authn_name=str(mq_authn_name),
+    #     keyvault_resource_id=keyvault_resource_id,
+    #     template_path=template_path,
+    #     **kwargs,
+    # )
 
 
 def delete(

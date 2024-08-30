@@ -7,7 +7,7 @@
 from functools import partial
 from typing import List
 
-from azext_edge.edge.providers.support.billing import AIO_BILLING_USAGE_NAME_LABEL
+from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from ...generators import generate_random_string
 
 import pytest
@@ -188,7 +188,7 @@ def mocked_list_pods(mocked_client):
     evicted_pod = V1Pod(
         metadata=V1ObjectMeta(namespace=namespace, name=evicted_pod_name),
         spec=evicted_pod_spec,
-        status=evicted_pod_status
+        status=evicted_pod_status,
     )
     pods.append(evicted_pod)
     expected_pod_map[namespace][evicted_pod_name] = {evicted_pod.spec.containers[0].name: mock_log}
@@ -213,6 +213,13 @@ def mocked_get_custom_objects(mocker):
         return result
 
     patched.side_effect = _handle_list_custom_object
+    yield patched
+
+
+@pytest.fixture
+def mocked_assemble_crd_work(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.support.mq.assemble_crd_work", autospec=True)
+    patched.return_value = {}
     yield patched
 
 
@@ -257,10 +264,7 @@ def mocked_list_jobs(mocked_client):
     from kubernetes.client.models import V1JobList, V1Job, V1ObjectMeta
 
     def _handle_list_jobs(*args, **kwargs):
-        names = ["mock_job"]
-        if "label_selector" in kwargs and kwargs["label_selector"] == AIO_BILLING_USAGE_NAME_LABEL:
-            names.append("aio-usage-job")
-
+        names = ["mock_job", "aio-usage-job"]
         job_list = []
         for name in names:
             job_list.append(V1Job(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
@@ -278,17 +282,13 @@ def mocked_list_deployments(mocked_client):
     from kubernetes.client.models import V1DeploymentList, V1Deployment, V1ObjectMeta
 
     def _handle_list_deployments(*args, **kwargs):
-        names = ["mock_deployment"]
-        if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            names.extend(
-                [
-                    "aio-opc-admission-controller",
-                    "aio-opc-supervisor",
-                    "aio-opc-opc",
-                    "opcplc-0000000",
-                ]
-            )
-
+        names = [
+            "mock_deployment",
+            "aio-opc-admission-controller",
+            "aio-opc-supervisor",
+            "aio-opc-opc",
+            "opcplc-0000000",
+        ]
         deployment_list = []
         for name in names:
             deployment_list.append(V1Deployment(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
@@ -339,14 +339,7 @@ def mocked_list_services(mocked_client):
     from kubernetes.client.models import V1ServiceList, V1Service, V1ObjectMeta
 
     def _handle_list_services(*args, **kwargs):
-        service_names = ["mock_service"]
-        if "label_selector" in kwargs and kwargs["label_selector"] is None:
-            service_names.extend(
-                [
-                    "opcplc-0000000",
-                ]
-            )
-
+        service_names = ["mock_service", "opcplc-0000000", "aio-operator"]
         service_list = []
         for name in service_names:
             service_list.append(V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
@@ -463,6 +456,23 @@ def mocked_mq_get_traces(mocker):
     patched_get_traces = mocker.patch("azext_edge.edge.providers.support.mq.get_traces")
     patched_get_traces.return_value = [(test_zipinfo, "trace_data")]
     yield patched_get_traces
+
+
+@pytest.fixture
+def mocked_get_arc_services(mocked_client):
+    from kubernetes.client.models import V1ServiceList, V1Service, V1ObjectMeta
+
+    def _handle_list_arc_services(*args, **kwargs):
+        service_list = []
+        for name, _ in ARC_AGENTS:
+            service_list.append(V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        service_list = V1ServiceList(items=service_list)
+
+        return service_list
+
+    mocked_client.CoreV1Api().list_service_for_all_namespaces.side_effect = _handle_list_arc_services
+
+    yield mocked_client
 
 
 @pytest.fixture

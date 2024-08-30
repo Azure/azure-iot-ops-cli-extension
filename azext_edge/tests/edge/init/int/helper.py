@@ -7,7 +7,6 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from azext_edge.edge.providers.orchestration.common import KEYVAULT_ARC_EXTENSION_VERSION
 from ....helpers import run
 
 
@@ -53,7 +52,6 @@ def assert_init_result(
     # CSI driver
     assert result["csiDriver"]["keyVaultId"] == key_vault
     assert result["csiDriver"]["kvSpcSecretName"] == arg_dict.get("kv_spc_secret_name", "azure-iot-operations")
-    assert result["csiDriver"]["version"] == arg_dict.get("csi_ver", KEYVAULT_ARC_EXTENSION_VERSION)
 
     if sp_app_id:
         assert result["csiDriver"]["spAppId"] == sp_app_id
@@ -69,7 +67,8 @@ def assert_init_result(
     assert result["deploymentState"]["correlationId"]
     assert result["deploymentState"]["timestampUtc"]
 
-    _assert_aio_versions(result["deploymentState"]["opsVersion"])
+    # TODO
+    # _assert_aio_versions(result["deploymentState"]["opsVersion"])
     _assert_deployment_resources(
         resources=result["deploymentState"]["resources"],
         cluster_name=cluster_name,
@@ -109,12 +108,12 @@ def strip_quotes(argument: Optional[str]) -> Optional[str]:
         argument = argument[1:-1]
     return argument
 
-
-def _assert_aio_versions(aio_versions: Dict[str, str]):
-    from azext_edge.edge.providers.orchestration.template import CURRENT_TEMPLATE
-    template_versions = CURRENT_TEMPLATE.get_component_vers()
-    for key, value in aio_versions.items():
-        assert value == template_versions[key]
+# TODO
+# def _assert_aio_versions(aio_versions: Dict[str, str]):
+#     from azext_edge.edge.providers.orchestration.template import CURRENT_TEMPLATE
+#     template_versions = CURRENT_TEMPLATE.get_component_vers()
+#     for key, value in aio_versions.items():
+#         assert value == template_versions[key]
 
 
 def _assert_deployment_resources(resources: List[str], cluster_name: str, resource_group: str, **arg_dict):

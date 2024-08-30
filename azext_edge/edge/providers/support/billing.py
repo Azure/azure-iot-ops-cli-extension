@@ -5,9 +5,11 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable
+from typing import Iterable, Optional
 
 from knack.log import get_logger
+
+from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT
 
 from ..edge_api import CLUSTER_CONFIG_API_V1, EdgeResourceApi
 from .base import (
@@ -23,8 +25,8 @@ from .base import (
 
 logger = get_logger(__name__)
 
-AIO_BILLING_USAGE_NAME_LABEL = "app.kubernetes.io/name in (microsoft-iotoperations)"
-ARC_BILLING_EXTENSION_COMP_LABEL = "app.kubernetes.io/component in (billing-operator)"
+AIO_BILLING_USAGE_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations")
+ARC_BILLING_EXTENSION_COMP_LABEL = COMPONENT_LABEL_FORMAT.format(label="billing-operator")
 BILLING_RESOURCE_KIND = "billing"
 AIO_USAGE_PREFIX = "aio-usage"
 ARC_BILLING_DIRECTORY_PATH = f"{CLUSTER_CONFIG_API_V1.moniker}/{BILLING_RESOURCE_KIND}"
@@ -105,11 +107,13 @@ support_runtime_elements = {
 
 
 def prepare_bundle(
-    apis: Iterable[EdgeResourceApi],
     log_age_seconds: int = DAY_IN_SECONDS,
+    apis: Optional[Iterable[EdgeResourceApi]] = None,
 ) -> dict:
     billing_to_run = {}
-    billing_to_run.update(assemble_crd_work(apis=apis, directory_path=ARC_BILLING_DIRECTORY_PATH))
+
+    if apis:
+        billing_to_run.update(assemble_crd_work(apis=apis, directory_path=ARC_BILLING_DIRECTORY_PATH))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     billing_to_run.update(support_runtime_elements)

@@ -12,7 +12,6 @@ from rich.console import Console
 
 from ....util.az_client import (
     get_iotops_mgmt_client,
-    get_resource_client,
     parse_resource_id,
     wait_for_terminal_state,
 )
@@ -22,6 +21,8 @@ from ..resource_map import IoTOperationsResourceMap
 
 logger = get_logger(__name__)
 
+console = Console()
+
 
 class Instances(Queryable):
     def __init__(self, cmd):
@@ -29,8 +30,6 @@ class Instances(Queryable):
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
-        self.resource_client = get_resource_client(subscription_id=self.default_subscription_id)
-        self.console = Console()
 
     def show(self, name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> Optional[dict]:
         result = self.iotops_mgmt_client.instance.get(instance_name=name, resource_group_name=resource_group_name)
@@ -49,14 +48,14 @@ class Instances(Queryable):
 
     def _show_tree(self, instance: dict):
         resource_map = self.get_resource_map(instance)
-        with self.console.status("Working..."):
+        with console.status("Working..."):
             resource_map.refresh_resource_state()
         print(resource_map.build_tree(category_color="cyan"))
 
     def _get_associated_cl(self, instance: dict) -> dict:
         return self.resource_client.resources.get_by_id(
             resource_id=instance["extendedLocation"]["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
-        ).as_dict()
+        )
 
     def get_resource_map(self, instance: dict) -> IoTOperationsResourceMap:
         custom_location = self._get_associated_cl(instance)
@@ -85,7 +84,7 @@ class Instances(Queryable):
         if tags or tags == {}:
             instance["tags"] = tags
 
-        with self.console.status("Working..."):
+        with console.status("Working..."):
             poller = self.iotops_mgmt_client.instance.begin_create_or_update(
                 instance_name=name,
                 resource_group_name=resource_group_name,

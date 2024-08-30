@@ -9,7 +9,7 @@ from functools import partial
 from knack.log import get_logger
 
 from .base import DAY_IN_SECONDS, process_v1_pods, process_deployments, process_services, process_replicasets
-from .shared import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT
 from ..edge_api import EdgeResourceApi
 
 logger = get_logger(__name__)
@@ -24,9 +24,7 @@ OTEL_DIRECTORY_PATH = OTEL_API.moniker
 
 def fetch_otel_pods(since_seconds: int = DAY_IN_SECONDS):
     return process_v1_pods(
-        directory_path=OTEL_DIRECTORY_PATH,
-        label_selector=OTEL_NAME_LABEL,
-        since_seconds=since_seconds
+        directory_path=OTEL_DIRECTORY_PATH, label_selector=OTEL_NAME_LABEL, since_seconds=since_seconds
     )
 
 

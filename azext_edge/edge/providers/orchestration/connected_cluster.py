@@ -6,11 +6,7 @@
 
 from typing import List, Optional, Union
 
-from ...util.az_client import get_resource_client
 from ...util.resource_graph import ResourceGraph
-
-CONNECTED_CLUSTER_API_VERSION = "2024-01-01"
-KUBERNETES_CONFIG_API_VERSION = "2022-11-01"
 
 
 QUERIES = {
@@ -68,23 +64,21 @@ class ConnectedCluster:
         self.subscription_id = subscription_id
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
-        self.resource_client = get_resource_client(self.subscription_id)
         self.resource_graph = ResourceGraph(cmd=cmd, subscriptions=[self.subscription_id])
+
+        # TODO - @digimaun - temp necessary due to circular import
+        from ..orchestration.resources import ConnectedClusters
+
+        self.clusters = ConnectedClusters(cmd)
 
     @property
     def resource_id(self) -> str:
-        return (
-            f"/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group_name}"
-            f"/providers/Microsoft.Kubernetes/connectedClusters/{self.cluster_name}"
-        )
+        return self.resource["id"]
 
     @property
     def resource(self) -> dict:
         # TODO: Cache
-        return self.resource_client.resources.get_by_id(
-            resource_id=self.resource_id,
-            api_version=CONNECTED_CLUSTER_API_VERSION,
-        ).as_dict()
+        return self.clusters.show(resource_group_name=self.resource_group_name, cluster_name=self.cluster_name)
 
     @property
     def location(self) -> str:
@@ -97,12 +91,9 @@ class ConnectedCluster:
 
     @property
     def extensions(self) -> List[dict]:
-        # TODO: This is not the right approach.
-        additional_properties: dict = self.resource_client.resources.get_by_id(
-            resource_id=f"{self.resource_id}/providers/Microsoft.KubernetesConfiguration/extensions",
-            api_version=KUBERNETES_CONFIG_API_VERSION,
-        ).additional_properties
-        return additional_properties.get("value", [])
+        return list(
+            self.clusters.extensions.list(resource_group_name=self.resource_group_name, cluster_name=self.cluster_name)
+        )
 
     def get_custom_location_for_namespace(self, namespace: str) -> Optional[dict]:
         query = QUERIES["get_custom_location_for_namespace"].format(resource_id=self.resource_id, namespace=namespace)

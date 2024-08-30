@@ -85,10 +85,11 @@ def load_iotops_help():
         "iot ops check"
     ] = f"""
         type: command
-        short-summary: Evaluate cluster-side runtime health of deployed IoT Operations services.
+        short-summary: Evaluate cluster-side readiness and runtime health of deployed IoT Operations services.
         long-summary: |
-            The command by default shows a human friendly _summary_ view of the selected service.
-            More detail can be requested via `--detail-level`.
+            The command by default shows a high-level human friendly _summary_ view of all services.
+            Use the '--svc' option to specify checks for a single service, and configure verbosity via the `--detail-level` argument.
+            Note: Resource kind (--resources) and name (--resource-name) filtering can only be used with the '--svc' argument.
 
             {{Supported service APIs}}
             - {COMPAT_AKRI_APIS.as_str()}
@@ -100,21 +101,21 @@ def load_iotops_help():
             For more information on cluster requirements, please check https://aka.ms/iot-ops-cluster-requirements
 
         examples:
-        - name: Basic usage. Checks `broker` health with summary output.
+        - name: Basic usage. Checks overall IoT Operations health with summary output.
           text: >
             az iot ops check
 
-        - name: Evaluates `broker` like prior example, however output is optimized for CI.
+        - name: Checks `broker` service health and configuration with detailed output.
           text: >
-            az iot ops check --as-object
+            az iot ops check --svc broker --detail-level 1
 
-        - name: Checks `opcua` health and configuration with detailed output.
+        - name: Evaluate only the `dataflow` service with output optimized for CI.
           text: >
-            az iot ops check --svc opcua --detail-level 1
+            az iot ops check --svc dataflow --as-object
 
-        - name: Checks 'deviceregistry' health, but constrains results to `asset` resources.
+        - name: Checks `deviceregistry` health with verbose output, but constrains results to `asset` resources.
           text: >
-            az iot ops check --svc deviceregistry --detail-level 1 --resources asset
+            az iot ops check --svc deviceregistry --detail-level 2 --resources asset
 
         - name: Use resource name to constrain results to `asset` resources with `my-asset-` name prefix
           text: >
@@ -150,7 +151,7 @@ def load_iotops_help():
           text: >
             az iot ops broker stats --raw
 
-        - name: Fetch all available mq traces from the diagnostics Protobuf endpoint.
+        - name: Fetch all available mqtt broker traces from the diagnostics Protobuf endpoint.
                 This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
                 A trace files last modified attribute will match the trace timestamp.
           text: >
@@ -186,6 +187,21 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker.
+
+        examples:
+        - name: Delete the broker called 'broker' in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops broker delete -n broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker delete -n broker --in mycluster-ops-instance -g myresourcegroup -y
+    """
+
+    helps[
         "iot ops broker listener"
     ] = """
         type: group
@@ -214,6 +230,21 @@ def load_iotops_help():
         - name: Enumerate all broker listeners associated with the default broker.
           text: >
             az iot ops broker listener list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker listener delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker listener.
+
+        examples:
+        - name: Delete the broker listener called 'listener' associated with broker 'broker'.
+          text: >
+            az iot ops broker listener delete -n listener -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker listener delete -n listener -b broker --in mycluster-ops-instance -g myresourcegroup -y
     """
 
     helps[
@@ -248,6 +279,21 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker authn delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker authentication resource.
+
+        examples:
+        - name: Delete the broker authentication resource called 'authn' associated with broker 'broker'.
+          text: >
+            az iot ops broker authn delete -n authn -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker authn delete -n authn -b broker --in mycluster-ops-instance -g myresourcegroup -y
+    """
+
+    helps[
         "iot ops broker authz"
     ] = """
         type: group
@@ -276,6 +322,21 @@ def load_iotops_help():
         - name: Enumerate all broker authorization resources associated with the default broker.
           text: >
             az iot ops broker authz list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker authz delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker authorization resource.
+
+        examples:
+        - name: Delete the broker authorization resource called 'authz' associated with broker 'broker'.
+          text: >
+            az iot ops broker authz delete -n authz -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker authz delete -n authz -b broker --in mycluster-ops-instance -g myresourcegroup -y
     """
 
     helps[
@@ -404,40 +465,6 @@ def load_iotops_help():
                       Pre-creating an app registration is useful when the logged-in principal has constrained
                       Entra Id permissions. For example in CI/automation scenarios, or an orgs separation of user
                       responsibility.
-
-        examples:
-        - name: Minimum input for complete setup. This includes Key Vault configuration, CSI driver deployment, TLS config and deployment of IoT Operations.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id /subscriptions/2cb3a427-1abc-48d0-9d03-dd240819742a/resourceGroups/myresourcegroup/providers/Microsoft.KeyVault/vaults/mykeyvault
-
-        - name: Same setup as prior example, except with the usage of an existing app Id and a flag to include a simulated PLC server as part of the deployment.
-                Including the app Id will prevent init from creating an app registration.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --simulate-plc
-
-        - name: To skip deployment and focus only on the Key Vault CSI driver and TLS config workflows simple pass in --no-deploy.
-                This can be useful when desiring to deploy from a different tool such as Portal.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-deploy
-
-        - name: To only deploy IoT Operations on a cluster that has already been prepped, simply omit --kv-id and include --no-tls.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --no-tls
-
-        - name: Use --no-block to do other work while the deployment is on-going vs waiting for the deployment to finish before starting the other work.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-block
-
-        - name: This example shows providing values for --sp-app-id, --sp-object-id and --sp-secret. These values should reflect the desired service principal
-                that will be used for the Key Vault CSI driver secret synchronization. Please review the command summary for additional details.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d
-            --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29 --sp-secret $SP_SECRET
-
-        - name: To customize runtime configuration of the Key Vault CSI driver, --csi-config can be used. For example setting resource limits on the telegraf container dependency.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d
-            --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m
     """
 
     helps[
@@ -1086,4 +1113,88 @@ def load_iotops_help():
           text: >
             az iot ops asset endpoint certificate remove --endpoint {asset_endpoint} -g {resource_group}
             --thumbprint {thumbprint}
+    """
+
+    helps[
+        "iot ops schema"
+    ] = """
+        type: group
+        short-summary: Schema management.
+        long-summary: |
+          Schemas are documents that describe data to enable processing and contextualization.
+          Message schemas describe the format of a message and its contents.
+    """
+
+    helps[
+        "iot ops schema registry"
+    ] = """
+        type: group
+        short-summary: Schema registry management.
+        long-summary: |
+          A schema registry is a centralized repository for managing schemas. Schema registry enables
+          schema generation and retrieval both at the edge and in the cloud. It ensures consistency
+          and compatibility across systems by providing a single source of truth for schema
+          definitions.
+    """
+
+    helps[
+        "iot ops schema registry show"
+    ] = """
+        type: command
+        short-summary: Show details of a schema registry.
+        examples:
+        - name: Show details of target schema registry 'myregistry'.
+          text: >
+            az iot ops schema registry show --name myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema registry list"
+    ] = """
+        type: command
+        short-summary: List schema registries in a resource group or subscription.
+        examples:
+        - name: List schema registeries in the resource group 'myresourcegroup'.
+          text: >
+            az iot ops schema registry list -g myresourcegroup
+        - name: List schema registeries in the default subscription filtering on a particular tag.
+          text: >
+            az iot ops schema registry list --query "[?tags.env == 'prod']"
+    """
+
+    helps[
+        "iot ops schema registry delete"
+    ] = """
+        type: command
+        short-summary: Delete a target schema registry.
+        examples:
+        - name: Delete schema registry 'myregistry'.
+          text: >
+            az iot ops schema registry delete -n myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema registry create"
+    ] = """
+        type: command
+        short-summary: Create a schema registry.
+        long-summary: |
+                      This operation will create a schema registry with system managed identity enabled.
+
+                      It will then assign the system identity the built-in "Storage Blob Data Contributor"
+                      role against the storage account scope by default. If necessary you can provide a custom
+                      role via --custom-role-id to use instead.
+
+                      If the indicated storage account container does not exist it will be created with default
+                      settings.
+        examples:
+        - name: Create a schema registry called 'myregistry' with minimum inputs.
+          text: >
+            az iot ops schema registry create -n myregistry -g myresourcegroup --registry-namespace myschemas
+            --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID
+        - name: Create a schema registry called 'myregistry' in region westus2 with additional customization.
+          text: >
+            az iot ops schema registry create -n myregistry -g myresourcegroup --registry-namespace myschemas
+            --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID --sa-container myschemacontainer
+            -l westus2 --desc 'Contoso factory X1 schemas' --display-name 'Contoso X1' --tags env=prod
     """

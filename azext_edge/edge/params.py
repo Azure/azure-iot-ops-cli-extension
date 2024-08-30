@@ -73,20 +73,26 @@ def load_iotops_arguments(self, _):
             help="Force the operation to execute.",
         )
         context.argument(
+            "tags",
+            options_list=["--tags"],
+            arg_type=tags_type,
+            help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d. "
+            'Use --tags "" to remove all tags.',
+        )
+        context.argument(
             "instance_name",
             options_list=["--name", "-n"],
             help="IoT Operations instance name.",
         )
         context.argument(
-            "tags",
-            options_list=["--tags"],
-            arg_type=tags_type,
-            help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d",
-        )
-        context.argument(
             "instance_description",
             options_list=["--desc"],
             help="Description of the IoT Operations instance.",
+        )
+        context.argument(
+            "broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
         )
 
     with self.argument_context("iot ops show") as context:
@@ -233,7 +239,7 @@ def load_iotops_arguments(self, _):
             help="IoT Operations instance name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--name", "-n"],
             help="Mqtt broker name.",
         )
@@ -245,7 +251,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker listener name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -257,7 +263,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker authentication resource name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -269,7 +275,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker authorization resource name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -331,7 +337,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "instance_name",
             options_list=["--name", "-n"],
-            help="IoT Operations instance name. The default is in the form '{cluster_name}-ops-instance'.",
+            help="IoT Operations instance name. An instance name must be provided to "
+            "deploy an instance during init orchestration.",
         )
         context.argument(
             "cluster_name",
@@ -347,7 +354,7 @@ def load_iotops_arguments(self, _):
             "custom_location_name",
             options_list=["--custom-location"],
             help="The custom location name corresponding to the IoT Operations deployment. "
-            "The default is in the form '{cluster_name}-{token}-ops-init-cl'.",
+            "The default is in the form '{cluster_name}-{token}-ops-cl'.",
         )
         context.argument(
             "location",
@@ -356,29 +363,10 @@ def load_iotops_arguments(self, _):
             "If not provided the connected cluster location will be used.",
         )
         context.argument(
-            "show_template",
-            options_list=["--show-template"],
-            arg_type=get_three_state_flag(),
-            help="Flag when set, will output the template intended for deployment.",
-            arg_group="Template",
-        )
-        context.argument(
             "no_block",
             options_list=["--no-block"],
             arg_type=get_three_state_flag(),
             help="Return immediately after the IoT Operations deployment has started.",
-        )
-        context.argument(
-            "no_deploy",
-            options_list=["--no-deploy"],
-            arg_type=get_three_state_flag(),
-            help="The IoT Operations deployment workflow will be skipped.",
-        )
-        context.argument(
-            "no_tls",
-            options_list=["--no-tls"],
-            arg_type=get_three_state_flag(),
-            help="The TLS configuration workflow will be skipped.",
         )
         context.argument(
             "disable_rsync_rules",
@@ -408,52 +396,41 @@ def load_iotops_arguments(self, _):
             "default container runtime socket path when no --runtime-socket value is provided.",
             arg_group="Akri",
         )
-        # OPC-UA Broker
-        context.argument(
-            "simulate_plc",
-            options_list=["--simulate-plc"],
-            arg_type=get_three_state_flag(),
-            help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
-            arg_group="OPC-UA Broker",
-        )
         # MQ
         context.argument(
-            "mq_broker_config_file",
+            "broker_config_file",
             options_list=["--broker-config-file"],
             help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
             "The expected format is described at https://aka.ms/aziotops-broker-config.",
             arg_group="Broker",
         )
         context.argument(
-            "mq_frontend_server_name",
-            options_list=["--broker-frontend-server"],
-            help="The mqtt broker frontend server name.",
-            arg_group="Broker",
-            deprecate_info=context.deprecate(hide=True),
-        )
-        context.argument(
-            "mq_listener_name",
-            options_list=["--broker-listener"],
-            help="The mqtt broker listener name.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker"],
-            help="The mqtt broker name.",
+            help="Mqtt broker name.",
             arg_group="Broker",
         )
         context.argument(
-            "mq_authn_name",
+            "broker_listener_name",
+            options_list=["--broker-listener"],
+            help="Mqtt broker listener name.",
+            arg_group="Broker",
+        )
+        context.argument(
+            "broker_authn_name",
             options_list=["--broker-authn"],
-            help="The mqtt broker authN name.",
+            help="Mqtt broker authentication name.",
             arg_group="Broker",
         )
         context.argument(
-            "mq_insecure",
+            "add_insecure_listener",
             options_list=[
                 "--add-insecure-listener",
-                context.deprecate(target="--mq-insecure", redirect="--add-insecure-listener", hide=True),
+                context.deprecate(
+                    target="--mq-insecure",
+                    redirect="--add-insecure-listener",
+                    hide=True,
+                ),
             ],
             arg_type=get_three_state_flag(),
             help="When enabled the mqtt broker deployment will include a listener "
@@ -514,110 +491,29 @@ def load_iotops_arguments(self, _):
         # AKV CSI Driver
         context.argument(
             "keyvault_resource_id",
-            options_list=["--kv-id"],
+            options_list=[
+                "--kv-resource-id",
+                context.deprecate(
+                    target="--kv-id",
+                    redirect="--kv-resource-id",
+                    hide=True,
+                ),
+            ],
             help="Key Vault ARM resource Id. Providing this resource Id will enable the client "
             "to setup all necessary resources and cluster side configuration to enable "
             "the Key Vault CSI driver for IoT Operations.",
             arg_group="Key Vault CSI Driver",
         )
-        context.argument(
-            "keyvault_spc_secret_name",
-            options_list=["--kv-spc-secret-name"],
-            help="The Key Vault secret **name** to use as the default SPC secret. "
-            "If the secret does not exist, it will be created with a cryptographically secure placeholder value.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "disable_secret_rotation",
-            options_list=["--disable-rotation"],
-            arg_type=get_three_state_flag(),
-            help="Flag to disable secret rotation.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "rotation_poll_interval",
-            options_list=["--rotation-int"],
-            help="Rotation poll interval.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "csi_driver_version",
-            options_list=["--csi-ver"],
-            help="CSI driver extension version.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "csi_driver_config",
-            options_list=["--csi-config"],
-            nargs="+",
-            action="extend",
-            help="CSI driver extension custom configuration. Format is space-separated key=value pairs. "
-            "--csi-config can be used one or more times.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_app_id",
-            options_list=["--sp-app-id"],
-            help="Service principal app Id. If provided will be used for CSI driver setup. "
-            "Otherwise an app registration will be created. "
-            "**Required** if the logged in principal does not have permissions to query graph.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_object_id",
-            options_list=["--sp-object-id"],
-            help="Service principal (sp) object Id. If provided will be used for CSI driver setup. "
-            "Otherwise the object Id will be queried from the app Id - creating the sp if one does not exist. "
-            "**Required** if the logged in principal does not have permissions to query graph. "
-            "Use `az ad sp show --id <app Id> --query id -o tsv` to produce the proper object Id. "
-            "Alternatively using Portal you can navigate to Enterprise Applications in your Entra Id tenant.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_secret",
-            options_list=["--sp-secret"],
-            help="The secret corresponding to the provided service principal app Id. "
-            "If provided will be used for CSI driver setup. Otherwise a new secret will be created. "
-            "**Required** if the logged in principal does not have permissions to query graph.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_secret_valid_days",
-            options_list=["--sp-secret-valid-days"],
-            help="Option to control the duration in days of the init generated service principal secret. "
-            "Applicable if --sp-secret is not provided.",
-            arg_group="Key Vault CSI Driver",
-            type=int,
-        )
-        # TLS
-        context.argument(
-            "tls_ca_path",
-            options_list=["--ca-file"],
-            help="The path to the desired CA file in PEM format.",
-            arg_group="TLS",
-        )
-        context.argument(
-            "tls_ca_key_path",
-            options_list=["--ca-key-file"],
-            help="The path to the CA private key file in PEM format. !Required! when --ca-file is provided.",
-            arg_group="TLS",
-        )
-        context.argument(
-            "tls_ca_dir",
-            options_list=["--ca-dir"],
-            help="The local directory the generated test CA and private key will be placed in. "
-            "If no directory is provided no files will be written to disk. Applicable when no "
-            "--ca-file and --ca-key-file are provided.",
-            arg_group="TLS",
-        )
-        context.argument(
-            "tls_ca_valid_days",
-            options_list=["--ca-valid-days"],
-            help="Option to control the duration in days of the init generated x509 CA. "
-            "Applicable if --ca-file and --ca-key-file are not provided.",
-            arg_group="TLS",
-            type=int,
-        )
+        # TODO - @digimaun - still applicable
+        # context.argument(
+        #     "csi_driver_config",
+        #     options_list=["--csi-config"],
+        #     nargs="+",
+        #     action="extend",
+        #     help="CSI driver extension custom configuration. Format is space-separated key=value pairs. "
+        #     "--csi-config can be used one or more times.",
+        #     arg_group="Key Vault CSI Driver",
+        # )
         context.argument(
             "template_path",
             options_list=["--template-file"],
@@ -630,6 +526,11 @@ def load_iotops_arguments(self, _):
             options_list=["--df-profile-instances"],
             help="The instance count associated with the default dataflow profile.",
             arg_group="Dataflow Profile",
+        )
+        context.argument(
+            "enable_fault_tolerance",
+            arg_type=get_three_state_flag(),
+            help="Enable fault tolerance for edge storage accelerator. At least 3 cluster nodes are required.",
         )
 
     with self.argument_context("iot ops delete") as context:
@@ -1104,4 +1005,55 @@ def load_iotops_arguments(self, _):
             "thumbprint",
             options_list=["--thumbprint", "-t"],
             help="Certificate thumbprint.",
+        )
+
+    with self.argument_context("iot ops schema registry") as context:
+        context.argument(
+            "schema_registry_name",
+            options_list=["--name", "-n"],
+            help="Schema registry name.",
+        )
+        context.argument(
+            "registry_namespace",
+            options_list=["--registry-namespace", "--rn"],
+            help="Schema registry namespace. Uniquely identifies a schema registry within a tenant.",
+        )
+        context.argument(
+            "tags",
+            options_list=["--tags"],
+            arg_type=tags_type,
+            help="Schema registry tags. Property bag in key-value pairs with the following format: a=b c=d. "
+            'Use --tags "" to remove all tags.',
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description for the schema registry.",
+        )
+        context.argument(
+            "display_name",
+            options_list=["--display-name"],
+            help="Display name for the schema registry.",
+        )
+        context.argument(
+            "location",
+            options_list=["--location", "-l"],
+            help="Region to create the schema registry. "
+            "If no location is provided the resource group location will be used.",
+        )
+        context.argument(
+            "storage_account_resource_id",
+            options_list=["--sa-resource-id"],
+            help="Storage account resource Id to be used with the schema registry.",
+        )
+        context.argument(
+            "storage_container_name",
+            options_list=["--sa-container"],
+            help="Storage account container name where schemas will be stored.",
+        )
+        context.argument(
+            "custom_role_id",
+            options_list=["--custom-role-id"],
+            help="Fully qualified role definition Id in the following format: "
+            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
         )
