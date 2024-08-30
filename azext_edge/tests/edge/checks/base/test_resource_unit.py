@@ -18,6 +18,7 @@ from azext_edge.edge.providers.edge_api import (
     OpcuaResourceKinds,
 )
 from azext_edge.tests.edge.checks.conftest import generate_api_resource_list
+
 # TODO: Add more test for resource.py
 
 
@@ -27,91 +28,71 @@ from azext_edge.tests.edge.checks.conftest import generate_api_resource_list
     [
         (MQ_ACTIVE_API, MqResourceKinds.list(), "mq", "MQ", None, [], {}, CheckTaskStatus.error.value),
         (
-            AKRI_API_V0, AkriResourceKinds.list(), "akri", "AKRI", None,
-            generate_api_resource_list
-            (
+            AKRI_API_V0,
+            AkriResourceKinds.list(),
+            "akri",
+            "AKRI",
+            None,
+            generate_api_resource_list(
                 api_version=AKRI_API_V0.version,
                 group_version=AKRI_API_V0.as_str(),
                 resources=[
                     {
-                        'categories': None,
-                        'group': None,
-                        'kind': 'Instance',
-                        'name': 'instances',
-                        'namespaced': True,
-                        'short_names': ['akrii'],
-                        'singular_name': 'instance',
-                        'verbs': [
-                            'delete',
-                            'deletecollection',
-                            'get',
-                            'list',
-                            'patch',
-                            'create',
-                            'update',
-                            'watch'
-                        ],
+                        "categories": None,
+                        "group": None,
+                        "kind": "Instance",
+                        "name": "instances",
+                        "namespaced": True,
+                        "short_names": ["akrii"],
+                        "singular_name": "instance",
+                        "verbs": ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"],
                     },
                     {
-                        'categories': None,
-                        'group': None,
-                        'kind': 'Configuration',
-                        'name': 'configurations',
-                        'namespaced': True,
-                        'short_names': ['akric'],
-                        'singular_name': 'configuration',
-                        'verbs': [
-                            'delete',
-                            'deletecollection',
-                            'get',
-                            'list',
-                            'patch',
-                            'create',
-                            'update',
-                            'watch'
-                        ],
-                    }
-                ]
+                        "categories": None,
+                        "group": None,
+                        "kind": "Configuration",
+                        "name": "configurations",
+                        "namespaced": True,
+                        "short_names": ["akric"],
+                        "singular_name": "configuration",
+                        "verbs": ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"],
+                    },
+                ],
             ),
             {
                 AkriResourceKinds.INSTANCE.value.capitalize(): True,
-                AkriResourceKinds.CONFIGURATION.value.capitalize(): True
+                AkriResourceKinds.CONFIGURATION.value.capitalize(): True,
             },
-            CheckTaskStatus.success.value
+            CheckTaskStatus.success.value,
         ),
         (
-            OPCUA_API_V1, OpcuaResourceKinds.list(), "opcua", "OPCUA", ["assettypes"],
+            OPCUA_API_V1,
+            OpcuaResourceKinds.list(),
+            "opcua",
+            "OPCUA",
+            ["assettypes"],
             generate_api_resource_list(
                 api_version=OPCUA_API_V1.version,
                 group_version=OPCUA_API_V1.as_str(),
                 resources=[
                     {
-                        'categories': None,
-                        'group': None,
-                        'kind': 'AssetType',
-                        'name': 'assettypes',
-                        'namespaced': True,
-                        'short_names': None,
-                        'singular_name': 'assettype',
-                        'storage_version_hash': 'FCPRUJA7s2I=',
-                        'verbs': [
-                            'delete',
-                            'deletecollection',
-                            'get',
-                            'list',
-                            'patch',
-                            'create',
-                            'update',
-                            'watch'
-                        ],
-                        'version': None
+                        "categories": None,
+                        "group": None,
+                        "kind": "AssetType",
+                        "name": "assettypes",
+                        "namespaced": True,
+                        "short_names": None,
+                        "singular_name": "assettype",
+                        "storage_version_hash": "FCPRUJA7s2I=",
+                        "verbs": ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"],
+                        "version": None,
                     },
-                ]
+                ],
             ),
             {},
-            CheckTaskStatus.success.value
+            CheckTaskStatus.success.value,
         ),
-    ]
+    ],
 )
 def test_enumerate_ops_service_resources(
     mock_get_cluster_custom_api,
@@ -146,3 +127,6 @@ def test_enumerate_ops_service_resources(
         assert len(evaluation["evaluations"][0]["value"]) == len(resource_kinds)
         for kind in evaluation["evaluations"][0]["value"]:
             assert kind.lower() in resource_kinds
+
+
+# TODO: Add more test for resource.py

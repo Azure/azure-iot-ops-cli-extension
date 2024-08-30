@@ -164,7 +164,6 @@ def evaluate_broker_listeners(
 
             ports = listener_spec.get("ports", [])
 
-            # TODO: add eval for ports not null
             for port in ports:
                 tls = port.get("tls", {})
                 if detail_level != ResourceOutputDetailLevel.summary.value:
