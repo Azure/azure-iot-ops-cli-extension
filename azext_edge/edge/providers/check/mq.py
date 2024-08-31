@@ -24,7 +24,6 @@ from rich.padding import Padding
 from ...common import (
     AIO_MQ_DIAGNOSTICS_SERVICE,
     CheckTaskStatus,
-    ResourceState,
 )
 
 from .common import (
@@ -55,6 +54,7 @@ def check_mq_deployment(
     evaluate_funcs = {
         MqResourceKinds.BROKER: evaluate_brokers,
         MqResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
+        # TODO: add BROKER_AUTHENTICATION and BROKER_AUTHORIZATION evaluations
     }
 
     check_post_deployment(

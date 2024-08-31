@@ -191,7 +191,10 @@ def process_list_resource(
     check_manager: CheckManager, target_name: str, resource: List[dict], namespace: str, padding: int
 ) -> None:
     for item in resource:
-        name = item.pop("name", None)
+        name = ""
+
+        if isinstance(item, dict):
+            name = item.pop("name", None)
 
         # when name property exists, use name as header; if not, use property type and index as header
         if name:
@@ -247,8 +250,8 @@ def process_resource_properties(
         if verbose_only and detail_level != ResourceOutputDetailLevel.verbose.value:
             continue
         process_resource_property_by_type(
-            check_manager,
-            target_name,
+            check_manager=check_manager,
+            target_name=target_name,
             properties=value,
             display_name=display_name,
             namespace=namespace,
@@ -381,6 +384,22 @@ def process_status(
         conditions=["status"],
         namespace=namespace,
     )
+
+    if not runtime_status and not provisioning_status:
+        # if no status for both runtime and provisioning, set status to error
+        check_manager.add_target_eval(
+            target_name=target_name,
+            namespace=namespace,
+            status=CheckTaskStatus.error.value,
+            value={"status": status},
+            resource_name=resource_name,
+        )
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding("Status [red]not found[/red].", (0, 0, 0, padding)),
+        )
+        return
 
     status_eval_value = {"status": status}
     status_list = []
