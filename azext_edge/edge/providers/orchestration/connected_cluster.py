@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 from ...util.resource_graph import ResourceGraph
 
@@ -24,6 +24,9 @@ QUERIES = {
         | where properties.ExtensionType startswith 'microsoft.iotoperations'
             or properties.ExtensionType =~ 'microsoft.deviceregistry.assets'
             or properties.ExtensionType =~ 'microsoft.azurekeyvaultsecretsprovider'
+            or properties.ExtensionType =~ 'microsoft.secretsynccontroller'
+            or properties.ExtensionType =~ 'microsoft.openservicemesh'
+            or properties.ExtensionType =~ 'microsoft.edgestorageaccelerator'
         | project id, name, apiVersion
         """,
     "get_aio_custom_locations": """
@@ -94,6 +97,16 @@ class ConnectedCluster:
         return list(
             self.clusters.extensions.list(resource_group_name=self.resource_group_name, cluster_name=self.cluster_name)
         )
+
+    def get_extensions_by_type(self, *type_names: str) -> Optional[Dict[str, dict]]:
+        extensions = self.extensions
+        desired_extension_map = {name.lower(): None for name in type_names}
+        for extension in extensions:
+            extension_type = extension["properties"].get("extensionType", "").lower()
+            if extension_type in desired_extension_map:
+                desired_extension_map[extension_type] = extension
+
+        return desired_extension_map
 
     def get_custom_location_for_namespace(self, namespace: str) -> Optional[dict]:
         query = QUERIES["get_custom_location_for_namespace"].format(resource_id=self.resource_id, namespace=namespace)

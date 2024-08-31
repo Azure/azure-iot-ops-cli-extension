@@ -85,10 +85,11 @@ def load_iotops_help():
         "iot ops check"
     ] = f"""
         type: command
-        short-summary: Evaluate cluster-side runtime health of deployed IoT Operations services.
+        short-summary: Evaluate cluster-side readiness and runtime health of deployed IoT Operations services.
         long-summary: |
-            The command by default shows a human friendly _summary_ view of the selected service.
-            More detail can be requested via `--detail-level`.
+            The command by default shows a high-level human friendly _summary_ view of all services.
+            Use the '--svc' option to specify checks for a single service, and configure verbosity via the `--detail-level` argument.
+            Note: Resource kind (--resources) and name (--resource-name) filtering can only be used with the '--svc' argument.
 
             {{Supported service APIs}}
             - {COMPAT_AKRI_APIS.as_str()}
@@ -100,21 +101,21 @@ def load_iotops_help():
             For more information on cluster requirements, please check https://aka.ms/iot-ops-cluster-requirements
 
         examples:
-        - name: Basic usage. Checks `broker` health with summary output.
+        - name: Basic usage. Checks overall IoT Operations health with summary output.
           text: >
             az iot ops check
 
-        - name: Evaluates `broker` like prior example, however output is optimized for CI.
+        - name: Checks `broker` service health and configuration with detailed output.
           text: >
-            az iot ops check --as-object
+            az iot ops check --svc broker --detail-level 1
 
-        - name: Checks `opcua` health and configuration with detailed output.
+        - name: Evaluate only the `dataflow` service with output optimized for CI.
           text: >
-            az iot ops check --svc opcua --detail-level 1
+            az iot ops check --svc dataflow --as-object
 
-        - name: Checks 'deviceregistry' health, but constrains results to `asset` resources.
+        - name: Checks `deviceregistry` health with verbose output, but constrains results to `asset` resources.
           text: >
-            az iot ops check --svc deviceregistry --detail-level 1 --resources asset
+            az iot ops check --svc deviceregistry --detail-level 2 --resources asset
 
         - name: Use resource name to constrain results to `asset` resources with `my-asset-` name prefix
           text: >
@@ -150,7 +151,7 @@ def load_iotops_help():
           text: >
             az iot ops broker stats --raw
 
-        - name: Fetch all available mq traces from the diagnostics Protobuf endpoint.
+        - name: Fetch all available mqtt broker traces from the diagnostics Protobuf endpoint.
                 This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
                 A trace files last modified attribute will match the trace timestamp.
           text: >
