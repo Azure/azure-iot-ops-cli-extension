@@ -36,7 +36,8 @@ from ...generators import generate_random_string
 @pytest.mark.parametrize("ops_service", ["akri"])
 def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        CoreServiceResourceKinds.RUNTIME_RESOURCE.value: "azext_edge.edge.providers.check.akri.evaluate_core_service_runtime",
+        CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
+        "azext_edge.edge.providers.check.akri.evaluate_core_service_runtime",
         AkriResourceKinds.CONFIGURATION.value: "azext_edge.edge.providers.check.akri.evaluate_configurations",
         AkriResourceKinds.INSTANCE.value: "azext_edge.edge.providers.check.akri.evaluate_instances",
     }
@@ -57,7 +58,9 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
                         "name": "test-configuration",
                     },
                     "spec": {
-                        "discoveryHandler": {"discoveryProperties": [{"name": "example", "value": "example"}]},
+                        "discoveryHandler": {
+                            "discoveryProperties": [{"name": "example", "value": "example"}]
+                        },
                     },
                 }
             ],
@@ -82,7 +85,9 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
                         "name": "test-configuration",
                     },
                     "spec": {
-                        "discoveryHandler": {"discoveryProperties": [{"name": "123_example", "value": "123_example"}]},
+                        "discoveryHandler": {
+                            "discoveryProperties": [{"name": "123_example", "value": "123_example"}]
+                        },
                     },
                 }
             ],
@@ -142,7 +147,9 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
                     },
                     "spec": {
                         "discoveryHandler": {
-                            "discoveryProperties": [{"name": "example", "value": "example", "valueFrom": "example"}]
+                            "discoveryProperties": [
+                                {"name": "example", "value": "example", "valueFrom": "example"}
+                            ]
                         },
                     },
                 }
@@ -192,12 +199,18 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
                 [
                     ("status", "success"),
                     ("value/spec.discoveryHandler.discoveryProperties['example'].value", ""),
-                    ("value/spec.discoveryHandler.discoveryProperties['example'].valueFrom", {"hello": "world"}),
+                    (
+                        "value/spec.discoveryHandler.discoveryProperties['example'].valueFrom",
+                        {"hello": "world"},
+                    ),
                 ],
                 [
                     ("status", "error"),
                     ("value/spec.discoveryHandler.discoveryProperties['example'].valueFrom.secretKeyRef", {}),
-                    ("value/spec.discoveryHandler.discoveryProperties['example'].valueFrom.configMapKeyRef", {}),
+                    (
+                        "value/spec.discoveryHandler.discoveryProperties['example'].valueFrom.configMapKeyRef",
+                        {},
+                    ),
                 ],
             ],
         ),
@@ -304,11 +317,17 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
                         "value/spec.discoveryHandler.discoveryProperties['example'].valueFrom.secretKeyRef",
                         {"key": "example"},
                     ),
-                    ("value/spec.discoveryHandler.discoveryProperties['example'].valueFrom.configMapKeyRef", {}),
+                    (
+                        "value/spec.discoveryHandler.discoveryProperties['example'].valueFrom.configMapKeyRef",
+                        {},
+                    ),
                 ],
                 [
                     ("status", "error"),
-                    ("value/spec.discoveryHandler.discoveryProperties['example'].valueFrom.secret_key_ref.name", ""),
+                    (
+                        "value/spec.discoveryHandler.discoveryProperties['example'].valueFrom.secret_key_ref.name",
+                        "",
+                    ),
                 ],
             ],
         ),
