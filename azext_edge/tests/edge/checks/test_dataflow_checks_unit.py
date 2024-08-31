@@ -499,7 +499,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                     "spec": {
                         "mode": "Disabled",
-                        "profileRef": "profile",
+                        "profileRef": "default",
                         "operations": [
                             {
                                 "operationType": "source",
@@ -518,7 +518,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                 }
             ],
             # profiles
-            [{"metadata": {"name": "profile"}}],
+            [{"metadata": {"name": "default"}}],
             # endpoints
             [
                 {
@@ -877,7 +877,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "success"),
                     (
                         "name",
-                        "profile",
+                        "default",
                     ),
                     ("value", {"spec.instanceCount": 1}),
                 ],
@@ -885,7 +885,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "success"),
                     (
                         "name",
-                        "pod/aio-dataflow-profile-0",
+                        "pod/aio-dataflow-default-0",
                     ),
                     ("value", {"status.phase": "Running"}),
                 ],
@@ -1011,7 +1011,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "warning"),
                     (
                         "name",
-                        "profile",
+                        "default",
                     ),
                     ("value/status/configStatusLevel", "warn"),
                     ("value/status/statusDescription", "this should display a warning"),
@@ -1020,7 +1020,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "success"),
                     (
                         "name",
-                        "profile",
+                        "default",
                     ),
                     ("value", {"spec.instanceCount": 1}),
                 ],
@@ -1028,7 +1028,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "success"),
                     (
                         "name",
-                        "pod/aio-dataflow-profile-0",
+                        "pod/aio-dataflow-default-0",
                     ),
                     ("value", {"status.phase": "Running"}),
                 ],

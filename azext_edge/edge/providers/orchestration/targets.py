@@ -98,6 +98,23 @@ class InitTargets:
             template_blueprint=M2_ENABLEMENT_TEMPLATE,
         )
 
+        # TODO - @digimaun potentially temp
+        esa_extension = template.get_resource_by_key("edge_storage_accelerator_extension")
+        esa_extension["identity"] = {"type": "SystemAssigned"}
+        esa_extension["properties"]["extensionType"] = "microsoft.arc.containerstorage"
+        esa_extension["properties"]["version"] = "2.1.0-preview"
+
+        esa_extension_config = {
+            "edgeStorageConfiguration.create": "true",
+            "feature.diskStorageClass": "default,local-path",
+        }
+        if self.enable_fault_tolerance:
+            esa_extension_config["feature.diskStorageClass"] = "acstor-arccontainerstorage-storage-pool"
+            esa_extension_config["acstorConfiguration.create"] = "true"
+            esa_extension_config["acstorConfiguration.properties.diskMountPoint"] = "/mnt"
+
+        esa_extension["properties"]["configurationSettings"] = esa_extension_config
+
         # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
 
         return template.content, parameters
