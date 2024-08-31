@@ -8,6 +8,7 @@ import sys
 from time import sleep
 from typing import TYPE_CHECKING, Any, NamedTuple, Tuple
 
+from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
 
 from ...constants import USER_AGENT
@@ -23,7 +24,6 @@ ensure_azure_namespace_path()
 
 from azure.core.pipeline.policies import HttpLoggingPolicy, UserAgentPolicy
 from azure.identity import AzureCliCredential, ClientSecretCredential
-from azure.mgmt.authorization import AuthorizationManagementClient
 
 AZURE_CLI_CREDENTIAL = AzureCliCredential()
 
@@ -36,9 +36,12 @@ logger = get_logger(__name__)
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
 
+    from ..vendor.clients.authzmgmt import AuthorizationManagementClient
     from ..vendor.clients.clusterconfigmgmt import KubernetesConfigurationClient
     from ..vendor.clients.connectedclustermgmt import ConnectedKubernetesClient
-    from ..vendor.clients.deviceregistrymgmt import MicrosoftDeviceRegistryManagementService
+    from ..vendor.clients.deviceregistrymgmt import (
+        MicrosoftDeviceRegistryManagementService,
+    )
     from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
     from ..vendor.clients.resourcesmgmt import ResourceManagementClient
     from ..vendor.clients.storagemgmt import StorageManagementClient
@@ -133,7 +136,9 @@ def get_resource_client(subscription_id: str, **kwargs) -> "ResourceManagementCl
     )
 
 
-def get_authz_client(subscription_id: str, api_version="2022-04-01", **kwargs) -> AuthorizationManagementClient:
+def get_authz_client(subscription_id: str, **kwargs) -> "AuthorizationManagementClient":
+    from ..vendor.clients.authzmgmt import AuthorizationManagementClient
+
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
 
@@ -141,7 +146,6 @@ def get_authz_client(subscription_id: str, api_version="2022-04-01", **kwargs) -
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
-        api_version=api_version,
         **kwargs,
     )
 
@@ -201,6 +205,14 @@ class ResourceIdContainer(NamedTuple):
 
 
 def parse_resource_id(resource_id: str) -> ResourceIdContainer:
+    # TODO - hacky.
+    if "/" not in resource_id:
+        raise ValidationError(
+            "Malformed resource Id. An Azure resource Id has the form:\n"
+            "/subscription/{subscriptionId}/resourceGroups/{resourceGroup}"
+            "/providers/Microsoft.Provider/{resourcePath}/{resourceName}"
+        )
+
     parts = resource_id.split("/")
 
     # Extract the subscription, resource group, and resource name

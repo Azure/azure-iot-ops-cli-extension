@@ -17,6 +17,7 @@ from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
     KubernetesDistroType,
+    TrustSourceType,
     # TODO MqMemoryProfile,
     # TODO MqServiceType,
 )
@@ -109,6 +110,7 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
+    schema_registry_resource_id: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     location: Optional[str] = None,
     custom_location_name: Optional[str] = None,
@@ -123,9 +125,10 @@ def init(
     dataflow_profile_instances: int = 1,
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
+    trust_source: str = TrustSourceType.self_signed.value,
     enable_fault_tolerance: Optional[bool] = None,
+    mi_user_assigned_identities: Optional[List[str]] = None,
     no_progress: Optional[bool] = None,
-    no_block: Optional[bool] = None,
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
     **kwargs,
@@ -163,7 +166,6 @@ def init(
     work_manager = WorkManager(cmd)
     return work_manager.execute_ops_init(
         show_progress=not no_progress,
-        block=not no_block,
         pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
@@ -182,6 +184,9 @@ def init(
         container_runtime_socket=container_runtime_socket,
         kubernetes_distro=kubernetes_distro,
         enable_fault_tolerance=enable_fault_tolerance,
+        trust_source=trust_source,
+        schema_registry_resource_id=schema_registry_resource_id,
+        mi_user_assigned_identities=mi_user_assigned_identities,
     )
 
     # TODO - @digimaun
@@ -196,8 +201,6 @@ def init(
     #     mq_listener_name=str(mq_listener_name),
     #     mq_authn_name=str(mq_authn_name),
     #     keyvault_resource_id=keyvault_resource_id,
-    #     template_path=template_path,
-    #     **kwargs,
     # )
 
 
