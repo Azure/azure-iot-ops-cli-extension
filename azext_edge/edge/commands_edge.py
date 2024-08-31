@@ -8,6 +8,7 @@ import json
 from pathlib import PurePath
 from typing import Any, Dict, Iterable, List, Optional, Union
 
+from azure.cli.core.azclierror import ArgumentUsageError
 from knack.log import get_logger
 
 from .common import OpsServiceType
@@ -53,7 +54,7 @@ def check(
     post_deployment_checks: Optional[bool] = None,
     as_object=None,
     context_name=None,
-    ops_service: str = OpsServiceType.mq.value,
+    ops_service: Optional[str] = None,
     resource_kinds: List[str] = None,
     resource_name: str = None,
 ) -> Union[Dict[str, Any], None]:
@@ -69,6 +70,20 @@ def check(
         run_post = False
     if post_deployment_checks and not pre_deployment_checks:
         run_pre = False
+
+    # error if resource_name provided without ops_service
+    if resource_name and not ops_service:
+        raise ArgumentUsageError(
+            "Resource name filtering (--resource-name) can only be used with service name (--svc)."
+        )
+
+    if resource_kinds and not ops_service:
+        raise ArgumentUsageError(
+            "Service name (--svc) is required to specify individual resource kind checks."
+        )
+
+    if detail_level != ResourceOutputDetailLevel.summary.value and not ops_service:
+        logger.warning("Detail level (--detail-level) will only affect individual service checks with '--svc'")
 
     return run_checks(
         ops_service=ops_service,
