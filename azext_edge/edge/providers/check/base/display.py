@@ -10,7 +10,7 @@ from rich.padding import Padding
 from typing import Any, Dict, List, Optional, Tuple
 
 from .check_manager import CheckManager
-from ..common import ALL_NAMESPACES_TARGET
+from ..common import ALL_NAMESPACES_TARGET, COLOR_STR_FORMAT, DEFAULT_PADDING, DEFAULT_PROPERTY_DISPLAY_COLOR
 from ....common import CheckTaskStatus
 
 logger = get_logger(__name__)
@@ -88,7 +88,7 @@ def display_as_list(console: Console, result: Dict[str, Any]) -> None:
                     status = namespace_target.get("status")
                     for (idx, disp) in enumerate(displays):
                         # display status indicator on each 'namespaced' grouping of displays
-                        if all([idx == 0, namespace != ALL_NAMESPACES_TARGET, status]):
+                        if all([idx == 0, status]):
                             prefix_emoji = _get_emoji_from_status(status)
                             console.print(Padding(f"\n{prefix_emoji} {disp.renderable}", (0, 0, 0, 6)))
                         else:
@@ -142,3 +142,21 @@ def process_value_color(
         )
         return f"[red]{value}[/red]"
     return f"[cyan]{value}[/cyan]"
+
+
+def colorize_string(value: str, color: Optional[str] = DEFAULT_PROPERTY_DISPLAY_COLOR) -> str:
+    color = color or DEFAULT_PROPERTY_DISPLAY_COLOR
+    return COLOR_STR_FORMAT.format(value=value, color=color)
+
+
+def basic_property_display(
+    label: str,
+    value: str,
+    color: Optional[str] = DEFAULT_PROPERTY_DISPLAY_COLOR,
+    padding: Optional[int] = DEFAULT_PADDING
+) -> Padding:
+    padding = padding or DEFAULT_PADDING
+    return Padding(
+        f"{label}: {colorize_string(value=value, color=color)}",
+        (0, 0, 0, padding)
+    )

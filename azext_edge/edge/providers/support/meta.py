@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable
+from typing import Iterable, Optional
 
 from knack.log import get_logger
 
@@ -80,11 +80,11 @@ support_runtime_elements = {
 }
 
 
-def prepare_bundle(
-    apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS
-) -> dict:
+def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS, apis: Optional[Iterable[EdgeResourceApi]] = None) -> dict:
     meta_to_run = {}
-    meta_to_run.update(assemble_crd_work(apis))
+
+    if apis:
+        meta_to_run.update(assemble_crd_work(apis))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     meta_to_run.update(support_runtime_elements)

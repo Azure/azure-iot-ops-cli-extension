@@ -4,11 +4,13 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from knack.log import get_logger
+from rich.console import Console
 
-from ....util.az_client import get_iotops_mgmt_client
+from ....util.az_client import get_iotops_mgmt_client, wait_for_terminal_state
+from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
 
 logger = get_logger(__name__)
@@ -16,11 +18,13 @@ logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from ....vendor.clients.iotopsmgmt.operations import (
-        BrokerOperations,
         BrokerAuthenticationOperations,
         BrokerAuthorizationOperations,
         BrokerListenerOperations,
+        BrokerOperations,
     )
+
+console = Console()
 
 
 class Brokers(Queryable):
@@ -38,7 +42,22 @@ class Brokers(Queryable):
         return self.ops.get(resource_group_name=resource_group_name, instance_name=instance_name, broker_name=name)
 
     def list(self, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_instance_resource(resource_group_name=resource_group_name, instance_name=instance_name)
+        return self.ops.list_by_resource_group(resource_group_name=resource_group_name, instance_name=instance_name)
+
+    def delete(
+        self, name: str, instance_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None, **kwargs
+    ):
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
+        if should_bail:
+            return
+
+        with console.status("Working..."):
+            poller = self.ops.begin_delete(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                broker_name=name,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
 
 
 class BrokerListeners:
@@ -54,9 +73,31 @@ class BrokerListeners:
         )
 
     def list(self, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_broker_resource(
+        return self.ops.list_by_resource_group(
             resource_group_name=resource_group_name, instance_name=instance_name, broker_name=broker_name
         )
+
+    def delete(
+        self,
+        name: str,
+        broker_name: str,
+        instance_name: str,
+        resource_group_name: str,
+        confirm_yes: Optional[bool] = None,
+        **kwargs
+    ):
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
+        if should_bail:
+            return
+
+        with console.status("Working..."):
+            poller = self.ops.begin_delete(
+                listener_name=name,
+                broker_name=broker_name,
+                instance_name=instance_name,
+                resource_group_name=resource_group_name,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
 
 
 class BrokerAuthn:
@@ -72,9 +113,31 @@ class BrokerAuthn:
         )
 
     def list(self, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_broker_resource(
+        return self.ops.list_by_resource_group(
             resource_group_name=resource_group_name, instance_name=instance_name, broker_name=broker_name
         )
+
+    def delete(
+        self,
+        name: str,
+        broker_name: str,
+        instance_name: str,
+        resource_group_name: str,
+        confirm_yes: Optional[bool] = None,
+        **kwargs
+    ):
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
+        if should_bail:
+            return
+
+        with console.status("Working..."):
+            poller = self.ops.begin_delete(
+                authentication_name=name,
+                broker_name=broker_name,
+                instance_name=instance_name,
+                resource_group_name=resource_group_name,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
 
 
 class BrokerAuthz:
@@ -90,6 +153,28 @@ class BrokerAuthz:
         )
 
     def list(self, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_broker_resource(
+        return self.ops.list_by_resource_group(
             resource_group_name=resource_group_name, instance_name=instance_name, broker_name=broker_name
         )
+
+    def delete(
+        self,
+        name: str,
+        broker_name: str,
+        instance_name: str,
+        resource_group_name: str,
+        confirm_yes: Optional[bool] = None,
+        **kwargs
+    ):
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
+        if should_bail:
+            return
+
+        with console.status("Working..."):
+            poller = self.ops.begin_delete(
+                authorization_name=name,
+                broker_name=broker_name,
+                instance_name=instance_name,
+                resource_group_name=resource_group_name,
+            )
+            return wait_for_terminal_state(poller, **kwargs)

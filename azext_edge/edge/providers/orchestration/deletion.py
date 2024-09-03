@@ -13,10 +13,10 @@ from rich import print
 from rich.console import NewLine
 from rich.live import Live
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
-from rich.prompt import Confirm
 from rich.table import Table
 
 from ...util.az_client import get_resource_client, wait_for_terminal_states
+from ...util.common import should_continue_prompt
 from .resource_map import IoTOperationsResource, IoTOperationsResourceMap
 
 logger = get_logger(__name__)
@@ -75,12 +75,8 @@ class DeletionManager:
         self.resource_map.connected_cluster.resource
         self._display_resource_tree()
 
-        should_delete = True
-        if not confirm_yes:
-            should_delete = Confirm.ask("Continue?")
-
-        if not should_delete:
-            logger.warning("Deletion cancelled.")
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
+        if should_bail:
             return
 
         self._process(force=force)

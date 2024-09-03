@@ -12,9 +12,9 @@ from ._operations import BrokerOperations
 from ._operations import BrokerAuthenticationOperations
 from ._operations import BrokerAuthorizationOperations
 from ._operations import BrokerListenerOperations
-from ._operations import DataFlowEndpointOperations
-from ._operations import DataFlowProfileOperations
-from ._operations import DataFlowOperations
+from ._operations import DataflowEndpointOperations
+from ._operations import DataflowProfileOperations
+from ._operations import DataflowOperations
 
 from ._patch import __all__ as _patch_all
 from ._patch import *  # pylint: disable=unused-wildcard-import
@@ -27,9 +27,9 @@ __all__ = [
     "BrokerAuthenticationOperations",
     "BrokerAuthorizationOperations",
     "BrokerListenerOperations",
-    "DataFlowEndpointOperations",
-    "DataFlowProfileOperations",
-    "DataFlowOperations",
+    "DataflowEndpointOperations",
+    "DataflowProfileOperations",
+    "DataflowOperations",
 ]
 __all__.extend([p for p in _patch_all if p not in __all__])
 _patch_sdk()

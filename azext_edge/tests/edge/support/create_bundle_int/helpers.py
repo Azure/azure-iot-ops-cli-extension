@@ -17,14 +17,23 @@ from ....helpers import (
     find_extra_or_missing_names,
     get_kubectl_custom_items,
     get_kubectl_workload_items,
-    run
+    run,
 )
 
 
 logger = get_logger(__name__)
 BASE_ZIP_PATH = "__root__"
 WORKLOAD_TYPES = [
-    "cronjob", "daemonset", "deployment", "job", "pod", "podmetric", "pvc", "replicaset", "service", "statefulset"
+    "cronjob",
+    "daemonset",
+    "deployment",
+    "job",
+    "pod",
+    "podmetric",
+    "pvc",
+    "replicaset",
+    "service",
+    "statefulset",
 ]
 
 
@@ -120,11 +129,11 @@ def check_custom_resource_files(
     resource_api: EdgeResourceApi,
     namespace: Optional[str] = None,
 ):
-    resource_map = get_kubectl_custom_items(
-        resource_api=resource_api,
-        namespace=namespace,
-        include_plural=True
-    )
+    # skip validation if resource is not deployed
+    if not resource_api.is_deployed():
+        return
+
+    resource_map = get_kubectl_custom_items(resource_api=resource_api, namespace=namespace, include_plural=True)
     for kind in resource_api.kinds:
         cluster_resources = resource_map[kind]
         # subresources like scale will not have a plural
@@ -178,7 +187,7 @@ def check_workload_resource_files(
         result_names=file_pods.keys(),
         expected_names=expected_pods.keys(),
         ignore_extras=True,
-        ignore_missing=True
+        ignore_missing=True,
     )
 
     for name, files in file_pods.items():
@@ -207,7 +216,7 @@ def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]])
     # open the file using bundle_dir and check for evicted pods
     name_extension_pair = list(set([(file["name"], file["extension"]) for file in file_pods]))
     # TODO: upcoming fix will get file content earlier
-    with ZipFile(bundle_dir, 'r') as zip:
+    with ZipFile(bundle_dir, "r") as zip:
         file_names = zip.namelist()
         for name, extension in name_extension_pair:
             if extension == "log":
@@ -284,27 +293,19 @@ def process_top_levels(
     clusterconfig_namespace = None
     arc_namespace = None
 
-    def _get_namespace_determinating_files(
-        name: str,
-        folder: str,
-        file_prefix: str
-    ) -> List[str]:
+    def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
         return [f for f in level1.get("files", []) if f.startswith(file_prefix)]
 
     for name in namespaces:
         # determine which namespace belongs to aio vs billing
         if _get_namespace_determinating_files(
-            name=name,
-            folder=path.join("clusterconfig", "billing"),
-            file_prefix="deployment"
+            name=name, folder=path.join("clusterconfig", "billing"), file_prefix="deployment"
         ):
             # if there is a deployment, should be azure-extensions-usage-system
             clusterconfig_namespace = name
         elif _get_namespace_determinating_files(
-            name=name,
-            folder=path.join("arcagents", ARC_AGENTS[0][0]),
-            file_prefix="pod"
+            name=name, folder=path.join("arcagents", ARC_AGENTS[0][0]), file_prefix="pod"
         ):
             arc_namespace = name
         else:
@@ -351,7 +352,7 @@ def run_bundle_command(
     tracked_files.append(result["bundlePath"])
     # transform this into a walk result of an extracted zip file
     walk_result = {}
-    with ZipFile(result["bundlePath"], 'r') as zip:
+    with ZipFile(result["bundlePath"], "r") as zip:
         file_names = zip.namelist()
         for name in file_names:
             name = path.join(BASE_ZIP_PATH, name)

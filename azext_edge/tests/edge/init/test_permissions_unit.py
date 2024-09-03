@@ -15,23 +15,11 @@ MOCK_SUBSCRIPTION_ID = get_zeroed_subscription()
 MOCK_RG = f"rg_{generate_random_string()}"
 
 
-class IntermObj:
-    def __init__(self, return_dict: dict):
-        self._return_dict = return_dict
-
-    def as_dict(self):
-        return self._return_dict
-
-
 @pytest.fixture
 def mocked_get_principal_permissions_for_group(mocker, request):
-    return_payload = []
-    for p in request.param["permissions"]:
-        return_payload.append(IntermObj(p))
-
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.permissions.get_principal_permissions_for_group",
-        return_value=return_payload,
+        return_value=request.param["permissions"],
     )
     setattr(patched, "expected_success", request.param.get("expected_success", True))
     yield patched
@@ -42,19 +30,19 @@ def mocked_get_principal_permissions_for_group(mocker, request):
     [
         {
             "permissions": [
-                {"actions": [], "not_actions": []},
+                {"actions": [], "notActions": []},
             ],
             "expected_success": False,
         },
         {
             "permissions": [
-                {"actions": ["*"], "not_actions": ["*/write"]},
+                {"actions": ["*"], "notActions": ["*/write"]},
             ],
             "expected_success": False,
         },
         {
             "permissions": [
-                {"actions": ["*"], "not_actions": ["Microsoft.Authorization/*/write"]},
+                {"actions": ["*"], "notActions": ["Microsoft.Authorization/*/write"]},
             ],
             "expected_success": False,
         },
@@ -62,40 +50,40 @@ def mocked_get_principal_permissions_for_group(mocker, request):
             "permissions": [
                 {
                     "actions": ["Microsoft.Authorization/*/write"],
-                    "not_actions": ["Microsoft.Authorization/roleAssignments/write"],
+                    "notActions": ["Microsoft.Authorization/roleAssignments/write"],
                 },
             ],
             "expected_success": False,
         },
         {
             "permissions": [
-                {"actions": ["*"], "not_actions": []},
+                {"actions": ["*"], "notActions": []},
             ],
         },
         {
             "permissions": [
-                {"actions": ["*"], "not_actions": ["Microsoft.Authorization/*/write"]},
-                {"actions": ["*"], "not_actions": []},
+                {"actions": ["*"], "notActions": ["Microsoft.Authorization/*/write"]},
+                {"actions": ["*"], "notActions": []},
             ],
         },
         {
             "permissions": [
-                {"actions": [], "not_actions": []},
-                {"actions": ["*/write"], "not_actions": ["Microsoft.Test/subject/action"]},
+                {"actions": [], "notActions": []},
+                {"actions": ["*/write"], "notActions": ["Microsoft.Test/subject/action"]},
             ],
         },
         {
             "permissions": [
                 {
                     "actions": ["Microsoft.Authorization/roleAssignments/write", "Microsoft.Test/subject/action"],
-                    "not_actions": [],
+                    "notActions": [],
                 },
             ],
         },
         {
             "permissions": [
-                {"actions": [], "not_actions": []},
-                {"actions": ["Microsoft.Authorization/*/write"], "not_actions": []},
+                {"actions": [], "notActions": []},
+                {"actions": ["Microsoft.Authorization/*/write"], "notActions": []},
             ],
         },
     ],
