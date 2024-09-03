@@ -21,6 +21,7 @@ from rich.style import Style
 from rich.table import Table
 
 from ...util.az_client import wait_for_terminal_state, get_resource_client
+from .permissions import PermissionManager, ROLE_DEF_FORMAT_STR
 from .connected_cluster import ConnectedCluster
 from .targets import InitTargets
 
@@ -52,6 +53,9 @@ class WorkRecord:
 
 PROVISIONING_STATE_SUCCESS = "Succeeded"
 CONNECTIVITY_STATUS_CONNECTED = "Connected"
+IOT_OPS_EXTENSION_TYPE = "microsoft.iotoperations"
+IOT_OPS_PLAT_EXTENSION_TYPE = "microsoft.iotoperations.platform"
+CONTRIBUTOR_ROLE_ID = "b24988ac-6180-42a0-ab88-20f7382dd24c"
 
 
 class WorkDisplay:
@@ -83,9 +87,10 @@ class WorkManager:
         self.cmd = cmd
         self.subscription_id: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
         self.resource_client = get_resource_client(subscription_id=self.subscription_id)
+        self.permission_manager = PermissionManager(subscription_id=self.subscription_id)
 
     def _bootstrap_ux(self, show_progress: bool = False):
-        self.display = WorkDisplay()
+        self._display = WorkDisplay()
         self._live = Live(None, transient=False, refresh_per_second=8, auto_refresh=show_progress)
         self._progress_bar = Progress(
             SpinnerColumn(),
@@ -99,26 +104,26 @@ class WorkManager:
 
     def _build_display(self):
         pre_check_cat_desc = "Pre-Flight"
-        self.display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
-        self.display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers")
-        self.display.add_step(
+        self._display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
+        self._display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers")
+        self._display.add_step(
             WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
         )
 
-        self.display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
-        self.display.add_step(WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation")
-        self.display.add_step(
+        self._display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
+        self._display.add_step(WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation")
+        self._display.add_step(
             WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.DEPLOY_ENABLEMENT, "Install foundation layer"
         )
 
         create_instance_desc = "Create instance"
         if self._targets.instance_name:
             create_instance_desc = f"{create_instance_desc}: [cyan]{self._targets.instance_name}[/cyan]"
-        self.display.add_category(
+        self._display.add_category(
             WorkCategoryKey.DEPLOY_IOT_OPS, "Deploy IoT Operations", skipped=not self._targets.instance_name
         )
-        self.display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.WHAT_IF_INSTANCE, "What-If evaluation")
-        self.display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.DEPLOY_INSTANCE, create_instance_desc)
+        self._display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.WHAT_IF_INSTANCE, "What-If evaluation")
+        self._display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.DEPLOY_INSTANCE, create_instance_desc)
 
     def _process_connected_cluster(self) -> ConnectedCluster:
         connected_cluster = ConnectedCluster(
@@ -183,6 +188,7 @@ class WorkManager:
         self._completed_steps: Dict[int, int] = {}
         self._active_step: int = 0
         self._targets = InitTargets(subscription_id=self.subscription_id, **kwargs)
+        self._extension_map = None
         self._build_display()
 
         return self._do_work()
@@ -202,7 +208,7 @@ class WorkManager:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             self.render_display()
             verify_cli_client_connections()
-            self._process_connected_cluster()
+            connected_cluster = self._process_connected_cluster()
 
             # Pre-Flight workflow
             if self._pre_flight:
@@ -220,7 +226,7 @@ class WorkManager:
                 if False:
                     verify_custom_locations_enabled(self.cmd)
                     verify_custom_location_namespace(
-                        connected_cluster=self._connected_cluster,
+                        connected_cluster=connected_cluster,
                         custom_location_name=self._targets.custom_location_name,
                         namespace=self._targets.cluster_namespace,
                     )
@@ -261,26 +267,41 @@ class WorkManager:
                 f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{enablement_work_name}"
             )
             # Pattern needs work, it is this way to dynamically update UI
-            self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title = (
+            self._display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title = (
                 f"[link={enablement_deploy_link}]"
-                f"{self.display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title}[/link]"
+                f"{self._display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title}[/link]"
             )
             self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
             _ = wait_for_terminal_state(enablement_poller)
 
-            # TODO - @digimaun
-            # AIO -> SR identity
-
-            self.complete_step(
-                category=WorkCategoryKey.ENABLE_IOT_OPS,
-                completed_step=WorkStepKey.DEPLOY_ENABLEMENT
+            self._extension_map = connected_cluster.get_extensions_by_type(
+                IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE
             )
+            self.permission_manager.apply_role_assignment(
+                scope=self._targets.schema_registry_resource_id,
+                principal_id=self._extension_map[IOT_OPS_EXTENSION_TYPE]["identity"]["principalId"],
+                role_def_id=ROLE_DEF_FORMAT_STR.format(
+                    subscription_id=self.subscription_id, role_id=CONTRIBUTOR_ROLE_ID
+                ),
+            )
+            self.complete_step(category=WorkCategoryKey.ENABLE_IOT_OPS, completed_step=WorkStepKey.DEPLOY_ENABLEMENT)
 
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
+                if not self._extension_map:
+                    self._extension_map = connected_cluster.get_extensions_by_type(
+                        IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE
+                    )
+                    if not self._extension_map:
+                        raise ValidationError(
+                            "Foundational services not detected. Instance deployment will not continue."
+                        )
+
                 instance_work_name = self._work_format_str.format(op="instance")
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)
-                instance_content, instance_parameters = self._targets.get_ops_instance_template()
+                instance_content, instance_parameters = self._targets.get_ops_instance_template(
+                    cl_extension_ids=[self._extension_map[ext]["id"] for ext in self._extension_map]
+                )
                 self._deploy_template(
                     content=instance_content,
                     parameters=instance_parameters,
@@ -303,12 +324,16 @@ class WorkManager:
                     f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{instance_work_name}"
                 )
                 # Pattern needs work, it is this way to dynamically update UI
-                self.display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title = (
+                self._display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title = (
                     f"[link={instance_deploy_link}]"
-                    f"{self.display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title}[/link]"
+                    f"{self._display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title}[/link]"
                 )
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS)
                 _ = wait_for_terminal_state(instance_poller)
+                self.complete_step(
+                    category=WorkCategoryKey.DEPLOY_IOT_OPS,
+                    completed_step=WorkStepKey.DEPLOY_INSTANCE,
+                )
 
                 # TODO @digimaun - work_kpis
 
@@ -350,15 +375,15 @@ class WorkManager:
             active_cat_str = "[cyan]->[/cyan] "
             active_step_str = "[cyan]*[/cyan]"
             complete_str = "[green]:heavy_check_mark:[/green]"
-            for c in self.display.categories:
+            for c in self._display.categories:
                 cat_prefix = active_cat_str if c == category else ""
                 content_grid.add_row(
                     cat_prefix,
-                    f"{self.display.categories[c][0].title} "
-                    f"{'[[dark_khaki]skipped[/dark_khaki]]' if self.display.categories[c][1] else ''}",
+                    f"{self._display.categories[c][0].title} "
+                    f"{'[[dark_khaki]skipped[/dark_khaki]]' if self._display.categories[c][1] else ''}",
                 )
-                if c in self.display.steps:
-                    for s in self.display.steps[c]:
+                if c in self._display.steps:
+                    for s in self._display.steps[c]:
                         if s in self._completed_steps:
                             step_prefix = complete_str
                         elif s == self._active_step:
@@ -369,7 +394,7 @@ class WorkManager:
                         content_grid.add_row(
                             "",
                             Padding(
-                                f"{step_prefix} {self.display.steps[c][s].title} ",
+                                f"{step_prefix} {self._display.steps[c][s].title} ",
                                 (0, 0, 0, 2),
                             ),
                         )

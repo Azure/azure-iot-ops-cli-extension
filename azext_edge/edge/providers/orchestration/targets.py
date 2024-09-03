@@ -6,13 +6,18 @@
 
 from typing import List, Optional, Tuple
 
-from ...util import url_safe_random_chars
 from .template import (
     M2_ENABLEMENT_TEMPLATE,
     M2_INSTANCE_TEMPLATE,
-    TemplateVer,
+    TemplateBlueprint,
     get_basic_dataflow_profile,
 )
+from .common import KubernetesDistroType, TrustSourceType
+
+
+BROKER_NAME = "broker"
+BROKER_AUTHN_NAME = "broker-authn"
+BROKER_LISTENER_NAME = "broker-listener"
 
 
 class InitTargets:
@@ -20,6 +25,7 @@ class InitTargets:
         self,
         cluster_name: str,
         resource_group_name: str,
+        schema_registry_resource_id: str,
         cluster_namespace: str = "azure-iot-operations",
         location: Optional[str] = None,
         custom_location_name: Optional[str] = None,
@@ -30,17 +36,19 @@ class InitTargets:
         dataflow_profile_instances: int = 1,
         broker_config: Optional[dict] = None,
         add_insecure_listener: Optional[bool] = None,
+        kubernetes_distro: str = KubernetesDistroType.k8s.value,
+        container_runtime_socket: Optional[str] = None,
+        trust_source: str = TrustSourceType.self_signed.value,
+        mi_user_assigned_identities: Optional[List[str]] = None,
         **_,
     ):
         self.cluster_name = cluster_name
         self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
         self.resource_group_name = resource_group_name
+        self.schema_registry_resource_id = schema_registry_resource_id
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
-        self.custom_location_name = (
-            self._sanitize_k8s_name(custom_location_name)
-            or f"{self.safe_cluster_name}-{url_safe_random_chars(3).lower()}-ops-cl"
-        )
+        self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
         self.deploy_resource_sync_rules: bool = not disable_rsync_rules
         self.instance_name = self._sanitize_k8s_name(instance_name)
         self.instance_description = instance_description
@@ -48,6 +56,11 @@ class InitTargets:
         self.dataflow_profile_instances = dataflow_profile_instances
         self.broker_config = broker_config
         self.add_insecure_listener = add_insecure_listener
+        self.kubernetes_distro = kubernetes_distro
+        self.container_runtime_socket = container_runtime_socket
+
+        self.trust_source = trust_source
+        self.mi_user_assigned_identities = mi_user_assigned_identities
 
     def _sanitize_k8s_name(self, name: str) -> str:
         if not name:
@@ -58,8 +71,8 @@ class InitTargets:
         return sanitized
 
     def _handle_apply_targets(
-        self, param_to_target: dict, template_blueprint: TemplateVer
-    ) -> Tuple[TemplateVer, dict]:
+        self, param_to_target: dict, template_blueprint: TemplateBlueprint
+    ) -> Tuple[TemplateBlueprint, dict]:
         template_copy = template_blueprint.copy()
         built_in_template_params = template_copy.parameters
 
@@ -77,50 +90,87 @@ class InitTargets:
         template, parameters = self._handle_apply_targets(
             param_to_target={
                 "clusterName": self.cluster_name,
-                "kubernetesDistro": "",
-                "containerRuntimeSocket": "",
-                "trustSource": "",
-                # "trustBundleSettings": ""
-                "schemaRegistryId": "",
+                "kubernetesDistro": self.kubernetes_distro,
+                "containerRuntimeSocket": self.container_runtime_socket,
+                "trustSource": self.trust_source,
+                "schemaRegistryId": self.schema_registry_resource_id,
             },
             template_blueprint=M2_ENABLEMENT_TEMPLATE,
         )
+
+        # TODO - @digimaun potentially temp
+        esa_extension = template.get_resource_by_key("edge_storage_accelerator_extension")
+        esa_extension["identity"] = {"type": "SystemAssigned"}
+        esa_extension["properties"]["extensionType"] = "microsoft.arc.containerstorage"
+        esa_extension["properties"]["version"] = "2.1.0-preview"
+
+        esa_extension_config = {
+            "edgeStorageConfiguration.create": "true",
+            "feature.diskStorageClass": "default,local-path",
+        }
+        if self.enable_fault_tolerance:
+            esa_extension_config["feature.diskStorageClass"] = "acstor-arccontainerstorage-storage-pool"
+            esa_extension_config["acstorConfiguration.create"] = "true"
+            esa_extension_config["acstorConfiguration.properties.diskMountPoint"] = "/mnt"
+
+        esa_extension["properties"]["configurationSettings"] = esa_extension_config
+
+        # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
+
         return template.content, parameters
 
-    def get_ops_instance_template(
-        self,
-    ) -> Tuple[dict, dict]:
+    def get_ops_instance_template(self, cl_extension_ids: List[str]) -> Tuple[dict, dict]:
         template, parameters = self._handle_apply_targets(
             param_to_target={
                 "clusterName": self.cluster_name,
-                "kubernetesDistro": "",
-                "containerRuntimeSocket": "",
-                "trustSource": "",
-                # "trustBundleSettings": ""
-                "schemaRegistryId": "",
+                "clusterNamespace": self.cluster_namespace,
+                "clusterLocation": self.location,
+                "customLocationName": self.custom_location_name,
+                "clExtentionIds": cl_extension_ids,
+                "deployResourceSyncRules": self.deploy_resource_sync_rules,
+                "schemaRegistryId": self.schema_registry_resource_id,
+                "brokerConfig": "",
+                "trustConfig": "",
             },
             template_blueprint=M2_INSTANCE_TEMPLATE,
         )
+        instance = template.get_resource_by_key("aioInstance")
+        instance["properties"]["description"] = self.instance_description
 
-        content = template.content
-        deploy_resources: List[dict] = content.get("resources", [])
-        df_profile_instances = self.dataflow_profile_instances
-        deploy_resources.append(get_basic_dataflow_profile(instance_count=df_profile_instances))
+        broker = template.get_resource_by_key("broker")
+        broker_authn = template.get_resource_by_key("broker_authn")
+        broker_listener = template.get_resource_by_key("broker_listener")
 
-        if self.broker_config:
-            broker_config = self.broker_config
-            if "properties" in broker_config:
-                broker_config = broker_config["properties"]
-            broker: dict = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers")
-            broker["properties"] = broker_config
+        if self.instance_name:
+            instance["name"] = self.instance_name
+            broker["name"] = f"{self.instance_name}/{BROKER_NAME}"
+            broker_authn["name"] = f"{self.instance_name}/{BROKER_NAME}/{BROKER_AUTHN_NAME}"
+            broker_listener["name"] = f"{self.instance_name}/{BROKER_NAME}/{BROKER_LISTENER_NAME}"
 
-        if self.add_insecure_listener:
-            # This solution entirely relies on the form of the "standard" template.
-            # TODO - @digimaun - default resource names
-            # TODO - @digimaun - new listener
-            default_listener = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers/listeners")
-            if default_listener:
-                ports: list = default_listener["properties"]["ports"]
-                ports.append({"port": 1883})
+            template.add_resource("dataflowProfile", get_basic_dataflow_profile(instance_name=self.instance_name))
 
-        return content, parameters
+        if self.mi_user_assigned_identities:
+            mi_user_payload = {}
+            for mi in self.mi_user_assigned_identities:
+                mi_user_payload[mi] = {}
+            instance["identity"] = {}
+            instance["identity"]["type"] = "UserAssigned"
+            instance["identity"]["userAssignedIdentities"] = mi_user_payload
+
+        # if self.broker_config:
+        #     broker_config = self.broker_config
+        #     if "properties" in broker_config:
+        #         broker_config = broker_config["properties"]
+        #     broker: dict = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers")
+        #     broker["properties"] = broker_config
+
+        # if self.add_insecure_listener:
+        #     # This solution entirely relies on the form of the "standard" template.
+        #     # TODO - @digimaun - default resource names
+        #     # TODO - @digimaun - new listener
+        #     default_listener = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers/listeners")
+        #     if default_listener:
+        #         ports: list = default_listener["properties"]["ports"]
+        #         ports.append({"port": 1883})
+
+        return template.content, parameters

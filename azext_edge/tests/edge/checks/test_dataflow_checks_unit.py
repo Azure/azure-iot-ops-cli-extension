@@ -890,7 +890,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "success"),
                     (
                         "name",
-                        "pod/aio-dataflow-profile-0",
+                        "pod/aio-dataflow-default-0",
                     ),
                     ("value", {"status.phase": "Running"}),
                 ],
@@ -1030,7 +1030,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "success"),
                     (
                         "name",
-                        "pod/aio-dataflow-profile-0",
+                        "pod/aio-dataflow-default-0",
                     ),
                     ("value", {"status.phase": "Running"}),
                 ],

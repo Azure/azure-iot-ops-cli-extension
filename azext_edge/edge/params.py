@@ -30,6 +30,7 @@ from .providers.orchestration.common import (
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
+    TrustSourceType,
 )
 
 
@@ -359,15 +360,16 @@ def load_iotops_arguments(self, _):
         context.argument(
             "location",
             options_list=["--location"],
-            help="The ARM location that will be used for provisioned RPSaaS collateral. "
+            help="The region that will be used for provisioned resource collateral. "
             "If not provided the connected cluster location will be used.",
         )
-        context.argument(
-            "no_block",
-            options_list=["--no-block"],
-            arg_type=get_three_state_flag(),
-            help="Return immediately after the IoT Operations deployment has started.",
-        )
+        # TODO - @digimaun
+        # context.argument(
+        #     "no_block",
+        #     options_list=["--no-block"],
+        #     arg_type=get_three_state_flag(),
+        #     help="Return immediately after the IoT Operations deployment has started.",
+        # )
         context.argument(
             "disable_rsync_rules",
             options_list=["--disable-rsync-rules"],
@@ -379,6 +381,12 @@ def load_iotops_arguments(self, _):
             options_list=["--ensure-latest"],
             arg_type=get_three_state_flag(),
             help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
+        )
+        # Schema Registry
+        context.argument(
+            "schema_registry_resource_id",
+            options_list=["--sr-resource-id"],
+            help="The schema registry resource Id to use with IoT Operations.",
         )
         # Akri
         context.argument(
@@ -515,12 +523,6 @@ def load_iotops_arguments(self, _):
         #     arg_group="Key Vault CSI Driver",
         # )
         context.argument(
-            "template_path",
-            options_list=["--template-file"],
-            help="The path to a custom IoT Operations deployment template. Intended for advanced use cases.",
-            deprecate_info=context.deprecate(hide=True),
-        )
-        context.argument(
             "dataflow_profile_instances",
             type=int,
             options_list=["--df-profile-instances"],
@@ -530,7 +532,24 @@ def load_iotops_arguments(self, _):
         context.argument(
             "enable_fault_tolerance",
             arg_type=get_three_state_flag(),
+            options_list=["--enable-fault-tolerance"],
             help="Enable fault tolerance for edge storage accelerator. At least 3 cluster nodes are required.",
+        )
+        context.argument(
+            "mi_user_assigned_identities",
+            nargs="*",
+            action="extend",
+            options_list=["--mi-user-assigned"],
+            help="Space-separated resource Ids for the desired user managed identities to associate with the instance. "
+            "Can be used one or more times.",
+            arg_group="Identity",
+        )
+        context.argument(
+            "trust_source",
+            arg_type=get_enum_type(TrustSourceType),
+            options_list=["--trust-source"],
+            help="Indicates whether a built-in self-signed or user managed trust bundle config should be used.",
+            arg_group="Trust",
         )
 
     with self.argument_context("iot ops delete") as context:
