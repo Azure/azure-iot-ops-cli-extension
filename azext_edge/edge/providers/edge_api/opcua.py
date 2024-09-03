@@ -16,5 +16,5 @@ OPCUA_API_V1 = EdgeResourceApi(
     group="opcuabroker.iotoperations.azure.com",
     version="v1beta1",
     moniker="opcua",
-    label="microsoft-iotoperations-opcuabroker"
+    label="microsoft-iotoperations-opcuabroker",
 )

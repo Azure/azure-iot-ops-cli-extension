@@ -30,8 +30,9 @@ def process_template(input_template_path: str, output_format: str = "json"):
                 if "allowedValues" in data["parameters"][parameter]:
                     del data["parameters"][parameter]["allowedValues"]
 
-    if "outputs" in data:
-        del data["outputs"]
+    # TODO - @digimaun
+    # if "outputs" in data:
+    #     del data["outputs"]
 
     output_ext = "json" if output_format == "json" else "py"
     output_template_path = f"./optimized.{output_ext}"

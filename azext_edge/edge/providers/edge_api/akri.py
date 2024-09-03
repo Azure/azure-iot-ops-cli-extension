@@ -13,6 +13,4 @@ class AkriResourceKinds(ListableEnum):
     CONFIGURATION = "configuration"
 
 
-AKRI_API_V0 = EdgeResourceApi(
-    group="akri.sh", version="v0", moniker="akri", label="microsoft-iotoperations-akri"
-)
+AKRI_API_V0 = EdgeResourceApi(group="akri.sh", version="v0", moniker="akri", label="microsoft-iotoperations-akri")

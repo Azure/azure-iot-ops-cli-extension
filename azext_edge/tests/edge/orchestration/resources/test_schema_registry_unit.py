@@ -27,7 +27,10 @@ from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource, get_resource_id, find_request_by_url, ZEROED_SUBSCRIPTION
 
 SCHEMA_REGISTRY_RP = "Microsoft.DeviceRegistry"
+SCHEMA_REGISTRY_RP_API_VERSION = "2024-07-01-preview"
 STORAGE_RP = "Microsoft.Storage"
+STORAGE_API_VERSION = "2023-05-01"
+RESOURCES_API_VERSION = "2024-03-01"
 
 
 def get_schema_registry_endpoint(
@@ -40,7 +43,7 @@ def get_schema_registry_endpoint(
         resource_group_name=resource_group_name,
         resource_path=resource_path,
         resource_provider=SCHEMA_REGISTRY_RP,
-        api_version="2024-07-01-preview",
+        api_version=SCHEMA_REGISTRY_RP_API_VERSION,
     )
 
 
@@ -50,7 +53,7 @@ def get_storage_container_endpoint(resource_group_name: str, account_name: str, 
         resource_group_name=resource_group_name,
         resource_path=resource_path,
         resource_provider=STORAGE_RP,
-        api_version="2022-09-01",
+        api_version=STORAGE_API_VERSION,
     )
 
 
@@ -60,7 +63,7 @@ def get_storage_endpoint(resource_group_name: str, account_name: str) -> str:
         resource_group_name=resource_group_name,
         resource_path=resource_path,
         resource_provider=STORAGE_RP,
-        api_version="2022-09-01",
+        api_version=STORAGE_API_VERSION,
     )
 
 
@@ -237,7 +240,7 @@ def test_schema_registry_create(
         mocked_responses.add(
             method=responses.GET,
             url=get_base_endpoint(
-                resource_group_name=resource_group_name, resource_provider="", api_version="2022-09-01"
+                resource_group_name=resource_group_name, resource_provider="", api_version=RESOURCES_API_VERSION
             ).replace("resourceGroups", "resourcegroups"),
             json=mock_resource_group,
             status=200,
@@ -340,18 +343,6 @@ def test_schema_registry_create(
     )
 
     mock_permission_manager.assert_called_with(ZEROED_SUBSCRIPTION)
-    # TODO - @digimaun
-    # mock_permission_manager().can_apply_role_assignment.assert_called_with(
-    #     resource_group_name=resource_group_name,
-    #     resource_provider_namespace="Microsoft.Storage",
-    #     parent_resource_path="",
-    #     resource_type="storageAccounts",
-    #     resource_name=storage_account_name,
-    # )
-    # if not can_apply_role_assignment:
-    #     mock_logger.warning.assert_called_once()
-    #     return
-
     target_role_id = custom_role_id or ROLE_DEF_FORMAT_STR.format(
         subscription_id=ZEROED_SUBSCRIPTION, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
     )

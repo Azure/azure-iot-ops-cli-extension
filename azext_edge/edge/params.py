@@ -15,6 +15,8 @@ from azure.cli.core.commands.parameters import (
 )
 from knack.arguments import CaseInsensitiveList
 
+from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
+
 from ._validators import validate_namespace, validate_resource_name
 from .common import FileType, OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
@@ -28,6 +30,7 @@ from .providers.orchestration.common import (
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
+    TrustSourceType,
 )
 
 
@@ -71,11 +74,6 @@ def load_iotops_arguments(self, _):
             help="Force the operation to execute.",
         )
         context.argument(
-            "instance_name",
-            options_list=["--name", "-n"],
-            help="IoT Operations instance name.",
-        )
-        context.argument(
             "tags",
             options_list=["--tags"],
             arg_type=tags_type,
@@ -83,9 +81,19 @@ def load_iotops_arguments(self, _):
             'Use --tags "" to remove all tags.',
         )
         context.argument(
+            "instance_name",
+            options_list=["--name", "-n"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
             "instance_description",
             options_list=["--desc"],
             help="Description of the IoT Operations instance.",
+        )
+        context.argument(
+            "broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
         )
 
     with self.argument_context("iot ops show") as context:
@@ -165,6 +173,9 @@ def load_iotops_arguments(self, _):
                         OpcuaResourceKinds.ASSET_TYPE.value,
                         AkriResourceKinds.CONFIGURATION.value,
                         AkriResourceKinds.INSTANCE.value,
+                        DataflowResourceKinds.DATAFLOW.value,
+                        DataflowResourceKinds.DATAFLOWENDPOINT.value,
+                        DataflowResourceKinds.DATAFLOWPROFILE.value,
                     ]
                 )
             ),
@@ -229,7 +240,7 @@ def load_iotops_arguments(self, _):
             help="IoT Operations instance name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--name", "-n"],
             help="Mqtt broker name.",
         )
@@ -241,7 +252,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker listener name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -253,7 +264,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker authentication resource name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -265,7 +276,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker authorization resource name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -327,7 +338,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "instance_name",
             options_list=["--name", "-n"],
-            help="IoT Operations instance name. The default is in the form '{cluster_name}-ops-instance'.",
+            help="IoT Operations instance name. An instance name must be provided to "
+            "deploy an instance during init orchestration.",
         )
         context.argument(
             "cluster_name",
@@ -343,39 +355,21 @@ def load_iotops_arguments(self, _):
             "custom_location_name",
             options_list=["--custom-location"],
             help="The custom location name corresponding to the IoT Operations deployment. "
-            "The default is in the form '{cluster_name}-{token}-ops-init-cl'.",
+            "The default is in the form '{cluster_name}-{token}-ops-cl'.",
         )
         context.argument(
             "location",
             options_list=["--location"],
-            help="The ARM location that will be used for provisioned RPSaaS collateral. "
+            help="The region that will be used for provisioned resource collateral. "
             "If not provided the connected cluster location will be used.",
         )
-        context.argument(
-            "show_template",
-            options_list=["--show-template"],
-            arg_type=get_three_state_flag(),
-            help="Flag when set, will output the template intended for deployment.",
-            arg_group="Template",
-        )
-        context.argument(
-            "no_block",
-            options_list=["--no-block"],
-            arg_type=get_three_state_flag(),
-            help="Return immediately after the IoT Operations deployment has started.",
-        )
-        context.argument(
-            "no_deploy",
-            options_list=["--no-deploy"],
-            arg_type=get_three_state_flag(),
-            help="The IoT Operations deployment workflow will be skipped.",
-        )
-        context.argument(
-            "no_tls",
-            options_list=["--no-tls"],
-            arg_type=get_three_state_flag(),
-            help="The TLS configuration workflow will be skipped.",
-        )
+        # TODO - @digimaun
+        # context.argument(
+        #     "no_block",
+        #     options_list=["--no-block"],
+        #     arg_type=get_three_state_flag(),
+        #     help="Return immediately after the IoT Operations deployment has started.",
+        # )
         context.argument(
             "disable_rsync_rules",
             options_list=["--disable-rsync-rules"],
@@ -387,6 +381,12 @@ def load_iotops_arguments(self, _):
             options_list=["--ensure-latest"],
             arg_type=get_three_state_flag(),
             help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
+        )
+        # Schema Registry
+        context.argument(
+            "schema_registry_resource_id",
+            options_list=["--sr-resource-id"],
+            help="The schema registry resource Id to use with IoT Operations.",
         )
         # Akri
         context.argument(
@@ -404,49 +404,34 @@ def load_iotops_arguments(self, _):
             "default container runtime socket path when no --runtime-socket value is provided.",
             arg_group="Akri",
         )
-        # OPC-UA Broker
-        context.argument(
-            "simulate_plc",
-            options_list=["--simulate-plc"],
-            arg_type=get_three_state_flag(),
-            help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
-            arg_group="OPC-UA Broker",
-        )
         # MQ
         context.argument(
-            "mq_broker_config_file",
+            "broker_config_file",
             options_list=["--broker-config-file"],
             help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
             "The expected format is described at https://aka.ms/aziotops-broker-config.",
             arg_group="Broker",
         )
         context.argument(
-            "mq_frontend_server_name",
-            options_list=["--broker-frontend-server"],
-            help="The mqtt broker frontend server name.",
-            arg_group="Broker",
-            deprecate_info=context.deprecate(hide=True),
-        )
-        context.argument(
-            "mq_listener_name",
-            options_list=["--broker-listener"],
-            help="The mqtt broker listener name.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker"],
-            help="The mqtt broker name.",
+            help="Mqtt broker name.",
             arg_group="Broker",
         )
         context.argument(
-            "mq_authn_name",
+            "broker_listener_name",
+            options_list=["--broker-listener"],
+            help="Mqtt broker listener name.",
+            arg_group="Broker",
+        )
+        context.argument(
+            "broker_authn_name",
             options_list=["--broker-authn"],
-            help="The mqtt broker authN name.",
+            help="Mqtt broker authentication name.",
             arg_group="Broker",
         )
         context.argument(
-            "mq_insecure",
+            "add_insecure_listener",
             options_list=[
                 "--add-insecure-listener",
                 context.deprecate(
@@ -537,47 +522,34 @@ def load_iotops_arguments(self, _):
         #     "--csi-config can be used one or more times.",
         #     arg_group="Key Vault CSI Driver",
         # )
-        # TLS
-        context.argument(
-            "tls_ca_path",
-            options_list=["--ca-file"],
-            help="The path to the desired CA file in PEM format.",
-            arg_group="TLS",
-        )
-        context.argument(
-            "tls_ca_key_path",
-            options_list=["--ca-key-file"],
-            help="The path to the CA private key file in PEM format. !Required! when --ca-file is provided.",
-            arg_group="TLS",
-        )
-        context.argument(
-            "tls_ca_dir",
-            options_list=["--ca-dir"],
-            help="The local directory the generated test CA and private key will be placed in. "
-            "If no directory is provided no files will be written to disk. Applicable when no "
-            "--ca-file and --ca-key-file are provided.",
-            arg_group="TLS",
-        )
-        context.argument(
-            "tls_ca_valid_days",
-            options_list=["--ca-valid-days"],
-            help="Option to control the duration in days of the init generated x509 CA. "
-            "Applicable if --ca-file and --ca-key-file are not provided.",
-            arg_group="TLS",
-            type=int,
-        )
-        context.argument(
-            "template_path",
-            options_list=["--template-file"],
-            help="The path to a custom IoT Operations deployment template. Intended for advanced use cases.",
-            deprecate_info=context.deprecate(hide=True),
-        )
         context.argument(
             "dataflow_profile_instances",
             type=int,
             options_list=["--df-profile-instances"],
             help="The instance count associated with the default dataflow profile.",
             arg_group="Dataflow Profile",
+        )
+        context.argument(
+            "enable_fault_tolerance",
+            arg_type=get_three_state_flag(),
+            options_list=["--enable-fault-tolerance"],
+            help="Enable fault tolerance for edge storage accelerator. At least 3 cluster nodes are required.",
+        )
+        context.argument(
+            "mi_user_assigned_identities",
+            nargs="*",
+            action="extend",
+            options_list=["--mi-user-assigned"],
+            help="Space-separated resource Ids for the desired user managed identities to associate with the instance. "
+            "Can be used one or more times.",
+            arg_group="Identity",
+        )
+        context.argument(
+            "trust_source",
+            arg_type=get_enum_type(TrustSourceType),
+            options_list=["--trust-source"],
+            help="Indicates whether a built-in self-signed or user managed trust bundle config should be used.",
+            arg_group="Trust",
         )
 
     with self.argument_context("iot ops delete") as context:
