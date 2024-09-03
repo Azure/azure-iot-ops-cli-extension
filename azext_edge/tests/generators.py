@@ -6,7 +6,9 @@
 
 import secrets
 import string
-from typing import List, Union
+from typing import List, Optional, Union
+
+BASE_URL = "https://management.azure.com"
 
 
 def generate_names(prefix: str = "", count: int = 1, max_length: int = 48) -> Union[str, List[str]]:
@@ -27,3 +29,35 @@ def generate_random_string(size: int = 36, force_lower: bool = False):
     if not force_lower:
         valid_sequence += string.ascii_uppercase
     return "".join(secrets.choice(valid_sequence) for _ in range(size))
+
+
+def generate_resource_id(
+    resource_group_name: Optional[str] = None,
+    resource_provider: Optional[str] = None,
+    resource_path: Optional[str] = None,
+) -> str:
+    resource_id = f"/subscriptions/{get_zeroed_subscription()}"
+    if resource_group_name:
+        resource_id += f"/resourceGroups/{resource_group_name}"
+    if resource_provider:
+        resource_id += f"/providers/{resource_provider}"
+    if resource_path:
+        resource_id += resource_path
+    return resource_id
+
+
+def generate_base_endpoint(
+    resource_group_name: Optional[str] = None,
+    resource_provider: Optional[str] = None,
+    resource_path: Optional[str] = None,
+    api_version: Optional[str] = None,
+) -> str:
+    resource_id = generate_resource_id(
+        resource_group_name=resource_group_name,
+        resource_provider=resource_provider,
+        resource_path=resource_path
+    )
+    expected_endpoint = f"{BASE_URL}{resource_id}"
+    if api_version:
+        expected_endpoint += f"?api-version={api_version}"
+    return expected_endpoint

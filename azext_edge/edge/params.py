@@ -594,9 +594,24 @@ def load_iotops_arguments(self, _):
             help="Asset name.",
         )
         context.argument(
-            "endpoint",
-            options_list=["--endpoint"],
-            help="Asset endpoint name.",
+            "endpoint_profile",
+            options_list=["--endpoint-profile", "--ep"],
+            help="Asset endpoint profile name.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance"],
+            help="Instance name to associate the created asset with."
+        )
+        context.argument(
+            "instance_resource_group",
+            options_list=["--instance-resource-group", "--ig"],
+            help="Instance resource group. If not provided, asset resource group will be used."
+        )
+        context.argument(
+            "instance_subscription",
+            options_list=["--instance-subscription", "--is"],
+            help="Instance subscription id. If not provided, asset subscription id will be used."
         )
         context.argument(
             "custom_attributes",
@@ -607,49 +622,13 @@ def load_iotops_arguments(self, _):
             action="extend",
         )
         context.argument(
-            "custom_location_name",
-            options_list=["--custom-location", "--cl"],
-            help="Custom location used to associate asset with cluster.",
-        )
-        context.argument(
-            "custom_location_resource_group",
-            options_list=["--custom-location-resource-group", "--clg"],
-            help="Resource group for custom location.",
-        )
-        context.argument(
-            "custom_location_subscription",
-            options_list=["--custom-location-subscription", "--cls"],
-            help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
-        )
-        context.argument(
-            "cluster_name",
-            options_list=["--cluster", "-c"],
-            help="Cluster to associate the asset with.",
-        )
-        context.argument(
-            "cluster_resource_group",
-            options_list=["--cluster-resource-group", "--cg"],
-            help="Resource group for cluster.",
-        )
-        context.argument(
-            "cluster_subscription",
-            options_list=["--cluster-subscription", "--cs"],
-            help="Subscription Id for cluster. If not provided, asset subscription Id will be used.",
-        )
-        context.argument(
-            "asset_type",
-            options_list=["--asset-type", "--at"],
-            help="Asset type.",
-            arg_group="Additional Info",
-        )
-        context.argument(
             "data_points",
             options_list=["--data"],
             nargs="+",
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the data point to create. "
-            "The following key values are supported: `capability_id`, `data_source` (required), `name`, "
-            "`observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` (int), "
+            "The following key values are supported: `data_source` (required), `name` (required), "
+            "`observability_mode` (None, Gauge, Counter, Histogram, or Log), `sampling_interval` (int), "
             "`queue_size` (int). "
             "--data can be used 1 or more times. Review help examples for full parameter usage",
             arg_group="Additional Info",
@@ -681,6 +660,13 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
         context.argument(
+            "discovered",
+            options_list=["--discovered"],
+            help="Flag to determine if an asset was discovered on the cluster.",
+            arg_group="Additional Info",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
             "documentation_uri",
             options_list=["--documentation-uri", "--du"],
             help="Documentation URI.",
@@ -692,8 +678,8 @@ def load_iotops_arguments(self, _):
             nargs="+",
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the event to create. "
-            "The following key values are supported: `capability_id`, `event_notifier` (required), "
-            "`name`, `observability_mode` (none or log), `sampling_interval` "
+            "The following key values are supported: `event_notifier` (required), "
+            "`name` (required), `observability_mode` (none or log), `sampling_interval` "
             "(int), `queue_size` (int). "
             "--event can be used 1 or more times. Review help examples for full parameter usage",
             arg_group="Additional Info",
@@ -754,22 +740,22 @@ def load_iotops_arguments(self, _):
             arg_group="Additional Info",
         )
         context.argument(
-            "dp_publishing_interval",
-            options_list=["--data-publish-int", "--dpi"],
-            help="Default publishing interval for data points.",
-            arg_group="Data Point Default",
+            "ds_publishing_interval",
+            options_list=["--dataset-publish-int", "--dpi"],
+            help="Default publishing interval for datasets.",
+            arg_group="Dataset Default",
         )
         context.argument(
-            "dp_sampling_interval",
-            options_list=["--data-sample-int", "--dsi"],
-            help="Default sampling interval (in milliseconds) for data points.",
-            arg_group="Data Point Default",
+            "ds_sampling_interval",
+            options_list=["--dataset-sample-int", "--dsi"],
+            help="Default sampling interval (in milliseconds) for datasets.",
+            arg_group="Dataset Default",
         )
         context.argument(
-            "dp_queue_size",
-            options_list=["--data-queue-size", "--dqs"],
-            help="Default queue size for data points.",
-            arg_group="Data Point Default",
+            "ds_queue_size",
+            options_list=["--dataset-queue-size", "--dqs"],
+            help="Default queue size for datasets.",
+            arg_group="Dataset Default",
         )
         context.argument(
             "ev_publishing_interval",
@@ -799,6 +785,11 @@ def load_iotops_arguments(self, _):
             "queue_size",
             options_list=["--queue-size", "--qs"],
             help="Custom queue size.",
+        )
+        context.argument(
+            "publishing_interval",
+            options_list=["--publishing-interval", "--si"],
+            help="Custom publishing interval (in milliseconds).",
         )
         context.argument(
             "sampling_interval",
