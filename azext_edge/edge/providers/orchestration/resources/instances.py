@@ -23,9 +23,11 @@ logger = get_logger(__name__)
 
 class Instances(Queryable):
     def __init__(self, cmd, subscription_id: Optional[str] = None):
+        # TODO: make sure this works correctly
+        # TODO: longer term pattern?
         super().__init__(cmd=cmd, subscriptions=[subscription_id] if subscription_id else None)
         self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            subscription_id=self.subscriptions[0],
         )
 
     def show(self, name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> Optional[dict]:
