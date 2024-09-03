@@ -19,7 +19,7 @@ from azext_edge.edge.providers.check.base import (
     process_list_resource,
     process_resource_properties,
     validate_one_of_conditions,
-    process_status,
+    process_custom_resource_status,
 )
 from azext_edge.edge.providers.check.base.resource import calculate_status, combine_statuses, process_resource_property_by_type
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
@@ -840,88 +840,6 @@ def test_calculate_status(resource_state, expected_status):
         (
             {
                 "runtimeStatus": {"status": "Running", "statusDescription": "All good"},
-                "provisioningStatus": {"status": "Provisioned"},
-            },
-            ResourceOutputDetailLevel.summary.value,
-            ["Status {[green]success[/green]}."],
-            [call(target_name="test_target", namespace="test_namespace", conditions=["status"])],
-            [
-                call(
-                    target_name="test_target",
-                    namespace="test_namespace",
-                    status="success",
-                    value={
-                        "status": {
-                            "runtimeStatus": {"status": "Running", "statusDescription": "All good"},
-                            "provisioningStatus": {"status": "Provisioned"},
-                        }
-                    },
-                    resource_name="test_resource",
-                )
-            ],
-        ),
-        # Scenario 2: No runtimeStatus and provisioningStatus with verbose detail level.
-        (
-            {"runtimeStatus": {}, "provisioningStatus": {}},
-            ResourceOutputDetailLevel.verbose.value,
-            [
-                "Status [red]not found[/red].",
-            ],
-            [call(target_name="test_target", namespace="test_namespace", conditions=["status"])],
-            [
-                call(
-                    target_name="test_target",
-                    namespace="test_namespace",
-                    status="error",
-                    value={"status": {"runtimeStatus": {}, "provisioningStatus": {}}},
-                    resource_name="test_resource",
-                )
-            ],
-        ),
-    ],
-)
-def test_process_status(
-    mocked_check_manager,
-    mocker,
-    status,
-    detail_level,
-    expected_display_texts,
-    expected_conditions_calls,
-    expected_eval_calls,
-):
-    mocker.patch("azext_edge.edge.providers.check.base.resource.combine_statuses", return_value="success")
-    mocker.patch("azext_edge.edge.providers.check.base.resource.calculate_status", return_value="success")
-
-    process_status(
-        check_manager=mocked_check_manager,
-        status=status,
-        target_name="test_target",
-        namespace="test_namespace",
-        resource_name="test_resource",
-        padding=5,
-        detail_level=detail_level,
-    )
-
-    # Verify the expected display texts
-    display_call_args_list = mocked_check_manager.add_display.call_args_list
-    assert len(display_call_args_list) == len(expected_display_texts)
-    for call_args, expected_text in zip(display_call_args_list, expected_display_texts):
-        assert call_args.kwargs["display"].renderable == expected_text
-
-    # Verify the expected calls to add_target_conditions
-    assert mocked_check_manager.add_target_conditions.call_args_list == expected_conditions_calls
-
-    # Verify the expected calls to add_target_eval
-    assert mocked_check_manager.add_target_eval.call_args_list == expected_eval_calls
-
-
-@pytest.mark.parametrize(
-    "status, detail_level, expected_display_texts, expected_conditions_calls, expected_eval_calls",
-    [
-        # Scenario 1: Both runtimeStatus and provisioningStatus are provided with summary detail level.
-        (
-            {
-                "runtimeStatus": {"status": "Running", "statusDescription": "All good"},
                 "provisioningStatus": {"status": "Success"},
             },
             ResourceOutputDetailLevel.summary.value,
@@ -967,9 +885,8 @@ def test_process_status(
             ResourceOutputDetailLevel.verbose.value,
             [
                 "Status:",
-                "Provisioning Status: {[green]Success[/green]}.",
-                "Runtime Status: {[green]Running[/green]}.",
-                "Runtime Status Description: [cyan]All good[/cyan]",
+                "Provisioning Status {[green]Success[/green]}.",
+                "Runtime Status {[green]Running[/green]}, [cyan]All good[/cyan].",
             ],
             [call(target_name="test_target", namespace="test_namespace", conditions=["status"])],
             [
@@ -989,7 +906,7 @@ def test_process_status(
         ),
     ],
 )
-def test_process_status2(
+def test_process_custom_resource_status(
     mocker,
     mocked_check_manager,
     status,
@@ -1005,7 +922,7 @@ def test_process_status2(
         side_effect=lambda status: f"[green]{status}[/green]",
     )
 
-    process_status(
+    process_custom_resource_status(
         check_manager=mocked_check_manager,
         status=status,
         target_name="test_target",

@@ -15,7 +15,7 @@ from .base import (
     process_dict_resource,
     process_resource_properties,
     validate_one_of_conditions,
-    process_status,
+    process_custom_resource_status,
 )
 
 from rich.console import NewLine
@@ -150,7 +150,7 @@ def evaluate_broker_listeners(
                 target_name=target_listeners, namespace=namespace, display=Padding(listener_desc, (0, 0, 0, 8))
             )
 
-            process_status(
+            process_custom_resource_status(
                 check_manager=check_manager,
                 status=listener_status_state,
                 target_name=target_listeners,
@@ -315,7 +315,7 @@ def evaluate_brokers(
                 display=Padding(target_broker_text, (0, 0, 0, 8)),
             )
 
-            process_status(
+            process_custom_resource_status(
                 check_manager=check_manager,
                 status=broker_status_state,
                 target_name=target_brokers,

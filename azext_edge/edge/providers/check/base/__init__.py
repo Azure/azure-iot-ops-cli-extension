@@ -21,7 +21,7 @@ from .resource import (
     process_list_resource,
     process_resource_properties,
     validate_one_of_conditions,
-    process_status,
+    process_custom_resource_status,
 )
 
 __all__ = [
@@ -44,5 +44,5 @@ __all__ = [
     "process_pod_status",
     "process_resource_properties",
     "validate_one_of_conditions",
-    "process_status",
+    "process_custom_resource_status",
 ]

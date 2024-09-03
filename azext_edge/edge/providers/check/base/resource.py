@@ -368,7 +368,7 @@ def calculate_status(resource_state: str) -> str:
     return ResourceState.map_to_status(resource_state).value
 
 
-def process_status(
+def process_custom_resource_status(
     check_manager: CheckManager,
     status: dict,
     target_name: str,
@@ -442,21 +442,14 @@ def process_status(
             "Runtime Status": runtime_status,
         }.items():
             if prop_value:
+                status_text = f"{prop_name} {{{decorate_resource_status(prop_value.get('status'))}}}."
+                if detail_level == ResourceOutputDetailLevel.verbose.value:
+                    status_description = prop_value.get("statusDescription") or prop_value.get("output", {}).get("message")
+                    if status_description:
+                        status_text = status_text.replace(".", f", [cyan]{status_description}[/cyan].")
+
                 check_manager.add_display(
                     target_name=target_name,
                     namespace=namespace,
-                    display=Padding(
-                        f"{prop_name}: {{{decorate_resource_status(prop_value.get('status'))}}}.",
-                        (0, 0, 0, padding + 4),
-                    ),
+                    display=Padding(status_text, (0, 0, 0, padding + 4)),
                 )
-
-                status_description = prop_value.get("statusDescription") or prop_value.get("output", {}).get("message")
-                if detail_level == ResourceOutputDetailLevel.verbose.value and status_description:
-                    check_manager.add_display(
-                        target_name=target_name,
-                        namespace=namespace,
-                        display=Padding(
-                            f"{prop_name} Description: [cyan]{status_description}[/cyan]", (0, 0, 0, padding + 4)
-                        ),
-                    )
