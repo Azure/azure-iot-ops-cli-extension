@@ -18,12 +18,10 @@ from azext_edge.edge.providers.check.base import (
     process_dict_resource,
     process_list_resource,
     process_resource_properties,
-    process_resource_property_by_type,
     validate_one_of_conditions,
-    combine_statuses,
-    calculate_status,
     process_status,
 )
+from azext_edge.edge.providers.check.base.resource import calculate_status, combine_statuses, process_resource_property_by_type
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 from azext_edge.edge.providers.edge_api import (
     AKRI_API_V0,
