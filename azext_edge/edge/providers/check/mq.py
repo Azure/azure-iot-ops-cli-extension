@@ -4,17 +4,18 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional, Union
-from enum import Enum
+from typing import Any, Dict, List, Optional
 
-from azext_edge.edge.providers.check.base.resource import process_dict_resource, process_resource_properties
 from .base import (
     CheckManager,
-    decorate_resource_status,
     check_post_deployment,
     evaluate_pod_health,
     get_resources_by_name,
-    get_resources_grouped_by_namespace
+    get_resources_grouped_by_namespace,
+    process_dict_resource,
+    process_resource_properties,
+    validate_one_of_conditions,
+    process_custom_resource_status,
 )
 
 from rich.console import NewLine
@@ -23,7 +24,6 @@ from rich.padding import Padding
 from ...common import (
     AIO_MQ_DIAGNOSTICS_SERVICE,
     CheckTaskStatus,
-    ResourceState,
 )
 
 from .common import (
@@ -38,10 +38,7 @@ from .common import (
     ResourceOutputDetailLevel,
 )
 
-from ...providers.edge_api import (
-    MQ_ACTIVE_API,
-    MqResourceKinds
-)
+from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
 from ..support.mq import MQ_K8S_LABEL, MQ_NAME_LABEL
 
 from ..base import get_namespaced_service
@@ -56,6 +53,7 @@ def check_mq_deployment(
     evaluate_funcs = {
         MqResourceKinds.BROKER: evaluate_brokers,
         MqResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
+        # TODO: add BROKER_AUTHENTICATION and BROKER_AUTHORIZATION evaluations
     }
 
     return check_post_deployment(
@@ -84,9 +82,7 @@ def evaluate_broker_listeners(
     listener_conditions = [
         "len(brokerlisteners)>=1",
         "spec",
-        "valid(spec.brokerRef)",
         "spec.serviceName",
-        "status",
     ]
 
     all_listeners = get_resources_by_name(
@@ -97,9 +93,7 @@ def evaluate_broker_listeners(
     if not all_listeners:
         status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_listeners_error_text = f"Unable to fetch {MqResourceKinds.BROKER_LISTENER.value}s in any namespace."
-        check_manager.add_target(
-            target_name=target_listeners
-        )
+        check_manager.add_target(target_name=target_listeners)
         check_manager.add_target_eval(
             target_name=target_listeners,
             status=status,
@@ -111,9 +105,7 @@ def evaluate_broker_listeners(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, listeners) in get_resources_grouped_by_namespace(all_listeners):
-        valid_broker_refs = _get_valid_references(kind=MqResourceKinds.BROKER, namespace=namespace)
-
+    for namespace, listeners in get_resources_grouped_by_namespace(all_listeners):
         check_manager.add_target(
             target_name=target_listeners,
             namespace=namespace,
@@ -122,10 +114,7 @@ def evaluate_broker_listeners(
         check_manager.add_display(
             target_name=target_listeners,
             namespace=namespace,
-            display=Padding(
-                f"Broker Listeners in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, 8)
-            )
+            display=Padding(f"Broker Listeners in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
         )
 
         listeners = list(listeners)
@@ -137,40 +126,50 @@ def evaluate_broker_listeners(
             listener_count_desc = listener_count_desc.format(f"[green]Detected {listeners_count}[/green].")
         else:
             listener_count_desc = listener_count_desc.format(f"[yellow]Detected {listeners_count}[/yellow].")
-            check_manager.set_target_status(target_name=target_listeners, namespace=namespace, status=CheckTaskStatus.warning.value)
+            check_manager.set_target_status(
+                target_name=target_listeners, namespace=namespace, status=CheckTaskStatus.warning.value
+            )
             # TODO listeners_eval_status = CheckTaskStatus.warning.value
-        check_manager.add_display(target_name=target_listeners, namespace=namespace, display=Padding(listener_count_desc, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_listeners, namespace=namespace, display=Padding(listener_count_desc, (0, 0, 0, 8))
+        )
 
         processed_services = {}
         for listener in listeners:
             namespace: str = namespace or listener["metadata"]["namespace"]
             listener_name: str = listener["metadata"]["name"]
-            listener_spec = listener['spec']
+            listener_spec = listener["spec"]
             listener_spec_service_name: str = listener_spec["serviceName"]
-            listener_broker_ref: str = listener_spec["brokerRef"]
+            listener_status_state = listener.get("status", {})
 
             listener_eval_value = {}
             listener_eval_value["spec"] = listener_spec
 
-            if listener_broker_ref not in valid_broker_refs:
-                ref_display = f"[red]Invalid[/red] broker reference {{[red]{listener_broker_ref}[/red]}}."
-                listeners_eval_status = CheckTaskStatus.error.value
-                listener_eval_value["valid(spec.brokerRef)"] = False
-            else:
-                ref_display = f"[green]Valid[/green] broker reference {{[green]{listener_broker_ref}[/green]}}."
-                listener_eval_value["valid(spec.brokerRef)"] = True
+            listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}."
+            check_manager.add_display(
+                target_name=target_listeners, namespace=namespace, display=Padding(listener_desc, (0, 0, 0, 8))
+            )
 
-            listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}. {ref_display}"
-            check_manager.add_display(target_name=target_listeners, namespace=namespace, display=Padding(listener_desc, (0, 0, 0, 8)))
-            if detail_level != ResourceOutputDetailLevel.summary.value:
-                ports = listener_spec.get("ports", [])
+            process_custom_resource_status(
+                check_manager=check_manager,
+                status=listener_status_state,
+                target_name=target_listeners,
+                namespace=namespace,
+                resource_name=listener_name,
+                padding=12,
+                detail_level=detail_level,
+            )
 
-                for port in ports:
-                    for (label, val) in [
-                        ("Port", 'port'),
-                        ("AuthN", 'authenticationRef'),
-                        ("AuthZ", 'authorizationRef'),
-                        ("Node Port", 'nodePort'),
+            ports = listener_spec.get("ports", [])
+
+            for port in ports:
+                tls = port.get("tls", {})
+                if detail_level != ResourceOutputDetailLevel.summary.value:
+                    for label, val in [
+                        ("Port", "port"),
+                        ("AuthN", "authenticationRef"),
+                        ("AuthZ", "authorizationRef"),
+                        ("Node Port", "nodePort"),
                     ]:
                         val = port.get(val)
 
@@ -183,6 +182,49 @@ def evaluate_broker_listeners(
                                     (0, 0, 0, 12),
                                 ),
                             )
+
+                if tls:
+                    # "certManagerCertificateSpec" and "manual" are mutually exclusive
+                    cert_spec = tls.get("certManagerCertificateSpec", {})
+                    cert_spec_condition = "spec.ports[*].tls.certManagerCertificateSpec"
+                    manual = tls.get("manual", {})
+                    manual_condition = "spec.ports[*].tls.manual"
+                    tls_eval_value = {
+                        cert_spec_condition: cert_spec,
+                        manual_condition: manual,
+                    }
+                    validate_one_of_conditions(
+                        conditions=[
+                            (cert_spec_condition, cert_spec),
+                            (manual_condition, manual),
+                        ],
+                        check_manager=check_manager,
+                        eval_value=tls_eval_value,
+                        namespace=namespace,
+                        target_name=target_listeners,
+                        resource_name=listener_name,
+                        padding=12,
+                    )
+
+                    if detail_level == ResourceOutputDetailLevel.verbose.value:
+                        check_manager.add_display(
+                            target_name=target_listeners,
+                            namespace=namespace,
+                            display=Padding("TLS:", (0, 0, 0, 12)),
+                        )
+                        for prop_name, prop_value in {
+                            "Cert Manager certificate spec": cert_spec,
+                            "Manual": manual,
+                        }.items():
+                            if prop_value:
+                                process_dict_resource(
+                                    check_manager=check_manager,
+                                    target_name=target_listeners,
+                                    resource=prop_value,
+                                    namespace=namespace,
+                                    padding=14,
+                                    prop_name=prop_name,
+                                )
 
             if listener_spec_service_name not in processed_services:
                 _evaluate_listener_service(
@@ -213,7 +255,7 @@ def evaluate_brokers(
     check_manager = CheckManager(check_name="evalBrokers", check_desc="Evaluate MQTT Brokers")
 
     target_brokers = "brokers.mqttbroker.iotoperations.azure.com"
-    broker_conditions = ["len(brokers)==1", "status", "spec.mode"]
+    broker_conditions = ["len(brokers)==1", "spec.mode"]
     all_brokers: dict = get_resources_by_name(
         api_info=MQ_ACTIVE_API,
         kind=MqResourceKinds.BROKER,
@@ -223,9 +265,7 @@ def evaluate_brokers(
     if not all_brokers:
         status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_brokers_error_text = f"Unable to fetch {MqResourceKinds.BROKER.value}s in any namespace."
-        check_manager.add_target(
-            target_name=target_brokers
-        )
+        check_manager.add_target(target_name=target_brokers)
         check_manager.add_target_eval(
             target_name=target_brokers,
             status=status,
@@ -237,15 +277,12 @@ def evaluate_brokers(
         )
         return check_manager.as_dict(as_list)
 
-    for (namespace, brokers) in get_resources_grouped_by_namespace(all_brokers):
+    for namespace, brokers in get_resources_grouped_by_namespace(all_brokers):
         check_manager.add_target(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
-            display=Padding(
-                f"MQTT Brokers in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, 8)
-            )
+            display=Padding(f"MQTT Brokers in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
         )
         brokers = list(brokers)
         brokers_count = len(brokers)
@@ -256,8 +293,12 @@ def evaluate_brokers(
             brokers_count_text = brokers_count_text.format(f"[green]Detected {brokers_count}[/green]")
         else:
             brokers_count_text = brokers_count_text.format(f"[red]Detected {brokers_count}[/red]")
-            check_manager.set_target_status(target_name=target_brokers, namespace=namespace, status=CheckTaskStatus.error.value)
-        check_manager.add_display(target_name=target_brokers, namespace=namespace, display=Padding(brokers_count_text, (0, 0, 0, 8)))
+            check_manager.set_target_status(
+                target_name=target_brokers, namespace=namespace, status=CheckTaskStatus.error.value
+            )
+        check_manager.add_display(
+            target_name=target_brokers, namespace=namespace, display=Padding(brokers_count_text, (0, 0, 0, 8))
+        )
 
         added_distributed_conditions = False
         added_diagnostics_conditions = False
@@ -266,32 +307,25 @@ def evaluate_brokers(
             broker_spec: dict = b["spec"]
             broker_diagnostics = broker_spec["diagnostics"]
             broker_status_state = b.get("status", {})
-            broker_status = broker_status_state.get("status", "N/A")
-            broker_status_desc = broker_status_state.get("statusDescription")
 
-            status_display_text = f"Status {{{decorate_resource_status(broker_status)}}}."
-
-            if broker_status_state:
-                status_display_text = f"{status_display_text} {broker_status_desc}."
-
-            target_broker_text = (
-                f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}}"
-            )
+            target_broker_text = f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}}"
             check_manager.add_display(
                 target_name=target_brokers,
                 namespace=namespace,
                 display=Padding(target_broker_text, (0, 0, 0, 8)),
             )
 
-            broker_eval_value = {"status": {"status": broker_status, "statusDescription": broker_status_desc}}
-            broker_eval_status = _calculate_status(broker_status)
-
-            check_manager.add_display(
+            process_custom_resource_status(
+                check_manager=check_manager,
+                status=broker_status_state,
                 target_name=target_brokers,
                 namespace=namespace,
-                display=Padding(status_display_text, (0, 0, 0, 12)),
+                resource_name=broker_name,
+                padding=12,
+                detail_level=detail_level,
             )
 
+            broker_eval_value = {}
             if not added_distributed_conditions:
                 # TODO - conditional evaluations
                 broker_conditions.append("spec.cardinality")
@@ -301,7 +335,9 @@ def evaluate_brokers(
                 broker_conditions.append("spec.cardinality.frontend.replicas>=1")
                 added_distributed_conditions = True
 
-            check_manager.set_target_conditions(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
+            check_manager.set_target_conditions(
+                target_name=target_brokers, namespace=namespace, conditions=broker_conditions
+            )
             broker_cardinality: dict = broker_spec.get("cardinality")
             broker_eval_value["spec.cardinality"] = broker_cardinality
             if not broker_cardinality:
@@ -367,7 +403,7 @@ def evaluate_brokers(
                         backend_cardinality_desc.format(backend_chain_count_colored),
                         backend_redundancy_desc.format(backend_replicas_colored),
                         backend_workers_desc.format(backend_workers_colored),
-                        frontend_cardinality_desc.format(frontend_replicas_colored)
+                        frontend_cardinality_desc.format(frontend_replicas_colored),
                     ]:
                         check_manager.add_display(
                             target_name=target_brokers,
@@ -456,6 +492,7 @@ def evaluate_brokers(
             )
 
             for pod in [
+                # TODO: rename the prefix if service apply name changes
                 AIO_MQ_DIAGNOSTICS_PROBE_PREFIX,
                 AIO_MQ_FRONTEND_PREFIX,
                 AIO_MQ_BACKEND_PREFIX,
@@ -485,25 +522,6 @@ def evaluate_brokers(
             )
 
     return check_manager.as_dict(as_list)
-
-
-def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = None) -> Dict[str, Any]:
-    result = {}
-    custom_objects = MQ_ACTIVE_API.get_resources(kind=kind, namespace=namespace)
-    if custom_objects:
-        objects: List[dict] = custom_objects.get("items", [])
-        for object in objects:
-            o: dict = object
-            metadata: dict = o.get("metadata", {})
-            name = metadata.get("name")
-            if name:
-                result[name] = True
-
-    return result
-
-
-def _calculate_status(resource_state: str) -> str:
-    return ResourceState.map_to_status(resource_state).value
 
 
 def _evaluate_listener_service(
@@ -543,7 +561,7 @@ def _evaluate_listener_service(
             namespace=namespace,
             status=listener_service_eval_status,
             value={"listener_service": "Unable to fetch service."},
-            resource_name=f"service/{listener_spec_service_name}"
+            resource_name=f"service/{listener_spec_service_name}",
         )
     else:
         check_manager.add_target_eval(
@@ -551,7 +569,7 @@ def _evaluate_listener_service(
             namespace=namespace,
             status=CheckTaskStatus.success.value,
             value={"listener_service": target_listener_service},
-            resource_name=f"service/{listener_spec_service_name}"
+            resource_name=f"service/{listener_spec_service_name}",
         )
 
         check_manager.add_display(
@@ -667,9 +685,7 @@ def _evaluate_broker_diagnostics_service(
             resource_name=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE}",
         )
         diag_service_desc_suffix = "[red]not detected[/red]."
-        diag_service_desc = (
-            f"Diagnostics Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
-        )
+        diag_service_desc = f"Diagnostics Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
@@ -690,9 +706,7 @@ def _evaluate_broker_diagnostics_service(
             resource_name=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE}",
         )
         diag_service_desc_suffix = "[green]detected[/green]."
-        diag_service_desc = (
-            f"\nDiagnostics Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
-        )
+        diag_service_desc = f"\nDiagnostics Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
