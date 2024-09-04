@@ -8,6 +8,7 @@ import json
 from pathlib import PurePath
 from typing import Any, Dict, Iterable, List, Optional, Union
 
+from azure.cli.core.azclierror import ArgumentUsageError
 from knack.log import get_logger
 
 from .common import OpsServiceType
@@ -16,6 +17,7 @@ from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
     KubernetesDistroType,
+    TrustSourceType,
     # TODO MqMemoryProfile,
     # TODO MqServiceType,
 )
@@ -52,7 +54,7 @@ def check(
     post_deployment_checks: Optional[bool] = None,
     as_object=None,
     context_name=None,
-    ops_service: str = OpsServiceType.mq.value,
+    ops_service: Optional[str] = None,
     resource_kinds: List[str] = None,
     resource_name: str = None,
 ) -> Union[Dict[str, Any], None]:
@@ -68,6 +70,20 @@ def check(
         run_post = False
     if post_deployment_checks and not pre_deployment_checks:
         run_pre = False
+
+    # error if resource_name provided without ops_service
+    if resource_name and not ops_service:
+        raise ArgumentUsageError(
+            "Resource name filtering (--resource-name) can only be used with service name (--svc)."
+        )
+
+    if resource_kinds and not ops_service:
+        raise ArgumentUsageError(
+            "Service name (--svc) is required to specify individual resource kind checks."
+        )
+
+    if detail_level != ResourceOutputDetailLevel.summary.value and not ops_service:
+        logger.warning("Detail level (--detail-level) will only affect individual service checks with '--svc'")
 
     return run_checks(
         ops_service=ops_service,
@@ -94,6 +110,7 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
+    schema_registry_resource_id: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     location: Optional[str] = None,
     custom_location_name: Optional[str] = None,
@@ -108,9 +125,10 @@ def init(
     dataflow_profile_instances: int = 1,
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
+    trust_source: str = TrustSourceType.self_signed.value,
     enable_fault_tolerance: Optional[bool] = None,
+    mi_user_assigned_identities: Optional[List[str]] = None,
     no_progress: Optional[bool] = None,
-    no_block: Optional[bool] = None,
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
     **kwargs,
@@ -148,7 +166,6 @@ def init(
     work_manager = WorkManager(cmd)
     return work_manager.execute_ops_init(
         show_progress=not no_progress,
-        block=not no_block,
         pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
@@ -167,6 +184,9 @@ def init(
         container_runtime_socket=container_runtime_socket,
         kubernetes_distro=kubernetes_distro,
         enable_fault_tolerance=enable_fault_tolerance,
+        trust_source=trust_source,
+        schema_registry_resource_id=schema_registry_resource_id,
+        mi_user_assigned_identities=mi_user_assigned_identities,
     )
 
     # TODO - @digimaun
@@ -181,8 +201,6 @@ def init(
     #     mq_listener_name=str(mq_listener_name),
     #     mq_authn_name=str(mq_authn_name),
     #     keyvault_resource_id=keyvault_resource_id,
-    #     template_path=template_path,
-    #     **kwargs,
     # )
 
 

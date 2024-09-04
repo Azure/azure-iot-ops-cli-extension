@@ -57,7 +57,7 @@ def test_add_display_and_eval(mocked_check_manager, resource_name, namespace, pa
 @pytest.mark.parametrize("key", ["discoveryError", "discovery", "error", 0])
 @pytest.mark.parametrize("value", ["Null", "", "None", "NoError", "Everything is ok~", 100])
 def test_process_value_color(mocked_check_manager, key, value):
-    from azext_edge.edge.providers.check.base import process_value_color
+    from azext_edge.edge.providers.check.base.display import process_value_color
     target_name = generate_random_string()
     result = process_value_color(
         check_manager=mocked_check_manager, target_name=target_name, key=key, value=value

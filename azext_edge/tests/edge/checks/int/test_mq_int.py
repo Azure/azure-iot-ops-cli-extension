@@ -37,7 +37,7 @@ def test_mq_check(init_setup, detail_level, resource_match, resource_kind):
     # overall api
     assert_enumerate_resources(
         post_deployment=post_deployment,
-        description_name="MQTTBroker",
+        description_name="MQTT Broker",
         key_name="Broker",
         resource_api=MQTT_BROKER_API_V1B1,
         resource_kinds=MqResourceKinds.list(),

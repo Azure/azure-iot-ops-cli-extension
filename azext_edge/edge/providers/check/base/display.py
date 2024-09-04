@@ -88,7 +88,7 @@ def display_as_list(console: Console, result: Dict[str, Any]) -> None:
                     status = namespace_target.get("status")
                     for (idx, disp) in enumerate(displays):
                         # display status indicator on each 'namespaced' grouping of displays
-                        if all([idx == 0, namespace != ALL_NAMESPACES_TARGET, status]):
+                        if all([idx == 0, status]):
                             prefix_emoji = _get_emoji_from_status(status)
                             console.print(Padding(f"\n{prefix_emoji} {disp.renderable}", (0, 0, 0, 6)))
                         else:
