@@ -417,7 +417,7 @@ def load_iotops_arguments(self, _):
             ],
             arg_type=get_three_state_flag(),
             help="When enabled the mqtt broker deployment will include a listener "
-            "bound to port 1883 with no authN or authZ."
+            f"of service type {MqServiceType.load_balancer.value}, bound to port 1883 with no authN or authZ. "
             "For non-production workloads only.",
             arg_group="Broker",
         )
@@ -425,50 +425,50 @@ def load_iotops_arguments(self, _):
         context.argument(
             "broker_frontend_replicas",
             type=int,
-            options_list=["--broker-frontend-replicas", "--bfr"],
+            options_list=["--broker-frontend-replicas", "--fr"],
             help="Mqtt broker frontend replicas. Min value: 1, max value: 16.",
             arg_group="Broker",
         )
         context.argument(
             "broker_frontend_workers",
             type=int,
-            options_list=["--broker-frontend-workers", "--bfw"],
+            options_list=["--broker-frontend-workers", "--fw"],
             help="Mqtt broker frontend workers. Min value: 1, max value: 16.",
             arg_group="Broker",
         )
         context.argument(
             "broker_backend_redundancy_factor",
             type=int,
-            options_list=["--broker-backend-rf", "--bbr"],
+            options_list=["--broker-backend-rf", "--br"],
             help="Mqtt broker backend redundancy factor. Min value: 1, max value: 5.",
             arg_group="Broker",
         )
         context.argument(
             "broker_backend_workers",
             type=int,
-            options_list=["--broker-backend-workers", "--bbw"],
+            options_list=["--broker-backend-workers", "--bw"],
             help="Mqtt broker backend workers. Min value: 1, max value: 16.",
             arg_group="Broker",
         )
         context.argument(
             "broker_backend_partitions",
             type=int,
-            options_list=["--broker-backend-part", "--bbp"],
+            options_list=["--broker-backend-part", "--bp"],
             help="Mqtt broker backend partitions. Min value: 1, max value: 16.",
             arg_group="Broker",
         )
         context.argument(
             "broker_memory_profile",
             arg_type=get_enum_type(MqMemoryProfile),
-            options_list=["--broker-mem-profile", "--bmp"],
+            options_list=["--broker-mem-profile", "--mp"],
             help="Mqtt broker memory profile.",
             arg_group="Broker",
         )
         context.argument(
             "broker_service_type",
             arg_type=get_enum_type(MqServiceType),
-            options_list=["--broker-service-type"],
-            help="Mqtt broker service type.",
+            options_list=["--broker-listener-type", "--lt"],
+            help="Service type associated with the default mqtt broker listener.",
             arg_group="Broker",
         )
         # AKV CSI Driver
@@ -508,7 +508,8 @@ def load_iotops_arguments(self, _):
             "enable_fault_tolerance",
             arg_type=get_three_state_flag(),
             options_list=["--enable-fault-tolerance"],
-            help="Enable fault tolerance for edge storage accelerator. At least 3 cluster nodes are required.",
+            help="Enable fault tolerance for Azure Arc Container Storage. At least 3 cluster nodes are required.",
+            arg_group="Container Storage"
         )
         context.argument(
             "mi_user_assigned_identities",

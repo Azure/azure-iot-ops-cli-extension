@@ -17,6 +17,7 @@ from .template import (
     M2_ENABLEMENT_TEMPLATE,
     M2_INSTANCE_TEMPLATE,
     TemplateBlueprint,
+    get_insecure_listener,
 )
 
 BROKER_NAME = DEFAULT_BROKER
@@ -168,13 +169,10 @@ class InitTargets:
                 self.broker_config = self.broker_config["properties"]
             broker["properties"] = self.broker_config
 
-        # if self.add_insecure_listener:
-        #     # This solution entirely relies on the form of the "standard" template.
-        #     # TODO - @digimaun - default resource names
-        #     # TODO - @digimaun - new listener
-        #     default_listener = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers/listeners")
-        #     if default_listener:
-        #         ports: list = default_listener["properties"]["ports"]
-        #         ports.append({"port": 1883})
+        if self.add_insecure_listener:
+            template.add_resource(
+                resource_key="broker_listener_nontls",
+                resource_def=get_insecure_listener(instance_name=self.instance_name, broker_name=BROKER_NAME),
+            )
 
         return template.content, parameters

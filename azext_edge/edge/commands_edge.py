@@ -78,9 +78,7 @@ def check(
         )
 
     if resource_kinds and not ops_service:
-        raise ArgumentUsageError(
-            "Service name (--svc) is required to specify individual resource kind checks."
-        )
+        raise ArgumentUsageError("Service name (--svc) is required to specify individual resource kind checks.")
 
     if detail_level != ResourceOutputDetailLevel.summary.value and not ops_service:
         logger.warning("Detail level (--detail-level) will only affect individual service checks with '--svc'")
@@ -125,7 +123,6 @@ def init(
     trust_source: str = TrustSourceType.self_signed.value,
     enable_fault_tolerance: Optional[bool] = None,
     mi_user_assigned_identities: Optional[List[str]] = None,
-
     # Broker
     broker_memory_profile: str = MqMemoryProfile.medium.value,
     broker_service_type: str = MqServiceType.cluster_ip.value,
@@ -134,13 +131,10 @@ def init(
     broker_backend_redundancy_factor: int = 2,
     broker_frontend_workers: int = 2,
     broker_frontend_replicas: int = 2,
-
-
     no_progress: Optional[bool] = None,
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
     **kwargs,
-
     # TODO - @digimaun csi_driver_config: Optional[List[str]] = None,
     # keyvault_resource_id: Optional[str] = None,  # TODO - @digimaun
     # template_path: Optional[str] = None,
@@ -152,6 +146,7 @@ def init(
         is_env_flag_enabled,
         read_file_content,
     )
+
     # TODO - @digimaun, is necessary?
     load_config_context(context_name=context_name)
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
@@ -160,6 +155,11 @@ def init(
     broker_config = None
     if broker_config_file:
         broker_config = json.loads(read_file_content(file_path=broker_config_file))
+
+    if broker_service_type == MqServiceType.load_balancer.value and add_insecure_listener:
+        raise ArgumentUsageError(
+            f"--add-insecure-listener cannot be used when --broker-service-type is {MqServiceType.load_balancer.value}."
+        )
 
     work_manager = WorkManager(cmd)
     return work_manager.execute_ops_init(
@@ -182,27 +182,22 @@ def init(
         trust_source=trust_source,
         schema_registry_resource_id=schema_registry_resource_id,
         mi_user_assigned_identities=mi_user_assigned_identities,
+        # Broker
+        broker_memory_profile=broker_memory_profile,
+        broker_service_type=broker_service_type,
+        broker_backend_partitions=broker_backend_partitions,
+        broker_backend_workers=broker_backend_workers,
+        broker_backend_redundancy_factor=broker_backend_redundancy_factor,
+        broker_frontend_workers=broker_frontend_workers,
+        broker_frontend_replicas=broker_frontend_replicas,
+        # keyvault_resource_id=keyvault_resource_id,
     )
-
-    # TODO - @digimaun
-    # work_manager = WorkManager(
-    #     mq_memory_profile=str(mq_memory_profile),
-    #     mq_service_type=str(mq_service_type),
-    #     mq_backend_partitions=int(mq_backend_partitions),
-    #     mq_backend_workers=int(mq_backend_workers),
-    #     mq_backend_redundancy_factor=int(mq_backend_redundancy_factor),
-    #     mq_frontend_replicas=int(mq_frontend_replicas),
-    #     mq_frontend_workers=int(mq_frontend_workers),
-    #     mq_listener_name=str(mq_listener_name),
-    #     mq_authn_name=str(mq_authn_name),
-    #     keyvault_resource_id=keyvault_resource_id,
-    # )
 
 
 def delete(
     cmd,
-    cluster_name: str,
     resource_group_name: str,
+    instance_name: str,
     confirm_yes: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     force: Optional[bool] = None,
@@ -211,7 +206,7 @@ def delete(
 
     return delete_ops_resources(
         cmd=cmd,
-        cluster_name=cluster_name,
+        instance_name=instance_name,
         resource_group_name=resource_group_name,
         confirm_yes=confirm_yes,
         no_progress=no_progress,

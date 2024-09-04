@@ -5,9 +5,13 @@
 # ----------------------------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import List, NamedTuple, Union, Any, Dict, Optional
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 
-from ...common import DEFAULT_DATAFLOW_PROFILE
+from .common import (
+    AIO_INSECURE_LISTENER_NAME,
+    AIO_INSECURE_LISTENER_SERVICE_NAME,
+    MqServiceType,
+)
 
 
 class TemplateBlueprint(NamedTuple):
@@ -46,7 +50,7 @@ class TemplateBlueprint(NamedTuple):
 
 
 M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
-    commit_id="f8fc2737da7d276a8e44f3d3abc74348bc7135c0",
+    commit_id="6bbda7730afae8e98225f3f9da128cc84ace82ef",
     moniker="v0.7.0-preview.enablement",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -408,7 +412,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
 )
 
 M2_INSTANCE_TEMPLATE = TemplateBlueprint(
-    commit_id="f8fc2737da7d276a8e44f3d3abc74348bc7135c0",
+    commit_id="6bbda7730afae8e98225f3f9da128cc84ace82ef",
     moniker="v0.6.0-preview",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -772,5 +776,23 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
 
 
 # TODO - @digimaun
-def get_basic_listener(listener_name: str = "") -> dict:
-    return {}
+def get_insecure_listener(instance_name: str, broker_name: str) -> dict:
+    return {
+        "type": "Microsoft.IoTOperations/instances/brokers/listeners",
+        "apiVersion": "2024-08-15-preview",
+        "name": f"{instance_name}/{broker_name}/{AIO_INSECURE_LISTENER_NAME}",
+        "extendedLocation": {
+            "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+            "type": "CustomLocation",
+        },
+        "properties": {
+            "serviceType": MqServiceType.load_balancer.value,
+            "serviceName": AIO_INSECURE_LISTENER_SERVICE_NAME,
+            "ports": [
+                {
+                    "port": 1883,
+                }
+            ],
+        },
+        "dependsOn": ["broker", "customLocation"],
+    }
