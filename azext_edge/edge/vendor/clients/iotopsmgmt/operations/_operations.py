@@ -1426,7 +1426,7 @@ class Operations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`operations` attribute.
     """
 
@@ -1547,7 +1547,7 @@ class InstanceOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`instance` attribute.
     """
 
@@ -3256,7 +3256,7 @@ class BrokerOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker` attribute.
     """
 
@@ -6081,7 +6081,7 @@ class BrokerAuthenticationOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_authentication` attribute.
     """
 
@@ -7192,7 +7192,7 @@ class BrokerAuthorizationOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_authorization` attribute.
     """
 
@@ -8485,7 +8485,7 @@ class BrokerListenerOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_listener` attribute.
     """
 
@@ -9771,7 +9771,7 @@ class DataflowEndpointOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow_endpoint` attribute.
     """
 
@@ -9939,6 +9939,7 @@ class DataflowEndpointOperations:
                                       X.509 certificate. Required.
                                 }
                             },
+                            "host": "str",  # Kafka endpoint host. Required.
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
                                   Batching latency in milliseconds.
@@ -9959,7 +9960,6 @@ class DataflowEndpointOperations:
                               properties. No effect if the endpoint is used as a source or if the
                               dataflow doesn't have an Broker source. Known values are: "Enabled" and
                               "Disabled".
-                            "host": "str",  # Optional. Kafka endpoint host.
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
@@ -9981,8 +9981,8 @@ class DataflowEndpointOperations:
                             "authentication": {
                                 "method": "str",  # Mode of Authentication. Required.
                                   Known values are: "SystemAssignedManagedIdentity",
-                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
-                                  "Anonymous".
+                                  "UserAssignedManagedIdentity", "ServiceAccountToken",
+                                  "X509Certificate", and "Anonymous".
                                 "serviceAccountTokenSettings": {
                                     "audience": "str"  # Audience of the service
                                       account. Optional, defaults to the broker internal service
@@ -10011,8 +10011,7 @@ class DataflowEndpointOperations:
                               prefix if omitted.
                             "cloudEventAttributes": "str",  # Optional. Cloud event
                               mapping config. Known values are: "Propagate" and "CreateOrRemap".
-                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
+                            "host": "str",  # Optional. Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -10286,6 +10285,7 @@ class DataflowEndpointOperations:
                                       X.509 certificate. Required.
                                 }
                             },
+                            "host": "str",  # Kafka endpoint host. Required.
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
                                   Batching latency in milliseconds.
@@ -10306,7 +10306,6 @@ class DataflowEndpointOperations:
                               properties. No effect if the endpoint is used as a source or if the
                               dataflow doesn't have an Broker source. Known values are: "Enabled" and
                               "Disabled".
-                            "host": "str",  # Optional. Kafka endpoint host.
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
@@ -10328,8 +10327,8 @@ class DataflowEndpointOperations:
                             "authentication": {
                                 "method": "str",  # Mode of Authentication. Required.
                                   Known values are: "SystemAssignedManagedIdentity",
-                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
-                                  "Anonymous".
+                                  "UserAssignedManagedIdentity", "ServiceAccountToken",
+                                  "X509Certificate", and "Anonymous".
                                 "serviceAccountTokenSettings": {
                                     "audience": "str"  # Audience of the service
                                       account. Optional, defaults to the broker internal service
@@ -10358,8 +10357,7 @@ class DataflowEndpointOperations:
                               prefix if omitted.
                             "cloudEventAttributes": "str",  # Optional. Cloud event
                               mapping config. Known values are: "Propagate" and "CreateOrRemap".
-                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
+                            "host": "str",  # Optional. Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -10710,6 +10708,7 @@ class DataflowEndpointOperations:
                                       X.509 certificate. Required.
                                 }
                             },
+                            "host": "str",  # Kafka endpoint host. Required.
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
                                   Batching latency in milliseconds.
@@ -10730,7 +10729,6 @@ class DataflowEndpointOperations:
                               properties. No effect if the endpoint is used as a source or if the
                               dataflow doesn't have an Broker source. Known values are: "Enabled" and
                               "Disabled".
-                            "host": "str",  # Optional. Kafka endpoint host.
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
@@ -10752,8 +10750,8 @@ class DataflowEndpointOperations:
                             "authentication": {
                                 "method": "str",  # Mode of Authentication. Required.
                                   Known values are: "SystemAssignedManagedIdentity",
-                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
-                                  "Anonymous".
+                                  "UserAssignedManagedIdentity", "ServiceAccountToken",
+                                  "X509Certificate", and "Anonymous".
                                 "serviceAccountTokenSettings": {
                                     "audience": "str"  # Audience of the service
                                       account. Optional, defaults to the broker internal service
@@ -10782,8 +10780,7 @@ class DataflowEndpointOperations:
                               prefix if omitted.
                             "cloudEventAttributes": "str",  # Optional. Cloud event
                               mapping config. Known values are: "Propagate" and "CreateOrRemap".
-                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
+                            "host": "str",  # Optional. Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -10972,6 +10969,7 @@ class DataflowEndpointOperations:
                                       X.509 certificate. Required.
                                 }
                             },
+                            "host": "str",  # Kafka endpoint host. Required.
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
                                   Batching latency in milliseconds.
@@ -10992,7 +10990,6 @@ class DataflowEndpointOperations:
                               properties. No effect if the endpoint is used as a source or if the
                               dataflow doesn't have an Broker source. Known values are: "Enabled" and
                               "Disabled".
-                            "host": "str",  # Optional. Kafka endpoint host.
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
@@ -11014,8 +11011,8 @@ class DataflowEndpointOperations:
                             "authentication": {
                                 "method": "str",  # Mode of Authentication. Required.
                                   Known values are: "SystemAssignedManagedIdentity",
-                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
-                                  "Anonymous".
+                                  "UserAssignedManagedIdentity", "ServiceAccountToken",
+                                  "X509Certificate", and "Anonymous".
                                 "serviceAccountTokenSettings": {
                                     "audience": "str"  # Audience of the service
                                       account. Optional, defaults to the broker internal service
@@ -11044,8 +11041,7 @@ class DataflowEndpointOperations:
                               prefix if omitted.
                             "cloudEventAttributes": "str",  # Optional. Cloud event
                               mapping config. Known values are: "Propagate" and "CreateOrRemap".
-                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
+                            "host": "str",  # Optional. Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -11274,6 +11270,7 @@ class DataflowEndpointOperations:
                                       X.509 certificate. Required.
                                 }
                             },
+                            "host": "str",  # Kafka endpoint host. Required.
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
                                   Batching latency in milliseconds.
@@ -11294,7 +11291,6 @@ class DataflowEndpointOperations:
                               properties. No effect if the endpoint is used as a source or if the
                               dataflow doesn't have an Broker source. Known values are: "Enabled" and
                               "Disabled".
-                            "host": "str",  # Optional. Kafka endpoint host.
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
@@ -11316,8 +11312,8 @@ class DataflowEndpointOperations:
                             "authentication": {
                                 "method": "str",  # Mode of Authentication. Required.
                                   Known values are: "SystemAssignedManagedIdentity",
-                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
-                                  "Anonymous".
+                                  "UserAssignedManagedIdentity", "ServiceAccountToken",
+                                  "X509Certificate", and "Anonymous".
                                 "serviceAccountTokenSettings": {
                                     "audience": "str"  # Audience of the service
                                       account. Optional, defaults to the broker internal service
@@ -11346,8 +11342,7 @@ class DataflowEndpointOperations:
                               prefix if omitted.
                             "cloudEventAttributes": "str",  # Optional. Cloud event
                               mapping config. Known values are: "Propagate" and "CreateOrRemap".
-                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
+                            "host": "str",  # Optional. Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -11574,6 +11569,7 @@ class DataflowEndpointOperations:
                                       X.509 certificate. Required.
                                 }
                             },
+                            "host": "str",  # Kafka endpoint host. Required.
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
                                   Batching latency in milliseconds.
@@ -11594,7 +11590,6 @@ class DataflowEndpointOperations:
                               properties. No effect if the endpoint is used as a source or if the
                               dataflow doesn't have an Broker source. Known values are: "Enabled" and
                               "Disabled".
-                            "host": "str",  # Optional. Kafka endpoint host.
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
@@ -11616,8 +11611,8 @@ class DataflowEndpointOperations:
                             "authentication": {
                                 "method": "str",  # Mode of Authentication. Required.
                                   Known values are: "SystemAssignedManagedIdentity",
-                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
-                                  "Anonymous".
+                                  "UserAssignedManagedIdentity", "ServiceAccountToken",
+                                  "X509Certificate", and "Anonymous".
                                 "serviceAccountTokenSettings": {
                                     "audience": "str"  # Audience of the service
                                       account. Optional, defaults to the broker internal service
@@ -11646,8 +11641,7 @@ class DataflowEndpointOperations:
                               prefix if omitted.
                             "cloudEventAttributes": "str",  # Optional. Cloud event
                               mapping config. Known values are: "Propagate" and "CreateOrRemap".
-                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
+                            "host": "str",  # Optional. Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -11836,6 +11830,7 @@ class DataflowEndpointOperations:
                                       X.509 certificate. Required.
                                 }
                             },
+                            "host": "str",  # Kafka endpoint host. Required.
                             "batching": {
                                 "latencyMs": 5,  # Optional. Default value is 5.
                                   Batching latency in milliseconds.
@@ -11856,7 +11851,6 @@ class DataflowEndpointOperations:
                               properties. No effect if the endpoint is used as a source or if the
                               dataflow doesn't have an Broker source. Known values are: "Enabled" and
                               "Disabled".
-                            "host": "str",  # Optional. Kafka endpoint host.
                             "kafkaAcks": "str",  # Optional. Kafka acks. Can be all, one,
                               or zero. No effect if the endpoint is used as a source. Known values are:
                               "Zero", "One", and "All".
@@ -11878,8 +11872,8 @@ class DataflowEndpointOperations:
                             "authentication": {
                                 "method": "str",  # Mode of Authentication. Required.
                                   Known values are: "SystemAssignedManagedIdentity",
-                                  "UserAssignedManagedIdentity", "Sasl", "X509Certificate", and
-                                  "Anonymous".
+                                  "UserAssignedManagedIdentity", "ServiceAccountToken",
+                                  "X509Certificate", and "Anonymous".
                                 "serviceAccountTokenSettings": {
                                     "audience": "str"  # Audience of the service
                                       account. Optional, defaults to the broker internal service
@@ -11908,8 +11902,7 @@ class DataflowEndpointOperations:
                               prefix if omitted.
                             "cloudEventAttributes": "str",  # Optional. Cloud event
                               mapping config. Known values are: "Propagate" and "CreateOrRemap".
-                            "host": "aio-mq-dmqtt-frontend:8883",  # Optional. Default
-                              value is "aio-mq-dmqtt-frontend:8883". Host of the Broker in the form of
+                            "host": "str",  # Optional. Host of the Broker in the form of
                               :code:`<hostname>`::code:`<port>`. Optional; connects to Broker if
                               omitted.
                             "keepAliveSeconds": 60,  # Optional. Default value is 60.
@@ -12123,7 +12116,7 @@ class DataflowProfileOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow_profile` attribute.
     """
 
@@ -13096,7 +13089,7 @@ class DataflowOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~storage.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow` attribute.
     """
 

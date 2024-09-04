@@ -48,9 +48,14 @@ class MqServiceType(Enum):
 
 
 class KubernetesDistroType(Enum):
-    k3s = "k3s"
-    k8s = "k8s"
-    microk8s = "microk8s"
+    k3s = "K3s"
+    k8s = "K8s"
+    microk8s = "MicroK8s"
+
+
+class TrustSourceType(Enum):
+    self_signed = "SelfSigned"
+    customer_managed = "CustomerManaged"
 
 
 __all__ = [
@@ -58,6 +63,7 @@ __all__ = [
     "MqMemoryProfile",
     "MqServiceType",
     "KubernetesDistroType",
+    "TrustSourceType",
     "DEFAULT_X509_CA_VALID_DAYS",
     "KEYVAULT_DATAPLANE_API_VERSION",
     "KEYVAULT_CLOUD_API_VERSION",

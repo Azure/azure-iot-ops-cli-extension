@@ -1243,7 +1243,8 @@ def build_schema_registries_create_or_replace_request(
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DeviceRegistry/schemaRegistries/{schemaRegistryName}"  # pylint: disable=line-too-long
+    # TODO - @digimaun temp lowercased RP name
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/microsoft.deviceregistry/schemaRegistries/{schemaRegistryName}"  # pylint: disable=line-too-long
     path_format_arguments = {
         "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
         "resourceGroupName": _SERIALIZER.url(

@@ -60,6 +60,8 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
 
         check_manager.add_target_eval(target_name=target, status=CheckTaskStatus.success.value, value={"len(cluster/nodes)": len(nodes.items)})
         table = _generate_node_table(check_manager, nodes)
+
+        check_manager.add_display(target_name=target, display=Padding("Node Resources", padding))
         check_manager.add_display(target_name=target, display=Padding(table, padding))
 
     return check_manager.as_dict(as_list)
