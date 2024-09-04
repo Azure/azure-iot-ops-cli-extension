@@ -129,6 +129,7 @@ class InitTargets:
                 "clExtentionIds": cl_extension_ids,
                 "deployResourceSyncRules": self.deploy_resource_sync_rules,
                 "schemaRegistryId": self.schema_registry_resource_id,
+                "defaultDataflowinstanceCount": self.dataflow_profile_instances,
                 "brokerConfig": "",
                 "trustConfig": "",
             },
