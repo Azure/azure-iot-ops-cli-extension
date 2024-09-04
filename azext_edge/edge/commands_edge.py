@@ -18,8 +18,8 @@ from .providers.edge_api.orc import ORC_API_V1
 from .providers.orchestration.common import (
     KubernetesDistroType,
     TrustSourceType,
-    # TODO MqMemoryProfile,
-    # TODO MqServiceType,
+    MqMemoryProfile,
+    MqServiceType,
 )
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
@@ -117,31 +117,29 @@ def init(
     disable_rsync_rules: Optional[bool] = None,
     instance_name: Optional[str] = None,
     instance_description: Optional[str] = None,
-    broker_name: str = "broker",
     broker_config_file: Optional[str] = None,
-    broker_listener_name: str = "listener",
     add_insecure_listener: Optional[bool] = None,
-    broker_authn_name: str = "authn",
     dataflow_profile_instances: int = 1,
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
     trust_source: str = TrustSourceType.self_signed.value,
     enable_fault_tolerance: Optional[bool] = None,
     mi_user_assigned_identities: Optional[List[str]] = None,
+
+    # Broker
+    broker_memory_profile: str = MqMemoryProfile.medium.value,
+    broker_service_type: str = MqServiceType.cluster_ip.value,
+    broker_backend_partitions: int = 2,
+    broker_backend_workers: int = 2,
+    broker_backend_redundancy_factor: int = 2,
+    broker_frontend_workers: int = 2,
+    broker_frontend_replicas: int = 2,
+
+
     no_progress: Optional[bool] = None,
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
     **kwargs,
-
-
-    # mq_memory_profile: str = MqMemoryProfile.medium.value,
-    # mq_service_type: str = MqServiceType.cluster_ip.value,
-    # mq_backend_partitions: int = 2,
-    # mq_backend_workers: int = 2,
-    # mq_backend_redundancy_factor: int = 2,
-    # mq_frontend_workers: int = 2,
-    # mq_frontend_replicas: int = 2,
-
 
     # TODO - @digimaun csi_driver_config: Optional[List[str]] = None,
     # keyvault_resource_id: Optional[str] = None,  # TODO - @digimaun
@@ -175,11 +173,8 @@ def init(
         disable_rsync_rules=disable_rsync_rules,
         instance_name=instance_name,
         instance_description=instance_description,
-        broker_name=broker_name,
         broker_config=broker_config,
-        broker_listener_name=broker_listener_name,
         add_insecure_listener=add_insecure_listener,
-        broker_authn_name=broker_authn_name,
         dataflow_profile_instances=dataflow_profile_instances,
         container_runtime_socket=container_runtime_socket,
         kubernetes_distro=kubernetes_distro,

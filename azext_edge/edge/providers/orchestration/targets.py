@@ -6,7 +6,12 @@
 
 from typing import List, Optional, Tuple
 
-from ...common import DEFAULT_DATAFLOW_PROFILE
+from ...common import (
+    DEFAULT_BROKER,
+    DEFAULT_BROKER_AUTHN,
+    DEFAULT_BROKER_LISTENER,
+    DEFAULT_DATAFLOW_PROFILE,
+)
 from .common import KubernetesDistroType, TrustSourceType
 from .template import (
     M2_ENABLEMENT_TEMPLATE,
@@ -14,9 +19,9 @@ from .template import (
     TemplateBlueprint,
 )
 
-BROKER_NAME = "broker"
-BROKER_AUTHN_NAME = "broker-authn"
-BROKER_LISTENER_NAME = "broker-listener"
+BROKER_NAME = DEFAULT_BROKER
+BROKER_AUTHN_NAME = DEFAULT_BROKER_AUTHN
+BROKER_LISTENER_NAME = DEFAULT_BROKER_LISTENER
 DATAFLOW_PROFILE_NAME = DEFAULT_DATAFLOW_PROFILE
 
 
@@ -158,12 +163,10 @@ class InitTargets:
             instance["identity"]["type"] = "UserAssigned"
             instance["identity"]["userAssignedIdentities"] = mi_user_payload
 
-        # if self.broker_config:
-        #     broker_config = self.broker_config
-        #     if "properties" in broker_config:
-        #         broker_config = broker_config["properties"]
-        #     broker: dict = template.get_resource_defs("Microsoft.IoTOperations/instances/brokers")
-        #     broker["properties"] = broker_config
+        if self.broker_config:
+            if "properties" in self.broker_config:
+                self.broker_config = self.broker_config["properties"]
+            broker["properties"] = self.broker_config
 
         # if self.add_insecure_listener:
         #     # This solution entirely relies on the form of the "standard" template.
