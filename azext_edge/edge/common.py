@@ -237,6 +237,7 @@ class BundleResourceKind(Enum):
     pvc = "PersistentVolumeClaim"
     job = "Job"
     cronjob = "CronJob"
+    configmap = "ConfigMap"
 
 
 # MQ runtime attributes

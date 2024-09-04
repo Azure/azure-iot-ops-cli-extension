@@ -437,6 +437,21 @@ def mocked_list_persistent_volume_claims(mocked_client):
 
 
 @pytest.fixture
+def mocked_list_config_maps(mocked_client):
+    from kubernetes.client.models import V1ConfigMapList, V1ConfigMap, V1ObjectMeta
+
+    def _handle_list_config_maps(*args, **kwargs):
+        config_map = V1ConfigMap(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_config_map"))
+        config_map_list = V1ConfigMapList(items=[config_map])
+
+        return config_map_list
+
+    mocked_client.CoreV1Api().list_config_map_for_all_namespaces.side_effect = _handle_list_config_maps
+
+    yield mocked_client
+
+
+@pytest.fixture
 def mocked_mq_active_api(mocker):
     # Supports fetching events in support bundle as its based on MQ deployment
     patched_active_mq_api = mocker.patch("azext_edge.edge.providers.edge_api.MQ_ACTIVE_API")

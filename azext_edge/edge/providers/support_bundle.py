@@ -59,6 +59,7 @@ def build_bundle(
     from .support.otel import prepare_bundle as prepare_otel_bundle
     from .support.arcagents import prepare_bundle as prepare_arcagents_bundle
     from .support.meta import prepare_bundle as prepare_meta_bundle
+    from .support.schemaregistry import prepare_bundle as prepare_schema_registry_bundle
 
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
@@ -113,6 +114,9 @@ def build_bundle(
 
     # arc agent resources
     pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
+
+    # schema registry resources
+    pending_work["schemaregistry"] = prepare_schema_registry_bundle(log_age_seconds)
 
     # Collect common resources if any AIO service is deployed with any service selected.
     pending_work["common"] = prepare_shared_bundle()

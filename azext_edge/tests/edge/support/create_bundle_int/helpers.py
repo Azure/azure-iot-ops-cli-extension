@@ -24,6 +24,7 @@ from ....helpers import (
 logger = get_logger(__name__)
 BASE_ZIP_PATH = "__root__"
 WORKLOAD_TYPES = [
+    "configmap",
     "cronjob",
     "daemonset",
     "deployment",
@@ -271,8 +272,8 @@ def get_file_map(
         else:
             assert len(walk_result) == 2 + expected_arc_walk_result
     # remove ops_service that are not selectable by --svc
-    elif ops_service != "otel" and ops_service != "meta":
-        assert len(walk_result) == 2 + expected_arc_walk_result
+    elif ops_service not in ["otel", "meta", "schemaregistry"]:
+        assert len(walk_result) == 3 + expected_arc_walk_result
         assert not walk_result[ops_path]["folders"]
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = aio_namespace
