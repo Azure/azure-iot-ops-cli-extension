@@ -15,7 +15,7 @@ from ..edge_api.dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
 from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX, DATAFLOW_PROFILE_POD_PREFIX
 from .base import CheckManager, check_post_deployment, get_resources_by_name, get_resources_grouped_by_namespace
 from .base.display import basic_property_display, colorize_string
-from .base.pod import evaluate_pod_health, process_pod_status
+from .base.pod import evaluate_pod_health
 from .base.resource import filter_resources_by_name
 from .common import (
     DEFAULT_PADDING,
