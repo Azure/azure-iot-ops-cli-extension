@@ -103,6 +103,7 @@ class InitTargets:
         esa_extension["identity"] = {"type": "SystemAssigned"}
         esa_extension["properties"]["extensionType"] = "microsoft.arc.containerstorage"
         esa_extension["properties"]["version"] = "2.1.0-preview"
+        esa_extension["properties"]["releaseTrain"] = "stable"
 
         esa_extension_config = {
             "edgeStorageConfiguration.create": "true",
@@ -149,11 +150,11 @@ class InitTargets:
 
             template.add_resource("dataflowProfile", get_basic_dataflow_profile(instance_name=self.instance_name))
 
+        instance["identity"] = {}
         if self.mi_user_assigned_identities:
             mi_user_payload = {}
             for mi in self.mi_user_assigned_identities:
                 mi_user_payload[mi] = {}
-            instance["identity"] = {}
             instance["identity"]["type"] = "UserAssigned"
             instance["identity"]["userAssignedIdentities"] = mi_user_payload
 
