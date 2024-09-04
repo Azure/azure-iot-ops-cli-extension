@@ -103,6 +103,7 @@ class InitTargets:
         esa_extension["identity"] = {"type": "SystemAssigned"}
         esa_extension["properties"]["extensionType"] = "microsoft.arc.containerstorage"
         esa_extension["properties"]["version"] = "2.1.0-preview"
+        esa_extension["properties"]["releaseTrain"] = "stable"
 
         esa_extension_config = {
             "edgeStorageConfiguration.create": "true",
