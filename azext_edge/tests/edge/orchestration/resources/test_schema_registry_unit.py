@@ -318,6 +318,9 @@ def test_schema_registry_create(
     create_registry_endpoint = get_schema_registry_endpoint(
         resource_group_name=resource_group_name, registry_name=registery_name
     )
+    # TODO - @digimaun - one-off remove
+    create_registry_endpoint = create_registry_endpoint.replace(SCHEMA_REGISTRY_RP, SCHEMA_REGISTRY_RP.lower())
+
     mocked_responses.add(
         method=responses.PUT,
         url=create_registry_endpoint,
