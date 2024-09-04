@@ -53,6 +53,7 @@ def evaluate_pod_health(
         table = Table.grid(padding=(0, 0, 0, 2))
 
     pods_captured = True
+    add_footer = False
 
     # If pods are not provided, get them
     if pods is None:
@@ -64,7 +65,7 @@ def evaluate_pod_health(
         if not pods_captured:
             pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=label)
 
-        process_pod_status(
+        all_healthy = process_pod_status(
             check_manager=check_manager,
             table=table,
             target=target,
@@ -75,11 +76,24 @@ def evaluate_pod_health(
             detail_level=detail_level,
         )
 
-    check_manager.add_display(
-        target_name=target,
-        namespace=namespace,
-        display=Padding(table, (0, 0, 0, padding)),
-    )
+        add_footer = add_footer or not all_healthy
+
+    if pods:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(table, (0, 0, 0, padding)),
+        )
+
+        if add_footer:
+            footer = ":magnifying_glass_tilted_left:" + colorize_string(
+                " See more details by attaching : --detail-level 1 or --detail-level 2"
+            )
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(footer, (0, 0, 0, padding)),
+            )
 
 
 def process_pod_status(
@@ -91,15 +105,17 @@ def process_pod_status(
     namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     table: Optional[Table] = None,
-) -> None:
+) -> bool:
 
     def _decorate_pod_condition(condition: bool) -> Tuple[str, str]:
         if condition:
             return f"[green]{condition}[/green]", CheckTaskStatus.success.value
         return f"[red]{condition}[/red]", CheckTaskStatus.error.value
 
+    pod_eval_statuses = []
+
     if not pods:
-        return add_display_and_eval(
+        add_display_and_eval(
             check_manager=check_manager,
             target_name=target,
             display_text=f"{target_service_pod}* [yellow]not detected[/yellow].",
@@ -109,6 +125,7 @@ def process_pod_status(
             namespace=namespace,
             padding=(0, 0, 0, display_padding)
         )
+        return False
 
     for pod in pods:
         target_service_pod = f"pod/{pod.metadata.name}"
@@ -175,11 +192,10 @@ def process_pod_status(
         elif unknown_conditions_display_list and pod_eval_status != CheckTaskStatus.error.value:
             pod_eval_status = CheckTaskStatus.warning.value
 
+        pod_eval_statuses.append(pod_eval_status)
+
         _add_pod_health_display(
-            check_manager=check_manager,
             table=table,
-            target=target,
-            namespace=namespace,
             pod_name=pod_name,
             pod_phase_deco=pod_phase_deco,
             pod_conditions=pod_conditions,
@@ -187,7 +203,6 @@ def process_pod_status(
             conditions_readiness=conditions_readiness,
             conditions_display_list=conditions_display_list,
             unknown_conditions_display_list=unknown_conditions_display_list,
-            display_padding=display_padding,
             detail_level=detail_level,
         )
 
@@ -199,11 +214,11 @@ def process_pod_status(
             resource_name=target_service_pod,
         )
 
+    # Return True if all pods are healthy
+    return all([status == CheckTaskStatus.success.value for status in pod_eval_statuses])
+
 
 def _add_pod_health_display(
-    check_manager: CheckManager,
-    target: str,
-    namespace: str,
     pod_name: str,
     pod_phase_deco: str,
     pod_conditions: List,
@@ -211,28 +226,15 @@ def _add_pod_health_display(
     conditions_readiness: bool,
     conditions_display_list: List[Tuple[str, str]],
     unknown_conditions_display_list: List[Tuple[str, str]],
-    display_padding: int,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     table: Optional[Table] = None,
 ) -> None:
-    pod_health_status = "[green]Healthy[/green]"
-
-    if pod_eval_status == CheckTaskStatus.error.value:
-        pod_health_status = "[red]Unhealthy[/red]"
-    elif pod_eval_status == CheckTaskStatus.warning.value:
-        pod_health_status = "[yellow]Indeterminate[/yellow]"
-
     pod_health_text = f"Pod {{[bright_blue]{pod_name}[/bright_blue]}}"
 
     if detail_level != ResourceOutputDetailLevel.summary.value:
         pod_health_text = f"\n{pod_health_text}"
 
     if detail_level == ResourceOutputDetailLevel.summary.value:
-        # check_manager.add_display(
-        #     target_name=target,
-        #     namespace=namespace,
-        #     display=Padding(pod_health_text, (0, 0, 0, display_padding)),
-        # )
         status_obj = CheckTaskStatus(pod_eval_status)
         emoji = status_obj.emoji
         color = status_obj.color

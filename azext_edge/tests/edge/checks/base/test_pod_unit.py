@@ -10,10 +10,10 @@ from unittest.mock import ANY
 
 from azext_edge.edge.common import CheckTaskStatus, PodState
 from azext_edge.edge.providers.check.base import (
-    decorate_pod_phase,
     evaluate_pod_health,
     process_pod_status,
 )
+from azext_edge.edge.providers.check.base.pod import decorate_pod_phase
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 from azext_edge.tests.edge.checks.conftest import generate_pod_stub
 from ....generators import generate_random_string
@@ -362,6 +362,7 @@ def test_evaluate_pod_health(
     ),
 ])
 def test_process_pod_status(
+    mocker,
     detail_level,
     eval_status,
     eval_value,
@@ -375,7 +376,9 @@ def test_process_pod_status(
 ):
     target_name = generate_random_string()
 
-    process_pod_status(
+    mocked_table = mocker.patch("rich.table.Table", return_value=None)
+
+    all_green = process_pod_status(
         check_manager=mocked_check_manager,
         target=target_name,
         target_service_pod=target_service_pod,
@@ -383,6 +386,7 @@ def test_process_pod_status(
         display_padding=padding,
         namespace=namespace,
         detail_level=detail_level,
+        table=mocked_table
     )
 
     if not pods:
@@ -397,6 +401,7 @@ def test_process_pod_status(
             padding=(0, 0, 0, padding)
         )
 
+        assert all_green is False
     else:
         assert mocked_check_manager.set_target_conditions.called or mocked_check_manager.add_target_conditions.called
         mocked_check_manager.add_target_eval.assert_any_call(
@@ -406,3 +411,4 @@ def test_process_pod_status(
             value=eval_value,
             resource_name=f"pod/{resource_name}"
         )
+        assert all_green == (eval_status == CheckTaskStatus.success.value)

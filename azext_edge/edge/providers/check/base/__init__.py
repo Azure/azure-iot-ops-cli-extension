@@ -6,15 +6,11 @@
 
 from .check_manager import CheckManager
 from .deployment import check_pre_deployment, check_post_deployment
-from .display import add_display_and_eval, display_as_list, process_value_color
+from .display import add_display_and_eval, display_as_list
 from .node import check_nodes
-from .pod import (
-    decorate_pod_phase,
-    process_pod_status,
-    evaluate_pod_health
-)
+from .pod import evaluate_pod_health, process_pod_status
 from .resource import (
-    decorate_resource_status,
+    enumerate_ops_service_resources,
     filter_resources_by_name,
     filter_resources_by_namespace,
     generate_target_resource_name,
@@ -24,7 +20,8 @@ from .resource import (
     process_dict_resource,
     process_list_resource,
     process_resource_properties,
-    process_resource_property_by_type
+    validate_one_of_conditions,
+    process_custom_resource_status,
 )
 
 __all__ = [
@@ -33,9 +30,8 @@ __all__ = [
     "check_nodes",
     "check_post_deployment",
     "check_pre_deployment",
-    "decorate_pod_phase",
-    "decorate_resource_status",
     "display_as_list",
+    "enumerate_ops_service_resources",
     "evaluate_pod_health",
     "filter_resources_by_name",
     "filter_resources_by_namespace",
@@ -47,6 +43,6 @@ __all__ = [
     "process_list_resource",
     "process_pod_status",
     "process_resource_properties",
-    "process_resource_property_by_type",
-    "process_value_color"
+    "validate_one_of_conditions",
+    "process_custom_resource_status",
 ]
