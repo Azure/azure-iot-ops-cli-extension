@@ -29,7 +29,6 @@ from .conftest import (
 from ...generators import generate_random_string
 
 dataflow_conditions = [
-    "spec.profileRef",
     "len(spec.operations)<=3",
     "spec.operations[*].sourceSettings.endpointRef",
     "ref(spec.operations[*].sourceSettings.endpointRef).endpointType in ('kafka','mqtt')",
@@ -499,7 +498,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     },
                     "spec": {
                         "mode": "Disabled",
-                        "profileRef": "default",
+                        "profileRef": DEFAULT_DATAFLOW_PROFILE,
                         "operations": [
                             {
                                 "operationType": "source",
@@ -518,7 +517,7 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                 }
             ],
             # profiles
-            [{"metadata": {"name": "default"}}],
+            [{"metadata": {"name": DEFAULT_DATAFLOW_PROFILE}}],
             # endpoints
             [
                 {
@@ -547,7 +546,6 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                     ("value/spec.mode", "Disabled"),
                 ]
             ],
-
         ),
         # no dataflows
         (
@@ -624,13 +622,14 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "kafka",
-                        "authentication": {"method": "authMethod"},
                         "kafkaSettings": {
                             "host": "kafkaHost",
+                            "authentication": {"method": "authMethod"},
+                            "cloudEventAttributes": "Propagate",
                             "consumerGroupId": None,
                             "compression": "compression",
                             "kafkaAcks": 3,
-                            "tls": {"mode": "Enabled"},
+                            # no TLS
                             "batching": {"latencyMs": 300},
                         },
                     },
@@ -642,8 +641,10 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "localstorage",
-                        "authentication": {"method": "authMethod"},
-                        "localStorageSettings": {"persistentVolumeClaimRef": "ref"},
+                        "localStorageSettings": {
+                            "persistentVolumeClaimRef": "ref",
+                            "authentication": {"method": "authMethod"},
+                        },
                     },
                 },
                 # Fabric Onelake
@@ -653,9 +654,9 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "fabriconelake",
-                        "authentication": {"method": "authMethod"},
                         "fabricOneLakeSettings": {
                             "host": "fabric_host",
+                            "authentication": {"method": "authMethod"},
                             "names": {"lakehouseName": "lakehouse", "workspaceName": "workspaceName"},
                             "batching": {"latencySeconds": 2},
                         },
@@ -668,8 +669,11 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "datalakestorage",
-                        "authentication": {"method": "authMethod"},
-                        "datalakeStorageSettings": {"host": "datalakeHost", "batching": {"latencySeconds": 12}},
+                        "datalakeStorageSettings": {
+                            "host": "datalakeHost",
+                            "authentication": {"method": "authMethod"},
+                            "batching": {"latencySeconds": 12},
+                        },
                     },
                 },
                 # dataExplorer
@@ -679,8 +683,8 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "dataExplorer",
-                        "authentication": {"method": "authMethod"},
                         "dataExplorerSettings": {
+                            "authentication": {"method": "authMethod"},
                             "database": "databse",
                             "host": "data_explorer_host",
                             "batching": {"latencySeconds": 3},
@@ -694,10 +698,11 @@ def test_evaluate_dataflows(
                     },
                     "spec": {
                         "endpointType": "mqtt",
-                        "authentication": {"method": "authMethod"},
                         "mqttSettings": {
+                            "authentication": {"method": "authMethod"},
                             "host": "mqttHost",
                             "protocol": "Websockets",
+                            "cloudEventAttributes": "CreateOrRemap",
                             "clientIdPrefix": None,
                             "qos": 3,
                             "maxInflightMessages": 100,
@@ -877,7 +882,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "success"),
                     (
                         "name",
-                        "default",
+                        DEFAULT_DATAFLOW_PROFILE,
                     ),
                     ("value", {"spec.instanceCount": 1}),
                 ],
@@ -986,10 +991,7 @@ def test_evaluate_dataflow_endpoints(
                     "spec": {
                         "instanceCount": 1,
                     },
-                    "status": {
-                        "configStatusLevel": "warn",
-                        "statusDescription": "this should display a warning"
-                    },
+                    "status": {"configStatusLevel": "warn", "statusDescription": "this should display a warning"},
                 },
             ],
             # pods
@@ -1011,7 +1013,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "warning"),
                     (
                         "name",
-                        "default",
+                        DEFAULT_DATAFLOW_PROFILE,
                     ),
                     ("value/status/configStatusLevel", "warn"),
                     ("value/status/statusDescription", "this should display a warning"),
@@ -1020,7 +1022,7 @@ def test_evaluate_dataflow_endpoints(
                     ("status", "success"),
                     (
                         "name",
-                        "default",
+                        DEFAULT_DATAFLOW_PROFILE,
                     ),
                     ("value", {"spec.instanceCount": 1}),
                 ],
