@@ -11,7 +11,7 @@ from kubernetes.client.models import V1Pod
 from typing import List, Optional, Tuple
 
 from .check_manager import CheckManager
-from .display import add_display_and_eval
+from .display import add_display_and_eval, colorize_string
 from ..common import COLOR_STR_FORMAT, POD_CONDITION_TEXT_MAP, ResourceOutputDetailLevel
 from ...base import get_namespaced_pods_by_prefix
 from ....common import CheckTaskStatus
@@ -41,12 +41,16 @@ def evaluate_pod_health(
     table = Table(
         show_header=True, header_style="bold", show_lines=True, caption_justify="left"
     )
-    for column_name, justify in [
-        ("Pod Name", "left"),
-        ("Phase", "left"),
-        ("Conditions", "left"),
-    ]:
-        table.add_column(column_name, justify=f"{justify}")
+
+    if detail_level != ResourceOutputDetailLevel.summary.value:
+        for column_name, justify in [
+            ("Pod Name", "left"),
+            ("Phase", "left"),
+            ("Conditions", "left"),
+        ]:
+            table.add_column(column_name, justify=f"{justify}")
+    else:
+        table = Table.grid(padding=(0, 0, 0, 2))
 
     pods_captured = True
 
@@ -71,12 +75,11 @@ def evaluate_pod_health(
             detail_level=detail_level,
         )
 
-    if detail_level != ResourceOutputDetailLevel.summary.value:
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(table, (0, 0, 0, padding)),
-        )
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding(table, (0, 0, 0, padding)),
+    )
 
 
 def process_pod_status(
@@ -219,17 +222,21 @@ def _add_pod_health_display(
     elif pod_eval_status == CheckTaskStatus.warning.value:
         pod_health_status = "[yellow]Indeterminate[/yellow]"
 
-    pod_health_text = f"Pod {{[bright_blue]{pod_name}[/bright_blue]}} is {pod_health_status}"
+    pod_health_text = f"Pod {{[bright_blue]{pod_name}[/bright_blue]}}"
 
     if detail_level != ResourceOutputDetailLevel.summary.value:
         pod_health_text = f"\n{pod_health_text}"
 
     if detail_level == ResourceOutputDetailLevel.summary.value:
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(pod_health_text, (0, 0, 0, display_padding)),
-        )
+        # check_manager.add_display(
+        #     target_name=target,
+        #     namespace=namespace,
+        #     display=Padding(pod_health_text, (0, 0, 0, display_padding)),
+        # )
+        status_obj = CheckTaskStatus(pod_eval_status)
+        emoji = status_obj.emoji
+        color = status_obj.color
+        table.add_row(colorize_string(value=emoji, color=color), pod_health_text)
     else:
         pod_conditions_text = "N/A"
 
