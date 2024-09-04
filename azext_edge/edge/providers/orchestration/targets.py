@@ -6,18 +6,18 @@
 
 from typing import List, Optional, Tuple
 
+from ...common import DEFAULT_DATAFLOW_PROFILE
+from .common import KubernetesDistroType, TrustSourceType
 from .template import (
     M2_ENABLEMENT_TEMPLATE,
     M2_INSTANCE_TEMPLATE,
     TemplateBlueprint,
-    get_basic_dataflow_profile,
 )
-from .common import KubernetesDistroType, TrustSourceType
-
 
 BROKER_NAME = "broker"
 BROKER_AUTHN_NAME = "broker-authn"
 BROKER_LISTENER_NAME = "broker-listener"
+DATAFLOW_PROFILE_NAME = DEFAULT_DATAFLOW_PROFILE
 
 
 class InitTargets:
@@ -100,7 +100,6 @@ class InitTargets:
 
         # TODO - @digimaun potentially temp
         esa_extension = template.get_resource_by_key("edge_storage_accelerator_extension")
-        esa_extension["identity"] = {"type": "SystemAssigned"}
         esa_extension["properties"]["extensionType"] = "microsoft.arc.containerstorage"
         esa_extension["properties"]["version"] = "2.1.0-preview"
         esa_extension["properties"]["releaseTrain"] = "stable"
@@ -141,14 +140,14 @@ class InitTargets:
         broker = template.get_resource_by_key("broker")
         broker_authn = template.get_resource_by_key("broker_authn")
         broker_listener = template.get_resource_by_key("broker_listener")
+        dataflow_profile = template.get_resource_by_key("dataflow_profile")
 
         if self.instance_name:
             instance["name"] = self.instance_name
             broker["name"] = f"{self.instance_name}/{BROKER_NAME}"
             broker_authn["name"] = f"{self.instance_name}/{BROKER_NAME}/{BROKER_AUTHN_NAME}"
             broker_listener["name"] = f"{self.instance_name}/{BROKER_NAME}/{BROKER_LISTENER_NAME}"
-
-            template.add_resource("dataflowProfile", get_basic_dataflow_profile(instance_name=self.instance_name))
+            dataflow_profile["name"] = f"{self.instance_name}/{DATAFLOW_PROFILE_NAME}"
 
         if self.mi_user_assigned_identities:
             mi_user_payload = {}
