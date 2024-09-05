@@ -84,6 +84,9 @@ def test_connected_cluster_queries(
         | where properties.ExtensionType startswith 'microsoft.iotoperations'
             or properties.ExtensionType =~ 'microsoft.deviceregistry.assets'
             or properties.ExtensionType =~ 'microsoft.azurekeyvaultsecretsprovider'
+            or properties.ExtensionType =~ 'microsoft.secretsynccontroller'
+            or properties.ExtensionType =~ 'microsoft.openservicemesh'
+            or properties.ExtensionType =~ 'microsoft.arc.containerstorage'
         | project id, name, apiVersion
         """
     )

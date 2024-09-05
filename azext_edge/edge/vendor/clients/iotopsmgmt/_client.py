@@ -35,23 +35,23 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
     """Microsoft.IoTOperations Resource Provider management API.
 
     :ivar operations: Operations operations
-    :vartype operations: storage.mgmt.operations.Operations
+    :vartype operations: aziotops.mgmt.operations.Operations
     :ivar instance: InstanceOperations operations
-    :vartype instance: storage.mgmt.operations.InstanceOperations
+    :vartype instance: aziotops.mgmt.operations.InstanceOperations
     :ivar broker: BrokerOperations operations
-    :vartype broker: storage.mgmt.operations.BrokerOperations
+    :vartype broker: aziotops.mgmt.operations.BrokerOperations
     :ivar broker_authentication: BrokerAuthenticationOperations operations
-    :vartype broker_authentication: storage.mgmt.operations.BrokerAuthenticationOperations
+    :vartype broker_authentication: aziotops.mgmt.operations.BrokerAuthenticationOperations
     :ivar broker_authorization: BrokerAuthorizationOperations operations
-    :vartype broker_authorization: storage.mgmt.operations.BrokerAuthorizationOperations
+    :vartype broker_authorization: aziotops.mgmt.operations.BrokerAuthorizationOperations
     :ivar broker_listener: BrokerListenerOperations operations
-    :vartype broker_listener: storage.mgmt.operations.BrokerListenerOperations
+    :vartype broker_listener: aziotops.mgmt.operations.BrokerListenerOperations
     :ivar dataflow_endpoint: DataflowEndpointOperations operations
-    :vartype dataflow_endpoint: storage.mgmt.operations.DataflowEndpointOperations
+    :vartype dataflow_endpoint: aziotops.mgmt.operations.DataflowEndpointOperations
     :ivar dataflow_profile: DataflowProfileOperations operations
-    :vartype dataflow_profile: storage.mgmt.operations.DataflowProfileOperations
+    :vartype dataflow_profile: aziotops.mgmt.operations.DataflowProfileOperations
     :ivar dataflow: DataflowOperations operations
-    :vartype dataflow: storage.mgmt.operations.DataflowOperations
+    :vartype dataflow: aziotops.mgmt.operations.DataflowOperations
     :param subscription_id: The ID of the target subscription. The value must be an UUID. Required.
     :type subscription_id: str
     :param credential: Credential needed for the client to connect to Azure. Required.

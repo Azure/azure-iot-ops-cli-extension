@@ -8,10 +8,10 @@ import pytest
 
 from azext_edge.edge.common import CheckTaskStatus, PodState
 from azext_edge.edge.providers.check.base import (
-    decorate_pod_phase,
     evaluate_pod_health,
     process_pod_status,
 )
+from azext_edge.edge.providers.check.base.pod import decorate_pod_phase
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 from azext_edge.tests.edge.checks.conftest import generate_pod_stub
 from ....generators import generate_random_string

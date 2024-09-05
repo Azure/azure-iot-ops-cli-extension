@@ -12,7 +12,6 @@ from knack.log import get_logger
 from rich.console import Console
 
 from ....util.az_client import (
-    get_authz_client,
     get_registry_mgmt_client,
     get_storage_mgmt_client,
     parse_resource_id,
@@ -20,7 +19,7 @@ from ....util.az_client import (
 )
 from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
-from ..permissions import PermissionManager
+from ..permissions import PermissionManager, ROLE_DEF_FORMAT_STR
 
 logger = get_logger(__name__)
 
@@ -33,7 +32,6 @@ if TYPE_CHECKING:
     )
 
 STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID = "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
-ROLE_DEF_FORMAT_STR = "/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/{role_id}"
 
 
 def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str):
@@ -50,9 +48,6 @@ class SchemaRegistries(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id,
-        )
-        self.authz_client = get_authz_client(
             subscription_id=self.default_subscription_id,
         )
         self.ops: "SchemaRegistriesOperations" = self.registry_mgmt_client.schema_registries

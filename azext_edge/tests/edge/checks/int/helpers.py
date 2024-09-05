@@ -54,10 +54,10 @@ def assert_eval_core_service_runtime(
 ):
     assert post_deployment["evalCoreServiceRuntime"]
     assert post_deployment["evalCoreServiceRuntime"]["description"] == f"Evaluate {description_name} core service"
-    overall_status = "success"
+    overall_status = "skipped"
     runtime_resource = post_deployment["evalCoreServiceRuntime"]["targets"]["coreServiceRuntimeResource"]
     for namespace in runtime_resource.keys():
-        namespace_status = "success"
+        namespace_status = "skipped"
         evals = runtime_resource[namespace]["evaluations"]
         kubectl_pods = get_kubectl_workload_items(
             prefixes=pod_prefix,
@@ -197,12 +197,10 @@ def assert_general_eval_custom_resources(
     namespace_dict = post_deployment[key]["targets"][target_key]
     for namespace, kubectl_items in sorted_items.items():
         assert namespace in namespace_dict
-        check_names = []
         # filter out the kubernetes runtime resource evals using /, only check the CRD evals
         crd_evals = [item for item in namespace_dict[namespace]["evaluations"] if "/" not in item.get("name", "")]
-        for item in crd_evals:
-            if item.get("name"):
-                check_names.append(item.get("name"))
+        # filter checks by unique checks per item name
+        check_names = {item.get("name") for item in crd_evals if item.get("name")}
         # if using resource name filter, could have missing items
         assert len(check_names) <= len(kubectl_items)
         for name in check_names:
@@ -240,7 +238,7 @@ def run_check_command(
     ops_service: str,
     resource_api: EdgeResourceApi,
     resource_kind: str,
-    resource_match: str,
+    resource_match: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], bool]:
     try:
         aio_check = run(f"kubectl api-resources --api-group={resource_api.group}")

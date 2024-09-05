@@ -68,14 +68,14 @@ class CheckManager:
         self.check_desc = check_desc
         self.targets = {}
         self.target_displays = {}
-        self.worst_status = CheckTaskStatus.success.value
+        self.worst_status = CheckTaskStatus.skipped.value
 
     def add_target(
         self,
         target_name: str,
         namespace: str = ALL_NAMESPACES_TARGET,
         conditions: List[str] = None,
-        description: str = None
+        description: str = None,
     ) -> None:
         # TODO: maybe make a singular taget into a class for consistent structure?
         if target_name not in self.targets:
@@ -85,7 +85,7 @@ class CheckManager:
             self.targets[target_name][namespace] = {}
         self.targets[target_name][namespace]["conditions"] = conditions
         self.targets[target_name][namespace]["evaluations"] = []
-        self.targets[target_name][namespace]["status"] = CheckTaskStatus.success.value
+        self.targets[target_name][namespace]["status"] = CheckTaskStatus.skipped.value
         if description:
             self.targets[target_name][namespace]["description"] = description
 
@@ -124,20 +124,23 @@ class CheckManager:
         self._process_status(target_name, status, namespace)
 
     def _process_status(self, target_name: str, status: str, namespace: str = ALL_NAMESPACES_TARGET) -> None:
-        existing_status = self.targets[target_name].get("status", CheckTaskStatus.success.value)
-        if existing_status != status:
-            if existing_status == CheckTaskStatus.success.value and status in [
-                CheckTaskStatus.warning.value,
-                CheckTaskStatus.error.value,
-                CheckTaskStatus.skipped.value,
-            ]:
+        namespace_status = self.targets[target_name][namespace].get("status")
+        # success only overrides skipped status (default)
+        if status == CheckTaskStatus.success.value:
+            if namespace_status == CheckTaskStatus.skipped.value:
                 self.targets[target_name][namespace]["status"] = status
+            if self.worst_status == CheckTaskStatus.skipped.value:
                 self.worst_status = status
-            elif existing_status in [
-                CheckTaskStatus.warning.value, CheckTaskStatus.skipped.value
-            ] and status in [CheckTaskStatus.error.value]:
+        # warning overrides any state that is not "error"
+        elif status == CheckTaskStatus.warning.value:
+            if namespace_status != CheckTaskStatus.error.value:
                 self.targets[target_name][namespace]["status"] = status
+            if self.worst_status != CheckTaskStatus.error.value:
                 self.worst_status = status
+        # error overrides any state
+        elif status == CheckTaskStatus.error.value:
+            self.targets[target_name][namespace]["status"] = status
+            self.worst_status = status
 
     def add_display(self, target_name: str, display: Any, namespace: str = ALL_NAMESPACES_TARGET) -> None:
         if target_name not in self.target_displays:
