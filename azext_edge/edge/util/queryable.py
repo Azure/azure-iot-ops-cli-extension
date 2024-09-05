@@ -34,4 +34,4 @@ class Queryable:
         return self._process_query_result(result=self.resource_graph.query_resources(query=query), first=first)
 
     def get_resource_group(self, name: str) -> dict:
-        return self.resource_client.resource_groups.get(resource_group_name=name).as_dict()
+        return self.resource_client.resource_groups.get(resource_group_name=name)

@@ -103,6 +103,30 @@ class CoreServiceResourceKinds(Enum):
     RUNTIME_RESOURCE = "coreServiceRuntimeResource"
 
 
+# Dataflow properties
+class DataflowOperationType(ListableEnum):
+    """
+    Dataflow Profile Operation Type:
+    """
+
+    source = "source"
+    destination = "destination"
+    builtin_transformation = "builtintransformation"
+
+
+class DataflowEndpointType(ListableEnum):
+    """
+    Dataflow Endpoint Type:
+    """
+
+    data_explorer = "dataexplorer"
+    datalake = "datalakestorage"
+    fabric_onelake = "fabriconelake"
+    kafka = "kafka"
+    local_storage = "localstorage"
+    mqtt = "mqtt"
+
+
 # Akri runtime attributes
 AKRI_PREFIX = "aio-akri-"
 
@@ -132,6 +156,8 @@ AIO_SUPPORTED_ARCHITECTURES = ["amd64"]  # someday arm64
 DISPLAY_BYTES_PER_GIGABYTE = 10 ** 9
 
 # UI constants
+DEFAULT_PADDING = 8
 PADDING_SIZE = 4
+DEFAULT_PROPERTY_DISPLAY_COLOR = "cyan"
 
 COLOR_STR_FORMAT = "[{color}]{value}[/{color}]"
