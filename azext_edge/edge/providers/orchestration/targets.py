@@ -236,12 +236,12 @@ class InitTargets:
                         continue
 
                     if any([to_process_config_map[config] < min_value, to_process_config_map[config] > max_value]):
-                        error_msg = f"{config} value must be"
+                        error_msg = f"{config} value range"
 
                         if min_value:
-                            error_msg += f" >{min_value}"
+                            error_msg += f" min:{min_value}"
                         if max_value:
-                            error_msg += f" <{max_value}"
+                            error_msg += f" max:{max_value}"
                         validation_errors.append(error_msg)
 
         if validation_errors:
