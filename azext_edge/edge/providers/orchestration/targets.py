@@ -40,8 +40,17 @@ class InitTargets:
         instance_description: Optional[str] = None,
         enable_fault_tolerance: Optional[bool] = None,
         dataflow_profile_instances: int = 1,
+        # Broker
         broker_config: Optional[dict] = None,
+        broker_memory_profile: Optional[str] = None,
+        broker_service_type: Optional[str] = None,
+        broker_backend_partitions: Optional[int] = None,
+        broker_backend_workers: Optional[int] = None,
+        broker_backend_redundancy_factor: Optional[int] = None,
+        broker_frontend_workers: Optional[int] = None,
+        broker_frontend_replicas: Optional[int] = None,
         add_insecure_listener: Optional[bool] = None,
+        # Akri
         kubernetes_distro: str = KubernetesDistroType.k8s.value,
         container_runtime_socket: Optional[str] = None,
         trust_source: str = TrustSourceType.self_signed.value,
@@ -60,8 +69,20 @@ class InitTargets:
         self.instance_description = instance_description
         self.enable_fault_tolerance = enable_fault_tolerance
         self.dataflow_profile_instances = dataflow_profile_instances
-        self.broker_config = broker_config
+
+        # Broker
         self.add_insecure_listener = add_insecure_listener
+        self.broker_config = broker_config
+        self.broker_memory_profile = broker_memory_profile
+        self.broker_memory_profile = broker_memory_profile
+        self.broker_service_type = broker_service_type
+        self.broker_backend_partitions = broker_backend_partitions
+        self.broker_backend_workers = broker_backend_workers
+        self.broker_backend_redundancy_factor = broker_backend_redundancy_factor
+        self.broker_frontend_workers = broker_frontend_workers
+        self.broker_frontend_replicas = broker_frontend_replicas
+
+        # Akri
         self.kubernetes_distro = kubernetes_distro
         self.container_runtime_socket = container_runtime_socket
 
@@ -136,7 +157,7 @@ class InitTargets:
                 "deployResourceSyncRules": self.deploy_resource_sync_rules,
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "defaultDataflowinstanceCount": self.dataflow_profile_instances,
-                "brokerConfig": "",
+                "brokerConfig": self.get_broker_config_target_map(),
                 "trustConfig": "",
             },
             template_blueprint=M2_INSTANCE_TEMPLATE,
@@ -176,3 +197,18 @@ class InitTargets:
             )
 
         return template.content, parameters
+
+    def get_broker_config_target_map(self):
+        broker_config_map = {
+            "frontendReplicas": self.broker_frontend_replicas,
+            "frontendWorkers": self.broker_backend_workers,
+            "backendRedundancyFactor": self.broker_backend_redundancy_factor,
+            "backendWorkers": self.broker_backend_workers,
+            "backendPartitions": self.broker_backend_partitions,
+            "memoryProfile": self.broker_memory_profile,
+            "serviceType": self.broker_service_type,
+        }
+        for config in broker_config_map:
+            if not broker_config_map[config]:
+                del broker_config_map[config]
+        return broker_config_map

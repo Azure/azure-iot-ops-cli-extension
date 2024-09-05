@@ -115,8 +115,6 @@ def init(
     disable_rsync_rules: Optional[bool] = None,
     instance_name: Optional[str] = None,
     instance_description: Optional[str] = None,
-    broker_config_file: Optional[str] = None,
-    add_insecure_listener: Optional[bool] = None,
     dataflow_profile_instances: int = 1,
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
@@ -124,6 +122,7 @@ def init(
     enable_fault_tolerance: Optional[bool] = None,
     mi_user_assigned_identities: Optional[List[str]] = None,
     # Broker
+    broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
     broker_service_type: str = MqServiceType.cluster_ip.value,
     broker_backend_partitions: int = 2,
@@ -131,6 +130,7 @@ def init(
     broker_backend_redundancy_factor: int = 2,
     broker_frontend_workers: int = 2,
     broker_frontend_replicas: int = 2,
+    add_insecure_listener: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     context_name: Optional[str] = None,
     ensure_latest: Optional[bool] = None,
@@ -173,7 +173,6 @@ def init(
         disable_rsync_rules=disable_rsync_rules,
         instance_name=instance_name,
         instance_description=instance_description,
-        broker_config=broker_config,
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
         container_runtime_socket=container_runtime_socket,
@@ -183,6 +182,7 @@ def init(
         schema_registry_resource_id=schema_registry_resource_id,
         mi_user_assigned_identities=mi_user_assigned_identities,
         # Broker
+        broker_config=broker_config,
         broker_memory_profile=broker_memory_profile,
         broker_service_type=broker_service_type,
         broker_backend_partitions=broker_backend_partitions,
@@ -201,6 +201,7 @@ def delete(
     confirm_yes: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     force: Optional[bool] = None,
+    include_dependencies: Optional[bool] = None,
 ):
     from .providers.orchestration import delete_ops_resources
 
@@ -211,6 +212,7 @@ def delete(
         confirm_yes=confirm_yes,
         no_progress=no_progress,
         force=force,
+        include_dependencies=include_dependencies,
     )
 
 
