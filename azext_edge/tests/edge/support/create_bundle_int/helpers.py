@@ -134,7 +134,9 @@ def check_custom_resource_files(
     if not resource_api.is_deployed():
         return
 
-    resource_map = get_kubectl_custom_items(resource_api=resource_api, namespace=namespace, include_plural=True)
+    resource_map = get_kubectl_custom_items(
+        resource_api=resource_api, namespace=namespace, include_plural=True
+    )
     for kind in resource_api.kinds:
         cluster_resources = resource_map[kind]
         # subresources like scale will not have a plural
@@ -172,7 +174,9 @@ def check_workload_resource_files(
             assert f"{file['descriptor']}.{file.get('sub_descriptor')}" not in converted_file
             converted_file[file["descriptor"]] = True
         else:
-            assert file["sub_descriptor"] == "previous", f"Full file name: {file['full_name']}, file_obj {file}"
+            assert (
+                file["sub_descriptor"] == "previous"
+            ), f"Full file name: {file['full_name']}, file_obj {file}"
             sub_key = f"{file['descriptor']}.{file['sub_descriptor']}"
             assert sub_key not in converted_file, f"Full file name: {file['full_name']}, file_obj {file}"
             converted_file[sub_key] = True
@@ -245,6 +249,10 @@ def get_file_map(
     # separate namespaces
     file_map = {"__namespaces__": {}}
     expected_arc_walk_result = len(ARC_AGENTS)
+    # default walk result is 2 for meta and schemaregistry
+    expected_default_walk_result = 2
+    # the expected walk result without current service
+    expected_walk_result_without_svc = expected_default_walk_result + expected_arc_walk_result
 
     if arc_namespace:
         file_map["arc"] = {}
@@ -255,25 +263,25 @@ def get_file_map(
 
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
-        assert len(walk_result) == 3 + expected_arc_walk_result
+        assert len(walk_result) == 2 + expected_walk_result_without_svc
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
     elif ops_service == "billing":
-        assert len(walk_result) == 3 + expected_arc_walk_result
+        assert len(walk_result) == 2 + expected_walk_result_without_svc
         ops_path = path.join(BASE_ZIP_PATH, aio_namespace, ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
-            assert len(walk_result) == 1 + expected_arc_walk_result
+            assert len(walk_result) == expected_walk_result_without_svc
             pytest.skip(f"No bundles created for {ops_service}.")
         else:
-            assert len(walk_result) == 2 + expected_arc_walk_result
+            assert len(walk_result) == 1 + expected_walk_result_without_svc
     # remove ops_service that are not selectable by --svc
     elif ops_service not in ["otel", "meta", "schemaregistry"]:
-        assert len(walk_result) == 3 + expected_arc_walk_result
+        assert len(walk_result) == 1 + expected_walk_result_without_svc
         assert not walk_result[ops_path]["folders"]
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = aio_namespace
