@@ -533,7 +533,7 @@ def load_iotops_arguments(self, _):
             "include_dependencies",
             options_list=["--include-deps"],
             arg_type=get_three_state_flag(),
-            help="Indicates the command should remove all IoT Operations dependencies. "
+            help="Indicates the command should remove IoT Operations dependencies. "
             "This option is intended to reverse the application of init.",
         )
 
