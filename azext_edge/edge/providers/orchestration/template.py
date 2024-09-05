@@ -23,6 +23,9 @@ class TemplateBlueprint(NamedTuple):
         # Don't need a deep copy here.
         return self.content["variables"]["VERSIONS"].copy()
 
+    def get_type_definition(self, key: str) -> Optional[dict]:
+        return self.content["definitions"].get(key, {"properties": {}})
+
     @property
     def parameters(self) -> dict:
         return self.content["parameters"]
