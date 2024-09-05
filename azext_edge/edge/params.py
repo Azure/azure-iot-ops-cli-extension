@@ -904,26 +904,19 @@ def load_iotops_arguments(self, _):
         context.argument(
             "asset_endpoint_profile_name",
             options_list=["--name", "-n"],
-            help="Asset Endpoint name.",
+            help="Asset Endpoint Profile name.",
+        )
+        context.argument(
+            "discovered",
+            options_list=["--discovered"],
+            help="Flag to determine if an asset endpoint profile was discovered on the cluster.",
+            arg_group="Additional Info",
+            arg_type=get_three_state_flag(),
         )
         context.argument(
             "target_address",
             options_list=["--target-address", "--ta"],
-            help="Target Address. Must be a valid local address.",
-        )
-        context.argument(
-            "transport_authentication",
-            options_list=["--cert"],
-            nargs="+",
-            action="append",
-            help="Space-separated key=value pairs corresponding to certificates associated with the endpoint. "
-            "The following key values are supported: `secret` (required), `thumbprint` (required), `password`."
-            "--cert can be used 1 or more times. Review help examples for full parameter usage",
-        )
-        context.argument(
-            "additional_configuration",
-            options_list=["--additional-config", "--ac"],
-            help="Additional Configuration for the connectivity type (ex: OPC UA, Modbus, ONVIF).",
+            help="Target Address. Must be a valid local address that follows the opc.tcp protocol.",
         )
         context.argument(
             "auth_mode",
@@ -951,71 +944,106 @@ def load_iotops_arguments(self, _):
             arg_group="Authentication",
         )
         context.argument(
-            "custom_location_name",
-            options_list=["--custom-location", "--cl"],
-            help="Custom location used to associate asset endpoint with cluster.",
-            arg_group="Associated Resources",
-        )
-        context.argument(
-            "custom_location_resource_group",
-            options_list=["--custom-location-resource-group", "--clg"],
-            help="Resource group for custom location.",
-            arg_group="Associated Resources",
-        )
-        context.argument(
-            "custom_location_subscription",
-            options_list=["--custom-location-subscription", "--cls"],
-            help="Subscription Id for custom location.",
-            arg_group="Associated Resources",
-        )
-        context.argument(
-            "cluster_name",
-            options_list=["--cluster", "-c"],
-            help="Cluster to associate the asset with.",
-            arg_group="Associated Resources",
-        )
-        context.argument(
-            "cluster_resource_group",
-            options_list=["--cluster-resource-group", "--cg"],
-            help="Resource group for cluster.",
-            arg_group="Associated Resources",
-        )
-        context.argument(
-            "cluster_subscription",
-            options_list=["--cluster-subscription", "--cs"],
-            help="Subscription Id for cluster.",
-            arg_group="Associated Resources",
-        )
-        context.argument(
             "tags",
             options_list=["--tags"],
-            help="Asset Endpoint resource tags. Property bag in key-value pairs with the following format: a=b c=d",
+            help="Asset Endpoint Profile resource tags. Property bag in key-value pairs with the following format: a=b c=d",
             arg_type=tags_type,
         )
 
-    with self.argument_context("iot ops asset endpoint certificate") as context:
+    with self.argument_context("iot ops asset endpoint create opcua") as context:
         context.argument(
-            "asset_endpoint_profile_name",
-            options_list=["--endpoint"],
-            help="Asset Endpoint name.",
+            "application_name",
+            options_list=["--application", "--app"],
+            help="Application name.",
+            arg_group="Connector",
         )
         context.argument(
-            "password_reference",
-            options_list=["--password-ref", "--pr"],
-            help="Reference for pem file that contains the certificate password.",
-            arg_group=None,
+            "auto_accept_untrusted_server_certs",
+            options_list=["--accept-untrusted-certs", "--auc"],
+            help="Auto accept untrusted server certificates.",
+            arg_type=get_three_state_flag(),
+            arg_group="Connector",
         )
         context.argument(
-            "secret_reference",
-            options_list=["--secret-ref", "--sr"],
-            help="Reference for the der file that contains the certificate. The referenced file should contain the "
-            "certificate and the key.",
+            "default_publishing_interval",
+            options_list=["--default-publishing-int", "--dpi"],
+            help="Default publishing interval in milliseconds.",
+            arg_group="Connector",
         )
         context.argument(
-            "thumbprint",
-            options_list=["--thumbprint", "-t"],
-            help="Certificate thumbprint.",
+            "default_sampling_interval",
+            options_list=["--default-sampling-int", "--dsi"],
+            help="Default sampling interval in milliseconds.",
+            arg_group="Connector",
         )
+        context.argument(
+            "default_queue_size",
+            options_list=["--default-queue-size", "--dqs"],
+            help="Default queue size.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "keep_alive",
+            options_list=["--keep-alive", "--ka"],
+            help="Keep alive in milliseconds.",
+            arg_group="Connector",
+        )
+        context.argument(  # TODO: change to disable
+            "run_asset_discovery",
+            options_list=["--run-asset-discovery", "--rad"],
+            help="Flag to determine if asset discovery should be run.",
+            arg_type=get_three_state_flag(),
+            arg_group="Connector",
+        )
+        context.argument(
+            "session_timeout",
+            options_list=["--session-timeout", "--st"],
+            help="Session timeout in milliseconds.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "session_keep_alive",
+            options_list=["--session-keep-alive", "--ska"],
+            help="Session keep alive in milliseconds.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "session_reconnect_period",
+            options_list=["--session-reconnect-period", "--srp"],
+            help="Session reconnect period in milliseconds.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "session_reconnect_exponential_back_off",
+            options_list=["--session-reconnect-backoff", "--srb"],
+            help="Session reconnect exponential back off in milliseconds.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "security_policy",
+            options_list=["--security-policy", "--sp"],
+            help="Security policy.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "security_mode",
+            options_list=["--security-mode", "--sm"],
+            help="Security mode.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "sub_max_items",
+            options_list=["--subscription-max-items", "--smi"],
+            help="Maximum number of items for the subscription.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "sub_life_time",
+            options_list=["--subscription-life-time", "--slt"],
+            help="Life time in Milliseconds for the subscription.",
+            arg_group="Connector",
+        )
+
 
     with self.argument_context("iot ops schema registry") as context:
         context.argument(

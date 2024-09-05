@@ -16,6 +16,7 @@ from azure.cli.core.azclierror import (
 from .user_strings import INVALID_OBSERVABILITY_MODE_ERROR
 from ....util import assemble_nargs_to_dict
 from ....common import FileType
+# TODO: push these into util init
 from ....util.az_client import get_registry_mgmt_client
 from ....util.queryable import Queryable
 
@@ -80,20 +81,12 @@ class Assets(Queryable):
         tags: Optional[Dict[str, str]] = None,
     ):
         from .helpers import get_extended_location
-
-        if custom_location_id:
-            extended_location = {
-                "type": "CustomLocation",
-                "name": custom_location_id,
-                "cluster_location": "eastus2"
-            }
-        else:
-            extended_location = get_extended_location(
-                cmd=self.cmd,
-                instance_name=instance_name,
-                instance_resource_group=instance_resource_group or resource_group_name,
-                instance_subscription=instance_subscription
-            )
+        extended_location = get_extended_location(
+            cmd=self.cmd,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group or resource_group_name,
+            instance_subscription=instance_subscription
+        )
         cluster_location = extended_location.pop("cluster_location")
 
         # Properties
