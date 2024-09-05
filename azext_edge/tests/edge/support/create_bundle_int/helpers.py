@@ -248,11 +248,8 @@ def get_file_map(
 
     # separate namespaces
     file_map = {"__namespaces__": {}}
-    expected_arc_walk_result = len(ARC_AGENTS)
-    # default walk result is 2 for meta and schemaregistry
-    expected_default_walk_result = 2
-    # the expected walk result without current service
-    expected_walk_result_without_svc = expected_default_walk_result + expected_arc_walk_result
+    # default walk result meta, schemaregistry and arcagents
+    expected_default_walk_result = 2 + len(ARC_AGENTS)
 
     if arc_namespace:
         file_map["arc"] = {}
@@ -263,25 +260,25 @@ def get_file_map(
 
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
-        assert len(walk_result) == 2 + expected_walk_result_without_svc
+        assert len(walk_result) == 2 + expected_default_walk_result
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
     elif ops_service == "billing":
-        assert len(walk_result) == 2 + expected_walk_result_without_svc
+        assert len(walk_result) == 2 + expected_default_walk_result
         ops_path = path.join(BASE_ZIP_PATH, aio_namespace, ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
-            assert len(walk_result) == expected_walk_result_without_svc
+            assert len(walk_result) == expected_default_walk_result
             pytest.skip(f"No bundles created for {ops_service}.")
         else:
-            assert len(walk_result) == 1 + expected_walk_result_without_svc
+            assert len(walk_result) == 1 + expected_default_walk_result
     # remove ops_service that are not selectable by --svc
     elif ops_service not in ["otel", "meta", "schemaregistry"]:
-        assert len(walk_result) == 1 + expected_walk_result_without_svc
+        assert len(walk_result) == 1 + expected_default_walk_result
         assert not walk_result[ops_path]["folders"]
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = aio_namespace

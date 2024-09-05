@@ -60,12 +60,32 @@ def build_bundle(
     from .support.meta import prepare_bundle as prepare_meta_bundle
     from .support.schemaregistry import prepare_bundle as prepare_schema_registry_bundle
 
+    def collect_default_works(
+        pending_work: dict,
+        log_age_seconds: Optional[int] = None,
+    ):
+        # arc agent resources
+        pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
+
+        # Collect common resources if any AIO service is deployed with any service selected.
+        pending_work["common"] = prepare_shared_bundle()
+
+        # Collect meta resources if any AIO service is deployed with any service selected.
+        deployed_meta_apis = COMPAT_META_APIS.get_deployed()
+        pending_work["meta"] = prepare_meta_bundle(log_age_seconds, deployed_meta_apis)
+
+        # schema registry resources
+        pending_work["schemaregistry"] = prepare_schema_registry_bundle(log_age_seconds)
+
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
         OpsServiceType.mq.value: {"apis": COMPAT_MQTT_BROKER_APIS, "prepare_bundle": prepare_mq_bundle},
-        OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
+        OpsServiceType.billing.value: {
+            "apis": COMPAT_CLUSTER_CONFIG_APIS,
+            "prepare_bundle": prepare_billing_bundle,
+        },
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
@@ -79,7 +99,10 @@ def build_bundle(
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,
         },
-        OpsServiceType.dataflow.value: {"apis": COMPAT_DATAFLOW_APIS, "prepare_bundle": prepare_dataflow_bundle},
+        OpsServiceType.dataflow.value: {
+            "apis": COMPAT_DATAFLOW_APIS,
+            "prepare_bundle": prepare_dataflow_bundle,
+        },
     }
 
     for service_moniker, api_info in api_map.items():
@@ -107,18 +130,7 @@ def build_bundle(
 
             pending_work[service_moniker].update(bundle)
 
-    # arc agent resources
-    pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
-
-    # schema registry resources
-    pending_work["schemaregistry"] = prepare_schema_registry_bundle(log_age_seconds)
-
-    # Collect common resources if any AIO service is deployed with any service selected.
-    pending_work["common"] = prepare_shared_bundle()
-
-    # Collect meta resources if any AIO service is deployed with any service selected.
-    deployed_meta_apis = COMPAT_META_APIS.get_deployed()
-    pending_work["meta"] = prepare_meta_bundle(log_age_seconds, deployed_meta_apis)
+    collect_default_works(pending_work, log_age_seconds)
 
     total_work_count = 0
     for service in pending_work:
