@@ -13,6 +13,7 @@ from ...common import (
     DEFAULT_BROKER_AUTHN,
     DEFAULT_BROKER_LISTENER,
     DEFAULT_DATAFLOW_PROFILE,
+    DEFAULT_DATAFLOW_ENDPOINT,
 )
 from .common import KubernetesDistroType, TrustSourceType
 from .template import (
@@ -21,11 +22,6 @@ from .template import (
     TemplateBlueprint,
     get_insecure_listener,
 )
-
-BROKER_NAME = DEFAULT_BROKER
-BROKER_AUTHN_NAME = DEFAULT_BROKER_AUTHN
-BROKER_LISTENER_NAME = DEFAULT_BROKER_LISTENER
-DATAFLOW_PROFILE_NAME = DEFAULT_DATAFLOW_PROFILE
 
 
 class InitTargets:
@@ -176,13 +172,15 @@ class InitTargets:
         broker_authn = template.get_resource_by_key("broker_authn")
         broker_listener = template.get_resource_by_key("broker_listener")
         dataflow_profile = template.get_resource_by_key("dataflow_profile")
+        dataflow_endpoint = template.get_resource_by_key("dataflow_endpoint")
 
         if self.instance_name:
             instance["name"] = self.instance_name
-            broker["name"] = f"{self.instance_name}/{BROKER_NAME}"
-            broker_authn["name"] = f"{self.instance_name}/{BROKER_NAME}/{BROKER_AUTHN_NAME}"
-            broker_listener["name"] = f"{self.instance_name}/{BROKER_NAME}/{BROKER_LISTENER_NAME}"
-            dataflow_profile["name"] = f"{self.instance_name}/{DATAFLOW_PROFILE_NAME}"
+            broker["name"] = f"{self.instance_name}/{DEFAULT_BROKER}"
+            broker_authn["name"] = f"{self.instance_name}/{DEFAULT_BROKER}/{DEFAULT_BROKER_AUTHN}"
+            broker_listener["name"] = f"{self.instance_name}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
+            dataflow_profile["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_PROFILE}"
+            dataflow_endpoint["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_ENDPOINT}"
 
         if self.mi_user_assigned_identities:
             mi_user_payload = {}
@@ -200,7 +198,7 @@ class InitTargets:
         if self.add_insecure_listener:
             template.add_resource(
                 resource_key="broker_listener_insecure",
-                resource_def=get_insecure_listener(instance_name=self.instance_name, broker_name=BROKER_NAME),
+                resource_def=get_insecure_listener(instance_name=self.instance_name, broker_name=DEFAULT_BROKER),
             )
 
         return template.content, parameters

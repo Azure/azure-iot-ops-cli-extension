@@ -253,12 +253,13 @@ METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800
 
 # Broker constants
-DEFAULT_BROKER = "broker"
-DEFAULT_BROKER_LISTENER = "broker-listener"
-DEFAULT_BROKER_AUTHN = "broker-authn"
+DEFAULT_BROKER = "default"
+DEFAULT_BROKER_LISTENER = "default"
+DEFAULT_BROKER_AUTHN = "default"
 
 # Dataflow constants
 DEFAULT_DATAFLOW_PROFILE = "default"
+DEFAULT_DATAFLOW_ENDPOINT = "default"
 
 # Init Env Control
 
