@@ -478,13 +478,16 @@ def load_iotops_help():
         examples:
         - name: Minimum input for complete deletion.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup
+            az iot ops delete -n myinstance -g myresourcegroup
         - name: Skip confirmation prompt and continue to deletion process. Useful for CI scenarios.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup -y
+            az iot ops delete -n myinstance -g myresourcegroup -y
         - name: Force deletion regardless of warnings. May lead to errors.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup --force
+            az iot ops delete -n myinstance -g myresourcegroup --force
+        - name: Reverse application of init.
+          text: >
+            az iot ops delete -n myinstance -g myresourcegroup --include-deps
     """
 
     helps[

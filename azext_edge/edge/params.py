@@ -530,9 +530,11 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops delete") as context:
         context.argument(
-            "cluster_name",
-            options_list=["--cluster"],
-            help="Target cluster name for IoT Operations deletion.",
+            "include_dependencies",
+            options_list=["--include-deps"],
+            arg_type=get_three_state_flag(),
+            help="Indicates the command should remove all IoT Operations dependencies. "
+            "This option is intended to reverse the application of init.",
         )
 
     with self.argument_context("iot ops asset") as context:
