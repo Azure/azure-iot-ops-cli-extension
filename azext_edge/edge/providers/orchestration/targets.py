@@ -74,7 +74,6 @@ class InitTargets:
 
         # Broker
         self.add_insecure_listener = add_insecure_listener
-        self.custom_broker_config = custom_broker_config
         self.broker_memory_profile = broker_memory_profile
         self.broker_service_type = broker_service_type
         self.broker_backend_partitions = self._sanitize_int(broker_backend_partitions)
@@ -83,6 +82,7 @@ class InitTargets:
         self.broker_frontend_workers = self._sanitize_int(broker_frontend_workers)
         self.broker_frontend_replicas = self._sanitize_int(broker_frontend_replicas)
         self.broker_config = self.get_broker_config_target_map()
+        self.custom_broker_config = custom_broker_config
 
         # Akri
         self.kubernetes_distro = kubernetes_distro
