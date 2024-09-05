@@ -56,7 +56,6 @@ def build_bundle(
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
-    from .support.otel import prepare_bundle as prepare_otel_bundle
     from .support.arcagents import prepare_bundle as prepare_arcagents_bundle
     from .support.meta import prepare_bundle as prepare_meta_bundle
 
@@ -106,10 +105,6 @@ def build_bundle(
                 bundle = bundle_method(log_age_seconds, deployed_apis)
 
             pending_work[service_moniker].update(bundle)
-
-    if ops_service == OpsServiceType.auto.value:
-        # Only attempt to collect otel resources if any AIO service is deployed AND auto is used.
-        pending_work["otel"] = prepare_otel_bundle()
 
     # arc agent resources
     pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)

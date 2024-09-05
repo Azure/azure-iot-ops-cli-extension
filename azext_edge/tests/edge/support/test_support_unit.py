@@ -58,7 +58,6 @@ from azext_edge.edge.providers.support.orc import (
     ORC_APP_LABEL,
     ORC_CONTROLLER_LABEL,
 )
-from azext_edge.edge.providers.support.otel import OTEL_API, OTEL_NAME_LABEL
 from azext_edge.edge.providers.support.common import (
     COMPONENT_LABEL_FORMAT,
     NAME_LABEL_FORMAT,
@@ -489,9 +488,6 @@ def test_create_bundle(
                 since_seconds=since_seconds,
             )
 
-    if expected_resources:
-        assert_otel_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
-
     # assert shared KPIs regardless of service
     assert_shared_kpis(mocked_client, mocked_zipfile)
     # assert meta KPIs
@@ -826,24 +822,6 @@ def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
             kwargs["mocked_list_pods"] = mocked_list_pods
         elif assert_func == assert_list_services:
             kwargs["mock_names"] = [META_PREFIX_NAMES]
-
-        assert_func(**kwargs)
-
-
-def assert_otel_kpis(
-    mocked_client,
-    mocked_zipfile,
-    mocked_list_pods,
-):
-    for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_replica_sets]:
-        kwargs = {
-            "mocked_client": mocked_client,
-            "mocked_zipfile": mocked_zipfile,
-            "label_selector": OTEL_NAME_LABEL,
-            "directory_path": OTEL_API.moniker,
-        }
-        if assert_func == assert_list_pods:
-            kwargs["mocked_list_pods"] = mocked_list_pods
 
         assert_func(**kwargs)
 
