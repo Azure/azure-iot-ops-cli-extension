@@ -65,7 +65,10 @@ def build_bundle(
 
     api_map = {
         OpsServiceType.mq.value: {"apis": COMPAT_MQTT_BROKER_APIS, "prepare_bundle": prepare_mq_bundle},
-        OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
+        OpsServiceType.billing.value: {
+            "apis": COMPAT_CLUSTER_CONFIG_APIS,
+            "prepare_bundle": prepare_billing_bundle,
+        },
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
@@ -79,7 +82,10 @@ def build_bundle(
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,
         },
-        OpsServiceType.dataflow.value: {"apis": COMPAT_DATAFLOW_APIS, "prepare_bundle": prepare_dataflow_bundle},
+        OpsServiceType.dataflow.value: {
+            "apis": COMPAT_DATAFLOW_APIS,
+            "prepare_bundle": prepare_dataflow_bundle,
+        },
     }
 
     for service_moniker, api_info in api_map.items():
@@ -158,6 +164,11 @@ def build_bundle(
                     if not uber_progress.finished:
                         uber_progress.update(namespace_task, advance=1)
                         uber_progress.update(uber_task, advance=1)
+
+            tasks = uber_progress.tasks.copy()
+            if tasks.pop().completed:
+                uber_progress.remove_task(namespace_task)
+                live.update(grid, refresh=True)
 
         for service in pending_work:
             if pending_work[service]:
