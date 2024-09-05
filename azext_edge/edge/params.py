@@ -399,7 +399,7 @@ def load_iotops_arguments(self, _):
         )
         # Broker
         context.argument(
-            "broker_config_file",
+            "custom_broker_config_file",
             options_list=["--broker-config-file"],
             help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
             "The expected format is described at https://aka.ms/aziotops-broker-config.",
