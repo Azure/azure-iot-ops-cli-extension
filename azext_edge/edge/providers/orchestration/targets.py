@@ -198,7 +198,7 @@ class InitTargets:
         if self.add_insecure_listener:
             template.add_resource(
                 resource_key="broker_listener_insecure",
-                resource_def=get_insecure_listener(instance_name=self.instance_name, broker_name=BROKER_NAME),
+                resource_def=get_insecure_listener(instance_name=self.instance_name, broker_name=DEFAULT_BROKER),
             )
 
         return template.content, parameters
