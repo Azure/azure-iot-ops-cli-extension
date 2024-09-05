@@ -165,8 +165,9 @@ def build_bundle(
                         uber_progress.update(namespace_task, advance=1)
                         uber_progress.update(uber_task, advance=1)
 
-            tasks = uber_progress.tasks.copy()
-            if tasks.pop().completed:
+            # find the task from tasks that matches the namespace_task task id
+            task = [task for task in uber_progress.tasks if task.id == namespace_task][0]
+            if task.completed:
                 uber_progress.remove_task(namespace_task)
                 live.update(grid, refresh=True)
 
