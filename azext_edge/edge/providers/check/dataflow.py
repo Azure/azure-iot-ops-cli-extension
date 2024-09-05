@@ -22,6 +22,7 @@ from .common import (
     DEFAULT_PROPERTY_DISPLAY_COLOR,
     PADDING_SIZE,
     CoreServiceResourceKinds,
+    DataFlowEndpointAuthenticationType,
     DataflowEndpointType,
     DataflowOperationType,
     ResourceOutputDetailLevel,
@@ -342,7 +343,7 @@ def _process_dataflow_destinationsettings(
 
 
 def _process_endpoint_authentication(
-    endpoint_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int
+    endpoint_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int, detail_level: int
 ) -> None:
     auth = endpoint_settings.get("authentication", {})
     auth_method = auth.get("method")
@@ -351,7 +352,47 @@ def _process_endpoint_authentication(
         namespace=namespace,
         display=basic_property_display(label="Authentication Method", value=auth_method, padding=padding),
     )
-    # TODO - add displays for various auth types (refs, identity names, etc)
+    if detail_level > ResourceOutputDetailLevel.detail.value:
+        auth_property_dict = {
+            DataFlowEndpointAuthenticationType.access_token.value: {
+                "key": "accessTokenSettings",
+                "displays": [
+                    ("Secret Reference", "secretRef"),
+                ],
+            },
+            DataFlowEndpointAuthenticationType.system_assigned.value: {
+                "key": "systemAssignedManagedIdentitySettings",
+                "displays": [
+                    ("Audience", "audience"),
+                ],
+            },
+            DataFlowEndpointAuthenticationType.user_assigned.value: {
+                "key": "userAssignedManagedIdentitySettings",
+                "displays": [
+                    ("Client ID", "clientId"),
+                    ("Scope", "scope"),
+                    ("Tenant ID", "tenantId"),
+                ],
+            },
+        }
+        if auth_method not in auth_property_dict:
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(f"[red]Unknown authentication method: {auth_method}", (0, 0, 0, padding)),
+            )
+
+        auth_properties = auth_property_dict.get(auth_method, {})
+        auth_obj = auth.get(auth_properties.get("key", {}))
+        for label, key in auth_properties.get("displays", []):
+            val = auth_obj.get(key)
+            if val:
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=basic_property_display(label=label, value=val, padding=padding + PADDING_SIZE),
+                )
+        # TODO - add displays for various auth types (refs, identity names, etc)
 
 
 def _process_endpoint_TLS(
@@ -399,6 +440,7 @@ def _process_endpoint_mqttsettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -452,6 +494,7 @@ def _process_endpoint_kafkasettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -520,6 +563,7 @@ def _process_endpoint_fabriconelakesettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -577,6 +621,7 @@ def _process_endpoint_datalakestoragesettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -620,6 +665,7 @@ def _process_endpoint_dataexplorersettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -662,6 +708,7 @@ def _process_endpoint_localstoragesettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
 

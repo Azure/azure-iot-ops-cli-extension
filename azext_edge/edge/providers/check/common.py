@@ -127,6 +127,16 @@ class DataflowEndpointType(ListableEnum):
     mqtt = "mqtt"
 
 
+class DataFlowEndpointAuthenticationType(ListableEnum):
+    """
+    Dataflow Endpoint Authentication Type:
+    """
+
+    access_token = "AccessToken"
+    system_assigned = "SystemAssignedManagedIdentity"
+    user_assigned = "UserAssignedManagedIdentity"
+
+
 # Akri runtime attributes
 AKRI_PREFIX = "aio-akri-"
 
