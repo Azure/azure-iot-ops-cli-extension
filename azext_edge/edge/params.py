@@ -355,7 +355,7 @@ def load_iotops_arguments(self, _):
             "custom_location_name",
             options_list=["--custom-location"],
             help="The custom location name corresponding to the IoT Operations deployment. "
-            "The default is in the form '{cluster_name}-{token}-ops-cl'.",
+            "The default is in the form 'location-{hash(5)}'.",
         )
         context.argument(
             "location",
@@ -363,13 +363,6 @@ def load_iotops_arguments(self, _):
             help="The region that will be used for provisioned resource collateral. "
             "If not provided the connected cluster location will be used.",
         )
-        # TODO - @digimaun
-        # context.argument(
-        #     "no_block",
-        #     options_list=["--no-block"],
-        #     arg_type=get_three_state_flag(),
-        #     help="Return immediately after the IoT Operations deployment has started.",
-        # )
         context.argument(
             "disable_rsync_rules",
             options_list=["--disable-rsync-rules"],
@@ -404,30 +397,12 @@ def load_iotops_arguments(self, _):
             "default container runtime socket path when no --runtime-socket value is provided.",
             arg_group="Akri",
         )
-        # MQ
+        # Broker
         context.argument(
             "broker_config_file",
             options_list=["--broker-config-file"],
             help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
             "The expected format is described at https://aka.ms/aziotops-broker-config.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "broker_name",
-            options_list=["--broker"],
-            help="Mqtt broker name.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "broker_listener_name",
-            options_list=["--broker-listener"],
-            help="Mqtt broker listener name.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "broker_authn_name",
-            options_list=["--broker-authn"],
-            help="Mqtt broker authentication name.",
             arg_group="Broker",
         )
         context.argument(
@@ -442,58 +417,58 @@ def load_iotops_arguments(self, _):
             ],
             arg_type=get_three_state_flag(),
             help="When enabled the mqtt broker deployment will include a listener "
-            "bound to port 1883 with no authN or authZ."
+            f"of service type {MqServiceType.load_balancer.value}, bound to port 1883 with no authN or authZ. "
             "For non-production workloads only.",
             arg_group="Broker",
         )
-        # MQ cardinality
+        # Broker Config
         context.argument(
-            "mq_frontend_replicas",
+            "broker_frontend_replicas",
             type=int,
-            options_list=["--broker-frontend-replicas", "--bfr"],
-            help="Mqtt broker frontend replicas.",
-            arg_group="Broker Cardinality",
+            options_list=["--broker-frontend-replicas", "--fr"],
+            help="Mqtt broker frontend replicas. Min value: 1, max value: 16.",
+            arg_group="Broker",
         )
         context.argument(
-            "mq_frontend_workers",
+            "broker_frontend_workers",
             type=int,
-            options_list=["--broker-frontend-workers", "--bfw"],
-            help="Mqtt broker frontend workers.",
-            arg_group="Broker Cardinality",
+            options_list=["--broker-frontend-workers", "--fw"],
+            help="Mqtt broker frontend workers. Min value: 1, max value: 16.",
+            arg_group="Broker",
         )
         context.argument(
-            "mq_backend_redundancy_factor",
+            "broker_backend_redundancy_factor",
             type=int,
-            options_list=["--broker-backend-rf"],
-            help="Mqtt broker backend redundancy factor.",
-            arg_group="Broker Cardinality",
+            options_list=["--broker-backend-rf", "--br"],
+            help="Mqtt broker backend redundancy factor. Min value: 1, max value: 5.",
+            arg_group="Broker",
         )
         context.argument(
-            "mq_backend_workers",
+            "broker_backend_workers",
             type=int,
-            options_list=["--broker-backend-workers"],
-            help="Mqtt broker backend workers.",
-            arg_group="Broker Cardinality",
+            options_list=["--broker-backend-workers", "--bw"],
+            help="Mqtt broker backend workers. Min value: 1, max value: 16.",
+            arg_group="Broker",
         )
         context.argument(
-            "mq_backend_partitions",
+            "broker_backend_partitions",
             type=int,
-            options_list=["--broker-backend-part"],
-            help="Mqtt broker backend partitions.",
-            arg_group="Broker Cardinality",
+            options_list=["--broker-backend-part", "--bp"],
+            help="Mqtt broker backend partitions. Min value: 1, max value: 16.",
+            arg_group="Broker",
         )
         context.argument(
-            "mq_memory_profile",
+            "broker_memory_profile",
             arg_type=get_enum_type(MqMemoryProfile),
-            options_list=["--broker-mem-profile"],
+            options_list=["--broker-mem-profile", "--mp"],
             help="Mqtt broker memory profile.",
             arg_group="Broker",
         )
         context.argument(
-            "mq_service_type",
+            "broker_service_type",
             arg_type=get_enum_type(MqServiceType),
-            options_list=["--broker-service-type"],
-            help="Mqtt broker service type.",
+            options_list=["--broker-listener-type", "--lt"],
+            help="Service type associated with the default mqtt broker listener.",
             arg_group="Broker",
         )
         # AKV CSI Driver
@@ -533,7 +508,8 @@ def load_iotops_arguments(self, _):
             "enable_fault_tolerance",
             arg_type=get_three_state_flag(),
             options_list=["--enable-fault-tolerance"],
-            help="Enable fault tolerance for edge storage accelerator. At least 3 cluster nodes are required.",
+            help="Enable fault tolerance for Azure Arc Container Storage. At least 3 cluster nodes are required.",
+            arg_group="Container Storage"
         )
         context.argument(
             "mi_user_assigned_identities",
@@ -554,9 +530,11 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops delete") as context:
         context.argument(
-            "cluster_name",
-            options_list=["--cluster"],
-            help="Target cluster name for IoT Operations deletion.",
+            "include_dependencies",
+            options_list=["--include-deps"],
+            arg_type=get_three_state_flag(),
+            help="Indicates the command should remove IoT Operations dependencies. "
+            "This option is intended to reverse the application of init.",
         )
 
     with self.argument_context("iot ops asset") as context:

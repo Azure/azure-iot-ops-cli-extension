@@ -248,6 +248,11 @@ AIO_MQ_OPERATOR = "aio-mq-operator"
 METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800
 
+# Broker constants
+DEFAULT_BROKER = "broker"
+DEFAULT_BROKER_LISTENER = "broker-listener"
+DEFAULT_BROKER_AUTHN = "broker-authn"
+
 # Dataflow constants
 DEFAULT_DATAFLOW_PROFILE = "default"
 

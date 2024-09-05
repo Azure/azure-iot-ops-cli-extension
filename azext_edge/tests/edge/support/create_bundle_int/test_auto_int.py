@@ -12,8 +12,6 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from .helpers import (
     assert_file_names,
-    check_workload_resource_files,
-    get_file_map,
     process_top_levels,
     run_bundle_command,
     BASE_ZIP_PATH,
@@ -98,24 +96,6 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             )
 
 
-def test_create_bundle_otel(init_setup, tracked_files):
-    """Test for ensuring file names and content. ONLY CHECKS otel."""
-    # dir for unpacked files
-    ops_service = OpsServiceType.auto.value
-    command = f"az iot ops support create-bundle --ops-service {ops_service}"
-    walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
-    file_map = get_file_map(walk_result, "otel")["aio"]
-
-    expected_workload_types = ["deployment", "pod", "replicaset", "service"]
-    assert set(file_map.keys()).issubset(set(expected_workload_types))
-    check_workload_resource_files(
-        file_objs=file_map,
-        expected_workload_types=expected_workload_types,
-        prefixes="aio-otel",
-        bundle_path=bundle_path,
-    )
-
-
 def _get_expected_services(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str, namespace: str
 ) -> List[str]:
@@ -124,7 +104,6 @@ def _get_expected_services(
         # these should always be generated
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
-        expected_services.append("otel")
         expected_services.sort()
 
     # device registry folder will not be created if there are no device registry resources
