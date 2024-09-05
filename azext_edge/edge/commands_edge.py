@@ -122,7 +122,7 @@ def init(
     enable_fault_tolerance: Optional[bool] = None,
     mi_user_assigned_identities: Optional[List[str]] = None,
     # Broker
-    broker_config_file: Optional[str] = None,
+    custom_broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
     broker_service_type: str = MqServiceType.cluster_ip.value,
     broker_backend_partitions: int = 2,
@@ -152,9 +152,9 @@ def init(
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
     # TODO - @digimaun
-    broker_config = None
-    if broker_config_file:
-        broker_config = json.loads(read_file_content(file_path=broker_config_file))
+    custom_broker_config = None
+    if custom_broker_config_file:
+        custom_broker_config = json.loads(read_file_content(file_path=custom_broker_config_file))
 
     if broker_service_type == MqServiceType.load_balancer.value and add_insecure_listener:
         raise ArgumentUsageError(
@@ -182,7 +182,7 @@ def init(
         schema_registry_resource_id=schema_registry_resource_id,
         mi_user_assigned_identities=mi_user_assigned_identities,
         # Broker
-        broker_config=broker_config,
+        custom_broker_config=custom_broker_config,
         broker_memory_profile=broker_memory_profile,
         broker_service_type=broker_service_type,
         broker_backend_partitions=broker_backend_partitions,

@@ -6,6 +6,8 @@
 
 from typing import List, Optional, Tuple
 
+from azure.cli.core.azclierror import InvalidArgumentValueError
+
 from ...common import (
     DEFAULT_BROKER,
     DEFAULT_BROKER_AUTHN,
@@ -41,7 +43,7 @@ class InitTargets:
         enable_fault_tolerance: Optional[bool] = None,
         dataflow_profile_instances: int = 1,
         # Broker
-        broker_config: Optional[dict] = None,
+        custom_broker_config: Optional[dict] = None,
         broker_memory_profile: Optional[str] = None,
         broker_service_type: Optional[str] = None,
         broker_backend_partitions: Optional[int] = None,
@@ -72,15 +74,15 @@ class InitTargets:
 
         # Broker
         self.add_insecure_listener = add_insecure_listener
-        self.broker_config = broker_config
-        self.broker_memory_profile = broker_memory_profile
         self.broker_memory_profile = broker_memory_profile
         self.broker_service_type = broker_service_type
-        self.broker_backend_partitions = broker_backend_partitions
-        self.broker_backend_workers = broker_backend_workers
-        self.broker_backend_redundancy_factor = broker_backend_redundancy_factor
-        self.broker_frontend_workers = broker_frontend_workers
-        self.broker_frontend_replicas = broker_frontend_replicas
+        self.broker_backend_partitions = self._sanitize_int(broker_backend_partitions)
+        self.broker_backend_workers = self._sanitize_int(broker_backend_workers)
+        self.broker_backend_redundancy_factor = self._sanitize_int(broker_backend_redundancy_factor)
+        self.broker_frontend_workers = self._sanitize_int(broker_frontend_workers)
+        self.broker_frontend_replicas = self._sanitize_int(broker_frontend_replicas)
+        self.broker_config = self.get_broker_config_target_map()
+        self.custom_broker_config = custom_broker_config
 
         # Akri
         self.kubernetes_distro = kubernetes_distro
@@ -89,13 +91,18 @@ class InitTargets:
         self.trust_source = trust_source
         self.mi_user_assigned_identities = mi_user_assigned_identities
 
-    def _sanitize_k8s_name(self, name: str) -> str:
+    def _sanitize_k8s_name(self, name: Optional[str]) -> Optional[str]:
         if not name:
             return name
         sanitized = str(name)
         sanitized = sanitized.lower()
         sanitized = sanitized.replace("_", "-")
         return sanitized
+
+    def _sanitize_int(self, value: Optional[int]) -> Optional[int]:
+        if value is None:
+            return value
+        return int(value)
 
     def _handle_apply_targets(
         self, param_to_target: dict, template_blueprint: TemplateBlueprint
@@ -157,7 +164,7 @@ class InitTargets:
                 "deployResourceSyncRules": self.deploy_resource_sync_rules,
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "defaultDataflowinstanceCount": self.dataflow_profile_instances,
-                "brokerConfig": self.get_broker_config_target_map(),
+                "brokerConfig": self.broker_config,
                 "trustConfig": "",
             },
             template_blueprint=M2_INSTANCE_TEMPLATE,
@@ -185,30 +192,59 @@ class InitTargets:
             instance["identity"]["type"] = "UserAssigned"
             instance["identity"]["userAssignedIdentities"] = mi_user_payload
 
-        if self.broker_config:
-            if "properties" in self.broker_config:
-                self.broker_config = self.broker_config["properties"]
-            broker["properties"] = self.broker_config
+        if self.custom_broker_config:
+            if "properties" in self.custom_broker_config:
+                self.custom_broker_config = self.custom_broker_config["properties"]
+            broker["properties"] = self.custom_broker_config
 
         if self.add_insecure_listener:
             template.add_resource(
-                resource_key="broker_listener_nontls",
+                resource_key="broker_listener_insecure",
                 resource_def=get_insecure_listener(instance_name=self.instance_name, broker_name=BROKER_NAME),
             )
 
         return template.content, parameters
 
     def get_broker_config_target_map(self):
-        broker_config_map = {
+        to_process_config_map = {
             "frontendReplicas": self.broker_frontend_replicas,
-            "frontendWorkers": self.broker_backend_workers,
+            "frontendWorkers": self.broker_frontend_workers,
             "backendRedundancyFactor": self.broker_backend_redundancy_factor,
             "backendWorkers": self.broker_backend_workers,
             "backendPartitions": self.broker_backend_partitions,
             "memoryProfile": self.broker_memory_profile,
             "serviceType": self.broker_service_type,
         }
-        for config in broker_config_map:
-            if not broker_config_map[config]:
-                del broker_config_map[config]
-        return broker_config_map
+        processed_config_map = {}
+
+        validation_errors = []
+        broker_config_def = M2_INSTANCE_TEMPLATE.get_type_definition("_1.BrokerConfig")["properties"]
+        for config in to_process_config_map:
+            if to_process_config_map[config] is None:
+                continue
+            processed_config_map[config] = to_process_config_map[config]
+
+            if not broker_config_def:
+                continue
+
+            if isinstance(to_process_config_map[config], int):
+                if config in broker_config_def and broker_config_def[config].get("type") == "int":
+                    min_value = broker_config_def[config].get("minValue")
+                    max_value = broker_config_def[config].get("maxValue")
+
+                    if all([min_value is None, max_value is None]):
+                        continue
+
+                    if any([to_process_config_map[config] < min_value, to_process_config_map[config] > max_value]):
+                        error_msg = f"{config} value range"
+
+                        if min_value:
+                            error_msg += f" min:{min_value}"
+                        if max_value:
+                            error_msg += f" max:{max_value}"
+                        validation_errors.append(error_msg)
+
+        if validation_errors:
+            raise InvalidArgumentValueError("\n".join(validation_errors))
+
+        return processed_config_map
