@@ -91,7 +91,9 @@ def evaluate_core_service_runtime(
             )
 
     for namespace, pods in get_resources_grouped_by_namespace(akri_runtime_resources):
-        check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
+        check_manager.add_target(
+            target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace
+        )
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             namespace=namespace,
@@ -105,9 +107,6 @@ def evaluate_core_service_runtime(
             target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             namespace=namespace,
             padding=padding + PADDING_SIZE,
-            pod_with_labels=[
-                (AKRI_PREFIX, AKRI_NAME_LABEL_V2),
-            ],
             detail_level=detail_level,
             pods=pods,
         )
@@ -152,7 +151,9 @@ def evaluate_configurations(
         check_manager.add_display(
             target_name=target_configurations,
             namespace=namespace,
-            display=Padding(f"Akri configurations in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
+            display=Padding(
+                f"Akri configurations in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)
+            ),
         )
 
         padding = 10
@@ -173,7 +174,9 @@ def evaluate_configurations(
         for configuration in configurations:
             configuration_name = configuration["metadata"]["name"]
 
-            configuration_text = f"- Akri configuration {{[bright_blue]{configuration_name}[/bright_blue]}} detected."
+            configuration_text = (
+                f"- Akri configuration {{[bright_blue]{configuration_name}[/bright_blue]}} detected."
+            )
 
             configuration_padding = padding + PADDING_SIZE
             check_manager.add_display(
@@ -272,7 +275,9 @@ def evaluate_instances(
         )
 
     for namespace, instances in get_resources_grouped_by_namespace(all_instances):
-        check_manager.add_target(target_name=target_instances, namespace=namespace, conditions=instance_conditions)
+        check_manager.add_target(
+            target_name=target_instances, namespace=namespace, conditions=instance_conditions
+        )
         check_manager.add_display(
             target_name=target_instances,
             namespace=namespace,
@@ -284,7 +289,9 @@ def evaluate_instances(
         instances_count_text = "- {}."
         padding = 10
 
-        instances_count_text = instances_count_text.format(f"Detected [blue]{instances_count}[/blue] instances")
+        instances_count_text = instances_count_text.format(
+            f"Detected [blue]{instances_count}[/blue] instances"
+        )
 
         check_manager.add_display(
             target_name=target_instances,
@@ -505,7 +512,10 @@ def _evaluate_discovery_handler(
                         f"{property_condition_str}.valueFrom.configMapKeyRef": config_map_key_ref,
                     }
                     validate_one_of_conditions(
-                        conditions=[("secretKeyRef", secret_key_ref), ("configMapKeyRef", config_map_key_ref)],
+                        conditions=[
+                            ("secretKeyRef", secret_key_ref),
+                            ("configMapKeyRef", config_map_key_ref),
+                        ],
                         check_manager=check_manager,
                         eval_value=key_ref_eval_value,
                         namespace=namespace,
@@ -537,7 +547,9 @@ def _evaluate_discovery_handler(
                         }
                         key_ref_name_eval_status = CheckTaskStatus.success.value
                         if not key_ref_name:
-                            key_ref_name_error_text = f"[red]Property {key_ref_property[0]} name is required.[/red]"
+                            key_ref_name_error_text = (
+                                f"[red]Property {key_ref_property[0]} name is required.[/red]"
+                            )
                             key_ref_name_eval_status = CheckTaskStatus.error.value
                             check_manager.add_display(
                                 target_name=target_name,

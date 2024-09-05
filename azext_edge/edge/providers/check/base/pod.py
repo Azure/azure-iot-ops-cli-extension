@@ -32,15 +32,13 @@ def evaluate_pod_health(
     target: str,
     namespace: str,
     padding: int,
-    pod_with_labels: List[Tuple[str, str]],
+    # pod_with_labels: List[Tuple[str, str]],
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     pods: Optional[List[V1Pod]] = None,
 ) -> None:
 
     # prep table
-    table = Table(
-        show_header=True, header_style="bold", show_lines=True, caption_justify="left"
-    )
+    table = Table(show_header=True, header_style="bold", show_lines=True, caption_justify="left")
 
     if detail_level != ResourceOutputDetailLevel.summary.value:
         for column_name, justify in [
@@ -123,7 +121,7 @@ def process_pod_status(
             eval_value=None,
             resource_name=target_service_pod,
             namespace=namespace,
-            padding=(0, 0, 0, display_padding)
+            padding=(0, 0, 0, display_padding),
         )
         return False
 
@@ -136,9 +134,13 @@ def process_pod_status(
         ]
 
         if check_manager.targets.get(target, {}).get(namespace, {}).get("conditions", None):
-            check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
+            check_manager.add_target_conditions(
+                target_name=target, namespace=namespace, conditions=pod_conditions
+            )
         else:
-            check_manager.set_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
+            check_manager.set_target_conditions(
+                target_name=target, namespace=namespace, conditions=pod_conditions
+            )
 
         pod_dict = pod.to_dict()
         pod_name = pod_dict["metadata"]["name"]
@@ -175,7 +177,9 @@ def process_pod_status(
                 if condition_reason:
                     formatted_reason = f"[red]Reason: {condition_reason}[/red]"
 
-                known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
+                known_condition_values = [
+                    value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()
+                ]
                 if condition_type.replace(" ", "").lower() in known_condition_values:
                     conditions_display_list.append(
                         (f"{condition_type}: {pod_condition_deco}", formatted_reason)
@@ -252,8 +256,9 @@ def _add_pod_health_display(
             # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
             for condition, reason in conditions_display_list:
                 condition_not_ready = condition.endswith("[red]False[/red]")
-                if (detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready) or\
-                   detail_level == ResourceOutputDetailLevel.verbose.value:
+                if (
+                    detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready
+                ) or detail_level == ResourceOutputDetailLevel.verbose.value:
                     pod_conditions_text += f"{condition}\n"
 
                     if reason:

@@ -13,7 +13,12 @@ from ...common import DEFAULT_DATAFLOW_PROFILE, CheckTaskStatus, ResourceState
 from ..base import get_namespaced_pods_by_prefix
 from ..edge_api.dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
 from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX, DATAFLOW_PROFILE_POD_PREFIX
-from .base import CheckManager, check_post_deployment, get_resources_by_name, get_resources_grouped_by_namespace
+from .base import (
+    CheckManager,
+    check_post_deployment,
+    get_resources_by_name,
+    get_resources_grouped_by_namespace,
+)
 from .base.display import basic_property_display, colorize_string
 from .base.pod import evaluate_pod_health
 from .base.resource import filter_resources_by_name
@@ -90,7 +95,9 @@ def _process_dataflow_sourcesettings(
         endpoint_type_status_string = "valid" if endpoint_type_valid else f"has invalid type: {endpoint_type}"
 
     endpoint_ref_display = colorize_string(value=endpoint_ref_string, color=endpoint_ref_status.color)
-    endpoint_validity_display = colorize_string(color=endpoint_type_status.color, value=endpoint_type_status_string)
+    endpoint_validity_display = colorize_string(
+        color=endpoint_type_status.color, value=endpoint_type_status_string
+    )
 
     # valid endpoint ref eval
     check_manager.add_target_eval(
@@ -129,7 +136,9 @@ def _process_dataflow_sourcesettings(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding("[red]Invalid source endpoint reference[/red]", (0, 0, 0, padding - PADDING_SIZE)),
+            display=Padding(
+                "[red]Invalid source endpoint reference[/red]", (0, 0, 0, padding - PADDING_SIZE)
+            ),
         )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -152,7 +161,9 @@ def _process_dataflow_sourcesettings(
         data_sources = settings.get("dataSources", [])
         if data_sources:
             check_manager.add_display(
-                target_name=target, namespace=namespace, display=Padding("Data Sources:", (0, 0, 0, inner_padding))
+                target_name=target,
+                namespace=namespace,
+                display=Padding("Data Sources:", (0, 0, 0, inner_padding)),
             )
             for data_source in data_sources:
                 check_manager.add_display(
@@ -170,7 +181,9 @@ def _process_dataflow_transformationsettings(
     # only show details on non-summary
     if detail_level > ResourceOutputDetailLevel.summary.value:
         check_manager.add_display(
-            target_name=target, namespace=namespace, display=Padding("\nBuilt-In Transformation:", (0, 0, 0, padding))
+            target_name=target,
+            namespace=namespace,
+            display=Padding("\nBuilt-In Transformation:", (0, 0, 0, padding)),
         )
         padding += PADDING_SIZE
         inner_padding = padding + PADDING_SIZE
@@ -178,7 +191,9 @@ def _process_dataflow_transformationsettings(
         def _process_inputs(inputs: List[str]):
             if inputs:
                 check_manager.add_display(
-                    target_name=target, namespace=namespace, display=Padding("Inputs:", (0, 0, 0, inner_padding))
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding("Inputs:", (0, 0, 0, inner_padding)),
                 )
                 for input in inputs:
                     check_manager.add_display(
@@ -325,7 +340,9 @@ def _process_dataflow_destinationsettings(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding("[red]Invalid destination endpoint reference[/red]", (0, 0, 0, padding - PADDING_SIZE)),
+            display=Padding(
+                "[red]Invalid destination endpoint reference[/red]", (0, 0, 0, padding - PADDING_SIZE)
+            ),
         )
     # only show destination on verbose
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -423,7 +440,11 @@ def _process_endpoint_mqttsettings(
         tls = settings.get("tls", {})
         if tls:
             _process_endpoint_TLS(
-                tls_settings=tls, check_manager=check_manager, target=target, namespace=namespace, padding=padding
+                tls_settings=tls,
+                check_manager=check_manager,
+                target=target,
+                namespace=namespace,
+                padding=padding,
             )
 
 
@@ -474,7 +495,11 @@ def _process_endpoint_kafkasettings(
         tls = settings.get("tls", {})
         if tls:
             _process_endpoint_TLS(
-                tls_settings=tls, check_manager=check_manager, target=target, namespace=namespace, padding=padding
+                tls_settings=tls,
+                check_manager=check_manager,
+                target=target,
+                namespace=namespace,
+                padding=padding,
             )
 
         # batching
@@ -737,9 +762,6 @@ def evaluate_core_service_runtime(
             pods=pods,
             namespace=namespace,
             padding=PADDING + 2,
-            pod_with_labels=[
-                (DATAFLOW_OPERATOR_PREFIX, DATAFLOW_NAME_LABEL),
-            ],
             detail_level=detail_level,
         )
 
@@ -816,7 +838,10 @@ def evaluate_dataflows(
         )
 
         endpoints = [
-            {"name": endpoint.get("metadata", {}).get("name"), "type": endpoint.get("spec", {}).get("endpointType")}
+            {
+                "name": endpoint.get("metadata", {}).get("name"),
+                "type": endpoint.get("spec", {}).get("endpointType"),
+            }
             for endpoint in all_endpoints
         ]
 
@@ -862,7 +887,9 @@ def evaluate_dataflows(
             profile_ref = spec.get("profileRef")
             # profileRef is optional, only show an error if it exists but is invalid
             if profile_ref:
-                profile_ref_status = CheckTaskStatus.error if profile_ref not in profile_names else CheckTaskStatus.success
+                profile_ref_status = (
+                    CheckTaskStatus.error if profile_ref not in profile_names else CheckTaskStatus.success
+                )
 
                 # valid profileRef eval
                 check_manager.add_target_eval(
@@ -887,7 +914,9 @@ def evaluate_dataflows(
                         target_name=target,
                         namespace=namespace,
                         display=Padding(
-                            colorize_string(color=profile_ref_status.color, value="Invalid Dataflow Profile reference"),
+                            colorize_string(
+                                color=profile_ref_status.color, value="Invalid Dataflow Profile reference"
+                            ),
                             (0, 0, 0, INNER_PADDING),
                         ),
                     )
@@ -954,7 +983,9 @@ def evaluate_dataflows(
             sources_status = destinations_status = CheckTaskStatus.success.value
             if sources != 1:
                 sources_status = CheckTaskStatus.error.value
-                message = "Missing source operation" if sources == 0 else f"Too many source operations: {sources}"
+                message = (
+                    "Missing source operation" if sources == 0 else f"Too many source operations: {sources}"
+                )
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
@@ -1023,7 +1054,9 @@ def evaluate_dataflow_endpoints(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding(f"Dataflow Endpoints in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, PADDING)),
+            display=Padding(
+                f"Dataflow Endpoints in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, PADDING)
+            ),
         )
         for endpoint in list(endpoints):
             spec = endpoint.get("spec", {})
@@ -1122,7 +1155,9 @@ def evaluate_dataflow_profiles(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding(f"Dataflow Profiles in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, PADDING)),
+            display=Padding(
+                f"Dataflow Profiles in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, PADDING)
+            ),
         )
 
         # warn if no default dataflow profile (unless possibly filtered)
@@ -1182,7 +1217,10 @@ def evaluate_dataflow_profiles(
                     target_name=target,
                     namespace=namespace,
                     display=basic_property_display(
-                        label="Instance count", value=instance_count, color=instance_status.color, padding=INNER_PADDING
+                        label="Instance count",
+                        value=instance_count,
+                        color=instance_status.color,
+                        padding=INNER_PADDING,
                     ),
                 )
             else:
@@ -1227,7 +1265,9 @@ def evaluate_dataflow_profiles(
                                 check_manager.add_display(
                                     target_name=target,
                                     namespace=namespace,
-                                    display=basic_property_display(label=label, value=val, padding=log_inner_padding),
+                                    display=basic_property_display(
+                                        label=label, value=val, padding=log_inner_padding
+                                    ),
                                 )
 
                     # diagnostic metrics
@@ -1243,7 +1283,9 @@ def evaluate_dataflow_profiles(
                         target_name=target,
                         namespace=namespace,
                         display=basic_property_display(
-                            label="Prometheus Port", value=diagnostic_metrics_prometheusPort, padding=log_inner_padding
+                            label="Prometheus Port",
+                            value=diagnostic_metrics_prometheusPort,
+                            padding=log_inner_padding,
                         ),
                     )
 
@@ -1258,7 +1300,9 @@ def evaluate_dataflow_profiles(
                                 check_manager.add_display(
                                     target_name=target,
                                     namespace=namespace,
-                                    display=basic_property_display(label=label, value=val, padding=log_inner_padding),
+                                    display=basic_property_display(
+                                        label=label, value=val, padding=log_inner_padding
+                                    ),
                                 )
             # pod health - trailing `-` is important in case profiles have similar prefixes
             pod_prefix = f"{DATAFLOW_PROFILE_POD_PREFIX}{profile_name}-"
@@ -1272,7 +1316,6 @@ def evaluate_dataflow_profiles(
                 evaluate_pod_health(
                     check_manager=check_manager,
                     target=target,
-                    pod_with_labels=[(pod_prefix, DATAFLOW_NAME_LABEL)],
                     pods=profile_pods,
                     namespace=namespace,
                     padding=INNER_PADDING,
