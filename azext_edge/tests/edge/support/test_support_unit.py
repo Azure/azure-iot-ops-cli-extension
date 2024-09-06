@@ -45,7 +45,7 @@ from azext_edge.edge.providers.support.billing import (
     BILLING_RESOURCE_KIND,
 )
 from azext_edge.edge.providers.support.meta import META_NAME_LABEL, META_PREFIX_NAMES
-from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_K8S_LABEL, MQ_NAME_LABEL
+from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.opcua import (
     OPC_APP_LABEL,
     OPC_DIRECTORY_PATH,
@@ -197,14 +197,6 @@ def test_create_bundle(
                 mocked_zipfile,
                 mocked_list_pods,
                 label_selector=MQ_NAME_LABEL,
-                directory_path=MQ_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=MQ_K8S_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
                 since_seconds=since_seconds,
             )
@@ -610,7 +602,7 @@ def assert_list_deployments(
 
         mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_has_calls(
             [
-                # Specific for `aio-mq-operator` (no app label)
+                # Specific for `aio-broker-operator` (no app label)
                 call(label_selector=None, field_selector=field_selector),
                 call(label_selector=MQ_NAME_LABEL, field_selector=None),
             ]

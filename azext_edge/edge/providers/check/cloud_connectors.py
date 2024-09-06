@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from rich.padding import Padding
 
-from ...common import AIO_MQ_RESOURCE_PREFIX, CheckTaskStatus
+from ...common import AIO_BROKER_RESOURCE_PREFIX, CheckTaskStatus
 from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
 from .base import (
     CheckManager,
@@ -48,12 +48,8 @@ def process_cloud_connector(
     connector_padding = (0, 0, 0, 8)
     topic_map_padding = (0, 0, 0, 12)
 
-    all_connectors = MQ_ACTIVE_API.get_resources(kind=connector_resource_kind).get(
-        "items", []
-    )
-    all_topic_maps = MQ_ACTIVE_API.get_resources(kind=topic_map_resource_kind).get(
-        "items", []
-    )
+    all_connectors = MQ_ACTIVE_API.get_resources(kind=connector_resource_kind).get("items", [])
+    all_topic_maps = MQ_ACTIVE_API.get_resources(kind=topic_map_resource_kind).get("items", [])
 
     if connector_resource_name:
         all_connectors, all_topic_maps = filter_connector_and_topic_map_resources(
@@ -72,9 +68,7 @@ def process_cloud_connector(
             padding=connector_padding,
         )
         if detail_level != ResourceOutputDetailLevel.summary.value and not connector_resource_name:
-            for topic_maps, namespace in get_resources_grouped_by_namespace(
-                all_topic_maps
-            ):
+            for topic_maps, namespace in get_resources_grouped_by_namespace(all_topic_maps):
                 _display_invalid_topic_maps(
                     check_manager=check_manager,
                     target=connector_target,
@@ -137,9 +131,7 @@ def process_cloud_connector(
 
         if detail_level != ResourceOutputDetailLevel.summary.value:
             # invalid topic maps in this namespace
-            invalid_maps = [
-                map for map in namespace_topic_maps if map not in processed_maps
-            ]
+            invalid_maps = [map for map in namespace_topic_maps if map not in processed_maps]
             processed_maps.extend(invalid_maps)
             _display_invalid_topic_maps(
                 check_manager=check_manager,
@@ -209,8 +201,9 @@ def filter_connector_and_topic_map_resources(
     filtered_connectors_properties = [
         (
             get_resource_metadata_property(connector, prop_name="name"),
-            get_resource_metadata_property(connector, prop_name="namespace")
-        ) for connector in filtered_connectors
+            get_resource_metadata_property(connector, prop_name="namespace"),
+        )
+        for connector in filtered_connectors
     ]
 
     # filter out topic maps with both connector name and namespace
@@ -232,7 +225,7 @@ def _display_connector_runtime_health(
     namespace: str,
     target: str,
     connectors: Optional[List[Dict[str, Any]]] = None,
-    prefix: str = AIO_MQ_RESOURCE_PREFIX,
+    prefix: str = AIO_BROKER_RESOURCE_PREFIX,
     padding: int = 8,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ):
@@ -246,9 +239,7 @@ def _display_connector_runtime_health(
             ),
         )
         padding += PADDING_SIZE
-        pod_name_prefixes = [
-            f"{prefix}{connector['metadata']['name']}" for connector in connectors
-        ]
+        pod_name_prefixes = [f"{prefix}{connector['metadata']['name']}" for connector in connectors]
         for pod in pod_name_prefixes:
             evaluate_pod_health(
                 check_manager=check_manager,
@@ -290,7 +281,5 @@ def _mark_connector_target_as_skipped(
         status=CheckTaskStatus.skipped.value,
         value=message,
     )
-    check_manager.set_target_status(
-        target_name=target, status=CheckTaskStatus.skipped.value
-    )
+    check_manager.set_target_status(target_name=target, status=CheckTaskStatus.skipped.value)
     check_manager.add_display(target_name=target, display=Padding(message, padding))

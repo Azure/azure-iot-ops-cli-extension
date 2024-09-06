@@ -15,7 +15,12 @@ from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
 
-from ..common import AIO_MQ_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT, PodState
+from ..common import (
+    AIO_BROKER_DIAGNOSTICS_SERVICE,
+    METRICS_SERVICE_API_PORT,
+    PROTOBUF_SERVICE_API_PORT,
+    PodState,
+)
 from ..util import get_timestamp_now_utc
 from .base import get_namespaced_pods_by_prefix, portforward_http, portforward_socket, V1Pod
 
@@ -31,7 +36,7 @@ if TYPE_CHECKING:
 
 
 def _preprocess_stats(
-    namespace: Optional[str] = None, diag_service_pod_prefix: str = AIO_MQ_DIAGNOSTICS_SERVICE
+    namespace: Optional[str] = None, diag_service_pod_prefix: str = AIO_BROKER_DIAGNOSTICS_SERVICE
 ) -> Tuple[str, V1Pod]:
     if not namespace:
         from .base import DEFAULT_NAMESPACE
@@ -55,14 +60,16 @@ def _preprocess_stats(
 
 def get_stats(
     namespace: Optional[str] = None,
-    diag_service_pod_prefix: str = AIO_MQ_DIAGNOSTICS_SERVICE,
+    diag_service_pod_prefix: str = AIO_BROKER_DIAGNOSTICS_SERVICE,
     pod_metrics_port: int = METRICS_SERVICE_API_PORT,
     raw_response=False,
     raw_response_print=False,
     refresh_in_seconds: int = 10,
     watch: bool = False,
 ) -> Union[Dict[str, dict], str, None]:
-    namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
+    namespace, diagnostic_pod = _preprocess_stats(
+        namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix
+    )
 
     from rich import box
     from rich.live import Live
@@ -88,7 +95,9 @@ def get_stats(
             stats = dict(sorted(_clean_stats(raw_metrics).items()))
             if not watch:
                 return stats
-            logger.warning(f"Refreshing every {refresh_in_seconds} seconds. Use ctrl-c to terminate stats watch.\n")
+            logger.warning(
+                f"Refreshing every {refresh_in_seconds} seconds. Use ctrl-c to terminate stats watch.\n"
+            )
             with Live(table, refresh_per_second=4, auto_refresh=False) as live:
                 while True:
                     stats = dict(sorted(_clean_stats(raw_metrics).items()))
@@ -108,7 +117,11 @@ def get_stats(
                             (
                                 "[green]Pass[/green]"
                                 if str(stats[s]["value"]) == "Pass"
-                                else "[red]Fail[/red]" if str(stats[s]["value"]) == "Fail" else str(stats[s]["value"])
+                                else (
+                                    "[red]Fail[/red]"
+                                    if str(stats[s]["value"]) == "Fail"
+                                    else str(stats[s]["value"])
+                                )
                             ),
                             stats[s]["description"],
                         )
@@ -216,7 +229,7 @@ def _clean_stats(raw_stats: str) -> dict:
 
 def get_traces(
     namespace: Optional[str] = None,
-    diag_service_pod_prefix: str = AIO_MQ_DIAGNOSTICS_SERVICE,
+    diag_service_pod_prefix: str = AIO_BROKER_DIAGNOSTICS_SERVICE,
     pod_protobuf_port: int = PROTOBUF_SERVICE_API_PORT,
     trace_ids: Optional[List[str]] = None,
     trace_dir: Optional[str] = None,
@@ -236,7 +249,9 @@ def get_traces(
     from .proto.diagnostics_service_pb2 import Request, Response, TraceRetrievalInfo
     from ..util import normalize_dir
 
-    namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
+    namespace, diagnostic_pod = _preprocess_stats(
+        namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix
+    )
 
     for_support_bundle = False
     trace_ids = trace_ids or []
@@ -299,11 +314,14 @@ def get_traces(
 
                     if not progress.disable and not progress_set:
                         progress_task = progress.add_task(
-                            "[deep_sky_blue4]Gathering traces...", total=response.retrieved_trace.total_trace_count
+                            "[deep_sky_blue4]Gathering traces...",
+                            total=response.retrieved_trace.total_trace_count,
                         )
                         progress_set = True
 
-                    msg_dict = MessageToDict(message=response.retrieved_trace.trace, use_integers_for_enums=True)
+                    msg_dict = MessageToDict(
+                        message=response.retrieved_trace.trace, use_integers_for_enums=True
+                    )
                     root_span, resource_name, timestamp = _determine_root_span(message_dict=msg_dict)
 
                     if progress_set:

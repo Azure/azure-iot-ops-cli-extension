@@ -22,24 +22,24 @@ from rich.console import NewLine
 from rich.padding import Padding
 
 from ...common import (
-    AIO_MQ_DIAGNOSTICS_SERVICE,
+    AIO_BROKER_DIAGNOSTICS_SERVICE,
     CheckTaskStatus,
 )
 
 from .common import (
-    AIO_MQ_DIAGNOSTICS_PROBE_PREFIX,
-    AIO_MQ_FLUENT_BIT,
-    AIO_MQ_FRONTEND_PREFIX,
-    AIO_MQ_BACKEND_PREFIX,
-    AIO_MQ_AUTH_PREFIX,
-    AIO_MQ_HEALTH_MANAGER,
-    AIO_MQ_OPERATOR,
+    AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX,
+    AIO_BROKER_FLUENT_BIT,
+    AIO_BROKER_FRONTEND_PREFIX,
+    AIO_BROKER_BACKEND_PREFIX,
+    AIO_BROKER_AUTH_PREFIX,
+    AIO_BROKER_HEALTH_MANAGER,
+    AIO_BROKER_OPERATOR,
     BROKER_DIAGNOSTICS_PROPERTIES,
     ResourceOutputDetailLevel,
 )
 
 from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
-from ..support.mq import MQ_K8S_LABEL, MQ_NAME_LABEL
+from ..support.mq import MQ_NAME_LABEL
 
 from ..base import get_namespaced_service
 
@@ -92,7 +92,9 @@ def evaluate_broker_listeners(
     )
     if not all_listeners:
         status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
-        fetch_listeners_error_text = f"Unable to fetch {MqResourceKinds.BROKER_LISTENER.value}s in any namespace."
+        fetch_listeners_error_text = (
+            f"Unable to fetch {MqResourceKinds.BROKER_LISTENER.value}s in any namespace."
+        )
         check_manager.add_target(target_name=target_listeners)
         check_manager.add_target_eval(
             target_name=target_listeners,
@@ -131,7 +133,9 @@ def evaluate_broker_listeners(
             )
             # TODO listeners_eval_status = CheckTaskStatus.warning.value
         check_manager.add_display(
-            target_name=target_listeners, namespace=namespace, display=Padding(listener_count_desc, (0, 0, 0, 8))
+            target_name=target_listeners,
+            namespace=namespace,
+            display=Padding(listener_count_desc, (0, 0, 0, 8)),
         )
 
         processed_services = {}
@@ -147,7 +151,9 @@ def evaluate_broker_listeners(
 
             listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}."
             check_manager.add_display(
-                target_name=target_listeners, namespace=namespace, display=Padding(listener_desc, (0, 0, 0, 8))
+                target_name=target_listeners,
+                namespace=namespace,
+                display=Padding(listener_desc, (0, 0, 0, 8)),
             )
 
             process_custom_resource_status(
@@ -278,7 +284,9 @@ def evaluate_brokers(
         return check_manager.as_dict(as_list)
 
     for namespace, brokers in get_resources_grouped_by_namespace(all_brokers):
-        check_manager.add_target(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
+        check_manager.add_target(
+            target_name=target_brokers, namespace=namespace, conditions=broker_conditions
+        )
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
@@ -358,7 +366,9 @@ def evaluate_brokers(
                 )
             else:
                 backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
-                backend_redundancy_desc = "- Expecting backend redundancy factor [bright_blue]>=1[/bright_blue]. {}"
+                backend_redundancy_desc = (
+                    "- Expecting backend redundancy factor [bright_blue]>=1[/bright_blue]. {}"
+                )
                 backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
                 frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
 
@@ -493,13 +503,14 @@ def evaluate_brokers(
 
             for pod in [
                 # TODO: rename the prefix if service apply name changes
-                AIO_MQ_DIAGNOSTICS_PROBE_PREFIX,
-                AIO_MQ_FRONTEND_PREFIX,
-                AIO_MQ_BACKEND_PREFIX,
-                AIO_MQ_AUTH_PREFIX,
-                AIO_MQ_HEALTH_MANAGER,
-                AIO_MQ_DIAGNOSTICS_SERVICE,
-                AIO_MQ_OPERATOR,
+                AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX,
+                AIO_BROKER_FRONTEND_PREFIX,
+                AIO_BROKER_BACKEND_PREFIX,
+                AIO_BROKER_AUTH_PREFIX,
+                AIO_BROKER_HEALTH_MANAGER,
+                AIO_BROKER_DIAGNOSTICS_SERVICE,
+                AIO_BROKER_OPERATOR,
+                AIO_BROKER_FLUENT_BIT,
             ]:
                 evaluate_pod_health(
                     check_manager=check_manager,
@@ -510,16 +521,6 @@ def evaluate_brokers(
                     service_label=MQ_NAME_LABEL,
                     detail_level=detail_level,
                 )
-
-            evaluate_pod_health(
-                check_manager=check_manager,
-                target=target_brokers,
-                namespace=namespace,
-                pod=AIO_MQ_FLUENT_BIT,
-                display_padding=12,
-                service_label=MQ_K8S_LABEL,
-                detail_level=detail_level,
-            )
 
     return check_manager.as_dict(as_list)
 
@@ -675,17 +676,19 @@ def _evaluate_broker_diagnostics_service(
     namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
-    diagnostics_service = get_namespaced_service(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True)
+    diagnostics_service = get_namespaced_service(
+        name=AIO_BROKER_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True
+    )
     if not diagnostics_service:
         check_manager.add_target_eval(
             target_name=target_brokers,
             namespace=namespace,
             status=CheckTaskStatus.error.value,
-            value=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE} not found in namespace {namespace}",
-            resource_name=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE}",
+            value=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE} not found in namespace {namespace}",
+            resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
         )
         diag_service_desc_suffix = "[red]not detected[/red]."
-        diag_service_desc = f"Diagnostics Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+        diag_service_desc = f"Diagnostics Service {{[bright_blue]{AIO_BROKER_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
@@ -703,10 +706,10 @@ def _evaluate_broker_diagnostics_service(
             namespace=namespace,
             status=CheckTaskStatus.success.value,
             value={"spec": {"clusterIP": clusterIP, "ports": ports}},
-            resource_name=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE}",
+            resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
         )
         diag_service_desc_suffix = "[green]detected[/green]."
-        diag_service_desc = f"\nDiagnostics Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+        diag_service_desc = f"\nDiagnostics Service {{[bright_blue]{AIO_BROKER_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
