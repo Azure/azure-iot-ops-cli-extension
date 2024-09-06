@@ -79,6 +79,7 @@ class Assets(Queryable):
         ev_sampling_interval: int = 500,
         ev_queue_size: int = 1,
         tags: Optional[Dict[str, str]] = None,
+        discovered: bool = False  # for quick discovered debugging
     ):
         from .helpers import get_extended_location
         extended_location = get_extended_location(
@@ -129,6 +130,12 @@ class Assets(Queryable):
             ev_sampling_interval=ev_sampling_interval,
             ev_queue_size=ev_queue_size,
         )
+        # discovered
+        if discovered:
+            self.ops = self.discovered_ops
+            properties.pop("enabled", None)
+            properties["version"] = 1
+            properties["discoveryId"] = "discoveryid1"
 
         asset_body = {
             "extendedLocation": extended_location,
@@ -137,8 +144,8 @@ class Assets(Queryable):
             "tags": tags,
         }
         return self.ops.begin_create_or_replace(
-            asset_name=asset_name,
-            resource_group_name=resource_group_name,
+            resource_group_name,
+            asset_name,
             resource=asset_body
         )
 

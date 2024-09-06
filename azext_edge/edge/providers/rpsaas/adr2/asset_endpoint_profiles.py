@@ -61,6 +61,7 @@ class AssetEndpointProfiles(Queryable):
         password_reference: Optional[str] = None,
         username_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
+        discovered: bool = False,  # for easy discovered debugging
         **additional_configuration
     ):
         from .helpers import get_extended_location
@@ -90,6 +91,12 @@ class AssetEndpointProfiles(Queryable):
             password_reference=password_reference,
             certificate_reference=certificate_reference,
         )
+        # discovered
+        if discovered:
+            self.ops = self.discovered_ops
+            properties.pop("authentication", None)
+            properties["version"] = 1
+            properties["discoveryId"] = "discoveryid1"
 
         aep_body = {
             "extendedLocation": extended_location,
@@ -97,9 +104,9 @@ class AssetEndpointProfiles(Queryable):
             "properties": properties,
             "tags": tags,
         }
-        return self.ops.begin_create_or_replace(
-            asset_endpoint_profile_name=asset_endpoint_profile_name,
-            resource_group_name=resource_group_name,
+        return self.discovered_ops.begin_create_or_replace(
+            resource_group_name,
+            asset_endpoint_profile_name,
             resource=aep_body
         )
 
