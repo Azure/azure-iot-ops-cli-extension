@@ -152,6 +152,7 @@ def check_workload_resource_files(
     expected_workload_types: List[str],
     prefixes: Union[str, List[str]],
     bundle_path: str,
+    expected_label: Optional[str] = None,
     optional_workload_types: Optional[List[str]] = None,
 ):
     if "pod" in expected_workload_types:
@@ -185,7 +186,7 @@ def check_workload_resource_files(
             if file["descriptor"] not in converted_file:
                 converted_file[file["descriptor"]] = False
 
-    expected_pods = get_kubectl_workload_items(prefixes, service_type="pod")
+    expected_pods = get_kubectl_workload_items(prefixes, service_type="pod", label_match=expected_label)
     check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))
     find_extra_or_missing_names(
         resource_type="pod",
@@ -200,10 +201,14 @@ def check_workload_resource_files(
             assert value, f"Pod {name} is missing {extension}."
 
     # other
-    def _check_non_pod_files(workload_types: List[str], required: bool = False):
+    def _check_non_pod_files(
+        workload_types: List[str], required: bool = False, expected_label: Optional[str] = None
+    ):
         for key in workload_types:
             try:
-                expected_items = get_kubectl_workload_items(prefixes, service_type=key)
+                expected_items = get_kubectl_workload_items(
+                    prefixes, service_type=key, label_match=expected_label
+                )
                 for file in file_objs.get(key, []):
                     assert file["extension"] == "yaml"
                 present_names = [file["name"] for file in file_objs.get(key, [])]
@@ -212,9 +217,9 @@ def check_workload_resource_files(
                 if required:
                     raise e
 
-    _check_non_pod_files(expected_workload_types)
+    _check_non_pod_files(expected_workload_types, expected_label=expected_label)
     if optional_workload_types:
-        _check_non_pod_files(optional_workload_types, required=False)
+        _check_non_pod_files(optional_workload_types, required=False, expected_label=expected_label)
 
 
 def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]]):
@@ -248,8 +253,8 @@ def get_file_map(
 
     # separate namespaces
     file_map = {"__namespaces__": {}}
-    # default walk result meta, schemaregistry and arcagents
-    expected_default_walk_result = 2 + len(ARC_AGENTS)
+    # default walk result meta and arcagents
+    expected_default_walk_result = 1 + len(ARC_AGENTS)
 
     if arc_namespace:
         file_map["arc"] = {}
@@ -277,7 +282,7 @@ def get_file_map(
         else:
             assert len(walk_result) == 1 + expected_default_walk_result
     # remove ops_service that are not selectable by --svc
-    elif ops_service not in ["otel", "meta", "schemaregistry"]:
+    elif ops_service not in ["otel", "meta"]:
         assert len(walk_result) == 1 + expected_default_walk_result
         assert not walk_result[ops_path]["folders"]
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])

@@ -112,5 +112,5 @@ def _get_expected_services(
         and OpsServiceType.deviceregistry.value in expected_services
     ):
         expected_services.remove(OpsServiceType.deviceregistry.value)
-    expected_services.extend(["meta", "schemaregistry"])
+    expected_services.append("meta")
     return expected_services
