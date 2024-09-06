@@ -515,8 +515,8 @@ def load_iotops_arguments(self, _):
                 nargs="*",
                 action="extend",
                 options_list=["--mi-user-assigned"],
-                help="Space-separated resource Ids for the desired user managed identities to associate with the instance. "
-                "Can be used one or more times.",
+                help="Space-separated resource Ids for the desired user managed identities to associate with the instance."
+                " Can be used one or more times.",
                 arg_group="Identity",
             )
             context.argument(
