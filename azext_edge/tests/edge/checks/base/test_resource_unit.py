@@ -24,6 +24,7 @@ from azext_edge.edge.providers.check.base import (
 from azext_edge.edge.providers.check.base.resource import (
     calculate_status,
     combine_statuses,
+    decorate_resource_status,
     process_resource_property_by_type,
 )
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
@@ -35,7 +36,10 @@ from azext_edge.edge.providers.edge_api import (
     OPCUA_API_V1,
     OpcuaResourceKinds,
 )
-from azext_edge.edge.providers.edge_api.deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
+from azext_edge.edge.providers.edge_api.deviceregistry import (
+    DEVICEREGISTRY_API_V1,
+    DeviceRegistryResourceKinds,
+)
 from azext_edge.tests.edge.checks.conftest import generate_api_resource_list, generate_pod_stub
 
 
@@ -62,7 +66,16 @@ from azext_edge.tests.edge.checks.conftest import generate_api_resource_list, ge
                         "namespaced": True,
                         "short_names": ["akrii"],
                         "singular_name": "instance",
-                        "verbs": ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"],
+                        "verbs": [
+                            "delete",
+                            "deletecollection",
+                            "get",
+                            "list",
+                            "patch",
+                            "create",
+                            "update",
+                            "watch",
+                        ],
                     },
                     {
                         "categories": None,
@@ -72,7 +85,16 @@ from azext_edge.tests.edge.checks.conftest import generate_api_resource_list, ge
                         "namespaced": True,
                         "short_names": ["akric"],
                         "singular_name": "configuration",
-                        "verbs": ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"],
+                        "verbs": [
+                            "delete",
+                            "deletecollection",
+                            "get",
+                            "list",
+                            "patch",
+                            "create",
+                            "update",
+                            "watch",
+                        ],
                     },
                 ],
             ),
@@ -101,7 +123,16 @@ from azext_edge.tests.edge.checks.conftest import generate_api_resource_list, ge
                         "short_names": None,
                         "singular_name": "assettype",
                         "storage_version_hash": "FCPRUJA7s2I=",
-                        "verbs": ["delete", "deletecollection", "get", "list", "patch", "create", "update", "watch"],
+                        "verbs": [
+                            "delete",
+                            "deletecollection",
+                            "get",
+                            "list",
+                            "patch",
+                            "create",
+                            "update",
+                            "watch",
+                        ],
                         "version": None,
                     },
                 ],
@@ -207,7 +238,11 @@ def test_filter_resources_by_name(
 @pytest.mark.parametrize(
     "api_info, resource_kind, expected_name",
     [
-        (DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds.ASSET.value, "assets.deviceregistry.microsoft.com"),
+        (
+            DEVICEREGISTRY_API_V1,
+            DeviceRegistryResourceKinds.ASSET.value,
+            "assets.deviceregistry.microsoft.com",
+        ),
         (DEVICEREGISTRY_API_V1, "mocktype", "mocktypes.deviceregistry.microsoft.com"),
     ],
 )
@@ -223,7 +258,11 @@ def test_generate_target_resource_name(api_info, resource_kind, expected_name):
             "asset",
             "test*",
             "namespace",
-            [{"metadata": {"name": "test1"}}, {"metadata": {"name": "test2"}}, {"metadata": {"name": "nontest"}}],
+            [
+                {"metadata": {"name": "test1"}},
+                {"metadata": {"name": "test2"}},
+                {"metadata": {"name": "nontest"}},
+            ],
             [{"metadata": {"name": "test1"}}, {"metadata": {"name": "test2"}}],
         ),
         (
@@ -236,7 +275,13 @@ def test_generate_target_resource_name(api_info, resource_kind, expected_name):
             ],
             [{"metadata": {"name": "asset1", "namespace": "default"}}],
         ),
-        ("asset", "nonexistent", None, [{"metadata": {"name": "test1"}}, {"metadata": {"name": "test2"}}], []),
+        (
+            "asset",
+            "nonexistent",
+            None,
+            [{"metadata": {"name": "test1"}}, {"metadata": {"name": "test2"}}],
+            [],
+        ),
     ],
 )
 def test_get_resources_by_name(
@@ -464,6 +509,33 @@ def test_process_list_resource(mocker, mocked_check_manager, resource, expected_
 
 
 @pytest.mark.parametrize(
+    "status, expected_status_text",
+    [
+        ("Starting", "[yellow]{}[/yellow]"),
+        ("Running", "[green]{}[/green]"),
+        ("Recovering", "[yellow]{}[/yellow]"),
+        ("Succeeded", "[green]{}[/green]"),
+        ("Failed", "[red]{}[/red]"),
+        ("Waiting", "[yellow]{}[/yellow]"),
+        ("Warning", "[yellow]{}[/yellow]"),
+        ("Ok", "[green]{}[/green]"),
+        ("Warn", "[yellow]{}[/yellow]"),
+        ("Error", "[red]{}[/red]"),
+        ("N/A", "[yellow]{}[/yellow]"),
+        ("Unknown", "[green]{}[/green]"),
+    ],
+)
+def test_decorate_resource_status(status, expected_status_text):
+    # Call the function with status has upper case
+    result = decorate_resource_status(status)
+    assert result == expected_status_text.format(status)
+
+    # Call the function with status has lower case
+    result = decorate_resource_status(status.lower())
+    assert result == expected_status_text.format(status.lower())
+
+
+@pytest.mark.parametrize(
     "detail_level, prop_value, properties, expected_calls",
     [
         (
@@ -670,7 +742,9 @@ def test_process_resource_properties(
         ),
     ],
 )
-def test_process_resource_property_by_type(mocked_check_manager, properties, display_name, padding, expected_calls):
+def test_process_resource_property_by_type(
+    mocked_check_manager, properties, display_name, padding, expected_calls
+):
     # Call the function being tested
     process_resource_property_by_type(
         check_manager=mocked_check_manager,
