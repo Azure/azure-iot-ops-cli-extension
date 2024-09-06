@@ -502,7 +502,6 @@ def evaluate_brokers(
             )
 
             for pod in [
-                # TODO: rename the prefix if service apply name changes
                 AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX,
                 AIO_BROKER_FRONTEND_PREFIX,
                 AIO_BROKER_BACKEND_PREFIX,

@@ -242,7 +242,7 @@ class BundleResourceKind(Enum):
     configmap = "ConfigMap"
 
 
-# MQ runtime attributes
+# Broker runtime attributes
 
 AIO_BROKER_RESOURCE_PREFIX = "aio-broker-"
 AIO_BROKER_DIAGNOSTICS_SERVICE = "aio-broker-diagnostics-service"

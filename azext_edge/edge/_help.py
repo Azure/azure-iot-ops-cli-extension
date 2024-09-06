@@ -546,6 +546,18 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops create"
+    ] = """
+        type: command
+        short-summary: Create an IoT Operations instance.
+
+        examples:
+        - name: Create the target instance with minimum input.
+          text: >
+            az iot ops create --name myinstance --cluster mycluster -g myresourcegroup
+    """
+
+    helps[
         "iot ops asset"
     ] = """
         type: group
