@@ -208,15 +208,14 @@ def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
     if not resource_id:
         return resource_id
 
-    # TODO - hacky.
-    if "/" not in resource_id:
+    # TODO - cheap.
+    parts = resource_id.split("/")
+    if len(parts) < 9:
         raise ValidationError(
             "Malformed resource Id. An Azure resource Id has the form:\n"
             "/subscription/{subscriptionId}/resourceGroups/{resourceGroup}"
             "/providers/Microsoft.Provider/{resourcePath}/{resourceName}"
         )
-
-    parts = resource_id.split("/")
 
     # Extract the subscription, resource group, and resource name
     subscription_id = parts[2]
