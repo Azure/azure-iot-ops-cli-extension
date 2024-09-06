@@ -63,7 +63,9 @@ class InitTargets:
         self.cluster_name = cluster_name
         self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
         self.resource_group_name = resource_group_name
-        self.schema_registry_resource_id = parse_resource_id(schema_registry_resource_id)
+        # TODO - @digimaun
+        parse_resource_id(schema_registry_resource_id)
+        self.schema_registry_resource_id = schema_registry_resource_id
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
         self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
