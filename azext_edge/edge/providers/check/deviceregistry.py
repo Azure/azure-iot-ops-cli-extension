@@ -121,7 +121,7 @@ def evaluate_assets(
             )
 
             asset_spec = asset["spec"]
-            endpoint_profile_uri = asset_spec.get("assetEndpointProfileUri", "")
+            endpoint_profile_uri = asset_spec.get("assetEndpointProfileRef", "")
             endpoint_profile = get_resources_by_name(
                 api_info=DEVICEREGISTRY_API_V1,
                 kind=DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE,
@@ -129,7 +129,7 @@ def evaluate_assets(
             )
             spec_padding = padding + PADDING_SIZE
 
-            endpoint_profile_uri_value = {"spec.assetEndpointProfileUri": endpoint_profile_uri}
+            endpoint_profile_uri_value = {"spec.assetEndpointProfileRef": endpoint_profile_uri}
             endpoint_profile_uri_status = CheckTaskStatus.success.value
             if endpoint_profile:
                 endpoint_profile_uri_text = (
