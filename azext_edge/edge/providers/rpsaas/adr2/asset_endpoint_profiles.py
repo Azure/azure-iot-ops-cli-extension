@@ -348,15 +348,15 @@ def _process_authentication(
 
     if certificate_reference and auth_mode in [None, AEPAuthModes.certificate.value]:
         auth_props["method"] = AEPAuthModes.certificate.value
-        auth_props["x509Credentials"] = {"certificateReference": certificate_reference}
+        auth_props["x509Credentials"] = {"certificateSecretName": certificate_reference}
         if auth_props.pop("usernamePasswordCredentials", None):
             logger.warning(REMOVED_USERPASS_REF_MSG)
     elif (username_reference or password_reference) and auth_mode in [None, AEPAuthModes.userpass.value]:
         auth_props["method"] = AEPAuthModes.userpass.value
         user_creds = auth_props.get("usernamePasswordCredentials", {})
-        user_creds["usernameReference"] = username_reference
-        user_creds["passwordReference"] = password_reference
-        if not all([user_creds["usernameReference"], user_creds["passwordReference"]]):
+        user_creds["usernameSecretName"] = username_reference
+        user_creds["passwordSecretName"] = password_reference
+        if not all([user_creds["usernameSecretName"], user_creds["passwordSecretName"]]):
             raise RequiredArgumentMissingError(MISSING_USERPASS_REF_ERROR)
         auth_props["usernamePasswordCredentials"] = user_creds
         if auth_props.pop("x509Credentials", None):
