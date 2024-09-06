@@ -44,7 +44,7 @@ def _preprocess_stats(
             f"Diagnostics service pod '{diag_service_pod_prefix}' does not exist in namespace '{namespace}'."
         )
     for pod in target_pods:
-        if pod.status.phase.lower() == PodState.running.value.lower():
+        if pod.status.phase.lower() == PodState.running.value:
             return namespace, pod
 
     raise ResourceNotFoundError(
