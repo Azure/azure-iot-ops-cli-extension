@@ -74,9 +74,6 @@ def build_bundle(
         deployed_meta_apis = COMPAT_META_APIS.get_deployed()
         pending_work["meta"] = prepare_meta_bundle(log_age_seconds, deployed_meta_apis)
 
-        # # schema registry resources
-        # pending_work["schemaregistry"] = prepare_schema_registry_bundle(log_age_seconds)
-
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
 
