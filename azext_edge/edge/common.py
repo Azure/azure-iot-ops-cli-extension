@@ -244,9 +244,8 @@ class BundleResourceKind(Enum):
 
 # Broker runtime attributes
 
-AIO_MQ_RESOURCE_PREFIX = "aio-mq-"
+AIO_BROKER_RESOURCE_PREFIX = "aio-broker-"
 AIO_BROKER_DIAGNOSTICS_SERVICE = "aio-broker-diagnostics-service"
-AIO_MQ_OPERATOR = "aio-mq-operator"
 METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800
 
