@@ -16,7 +16,7 @@ from kubernetes.client.models import V1ObjectMeta, V1Pod, V1PodList, V1PodStatus
 from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
 from azext_edge.edge.commands_mq import stats
-from azext_edge.edge.common import AIO_BROKER_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PodState
+from azext_edge.edge.common import AIO_BROKER_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT
 
 # pylint: disable=no-name-in-module
 from azext_edge.edge.providers.proto.diagnostics_service_pb2 import (
