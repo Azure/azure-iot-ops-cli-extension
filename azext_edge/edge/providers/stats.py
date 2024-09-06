@@ -15,7 +15,7 @@ from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
 
-from ..common import AIO_MQ_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT, PodState
+from ..common import AIO_BROKER_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT, PodState
 from ..util import get_timestamp_now_utc
 from .base import get_namespaced_pods_by_prefix, portforward_http, portforward_socket, V1Pod
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 
 def _preprocess_stats(
-    namespace: Optional[str] = None, diag_service_pod_prefix: str = AIO_MQ_DIAGNOSTICS_SERVICE
+    namespace: Optional[str] = None, diag_service_pod_prefix: str = AIO_BROKER_DIAGNOSTICS_SERVICE
 ) -> Tuple[str, V1Pod]:
     if not namespace:
         from .base import DEFAULT_NAMESPACE
@@ -55,7 +55,7 @@ def _preprocess_stats(
 
 def get_stats(
     namespace: Optional[str] = None,
-    diag_service_pod_prefix: str = AIO_MQ_DIAGNOSTICS_SERVICE,
+    diag_service_pod_prefix: str = AIO_BROKER_DIAGNOSTICS_SERVICE,
     pod_metrics_port: int = METRICS_SERVICE_API_PORT,
     raw_response=False,
     raw_response_print=False,
@@ -216,7 +216,7 @@ def _clean_stats(raw_stats: str) -> dict:
 
 def get_traces(
     namespace: Optional[str] = None,
-    diag_service_pod_prefix: str = AIO_MQ_DIAGNOSTICS_SERVICE,
+    diag_service_pod_prefix: str = AIO_BROKER_DIAGNOSTICS_SERVICE,
     pod_protobuf_port: int = PROTOBUF_SERVICE_API_PORT,
     trace_ids: Optional[List[str]] = None,
     trace_dir: Optional[str] = None,

@@ -22,7 +22,7 @@ from rich.console import NewLine
 from rich.padding import Padding
 
 from ...common import (
-    AIO_MQ_DIAGNOSTICS_SERVICE,
+    AIO_BROKER_DIAGNOSTICS_SERVICE,
     CheckTaskStatus,
 )
 
@@ -498,7 +498,7 @@ def evaluate_brokers(
                 AIO_MQ_BACKEND_PREFIX,
                 AIO_MQ_AUTH_PREFIX,
                 AIO_MQ_HEALTH_MANAGER,
-                AIO_MQ_DIAGNOSTICS_SERVICE,
+                AIO_BROKER_DIAGNOSTICS_SERVICE,
                 AIO_MQ_OPERATOR,
             ]:
                 evaluate_pod_health(
@@ -675,17 +675,17 @@ def _evaluate_broker_diagnostics_service(
     namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
-    diagnostics_service = get_namespaced_service(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True)
+    diagnostics_service = get_namespaced_service(name=AIO_BROKER_DIAGNOSTICS_SERVICE, namespace=namespace, as_dict=True)
     if not diagnostics_service:
         check_manager.add_target_eval(
             target_name=target_brokers,
             namespace=namespace,
             status=CheckTaskStatus.error.value,
-            value=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE} not found in namespace {namespace}",
-            resource_name=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE}",
+            value=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE} not found in namespace {namespace}",
+            resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
         )
         diag_service_desc_suffix = "[red]not detected[/red]."
-        diag_service_desc = f"Diagnostics Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+        diag_service_desc = f"Diagnostics Service {{[bright_blue]{AIO_BROKER_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
@@ -703,10 +703,10 @@ def _evaluate_broker_diagnostics_service(
             namespace=namespace,
             status=CheckTaskStatus.success.value,
             value={"spec": {"clusterIP": clusterIP, "ports": ports}},
-            resource_name=f"service/{AIO_MQ_DIAGNOSTICS_SERVICE}",
+            resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
         )
         diag_service_desc_suffix = "[green]detected[/green]."
-        diag_service_desc = f"\nDiagnostics Service {{[bright_blue]{AIO_MQ_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+        diag_service_desc = f"\nDiagnostics Service {{[bright_blue]{AIO_BROKER_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,

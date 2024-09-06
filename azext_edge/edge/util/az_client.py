@@ -6,7 +6,7 @@
 
 import sys
 from time import sleep
-from typing import TYPE_CHECKING, Any, NamedTuple, Tuple
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple
 
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
@@ -204,7 +204,10 @@ class ResourceIdContainer(NamedTuple):
     resource_name: str
 
 
-def parse_resource_id(resource_id: str) -> ResourceIdContainer:
+def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
+    if not resource_id:
+        return resource_id
+
     # TODO - hacky.
     if "/" not in resource_id:
         raise ValidationError(
