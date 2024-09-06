@@ -15,12 +15,7 @@ from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
 
-from ..common import (
-    AIO_BROKER_DIAGNOSTICS_SERVICE,
-    METRICS_SERVICE_API_PORT,
-    PROTOBUF_SERVICE_API_PORT,
-    PodState,
-)
+from ..common import AIO_BROKER_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT, PodState
 from ..util import get_timestamp_now_utc
 from .base import get_namespaced_pods_by_prefix, portforward_http, portforward_socket, V1Pod
 
@@ -113,9 +108,7 @@ def get_stats(
                             (
                                 "[green]Pass[/green]"
                                 if str(stats[s]["value"]) == "Pass"
-                                else (
-                                    "[red]Fail[/red]" if str(stats[s]["value"]) == "Fail" else str(stats[s]["value"])
-                                )
+                                else "[red]Fail[/red]" if str(stats[s]["value"]) == "Fail" else str(stats[s]["value"])
                             ),
                             stats[s]["description"],
                         )
@@ -306,8 +299,7 @@ def get_traces(
 
                     if not progress.disable and not progress_set:
                         progress_task = progress.add_task(
-                            "[deep_sky_blue4]Gathering traces...",
-                            total=response.retrieved_trace.total_trace_count,
+                            "[deep_sky_blue4]Gathering traces...", total=response.retrieved_trace.total_trace_count
                         )
                         progress_set = True
 
