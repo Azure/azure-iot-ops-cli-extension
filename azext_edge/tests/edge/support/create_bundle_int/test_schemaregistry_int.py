@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 def test_create_bundle_schemas(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
-    ops_service = OpsServiceType.akri.value
+    ops_service = OpsServiceType.schemaregistry.value
 
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
@@ -28,4 +28,5 @@ def test_create_bundle_schemas(init_setup, tracked_files):
         expected_workload_types=expected_workload_types,
         prefixes=["adr-schema-registry"],
         bundle_path=bundle_path,
+        expected_label=("app.kubernetes.io/name", "microsoft-iotoperations-schemas"),
     )
