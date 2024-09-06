@@ -149,6 +149,7 @@ class OpsServiceType(ListableEnum):
     deviceregistry = "deviceregistry"
     billing = "billing"
     dataflow = "dataflow"
+    schemaregistry = "schemaregistry"
 
     @classmethod
     def list_check_services(cls):
@@ -222,6 +223,7 @@ class FileType(ListableEnum):
     """
     Supported file types/extensions for bulk asset operations.
     """
+
     csv = "csv"
     json = "json"
     portal_csv = "portal-csv"

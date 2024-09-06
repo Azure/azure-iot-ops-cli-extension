@@ -1042,16 +1042,8 @@ def test_create_bundle_arc_agents(
             )
 
 
-@pytest.mark.parametrize(
-    "mocked_cluster_resources",
-    [
-        [DEVICEREGISTRY_API_V1],
-    ],
-    indirect=True,
-)
 def test_create_bundle_schemas(
     mocked_client,
-    mocked_cluster_resources,
     mocked_config,
     mocked_os_makedirs,
     mocked_zipfile,
@@ -1068,7 +1060,7 @@ def test_create_bundle_schemas(
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(
         None,
-        ops_service=OpsServiceType.deviceregistry.value,
+        ops_service=OpsServiceType.schemaregistry.value,
         bundle_dir=a_bundle_dir,
         log_age_seconds=since_seconds,
     )

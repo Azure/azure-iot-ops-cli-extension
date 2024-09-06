@@ -74,9 +74,6 @@ def build_bundle(
         deployed_meta_apis = COMPAT_META_APIS.get_deployed()
         pending_work["meta"] = prepare_meta_bundle(log_age_seconds, deployed_meta_apis)
 
-        # schema registry resources
-        pending_work["schemaregistry"] = prepare_schema_registry_bundle(log_age_seconds)
-
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
 
@@ -103,13 +100,17 @@ def build_bundle(
             "apis": COMPAT_DATAFLOW_APIS,
             "prepare_bundle": prepare_dataflow_bundle,
         },
+        OpsServiceType.schemaregistry.value: {
+            "apis": None,
+            "prepare_bundle": prepare_schema_registry_bundle,
+        },
     }
 
     for service_moniker, api_info in api_map.items():
         if ops_service in [OpsServiceType.auto.value, service_moniker]:
-            deployed_apis = api_info["apis"].get_deployed()
+            deployed_apis = api_info["apis"].get_deployed() if api_info["apis"] else None
 
-            if not deployed_apis:
+            if not deployed_apis and service_moniker != OpsServiceType.schemaregistry.value:
                 expected_api_version = api_info["apis"].as_str()
                 logger.warning(
                     f"The following API(s) were not detected {expected_api_version}. "
@@ -125,6 +126,8 @@ def build_bundle(
                 bundle = bundle_method(deployed_apis)
             elif service_moniker == OpsServiceType.mq.value:
                 bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
+            elif service_moniker == OpsServiceType.schemaregistry.value:
+                bundle = bundle_method(log_age_seconds)
             else:
                 bundle = bundle_method(log_age_seconds, deployed_apis)
 
