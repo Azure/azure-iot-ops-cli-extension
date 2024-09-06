@@ -13,7 +13,7 @@ from .helpers import (
     check_workload_resource_files,
     get_file_map,
     get_kubectl_workload_items,
-    run_bundle_command
+    run_bundle_command,
 )
 
 logger = get_logger(__name__)
@@ -35,10 +35,7 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
         assert len(diagnostic) == 1
         assert diagnostic[0]["extension"] == "txt"
 
-    check_custom_resource_files(
-        file_objs=file_map,
-        resource_api=MQ_ACTIVE_API
-    )
+    check_custom_resource_files(file_objs=file_map, resource_api=MQ_ACTIVE_API)
 
     expected_workload_types = ["pod", "daemonset", "replicaset", "service", "statefulset"]
     expected_types = set(expected_workload_types).union(MQ_ACTIVE_API.kinds)
@@ -55,7 +52,13 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
         id_check = {}
         for file in traces["trace"]:
             assert file["action"] in [
-                "connect", "disconnect", "ping", "puback", "publish", "subscribe", "unsubscribe"
+                "connect",
+                "disconnect",
+                "ping",
+                "puback",
+                "publish",
+                "subscribe",
+                "unsubscribe",
             ]
             assert file["name"] in expected_pod_names
 
@@ -73,6 +76,6 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,
-        prefixes="aio-mq",
-        bundle_path=bundle_path
+        prefixes="aio-broker",
+        bundle_path=bundle_path,
     )

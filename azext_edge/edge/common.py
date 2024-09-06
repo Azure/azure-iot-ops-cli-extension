@@ -58,16 +58,17 @@ class ResourceState(Enum):
     K8s resource state.
     """
 
-    starting = "Starting"
-    running = "Running"
-    recovering = "Recovering"
-    succeeded = "Succeeded"
-    failed = "Failed"
-    waiting = "Waiting"
-    ok = "OK"
+    starting = "starting"
+    running = "running"
+    recovering = "recovering"
+    succeeded = "succeeded"
+    failed = "failed"
+    waiting = "waiting"
+    warning = "warning"
+    ok = "ok"
     warn = "warn"
-    error = "Error"
-    n_a = "N/A"
+    error = "error"
+    n_a = "n/a"
 
     @classmethod
     def map_to_color(cls, value) -> str:
@@ -75,6 +76,7 @@ class ResourceState(Enum):
 
     @classmethod
     def map_to_status(cls, value) -> CheckTaskStatus:
+        value = value.lower()
         status_map = {
             cls.starting.value: CheckTaskStatus.warning,
             cls.recovering.value: CheckTaskStatus.warning,
@@ -83,6 +85,7 @@ class ResourceState(Enum):
             cls.failed.value: CheckTaskStatus.error,
             cls.error.value: CheckTaskStatus.error,
             cls.waiting.value: CheckTaskStatus.warning,
+            cls.warning.value: CheckTaskStatus.warning,
         }
         return status_map.get(value, CheckTaskStatus.success)
 
@@ -92,14 +95,15 @@ class PodState(Enum):
     K8s pod state.
     """
 
-    pending = "Pending"
-    running = "Running"
-    succeeded = "Succeeded"
-    failed = "Failed"
-    unknown = "Unknown"
+    pending = "pending"
+    running = "running"
+    succeeded = "succeeded"
+    failed = "failed"
+    unknown = "unknown"
 
     @classmethod
     def map_to_status(cls, value) -> CheckTaskStatus:
+        value = value.lower()
         status_map = {
             cls.pending.value: CheckTaskStatus.warning,
             cls.unknown.value: CheckTaskStatus.warning,
@@ -244,9 +248,8 @@ class BundleResourceKind(Enum):
 
 # Broker runtime attributes
 
-AIO_MQ_RESOURCE_PREFIX = "aio-mq-"
+AIO_BROKER_RESOURCE_PREFIX = "aio-broker-"
 AIO_BROKER_DIAGNOSTICS_SERVICE = "aio-broker-diagnostics-service"
-AIO_MQ_OPERATOR = "aio-mq-operator"
 METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800
 

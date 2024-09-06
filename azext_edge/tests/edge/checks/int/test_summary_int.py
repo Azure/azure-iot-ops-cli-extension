@@ -32,5 +32,5 @@ def test_summary_checks():
     # assert each service check is either success or skipped
     for api in [AKRI_API_V0, MQ_ACTIVE_API, OPCUA_API_V1, DATAFLOW_API_V1B1, DEVICEREGISTRY_API_V1]:
         assert api.as_str() in checks["targets"]
-        service_checks = checks["targets"][api]
+        service_checks = checks["targets"][api.as_str()]
         assert service_checks.get(ALL_NAMESPACES_TARGET, {}).get("status") in ["success", "skipped"]
