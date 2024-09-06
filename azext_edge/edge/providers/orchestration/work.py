@@ -7,7 +7,7 @@
 from enum import IntEnum
 from json import dumps
 from time import sleep
-from typing import Dict, Optional, Tuple, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
 from uuid import uuid4
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
@@ -20,9 +20,9 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
-from ...util.az_client import wait_for_terminal_state, get_resource_client
-from .permissions import PermissionManager, ROLE_DEF_FORMAT_STR
+from ...util.az_client import get_resource_client, wait_for_terminal_state
 from .connected_cluster import ConnectedCluster
+from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager
 from .targets import InitTargets
 
 logger = get_logger(__name__)
@@ -110,11 +110,14 @@ class WorkManager:
             WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
         )
 
-        self._display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
-        self._display.add_step(WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation")
-        self._display.add_step(
-            WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.DEPLOY_ENABLEMENT, "Install foundation layer"
-        )
+        if self._apply_foundation:
+            self._display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
+            self._display.add_step(
+                WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation"
+            )
+            self._display.add_step(
+                WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.DEPLOY_ENABLEMENT, "Install foundation layer"
+            )
 
         create_instance_desc = "Create instance"
         if self._targets.instance_name:
@@ -146,7 +149,7 @@ class WorkManager:
             self._targets.location = cluster["location"]
 
         if self._targets.enable_fault_tolerance and cluster_properties["totalNodeCount"] < 3:
-            raise ValidationError("Edge storage accelerator fault tolerance enablement requires at least 3 nodes.")
+            raise ValidationError("Arc Container Storage fault tolerance enablement requires at least 3 nodes.")
 
         return connected_cluster
 
@@ -178,11 +181,17 @@ class WorkManager:
             parameters=deployment_params,
         )
 
-    def execute_ops_init(self, show_progress: bool = True, block: bool = True, pre_flight: bool = True, **kwargs):
+    def execute_ops_init(
+        self,
+        apply_foundation: bool = True,
+        show_progress: bool = True,
+        pre_flight: bool = True,
+        **kwargs,
+    ):
         self._bootstrap_ux(show_progress=show_progress)
         self._work_id = uuid4().hex
         self._work_format_str = f"aziotops.init.{{op}}.{self._work_id}"
-        self._block = block
+        self._apply_foundation = apply_foundation
         self._pre_flight = pre_flight
 
         self._completed_steps: Dict[int, int] = {}
@@ -242,49 +251,54 @@ class WorkManager:
                 )
 
             # Enable IoT Ops workflow
-            enablement_work_name = self._work_format_str.format(op="enablement")
-            self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT)
-            enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
-            self._deploy_template(
-                content=enablement_content,
-                parameters=enablement_parameters,
-                deployment_name=enablement_work_name,
-                what_if=True,
-            )
-            self.complete_step(
-                category=WorkCategoryKey.ENABLE_IOT_OPS,
-                completed_step=WorkStepKey.WHAT_IF_ENABLEMENT,
-                active_step=WorkStepKey.DEPLOY_ENABLEMENT,
-            )
-            enablement_poller = self._deploy_template(
-                content=enablement_content,
-                parameters=enablement_parameters,
-                deployment_name=enablement_work_name,
-            )
-            enablement_deploy_link = (
-                "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
-                f"%2Fsubscriptions%2F{self.subscription_id}%2FresourceGroups%2F{self._targets.resource_group_name}"
-                f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{enablement_work_name}"
-            )
-            # Pattern needs work, it is this way to dynamically update UI
-            self._display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title = (
-                f"[link={enablement_deploy_link}]"
-                f"{self._display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title}[/link]"
-            )
-            self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
-            _ = wait_for_terminal_state(enablement_poller)
+            if self._apply_foundation:
+                enablement_work_name = self._work_format_str.format(op="enablement")
+                self.render_display(
+                    category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
+                )
+                enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
+                self._deploy_template(
+                    content=enablement_content,
+                    parameters=enablement_parameters,
+                    deployment_name=enablement_work_name,
+                    what_if=True,
+                )
+                self.complete_step(
+                    category=WorkCategoryKey.ENABLE_IOT_OPS,
+                    completed_step=WorkStepKey.WHAT_IF_ENABLEMENT,
+                    active_step=WorkStepKey.DEPLOY_ENABLEMENT,
+                )
+                enablement_poller = self._deploy_template(
+                    content=enablement_content,
+                    parameters=enablement_parameters,
+                    deployment_name=enablement_work_name,
+                )
+                enablement_deploy_link = (
+                    "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
+                    f"%2Fsubscriptions%2F{self.subscription_id}%2FresourceGroups%2F{self._targets.resource_group_name}"
+                    f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{enablement_work_name}"
+                )
+                # Pattern needs work, it is this way to dynamically update UI
+                self._display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title = (
+                    f"[link={enablement_deploy_link}]"
+                    f"{self._display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title}[/link]"
+                )
+                self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
+                _ = wait_for_terminal_state(enablement_poller)
 
-            self._extension_map = connected_cluster.get_extensions_by_type(
-                IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE
-            )
-            self.permission_manager.apply_role_assignment(
-                scope=self._targets.schema_registry_resource_id,
-                principal_id=self._extension_map[IOT_OPS_EXTENSION_TYPE]["identity"]["principalId"],
-                role_def_id=ROLE_DEF_FORMAT_STR.format(
-                    subscription_id=self.subscription_id, role_id=CONTRIBUTOR_ROLE_ID
-                ),
-            )
-            self.complete_step(category=WorkCategoryKey.ENABLE_IOT_OPS, completed_step=WorkStepKey.DEPLOY_ENABLEMENT)
+                self._extension_map = connected_cluster.get_extensions_by_type(
+                    IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE
+                )
+                self.permission_manager.apply_role_assignment(
+                    scope=self._targets.schema_registry_resource_id,
+                    principal_id=self._extension_map[IOT_OPS_EXTENSION_TYPE]["identity"]["principalId"],
+                    role_def_id=ROLE_DEF_FORMAT_STR.format(
+                        subscription_id=self.subscription_id, role_id=CONTRIBUTOR_ROLE_ID
+                    ),
+                )
+                self.complete_step(
+                    category=WorkCategoryKey.ENABLE_IOT_OPS, completed_step=WorkStepKey.DEPLOY_ENABLEMENT
+                )
 
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
@@ -296,6 +310,10 @@ class WorkManager:
                         raise ValidationError(
                             "Foundational services not detected. Instance deployment will not continue."
                         )
+                    # Set the schema registry resource Id if its unknown
+                    self._targets.schema_registry_resource_id = self._extension_map[IOT_OPS_EXTENSION_TYPE][
+                        "properties"
+                    ]["configurationSettings"]["schemaRegistry.values.resourceId"]
 
                 instance_work_name = self._work_format_str.format(op="instance")
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)
@@ -364,7 +382,7 @@ class WorkManager:
             header_grid.add_column()
 
             header_grid.add_row(NewLine(1))
-            header_grid.add_row("[light_slate_gray]Azure IoT Operations init", style=Style(bold=True))
+            header_grid.add_row("[light_slate_gray]Azure IoT Operations", style=Style(bold=True))
             header_grid.add_row(f"Workflow Id: [dark_orange3]{self._work_id}")
             header_grid.add_row(NewLine(1))
 

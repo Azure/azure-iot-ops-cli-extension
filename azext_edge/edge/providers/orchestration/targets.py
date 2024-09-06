@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
@@ -12,9 +12,11 @@ from ...common import (
     DEFAULT_BROKER,
     DEFAULT_BROKER_AUTHN,
     DEFAULT_BROKER_LISTENER,
-    DEFAULT_DATAFLOW_PROFILE,
     DEFAULT_DATAFLOW_ENDPOINT,
+    DEFAULT_DATAFLOW_PROFILE,
 )
+from ...util import assemble_nargs_to_dict
+from ...util.az_client import parse_resource_id
 from .common import KubernetesDistroType, TrustSourceType
 from .template import (
     M2_ENABLEMENT_TEMPLATE,
@@ -29,7 +31,7 @@ class InitTargets:
         self,
         cluster_name: str,
         resource_group_name: str,
-        schema_registry_resource_id: str,
+        schema_registry_resource_id: Optional[str] = None,
         cluster_namespace: str = "azure-iot-operations",
         location: Optional[str] = None,
         custom_location_name: Optional[str] = None,
@@ -37,6 +39,7 @@ class InitTargets:
         instance_name: Optional[str] = None,
         instance_description: Optional[str] = None,
         enable_fault_tolerance: Optional[bool] = None,
+        ops_config: Optional[List[str]] = None,
         dataflow_profile_instances: int = 1,
         # Broker
         custom_broker_config: Optional[dict] = None,
@@ -52,13 +55,15 @@ class InitTargets:
         kubernetes_distro: str = KubernetesDistroType.k8s.value,
         container_runtime_socket: Optional[str] = None,
         trust_source: str = TrustSourceType.self_signed.value,
+        # Misc
         mi_user_assigned_identities: Optional[List[str]] = None,
+        tags: Optional[dict] = None,
         **_,
     ):
         self.cluster_name = cluster_name
         self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
         self.resource_group_name = resource_group_name
-        self.schema_registry_resource_id = schema_registry_resource_id
+        self.schema_registry_resource_id = parse_resource_id(schema_registry_resource_id)
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
         self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
@@ -66,7 +71,8 @@ class InitTargets:
         self.instance_name = self._sanitize_k8s_name(instance_name)
         self.instance_description = instance_description
         self.enable_fault_tolerance = enable_fault_tolerance
-        self.dataflow_profile_instances = dataflow_profile_instances
+        self.ops_config = assemble_nargs_to_dict(ops_config)
+        self.dataflow_profile_instances = self._sanitize_int(dataflow_profile_instances)
 
         # Broker
         self.add_insecure_listener = add_insecure_listener
@@ -86,6 +92,7 @@ class InitTargets:
 
         self.trust_source = trust_source
         self.mi_user_assigned_identities = mi_user_assigned_identities
+        self.tags = tags
 
     def _sanitize_k8s_name(self, name: Optional[str]) -> Optional[str]:
         if not name:
@@ -145,8 +152,11 @@ class InitTargets:
 
         esa_extension["properties"]["configurationSettings"] = esa_extension_config
 
-        # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
+        if self.ops_config:
+            aio_default_config: Dict[str, str] = template.content["variables"]["defaultAioConfigurationSettings"]
+            aio_default_config.update(self.ops_config)
 
+        # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
         return template.content, parameters
 
     def get_ops_instance_template(self, cl_extension_ids: List[str]) -> Tuple[dict, dict]:
@@ -167,6 +177,9 @@ class InitTargets:
         )
         instance = template.get_resource_by_key("aioInstance")
         instance["properties"]["description"] = self.instance_description
+
+        if self.tags:
+            instance["tags"] = self.tags
 
         broker = template.get_resource_by_key("broker")
         broker_authn = template.get_resource_by_key("broker_authn")

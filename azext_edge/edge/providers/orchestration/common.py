@@ -58,7 +58,7 @@ class KubernetesDistroType(Enum):
 
 class TrustSourceType(Enum):
     self_signed = "SelfSigned"
-    customer_managed = "CustomerManaged"
+    # customer_managed = "CustomerManaged"  # TODO - @digimaun
 
 
 __all__ = [
