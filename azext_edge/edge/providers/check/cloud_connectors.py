@@ -28,9 +28,7 @@ def process_cloud_connector(
     topic_map_reference_key: str,
     connector_resource_kind: MqResourceKinds,
     topic_map_resource_kind: MqResourceKinds,
-    connector_display_func: Callable[
-        [CheckManager, str, str, Dict[str, str], str, Tuple[int, int, int, int]], None
-    ],
+    connector_display_func: Callable[[CheckManager, str, str, Dict[str, str], str, Tuple[int, int, int, int]], None],
     topic_map_display_func: Callable[
         [CheckManager, str, str, List[Dict[str, str]], str, Tuple[int, int, int, int]],
         None,
@@ -191,9 +189,7 @@ def filter_connector_and_topic_map_resources(
     all_connectors: List[Dict[str, Any]],
     all_topic_maps: List[Dict[str, Any]],
 ) -> Tuple[list, list]:
-    filtered_connectors = filter_resources_by_name(
-        resources=all_connectors, resource_name=connector_resource_name
-    )
+    filtered_connectors = filter_resources_by_name(resources=all_connectors, resource_name=connector_resource_name)
 
     all_connectors = filtered_connectors
 
@@ -272,9 +268,7 @@ def _display_invalid_topic_maps(
         )
 
 
-def _mark_connector_target_as_skipped(
-    check_manager: CheckManager, target: str, message: str, padding: int = 8
-):
+def _mark_connector_target_as_skipped(check_manager: CheckManager, target: str, message: str, padding: int = 8):
     check_manager.add_target(target_name=target)
     check_manager.add_target_eval(
         target_name=target,

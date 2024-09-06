@@ -67,9 +67,7 @@ def get_stats(
     refresh_in_seconds: int = 10,
     watch: bool = False,
 ) -> Union[Dict[str, dict], str, None]:
-    namespace, diagnostic_pod = _preprocess_stats(
-        namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix
-    )
+    namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
 
     from rich import box
     from rich.live import Live
@@ -95,9 +93,7 @@ def get_stats(
             stats = dict(sorted(_clean_stats(raw_metrics).items()))
             if not watch:
                 return stats
-            logger.warning(
-                f"Refreshing every {refresh_in_seconds} seconds. Use ctrl-c to terminate stats watch.\n"
-            )
+            logger.warning(f"Refreshing every {refresh_in_seconds} seconds. Use ctrl-c to terminate stats watch.\n")
             with Live(table, refresh_per_second=4, auto_refresh=False) as live:
                 while True:
                     stats = dict(sorted(_clean_stats(raw_metrics).items()))
@@ -118,9 +114,7 @@ def get_stats(
                                 "[green]Pass[/green]"
                                 if str(stats[s]["value"]) == "Pass"
                                 else (
-                                    "[red]Fail[/red]"
-                                    if str(stats[s]["value"]) == "Fail"
-                                    else str(stats[s]["value"])
+                                    "[red]Fail[/red]" if str(stats[s]["value"]) == "Fail" else str(stats[s]["value"])
                                 )
                             ),
                             stats[s]["description"],
@@ -249,9 +243,7 @@ def get_traces(
     from .proto.diagnostics_service_pb2 import Request, Response, TraceRetrievalInfo
     from ..util import normalize_dir
 
-    namespace, diagnostic_pod = _preprocess_stats(
-        namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix
-    )
+    namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
 
     for_support_bundle = False
     trace_ids = trace_ids or []
@@ -319,9 +311,7 @@ def get_traces(
                         )
                         progress_set = True
 
-                    msg_dict = MessageToDict(
-                        message=response.retrieved_trace.trace, use_integers_for_enums=True
-                    )
+                    msg_dict = MessageToDict(message=response.retrieved_trace.trace, use_integers_for_enums=True)
                     root_span, resource_name, timestamp = _determine_root_span(message_dict=msg_dict)
 
                     if progress_set:

@@ -413,7 +413,4 @@ def test__preprocess_stats(
         return
 
     target_namespace, target_pod = _preprocess_stats(namespace=target_namespace)
-    assert (
-        target_pod.metadata.name
-        == test_state["expected_pods"][test_state["expected_pod_index"]].metadata.name
-    )
+    assert target_pod.metadata.name == test_state["expected_pods"][test_state["expected_pod_index"]].metadata.name

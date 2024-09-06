@@ -86,13 +86,9 @@ def process_pod_status(
         ]
 
         if check_manager.targets.get(target, {}).get(namespace, {}).get("conditions", None):
-            check_manager.add_target_conditions(
-                target_name=target, namespace=namespace, conditions=pod_conditions
-            )
+            check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
         else:
-            check_manager.set_target_conditions(
-                target_name=target, namespace=namespace, conditions=pod_conditions
-            )
+            check_manager.set_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
 
         pod_dict = pod.to_dict()
         pod_name = pod_dict["metadata"]["name"]
@@ -129,17 +125,11 @@ def process_pod_status(
                 if condition_reason:
                     formatted_reason = f"[red]Reason: {condition_reason}[/red]"
 
-                known_condition_values = [
-                    value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()
-                ]
+                known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
                 if condition_type.replace(" ", "").lower() in known_condition_values:
-                    conditions_display_list.append(
-                        (f"{condition_type}: {pod_condition_deco}", formatted_reason)
-                    )
+                    conditions_display_list.append((f"{condition_type}: {pod_condition_deco}", formatted_reason))
                 else:
-                    unknown_conditions_display_list.append(
-                        (f"{condition_type}: {condition_status}", formatted_reason)
-                    )
+                    unknown_conditions_display_list.append((f"{condition_type}: {condition_status}", formatted_reason))
 
                 pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
 

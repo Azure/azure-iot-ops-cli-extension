@@ -92,9 +92,7 @@ def evaluate_broker_listeners(
     )
     if not all_listeners:
         status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
-        fetch_listeners_error_text = (
-            f"Unable to fetch {MqResourceKinds.BROKER_LISTENER.value}s in any namespace."
-        )
+        fetch_listeners_error_text = f"Unable to fetch {MqResourceKinds.BROKER_LISTENER.value}s in any namespace."
         check_manager.add_target(target_name=target_listeners)
         check_manager.add_target_eval(
             target_name=target_listeners,
@@ -284,9 +282,7 @@ def evaluate_brokers(
         return check_manager.as_dict(as_list)
 
     for namespace, brokers in get_resources_grouped_by_namespace(all_brokers):
-        check_manager.add_target(
-            target_name=target_brokers, namespace=namespace, conditions=broker_conditions
-        )
+        check_manager.add_target(target_name=target_brokers, namespace=namespace, conditions=broker_conditions)
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
@@ -366,9 +362,7 @@ def evaluate_brokers(
                 )
             else:
                 backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
-                backend_redundancy_desc = (
-                    "- Expecting backend redundancy factor [bright_blue]>=1[/bright_blue]. {}"
-                )
+                backend_redundancy_desc = "- Expecting backend redundancy factor [bright_blue]>=1[/bright_blue]. {}"
                 backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
                 frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
 
