@@ -34,7 +34,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
     pods = [
         V1Pod(
             metadata=V1ObjectMeta(name=AIO_BROKER_DIAGNOSTICS_SERVICE, namespace="namespace"),
-            status=V1PodStatus(phase=PodState.running.value),
+            status=V1PodStatus(phase=POD_STATE_RUNNING),
         )
     ]
     pod_list = V1PodList(items=pods)
@@ -164,7 +164,7 @@ def test_get_traces(
     pods = [
         V1Pod(
             metadata=V1ObjectMeta(name=AIO_BROKER_DIAGNOSTICS_SERVICE, namespace="namespace"),
-            status=V1PodStatus(phase=PodState.running.value),
+            status=V1PodStatus(phase=POD_STATE_RUNNING),
         )
     ]
     pod_list = V1PodList(items=pods)
@@ -327,6 +327,12 @@ def test___determine_root_span():
     assert timestamp is None
 
 
+POD_STATE_RUNNING = "Running"
+POD_STATE_FAILED = "Failed"
+POD_STATE_PENDING = "Pending"
+POD_STATE_SUCCEEDED = "Succeeded"
+
+
 @pytest.mark.parametrize(
     "test_state",
     [
@@ -336,7 +342,7 @@ def test___determine_root_span():
                     metadata=V1ObjectMeta(
                         name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.running.value),
+                    status=V1PodStatus(phase=POD_STATE_RUNNING),
                 )
             ],
             "expected_pod_index": 0,
@@ -347,19 +353,19 @@ def test___determine_root_span():
                     metadata=V1ObjectMeta(
                         name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.failed.value),
+                    status=V1PodStatus(phase=POD_STATE_FAILED),
                 ),
                 V1Pod(
                     metadata=V1ObjectMeta(
                         name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.pending.value),
+                    status=V1PodStatus(phase=POD_STATE_PENDING),
                 ),
                 V1Pod(
                     metadata=V1ObjectMeta(
                         name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.running.value),
+                    status=V1PodStatus(phase=POD_STATE_RUNNING),
                 ),
             ],
             "expected_pod_index": 2,
@@ -370,13 +376,13 @@ def test___determine_root_span():
                     metadata=V1ObjectMeta(
                         name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.failed.value),
+                    status=V1PodStatus(phase=POD_STATE_FAILED),
                 ),
                 V1Pod(
                     metadata=V1ObjectMeta(
                         name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.succeeded.value),
+                    status=V1PodStatus(phase=POD_STATE_SUCCEEDED),
                 ),
             ],
             "expected_pod_index": -1,
