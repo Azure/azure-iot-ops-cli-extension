@@ -53,14 +53,14 @@ class TemplateBlueprint(NamedTuple):
 
 
 M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
-    commit_id="4aedff68c00eb9b2c2de5c2240e2cd686cf08501",
+    commit_id="dec7ce40c138904c3cdfd593e27ddeaebfedf171",
     moniker="v0.7.0-preview.enablement",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.29.47.4906", "templateHash": "11694755655234465358"}
+            "_generator": {"name": "bicep", "version": "0.29.47.4906", "templateHash": "16646818348298548028"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -222,14 +222,14 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "VERSIONS": {
                 "platform": "0.7.0-preview-rc20240816.2",
-                "aio": "0.7.0-develop.20240904.13",
+                "aio": "0.7.6",
                 "secretSyncController": "0.5.1-100124415",
                 "edgeStorageAccelerator": "2.1.0-preview",
                 "openServiceMesh": "1.2.9",
             },
             "TRAINS": {
                 "platform": "integration",
-                "aio": "dev",
+                "aio": "integration",
                 "secretSyncController": "preview",
                 "openServiceMesh": "stable",
                 "edgeStorageAccelerator": "stable",
@@ -387,6 +387,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                             "brokerListenerName": "[variables('MQTT_SETTINGS').brokerListenerServiceName]",
                             "brokerListenerPort": "[variables('MQTT_SETTINGS').brokerListenerPort]",
                         },
+                        "identityPrincipalId": "[reference('aio_extension', '2023-05-01', 'full').identity.principalId]",
                     },
                     "platform": {
                         "name": "[format('azure-iot-operations-platform-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
@@ -419,7 +420,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
 )
 
 M2_INSTANCE_TEMPLATE = TemplateBlueprint(
-    commit_id="4aedff68c00eb9b2c2de5c2240e2cd686cf08501",
+    commit_id="dec7ce40c138904c3cdfd593e27ddeaebfedf171",
     moniker="v0.6.0-preview",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",

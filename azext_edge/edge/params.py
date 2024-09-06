@@ -508,7 +508,7 @@ def load_iotops_arguments(self, _):
                 arg_type=get_three_state_flag(),
                 options_list=["--enable-fault-tolerance"],
                 help="Enable fault tolerance for Azure Arc Container Storage. At least 3 cluster nodes are required.",
-                arg_group="Container Storage"
+                arg_group="Container Storage",
             )
             context.argument(
                 "mi_user_assigned_identities",
