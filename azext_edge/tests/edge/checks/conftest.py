@@ -20,7 +20,9 @@ def mocked_check_manager(mocker):
 
 @pytest.fixture
 def mock_process_pod_status(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.base.pod.process_pod_status")
+    patched = mocker.patch(
+        "azext_edge.edge.providers.check.base.pod.process_pod_status", return_value=(["1", "2", "3"], "")
+    )
     yield patched
 
 

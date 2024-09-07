@@ -26,8 +26,6 @@ from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
-MQ_K8S_LABEL = "k8s-app in (aio-mq-fluent-bit)"
-
 MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_ACTIVE_API.label)
 MQ_DIRECTORY_PATH = MQ_ACTIVE_API.moniker
 
@@ -109,22 +107,11 @@ def fetch_replicasets():
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
-    processed = process_v1_pods(
+    return process_v1_pods(
         directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_NAME_LABEL,
         since_seconds=since_seconds,
     )
-
-    # TODO: @jiacju - will remove once label decision is finalized
-    processed.extend(
-        process_v1_pods(
-            directory_path=MQ_DIRECTORY_PATH,
-            label_selector=MQ_K8S_LABEL,
-            since_seconds=since_seconds,
-        )
-    )
-
-    return processed
 
 
 support_runtime_elements = {

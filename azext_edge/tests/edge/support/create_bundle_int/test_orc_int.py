@@ -36,6 +36,6 @@ def test_create_bundle_orc(init_setup, tracked_files):
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,
-        prefixes=["aio-cert", "aio-orc"],
+        prefixes=["aio-orc"],
         bundle_path=bundle_path
     )
