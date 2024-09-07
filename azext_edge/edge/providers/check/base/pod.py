@@ -63,19 +63,26 @@ def evaluate_pod_health(
     #     target_service_pod = f"pod/{pod}"
     #     if not pods_captured:
     #         pods = get_namespaced_pods_by_prefix(prefix=pod, namespace=namespace, label_selector=label)
-    pod_displays = []
+    pod_statuses = []
 
     for pod in pods:
-        all_healthy = process_pod_status2(
+        (display_strings, status) = process_pod_status2(
             check_manager=check_manager,
             target=target,
             pod=pod,
-            display_padding=padding,
             namespace=namespace,
             detail_level=detail_level,
         )
+        pod_statuses.append(status)
 
-        add_footer = add_footer or not all_healthy
+        if detail_level == ResourceOutputDetailLevel.summary.value:
+            displays = (display_strings[0], display_strings[1])
+        else:
+            displays = (display_strings[0], display_strings[1], display_strings[2])
+
+        table.add_row(displays)
+
+    add_footer = all([status == CheckTaskStatus.success.value for status in pod_statuses])
 
     if pods:
         check_manager.add_display(
@@ -84,15 +91,15 @@ def evaluate_pod_health(
             display=Padding(table, (0, 0, 0, padding)),
         )
 
-        if add_footer:
-            footer = ":magnifying_glass_tilted_left:" + colorize_string(
-                " See more details by attaching : --detail-level 1 or --detail-level 2"
-            )
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(footer, (0, 0, 0, padding)),
-            )
+    if add_footer:
+        footer = ":magnifying_glass_tilted_left:" + colorize_string(
+            " See more details by attaching : --detail-level 1 or --detail-level 2"
+        )
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(footer, (0, 0, 0, padding)),
+        )
 
 
 def process_pod_status(
@@ -219,7 +226,7 @@ def process_pod_status2(
     pod: V1Pod,
     namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> bool:
+) -> List[str]:
 
     def _decorate_pod_condition(condition: bool) -> Tuple[str, str]:
         if condition:
@@ -306,8 +313,47 @@ def process_pod_status2(
         resource_name=target_service_pod,
     )
 
-    # Return True if all pods are healthy
-    return all([status == CheckTaskStatus.success.value for status in pod_eval_statuses])
+    # text to display in the table
+    pod_health_text = f"Pod {{[bright_blue]{pod_name}[/bright_blue]}}"
+
+    if detail_level != ResourceOutputDetailLevel.summary.value:
+        pod_health_text = f"\n{pod_health_text}"
+
+    if detail_level == ResourceOutputDetailLevel.summary.value:
+        status_obj = CheckTaskStatus(pod_eval_status)
+        emoji = status_obj.emoji
+        color = status_obj.color
+        return [colorize_string(value=emoji, color=color), pod_health_text]
+    else:
+        pod_conditions_text = "N/A"
+
+        if pod_conditions:
+
+            if detail_level == ResourceOutputDetailLevel.detail.value:
+                pod_conditions_text = "[green]Ready[/green]" if conditions_readiness else ""
+            else:
+                pod_conditions_text = ""
+
+            # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
+            for condition, reason in conditions_display_list:
+                condition_not_ready = condition.endswith("[red]False[/red]")
+                if (
+                    detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready
+                ) or detail_level == ResourceOutputDetailLevel.verbose.value:
+                    pod_conditions_text += f"{condition}\n"
+
+                    if reason:
+                        pod_conditions_text += f"{reason}\n"
+
+            if conditions_readiness:
+                for condition, reason in unknown_conditions_display_list:
+                    condition_text: str = f"[yellow]Irregular Condition {condition} found.[/yellow]"
+                    pod_conditions_text += f"{condition_text}\n"
+
+                    if reason and detail_level == ResourceOutputDetailLevel.verbose.value:
+                        pod_conditions_text += f"{reason}\n"
+
+        return [pod_name, pod_phase_deco, pod_conditions_text], pod_eval_status
 
 
 def _add_pod_health_display(
