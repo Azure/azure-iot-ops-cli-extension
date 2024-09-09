@@ -4,7 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
 
 from .base import (
     CheckManager,
@@ -41,7 +42,7 @@ from .common import (
 from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
 from ..support.mq import MQ_NAME_LABEL
 
-from ..base import get_namespaced_service
+from ..base import get_namespaced_service, get_secret_for_all_namespaces
 
 
 def check_mq_deployment(
@@ -54,6 +55,7 @@ def check_mq_deployment(
         MqResourceKinds.BROKER: evaluate_brokers,
         MqResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
         # TODO: add BROKER_AUTHENTICATION and BROKER_AUTHORIZATION evaluations
+        MqResourceKinds.BROKER_AUTHENTICATION: evaluate_broker_authentications,
     }
 
     return check_post_deployment(
@@ -138,6 +140,8 @@ def evaluate_broker_listeners(
 
         processed_services = {}
         for listener in listeners:
+            auth_metadata = listener["metadata"]
+
             namespace: str = namespace or listener["metadata"]["namespace"]
             listener_name: str = listener["metadata"]["name"]
             listener_spec = listener["spec"]
@@ -147,7 +151,18 @@ def evaluate_broker_listeners(
             listener_eval_value = {}
             listener_eval_value["spec"] = listener_spec
 
-            listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}."
+            # check broker reference
+            broker_ref = auth_metadata.get("ownerReferences", [])
+            ref_display = _evaluate_broker_reference(
+                check_manager=check_manager,
+                owner_reference=broker_ref,
+                target_name=target_listeners,
+                namespace=namespace,
+                resource_name=listener_name,
+                detail_level=detail_level,
+            )
+
+            listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}. {ref_display}"
             check_manager.add_display(
                 target_name=target_listeners,
                 namespace=namespace,
@@ -168,11 +183,13 @@ def evaluate_broker_listeners(
 
             for port in ports:
                 tls = port.get("tls", {})
+                authn = port.get("authenticationRef", {})
+                authz = port.get("authorizationRef", {})
                 if detail_level != ResourceOutputDetailLevel.summary.value:
                     for label, val in [
                         ("Port", "port"),
-                        ("AuthN", "authenticationRef"),
-                        ("AuthZ", "authorizationRef"),
+                        # ("AuthN", "authenticationRef"),
+                        # ("AuthZ", "authorizationRef"),
                         ("Node Port", "nodePort"),
                     ]:
                         val = port.get(val)
@@ -186,6 +203,78 @@ def evaluate_broker_listeners(
                                     (0, 0, 0, 12),
                                 ),
                             )
+
+                if authn:
+                    authn_condition = "spec.ports[*].authenticationRef"
+                    valid_authns = _get_valid_references(
+                        kind=MqResourceKinds.BROKER_AUTHENTICATION.value,
+                        namespace=namespace,
+                    )
+
+                    check_manager.add_target_conditions(
+                        target_name=target_listeners,
+                        namespace=namespace,
+                        conditions=[authn_condition],
+                    )
+
+                    authn_eval_value = {"spec.ports[*].authenticationRef": authn}
+                    authn_eval_status = CheckTaskStatus.success.value
+
+                    if authn not in valid_authns:
+                        authn_display = f"[red]Invalid[/red] authentication reference {{[red]{authn}[/red]}}."
+                        authn_eval_status = CheckTaskStatus.error.value
+                    else:
+                        authn_display = f"[green]Valid[/green] authentication reference {{[green]{authn}[/green]}}."
+
+                    check_manager.add_display(
+                        target_name=target_listeners,
+                        namespace=namespace,
+                        display=Padding(authn_display, (0, 0, 0, 12)),
+                    )
+
+                    check_manager.add_target_eval(
+                        target_name=target_listeners,
+                        namespace=namespace,
+                        status=authn_eval_status,
+                        value=authn_eval_value,
+                        resource_name=listener_name,
+                    )
+
+                if authz:
+                    authz_condition = "spec.ports[*].authorizationRef"
+                    valid_authzs = _get_valid_references(
+                        kind=MqResourceKinds.BROKER_AUTHORIZATION.value,
+                        namespace=namespace,
+                    )
+
+                    check_manager.add_target_conditions(
+                        target_name=target_listeners,
+                        namespace=namespace,
+                        conditions=[authz_condition],
+                    )
+
+                    authz_eval_value = {"spec.ports[*].authorizationRef": authz}
+                    authz_eval_status = CheckTaskStatus.success.value
+
+                    if authz not in valid_authzs:
+                        authz_display = f"[red]Invalid[/red] authorization reference {{[red]{authz}[/red]}}."
+                        authz_eval_status = CheckTaskStatus.error.value
+                    else:
+                        authz_display = f"[green]Valid[/green] authorization reference {{[green]{authz}[/green]}}."
+
+                    check_manager.add_display(
+                        target_name=target_listeners,
+                        namespace=namespace,
+                        display=Padding(authz_display, (0, 0, 0, 12)),
+                    )
+
+                    check_manager.add_target_eval(
+                        target_name=target_listeners,
+                        namespace=namespace,
+                        status=authz_eval_status,
+                        value=authz_eval_value,
+                        resource_name=listener_name,
+                    )
 
                 if tls:
                     # "certManagerCertificateSpec" and "manual" are mutually exclusive
@@ -518,6 +607,306 @@ def evaluate_brokers(
     return check_manager.as_dict(as_list)
 
 
+def evaluate_broker_authentications(
+    as_list: bool = False,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
+) -> Dict[str, Any]:
+    check_manager = CheckManager(
+        check_name="evalBrokerAuthentications",
+        check_desc="Evaluate MQTT Broker Authentications",
+    )
+
+    target_authentications = "brokerauthentications.mqttbroker.iotoperations.azure.com"
+    auth_conditions = ["spec.authenticationMethods"]
+    all_authentications = get_resources_by_name(
+        api_info=MQ_ACTIVE_API,
+        kind=MqResourceKinds.BROKER_AUTHENTICATION,
+        resource_name=resource_name,
+    )
+
+    if not all_authentications:
+        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
+        fetch_authentications_error_text = (
+            f"Unable to fetch {MqResourceKinds.BROKER_AUTHENTICATION.value}s in any namespace."
+        )
+        check_manager.add_target(target_name=target_authentications)
+        check_manager.add_target_eval(
+            target_name=target_authentications,
+            status=status,
+            value=fetch_authentications_error_text,
+        )
+        check_manager.add_display(
+            target_name=target_authentications,
+            display=Padding(fetch_authentications_error_text, (0, 0, 0, 8)),
+        )
+        return check_manager.as_dict(as_list)
+
+    for namespace, authentications in get_resources_grouped_by_namespace(all_authentications):
+        check_manager.add_target(
+            target_name=target_authentications,
+            namespace=namespace,
+            conditions=auth_conditions,
+        )
+        check_manager.add_display(
+            target_name=target_authentications,
+            namespace=namespace,
+            display=Padding(f"Broker Authentications in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
+        )
+
+        authentications = list(authentications)
+
+        for auth in authentications:
+            auth_name = auth["metadata"]["name"]
+            auth_metadata = auth["metadata"]
+
+            # check broker reference
+            broker_ref = auth_metadata.get("ownerReferences", [])
+            ref_display = _evaluate_broker_reference(
+                check_manager=check_manager,
+                owner_reference=broker_ref,
+                target_name=target_authentications,
+                namespace=namespace,
+                resource_name=auth_name,
+                detail_level=detail_level,
+            )
+
+            auth_desc = f"\n- Broker Authentication {{[bright_blue]{auth_name}[/bright_blue]}}. {ref_display}"
+            check_manager.add_display(
+                target_name=target_authentications,
+                namespace=namespace,
+                display=Padding(auth_desc, (0, 0, 0, 8)),
+            )
+
+            # status
+            status = auth.get("status", {})
+            process_custom_resource_status(
+                check_manager=check_manager,
+                status=status,
+                target_name=target_authentications,
+                namespace=namespace,
+                resource_name=auth_name,
+                padding=12,
+                detail_level=detail_level,
+            )
+
+            auth_spec = auth.get("spec", {})
+
+            # check authentication methods
+            auth_methods = auth_spec.get("authenticationMethods", [])
+            auth_methods_desc = "Expecting [bright_blue]>=1[/bright_blue] authentication methods. {}"
+            auth_methods_eval_status = CheckTaskStatus.success.value
+
+            if len(auth_methods) >= 1:
+                auth_methods_desc = auth_methods_desc.format(f"[green]Detected {len(auth_methods)}[/green].")
+            else:
+                auth_methods_desc = auth_methods_desc.format(f"[red]Detected {len(auth_methods)}[/red].")
+                auth_methods_eval_status = CheckTaskStatus.error.value
+
+            check_manager.add_display(
+                target_name=target_authentications,
+                namespace=namespace,
+                display=Padding(auth_methods_desc, (0, 0, 0, 12)),
+            )
+
+            check_manager.add_target_eval(
+                target_name=target_authentications,
+                namespace=namespace,
+                status=auth_methods_eval_status,
+                value={"spec.authenticationMethods": auth_methods},
+                resource_name=auth_name,
+            )
+
+            for method in auth_methods:
+                condition = []
+                method_name = method.get("method")
+                method_eval_status = CheckTaskStatus.success.value
+                method_eval_value = method
+                if method_name == "custom":
+                    condition.append("spec.authenticationMethods[*].customSettings")
+                    method = method.get("customSettings")
+                    custom_method_desc = f"- Custom method: [green]{method_name}[/green]."
+                    check_manager.add_display(
+                        target_name=target_authentications,
+                        namespace=namespace,
+                        display=Padding(custom_method_desc, (0, 0, 0, 12)),
+                    )
+
+                    # endpoint
+                    endpoint = method.get("endpoint")
+
+                    condition.append("spec.authenticationMethods[*].customSettings.endpoint")
+
+                    if not endpoint:
+                        endpoint_display = "- Endpoint [red]not found[/red]."
+                        method_eval_status = CheckTaskStatus.error.value
+                    else:
+                        endpoint_display = f"- Endpoint: [green]{endpoint}[/green]."
+
+                    check_manager.add_display(
+                        target_name=target_authentications,
+                        namespace=namespace,
+                        display=Padding(endpoint_display, (0, 0, 0, 12)),
+                    )
+
+                    # auth
+                    auth = method.get("auth")
+
+                    if auth:
+                        # check x509
+                        secret_ref_condition = [
+                            "valid(spec.authenticationMethods[*].customSettings.auth.x509.secretRef)"
+                        ]
+                        secret_ref = auth.get("x509", {}).get("secretRef")
+                        secret_ref_status = CheckTaskStatus.success.value
+                        secret_ref_value = secret_ref
+
+                        # get kube secrets
+                        secret: dict = get_secret_for_all_namespaces(secret_ref)
+
+                        if not secret:
+                            secret_ref_display = f"- [red]Invalid[/red] Secret reference [red]{secret_ref}[/red]."
+                            secret_ref_status = CheckTaskStatus.error.value
+                        else:
+                            secret_ref_display = (
+                                f"- [green]Valid[/green] Secret reference [green]{secret_ref}[/green]."
+                            )
+
+                        check_manager.add_display(
+                            target_name=target_authentications,
+                            namespace=namespace,
+                            display=Padding(secret_ref_display, (0, 0, 0, 12)),
+                        )
+
+                        check_manager.add_target_conditions(
+                            target_name=target_authentications,
+                            namespace=namespace,
+                            conditions=secret_ref_condition,
+                        )
+
+                        check_manager.add_target_eval(
+                            target_name=target_authentications,
+                            namespace=namespace,
+                            status=secret_ref_status,
+                            value=secret_ref_value,
+                            resource_name=auth_name,
+                        )
+
+                        # display rest of the properties
+                elif method_name == "x509":
+                    condition.append("spec.authenticationMethods[*].x509Settings")
+                    method = method.get("x509Settings")
+                    x509_method_desc = f"- x509 method: [green]{method_name}[/green]."
+                    check_manager.add_display(
+                        target_name=target_authentications,
+                        namespace=namespace,
+                        display=Padding(x509_method_desc, (0, 0, 0, 12)),
+                    )
+
+                    process_dict_resource(
+                        check_manager=check_manager,
+                        target_name=target_authentications,
+                        resource=method,
+                        namespace=namespace,
+                        padding=12,
+                    )
+                elif method_name == "ServiceAccountToken":
+                    condition.append("spec.authenticationMethods[*].serviceAccountTokenSettings")
+                    method = method.get("serviceAccountTokenSettings")
+                    service_account_method_desc = f"Service Account Token Method: [green]{method_name}[/green]."
+                    check_manager.add_display(
+                        target_name=target_authentications,
+                        namespace=namespace,
+                        display=Padding(service_account_method_desc, (0, 0, 0, 12)),
+                    )
+
+                    # audiences
+                    audiences = method.get("audiences")
+                    condition.append("spec.authenticationMethods[*].serviceAccountTokenSettings.audiences")
+
+                    if not audiences:
+                        audiences_display = "- Audiences [red]not found[/red]."
+                        method_eval_status = CheckTaskStatus.error.value
+                    else:
+                        audiences_display = f"- Audiences: [green]{audiences}[/green]."
+
+                    check_manager.add_display(
+                        target_name=target_authentications,
+                        namespace=namespace,
+                        display=Padding(audiences_display, (0, 0, 0, 16)),
+                    )
+                else:
+                    method_display = (
+                        f"- Unknown method: [red]{method_name}[/red]."
+                        if method_name
+                        else "- Method [red]not found[/red]."
+                    )
+                    check_manager.add_display(
+                        target_name=target_authentications,
+                        namespace=namespace,
+                        display=Padding(method_display, (0, 0, 0, 12)),
+                    )
+
+                check_manager.add_target_conditions(
+                    target_name=target_authentications,
+                    namespace=namespace,
+                    conditions=condition,
+                )
+                check_manager.add_target_eval(
+                    target_name=target_authentications,
+                    namespace=namespace,
+                    status=method_eval_status,
+                    value=method_eval_value,
+                    resource_name=auth_name,
+                )
+
+    return check_manager.as_dict(as_list)
+
+
+def _evaluate_broker_reference(
+    check_manager: CheckManager,
+    owner_reference: dict,
+    target_name: str,
+    namespace: str,
+    resource_name: str,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> None:
+    broker_reference = [ref for ref in owner_reference if ref.get("kind").lower() == MqResourceKinds.BROKER.value]
+    if not broker_reference:
+        # skip this check
+        return
+
+    # should only have one broker reference
+    broker_reference_name = broker_reference[0].get("name")
+    check_manager.add_target_conditions(
+        target_name=target_name,
+        namespace=namespace,
+        conditions=["valid(brokerRef)"],
+    )
+
+    valid_broker_refs = _get_valid_references(kind=MqResourceKinds.BROKER, namespace=namespace)
+    ref_eval_status = CheckTaskStatus.success.value
+    ref_eval_value = {}
+
+    if broker_reference_name not in valid_broker_refs:
+        ref_display = f"[red]Invalid[/red] broker reference {{[red]{broker_reference_name}[/red]}}."
+        ref_eval_status = CheckTaskStatus.error.value
+        ref_eval_value["valid(spec.brokerRef)"] = False
+    else:
+        ref_display = f"[green]Valid[/green] broker reference {{[green]{broker_reference_name}[/green]}}."
+        ref_eval_value["valid(spec.brokerRef)"] = True
+
+    check_manager.add_target_eval(
+        target_name=target_name,
+        namespace=namespace,
+        status=ref_eval_status,
+        value=ref_eval_value,
+        resource_name=resource_name,
+    )
+
+    return ref_display
+
+
 def _evaluate_listener_service(
     check_manager: CheckManager,
     listener_spec: dict,
@@ -724,3 +1113,18 @@ def _evaluate_broker_diagnostics_service(
                     ),
                 )
             check_manager.add_display(target_name=target_brokers, namespace=namespace, display=NewLine())
+
+
+def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = None) -> Dict[str, Any]:
+    result = {}
+    custom_objects = MQ_ACTIVE_API.get_resources(kind=kind, namespace=namespace)
+    if custom_objects:
+        objects: List[dict] = custom_objects.get("items", [])
+        for object in objects:
+            o: dict = object
+            metadata: dict = o.get("metadata", {})
+            name = metadata.get("name")
+            if name:
+                result[name] = True
+
+    return result

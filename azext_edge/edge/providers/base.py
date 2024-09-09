@@ -19,6 +19,8 @@ from kubernetes.client.models import (
     V1Pod,
     V1PodList,
     V1Service,
+    V1Secret,
+    V1SecretList,
 )
 
 from ..common import K8sSecretType
@@ -67,6 +69,30 @@ def get_namespaced_service(name: str, namespace: str, as_dict: bool = False) -> 
         logger.debug(str(ae))
     else:
         return retrieve_namespaced_service_from_cache(target_service_key)
+
+
+_secret_cache: dict = {}
+
+
+def get_secret_for_all_namespaces(secret_name: str, as_dict: bool = False) -> Union[V1Secret, dict, None]:
+    def retrieve_secret_from_cache(key: str):
+        result = _secret_cache[key]
+        if as_dict:
+            return generic.sanitize_for_serialization(obj=result)
+        return result
+
+    if secret_name in _secret_cache:
+        return retrieve_secret_from_cache(secret_name)
+
+    try:
+        v1 = client.CoreV1Api()
+        v1_secrets: V1SecretList = v1.list_secret_for_all_namespaces()
+        v1_secret = next((secret for secret in v1_secrets.items if secret.metadata.name == secret_name), None)
+        _secret_cache[secret_name] = v1_secret
+    except ApiException as ae:
+        logger.debug(str(ae))
+    else:
+        return retrieve_secret_from_cache(secret_name)
 
 
 _namespaced_pods_cache: dict = {}
