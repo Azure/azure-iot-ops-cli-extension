@@ -6,7 +6,7 @@
 
 import sys
 from time import sleep
-from typing import TYPE_CHECKING, Any, NamedTuple, Tuple
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple
 
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
@@ -204,16 +204,18 @@ class ResourceIdContainer(NamedTuple):
     resource_name: str
 
 
-def parse_resource_id(resource_id: str) -> ResourceIdContainer:
-    # TODO - hacky.
-    if "/" not in resource_id:
+def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
+    if not resource_id:
+        return resource_id
+
+    # TODO - cheap.
+    parts = resource_id.split("/")
+    if len(parts) < 9:
         raise ValidationError(
             "Malformed resource Id. An Azure resource Id has the form:\n"
             "/subscription/{subscriptionId}/resourceGroups/{resourceGroup}"
             "/providers/Microsoft.Provider/{resourcePath}/{resourceName}"
         )
-
-    parts = resource_id.split("/")
 
     # Extract the subscription, resource group, and resource name
     subscription_id = parts[2]

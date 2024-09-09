@@ -56,16 +56,33 @@ def build_bundle(
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
-    from .support.otel import prepare_bundle as prepare_otel_bundle
     from .support.arcagents import prepare_bundle as prepare_arcagents_bundle
     from .support.meta import prepare_bundle as prepare_meta_bundle
+    from .support.schemaregistry import prepare_bundle as prepare_schema_registry_bundle
+
+    def collect_default_works(
+        pending_work: dict,
+        log_age_seconds: Optional[int] = None,
+    ):
+        # arc agent resources
+        pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
+
+        # Collect common resources if any AIO service is deployed with any service selected.
+        pending_work["common"] = prepare_shared_bundle()
+
+        # Collect meta resources if any AIO service is deployed with any service selected.
+        deployed_meta_apis = COMPAT_META_APIS.get_deployed()
+        pending_work["meta"] = prepare_meta_bundle(log_age_seconds, deployed_meta_apis)
 
     pending_work = {k: {} for k in OpsServiceType.list()}
     pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
         OpsServiceType.mq.value: {"apis": COMPAT_MQTT_BROKER_APIS, "prepare_bundle": prepare_mq_bundle},
-        OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
+        OpsServiceType.billing.value: {
+            "apis": COMPAT_CLUSTER_CONFIG_APIS,
+            "prepare_bundle": prepare_billing_bundle,
+        },
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
@@ -79,14 +96,21 @@ def build_bundle(
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,
         },
-        OpsServiceType.dataflow.value: {"apis": COMPAT_DATAFLOW_APIS, "prepare_bundle": prepare_dataflow_bundle},
+        OpsServiceType.dataflow.value: {
+            "apis": COMPAT_DATAFLOW_APIS,
+            "prepare_bundle": prepare_dataflow_bundle,
+        },
+        OpsServiceType.schemaregistry.value: {
+            "apis": None,
+            "prepare_bundle": prepare_schema_registry_bundle,
+        },
     }
 
     for service_moniker, api_info in api_map.items():
         if ops_service in [OpsServiceType.auto.value, service_moniker]:
-            deployed_apis = api_info["apis"].get_deployed()
+            deployed_apis = api_info["apis"].get_deployed() if api_info["apis"] else None
 
-            if not deployed_apis:
+            if not deployed_apis and service_moniker != OpsServiceType.schemaregistry.value:
                 expected_api_version = api_info["apis"].as_str()
                 logger.warning(
                     f"The following API(s) were not detected {expected_api_version}. "
@@ -102,24 +126,14 @@ def build_bundle(
                 bundle = bundle_method(deployed_apis)
             elif service_moniker == OpsServiceType.mq.value:
                 bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
+            elif service_moniker == OpsServiceType.schemaregistry.value:
+                bundle = bundle_method(log_age_seconds)
             else:
                 bundle = bundle_method(log_age_seconds, deployed_apis)
 
             pending_work[service_moniker].update(bundle)
 
-    if ops_service == OpsServiceType.auto.value:
-        # Only attempt to collect otel resources if any AIO service is deployed AND auto is used.
-        pending_work["otel"] = prepare_otel_bundle()
-
-    # arc agent resources
-    pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
-
-    # Collect common resources if any AIO service is deployed with any service selected.
-    pending_work["common"] = prepare_shared_bundle()
-
-    # Collect meta resources if any AIO service is deployed with any service selected.
-    deployed_meta_apis = COMPAT_META_APIS.get_deployed()
-    pending_work["meta"] = prepare_meta_bundle(log_age_seconds, deployed_meta_apis)
+    collect_default_works(pending_work, log_age_seconds)
 
     total_work_count = 0
     for service in pending_work:

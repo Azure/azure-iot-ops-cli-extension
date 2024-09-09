@@ -74,7 +74,7 @@ def process_pod_status(
             eval_value=None,
             resource_name=target_service_pod,
             namespace=namespace,
-            padding=(0, 0, 0, display_padding)
+            padding=(0, 0, 0, display_padding),
         )
 
     for pod in pods:
@@ -127,13 +127,9 @@ def process_pod_status(
 
                 known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
                 if condition_type.replace(" ", "").lower() in known_condition_values:
-                    conditions_display_list.append(
-                        (f"{condition_type}: {pod_condition_deco}", formatted_reason)
-                    )
+                    conditions_display_list.append((f"{condition_type}: {pod_condition_deco}", formatted_reason))
                 else:
-                    unknown_conditions_display_list.append(
-                        (f"{condition_type}: {condition_status}", formatted_reason)
-                    )
+                    unknown_conditions_display_list.append((f"{condition_type}: {condition_status}", formatted_reason))
 
                 pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
 
@@ -213,14 +209,22 @@ def _add_pod_health_display(
             check_manager.add_display(
                 target_name=target,
                 namespace=namespace,
-                display=Padding("- Conditions: [green]Ready[/green]" if conditions_readiness else "- Conditions: [red]Not Ready[/red]", (0, 0, 0, padding)),
+                display=Padding(
+                    (
+                        "- Conditions: [green]Ready[/green]"
+                        if conditions_readiness
+                        else "- Conditions: [red]Not Ready[/red]"
+                    ),
+                    (0, 0, 0, padding),
+                ),
             )
 
             # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
             for condition, reason in conditions_display_list:
                 condition_not_ready = condition.endswith("[red]False[/red]")
-                if (detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready) or\
-                   detail_level == ResourceOutputDetailLevel.verbose.value:
+                if (
+                    detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready
+                ) or detail_level == ResourceOutputDetailLevel.verbose.value:
                     check_manager.add_display(
                         target_name=target,
                         namespace=namespace,

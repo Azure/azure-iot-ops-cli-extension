@@ -478,13 +478,16 @@ def load_iotops_help():
         examples:
         - name: Minimum input for complete deletion.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup
+            az iot ops delete -n myinstance -g myresourcegroup
         - name: Skip confirmation prompt and continue to deletion process. Useful for CI scenarios.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup -y
+            az iot ops delete -n myinstance -g myresourcegroup -y
         - name: Force deletion regardless of warnings. May lead to errors.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup --force
+            az iot ops delete -n myinstance -g myresourcegroup --force
+        - name: Reverse application of init.
+          text: >
+            az iot ops delete -n myinstance -g myresourcegroup --include-deps
     """
 
     helps[
@@ -540,6 +543,18 @@ def load_iotops_help():
         - name: Update the instance description.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
+    """
+
+    helps[
+        "iot ops create"
+    ] = """
+        type: command
+        short-summary: Create an IoT Operations instance.
+
+        examples:
+        - name: Create the target instance with minimum input.
+          text: >
+            az iot ops create --name myinstance --cluster mycluster -g myresourcegroup
     """
 
     helps[
