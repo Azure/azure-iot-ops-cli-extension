@@ -737,7 +737,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "publishing_interval",
-            options_list=["--publishing-interval", "--si"],
+            options_list=["--publishing-interval", "--pi"],
             help="Custom publishing interval (in milliseconds).",
         )
         context.argument(
