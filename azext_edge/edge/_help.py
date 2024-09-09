@@ -448,23 +448,36 @@ def load_iotops_help():
         "iot ops init"
     ] = """
         type: command
-        short-summary: Bootstrap, configure and deploy IoT Operations to the target Arc-enabled cluster.
+        short-summary: Bootstrap, configure and optionally deploy IoT Operations to the target Arc-enabled cluster.
         long-summary: |
-                      For additional resources including how to Arc-enable a cluster see
-                      https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
+                      An Arc-enabled cluster is required to deploy IoT Operations. See the following resource for
+                      more info https://aka.ms/aziotops-arcconnect.
 
-                      IoT Operations depends on a service principal (SP) for Key Vault CSI driver secret synchronization.
+                      The init operation will do work in installing and configuring a foundation layer of edge
+                      services necessary for IoT Operations deployment.
 
-                      By default, init will do work in creating and configuring a suitable app registration
-                      via Microsoft Graph then apply it to the cluster.
-
-                      You can short-circuit this work, by pre-creating an app registration, then providing values
-                      for --sp-app-id, --sp-object-id and --sp-secret. By providing the SP fields, no additional
-                      work via Microsoft Graph operations will be done.
-
-                      Pre-creating an app registration is useful when the logged-in principal has constrained
-                      Entra Id permissions. For example in CI/automation scenarios, or an orgs separation of user
-                      responsibility.
+                      By default instance resources will not be deployed. An instance name via --name can be
+                      provided for init to deploy IoT Operations after the foundation layer has been installed,
+                      otherwise the `az iot ops create` command should be used to deploy instance resources
+                      on-demand.
+        examples:
+        - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+        - name: Include default IoT Operations instance resources by providing an instance name.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             --name myinstance
+        - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             --name myinstance --enable-fault-tolerance
+        - name: This form adds customization to the default broker instance resource and includes an insecure broker listener
+            configured for port 1883 of service type load balancer. Useful for testing and/or demos, do not use the insecure
+            option in production.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             --name myinstance --broker-mem-profile High --broker-backend-workers 4 --add-insecure-listener
     """
 
     helps[

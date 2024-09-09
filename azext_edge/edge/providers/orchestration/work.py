@@ -47,8 +47,9 @@ class WorkStepKey(IntEnum):
 
 
 class WorkRecord:
-    def __init__(self, title: str):
+    def __init__(self, title: str, description: Optional[str] = None):
         self.title = title
+        self.description = description
 
 
 PROVISIONING_STATE_SUCCESS = "Succeeded"
@@ -68,8 +69,8 @@ class WorkDisplay:
         self._categories[category] = (WorkRecord(title), skipped)
         self._steps[category] = {}
 
-    def add_step(self, category: WorkCategoryKey, step: WorkStepKey, description: str):
-        self._steps[category][step] = WorkRecord(description)
+    def add_step(self, category: WorkCategoryKey, step: WorkStepKey, title: str, description: Optional[str] = None):
+        self._steps[category][step] = WorkRecord(title, description)
 
     @property
     def categories(self) -> Dict[int, Tuple[WorkRecord, bool]]:
@@ -115,8 +116,12 @@ class WorkManager:
             self._display.add_step(
                 WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation"
             )
+            ext_version_display = self._targets.get_extension_versions(in_display_format=True)
             self._display.add_step(
-                WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.DEPLOY_ENABLEMENT, "Install foundation layer"
+                WorkCategoryKey.ENABLE_IOT_OPS,
+                WorkStepKey.DEPLOY_ENABLEMENT,
+                "Install foundation layer",
+                ext_version_display,
             )
 
         create_instance_desc = "Create instance"
@@ -388,7 +393,7 @@ class WorkManager:
 
             content_grid = Table.grid(expand=False)
             content_grid.add_column(max_width=3)
-            content_grid.add_column()
+            content_grid.add_column(max_width=64)
 
             active_cat_str = "[cyan]->[/cyan] "
             active_step_str = "[cyan]*[/cyan]"
@@ -416,6 +421,14 @@ class WorkManager:
                                 (0, 0, 0, 2),
                             ),
                         )
+                        if self._display.steps[c][s].description:
+                            content_grid.add_row(
+                                "",
+                                Padding(
+                                    self._display.steps[c][s].description,
+                                    (0, 0, 0, 4),
+                                ),
+                            )
             content_grid.add_row(NewLine(1), NewLine(1))
 
             footer_grid = Table.grid(expand=False)

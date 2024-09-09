@@ -19,10 +19,6 @@ class TemplateBlueprint(NamedTuple):
     content: Dict[str, Any]
     moniker: str
 
-    def get_component_vers(self) -> dict:
-        # Don't need a deep copy here.
-        return self.content["variables"]["VERSIONS"].copy()
-
     def get_type_definition(self, key: str) -> Optional[dict]:
         return self.content["definitions"].get(key, {"properties": {}})
 

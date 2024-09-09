@@ -202,6 +202,7 @@ class ResourceIdContainer(NamedTuple):
     subscription_id: str
     resource_group_name: str
     resource_name: str
+    resource_id: str
 
 
 def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
@@ -223,5 +224,8 @@ def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
     resource_name = parts[-1]
 
     return ResourceIdContainer(
-        subscription_id=subscription_id, resource_group_name=resource_group_name, resource_name=resource_name
+        subscription_id=subscription_id,
+        resource_group_name=resource_group_name,
+        resource_name=resource_name,
+        resource_id=resource_id,
     )

@@ -63,9 +63,7 @@ class InitTargets:
         self.cluster_name = cluster_name
         self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
         self.resource_group_name = resource_group_name
-        # TODO - @digimaun
-        parse_resource_id(schema_registry_resource_id)
-        self.schema_registry_resource_id = schema_registry_resource_id
+        self.schema_registry_resource_id = parse_resource_id(schema_registry_resource_id).resource_id
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
         self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
@@ -122,6 +120,17 @@ class InitTargets:
                 deploy_params[param] = {"value": param_to_target[param]}
 
         return template_copy, deploy_params
+
+    def get_extension_versions(self, in_display_format: bool = False) -> dict:
+        # Don't need a deep copy here.
+        version_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
+        if not in_display_format:
+            return version_map
+
+        display_desc = "[dim]"
+        for ver in version_map:
+            display_desc += f"• {ver}: {version_map[ver]}\n"
+        return display_desc[:-1] + ""
 
     def get_ops_enablement_template(
         self,
