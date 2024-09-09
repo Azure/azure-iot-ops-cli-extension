@@ -104,7 +104,7 @@ class AssetEndpointProfiles(Queryable):
             "properties": properties,
             "tags": tags,
         }
-        return self.discovered_ops.begin_create_or_replace(
+        return self.ops.begin_create_or_replace(
             resource_group_name,
             asset_endpoint_profile_name,
             resource=aep_body
@@ -143,6 +143,7 @@ class AssetEndpointProfiles(Queryable):
             return self.ops.list_by_resource_group(resource_group_name=resource_group_name)
         return self.ops.list_by_subscription()
 
+    # TODO: unit test
     def query_asset_endpoint_profiles(
         self,
         asset_endpoint_profile_name: Optional[str] = None,

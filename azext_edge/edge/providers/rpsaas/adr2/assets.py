@@ -50,7 +50,6 @@ class Assets(Queryable):
         endpoint_profile: str,
         instance_name: str,
         resource_group_name: str,
-        custom_location_id: Optional[str] = None,  # TODO: remove
         custom_attributes: Optional[List[str]] = None,
         # dataset_file_path: Optional[str] = None,
         default_topic_path: Optional[str] = None,
@@ -198,6 +197,7 @@ class Assets(Queryable):
             return self.ops.list_by_resource_group(resource_group_name=resource_group_name)
         return self.ops.list_by_subscription()
 
+    # TODO: unit test
     def query_assets(
         self,
         asset_name: Optional[str] = None,

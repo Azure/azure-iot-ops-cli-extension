@@ -13,6 +13,7 @@ from azext_edge.edge.commands_asset_endpoint_profiles import (
     create_opcua_asset_endpoint_profile,
     delete_asset_endpoint_profile,
     list_asset_endpoint_profiles,
+    query_asset_endpoint_profiles,
     show_asset_endpoint_profile,
     update_asset_endpoint_profile
 )
@@ -208,7 +209,7 @@ def test_show(mocked_cmd, mocked_responses: responses, discovered: bool):
         "username_reference": generate_random_string(),
     }
 ])
-def test_asset_update(
+def test_update(
     mocked_cmd,
     mocked_check_cluster_connectivity,
     mocked_responses: responses,
