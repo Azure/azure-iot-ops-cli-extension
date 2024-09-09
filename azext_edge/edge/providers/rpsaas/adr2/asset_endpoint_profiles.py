@@ -27,8 +27,8 @@ from ....common import AEPAuthModes
 
 if TYPE_CHECKING:
     from ....vendor.clients.deviceregistrymgmt.operations import (
-        AssetEndpointProfilesOperations,
-        DiscoveredAssetEndpointProfilesOperations
+        DiscoveredAssetEndpointProfilesOperations as DAEPOperations,
+        AssetEndpointProfilesOperations as AEPOperations
     )
 
 logger = get_logger(__name__)
@@ -43,9 +43,9 @@ class AssetEndpointProfiles(Queryable):
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
             subscription_id=self.default_subscription_id
         )
-        self.ops: "AssetEndpointProfilesOperations" = self.deviceregistry_mgmt_client.asset_endpoint_profiles
-        self.discovered_ops: "DiscoveredAssetEndpointProfilesOperations" = self.deviceregistry_mgmt_client.discovered_asset_endpoint_profiles
-        self.update_ops: Optional[Union["AssetEndpointProfilesOperations", "DiscoveredAssetEndpointProfilesOperations"]] = None
+        self.ops: "AEPOperations" = self.deviceregistry_mgmt_client.asset_endpoint_profiles
+        self.discovered_ops: "DAEPOperations" = self.deviceregistry_mgmt_client.discovered_asset_endpoint_profiles
+        self.update_ops: Optional[Union["AEPOperations", "DAEPOperations"]] = None
 
     def create(
         self,

@@ -13,7 +13,6 @@ from azext_edge.edge.commands_asset_endpoint_profiles import (
     create_opcua_asset_endpoint_profile,
     delete_asset_endpoint_profile,
     list_asset_endpoint_profiles,
-    query_asset_endpoint_profiles,
     show_asset_endpoint_profile,
     update_asset_endpoint_profile
 )

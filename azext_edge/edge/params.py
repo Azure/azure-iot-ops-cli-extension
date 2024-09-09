@@ -923,7 +923,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "tags",
             options_list=["--tags"],
-            help="Asset Endpoint Profile resource tags. Property bag in key-value pairs with the following format: a=b c=d",
+            help="Asset Endpoint Profile resource tags. Property bag in key-value pairs with the following "
+            "format: a=b c=d",
             arg_type=tags_type,
         )
 
@@ -1020,7 +1021,6 @@ def load_iotops_arguments(self, _):
             help="Life time in Milliseconds for the subscription.",
             arg_group="Connector",
         )
-
 
     with self.argument_context("iot ops schema registry") as context:
         context.argument(
