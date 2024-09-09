@@ -40,7 +40,7 @@ def mock_evaluate_akri_pod_health(mocker):
 
 @pytest.fixture
 def mock_evaluate_mq_pod_health(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.check.mq.evaluate_pod_health", return_value={})
+    patched = mocker.patch("azext_edge.edge.providers.check.mq.get_namespaced_pods_by_prefix", return_value={})
     yield patched
 
 
