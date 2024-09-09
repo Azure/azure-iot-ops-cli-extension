@@ -16,9 +16,9 @@ logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from ....vendor.clients.iotopsmgmt.operations import (
-        DataFlowEndpointOperations,
-        DataFlowOperations,
-        DataFlowProfileOperations,
+        DataflowEndpointOperations,
+        DataflowOperations,
+        DataflowProfileOperations,
     )
 
 
@@ -28,8 +28,8 @@ class DataFlowProfiles(Queryable):
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
-        self.ops: "DataFlowProfileOperations" = self.iotops_mgmt_client.data_flow_profile
-        self.dataflows = DataFlows(self.iotops_mgmt_client.data_flow)
+        self.ops: "DataflowProfileOperations" = self.iotops_mgmt_client.dataflow_profile
+        self.dataflows = DataFlows(self.iotops_mgmt_client.dataflow)
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
@@ -37,11 +37,11 @@ class DataFlowProfiles(Queryable):
         )
 
     def list(self, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_instance_resource(resource_group_name=resource_group_name, instance_name=instance_name)
+        return self.ops.list_by_resource_group(resource_group_name=resource_group_name, instance_name=instance_name)
 
 
 class DataFlows:
-    def __init__(self, ops: "DataFlowOperations"):
+    def __init__(self, ops: "DataflowOperations"):
         self.ops = ops
 
     def show(self, name: str, dataflow_profile_name: str, instance_name: str, resource_group_name: str) -> dict:
@@ -66,7 +66,7 @@ class DataFlowEndpoints(Queryable):
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
-        self.ops: "DataFlowEndpointOperations" = self.iotops_mgmt_client.data_flow_endpoint
+        self.ops: "DataflowEndpointOperations" = self.iotops_mgmt_client.dataflow_endpoint
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
@@ -76,4 +76,4 @@ class DataFlowEndpoints(Queryable):
         )
 
     def list(self, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_instance_resource(resource_group_name=resource_group_name, instance_name=instance_name)
+        return self.ops.list_by_resource_group(resource_group_name=resource_group_name, instance_name=instance_name)

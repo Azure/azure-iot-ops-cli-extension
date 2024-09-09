@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable
+from typing import Iterable, Optional
 
 from knack.log import get_logger
 
@@ -23,6 +23,9 @@ logger = get_logger(__name__)
 
 DATAFLOW_NAME_LABEL = NAME_LABEL_FORMAT.format(label=DATAFLOW_API_V1B1.label)
 DATAFLOW_DIRECTORY_PATH = DATAFLOW_API_V1B1.moniker
+DATAFLOW_OPERATOR_PREFIX = "aio-dataflow-operator"
+DATAFLOW_DEPLOYMENT_FIELD_SELECTOR = f"metadata.name={DATAFLOW_OPERATOR_PREFIX}"
+DATAFLOW_PROFILE_POD_PREFIX = "aio-dataflow-"
 
 
 def fetch_deployments():
@@ -64,10 +67,13 @@ support_runtime_elements = {
 
 
 def prepare_bundle(
-    apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS
+    log_age_seconds: int = DAY_IN_SECONDS,
+    apis: Optional[Iterable[EdgeResourceApi]] = None,
 ) -> dict:
     dataflow_to_run = {}
-    dataflow_to_run.update(assemble_crd_work(apis))
+
+    if apis:
+        dataflow_to_run.update(assemble_crd_work(apis))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     dataflow_to_run.update(support_runtime_elements)

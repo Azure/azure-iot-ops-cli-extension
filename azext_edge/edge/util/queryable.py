@@ -6,8 +6,6 @@
 
 from typing import List, Optional, Union
 
-from rich.console import Console
-
 from .az_client import get_resource_client
 from .resource_graph import ResourceGraph
 
@@ -25,7 +23,6 @@ class Queryable:
         self.subscriptions = subscriptions
         self.resource_graph = ResourceGraph(cmd=cmd, subscriptions=self.subscriptions)
         self.resource_client = get_resource_client(subscription_id=self.default_subscription_id)
-        self.console = Console()
 
     def _process_query_result(self, result: dict, first: bool = False) -> Optional[Union[dict, List[dict]]]:
         if "data" in result:
@@ -37,4 +34,4 @@ class Queryable:
         return self._process_query_result(result=self.resource_graph.query_resources(query=query), first=first)
 
     def get_resource_group(self, name: str) -> dict:
-        return self.resource_client.resource_groups.get(resource_group_name=name).as_dict()
+        return self.resource_client.resource_groups.get(resource_group_name=name)

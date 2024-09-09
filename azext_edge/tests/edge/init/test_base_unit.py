@@ -38,144 +38,68 @@ def mocked_keyvault_api(mocker, request):
     yield api_patch
 
 
-@pytest.mark.parametrize(
-    "mocked_resource_management_client",
-    [
-        {
-            "client_path": BASE_PATH,
-            "deployments.begin_create_or_update": {"result": generate_random_string()},
-            "deployments.begin_what_if": {"result": generate_random_string()},
-        }
-    ],
-    indirect=True,
-)
-@pytest.mark.parametrize("pre_flight", [True, False])
-def test_deploy_template(mocked_resource_management_client, pre_flight):
-    from azext_edge.edge.providers.orchestration.base import deploy_template
+# @pytest.mark.parametrize(
+#     "mocked_resource_management_client",
+#     [
+#         {
+#             "client_path": BASE_PATH,
+#             "deployments.begin_create_or_update": {"result": generate_random_string()},
+#             "deployments.begin_what_if": {"result": generate_random_string()},
+#         }
+#     ],
+#     indirect=True,
+# )
+# @pytest.mark.parametrize("pre_flight", [True, False])
+# def test_deploy_template(mocked_resource_management_client, pre_flight):
+#     from azext_edge.edge.providers.orchestration.base import deploy_template
 
-    template = {generate_random_string(): generate_random_string()}
-    parameters = {generate_random_string(): generate_random_string()}
-    subscription_id = generate_random_string()
-    resource_group_name = generate_random_string()
-    deployment_name = generate_random_string()
-    cluster_name = generate_random_string()
-    cluster_namespace = generate_random_string()
-    instance_name = generate_random_string()
+#     template = {generate_random_string(): generate_random_string()}
+#     parameters = {generate_random_string(): generate_random_string()}
+#     subscription_id = generate_random_string()
+#     resource_group_name = generate_random_string()
+#     deployment_name = generate_random_string()
+#     cluster_name = generate_random_string()
+#     cluster_namespace = generate_random_string()
+#     instance_name = generate_random_string()
 
-    result, deployment = deploy_template(
-        template=template,
-        parameters=parameters,
-        subscription_id=subscription_id,
-        resource_group_name=resource_group_name,
-        deployment_name=deployment_name,
-        cluster_name=cluster_name,
-        cluster_namespace=cluster_namespace,
-        pre_flight=pre_flight,
-        instance_name=instance_name,
-    )
-    expected_parameters = {"properties": {"mode": "Incremental", "template": template, "parameters": parameters}}
-    if pre_flight:
-        assert not result
-        mocked_resource_management_client.deployments.begin_what_if.assert_called_once_with(
-            resource_group_name=resource_group_name, deployment_name=deployment_name, parameters=expected_parameters
-        )
-        mocked_resource_management_client.deployments.begin_create_or_update.assert_not_called()
-        assert deployment == mocked_resource_management_client.deployments.begin_what_if.return_value
-    else:
-        link = (
-            "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
-            f"%2Fsubscriptions%2F{subscription_id}%2FresourceGroups%2F{resource_group_name}"
-            f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{deployment_name}"
-        )
-        assert result["deploymentName"] == deployment_name
-        assert result["resourceGroup"] == resource_group_name
-        assert result["clusterName"] == cluster_name
-        assert result["clusterNamespace"] == cluster_namespace
-        assert result["instanceName"] == instance_name
-        assert result["deploymentLink"] == link
-        assert result["deploymentState"]["timestampUtc"]["started"]
-        assert result["deploymentState"]["status"]
-        mocked_resource_management_client.deployments.begin_create_or_update.assert_called_once_with(
-            resource_group_name=resource_group_name, deployment_name=deployment_name, parameters=expected_parameters
-        )
-        mocked_resource_management_client.deployments.begin_what_if.assert_not_called()
-        assert deployment == mocked_resource_management_client.deployments.begin_create_or_update.return_value
-
-
-@pytest.mark.parametrize("mocked_connected_cluster_location", ["westus2", "WestUS2"], indirect=True)
-@pytest.mark.parametrize("location", [None, generate_random_string()])
-def test_verify_cluster_and_use_location(mocked_connected_cluster_location, mocked_cmd, location):
-    kwargs = {
-        "cmd": mocked_cmd,
-        "cluster_location": None,
-        "location": location,
-        "cluster_name": generate_random_string(),
-        "subscription_id": generate_random_string(),
-        "resource_group_name": generate_random_string(),
-    }
-    from azext_edge.edge.providers.orchestration.base import (
-        verify_cluster_and_use_location,
-    )
-
-    connected_cluster = verify_cluster_and_use_location(kwargs)
-
-    connected_cluster.cluster_name == kwargs["cluster_name"]
-    connected_cluster.subscription_id == kwargs["subscription_id"]
-    connected_cluster.resource_group_name == kwargs["resource_group_name"]
-
-    mocked_connected_cluster_location.assert_called_once()
-
-    lowered_cluster_location = mocked_connected_cluster_location.return_value.lower()
-    assert kwargs["cluster_location"] == lowered_cluster_location
-
-    if location:
-        assert kwargs["location"] == location
-    else:
-        assert kwargs["location"] == lowered_cluster_location
-
-
-@pytest.mark.parametrize(
-    "mocked_connected_cluster_extensions",
-    [
-        [{"properties": {"extensionType": "microsoft.iotoperations"}}],
-        [
-            {"properties": {"extensionType": "microsoft.extension"}},
-            {"properties": {"extensionType": "Microsoft.IoTOperations.mq"}},
-        ],
-        [{"properties": {"extensionType": "microsoft.extension"}}],
-        [],
-    ],
-    indirect=True,
-)
-def test_throw_if_iotops_deployed(mocked_connected_cluster_extensions, mocked_cmd):
-    from azext_edge.edge.providers.orchestration.base import (
-        IOT_OPERATIONS_EXTENSION_PREFIX,
-        ConnectedCluster,
-        throw_if_iotops_deployed,
-    )
-
-    kwargs = {
-        "cmd": mocked_cmd,
-        "cluster_name": generate_random_string(),
-        "subscription_id": generate_random_string(),
-        "resource_group_name": generate_random_string(),
-    }
-
-    assert IOT_OPERATIONS_EXTENSION_PREFIX == "microsoft.iotoperations"
-
-    expect_validation_error = False
-    for extension in mocked_connected_cluster_extensions.return_value:
-        if extension["properties"]["extensionType"].lower().startswith(IOT_OPERATIONS_EXTENSION_PREFIX):
-            expect_validation_error = True
-            break
-
-    if expect_validation_error:
-        with pytest.raises(ValidationError):
-            throw_if_iotops_deployed(ConnectedCluster(**kwargs))
-        return
-
-    throw_if_iotops_deployed(ConnectedCluster(**kwargs))
-    mocked_connected_cluster_extensions.assert_called_once()
+#     result, deployment = deploy_template(
+#         template=template,
+#         parameters=parameters,
+#         subscription_id=subscription_id,
+#         resource_group_name=resource_group_name,
+#         deployment_name=deployment_name,
+#         cluster_name=cluster_name,
+#         cluster_namespace=cluster_namespace,
+#         pre_flight=pre_flight,
+#         instance_name=instance_name,
+#     )
+#     expected_parameters = {"properties": {"mode": "Incremental", "template": template, "parameters": parameters}}
+#     if pre_flight:
+#         assert not result
+#         mocked_resource_management_client.deployments.begin_what_if.assert_called_once_with(
+#             resource_group_name=resource_group_name, deployment_name=deployment_name, parameters=expected_parameters
+#         )
+#         mocked_resource_management_client.deployments.begin_create_or_update.assert_not_called()
+#         assert deployment == mocked_resource_management_client.deployments.begin_what_if.return_value
+#     else:
+#         link = (
+#             "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
+#             f"%2Fsubscriptions%2F{subscription_id}%2FresourceGroups%2F{resource_group_name}"
+#             f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{deployment_name}"
+#         )
+#         assert result["deploymentName"] == deployment_name
+#         assert result["resourceGroup"] == resource_group_name
+#         assert result["clusterName"] == cluster_name
+#         assert result["clusterNamespace"] == cluster_namespace
+#         assert result["instanceName"] == instance_name
+#         assert result["deploymentLink"] == link
+#         assert result["deploymentState"]["timestampUtc"]["started"]
+#         assert result["deploymentState"]["status"]
+#         mocked_resource_management_client.deployments.begin_create_or_update.assert_called_once_with(
+#             resource_group_name=resource_group_name, deployment_name=deployment_name, parameters=expected_parameters
+#         )
+#         mocked_resource_management_client.deployments.begin_what_if.assert_not_called()
+#         assert deployment == mocked_resource_management_client.deployments.begin_create_or_update.return_value
 
 
 @pytest.mark.parametrize(
@@ -409,17 +333,14 @@ def test_register_providers(mocker, registration_state):
         register_providers,
     )
 
-    class MockProvider:
-        def __init__(self, namespace: str, registration_state: str):
-            self.namespace = namespace
-            self.registration_state = registration_state
-
-        def as_dict(self):
-            return {"namespace": self.namespace, "registration_state": self.registration_state}
-
-    iot_ops_rps = ["Microsoft.IoTOperationsOrchestrator", "Microsoft.IoTOperations", "Microsoft.DeviceRegistry"]
+    iot_ops_rps = [
+        "Microsoft.IoTOperationsOrchestrator",
+        "Microsoft.IoTOperations",
+        "Microsoft.DeviceRegistry",
+        "Microsoft.SecretSyncController",
+    ]
     mocked_get_resource_client().providers.list.return_value = [
-        MockProvider(namespace, registration_state) for namespace in iot_ops_rps
+        {"namespace": namespace, "registrationState": registration_state} for namespace in iot_ops_rps
     ]
 
     for rp in iot_ops_rps:

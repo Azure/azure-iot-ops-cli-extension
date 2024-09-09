@@ -27,6 +27,7 @@ from .base import (
     process_dict_resource,
     process_pod_status,
     get_resources_grouped_by_namespace,
+    validate_one_of_conditions,
 )
 
 from .common import (
@@ -38,23 +39,21 @@ from .common import (
 
 
 def check_akri_deployment(
-    result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
     resource_name: str = None,
-) -> None:
+) -> List[dict]:
     evaluate_funcs = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
         AkriResourceKinds.CONFIGURATION: evaluate_configurations,
         AkriResourceKinds.INSTANCE: evaluate_instances,
     }
 
-    check_post_deployment(
+    return check_post_deployment(
         api_info=AKRI_API_V0,
         check_name="enumerateAkriApi",
         check_desc="Enumerate Akri API resources",
-        result=result,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,
@@ -85,17 +84,19 @@ def evaluate_core_service_runtime(
 
         if not akri_runtime_resources:
             check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value)
-            check_manager.add_display(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)))
+            check_manager.add_display(
+                target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
+                display=Padding("Unable to fetch pods.", (0, 0, 0, padding + 2)),
+            )
 
-    for (namespace, pods) in get_resources_grouped_by_namespace(akri_runtime_resources):
+    for namespace, pods in get_resources_grouped_by_namespace(akri_runtime_resources):
         check_manager.add_target(target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value, namespace=namespace)
         check_manager.add_display(
             target_name=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             namespace=namespace,
             display=Padding(
-                f"Akri runtime resources in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, padding)
-            )
+                f"Akri runtime resources in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, padding)
+            ),
         )
 
         process_pod_status(
@@ -118,7 +119,9 @@ def evaluate_configurations(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalConfigurations", check_desc="Evaluate Akri configurations")
 
-    target_configurations = generate_target_resource_name(api_info=AKRI_API_V0, resource_kind=AkriResourceKinds.CONFIGURATION.value)
+    target_configurations = generate_target_resource_name(
+        api_info=AKRI_API_V0, resource_kind=AkriResourceKinds.CONFIGURATION.value
+    )
     configuration_conditions = []
 
     all_configurations: dict = get_resources_by_name(
@@ -133,23 +136,20 @@ def evaluate_configurations(
         check_manager.add_target_eval(
             target_name=target_configurations,
             status=CheckTaskStatus.skipped.value,
-            value={"configurations": fetch_configurations_error_text}
+            value={"configurations": fetch_configurations_error_text},
         )
-        check_manager.add_display(target_name=target_configurations, display=Padding(fetch_configurations_error_text, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_configurations, display=Padding(fetch_configurations_error_text, (0, 0, 0, 8))
+        )
 
-    for (namespace, configurations) in get_resources_grouped_by_namespace(all_configurations):
+    for namespace, configurations in get_resources_grouped_by_namespace(all_configurations):
         check_manager.add_target(
-            target_name=target_configurations,
-            namespace=namespace,
-            conditions=configuration_conditions
+            target_name=target_configurations, namespace=namespace, conditions=configuration_conditions
         )
         check_manager.add_display(
             target_name=target_configurations,
             namespace=namespace,
-            display=Padding(
-                f"Akri configurations in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, 8)
-            )
+            display=Padding(f"Akri configurations in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
         )
 
         padding = 10
@@ -157,26 +157,26 @@ def evaluate_configurations(
         configurations_count = len(configurations)
         configurations_count_text = "- {}."
 
-        configurations_count_text = configurations_count_text.format(f"Detected [blue]{configurations_count}[/blue] configurations")
+        configurations_count_text = configurations_count_text.format(
+            f"Detected [blue]{configurations_count}[/blue] configurations"
+        )
 
         check_manager.add_display(
             target_name=target_configurations,
             namespace=namespace,
-            display=Padding(configurations_count_text, (0, 0, 0, padding))
+            display=Padding(configurations_count_text, (0, 0, 0, padding)),
         )
 
         for configuration in configurations:
             configuration_name = configuration["metadata"]["name"]
 
-            configuration_text = (
-                f"- Akri configuration {{[bright_blue]{configuration_name}[/bright_blue]}} detected."
-            )
+            configuration_text = f"- Akri configuration {{[bright_blue]{configuration_name}[/bright_blue]}} detected."
 
             configuration_padding = padding + PADDING_SIZE
             check_manager.add_display(
                 target_name=target_configurations,
                 namespace=namespace,
-                display=Padding(configuration_text, (0, 0, 0, configuration_padding))
+                display=Padding(configuration_text, (0, 0, 0, configuration_padding)),
             )
 
             spec = configuration["spec"]
@@ -245,7 +245,9 @@ def evaluate_instances(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalInstances", check_desc="Evaluate Akri instances")
 
-    target_instances = generate_target_resource_name(api_info=AKRI_API_V0, resource_kind=AkriResourceKinds.INSTANCE.value)
+    target_instances = generate_target_resource_name(
+        api_info=AKRI_API_V0, resource_kind=AkriResourceKinds.INSTANCE.value
+    )
     instance_conditions = []
     check_manager.add_target(target_name=target_instances, conditions=instance_conditions)
 
@@ -260,23 +262,18 @@ def evaluate_instances(
         check_manager.add_target_eval(
             target_name=target_instances,
             status=CheckTaskStatus.skipped.value,
-            value={"instances": fetch_instances_skip_text}
+            value={"instances": fetch_instances_skip_text},
         )
-        check_manager.add_display(target_name=target_instances, display=Padding(fetch_instances_skip_text, (0, 0, 0, 8)))
+        check_manager.add_display(
+            target_name=target_instances, display=Padding(fetch_instances_skip_text, (0, 0, 0, 8))
+        )
 
-    for (namespace, instances) in get_resources_grouped_by_namespace(all_instances):
-        check_manager.add_target(
-            target_name=target_instances,
-            namespace=namespace,
-            conditions=instance_conditions
-        )
+    for namespace, instances in get_resources_grouped_by_namespace(all_instances):
+        check_manager.add_target(target_name=target_instances, namespace=namespace, conditions=instance_conditions)
         check_manager.add_display(
             target_name=target_instances,
             namespace=namespace,
-            display=Padding(
-                f"Akri instances in namespace {{[purple]{namespace}[/purple]}}",
-                (0, 0, 0, 8)
-            )
+            display=Padding(f"Akri instances in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
         )
 
         instances: List[dict] = list(instances)
@@ -289,7 +286,7 @@ def evaluate_instances(
         check_manager.add_display(
             target_name=target_instances,
             namespace=namespace,
-            display=Padding(instances_count_text, (0, 0, 0, padding))
+            display=Padding(instances_count_text, (0, 0, 0, padding)),
         )
 
         for instance in instances:
@@ -297,14 +294,12 @@ def evaluate_instances(
             instance_name = instance["metadata"]["name"]
             instance_padding = padding + PADDING_SIZE
 
-            instance_text = (
-                f"- Akri instance {{[bright_blue]{instance_name}[/bright_blue]}} detected."
-            )
+            instance_text = f"- Akri instance {{[bright_blue]{instance_name}[/bright_blue]}} detected."
 
             check_manager.add_display(
                 target_name=target_instances,
                 namespace=namespace,
-                display=Padding(instance_text, (0, 0, 0, instance_padding))
+                display=Padding(instance_text, (0, 0, 0, instance_padding)),
             )
 
             property_padding = instance_padding + PADDING_SIZE
@@ -367,55 +362,6 @@ def evaluate_instances(
                         )
 
     return check_manager.as_dict(as_list)
-
-
-def _validate_one_of_conditions(
-        conditions: List[tuple],
-        check_manager: CheckManager,
-        eval_value: dict,
-        namespace: str,
-        target_name: str,
-        padding: int,
-) -> None:
-    if len(conditions) == 1:
-        return
-
-    non_empty_conditions_count = len([condition for condition in conditions if condition[1]])
-
-    eval_status = CheckTaskStatus.success.value
-    conditions_names = ", ".join([f"'{condition[0]}'" for condition in conditions])
-    if non_empty_conditions_count == 0:
-        check_manager.add_display(
-            target_name=target_name,
-            namespace=namespace,
-            display=Padding(
-                f"One of {conditions_names} should be specified",
-                (0, 0, 0, padding),
-            ),
-        )
-        eval_status = CheckTaskStatus.error.value
-    elif non_empty_conditions_count > 1:
-        check_manager.add_display(
-            target_name=target_name,
-            namespace=namespace,
-            display=Padding(
-                f"Only one of {conditions_names} should be specified",
-                (0, 0, 0, padding),
-            ),
-        )
-        eval_status = CheckTaskStatus.error.value
-
-    check_manager.add_target_conditions(
-        target_name=target_name,
-        namespace=namespace,
-        conditions=[condition[0] for condition in conditions]
-    )
-    check_manager.add_target_eval(
-        target_name=target_name,
-        namespace=namespace,
-        status=eval_status,
-        value=eval_value
-    )
 
 
 def _evaluate_discovery_handler(
@@ -497,9 +443,7 @@ def _evaluate_discovery_handler(
 
                 # name should be a valid identifier match the pattern
                 if not property_name or not re.match(name_pattern, property_name):
-                    property_name_error_text = (
-                        f"[red]Property name should be a valid identifier that matches the pattern {name_pattern}.[/red]"
-                    )
+                    property_name_error_text = f"[red]Property name should be a valid identifier that matches the pattern {name_pattern}.[/red]"
                     property_name_eval_status = CheckTaskStatus.error.value
                     check_manager.add_display(
                         target_name=target_name,
@@ -511,7 +455,7 @@ def _evaluate_discovery_handler(
                     target_name=target_name,
                     namespace=namespace,
                     status=property_name_eval_status,
-                    value=property_name_eval_value
+                    value=property_name_eval_value,
                 )
 
                 # "value" and "valueFrom" are mutually exclusive
@@ -519,18 +463,15 @@ def _evaluate_discovery_handler(
                 value_from = property.get("valueFrom", "")
                 value_eval_value = {
                     f"{property_condition_str}.value": value,
-                    f"{property_condition_str}.valueFrom": value_from
+                    f"{property_condition_str}.valueFrom": value_from,
                 }
-                _validate_one_of_conditions(
-                    conditions=[
-                        ("value", value),
-                        ("valueFrom", value_from)
-                    ],
+                validate_one_of_conditions(
+                    conditions=[("value", value), ("valueFrom", value_from)],
                     check_manager=check_manager,
                     eval_value=value_eval_value,
                     namespace=namespace,
                     target_name=target_name,
-                    padding=property_padding
+                    padding=property_padding,
                 )
 
                 if value:
@@ -558,22 +499,23 @@ def _evaluate_discovery_handler(
                     config_map_key_ref = value_from.get("configMapKeyRef", {})
                     key_ref_eval_value = {
                         f"{property_condition_str}.valueFrom.secretKeyRef": secret_key_ref,
-                        f"{property_condition_str}.valueFrom.configMapKeyRef": config_map_key_ref
+                        f"{property_condition_str}.valueFrom.configMapKeyRef": config_map_key_ref,
                     }
-                    _validate_one_of_conditions(
-                        conditions=[
-                            ("secretKeyRef", secret_key_ref),
-                            ("configMapKeyRef", config_map_key_ref)
-                        ],
+                    validate_one_of_conditions(
+                        conditions=[("secretKeyRef", secret_key_ref), ("configMapKeyRef", config_map_key_ref)],
                         check_manager=check_manager,
                         eval_value=key_ref_eval_value,
                         namespace=namespace,
                         target_name=target_name,
-                        padding=key_ref_padding
+                        padding=key_ref_padding,
                     )
 
                     if secret_key_ref or config_map_key_ref:
-                        key_ref_property = ("secret_key_ref", secret_key_ref) if secret_key_ref else ("config_map_key_ref", config_map_key_ref)
+                        key_ref_property = (
+                            ("secret_key_ref", secret_key_ref)
+                            if secret_key_ref
+                            else ("config_map_key_ref", config_map_key_ref)
+                        )
                         key_ref_name = key_ref_property[1].get("name", "")
                         key_ref_key = key_ref_property[1].get("key", "")
                         key_ref_namespace = key_ref_property[1].get("namespace", "")
@@ -587,7 +529,9 @@ def _evaluate_discovery_handler(
                             ],
                         )
 
-                        key_ref_name_eval_value = {f"{property_condition_str}.valueFrom.{key_ref_property[0]}.name": key_ref_name}
+                        key_ref_name_eval_value = {
+                            f"{property_condition_str}.valueFrom.{key_ref_property[0]}.name": key_ref_name
+                        }
                         key_ref_name_eval_status = CheckTaskStatus.success.value
                         if not key_ref_name:
                             key_ref_name_error_text = f"[red]Property {key_ref_property[0]} name is required.[/red]"
@@ -611,7 +555,7 @@ def _evaluate_discovery_handler(
                             target_name=target_name,
                             namespace=namespace,
                             status=key_ref_name_eval_status,
-                            value=key_ref_name_eval_value
+                            value=key_ref_name_eval_value,
                         )
 
                         if detail_level >= ResourceOutputDetailLevel.detail.value:

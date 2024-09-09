@@ -6,10 +6,10 @@
 
 from .deletion import delete_ops_resources
 from .host import run_host_verify
-from .work import deploy
+from .work import WorkManager
 
 __all__ = [
-    "deploy",
+    "WorkManager",
     "delete_ops_resources",
     "run_host_verify",
 ]

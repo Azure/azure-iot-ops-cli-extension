@@ -11,11 +11,3 @@ import pytest
 def mocked_resource_graph(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.connected_cluster.ResourceGraph", autospec=True)
     yield patched
-
-
-@pytest.fixture
-def mocked_get_resource_client(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.connected_cluster.get_resource_client", autospec=True
-    )
-    yield patched

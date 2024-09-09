@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable
+from typing import Iterable, Optional
 
 from knack.log import get_logger
 
@@ -100,9 +100,7 @@ def fetch_daemonsets():
             )
         )
 
-    processed.extend(
-        process_daemonsets(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2)
-    )
+    processed.extend(process_daemonsets(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2))
     return processed
 
 
@@ -121,9 +119,7 @@ def fetch_services():
             )
         )
 
-    processed.extend(
-        process_services(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2)
-    )
+    processed.extend(process_services(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2))
     return processed
 
 
@@ -142,9 +138,7 @@ def fetch_replicasets():
             )
         )
 
-    processed.extend(
-        process_replicasets(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2)
-    )
+    processed.extend(process_replicasets(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2))
     return processed
 
 
@@ -156,9 +150,14 @@ support_runtime_elements = {
 }
 
 
-def prepare_bundle(apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS) -> dict:
+def prepare_bundle(
+    log_age_seconds: int = DAY_IN_SECONDS,
+    apis: Optional[Iterable[EdgeResourceApi]] = None,
+) -> dict:
     akri_to_run = {}
-    akri_to_run.update(assemble_crd_work(apis))
+
+    if apis:
+        akri_to_run.update(assemble_crd_work(apis))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     akri_to_run.update(support_runtime_elements)
