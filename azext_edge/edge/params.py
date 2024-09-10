@@ -925,6 +925,11 @@ def load_iotops_arguments(self, _):
             help="Target Address. Must be a valid local address that follows the opc.tcp protocol.",
         )
         context.argument(
+            "endpoint_profile_type",
+            options_list=["--endpoint-profile-type", "--ept"],
+            help="Connector type for the endpoint profile.",
+        )
+        context.argument(
             "auth_mode",
             options_list=["--authentication-mode", "--am"],
             help="Authentication Mode.",
