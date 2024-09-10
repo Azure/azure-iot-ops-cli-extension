@@ -4,13 +4,9 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
-from ...util.az_client import get_resource_client
 from ...util.resource_graph import ResourceGraph
-
-CONNECTED_CLUSTER_API_VERSION = "2024-01-01"
-KUBERNETES_CONFIG_API_VERSION = "2022-11-01"
 
 
 QUERIES = {
@@ -28,6 +24,9 @@ QUERIES = {
         | where properties.ExtensionType startswith 'microsoft.iotoperations'
             or properties.ExtensionType =~ 'microsoft.deviceregistry.assets'
             or properties.ExtensionType =~ 'microsoft.azurekeyvaultsecretsprovider'
+            or properties.ExtensionType =~ 'microsoft.secretsynccontroller'
+            or properties.ExtensionType =~ 'microsoft.openservicemesh'
+            or properties.ExtensionType =~ 'microsoft.arc.containerstorage'
         | project id, name, apiVersion
         """,
     "get_aio_custom_locations": """
@@ -68,23 +67,21 @@ class ConnectedCluster:
         self.subscription_id = subscription_id
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
-        self.resource_client = get_resource_client(self.subscription_id)
         self.resource_graph = ResourceGraph(cmd=cmd, subscriptions=[self.subscription_id])
+
+        # TODO - @digimaun - temp necessary due to circular import
+        from ..orchestration.resources import ConnectedClusters
+
+        self.clusters = ConnectedClusters(cmd)
 
     @property
     def resource_id(self) -> str:
-        return (
-            f"/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group_name}"
-            f"/providers/Microsoft.Kubernetes/connectedClusters/{self.cluster_name}"
-        )
+        return self.resource["id"]
 
     @property
     def resource(self) -> dict:
         # TODO: Cache
-        return self.resource_client.resources.get_by_id(
-            resource_id=self.resource_id,
-            api_version=CONNECTED_CLUSTER_API_VERSION,
-        ).as_dict()
+        return self.clusters.show(resource_group_name=self.resource_group_name, cluster_name=self.cluster_name)
 
     @property
     def location(self) -> str:
@@ -97,12 +94,19 @@ class ConnectedCluster:
 
     @property
     def extensions(self) -> List[dict]:
-        # TODO: This is not the right approach.
-        additional_properties: dict = self.resource_client.resources.get_by_id(
-            resource_id=f"{self.resource_id}/providers/Microsoft.KubernetesConfiguration/extensions",
-            api_version=KUBERNETES_CONFIG_API_VERSION,
-        ).additional_properties
-        return additional_properties.get("value", [])
+        return list(
+            self.clusters.extensions.list(resource_group_name=self.resource_group_name, cluster_name=self.cluster_name)
+        )
+
+    def get_extensions_by_type(self, *type_names: str) -> Optional[Dict[str, dict]]:
+        extensions = self.extensions
+        desired_extension_map = {name.lower(): None for name in type_names}
+        for extension in extensions:
+            extension_type = extension["properties"].get("extensionType", "").lower()
+            if extension_type in desired_extension_map:
+                desired_extension_map[extension_type] = extension
+
+        return desired_extension_map
 
     def get_custom_location_for_namespace(self, namespace: str) -> Optional[dict]:
         query = QUERIES["get_custom_location_for_namespace"].format(resource_id=self.resource_id, namespace=namespace)

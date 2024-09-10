@@ -17,9 +17,9 @@ from ...generators import generate_random_string
 @pytest.fixture
 def mocked_resource_map(mocker):
     patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.deletion.IoTOperationsResourceMap",
+        "azext_edge.edge.providers.orchestration.deletion.Instances",
     )
-    yield patched
+    yield patched().get_resource_map
 
 
 @pytest.fixture
@@ -138,10 +138,14 @@ def test_batch_resources(
 ):
     from azext_edge.edge.providers.orchestration.deletion import DeletionManager
 
-    cluster_name = generate_random_string()
+    instance_name = generate_random_string()
     rg_name = generate_random_string()
 
-    deletion_manager = DeletionManager(cmd=mocked_cmd, cluster_name=cluster_name, resource_group_name=rg_name)
+    deletion_manager = DeletionManager(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=rg_name,
+    )
     batches = deletion_manager._batch_resources(
         resources=expected_resources_map["resources"],
         resource_sync_rules=expected_resources_map["resource sync rules"],
@@ -218,6 +222,7 @@ def test_batch_resources(
         },
     ],
 )
+@pytest.mark.parametrize("include_dependencies", [None, True])
 def test_delete_lifecycle(
     mocker,
     mocked_cmd: Mock,
@@ -228,10 +233,11 @@ def test_delete_lifecycle(
     mocked_logger: Mock,
     spy_deletion_manager: Dict[str, Mock],
     expected_resources_map: Dict[str, Union[dict, Optional[List[IoTOperationsResource]]]],
+    include_dependencies: Optional[bool],
 ):
     from azext_edge.edge.providers.orchestration.deletion import delete_ops_resources
 
-    cluster_name = generate_random_string()
+    instance_name = generate_random_string()
     rg_name = generate_random_string()
 
     _assemble_resource_map_mock(
@@ -244,13 +250,18 @@ def test_delete_lifecycle(
 
     kwargs = {
         "cmd": mocked_cmd,
-        "cluster_name": cluster_name,
+        "instance_name": instance_name,
         "resource_group_name": rg_name,
         "confirm_yes": True,
         "no_progress": expected_resources_map["meta"].get("no_progress"),
+        "include_dependencies": include_dependencies,
     }
 
     delete_ops_resources(**kwargs)
+
+    expected_delete_calls: int = expected_resources_map["meta"].get("expected_delete_calls", 0)
+    if not include_dependencies and expected_delete_calls > 0:
+        expected_delete_calls = expected_delete_calls - 1
 
     spy_deletion_manager["_display_resource_tree"].assert_called_once()
     spy_deletion_manager["_process"].assert_called_once()
@@ -267,9 +278,11 @@ def test_delete_lifecycle(
         spy_deletion_manager["_delete_batch"].assert_not_called()
         return
 
-    spy_deletion_manager["_render_display"].assert_called()
-    spy_deletion_manager["_stop_display"].assert_called_once()
-    assert spy_deletion_manager["_delete_batch"].call_count == expected_resources_map["meta"]["expected_delete_calls"]
+    if expected_delete_calls > 0:
+        spy_deletion_manager["_render_display"].assert_called()
+        spy_deletion_manager["_stop_display"].assert_called_once()
+
+    assert spy_deletion_manager["_delete_batch"].call_count == expected_delete_calls
     assert mocked_live_display.call_count >= 1
 
     if kwargs["no_progress"]:

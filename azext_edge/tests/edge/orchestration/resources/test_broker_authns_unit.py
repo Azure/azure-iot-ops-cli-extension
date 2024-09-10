@@ -9,7 +9,7 @@ from typing import Optional
 import pytest
 import responses
 
-from azext_edge.edge.commands_mq import show_broker_authn, list_broker_authns
+from azext_edge.edge.commands_mq import show_broker_authn, list_broker_authns, delete_broker_authn
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
@@ -69,7 +69,7 @@ def test_broker_authn_show(mocked_cmd, mocked_responses: responses):
     result = show_broker_authn(
         cmd=mocked_cmd,
         authn_name=authn_name,
-        mq_broker_name=broker_name,
+        broker_name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )
@@ -112,11 +112,39 @@ def test_broker_authn_list(mocked_cmd, mocked_responses: responses, records: int
     result = list(
         list_broker_authns(
             cmd=mocked_cmd,
-            mq_broker_name=broker_name,
+            broker_name=broker_name,
             instance_name=instance_name,
             resource_group_name=resource_group_name,
         )
     )
 
     assert result == mock_broker_authn_records["value"]
+    assert len(mocked_responses.calls) == 1
+
+
+def test_broker_authn_delete(mocked_cmd, mocked_responses: responses):
+    authn_name = generate_random_string()
+    broker_name = generate_random_string()
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+
+    mocked_responses.add(
+        method=responses.DELETE,
+        url=get_broker_authn_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            broker_name=broker_name,
+            authn_name=authn_name,
+        ),
+        status=204,
+    )
+    delete_broker_authn(
+        cmd=mocked_cmd,
+        authn_name=authn_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=True,
+        wait_sec=0.25,
+    )
     assert len(mocked_responses.calls) == 1

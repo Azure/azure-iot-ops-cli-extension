@@ -27,6 +27,7 @@ class DataSourceStageType(ListableEnum):
     """
     Data source stage type.
     """
+
     http = "input/http"
     influxdb = "input/influxdb"
     mqtt = "input/mqtt"
@@ -89,7 +90,7 @@ MAX_ASSET_EVENTS = 1000
 MAX_ASSET_DATAPOINTS = 1000
 
 # Check constants
-ALL_NAMESPACES_TARGET = '_all_'
+ALL_NAMESPACES_TARGET = "_all_"
 
 
 # when there are runtime resources related to the service but not
@@ -102,17 +103,41 @@ class CoreServiceResourceKinds(Enum):
     RUNTIME_RESOURCE = "coreServiceRuntimeResource"
 
 
+# Dataflow properties
+class DataflowOperationType(ListableEnum):
+    """
+    Dataflow Profile Operation Type:
+    """
+
+    source = "source"
+    destination = "destination"
+    builtin_transformation = "builtintransformation"
+
+
+class DataflowEndpointType(ListableEnum):
+    """
+    Dataflow Endpoint Type:
+    """
+
+    data_explorer = "dataexplorer"
+    datalake = "datalakestorage"
+    fabric_onelake = "fabriconelake"
+    kafka = "kafka"
+    local_storage = "localstorage"
+    mqtt = "mqtt"
+
+
 # Akri runtime attributes
 AKRI_PREFIX = "aio-akri-"
 
 # MQ runtime attributes
-AIO_MQ_DIAGNOSTICS_PROBE_PREFIX = "aio-mq-diagnostics-probe"
-AIO_MQ_FRONTEND_PREFIX = "aio-mq-dmqtt-frontend"
-AIO_MQ_BACKEND_PREFIX = "aio-mq-dmqtt-backend"
-AIO_MQ_AUTH_PREFIX = "aio-mq-dmqtt-authentication"
-AIO_MQ_HEALTH_MANAGER = "aio-mq-dmqtt-health-manager"
-AIO_MQ_OPERATOR = "aio-mq-operator"
-AIO_MQ_FLUENT_BIT = "aio-mq-fluent-bit"
+AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX = "aio-broker-diagnostics-probe"
+AIO_BROKER_FRONTEND_PREFIX = "aio-broker-frontend"
+AIO_BROKER_BACKEND_PREFIX = "aio-broker-backend"
+AIO_BROKER_AUTH_PREFIX = "aio-broker-authentication"
+AIO_BROKER_HEALTH_MANAGER = "aio-broker-health-manager"
+AIO_BROKER_OPERATOR = "aio-broker-operator"
+AIO_BROKER_FLUENT_BIT = "aio-broker-fluent-bit"
 
 # OPCUA runtime attributes
 AIO_OPCUA_PREFIX = "aio-opc-"
@@ -128,9 +153,11 @@ MIN_NODE_STORAGE = "30G"
 MIN_NODE_VCPU = "4"
 AIO_SUPPORTED_ARCHITECTURES = ["amd64"]  # someday arm64
 
-DISPLAY_BYTES_PER_GIGABYTE = 10 ** 9
+DISPLAY_BYTES_PER_GIGABYTE = 10**9
 
 # UI constants
+DEFAULT_PADDING = 8
 PADDING_SIZE = 4
+DEFAULT_PROPERTY_DISPLAY_COLOR = "cyan"
 
 COLOR_STR_FORMAT = "[{color}]{value}[/{color}]"

@@ -46,18 +46,17 @@ def check_post_deployment(
     api_info: EdgeResourceApi,
     check_name: str,
     check_desc: str,
-    result: Dict[str, Any],
     evaluate_funcs: Dict[ListableEnum, Callable],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: Optional[List[str]] = None,
     resource_name: str = None,
     excluded_resources: Optional[List[str]] = None,
-) -> None:
+) -> List[dict]:
     resource_enumeration, api_resources = enumerate_ops_service_resources(
         api_info, check_name, check_desc, as_list, excluded_resources
     )
-    result["postDeployment"].append(resource_enumeration)
+    results = [resource_enumeration]
     lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
     if lowercase_api_resources:
@@ -71,9 +70,10 @@ def check_post_deployment(
                 append_resource = True
 
             if append_resource:
-                result["postDeployment"].append(
+                results.append(
                     evaluate_func(detail_level=detail_level, as_list=as_list, resource_name=resource_name)
                 )
+    return results
 
 
 def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:

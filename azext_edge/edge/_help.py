@@ -85,35 +85,37 @@ def load_iotops_help():
         "iot ops check"
     ] = f"""
         type: command
-        short-summary: Evaluate cluster-side runtime health of deployed IoT Operations services.
+        short-summary: Evaluate cluster-side readiness and runtime health of deployed IoT Operations services.
         long-summary: |
-            The command by default shows a human friendly _summary_ view of the selected service.
-            More detail can be requested via `--detail-level`.
+            The command by default shows a high-level human friendly _summary_ view of all services.
+            Use the '--svc' option to specify checks for a single service, and configure verbosity via the `--detail-level` argument.
+            Note: Resource kind (--resources) and name (--resource-name) filtering can only be used with the '--svc' argument.
 
             {{Supported service APIs}}
             - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
+            - {COMPAT_DATAFLOW_APIS.as_str()}
 
             For more information on cluster requirements, please check https://aka.ms/iot-ops-cluster-requirements
 
         examples:
-        - name: Basic usage. Checks `broker` health with summary output.
+        - name: Basic usage. Checks overall IoT Operations health with summary output.
           text: >
             az iot ops check
 
-        - name: Evaluates `broker` like prior example, however output is optimized for CI.
+        - name: Checks `broker` service health and configuration with detailed output.
           text: >
-            az iot ops check --as-object
+            az iot ops check --svc broker --detail-level 1
 
-        - name: Checks `opcua` health and configuration with detailed output.
+        - name: Evaluate only the `dataflow` service with output optimized for CI.
           text: >
-            az iot ops check --svc opcua --detail-level 1
+            az iot ops check --svc dataflow --as-object
 
-        - name: Checks 'deviceregistry' health, but constrains results to `asset` resources.
+        - name: Checks `deviceregistry` health with verbose output, but constrains results to `asset` resources.
           text: >
-            az iot ops check --svc deviceregistry --detail-level 1 --resources asset
+            az iot ops check --svc deviceregistry --detail-level 2 --resources asset
 
         - name: Use resource name to constrain results to `asset` resources with `my-asset-` name prefix
           text: >
@@ -149,7 +151,7 @@ def load_iotops_help():
           text: >
             az iot ops broker stats --raw
 
-        - name: Fetch all available mq traces from the diagnostics Protobuf endpoint.
+        - name: Fetch all available mqtt broker traces from the diagnostics Protobuf endpoint.
                 This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
                 A trace files last modified attribute will match the trace timestamp.
           text: >
@@ -185,6 +187,21 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker.
+
+        examples:
+        - name: Delete the broker called 'broker' in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops broker delete -n broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker delete -n broker --in mycluster-ops-instance -g myresourcegroup -y
+    """
+
+    helps[
         "iot ops broker listener"
     ] = """
         type: group
@@ -213,6 +230,21 @@ def load_iotops_help():
         - name: Enumerate all broker listeners associated with the default broker.
           text: >
             az iot ops broker listener list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker listener delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker listener.
+
+        examples:
+        - name: Delete the broker listener called 'listener' associated with broker 'broker'.
+          text: >
+            az iot ops broker listener delete -n listener -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker listener delete -n listener -b broker --in mycluster-ops-instance -g myresourcegroup -y
     """
 
     helps[
@@ -247,6 +279,21 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker authn delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker authentication resource.
+
+        examples:
+        - name: Delete the broker authentication resource called 'authn' associated with broker 'broker'.
+          text: >
+            az iot ops broker authn delete -n authn -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker authn delete -n authn -b broker --in mycluster-ops-instance -g myresourcegroup -y
+    """
+
+    helps[
         "iot ops broker authz"
     ] = """
         type: group
@@ -275,6 +322,21 @@ def load_iotops_help():
         - name: Enumerate all broker authorization resources associated with the default broker.
           text: >
             az iot ops broker authz list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker authz delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker authorization resource.
+
+        examples:
+        - name: Delete the broker authorization resource called 'authz' associated with broker 'broker'.
+          text: >
+            az iot ops broker authz delete -n authz -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker authz delete -n authz -b broker --in mycluster-ops-instance -g myresourcegroup -y
     """
 
     helps[
@@ -416,13 +478,16 @@ def load_iotops_help():
         examples:
         - name: Minimum input for complete deletion.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup
+            az iot ops delete -n myinstance -g myresourcegroup
         - name: Skip confirmation prompt and continue to deletion process. Useful for CI scenarios.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup -y
+            az iot ops delete -n myinstance -g myresourcegroup -y
         - name: Force deletion regardless of warnings. May lead to errors.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup --force
+            az iot ops delete -n myinstance -g myresourcegroup --force
+        - name: Reverse application of init.
+          text: >
+            az iot ops delete -n myinstance -g myresourcegroup --include-deps
     """
 
     helps[
@@ -478,6 +543,18 @@ def load_iotops_help():
         - name: Update the instance description.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
+    """
+
+    helps[
+        "iot ops create"
+    ] = """
+        type: command
+        short-summary: Create an IoT Operations instance.
+
+        examples:
+        - name: Create the target instance with minimum input.
+          text: >
+            az iot ops create --name myinstance --cluster mycluster -g myresourcegroup
     """
 
     helps[

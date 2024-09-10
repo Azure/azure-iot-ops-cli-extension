@@ -4,9 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from azure.cli.core.azclierror import ArgumentUsageError
+from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 from rich.console import Console
 
 from ..common import ListableEnum, OpsServiceType
@@ -18,6 +19,8 @@ from .check.opcua import check_opcua_deployment
 from .edge_api.deviceregistry import DeviceRegistryResourceKinds
 from .edge_api.mq import MqResourceKinds
 from .check.akri import check_akri_deployment
+from .check.dataflow import check_dataflows_deployment
+from .check.summary import check_summary
 from .edge_api.akri import AkriResourceKinds
 from .edge_api.opcua import OpcuaResourceKinds
 
@@ -26,7 +29,7 @@ console = Console(width=100, highlight=False)
 
 def run_checks(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-    ops_service: str = OpsServiceType.mq.value,
+    ops_service: Optional[str] = None,
     pre_deployment: bool = True,
     post_deployment: bool = True,
     as_list: bool = False,
@@ -50,7 +53,7 @@ def run_checks(
             if post_deployment
             else color.format(text="IoT Operations readiness")
         )
-        result["title"] = f"Evaluation for {title_subject}"
+        result["title"] = f"Evaluation for {title_subject}" if ops_service else "IoT Operations Summary"
 
         if pre_deployment:
             check_pre_deployment(result, as_list)
@@ -61,14 +64,20 @@ def run_checks(
                 OpsServiceType.mq.value: check_mq_deployment,
                 OpsServiceType.deviceregistry.value: check_deviceregistry_deployment,
                 OpsServiceType.opcua.value: check_opcua_deployment,
+                OpsServiceType.dataflow.value: check_dataflows_deployment,
+                None: check_summary
             }
-            service_check_dict[ops_service](
+            service_result = service_check_dict[ops_service](
                 detail_level=detail_level,
                 resource_name=resource_name,
-                result=result,
                 as_list=as_list,
                 resource_kinds=resource_kinds
             )
+            if isinstance(service_result, list):
+                for obj in service_result:
+                    result["postDeployment"].append(obj)
+            else:
+                result["postDeployment"].append(service_result)
 
         if as_list:
             return display_as_list(console=console, result=result)
@@ -81,6 +90,7 @@ def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: Lis
         OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
         OpsServiceType.opcua.value: OpcuaResourceKinds,
+        OpsServiceType.dataflow.value: DataflowResourceKinds,
     }
 
     valid_resource_kinds = service_kinds_dict[ops_service].list() if ops_service in service_kinds_dict else []

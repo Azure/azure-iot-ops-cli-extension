@@ -16,7 +16,7 @@ from kubernetes.client.models import V1ObjectMeta, V1Pod, V1PodList, V1PodStatus
 from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
 from azext_edge.edge.commands_mq import stats
-from azext_edge.edge.common import AIO_MQ_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PodState
+from azext_edge.edge.common import AIO_BROKER_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT
 
 # pylint: disable=no-name-in-module
 from azext_edge.edge.providers.proto.diagnostics_service_pb2 import (
@@ -33,8 +33,8 @@ from .traces_data import TEST_TRACE, TEST_TRACE_PARTIAL
 def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlopen, stub_raw_stats):
     pods = [
         V1Pod(
-            metadata=V1ObjectMeta(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace="namespace"),
-            status=V1PodStatus(phase=PodState.running.value),
+            metadata=V1ObjectMeta(name=AIO_BROKER_DIAGNOSTICS_SERVICE, namespace="namespace"),
+            status=V1PodStatus(phase=POD_STATE_RUNNING),
         )
     ]
     pod_list = V1PodList(items=pods)
@@ -50,7 +50,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
     result = stats(cmd=mocked_cmd, namespace=namespace, context_name=context_name)
     min_stats_assert(result)
     mocked_urlopen.assert_called_with(
-        f"http://{AIO_MQ_DIAGNOSTICS_SERVICE}.{namespace}.kubernetes:{METRICS_SERVICE_API_PORT}/metrics"
+        f"http://{AIO_BROKER_DIAGNOSTICS_SERVICE}.{namespace}.kubernetes:{METRICS_SERVICE_API_PORT}/metrics"
     )
 
     console_mock = mocker.patch("azext_edge.edge.providers.stats.console", autospec=True)
@@ -163,8 +163,8 @@ def test_get_traces(
     # pylint: disable=unnecessary-dunder-call
     pods = [
         V1Pod(
-            metadata=V1ObjectMeta(name=AIO_MQ_DIAGNOSTICS_SERVICE, namespace="namespace"),
-            status=V1PodStatus(phase=PodState.running.value),
+            metadata=V1ObjectMeta(name=AIO_BROKER_DIAGNOSTICS_SERVICE, namespace="namespace"),
+            status=V1PodStatus(phase=POD_STATE_RUNNING),
         )
     ]
     pod_list = V1PodList(items=pods)
@@ -327,6 +327,12 @@ def test___determine_root_span():
     assert timestamp is None
 
 
+POD_STATE_RUNNING = "Running"
+POD_STATE_FAILED = "Failed"
+POD_STATE_PENDING = "Pending"
+POD_STATE_SUCCEEDED = "Succeeded"
+
+
 @pytest.mark.parametrize(
     "test_state",
     [
@@ -334,9 +340,9 @@ def test___determine_root_span():
             "expected_pods": [
                 V1Pod(
                     metadata=V1ObjectMeta(
-                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                        name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.running.value),
+                    status=V1PodStatus(phase=POD_STATE_RUNNING),
                 )
             ],
             "expected_pod_index": 0,
@@ -345,21 +351,21 @@ def test___determine_root_span():
             "expected_pods": [
                 V1Pod(
                     metadata=V1ObjectMeta(
-                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                        name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.failed.value),
+                    status=V1PodStatus(phase=POD_STATE_FAILED),
                 ),
                 V1Pod(
                     metadata=V1ObjectMeta(
-                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                        name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.pending.value),
+                    status=V1PodStatus(phase=POD_STATE_PENDING),
                 ),
                 V1Pod(
                     metadata=V1ObjectMeta(
-                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                        name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.running.value),
+                    status=V1PodStatus(phase=POD_STATE_RUNNING),
                 ),
             ],
             "expected_pod_index": 2,
@@ -368,15 +374,15 @@ def test___determine_root_span():
             "expected_pods": [
                 V1Pod(
                     metadata=V1ObjectMeta(
-                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                        name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.failed.value),
+                    status=V1PodStatus(phase=POD_STATE_FAILED),
                 ),
                 V1Pod(
                     metadata=V1ObjectMeta(
-                        name=f"{AIO_MQ_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
+                        name=f"{AIO_BROKER_DIAGNOSTICS_SERVICE}-{generate_random_string()}", namespace="namespace"
                     ),
-                    status=V1PodStatus(phase=PodState.succeeded.value),
+                    status=V1PodStatus(phase=POD_STATE_SUCCEEDED),
                 ),
             ],
             "expected_pod_index": -1,

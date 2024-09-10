@@ -5,14 +5,16 @@
 # ----------------------------------------------------------------------------------------------
 
 from .brokers import Brokers
+from .clusters import ConnectedClusters
+from .dataflows import DataFlowEndpoints, DataFlowProfiles
 from .instances import Instances
-from .dataflows import DataFlowProfiles, DataFlowEndpoints
 from .schema_registries import SchemaRegistries
 
 __all__ = [
     "Brokers",
-    "Instances",
-    "DataFlowProfiles",
+    "ConnectedClusters",
     "DataFlowEndpoints",
+    "DataFlowProfiles",
+    "Instances",
     "SchemaRegistries",
 ]

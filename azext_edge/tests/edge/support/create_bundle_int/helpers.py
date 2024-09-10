@@ -17,14 +17,24 @@ from ....helpers import (
     find_extra_or_missing_names,
     get_kubectl_custom_items,
     get_kubectl_workload_items,
-    run
+    run,
 )
 
 
 logger = get_logger(__name__)
 BASE_ZIP_PATH = "__root__"
 WORKLOAD_TYPES = [
-    "cronjob", "daemonset", "deployment", "job", "pod", "podmetric", "pvc", "replicaset", "service", "statefulset"
+    "configmap",
+    "cronjob",
+    "daemonset",
+    "deployment",
+    "job",
+    "pod",
+    "podmetric",
+    "pvc",
+    "replicaset",
+    "service",
+    "statefulset",
 ]
 
 
@@ -120,10 +130,12 @@ def check_custom_resource_files(
     resource_api: EdgeResourceApi,
     namespace: Optional[str] = None,
 ):
+    # skip validation if resource is not deployed
+    if not resource_api.is_deployed():
+        return
+
     resource_map = get_kubectl_custom_items(
-        resource_api=resource_api,
-        namespace=namespace,
-        include_plural=True
+        resource_api=resource_api, namespace=namespace, include_plural=True
     )
     for kind in resource_api.kinds:
         cluster_resources = resource_map[kind]
@@ -140,6 +152,7 @@ def check_workload_resource_files(
     expected_workload_types: List[str],
     prefixes: Union[str, List[str]],
     bundle_path: str,
+    expected_label: Optional[str] = None,
     optional_workload_types: Optional[List[str]] = None,
 ):
     if "pod" in expected_workload_types:
@@ -162,7 +175,9 @@ def check_workload_resource_files(
             assert f"{file['descriptor']}.{file.get('sub_descriptor')}" not in converted_file
             converted_file[file["descriptor"]] = True
         else:
-            assert file["sub_descriptor"] == "previous", f"Full file name: {file['full_name']}, file_obj {file}"
+            assert (
+                file["sub_descriptor"] == "previous"
+            ), f"Full file name: {file['full_name']}, file_obj {file}"
             sub_key = f"{file['descriptor']}.{file['sub_descriptor']}"
             assert sub_key not in converted_file, f"Full file name: {file['full_name']}, file_obj {file}"
             converted_file[sub_key] = True
@@ -171,14 +186,14 @@ def check_workload_resource_files(
             if file["descriptor"] not in converted_file:
                 converted_file[file["descriptor"]] = False
 
-    expected_pods = get_kubectl_workload_items(prefixes, service_type="pod")
+    expected_pods = get_kubectl_workload_items(prefixes, service_type="pod", label_match=expected_label)
     check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))
     find_extra_or_missing_names(
         resource_type="pod",
         result_names=file_pods.keys(),
         expected_names=expected_pods.keys(),
         ignore_extras=True,
-        ignore_missing=True
+        ignore_missing=True,
     )
 
     for name, files in file_pods.items():
@@ -186,10 +201,14 @@ def check_workload_resource_files(
             assert value, f"Pod {name} is missing {extension}."
 
     # other
-    def _check_non_pod_files(workload_types: List[str], required: bool = False):
+    def _check_non_pod_files(
+        workload_types: List[str], required: bool = False, expected_label: Optional[str] = None
+    ):
         for key in workload_types:
             try:
-                expected_items = get_kubectl_workload_items(prefixes, service_type=key)
+                expected_items = get_kubectl_workload_items(
+                    prefixes, service_type=key, label_match=expected_label
+                )
                 for file in file_objs.get(key, []):
                     assert file["extension"] == "yaml"
                 present_names = [file["name"] for file in file_objs.get(key, [])]
@@ -198,16 +217,16 @@ def check_workload_resource_files(
                 if required:
                     raise e
 
-    _check_non_pod_files(expected_workload_types)
+    _check_non_pod_files(expected_workload_types, expected_label=expected_label)
     if optional_workload_types:
-        _check_non_pod_files(optional_workload_types, required=False)
+        _check_non_pod_files(optional_workload_types, required=False, expected_label=expected_label)
 
 
 def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]]):
     # open the file using bundle_dir and check for evicted pods
     name_extension_pair = list(set([(file["name"], file["extension"]) for file in file_pods]))
     # TODO: upcoming fix will get file content earlier
-    with ZipFile(bundle_dir, 'r') as zip:
+    with ZipFile(bundle_dir, "r") as zip:
         file_names = zip.namelist()
         for name, extension in name_extension_pair:
             if extension == "log":
@@ -234,7 +253,8 @@ def get_file_map(
 
     # separate namespaces
     file_map = {"__namespaces__": {}}
-    expected_arc_walk_result = len(ARC_AGENTS)
+    # default walk result meta and arcagents
+    expected_default_walk_result = 1 + len(ARC_AGENTS)
 
     if arc_namespace:
         file_map["arc"] = {}
@@ -245,25 +265,25 @@ def get_file_map(
 
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
-        assert len(walk_result) == 3 + expected_arc_walk_result
+        assert len(walk_result) == 2 + expected_default_walk_result
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
     elif ops_service == "billing":
-        assert len(walk_result) == 3 + expected_arc_walk_result
+        assert len(walk_result) == 2 + expected_default_walk_result
         ops_path = path.join(BASE_ZIP_PATH, aio_namespace, ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
-            assert len(walk_result) == 1 + expected_arc_walk_result
+            assert len(walk_result) == expected_default_walk_result
             pytest.skip(f"No bundles created for {ops_service}.")
         else:
-            assert len(walk_result) == 2 + expected_arc_walk_result
+            assert len(walk_result) == 1 + expected_default_walk_result
     # remove ops_service that are not selectable by --svc
-    elif ops_service != "otel" and ops_service != "meta":
-        assert len(walk_result) == 2 + expected_arc_walk_result
+    elif ops_service not in ["otel", "meta"]:
+        assert len(walk_result) == 1 + expected_default_walk_result
         assert not walk_result[ops_path]["folders"]
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = aio_namespace
@@ -284,27 +304,19 @@ def process_top_levels(
     clusterconfig_namespace = None
     arc_namespace = None
 
-    def _get_namespace_determinating_files(
-        name: str,
-        folder: str,
-        file_prefix: str
-    ) -> List[str]:
+    def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
         return [f for f in level1.get("files", []) if f.startswith(file_prefix)]
 
     for name in namespaces:
         # determine which namespace belongs to aio vs billing
         if _get_namespace_determinating_files(
-            name=name,
-            folder=path.join("clusterconfig", "billing"),
-            file_prefix="deployment"
+            name=name, folder=path.join("clusterconfig", "billing"), file_prefix="deployment"
         ):
             # if there is a deployment, should be azure-extensions-usage-system
             clusterconfig_namespace = name
         elif _get_namespace_determinating_files(
-            name=name,
-            folder=path.join("arcagents", ARC_AGENTS[0][0]),
-            file_prefix="pod"
+            name=name, folder=path.join("arcagents", ARC_AGENTS[0][0]), file_prefix="pod"
         ):
             arc_namespace = name
         else:
@@ -351,7 +363,7 @@ def run_bundle_command(
     tracked_files.append(result["bundlePath"])
     # transform this into a walk result of an extracted zip file
     walk_result = {}
-    with ZipFile(result["bundlePath"], 'r') as zip:
+    with ZipFile(result["bundlePath"], "r") as zip:
         file_names = zip.namelist()
         for name in file_names:
             name = path.join(BASE_ZIP_PATH, name)

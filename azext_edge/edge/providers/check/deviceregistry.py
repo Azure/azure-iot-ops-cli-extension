@@ -38,22 +38,20 @@ from ..edge_api import (
 
 
 def check_deviceregistry_deployment(
-    result: Dict[str, Any],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_kinds: List[str] = None,
     resource_name: str = None,
-) -> None:
+) -> List[dict]:
     evaluate_funcs = {
         DeviceRegistryResourceKinds.ASSET: evaluate_assets,
         DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE: evaluate_asset_endpoint_profiles,
     }
 
-    check_post_deployment(
+    return check_post_deployment(
         api_info=DEVICEREGISTRY_API_V1,
         check_name="enumerateDeviceRegistryApi",
         check_desc="Enumerate Device Registry API resources",
-        result=result,
         resource_name=resource_name,
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,

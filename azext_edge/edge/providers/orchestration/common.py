@@ -28,6 +28,9 @@ KEYVAULT_CLOUD_API_VERSION = "2022-07-01"  # TODO - @digimaun, maybe needed
 # Custom Locations KPIs
 CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
 
+AIO_INSECURE_LISTENER_NAME = "default-insecure"
+AIO_INSECURE_LISTENER_SERVICE_NAME = "aio-broker-insecure"
+
 
 class MqMode(Enum):
     auto = "auto"
@@ -48,9 +51,14 @@ class MqServiceType(Enum):
 
 
 class KubernetesDistroType(Enum):
-    k3s = "k3s"
-    k8s = "k8s"
-    microk8s = "microk8s"
+    k3s = "K3s"
+    k8s = "K8s"
+    microk8s = "MicroK8s"
+
+
+class TrustSourceType(Enum):
+    self_signed = "SelfSigned"
+    # customer_managed = "CustomerManaged"  # TODO - @digimaun
 
 
 __all__ = [
@@ -58,6 +66,7 @@ __all__ = [
     "MqMemoryProfile",
     "MqServiceType",
     "KubernetesDistroType",
+    "TrustSourceType",
     "DEFAULT_X509_CA_VALID_DAYS",
     "KEYVAULT_DATAPLANE_API_VERSION",
     "KEYVAULT_CLOUD_API_VERSION",

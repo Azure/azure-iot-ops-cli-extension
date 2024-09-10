@@ -12,6 +12,12 @@ import pytest
 from ...generators import generate_random_string, get_zeroed_subscription
 
 
+@pytest.fixture
+def mocked_connected_clusters(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.resources.ConnectedClusters", autospec=True)
+    yield patched
+
+
 @pytest.mark.parametrize(
     "expected_query_result",
     [
@@ -30,7 +36,7 @@ def test_connected_cluster_queries(
     mocker,
     mocked_cmd: Mock,
     mocked_resource_graph: Mock,
-    mocked_get_resource_client: Mock,
+    mocked_connected_clusters: Mock,
     expected_query_result: dict,
 ):
     def _assert_query_result(
@@ -53,7 +59,6 @@ def test_connected_cluster_queries(
     connected_cluster = ConnectedCluster(
         cmd=mocked_cmd, subscription_id=sub, cluster_name=cluster_name, resource_group_name=rg_name
     )
-
     mocked_resource_graph.return_value.query_resources.return_value = expected_query_result
 
     target_namespace = generate_random_string()
@@ -79,6 +84,9 @@ def test_connected_cluster_queries(
         | where properties.ExtensionType startswith 'microsoft.iotoperations'
             or properties.ExtensionType =~ 'microsoft.deviceregistry.assets'
             or properties.ExtensionType =~ 'microsoft.azurekeyvaultsecretsprovider'
+            or properties.ExtensionType =~ 'microsoft.secretsynccontroller'
+            or properties.ExtensionType =~ 'microsoft.openservicemesh'
+            or properties.ExtensionType =~ 'microsoft.arc.containerstorage'
         | project id, name, apiVersion
         """
     )
@@ -127,19 +135,23 @@ def test_connected_cluster_queries(
     )
 
 
+def get_connected_cluster_payload(connectivityStatus: str = "Connected") -> dict:
+    return {
+        "location": generate_random_string(),
+        "id": "/resource/id",
+        "properties": {"connectivityStatus": connectivityStatus},
+    }
+
+
 @pytest.mark.parametrize(
     "expected_resource_state",
-    [
-        {"location": generate_random_string()},
-        {"location": generate_random_string(), "properties": {"connectivityStatus": "Disconnected"}},
-        {"location": generate_random_string(), "properties": {"connectivityStatus": "Connected"}},
-    ],
+    [get_connected_cluster_payload(), get_connected_cluster_payload("Disconnected")],
 )
 def test_connected_cluster_attr(
     mocker,
     mocked_cmd: Mock,
     mocked_resource_graph: Mock,
-    mocked_get_resource_client: Mock,
+    mocked_connected_clusters: Mock,
     expected_resource_state: dict,
 ):
     from azext_edge.edge.providers.orchestration.connected_cluster import (
@@ -150,8 +162,7 @@ def test_connected_cluster_attr(
     cluster_name = generate_random_string()
     rg_name = generate_random_string()
 
-    mocked_get_resource_client(sub).resources.get_by_id().as_dict.return_value = expected_resource_state
-
+    mocked_connected_clusters(mocked_cmd).show.return_value = expected_resource_state
     connected_cluster = ConnectedCluster(
         cmd=mocked_cmd, subscription_id=sub, cluster_name=cluster_name, resource_group_name=rg_name
     )
@@ -160,13 +171,8 @@ def test_connected_cluster_attr(
     assert connected_cluster.cluster_name == cluster_name
     assert connected_cluster.resource_group_name == rg_name
 
-    resource_id = connected_cluster.resource_id
-    assert resource_id == (
-        f"/subscriptions/{sub}/resourceGroups/{rg_name}"
-        f"/providers/Microsoft.Kubernetes/connectedClusters/{cluster_name}"
-    )
-
     assert connected_cluster.resource == expected_resource_state
+    assert connected_cluster.resource_id == expected_resource_state["id"]
     assert connected_cluster.location == expected_resource_state["location"]
 
     assert connected_cluster.connected is (

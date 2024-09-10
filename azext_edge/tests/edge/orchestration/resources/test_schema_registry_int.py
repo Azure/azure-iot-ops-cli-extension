@@ -15,18 +15,20 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
     storage_account_name = f"teststore{generate_random_string(force_lower=True, size=6)}"
     registry_name = f"test-registry-{generate_random_string(force_lower=True, size=6)}"
     registry_rg = settings_with_rg.env.azext_edge_rg
-    registry_namespace = f"test-namespace-{generate_random_string(force_lower=True, size=6)}"
+    registry_namespace1 = f"test-namespace-{generate_random_string(force_lower=True, size=6)}"
+    registry_namespace2 = f"test-namespace-{generate_random_string(force_lower=True, size=6)}"
     # create the storage account and get the id
     storage_account = run(
         f"az storage account create -n {storage_account_name} -g {registry_rg} "
-        "--enable-hierarchical-namespace"
+        "--enable-hierarchical-namespace --public-network-access Disabled "
+        "--allow-shared-key-access false --allow-blob-public-access false --default-action Deny"
     )
     tracked_resources.append(storage_account['id'])
 
     # CREATE 1
     registry = run(
         f"az iot ops schema registry create -n {registry_name} -g {registry_rg} "
-        f"--rn {registry_namespace} --sa-resource-id {storage_account['id']} "
+        f"--rn {registry_namespace1} --sa-resource-id {storage_account['id']} "
         "--location eastus2euap"  # TODO: remove once avaliable in all regions
     )
     tracked_resources.append(registry["id"])
@@ -34,7 +36,7 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
         registry=registry,
         name=registry_name,
         resource_group=registry_rg,
-        namespace=registry_namespace,
+        namespace=registry_namespace1,
         sa_blob_uri=storage_account["primaryEndpoints"]["blob"]
     )
     # check the roles
@@ -53,7 +55,7 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
         registry=show_registry,
         name=registry_name,
         resource_group=registry_rg,
-        namespace=registry_namespace,
+        namespace=registry_namespace1,
         sa_blob_uri=storage_account["primaryEndpoints"]["blob"]
     )
 
@@ -66,21 +68,28 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
     sa_container = generate_random_string(force_lower=True, size=8)
     description = generate_random_string()
     display_name = generate_random_string()
-    tags = f"{generate_random_string()}={generate_random_string()}"
+    tags = {generate_random_string(): generate_random_string()}
+    tags_str = ""
+    for t in tags:
+        tags_str += f"{t}={tags[t]} "
     alt_registry = run(
         f"az iot ops schema registry create -n {alt_registry_name} -g {registry_rg} "
-        f"--rn {registry_namespace} --sa-resource-id {storage_account['id']} "
+        f"--rn {registry_namespace2} --sa-resource-id {storage_account['id']} "
         f"--sa-container {sa_container} --desc {description} --display-name {display_name} "
-        f"--tags {tags} --custom-role-id {role_id} "
+        f"--tags {tags_str} --custom-role-id {role_id} "
         "--location eastus2euap"  # TODO: remove once avaliable in all regions
     )
     tracked_resources.append(alt_registry["id"])
     assert_schema_registry(
-        registry=registry,
-        name=registry_name,
+        registry=alt_registry,
+        name=alt_registry_name,
         resource_group=registry_rg,
-        namespace=registry_namespace,
-        sa_blob_uri=storage_account["primaryEndpoints"]["blob"]
+        namespace=registry_namespace2,
+        sa_blob_uri=storage_account["primaryEndpoints"]["blob"],
+        sa_container=sa_container,
+        description=description,
+        display_name=display_name,
+        tags=tags
     )
     # check the roles
     roles = run(
@@ -123,6 +132,7 @@ def assert_schema_registry(registry: dict, **expected):
     assert registry["resourceGroup"] == expected["resource_group"]
 
     assert registry["identity"]
+    assert registry.get("tags") == expected.get("tags")
 
     registry_props = registry["properties"]
     assert registry_props["namespace"] == expected["namespace"]
