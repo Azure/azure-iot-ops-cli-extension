@@ -905,17 +905,17 @@ def load_iotops_help():
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000
             --username-ref myusername --password-ref mypassword
-        - name: Create an asset endpoint with certificate user authentication using the given given instance in the same resource group.
-          text: >
-            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
-            --target-address opc.tcp://opcplc-000000:50000 --certificate-ref mycertificate.pem
-        - name: Create an asset endpoint with anonymous user authentication and prefilled values for the OPCUA configuration using the given instance in the same resource group.
-          text: >
-            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
-            --target-address opc.tcp://opcplc-000000:50000 --accept-untrusted-certs --application myopcuaconnector
-            --default-publishing-int 200 --default-queue-size 2 --default-sampling-int 50 --keep-alive 300 --run-asset-discovery
-            --security-mode sign --security-policy signonly --session-keep-alive 500 --session-reconnect-backoff 50 --session-reconnect-period 400
-            --session-timeout 550 --subscription-life-time 3000 --subscription-max-items 20
+        # - name: Create an asset endpoint with certificate user authentication using the given given instance in the same resource group.
+        #   text: >
+        #     az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+        #     --target-address opc.tcp://opcplc-000000:50000 --certificate-ref mycertificate.pem
+        # - name: Create an asset endpoint with anonymous user authentication and prefilled values for the OPCUA configuration using the given instance in the same resource group.
+        #   text: >
+        #     az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+        #     --target-address opc.tcp://opcplc-000000:50000 --accept-untrusted-certs --application myopcuaconnector
+        #     --default-publishing-int 200 --default-queue-size 2 --default-sampling-int 50 --keep-alive 300 --run-asset-discovery
+        #     --security-mode sign --security-policy signonly --session-keep-alive 500 --session-reconnect-backoff 50 --session-reconnect-period 400
+        #     --session-timeout 550 --subscription-life-time 3000 --subscription-max-items 20
     """
 
     helps[

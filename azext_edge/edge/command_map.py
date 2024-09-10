@@ -110,8 +110,8 @@ def load_iotops_commands(self, _):
         "iot ops asset dataset",
         command_type=asset_resource_ops,
     ) as cmd_group:
-        cmd_group.command("list", "list_asset_data_points")
-        cmd_group.command("remove", "remove_asset_data_point")
+        cmd_group.command("list", "list_asset_datasets")
+        cmd_group.command("show", "show_asset_dataset")
 
     with self.command_group(
         "iot ops asset dataset data-point",
