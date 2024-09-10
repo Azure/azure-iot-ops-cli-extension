@@ -476,21 +476,30 @@ def load_iotops_help():
         long-summary: |
                       A succesful execution of init is required before running this command.
 
-                      By default instance resources will not be deployed. An instance name via --name can be
-                      provided for init to deploy IoT Operations after the foundation layer has been installed,
-                      otherwise the `az iot ops create` command should be used to deploy instance resources
-                      on-demand.
+                      The result of the command nets an IoT Operations instance with
+                      a set of default resources configured for cohesive function.
 
         examples:
         - name: Create the target instance with minimum input.
           text: >
-            az iot ops create --name myinstance --cluster mycluster -g myresourcegroup
-        - name: This form adds customization to the default broker instance resource and includes an insecure broker listener
-            configured for port 1883 of service type load balancer. Useful for testing and/or demos, do not use the insecure
-            option in production.
+            az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+        - name: The following example adds customization to the default broker instance resource
+            as well as an instance description and tags.
           text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --name myinstance --broker-mem-profile High --broker-backend-workers 4 --add-insecure-listener
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --broker-mem-profile High --broker-backend-workers 4 --description 'Contoso Factory'
+             --tags tier=testX1
+        - name: This example shows deploying an additional insecure (no authn or authz) broker listener
+            configured for port 1883 of service type load balancer. Useful for testing and/or demos.
+            Do not use the insecure option in production.
+          text: >
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --add-insecure-listener
+        - name: This form shows how to disable resource sync rules from the instance deployment,
+            which may be necessary due to lack of permissions to deploy them.
+          text: >
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --disable-rsync-rules
     """
 
     helps[
