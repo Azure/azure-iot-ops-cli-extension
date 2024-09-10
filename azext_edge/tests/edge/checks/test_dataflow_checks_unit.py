@@ -624,7 +624,10 @@ def test_evaluate_dataflows(
                         "endpointType": "kafka",
                         "kafkaSettings": {
                             "host": "kafkaHost",
-                            "authentication": {"method": "SystemAssignedManagedIdentity", "systemAssignedManagedIdentitySettings": {"audience": "audience"}},
+                            "authentication": {
+                                "method": "SystemAssignedManagedIdentity",
+                                "systemAssignedManagedIdentitySettings": {"audience": "audience"},
+                            },
                             "cloudEventAttributes": "Propagate",
                             "consumerGroupId": None,
                             "compression": "compression",
@@ -643,7 +646,10 @@ def test_evaluate_dataflows(
                         "endpointType": "localstorage",
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "ref",
-                            "authentication": {"method": "SystemAssignedManagedIdentity", "systemAssignedManagedIdentitySettings": {"audience": "audience"}},
+                            "authentication": {
+                                "method": "SystemAssignedManagedIdentity",
+                                "systemAssignedManagedIdentitySettings": {"audience": "audience"},
+                            },
                         },
                     },
                 },
@@ -671,7 +677,10 @@ def test_evaluate_dataflows(
                         "endpointType": "datalakestorage",
                         "datalakeStorageSettings": {
                             "host": "datalakeHost",
-                            "authentication": {"method": "SystemAssignedManagedIdentity", "systemAssignedManagedIdentitySettings": {"audience": "audience"}},
+                            "authentication": {
+                                "method": "SystemAssignedManagedIdentity",
+                                "systemAssignedManagedIdentitySettings": {"audience": "audience"},
+                            },
                             "batching": {"latencySeconds": 12},
                         },
                     },
@@ -705,7 +714,7 @@ def test_evaluate_dataflows(
                                     "clientId": "clientId",
                                     "scope": "scope",
                                     "tenantId": "tenantId",
-                                }
+                                },
                             },
                             "host": "mqttHost",
                             "protocol": "Websockets",

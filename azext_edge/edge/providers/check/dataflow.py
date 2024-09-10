@@ -345,7 +345,7 @@ def _process_dataflow_destinationsettings(
 def _process_endpoint_authentication(
     endpoint_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int, detail_level: int
 ) -> None:
-    auth = endpoint_settings.get("authentication", {})
+    auth: dict = endpoint_settings.get("authentication", {})
     auth_method = auth.get("method")
     check_manager.add_display(
         target_name=target,
@@ -381,18 +381,20 @@ def _process_endpoint_authentication(
                 namespace=namespace,
                 display=Padding(f"[red]Unknown authentication method: {auth_method}", (0, 0, 0, padding)),
             )
+            return
 
-        auth_properties = auth_property_dict.get(auth_method, {})
-        auth_obj = auth.get(auth_properties.get("key", {}))
-        for label, key in auth_properties.get("displays", []):
-            val = auth_obj.get(key)
-            if val:
-                check_manager.add_display(
-                    target_name=target,
-                    namespace=namespace,
-                    display=basic_property_display(label=label, value=val, padding=padding + PADDING_SIZE),
-                )
-        # TODO - add displays for various auth types (refs, identity names, etc)
+        auth_properties: dict = auth_property_dict.get(auth_method, {})
+        auth_settings_key = auth_properties.get("key")
+        auth_obj = auth.get(auth_settings_key)
+        if auth_obj:
+            for label, key in auth_properties.get("displays", []):
+                val = auth_obj.get(key)
+                if val:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=basic_property_display(label=label, value=val, padding=padding + PADDING_SIZE),
+                    )
 
 
 def _process_endpoint_TLS(
@@ -907,7 +909,9 @@ def evaluate_dataflows(
             profile_ref = spec.get("profileRef")
             # profileRef is optional, only show an error if it exists but is invalid
             if profile_ref:
-                profile_ref_status = CheckTaskStatus.error if profile_ref not in profile_names else CheckTaskStatus.success
+                profile_ref_status = (
+                    CheckTaskStatus.error if profile_ref not in profile_names else CheckTaskStatus.success
+                )
 
                 # valid profileRef eval
                 check_manager.add_target_eval(

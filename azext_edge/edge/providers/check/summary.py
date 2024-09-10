@@ -75,7 +75,7 @@ def check_summary(
         ),
     ]
 
-    check_manager = CheckManager(check_name="evalAIOSummary", check_desc="AIO components")
+    check_manager = CheckManager(check_name="evalAIOSummary", check_desc="Service summary checks")
     for check in service_checks:
 
         # run checks for service
