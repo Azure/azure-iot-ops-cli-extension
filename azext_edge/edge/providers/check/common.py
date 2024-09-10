@@ -135,6 +135,10 @@ class DataFlowEndpointAuthenticationType(ListableEnum):
     access_token = "AccessToken"
     system_assigned = "SystemAssignedManagedIdentity"
     user_assigned = "UserAssignedManagedIdentity"
+    x509 = "X509Certificate"
+    service_account_token = "ServiceAccountToken"
+    anonymous = "Anonymous"
+    sasl = "Sasl"
 
 
 # Akri runtime attributes

@@ -374,6 +374,29 @@ def _process_endpoint_authentication(
                     ("Tenant ID", "tenantId"),
                 ],
             },
+            DataFlowEndpointAuthenticationType.x509.value: {
+                "key": "x509CertificateSettings",
+                "displays": [
+                    ("Secret Ref", "secretRef"),
+                ],
+            },
+            DataFlowEndpointAuthenticationType.service_account_token.value: {
+                "key": "serviceAccountTokenSettings",
+                "displays": [
+                    ("Audience", "audience"),
+                ],
+            },
+            DataFlowEndpointAuthenticationType.sasl.value: {
+                "key": "saslSettings",
+                "displays": [
+                    ("Type", "saslType"),
+                    ("Secret Ref", "secretRef"),
+                ],
+            },
+            DataFlowEndpointAuthenticationType.anonymous.value: {
+                "key": "anonymousSettings",
+                "displays": [],
+            },
         }
         if auth_method not in auth_property_dict:
             check_manager.add_display(

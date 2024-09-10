@@ -58,14 +58,10 @@ dataflow_conditions = [
 @pytest.mark.parametrize("ops_service", ["dataflow"])
 def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
-            "azext_edge.edge.providers.check.dataflow.evaluate_core_service_runtime",
-        DataflowResourceKinds.DATAFLOW.value:
-            "azext_edge.edge.providers.check.dataflow.evaluate_dataflows",
-        DataflowResourceKinds.DATAFLOWENDPOINT.value:
-            "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_endpoints",
-        DataflowResourceKinds.DATAFLOWPROFILE.value:
-            "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_profiles",
+        CoreServiceResourceKinds.RUNTIME_RESOURCE.value: "azext_edge.edge.providers.check.dataflow.evaluate_core_service_runtime",
+        DataflowResourceKinds.DATAFLOW.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflows",
+        DataflowResourceKinds.DATAFLOWENDPOINT.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_endpoints",
+        DataflowResourceKinds.DATAFLOWPROFILE.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_profiles",
     }
 
     assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
@@ -647,8 +643,8 @@ def test_evaluate_dataflows(
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "ref",
                             "authentication": {
-                                "method": "SystemAssignedManagedIdentity",
-                                "systemAssignedManagedIdentitySettings": {"audience": "audience"},
+                                "method": "ServiceAccountToken",
+                                "serviceAccountTokenSettings": {"audience": "audience"},
                             },
                         },
                     },
@@ -662,7 +658,10 @@ def test_evaluate_dataflows(
                         "endpointType": "fabriconelake",
                         "fabricOneLakeSettings": {
                             "host": "fabric_host",
-                            "authentication": {"method": "AccessToken", "accessTokenSettings": {"secretRef": "secret"}},
+                            "authentication": {
+                                "method": "XS509Certificate",
+                                "x509CertificateSettings": {"secretRef": "secret"},
+                            },
                             "names": {"lakehouseName": "lakehouse", "workspaceName": "workspaceName"},
                             "batching": {"latencySeconds": 2},
                         },
@@ -678,8 +677,8 @@ def test_evaluate_dataflows(
                         "datalakeStorageSettings": {
                             "host": "datalakeHost",
                             "authentication": {
-                                "method": "SystemAssignedManagedIdentity",
-                                "systemAssignedManagedIdentitySettings": {"audience": "audience"},
+                                "method": "Sasl",
+                                "saslSettings": {"saslType": "scramSha256", "secretRef": "secret"},
                             },
                             "batching": {"latencySeconds": 12},
                         },
