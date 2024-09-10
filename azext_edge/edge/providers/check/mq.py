@@ -949,15 +949,49 @@ def evaluate_broker_authorizations(
             authz_spec = authz.get("spec", {})
 
             # check authorization policies
-            authz_policies = authz_spec.get("authorizationPolicies", [])
-            authz_policies_desc = "Expecting [bright_blue]>=1[/bright_blue] authorization policies. {}"
+            authz_policies = authz_spec.get("authorizationPolicies", {})
             authz_policies_eval_status = CheckTaskStatus.success.value
+            condition
 
-            if len(authz_policies) >= 1:
-                authz_policies_desc = authz_policies_desc.format(f"[green]Detected {len(authz_policies)}[/green].")
+            if authz_policies:
+                authz_policies_desc = f"Authorization Policies [green]detected[/green]."
             else:
-                authz_policies_desc = authz_policies_desc.format(f"[red]Detected {len(authz_policies)}[/red].")
+                authz_policies_desc = f"Authorization Policies [red]not detected[/red]."
                 authz_policies_eval_status = CheckTaskStatus.error.value
+
+            check_manager.add_display(
+                target_name=target_authorizations,
+                namespace=namespace,
+                display=Padding(authz_policies_desc, (0, 0, 0, 12)),
+            )
+
+            check_manager.add_target_eval(
+                target_name=target_authorizations,
+                namespace=namespace,
+                status=authz_policies_eval_status,
+                value={"spec.authorizationPolicies": authz_policies},
+                resource_name=authz_name,
+            )
+
+            # cache
+            cache = authz_spec.get("cache")
+
+            if detail_level != ResourceOutputDetailLevel.summary.value and cache:
+                check_manager.add_display(
+                    target_name=target_authorizations,
+                    namespace=namespace,
+                    display=Padding(f"Cache: {cache}", (0, 0, 0, 12)),
+                )
+
+            # rules
+            rules = authz_spec.get("rules", [])
+
+            for rule in rules:
+                # brokerResources
+                broker_resources = rule.get("brokerResources", [])
+
+                for resource in broker_resources:
+                    method = resource.get("method")
 
     return check_manager.as_dict(as_list)
 
