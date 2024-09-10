@@ -61,7 +61,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                         "name": "asset-1",
                     },
                     "spec": {
-                        "assetEndpointProfileUri": "endpoint",
+                        "assetEndpointProfileRef": "endpoint",
                     }
                 },
             ],
@@ -77,16 +77,16 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                 },
             ],
             # namespace conditions str
-            ["spec.assetEndpointProfileUri"],
+            ["spec.assetEndpointProfileRef"],
             # namespace evaluations str
             [
                 [
                     ("status", "success"),
-                    ("value/spec.assetEndpointProfileUri", "endpoint"),
+                    ("value/spec.assetEndpointProfileRef", "endpoint"),
                 ],
             ]
         ),
-        # assetEndpointProfileUri not present
+        # assetEndpointProfileRef not present
         (
             # assets
             [
@@ -101,12 +101,12 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
             # asset_endpoint_profiles
             [],
             # namespace conditions str
-            ["spec.assetEndpointProfileUri"],
+            ["spec.assetEndpointProfileRef"],
             # namespace evaluations str
             [
                 [
                     ("status", "error"),
-                    ("value/spec.assetEndpointProfileUri", ''),
+                    ("value/spec.assetEndpointProfileRef", ''),
                 ],
             ]
         ),
@@ -119,13 +119,15 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                         "name": "asset-1",
                     },
                     "spec": {
-                        "assetEndpointProfileUri": "endpoint",
-                        "dataPoints": [
-                            {
-                                "name": "datapoint-1",
-                                "type": "double",
-                            },
-                        ],
+                        "assetEndpointProfileRef": "endpoint",
+                        "datasets": [{
+                            "dataPoints": [
+                                {
+                                    "name": "datapoint-1",
+                                    "type": "double",
+                                },
+                            ],
+                        }]
                     }
                 },
             ],
@@ -141,20 +143,20 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                 },
             ],
             # namespace conditions str
-            ["spec.assetEndpointProfileUri", 'len(spec.dataPoints)'],
+            ["spec.assetEndpointProfileRef", 'len(spec.datasets.dataPoints)'],
             # namespace evaluations str
             [
                 [
                     ("status", "success"),
-                    ("value/spec.assetEndpointProfileUri", 'endpoint'),
+                    ("value/spec.assetEndpointProfileRef", 'endpoint'),
                 ],
                 [
                     ("status", "success"),
-                    ("value/len(spec.dataPoints)", 1),
+                    ("value/len(spec.datasets.dataPoints)", 1),
                 ],
                 [
                     ("status", "error"),
-                    ("value/spec.dataPoints.[0].dataSource", ""),
+                    ("value/spec.datasets.dataPoints.[0].dataSource", ""),
                 ],
             ]
         ),
@@ -183,7 +185,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                         "name": "asset-1",
                     },
                     "spec": {
-                        "assetEndpointProfileUri": "endpoint",
+                        "assetEndpointProfileRef": "endpoint",
                         "status": {
                             "errors": [
                                 {
@@ -207,12 +209,12 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                 },
             ],
             # namespace conditions str
-            ["spec.assetEndpointProfileUri", "spec.status"],
+            ["spec.assetEndpointProfileRef", "spec.status"],
             # namespace evaluations str
             [
                 [
                     ("status", "success"),
-                    ("value/spec.assetEndpointProfileUri", 'endpoint'),
+                    ("value/spec.assetEndpointProfileRef", 'endpoint'),
                 ],
                 [
                     ("status", "error"),
@@ -229,7 +231,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                         "name": "asset-1",
                     },
                     "spec": {
-                        "assetEndpointProfileUri": "endpoint",
+                        "assetEndpointProfileRef": "endpoint",
                         "events": [
                             {
                                 "name": "event-1",
@@ -250,12 +252,12 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                 },
             ],
             # namespace conditions str
-            ["spec.assetEndpointProfileUri", "len(spec.events)"],
+            ["spec.assetEndpointProfileRef", "len(spec.events)"],
             # namespace evaluations str
             [
                 [
                     ("status", "success"),
-                    ("value/spec.assetEndpointProfileUri", 'endpoint'),
+                    ("value/spec.assetEndpointProfileRef", 'endpoint'),
                 ],
                 [
                     ("status", "success"),

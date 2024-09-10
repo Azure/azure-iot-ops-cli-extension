@@ -154,7 +154,7 @@ def evaluate_assets(
 
             # data points
             # all should be under one dataset
-            dataset = asset_spec.get("dataset", [])
+            dataset = asset_spec.get("datasets", [])
             data_points = []
             if dataset:
                 data_points = dataset[0].get("dataPoints", [])
@@ -165,14 +165,14 @@ def evaluate_assets(
                         target_name=target_assets,
                         namespace=namespace,
                         conditions=[
-                            "len(spec.dataPoints)",
-                            "spec.dataPoints.dataSource"
+                            "len(spec.datasets.dataPoints)",
+                            "spec.datasets.dataPoints.dataSource"
                         ]
                     )
                     added_datapoint_conditions = True
 
                 data_points_count = len(data_points)
-                data_points_value = {"len(spec.dataPoints)": data_points_count}
+                data_points_value = {"len(spec.datasets.dataPoints)": data_points_count}
                 data_points_status = CheckTaskStatus.success.value
 
                 if data_points_count > MAX_ASSET_DATAPOINTS:
@@ -198,7 +198,7 @@ def evaluate_assets(
                 for index, data_point in enumerate(data_points):
                     data_point_data_source = data_point.get("dataSource", "")
                     datapoint_padding = spec_padding + PADDING_SIZE
-                    data_point_data_source_value = {f"spec.dataPoints.[{index}].dataSource": data_point_data_source}
+                    data_point_data_source_value = {f"spec.datasets.dataPoints.[{index}].dataSource": data_point_data_source}
                     data_point_data_source_status = CheckTaskStatus.success.value
                     if data_point_data_source:
                         data_point_data_source_text = (

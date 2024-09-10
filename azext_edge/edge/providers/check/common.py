@@ -52,9 +52,8 @@ ASSET_DATAPOINT_PROPERTIES = [
 
 ASSET_PROPERTIES = [
     ("description", "Description", True),
-    ("assetType", "Asset Type", False),
     ("attributes", "Attributes", True),
-    ("defaultDataPointsConfiguration", "Default Data Points Configuration", False),
+    ("defaultDatasetsConfiguration", "Default Dataset Configuration", False),
     ("defaultEventsConfiguration", "Default Events Configuration", False),
     ("displayName", "Display Name", False),
     ("documentationUri", "Documentation Uri", False),
