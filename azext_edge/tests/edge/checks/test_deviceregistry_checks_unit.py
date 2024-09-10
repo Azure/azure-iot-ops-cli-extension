@@ -143,7 +143,7 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                 },
             ],
             # namespace conditions str
-            ["spec.assetEndpointProfileRef", 'len(spec.datasets.dataPoints)'],
+            ["spec.assetEndpointProfileRef", 'len(spec.datasets[0].dataPoints)'],
             # namespace evaluations str
             [
                 [
@@ -152,11 +152,11 @@ def test_check_deviceregistry_by_resource_types(ops_service, mocker, mock_resour
                 ],
                 [
                     ("status", "success"),
-                    ("value/len(spec.datasets.dataPoints)", 1),
+                    ("value/len(spec.datasets[0].dataPoints)", 1),
                 ],
                 [
                     ("status", "error"),
-                    ("value/spec.datasets.dataPoints.[0].dataSource", ""),
+                    ("value/spec.datasets[0].dataPoints.[0].dataSource", ""),
                 ],
             ]
         ),
