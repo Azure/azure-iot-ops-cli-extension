@@ -17,8 +17,15 @@ from ...common import (
 )
 from ...util import assemble_nargs_to_dict
 from ...util.az_client import parse_resource_id
+from ..orchestration.common import (
+    AIO_INSECURE_LISTENER_NAME,
+    AIO_INSECURE_LISTENER_SERVICE_NAME,
+    AIO_INSECURE_LISTENER_SERVICE_PORT,
+    MqServiceType,
+)
 from .common import KubernetesDistroType, TrustSourceType
 from .template import (
+    IOT_OPERATIONS_VERSION_MONIKER,
     M2_ENABLEMENT_TEMPLATE,
     M2_INSTANCE_TEMPLATE,
     TemplateBlueprint,
@@ -63,7 +70,10 @@ class InitTargets:
         self.cluster_name = cluster_name
         self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
         self.resource_group_name = resource_group_name
-        self.schema_registry_resource_id = parse_resource_id(schema_registry_resource_id).resource_id
+        # TODO - @digimaun
+        if schema_registry_resource_id:
+            parse_resource_id(schema_registry_resource_id)
+        self.schema_registry_resource_id = schema_registry_resource_id
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
         self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
@@ -120,6 +130,10 @@ class InitTargets:
                 deploy_params[param] = {"value": param_to_target[param]}
 
         return template_copy, deploy_params
+
+    @property
+    def iot_operations_version(self):
+        return IOT_OPERATIONS_VERSION_MONIKER
 
     def get_extension_versions(self, in_display_format: bool = False) -> dict:
         # Don't need a deep copy here.
@@ -270,3 +284,48 @@ class InitTargets:
             raise InvalidArgumentValueError("\n".join(validation_errors))
 
         return processed_config_map
+
+    # TODO - @digimaun
+    def get_instance_kpis(self) -> dict:
+        default_listener_port: int = M2_INSTANCE_TEMPLATE.content["variables"]["MQTT_SETTINGS"]["brokerListenerPort"]
+        default_listener_service_name: str = M2_INSTANCE_TEMPLATE.content["variables"]["MQTT_SETTINGS"][
+            "brokerListenerServiceName"
+        ]
+
+        instance_kpis = {
+            "instance": {
+                "name": self.instance_name,
+                "description": self.instance_description,
+                "resourceSync": {"enabled": self.deploy_resource_sync_rules},
+                "location": self.location,
+                "broker": {
+                    DEFAULT_BROKER: {
+                        "listener": {
+                            DEFAULT_BROKER_LISTENER: {
+                                "port": default_listener_port,
+                                "serviceName": default_listener_service_name,
+                                "serviceType": self.broker_service_type,
+                            }
+                        },
+                    },
+                    "authn": {DEFAULT_BROKER_AUTHN: {}},
+                },
+                "dataflows": {
+                    "profile": {DEFAULT_DATAFLOW_PROFILE: {"instanceCount": self.dataflow_profile_instances}},
+                    "endpoint": {DEFAULT_DATAFLOW_ENDPOINT: {}},
+                },
+            }
+        }
+        if self.add_insecure_listener:
+            instance_kpis["instance"]["listener"][AIO_INSECURE_LISTENER_NAME] = {
+                "port": AIO_INSECURE_LISTENER_SERVICE_PORT,
+                "serviceName": AIO_INSECURE_LISTENER_SERVICE_NAME,
+                "serviceType": MqServiceType.load_balancer.value,
+            }
+
+        return instance_kpis
+
+    def get_enablement_kpis(self) -> dict:
+        enablement_kpis = {}
+
+        return enablement_kpis

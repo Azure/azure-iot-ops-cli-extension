@@ -448,7 +448,7 @@ def load_iotops_help():
         "iot ops init"
     ] = """
         type: command
-        short-summary: Bootstrap, configure and optionally deploy IoT Operations to the target Arc-enabled cluster.
+        short-summary: Bootstrap the target Arc-enabled cluster for IoT Operations deployment.
         long-summary: |
                       An Arc-enabled cluster is required to deploy IoT Operations. See the following resource for
                       more info https://aka.ms/aziotops-arcconnect.
@@ -456,22 +456,35 @@ def load_iotops_help():
                       The init operation will do work in installing and configuring a foundation layer of edge
                       services necessary for IoT Operations deployment.
 
-                      By default instance resources will not be deployed. An instance name via --name can be
-                      provided for init to deploy IoT Operations after the foundation layer has been installed,
-                      otherwise the `az iot ops create` command should be used to deploy instance resources
-                      on-demand.
+                      After the foundation layer has been installed the `az iot ops create` command should
+                      be used to deploy an instance.
         examples:
         - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-        - name: Include default IoT Operations instance resources by providing an instance name.
-          text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --name myinstance
         - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --name myinstance --enable-fault-tolerance
+             --enable-fault-tolerance
+    """
+
+    helps[
+        "iot ops create"
+    ] = """
+        type: command
+        short-summary: Create an IoT Operations instance.
+        long-summary: |
+                      A succesful execution of init is required before running this command.
+
+                      By default instance resources will not be deployed. An instance name via --name can be
+                      provided for init to deploy IoT Operations after the foundation layer has been installed,
+                      otherwise the `az iot ops create` command should be used to deploy instance resources
+                      on-demand.
+
+        examples:
+        - name: Create the target instance with minimum input.
+          text: >
+            az iot ops create --name myinstance --cluster mycluster -g myresourcegroup
         - name: This form adds customization to the default broker instance resource and includes an insecure broker listener
             configured for port 1883 of service type load balancer. Useful for testing and/or demos, do not use the insecure
             option in production.
@@ -556,18 +569,6 @@ def load_iotops_help():
         - name: Update the instance description.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
-    """
-
-    helps[
-        "iot ops create"
-    ] = """
-        type: command
-        short-summary: Create an IoT Operations instance.
-
-        examples:
-        - name: Create the target instance with minimum input.
-          text: >
-            az iot ops create --name myinstance --cluster mycluster -g myresourcegroup
     """
 
     helps[

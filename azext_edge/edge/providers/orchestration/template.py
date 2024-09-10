@@ -10,6 +10,7 @@ from typing import Any, Dict, List, NamedTuple, Optional, Union
 from .common import (
     AIO_INSECURE_LISTENER_NAME,
     AIO_INSECURE_LISTENER_SERVICE_NAME,
+    AIO_INSECURE_LISTENER_SERVICE_PORT,
     MqServiceType,
 )
 
@@ -17,7 +18,6 @@ from .common import (
 class TemplateBlueprint(NamedTuple):
     commit_id: str
     content: Dict[str, Any]
-    moniker: str
 
     def get_type_definition(self, key: str) -> Optional[dict]:
         return self.content["definitions"].get(key, {"properties": {}})
@@ -43,14 +43,14 @@ class TemplateBlueprint(NamedTuple):
     def copy(self) -> "TemplateBlueprint":
         return TemplateBlueprint(
             commit_id=self.commit_id,
-            moniker=self.moniker,
             content=deepcopy(self.content),
         )
 
 
+IOT_OPERATIONS_VERSION_MONIKER = "v0.7.0-preview"
+
 M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
     commit_id="dec7ce40c138904c3cdfd593e27ddeaebfedf171",
-    moniker="v0.7.0-preview.enablement",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
@@ -417,7 +417,6 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
 
 M2_INSTANCE_TEMPLATE = TemplateBlueprint(
     commit_id="dec7ce40c138904c3cdfd593e27ddeaebfedf171",
-    moniker="v0.6.0-preview",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
@@ -827,7 +826,7 @@ def get_insecure_listener(instance_name: str, broker_name: str) -> dict:
             "serviceName": AIO_INSECURE_LISTENER_SERVICE_NAME,
             "ports": [
                 {
-                    "port": 1883,
+                    "port": AIO_INSECURE_LISTENER_SERVICE_PORT,
                 }
             ],
         },
