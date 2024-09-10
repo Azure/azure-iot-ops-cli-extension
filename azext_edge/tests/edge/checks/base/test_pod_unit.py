@@ -11,9 +11,8 @@ from unittest.mock import ANY
 from azext_edge.edge.common import CheckTaskStatus, PodState
 from azext_edge.edge.providers.check.base import (
     evaluate_pod_health,
-    process_pod_status,
 )
-from azext_edge.edge.providers.check.base.pod import decorate_pod_phase
+from azext_edge.edge.providers.check.base.pod import _process_pod_status, decorate_pod_phase
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 from azext_edge.tests.edge.checks.conftest import generate_pod_stub
 from ....generators import generate_random_string
@@ -340,7 +339,7 @@ def test_process_pod_status(
 ):
     target_name = generate_random_string()
 
-    (display_texts, status) = process_pod_status(
+    (display_texts, status) = _process_pod_status(
         check_manager=mocked_check_manager,
         target=target_name,
         pod=pod,

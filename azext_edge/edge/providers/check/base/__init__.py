@@ -8,7 +8,7 @@ from .check_manager import CheckManager
 from .deployment import check_pre_deployment, check_post_deployment
 from .display import add_display_and_eval, display_as_list
 from .node import check_nodes
-from .pod import evaluate_pod_health, process_pod_status
+from .pod import evaluate_pod_health
 from .resource import (
     enumerate_ops_service_resources,
     filter_resources_by_name,
@@ -41,7 +41,6 @@ __all__ = [
     "get_resource_metadata_property",
     "process_dict_resource",
     "process_list_resource",
-    "process_pod_status",
     "process_resource_properties",
     "validate_one_of_conditions",
     "process_custom_resource_status",

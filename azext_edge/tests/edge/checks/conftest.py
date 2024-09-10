@@ -7,7 +7,7 @@ import pytest
 from kubernetes.client import V1Pod, V1ObjectMeta, V1PodStatus, V1PodCondition, V1APIResourceList, V1APIResource
 from typing import List, Dict, Any
 from azext_edge.edge.providers.checks import run_checks
-from azext_edge.edge.providers.check.common import CoreServiceResourceKinds
+from azext_edge.edge.providers.check.common import CoreServiceResourceKinds, PodStatusResult
 
 
 @pytest.fixture
@@ -21,7 +21,8 @@ def mocked_check_manager(mocker):
 @pytest.fixture
 def mock_process_pod_status(mocker):
     patched = mocker.patch(
-        "azext_edge.edge.providers.check.base.pod.process_pod_status", return_value=(["1", "2", "3"], "")
+        "azext_edge.edge.providers.check.base.pod._process_pod_status",
+        return_value=PodStatusResult(display_strings=["1", "2", "3"], eval_status="status"),
     )
     yield patched
 

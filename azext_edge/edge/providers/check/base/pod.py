@@ -12,7 +12,13 @@ from typing import List, Optional, Tuple
 
 from .check_manager import CheckManager
 from .display import colorize_string
-from ..common import COLOR_STR_FORMAT, POD_CONDITION_TEXT_MAP, ResourceOutputDetailLevel
+from ..common import (
+    COLOR_STR_FORMAT,
+    POD_CONDITION_TEXT_MAP,
+    PodStatusConditionResult,
+    PodStatusResult,
+    ResourceOutputDetailLevel,
+)
 from ....common import CheckTaskStatus
 
 
@@ -55,19 +61,15 @@ def evaluate_pod_health(
     pod_statuses = []
 
     for pod in pods:
-        (display_strings, status) = process_pod_status(
+        pod_status_result: PodStatusResult = _process_pod_status(
             check_manager=check_manager,
             target=target,
             pod=pod,
             namespace=namespace,
             detail_level=detail_level,
         )
-        pod_statuses.append(status)
-
-        if detail_level == ResourceOutputDetailLevel.summary.value:
-            table.add_row(display_strings[0], display_strings[1])
-        else:
-            table.add_row(display_strings[0], display_strings[1], display_strings[2])
+        pod_statuses.append(pod_status_result.eval_status)
+        table.add_row(*pod_status_result.display_strings)
 
     add_footer = not all([status == CheckTaskStatus.success.value for status in pod_statuses])
 
@@ -89,30 +91,25 @@ def evaluate_pod_health(
         )
 
 
-def process_pod_status(
+def _process_pod_status(
     check_manager: CheckManager,
     target: str,
     pod: V1Pod,
     namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> Tuple[List[str], str]:
-
-    def _decorate_pod_condition(condition: bool) -> Tuple[str, str]:
-        if condition:
-            return f"[green]{condition}[/green]", CheckTaskStatus.success.value
-        return f"[red]{condition}[/red]", CheckTaskStatus.error.value
+) -> PodStatusResult:
 
     target_service_pod = f"pod/{pod.metadata.name}"
 
-    pod_conditions = [
+    conditions = [
         f"{target_service_pod}.status.phase",
         f"{target_service_pod}.status.conditions",
     ]
 
     if check_manager.targets.get(target, {}).get(namespace, {}).get("conditions", None):
-        check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
+        check_manager.add_target_conditions(target_name=target, namespace=namespace, conditions=conditions)
     else:
-        check_manager.set_target_conditions(target_name=target, namespace=namespace, conditions=pod_conditions)
+        check_manager.set_target_conditions(target_name=target, namespace=namespace, conditions=conditions)
 
     pod_dict = pod.to_dict()
     pod_name = pod_dict["metadata"]["name"]
@@ -125,19 +122,21 @@ def process_pod_status(
     pod_eval_value["status.phase"] = pod_phase
 
     conditions_readiness = True
-    conditions_display_list: List[Tuple[str, str]] = []
-    unknown_conditions_display_list: List[Tuple[str, str]] = []
+    conditions_display_list: List[PodStatusConditionResult] = []
+    unknown_conditions_display_list: List[PodStatusConditionResult] = []
 
     # When pod in obnormal state, sometimes the conditions are not available
     if pod_conditions:
+        known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
         for condition in pod_conditions:
             type = condition["type"]
             condition_type = POD_CONDITION_TEXT_MAP.get(type)
 
             if condition_type:
-                condition_status = condition.get("status") == "True"
+                condition_status = condition.get("status").lower() == "true"
                 conditions_readiness = conditions_readiness and condition_status
-                pod_condition_deco, status = _decorate_pod_condition(condition=condition_status)
+                status = CheckTaskStatus.success.value if condition_status else CheckTaskStatus.error.value
+                pod_condition_deco = colorize_string(value=condition_status, color=CheckTaskStatus(status).color)
                 pod_eval_status = status if status != CheckTaskStatus.success.value else pod_eval_status
             else:
                 condition_type = type
@@ -149,11 +148,22 @@ def process_pod_status(
             if condition_reason:
                 formatted_reason = f"[red]Reason: {condition_reason}[/red]"
 
-            known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
             if condition_type.replace(" ", "").lower() in known_condition_values:
-                conditions_display_list.append((f"{condition_type}: {pod_condition_deco}", formatted_reason))
+                conditions_display_list.append(
+                    PodStatusConditionResult(
+                        condition_string=f"{condition_type}: {pod_condition_deco}",
+                        failed_reason=formatted_reason,
+                        eval_status=status,
+                    )
+                )
             else:
-                unknown_conditions_display_list.append((f"{condition_type}: {condition_status}", formatted_reason))
+                unknown_conditions_display_list.append(
+                    PodStatusConditionResult(
+                        condition_string=f"{condition_type}: {condition_status}",
+                        failed_reason=formatted_reason,
+                        eval_status=status,
+                    )
+                )
 
             pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
 
@@ -180,7 +190,9 @@ def process_pod_status(
         status_obj = CheckTaskStatus(pod_eval_status)
         emoji = status_obj.emoji
         color = status_obj.color
-        return ([colorize_string(value=emoji, color=color), pod_health_text], pod_eval_status)
+        return PodStatusResult(
+            display_strings=[colorize_string(value=emoji, color=color), pod_health_text], eval_status=pod_eval_status
+        )
     else:
         pod_conditions_text = "N/A"
 
@@ -192,22 +204,26 @@ def process_pod_status(
                 pod_conditions_text = ""
 
             # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
-            for condition, reason in conditions_display_list:
-                condition_not_ready = condition.endswith("[red]False[/red]")
+            for condition_result in conditions_display_list:
+                condition_not_ready = condition_result.eval_status == CheckTaskStatus.error.value
                 if (
                     detail_level == ResourceOutputDetailLevel.detail.value and condition_not_ready
                 ) or detail_level == ResourceOutputDetailLevel.verbose.value:
-                    pod_conditions_text += f"{condition}\n"
+                    pod_conditions_text += f"{condition_result.condition_string}\n"
 
-                    if reason:
-                        pod_conditions_text += f"{reason}\n"
+                    if condition_result.failed_reason:
+                        pod_conditions_text += f"{condition_result.failed_reason}\n"
 
             if conditions_readiness:
-                for condition, reason in unknown_conditions_display_list:
-                    condition_text: str = f"[yellow]Irregular Condition {condition} found.[/yellow]"
+                for condition_result in unknown_conditions_display_list:
+                    condition_text: str = (
+                        f"[yellow]Irregular Condition {condition_result.condition_string} found.[/yellow]"
+                    )
                     pod_conditions_text += f"{condition_text}\n"
 
-                    if reason and detail_level == ResourceOutputDetailLevel.verbose.value:
-                        pod_conditions_text += f"{reason}\n"
+                    if condition_result.failed_reason and detail_level == ResourceOutputDetailLevel.verbose.value:
+                        pod_conditions_text += f"{condition_result.failed_reason}\n"
 
-        return [pod_name, pod_phase_deco, pod_conditions_text], pod_eval_status
+        return PodStatusResult(
+            display_strings=[pod_name, pod_phase_deco, pod_conditions_text], eval_status=pod_eval_status
+        )
