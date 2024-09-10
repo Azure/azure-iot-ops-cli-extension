@@ -235,7 +235,7 @@ def update_asset(
 #     )
 
 
-# def export_datasets(
+# def export_asset_datasets(
 #     cmd,
 #     asset_name: str,
 #     resource_group_name: str,
@@ -252,7 +252,7 @@ def update_asset(
 #     )
 
 
-# def import_datasets(
+# def import_asset_datasets(
 #     cmd,
 #     asset_name: str,
 #     file_path: str,
@@ -267,7 +267,7 @@ def update_asset(
 #     )
 
 
-def list_datasets(
+def list_asset_datasets(
     cmd,
     asset_name: str,
     resource_group_name: str
@@ -278,7 +278,7 @@ def list_datasets(
     )
 
 
-def show_dataset(
+def show_asset_dataset(
     cmd,
     asset_name: str,
     dataset_name: str,
@@ -291,7 +291,7 @@ def show_dataset(
     )
 
 
-# def remove_dataset(
+# def remove_asset_dataset(
 #     cmd,
 #     asset_name: str,
 #     dataset_name: str,
