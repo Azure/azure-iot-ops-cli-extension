@@ -624,7 +624,7 @@ def test_evaluate_dataflows(
                         "endpointType": "kafka",
                         "kafkaSettings": {
                             "host": "kafkaHost",
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {"method": "SystemAssignedManagedIdentity", "systemAssignedManagedIdentitySettings": {"audience": "audience"}},
                             "cloudEventAttributes": "Propagate",
                             "consumerGroupId": None,
                             "compression": "compression",
@@ -643,7 +643,7 @@ def test_evaluate_dataflows(
                         "endpointType": "localstorage",
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "ref",
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {"method": "SystemAssignedManagedIdentity", "systemAssignedManagedIdentitySettings": {"audience": "audience"}},
                         },
                     },
                 },
@@ -656,7 +656,7 @@ def test_evaluate_dataflows(
                         "endpointType": "fabriconelake",
                         "fabricOneLakeSettings": {
                             "host": "fabric_host",
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {"method": "AccessToken", "accessTokenSettings": {"secretRef": "secret"}},
                             "names": {"lakehouseName": "lakehouse", "workspaceName": "workspaceName"},
                             "batching": {"latencySeconds": 2},
                         },
@@ -671,7 +671,7 @@ def test_evaluate_dataflows(
                         "endpointType": "datalakestorage",
                         "datalakeStorageSettings": {
                             "host": "datalakeHost",
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {"method": "SystemAssignedManagedIdentity", "systemAssignedManagedIdentitySettings": {"audience": "audience"}},
                             "batching": {"latencySeconds": 12},
                         },
                     },
@@ -684,7 +684,7 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "dataExplorer",
                         "dataExplorerSettings": {
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {"method": "AccessToken", "accessTokenSettings": {"secretRef": "secret"}},
                             "database": "databse",
                             "host": "data_explorer_host",
                             "batching": {"latencySeconds": 3},
@@ -699,7 +699,14 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "mqtt",
                         "mqttSettings": {
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {
+                                "method": "UserAssignedManagedIdentity",
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "clientId",
+                                    "scope": "scope",
+                                    "tenantId": "tenantId",
+                                }
+                            },
                             "host": "mqttHost",
                             "protocol": "Websockets",
                             "cloudEventAttributes": "CreateOrRemap",
