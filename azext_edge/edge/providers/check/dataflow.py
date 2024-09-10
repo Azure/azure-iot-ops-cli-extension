@@ -721,8 +721,8 @@ def check_dataflows_deployment(
     evaluate_funcs = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
         DataflowResourceKinds.DATAFLOWPROFILE: evaluate_dataflow_profiles,
-        DataflowResourceKinds.DATAFLOW: evaluate_dataflows,
         DataflowResourceKinds.DATAFLOWENDPOINT: evaluate_dataflow_endpoints,
+        DataflowResourceKinds.DATAFLOW: evaluate_dataflows,
     }
 
     return check_post_deployment(
