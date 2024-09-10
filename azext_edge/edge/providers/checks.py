@@ -42,7 +42,7 @@ def run_checks(
     if resource_kinds:
         _validate_resource_kinds_under_service(ops_service, resource_kinds)
 
-    with console: #.status(status="Analyzing cluster...", refresh_per_second=12.5):
+    with console.status(status="Analyzing cluster...", refresh_per_second=12.5):
         from time import sleep
 
         sleep(0.5)
