@@ -725,6 +725,18 @@ def load_iotops_arguments(self, _):
             arg_group="Event Default",
         )
         context.argument(
+            "default_topic_path",
+            options_list=["--topic-path", "--tp"],
+            help="Default topic path.",
+            arg_group="Topic Default",
+        )
+        context.argument(  # TODO: add in enum
+            "default_topic_retain",
+            options_list=["--topic-retain", "--tr"],
+            help="Default topic retain policy.",
+            arg_group="Topic Default",
+        )
+        context.argument(
             "tags",
             options_list=["--tags"],
             help="Asset resource tags. Property bag in key-value pairs with the following format: a=b c=d",
@@ -757,6 +769,11 @@ def load_iotops_arguments(self, _):
             options_list=["--output-dir", "--od"],
             help="Output directory for exported file.",
         )
+        context.argument(  # TODO: figure out better wording
+            "custom_query",
+            options_list=["--custom-query", "--cq"],
+            help="Custom query to use. All other query arguments will be ignored.",
+        )
 
     with self.argument_context("iot ops asset query") as context:
         context.argument(
@@ -778,19 +795,31 @@ def load_iotops_arguments(self, _):
             action="extend",
         )
 
-    with self.argument_context("iot ops asset data-point") as context:
+    with self.argument_context("iot ops asset dataset") as context:
         context.argument(
             "asset_name",
             options_list=["--asset", "-a"],
             help="Asset name.",
         )
         context.argument(
+            "dataset_name",
+            options_list=["--name", "-n"],
+            help="Dataset name.",
+        )
+
+    with self.argument_context("iot ops asset dataset data-point") as context:
+        context.argument(
             "capability_id",
             options_list=["--capability-id", "--ci"],
             help="Capability Id. If not provided, data point name will be used.",
         )
         context.argument(
-            "name",
+            "dataset_name",
+            options_list=["--dataset", "-d"],
+            help="Dataset name.",
+        )
+        context.argument(
+            "data_point_name",
             options_list=["--name", "-n"],
             help="Data point name.",
         )
@@ -805,7 +834,7 @@ def load_iotops_arguments(self, _):
             help="Observability mode. Must be none, gauge, counter, histogram, or log.",
         )
 
-    with self.argument_context("iot ops asset data-point export") as context:
+    with self.argument_context("iot ops asset dataset data-point export") as context:
         context.argument(
             "replace",
             options_list=["--replace"],
@@ -813,7 +842,7 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
 
-    with self.argument_context("iot ops asset data-point import") as context:
+    with self.argument_context("iot ops asset dataset data-point import") as context:
         context.argument(
             "replace",
             options_list=["--replace"],
@@ -840,7 +869,7 @@ def load_iotops_arguments(self, _):
             help="Capability Id. If not provided, event name will be used.",
         )
         context.argument(
-            "name",
+            "event_name",
             options_list=["--name", "-n"],
             help="Event name.",
         )
