@@ -109,29 +109,11 @@ def init(
     cluster_name: str,
     resource_group_name: str,
     schema_registry_resource_id: str,
-    cluster_namespace: str = DEFAULT_NAMESPACE,
-    location: Optional[str] = None,
-    custom_location_name: Optional[str] = None,
-    disable_rsync_rules: Optional[bool] = None,
-    instance_name: Optional[str] = None,
-    instance_description: Optional[str] = None,
-    dataflow_profile_instances: int = 1,
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
     trust_source: str = TrustSourceType.self_signed.value,
     enable_fault_tolerance: Optional[bool] = None,
     ops_config: Optional[List[str]] = None,
-    mi_user_assigned_identities: Optional[List[str]] = None,
-    # Broker
-    custom_broker_config_file: Optional[str] = None,
-    broker_memory_profile: str = MqMemoryProfile.medium.value,
-    broker_service_type: str = MqServiceType.cluster_ip.value,
-    broker_backend_partitions: int = 2,
-    broker_backend_workers: int = 2,
-    broker_backend_redundancy_factor: int = 2,
-    broker_frontend_workers: int = 2,
-    broker_frontend_replicas: int = 2,
-    add_insecure_listener: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     **kwargs,
@@ -140,20 +122,9 @@ def init(
     from .providers.orchestration import WorkManager
     from .util import (
         is_env_flag_enabled,
-        read_file_content,
     )
 
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
-
-    # TODO - @digimaun
-    custom_broker_config = None
-    if custom_broker_config_file:
-        custom_broker_config = json.loads(read_file_content(file_path=custom_broker_config_file))
-
-    if broker_service_type == MqServiceType.load_balancer.value and add_insecure_listener:
-        raise ArgumentUsageError(
-            f"--add-insecure-listener cannot be used when --broker-service-type is {MqServiceType.load_balancer.value}."
-        )
 
     work_manager = WorkManager(cmd)
     return work_manager.execute_ops_init(
@@ -161,30 +132,12 @@ def init(
         pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
-        cluster_namespace=cluster_namespace,
-        location=location,
-        custom_location_name=custom_location_name,
-        disable_rsync_rules=disable_rsync_rules,
-        instance_name=instance_name,
-        instance_description=instance_description,
-        add_insecure_listener=add_insecure_listener,
-        dataflow_profile_instances=dataflow_profile_instances,
         container_runtime_socket=container_runtime_socket,
         kubernetes_distro=kubernetes_distro,
         enable_fault_tolerance=enable_fault_tolerance,
         ops_config=ops_config,
         trust_source=trust_source,
         schema_registry_resource_id=schema_registry_resource_id,
-        mi_user_assigned_identities=mi_user_assigned_identities,
-        # Broker
-        custom_broker_config=custom_broker_config,
-        broker_memory_profile=broker_memory_profile,
-        broker_service_type=broker_service_type,
-        broker_backend_partitions=broker_backend_partitions,
-        broker_backend_workers=broker_backend_workers,
-        broker_backend_redundancy_factor=broker_backend_redundancy_factor,
-        broker_frontend_workers=broker_frontend_workers,
-        broker_frontend_replicas=broker_frontend_replicas,
     )
 
 
