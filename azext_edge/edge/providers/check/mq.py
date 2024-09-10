@@ -56,6 +56,7 @@ def check_mq_deployment(
         MqResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
         # TODO: add BROKER_AUTHENTICATION and BROKER_AUTHORIZATION evaluations
         MqResourceKinds.BROKER_AUTHENTICATION: evaluate_broker_authentications,
+        MqResourceKinds.BROKER_AUTHORIZATION: evaluate_broker_authorizations,
     }
 
     return check_post_deployment(
@@ -188,8 +189,6 @@ def evaluate_broker_listeners(
                 if detail_level != ResourceOutputDetailLevel.summary.value:
                     for label, val in [
                         ("Port", "port"),
-                        # ("AuthN", "authenticationRef"),
-                        # ("AuthZ", "authorizationRef"),
                         ("Node Port", "nodePort"),
                     ]:
                         val = port.get(val)
@@ -859,6 +858,106 @@ def evaluate_broker_authentications(
                     value=method_eval_value,
                     resource_name=auth_name,
                 )
+
+    return check_manager.as_dict(as_list)
+
+
+def evaluate_broker_authorizations(
+    as_list: bool = False,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
+) -> Dict[str, Any]:
+
+    check_manager = CheckManager(
+        check_name="evalBrokerAuthorizations",
+        check_desc="Evaluate MQTT Broker Authorizations",
+    )
+
+    target_authorizations = "brokerauthorizations.mqttbroker.iotoperations.azure.com"
+    authz_conditions = ["spec.authorizationPolicies"]
+
+    all_authorizations = get_resources_by_name(
+        api_info=MQ_ACTIVE_API,
+        kind=MqResourceKinds.BROKER_AUTHORIZATION,
+        resource_name=resource_name,
+    )
+
+    if not all_authorizations:
+        fetch_authorizations_error_text = (
+            f"Unable to fetch {MqResourceKinds.BROKER_AUTHORIZATION.value}s in any namespace."
+        )
+        check_manager.add_target(target_name=target_authorizations)
+        check_manager.add_target_eval(
+            target_name=target_authorizations,
+            status=CheckTaskStatus.skipped.value,
+            value=fetch_authorizations_error_text,
+        )
+        check_manager.add_display(
+            target_name=target_authorizations,
+            display=Padding(fetch_authorizations_error_text, (0, 0, 0, 8)),
+        )
+        return check_manager.as_dict(as_list)
+
+    for namespace, authorizations in get_resources_grouped_by_namespace(all_authorizations):
+        check_manager.add_target(
+            target_name=target_authorizations,
+            namespace=namespace,
+            conditions=authz_conditions,
+        )
+        check_manager.add_display(
+            target_name=target_authorizations,
+            namespace=namespace,
+            display=Padding(f"Broker Authorizations in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
+        )
+
+        authorizations = list(authorizations)
+
+        for authz in authorizations:
+            authz_name = authz["metadata"]["name"]
+            authz_metadata = authz["metadata"]
+
+            # check broker reference
+            broker_ref = authz_metadata.get("ownerReferences", [])
+            ref_display = _evaluate_broker_reference(
+                check_manager=check_manager,
+                owner_reference=broker_ref,
+                target_name=target_authorizations,
+                namespace=namespace,
+                resource_name=authz_name,
+                detail_level=detail_level,
+            )
+
+            authz_desc = f"\n- Broker Authorization {{[bright_blue]{authz_name}[/bright_blue]}}. {ref_display}"
+            check_manager.add_display(
+                target_name=target_authorizations,
+                namespace=namespace,
+                display=Padding(authz_desc, (0, 0, 0, 8)),
+            )
+
+            # status
+            status = authz.get("status", {})
+            process_custom_resource_status(
+                check_manager=check_manager,
+                status=status,
+                target_name=target_authorizations,
+                namespace=namespace,
+                resource_name=authz_name,
+                padding=12,
+                detail_level=detail_level,
+            )
+
+            authz_spec = authz.get("spec", {})
+
+            # check authorization policies
+            authz_policies = authz_spec.get("authorizationPolicies", [])
+            authz_policies_desc = "Expecting [bright_blue]>=1[/bright_blue] authorization policies. {}"
+            authz_policies_eval_status = CheckTaskStatus.success.value
+
+            if len(authz_policies) >= 1:
+                authz_policies_desc = authz_policies_desc.format(f"[green]Detected {len(authz_policies)}[/green].")
+            else:
+                authz_policies_desc = authz_policies_desc.format(f"[red]Detected {len(authz_policies)}[/red].")
+                authz_policies_eval_status = CheckTaskStatus.error.value
 
     return check_manager.as_dict(as_list)
 
