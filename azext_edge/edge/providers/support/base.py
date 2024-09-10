@@ -73,10 +73,12 @@ def process_crd(
         namespace = r["metadata"]["namespace"]
         namespaces.append(namespace)
         name = r["metadata"]["name"]
-        processed.append({
-            "data": r,
-            "zinfo": f"{namespace}/{directory_path}/{file_prefix}.{version}.{name}.yaml",
-        })
+        processed.append(
+            {
+                "data": r,
+                "zinfo": f"{namespace}/{directory_path}/{file_prefix}.{version}.{name}.yaml",
+            }
+        )
 
     return processed
 
@@ -140,8 +142,11 @@ def process_v1_pods(
 
         # exclude evicted pods from log capture since they are not accessible
         pod_status = pod.status
-        if pod_status and pod_status.phase == PodState.failed.value and\
-           str(pod_status.reason).lower() == POD_STATUS_FAILED_EVICTED:
+        if (
+            pod_status
+            and pod_status.phase == PodState.failed.value
+            and str(pod_status.reason).lower() == POD_STATUS_FAILED_EVICTED
+        ):
             logger.info(f"Pod {pod_name} in namespace {pod_namespace} is evicted. Skipping log capture.")
         else:
             processed.extend(
@@ -166,7 +171,7 @@ def process_v1_pods(
                     processed.append(
                         {
                             "data": metric,
-                            "zinfo": f"{pod_namespace}/{directory_path}/pod.{pod_name}.metric.yaml"
+                            "zinfo": f"{pod_namespace}/{directory_path}/pod.{pod_name}.metric.yaml",
                         }
                     )
             except ApiException as e:
@@ -281,6 +286,25 @@ def process_daemonsets(
         resources=daemonsets,
         prefix_names=prefix_names,
         kind=BundleResourceKind.daemonset.value,
+    )
+
+
+def process_config_maps(
+    directory_path: str,
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+) -> List[dict]:
+    v1_api = client.CoreV1Api()
+    config_maps = v1_api.list_config_map_for_all_namespaces(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    return _process_kubernetes_resources(
+        directory_path=directory_path,
+        resources=config_maps,
+        prefix_names=prefix_names,
+        kind=BundleResourceKind.configmap.value,
     )
 
 
@@ -418,6 +442,7 @@ def assemble_crd_work(
 
 def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "aio") -> PurePath:
     from ...util import normalize_dir
+
     bundle_dir_pure_path = normalize_dir(bundle_dir)
     bundle_pure_path = bundle_dir_pure_path.joinpath(default_bundle_name(system_name))
     return bundle_pure_path
@@ -448,7 +473,9 @@ def _capture_pod_container_logs(
         for capture_previous in capture_previous_log_runs:
             try:
                 logger_debug_previous = "previous run " if capture_previous else ""
-                logger.debug(f"Reading {logger_debug_previous}log from pod {pod_name} container {container.name}")
+                logger.debug(
+                    f"Reading {logger_debug_previous}log from pod {pod_name} container {container.name}"
+                )
                 log: str = v1_api.read_namespaced_pod_log(
                     name=pod_name,
                     namespace=pod_namespace,
@@ -515,8 +542,12 @@ def _process_kubernetes_resources(
     return processed
 
 
-def exclude_resources_with_prefix(resources: K8sRuntimeResources, exclude_prefixes: List[str]) -> K8sRuntimeResources:
+def exclude_resources_with_prefix(
+    resources: K8sRuntimeResources, exclude_prefixes: List[str]
+) -> K8sRuntimeResources:
     for prefix in exclude_prefixes:
-        resources.items = [resource for resource in resources.items if not resource.metadata.name.startswith(prefix)]
+        resources.items = [
+            resource for resource in resources.items if not resource.metadata.name.startswith(prefix)
+        ]
 
     return resources

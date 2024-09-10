@@ -21,7 +21,7 @@ from ...base import get_cluster_custom_api
 from ...edge_api import EdgeResourceApi
 from ....common import CheckTaskStatus, ResourceState
 
-# TODO: unit test + refactor
+# TODO: refactor
 logger = get_logger(__name__)
 
 
@@ -160,7 +160,9 @@ def process_dict_resource(
 
             display_text = f"{key}:"
             check_manager.add_display(
-                target_name=target_name, namespace=namespace, display=Padding(display_text, (0, 0, 0, padding))
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(display_text, (0, 0, 0, padding)),
             )
 
             process_list_resource(
@@ -175,7 +177,9 @@ def process_dict_resource(
             value_padding = padding
             if isinstance(value, str) and len(value) > 50:
                 check_manager.add_display(
-                    target_name=target_name, namespace=namespace, display=Padding(display_text, (0, 0, 0, padding))
+                    target_name=target_name,
+                    namespace=namespace,
+                    display=Padding(display_text, (0, 0, 0, padding)),
                 )
                 value_padding += PADDING_SIZE
                 display_text = ""
@@ -183,7 +187,9 @@ def process_dict_resource(
                 check_manager=check_manager, target_name=target_name, key=key, value=value
             )
             check_manager.add_display(
-                target_name=target_name, namespace=namespace, display=Padding(display_text, (0, 0, 0, value_padding))
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(display_text, (0, 0, 0, value_padding)),
             )
 
 
@@ -260,7 +266,12 @@ def process_resource_properties(
 
 
 def process_resource_property_by_type(
-    check_manager: CheckManager, target_name: str, properties: Any, display_name: str, namespace: str, padding: tuple
+    check_manager: CheckManager,
+    target_name: str,
+    properties: Any,
+    display_name: str,
+    namespace: str,
+    padding: tuple,
 ) -> None:
     padding_left = padding[3]
     if isinstance(properties, list):
@@ -268,7 +279,9 @@ def process_resource_property_by_type(
             return
 
         display_text = f"{display_name}:"
-        check_manager.add_display(target_name=target_name, namespace=namespace, display=Padding(display_text, padding))
+        check_manager.add_display(
+            target_name=target_name, namespace=namespace, display=Padding(display_text, padding)
+        )
 
         for property in properties:
             display_text = f"- {display_name} {properties.index(property) + 1}"
@@ -295,10 +308,14 @@ def process_resource_property_by_type(
             display_text = f"[cyan]{properties}[/cyan]"
             padding = (0, 0, 0, padding_left + 4)
 
-        check_manager.add_display(target_name=target_name, namespace=namespace, display=Padding(display_text, padding))
+        check_manager.add_display(
+            target_name=target_name, namespace=namespace, display=Padding(display_text, padding)
+        )
     elif isinstance(properties, dict):
         display_text = f"{display_name}:"
-        check_manager.add_display(target_name=target_name, namespace=namespace, display=Padding(display_text, padding))
+        check_manager.add_display(
+            target_name=target_name, namespace=namespace, display=Padding(display_text, padding)
+        )
         for prop, value in properties.items():
             display_text = f"{prop}: [cyan]{value}[/cyan]"
             check_manager.add_display(
@@ -346,9 +363,15 @@ def validate_one_of_conditions(
         eval_status = CheckTaskStatus.error.value
 
     one_of_condition = f"oneOf({conditions_names})"
-    check_manager.add_target_conditions(target_name=target_name, namespace=namespace, conditions=[one_of_condition])
+    check_manager.add_target_conditions(
+        target_name=target_name, namespace=namespace, conditions=[one_of_condition]
+    )
     check_manager.add_target_eval(
-        target_name=target_name, namespace=namespace, status=eval_status, value=eval_value, resource_name=resource_name
+        target_name=target_name,
+        namespace=namespace,
+        status=eval_status,
+        value=eval_value,
+        resource_name=resource_name,
     )
 
 
@@ -444,7 +467,9 @@ def process_custom_resource_status(
             if prop_value:
                 status_text = f"{prop_name} {{{decorate_resource_status(prop_value.get('status'))}}}."
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
-                    status_description = prop_value.get("statusDescription") or prop_value.get("output", {}).get("message")
+                    status_description = prop_value.get("statusDescription") or prop_value.get(
+                        "output", {}
+                    ).get("message")
                     if status_description:
                         status_text = status_text.replace(".", f", [cyan]{status_description}[/cyan].")
 

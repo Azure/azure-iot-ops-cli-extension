@@ -23,6 +23,9 @@ class TemplateBlueprint(NamedTuple):
         # Don't need a deep copy here.
         return self.content["variables"]["VERSIONS"].copy()
 
+    def get_type_definition(self, key: str) -> Optional[dict]:
+        return self.content["definitions"].get(key, {"properties": {}})
+
     @property
     def parameters(self) -> dict:
         return self.content["parameters"]
@@ -50,14 +53,14 @@ class TemplateBlueprint(NamedTuple):
 
 
 M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
-    commit_id="6bbda7730afae8e98225f3f9da128cc84ace82ef",
+    commit_id="dec7ce40c138904c3cdfd593e27ddeaebfedf171",
     moniker="v0.7.0-preview.enablement",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.29.47.4906", "templateHash": "10961052723917481066"}
+            "_generator": {"name": "bicep", "version": "0.29.47.4906", "templateHash": "16646818348298548028"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -219,52 +222,56 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "VERSIONS": {
                 "platform": "0.7.0-preview-rc20240816.2",
-                "aio": "0.7.0-develop.20240903.1",
+                "aio": "0.7.6",
                 "secretSyncController": "0.5.1-100124415",
                 "edgeStorageAccelerator": "2.1.0-preview",
                 "openServiceMesh": "1.2.9",
             },
             "TRAINS": {
                 "platform": "integration",
-                "aio": "dev",
+                "aio": "integration",
                 "secretSyncController": "preview",
                 "openServiceMesh": "stable",
                 "edgeStorageAccelerator": "stable",
             },
             "OBSERVABILITY_ENABLED": "[not(equals(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress'), null()))]",
-            "OPCUA_BROKER_SETTINGS": {
-                "brokerListenerServiceName": "aio-mq-dmqtt-frontend",
-                "brokerListenerPort": 8883,
+            "MQTT_SETTINGS": {
+                "brokerListenerServiceName": "aio-broker",
+                "brokerListenerPort": 18883,
+                "serviceAccountAudience": "aio-internal",
                 "selfSignedIssuerName": "[format('{0}-aio-certificate-issuer', variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace)]",
             },
             "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arcstorage-storage-pool')]",
             "nonFaultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'default,local-path')]",
             "kubernetesStorageClass": "[if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), variables('faultTolerantStorageClass'), variables('nonFaultTolerantStorageClass'))]",
             "defaultAioConfigurationSettings": {
-                "connectors.values.mqttBroker.address": "[format('mqtts://{0}.{1}:{2}', variables('OPCUA_BROKER_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace, variables('OPCUA_BROKER_SETTINGS').brokerListenerPort)]",
+                "connectors.values.mqttBroker.address": "[format('mqtts://{0}.{1}:{2}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace, variables('MQTT_SETTINGS').brokerListenerPort)]",
+                "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
                 "connectors.values.opcPlcSimulation.deploy": "false",
                 "connectors.values.opcPlcSimulation.autoAcceptUntrustedCertificates": "false",
                 "connectors.values.discoveryHandler.enabled": "false",
                 "adr.values.Microsoft.CustomLocation.ServiceAccount": "default",
                 "akri.values.webhookConfiguration.enabled": "false",
                 "akri.values.certManagerWebhookCertificate.enabled": "false",
+                "akri.values.agent.extensionService.mqttBroker.hostName": "[format('{0}.{1}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace)]",
+                "akri.values.agent.extensionService.mqttBroker.port": "[variables('MQTT_SETTINGS').brokerListenerPort]",
+                "akri.values.agent.extensionService.mqttBroker.serviceAccountAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
                 "akri.values.agent.host.containerRuntimeSocket": "[parameters('containerRuntimeSocket')]",
                 "akri.values.kubernetesDistro": "[toLower(parameters('kubernetesDistro'))]",
-                "akri.values.agent.extensionService.mqttBroker.hostName": "[variables('OPCUA_BROKER_SETTINGS').brokerListenerServiceName]",
                 "mqttBroker.values.global.quickstart": "false",
                 "mqttBroker.values.operator.firstPartyMetricsOn": "false",
                 "observability.metrics.enabled": "[format('{0}', variables('OBSERVABILITY_ENABLED'))]",
                 "observability.metrics.openTelemetryCollectorAddress": "[if(variables('OBSERVABILITY_ENABLED'), format('{0}', tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress')), '')]",
                 "observability.metrics.exportIntervalSeconds": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelExportIntervalSeconds'), 60))]",
                 "trustSource": "[parameters('trustConfig').source]",
-                "trustBundleSettings.issuer.name": "[if(equals(parameters('trustConfig').source, 'CustomerManaged'), parameters('trustConfig').settings.issuerName, variables('OPCUA_BROKER_SETTINGS').selfSignedIssuerName)]",
+                "trustBundleSettings.issuer.name": "[if(equals(parameters('trustConfig').source, 'CustomerManaged'), parameters('trustConfig').settings.issuerName, variables('MQTT_SETTINGS').selfSignedIssuerName)]",
                 "trustBundleSettings.issuer.kind": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'issuerKind'), '')]",
                 "trustBundleSettings.configMap.name": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'configMapName'), '')]",
                 "trustBundleSettings.configMap.key": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'configMapKey'), '')]",
                 "schemaRegistry.values.resourceId": "[parameters('schemaRegistryId')]",
-                "schemaRegistry.values.mqttBroker.host": "[format('mqtts://{0}.{1}:{2}', variables('OPCUA_BROKER_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace, variables('OPCUA_BROKER_SETTINGS').brokerListenerPort)]",
-                "schemaRegistry.values.mqttBroker.tlsEnabled": "true",
-                "dataFlows.helm.upgrade.disableHooks": "true",
+                "schemaRegistry.values.mqttBroker.host": "[format('mqtts://{0}.{1}:{2}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace, variables('MQTT_SETTINGS').brokerListenerPort)]",
+                "schemaRegistry.values.mqttBroker.tlsEnabled": True,
+                "schemaRegistry.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
             },
         },
         "resources": {
@@ -377,9 +384,10 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                         "version": "[reference('aio_extension').version]",
                         "releaseTrain": "[reference('aio_extension').releaseTrain]",
                         "config": {
-                            "brokerListenerName": "[variables('OPCUA_BROKER_SETTINGS').brokerListenerServiceName]",
-                            "brokerListenerPort": "[variables('OPCUA_BROKER_SETTINGS').brokerListenerPort]",
+                            "brokerListenerName": "[variables('MQTT_SETTINGS').brokerListenerServiceName]",
+                            "brokerListenerPort": "[variables('MQTT_SETTINGS').brokerListenerPort]",
                         },
+                        "identityPrincipalId": "[reference('aio_extension', '2023-05-01', 'full').identity.principalId]",
                     },
                     "platform": {
                         "name": "[format('azure-iot-operations-platform-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
@@ -412,14 +420,14 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
 )
 
 M2_INSTANCE_TEMPLATE = TemplateBlueprint(
-    commit_id="6bbda7730afae8e98225f3f9da128cc84ace82ef",
+    commit_id="dec7ce40c138904c3cdfd593e27ddeaebfedf171",
     moniker="v0.6.0-preview",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.29.47.4906", "templateHash": "8193714625456661658"}
+            "_generator": {"name": "bicep", "version": "0.29.47.4906", "templateHash": "9600794285819827823"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -586,10 +594,12 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "OPCUA_BROKER_SETTINGS": {
-                "brokerListenerServiceName": "aio-mq-dmqtt-frontend",
-                "brokerListenerPort": 8883,
+            "MQTT_SETTINGS": {
+                "brokerListenerServiceName": "aio-broker",
+                "brokerListenerPort": 18883,
+                "serviceAccountAudience": "aio-internal",
                 "selfSignedIssuerName": "[format('{0}-aio-certificate-issuer', parameters('clusterNamespace'))]",
+                "selfSignedConfigMapName": "[format('{0}-aio-ca-trust-bundle', parameters('clusterNamespace'))]",
             },
             "BROKER_CONFIG": {
                 "frontendReplicas": "[coalesce(tryGet(parameters('brokerConfig'), 'frontendReplicas'), 2)]",
@@ -666,7 +676,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
                 "apiVersion": "2024-08-15-preview",
-                "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'broker')]",
+                "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
                     "type": "CustomLocation",
@@ -691,14 +701,19 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             "broker_authn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
                 "apiVersion": "2024-08-15-preview",
-                "name": "[format('{0}/{1}/{2}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'broker', 'broker-authn')]",
+                "name": "[format('{0}/{1}/{2}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default', 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
                     "type": "CustomLocation",
                 },
                 "properties": {
                     "authenticationMethods": [
-                        {"method": "ServiceAccountToken", "serviceAccountTokenSettings": {"audiences": ["aio-mq"]}}
+                        {
+                            "method": "ServiceAccountToken",
+                            "serviceAccountTokenSettings": {
+                                "audiences": ["[variables('MQTT_SETTINGS').serviceAccountAudience]"]
+                            },
+                        }
                     ]
                 },
                 "dependsOn": ["broker", "customLocation"],
@@ -706,23 +721,23 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             "broker_listener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
                 "apiVersion": "2024-08-15-preview",
-                "name": "[format('{0}/{1}/{2}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'broker', 'broker-listener')]",
+                "name": "[format('{0}/{1}/{2}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default', 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
                     "type": "CustomLocation",
                 },
                 "properties": {
                     "serviceType": "[variables('BROKER_CONFIG').serviceType]",
-                    "serviceName": "[variables('OPCUA_BROKER_SETTINGS').brokerListenerServiceName]",
+                    "serviceName": "[variables('MQTT_SETTINGS').brokerListenerServiceName]",
                     "ports": [
                         {
-                            "authenticationRef": "broker-authn",
-                            "port": "[variables('OPCUA_BROKER_SETTINGS').brokerListenerPort]",
+                            "authenticationRef": "default",
+                            "port": "[variables('MQTT_SETTINGS').brokerListenerPort]",
                             "tls": {
                                 "mode": "Automatic",
                                 "certManagerCertificateSpec": {
                                     "issuerRef": {
-                                        "name": "[if(equals(parameters('trustConfig').source, 'CustomerManaged'), parameters('trustConfig').settings.issuerName, variables('OPCUA_BROKER_SETTINGS').selfSignedIssuerName)]",
+                                        "name": "[if(equals(parameters('trustConfig').source, 'CustomerManaged'), parameters('trustConfig').settings.issuerName, variables('MQTT_SETTINGS').selfSignedIssuerName)]",
                                         "kind": "[if(equals(parameters('trustConfig').source, 'CustomerManaged'), parameters('trustConfig').settings.issuerKind, 'ClusterIssuer')]",
                                         "group": "cert-manager.io",
                                     }
@@ -744,6 +759,32 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
                 "properties": {"instanceCount": "[parameters('defaultDataflowinstanceCount')]"},
                 "dependsOn": ["aioInstance", "customLocation"],
             },
+            "dataflow_endpoint": {
+                "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
+                "apiVersion": "2024-08-15-preview",
+                "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
+                "extendedLocation": {
+                    "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                    "type": "CustomLocation",
+                },
+                "properties": {
+                    "endpointType": "Mqtt",
+                    "mqttSettings": {
+                        "host": "[format('{0}:{1}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('MQTT_SETTINGS').brokerListenerPort)]",
+                        "authentication": {
+                            "method": "ServiceAccountToken",
+                            "serviceAccountTokenSettings": {
+                                "audience": "[variables('MQTT_SETTINGS').serviceAccountAudience]"
+                            },
+                        },
+                        "tls": {
+                            "mode": "Enabled",
+                            "trustedCaCertificateConfigMapRef": "[if(equals(parameters('trustConfig').source, 'CustomerManaged'), parameters('trustConfig').settings.configMapName, variables('MQTT_SETTINGS').selfSignedConfigMapName)]",
+                        },
+                    },
+                },
+                "dependsOn": ["aioInstance", "customLocation"],
+            },
         },
         "outputs": {
             "aio": {
@@ -751,9 +792,9 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
                 "value": {
                     "name": "[format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5)))]",
                     "broker": {
-                        "name": "broker",
-                        "listener": "broker-listener",
-                        "authn": "broker-authn",
+                        "name": "default",
+                        "listener": "default",
+                        "authn": "default",
                         "settings": "[variables('BROKER_CONFIG')]",
                     },
                 },

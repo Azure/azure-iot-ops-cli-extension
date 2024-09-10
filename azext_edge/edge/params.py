@@ -87,7 +87,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "instance_description",
-            options_list=["--desc"],
+            options_list=["--description"],
             help="Description of the IoT Operations instance.",
         )
         context.argument(
@@ -334,199 +334,198 @@ def load_iotops_arguments(self, _):
             arg_group="Trace",
         )
 
-    with self.argument_context("iot ops init") as context:
-        context.argument(
-            "instance_name",
-            options_list=["--name", "-n"],
-            help="IoT Operations instance name. An instance name must be provided to "
-            "deploy an instance during init orchestration.",
-        )
-        context.argument(
-            "cluster_name",
-            options_list=["--cluster"],
-            help="Target cluster name for IoT Operations deployment.",
-        )
-        context.argument(
-            "cluster_namespace",
-            options_list=["--cluster-namespace"],
-            help="The cluster namespace IoT Operations infra will be deployed to. Must be lowercase.",
-        )
-        context.argument(
-            "custom_location_name",
-            options_list=["--custom-location"],
-            help="The custom location name corresponding to the IoT Operations deployment. "
-            "The default is in the form 'location-{hash(5)}'.",
-        )
-        context.argument(
-            "location",
-            options_list=["--location"],
-            help="The region that will be used for provisioned resource collateral. "
-            "If not provided the connected cluster location will be used.",
-        )
-        context.argument(
-            "disable_rsync_rules",
-            options_list=["--disable-rsync-rules"],
-            arg_type=get_three_state_flag(),
-            help="Resource sync rules will not be included in the IoT Operations deployment.",
-        )
-        context.argument(
-            "ensure_latest",
-            options_list=["--ensure-latest"],
-            arg_type=get_three_state_flag(),
-            help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
-        )
-        # Schema Registry
-        context.argument(
-            "schema_registry_resource_id",
-            options_list=["--sr-resource-id"],
-            help="The schema registry resource Id to use with IoT Operations.",
-        )
-        # Akri
-        context.argument(
-            "container_runtime_socket",
-            options_list=["--runtime-socket"],
-            help="The default node path of the container runtime socket. If not provided (default), the "
-            "socket path is determined by --kubernetes-distro.",
-            arg_group="Akri",
-        )
-        context.argument(
-            "kubernetes_distro",
-            arg_type=get_enum_type(KubernetesDistroType),
-            options_list=["--kubernetes-distro"],
-            help="The Kubernetes distro to use for Akri configuration. The selected distro implies the "
-            "default container runtime socket path when no --runtime-socket value is provided.",
-            arg_group="Akri",
-        )
-        # Broker
-        context.argument(
-            "broker_config_file",
-            options_list=["--broker-config-file"],
-            help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
-            "The expected format is described at https://aka.ms/aziotops-broker-config.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "add_insecure_listener",
-            options_list=[
-                "--add-insecure-listener",
-                context.deprecate(
-                    target="--mq-insecure",
-                    redirect="--add-insecure-listener",
-                    hide=True,
-                ),
-            ],
-            arg_type=get_three_state_flag(),
-            help="When enabled the mqtt broker deployment will include a listener "
-            f"of service type {MqServiceType.load_balancer.value}, bound to port 1883 with no authN or authZ. "
-            "For non-production workloads only.",
-            arg_group="Broker",
-        )
-        # Broker Config
-        context.argument(
-            "broker_frontend_replicas",
-            type=int,
-            options_list=["--broker-frontend-replicas", "--fr"],
-            help="Mqtt broker frontend replicas. Min value: 1, max value: 16.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "broker_frontend_workers",
-            type=int,
-            options_list=["--broker-frontend-workers", "--fw"],
-            help="Mqtt broker frontend workers. Min value: 1, max value: 16.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "broker_backend_redundancy_factor",
-            type=int,
-            options_list=["--broker-backend-rf", "--br"],
-            help="Mqtt broker backend redundancy factor. Min value: 1, max value: 5.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "broker_backend_workers",
-            type=int,
-            options_list=["--broker-backend-workers", "--bw"],
-            help="Mqtt broker backend workers. Min value: 1, max value: 16.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "broker_backend_partitions",
-            type=int,
-            options_list=["--broker-backend-part", "--bp"],
-            help="Mqtt broker backend partitions. Min value: 1, max value: 16.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "broker_memory_profile",
-            arg_type=get_enum_type(MqMemoryProfile),
-            options_list=["--broker-mem-profile", "--mp"],
-            help="Mqtt broker memory profile.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "broker_service_type",
-            arg_type=get_enum_type(MqServiceType),
-            options_list=["--broker-listener-type", "--lt"],
-            help="Service type associated with the default mqtt broker listener.",
-            arg_group="Broker",
-        )
-        # AKV CSI Driver
-        context.argument(
-            "keyvault_resource_id",
-            options_list=[
-                "--kv-resource-id",
-                context.deprecate(
-                    target="--kv-id",
-                    redirect="--kv-resource-id",
-                    hide=True,
-                ),
-            ],
-            help="Key Vault ARM resource Id. Providing this resource Id will enable the client "
-            "to setup all necessary resources and cluster side configuration to enable "
-            "the Key Vault CSI driver for IoT Operations.",
-            arg_group="Key Vault CSI Driver",
-        )
-        # TODO - @digimaun - still applicable
-        # context.argument(
-        #     "csi_driver_config",
-        #     options_list=["--csi-config"],
-        #     nargs="+",
-        #     action="extend",
-        #     help="CSI driver extension custom configuration. Format is space-separated key=value pairs. "
-        #     "--csi-config can be used one or more times.",
-        #     arg_group="Key Vault CSI Driver",
-        # )
-        context.argument(
-            "dataflow_profile_instances",
-            type=int,
-            options_list=["--df-profile-instances"],
-            help="The instance count associated with the default dataflow profile.",
-            arg_group="Dataflow Profile",
-        )
-        context.argument(
-            "enable_fault_tolerance",
-            arg_type=get_three_state_flag(),
-            options_list=["--enable-fault-tolerance"],
-            help="Enable fault tolerance for Azure Arc Container Storage. At least 3 cluster nodes are required.",
-            arg_group="Container Storage"
-        )
-        context.argument(
-            "mi_user_assigned_identities",
-            nargs="*",
-            action="extend",
-            options_list=["--mi-user-assigned"],
-            help="Space-separated resource Ids for the desired user managed identities to associate with the instance. "
-            "Can be used one or more times.",
-            arg_group="Identity",
-        )
-        context.argument(
-            "trust_source",
-            arg_type=get_enum_type(TrustSourceType),
-            options_list=["--trust-source"],
-            help="Indicates whether a built-in self-signed or user managed trust bundle config should be used.",
-            arg_group="Trust",
-        )
+    for cmd_space in ["iot ops init", "iot ops create"]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "instance_name",
+                options_list=["--name", "-n"],
+                help="IoT Operations instance name. An instance name must be provided to "
+                "deploy an instance during init orchestration.",
+            )
+            context.argument(
+                "cluster_name",
+                options_list=["--cluster"],
+                help="Target cluster name for IoT Operations deployment.",
+            )
+            context.argument(
+                "cluster_namespace",
+                options_list=["--cluster-namespace"],
+                help="The cluster namespace IoT Operations infra will be deployed to. Must be lowercase.",
+            )
+            context.argument(
+                "custom_location_name",
+                options_list=["--custom-location"],
+                help="The custom location name corresponding to the IoT Operations deployment. "
+                "The default is in the form 'location-{hash(5)}'.",
+            )
+            context.argument(
+                "location",
+                options_list=["--location"],
+                help="The region that will be used for provisioned resource collateral. "
+                "If not provided the connected cluster location will be used.",
+            )
+            context.argument(
+                "disable_rsync_rules",
+                options_list=["--disable-rsync-rules"],
+                arg_type=get_three_state_flag(),
+                help="Resource sync rules will not be included in the IoT Operations deployment.",
+            )
+            context.argument(
+                "ensure_latest",
+                options_list=["--ensure-latest"],
+                arg_type=get_three_state_flag(),
+                help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
+            )
+            # Schema Registry
+            context.argument(
+                "schema_registry_resource_id",
+                options_list=["--sr-resource-id"],
+                help="The schema registry resource Id to use with IoT Operations.",
+            )
+            # Akri
+            context.argument(
+                "container_runtime_socket",
+                options_list=["--runtime-socket"],
+                help="The default node path of the container runtime socket. If not provided (default), the "
+                "socket path is determined by --kubernetes-distro.",
+                arg_group="Akri",
+            )
+            context.argument(
+                "kubernetes_distro",
+                arg_type=get_enum_type(KubernetesDistroType),
+                options_list=["--kubernetes-distro"],
+                help="The Kubernetes distro to use for Akri configuration. The selected distro implies the "
+                "default container runtime socket path when no --runtime-socket value is provided.",
+                arg_group="Akri",
+            )
+            # Broker
+            context.argument(
+                "custom_broker_config_file",
+                options_list=["--broker-config-file"],
+                help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
+                "The expected format is described at https://aka.ms/aziotops-broker-config.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "add_insecure_listener",
+                options_list=[
+                    "--add-insecure-listener",
+                    context.deprecate(
+                        target="--mq-insecure",
+                        redirect="--add-insecure-listener",
+                        hide=True,
+                    ),
+                ],
+                arg_type=get_three_state_flag(),
+                help="When enabled the mqtt broker deployment will include a listener "
+                f"of service type {MqServiceType.load_balancer.value}, bound to port 1883 with no authN or authZ. "
+                "For non-production workloads only.",
+                arg_group="Broker",
+            )
+            # Broker Config
+            context.argument(
+                "broker_frontend_replicas",
+                type=int,
+                options_list=["--broker-frontend-replicas", "--fr"],
+                help="Mqtt broker frontend replicas. Min value: 1, max value: 16.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_frontend_workers",
+                type=int,
+                options_list=["--broker-frontend-workers", "--fw"],
+                help="Mqtt broker frontend workers. Min value: 1, max value: 16.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_backend_redundancy_factor",
+                type=int,
+                options_list=["--broker-backend-rf", "--br"],
+                help="Mqtt broker backend redundancy factor. Min value: 1, max value: 5.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_backend_workers",
+                type=int,
+                options_list=["--broker-backend-workers", "--bw"],
+                help="Mqtt broker backend workers. Min value: 1, max value: 16.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_backend_partitions",
+                type=int,
+                options_list=["--broker-backend-part", "--bp"],
+                help="Mqtt broker backend partitions. Min value: 1, max value: 16.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_memory_profile",
+                arg_type=get_enum_type(MqMemoryProfile),
+                options_list=["--broker-mem-profile", "--mp"],
+                help="Mqtt broker memory profile.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_service_type",
+                arg_type=get_enum_type(MqServiceType),
+                options_list=["--broker-listener-type", "--lt"],
+                help="Service type associated with the default mqtt broker listener.",
+                arg_group="Broker",
+            )
+            # AKV CSI Driver TODO - @digimaun
+            # context.argument(
+            #     "keyvault_resource_id",
+            #     options_list=[
+            #         "--kv-resource-id",
+            #         context.deprecate(
+            #             target="--kv-id",
+            #             redirect="--kv-resource-id",
+            #             hide=True,
+            #         ),
+            #     ],
+            #     help="Key Vault ARM resource Id. Providing this resource Id will enable the client "
+            #     "to setup all necessary resources and cluster side configuration to enable "
+            #     "the Key Vault CSI driver for IoT Operations.",
+            #     arg_group="Key Vault CSI Driver",
+            # )
+            context.argument(
+                "ops_config",
+                options_list=["--ops-config"],
+                nargs="+",
+                action="extend",
+                help="IoT Operations arc extension custom configuration. Format is space-separated key=value pairs. "
+                "--ops-config can be used one or more times. For advanced use cases.",
+            )
+            context.argument(
+                "dataflow_profile_instances",
+                type=int,
+                options_list=["--df-profile-instances"],
+                help="The instance count associated with the default dataflow profile.",
+                arg_group="Dataflow Profile",
+            )
+            context.argument(
+                "enable_fault_tolerance",
+                arg_type=get_three_state_flag(),
+                options_list=["--enable-fault-tolerance"],
+                help="Enable fault tolerance for Azure Arc Container Storage. At least 3 cluster nodes are required.",
+                arg_group="Container Storage",
+            )
+            context.argument(
+                "mi_user_assigned_identities",
+                nargs="*",
+                action="extend",
+                options_list=["--mi-user-assigned"],
+                help="Space-separated resource Ids for the desired user managed identities "
+                "to associate with the instance. Can be used one or more times.",
+                arg_group="Identity",
+            )
+            context.argument(
+                "trust_source",
+                arg_type=get_enum_type(TrustSourceType),
+                options_list=["--trust-source"],
+                help="Indicates whether a built-in self-signed or user managed trust bundle config should be used.",
+                arg_group="Trust",
+            )
 
     with self.argument_context("iot ops delete") as context:
         context.argument(

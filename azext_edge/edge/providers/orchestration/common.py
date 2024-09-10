@@ -28,7 +28,7 @@ KEYVAULT_CLOUD_API_VERSION = "2022-07-01"  # TODO - @digimaun, maybe needed
 # Custom Locations KPIs
 CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
 
-AIO_INSECURE_LISTENER_NAME = "broker-listener-insecure"
+AIO_INSECURE_LISTENER_NAME = "default-insecure"
 AIO_INSECURE_LISTENER_SERVICE_NAME = "aio-broker-insecure"
 
 
@@ -58,7 +58,7 @@ class KubernetesDistroType(Enum):
 
 class TrustSourceType(Enum):
     self_signed = "SelfSigned"
-    customer_managed = "CustomerManaged"
+    # customer_managed = "CustomerManaged"  # TODO - @digimaun
 
 
 __all__ = [

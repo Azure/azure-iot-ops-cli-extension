@@ -63,7 +63,9 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             assert not mq_level["folders"]
             assert_file_names(mq_level["files"])
             # make sure level 2 doesnt get messed up
-            assert walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] == ["traces"]
+            assert walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] == [
+                "traces"
+            ]
             walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] = []
 
     # Level 2 and 3 - bottom
