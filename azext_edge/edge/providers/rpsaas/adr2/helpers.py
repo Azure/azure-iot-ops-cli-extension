@@ -13,9 +13,16 @@ logger = get_logger(__name__)
 
 
 class TopicRetain(Enum):
-    "Set the retain flag for messages published to an MQTT broker."
+    """Set the retain flag for messages published to an MQTT broker."""
     keep = "Keep"
     never = "Never"
+
+
+class SecurityModes(Enum):
+    """Security modes for opcua connector."""
+    none = "none"
+    sign = "sign"
+    sign_and_encrypt = "signAndEncrypt"
 
 
 def check_cluster_connectivity(cmd, resource: dict):

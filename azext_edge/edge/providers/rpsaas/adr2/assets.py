@@ -16,6 +16,7 @@ from azure.cli.core.azclierror import (
 from .user_strings import INVALID_OBSERVABILITY_MODE_ERROR
 from ....util import assemble_nargs_to_dict
 from ....common import FileType
+# TODO: push these into util init
 from ....util.az_client import get_registry_mgmt_client
 from ....util.queryable import Queryable
 
@@ -49,7 +50,6 @@ class Assets(Queryable):
         endpoint_profile: str,
         instance_name: str,
         resource_group_name: str,
-        custom_location_id: Optional[str] = None,  # TODO: remove
         custom_attributes: Optional[List[str]] = None,
         # dataset_file_path: Optional[str] = None,
         default_topic_path: Optional[str] = None,
@@ -78,22 +78,15 @@ class Assets(Queryable):
         ev_sampling_interval: int = 500,
         ev_queue_size: int = 1,
         tags: Optional[Dict[str, str]] = None,
+        discovered: bool = False  # for quick discovered debugging
     ):
         from .helpers import get_extended_location
-
-        if custom_location_id:
-            extended_location = {
-                "type": "CustomLocation",
-                "name": custom_location_id,
-                "cluster_location": "eastus2"
-            }
-        else:
-            extended_location = get_extended_location(
-                cmd=self.cmd,
-                instance_name=instance_name,
-                instance_resource_group=instance_resource_group or resource_group_name,
-                instance_subscription=instance_subscription
-            )
+        extended_location = get_extended_location(
+            cmd=self.cmd,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group or resource_group_name,
+            instance_subscription=instance_subscription
+        )
         cluster_location = extended_location.pop("cluster_location")
 
         # Properties
@@ -136,6 +129,12 @@ class Assets(Queryable):
             ev_sampling_interval=ev_sampling_interval,
             ev_queue_size=ev_queue_size,
         )
+        # discovered
+        if discovered:
+            self.ops = self.discovered_ops
+            properties.pop("enabled", None)
+            properties["version"] = 1
+            properties["discoveryId"] = "discoveryid1"
 
         asset_body = {
             "extendedLocation": extended_location,
@@ -144,8 +143,8 @@ class Assets(Queryable):
             "tags": tags,
         }
         return self.ops.begin_create_or_replace(
-            asset_name=asset_name,
-            resource_group_name=resource_group_name,
+            resource_group_name,
+            asset_name,
             resource=asset_body
         )
 
@@ -198,6 +197,7 @@ class Assets(Queryable):
             return self.ops.list_by_resource_group(resource_group_name=resource_group_name)
         return self.ops.list_by_subscription()
 
+    # TODO: unit test
     def query_assets(
         self,
         asset_name: Optional[str] = None,

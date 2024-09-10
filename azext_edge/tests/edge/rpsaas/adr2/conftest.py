@@ -97,6 +97,26 @@ def get_asset_id(
         f"Microsoft.DeviceRegistry/{asset_type}{asset_name}"
 
 
+def get_profile_id(
+    profile_name: Optional[str] = None,
+    profile_resource_group: Optional[str] = None,
+    profile_subscription: Optional[str] = None,
+    discovered: bool = False
+) -> str:
+    profile_subscription = profile_subscription or get_zeroed_subscription()
+    profile_type = "discoveredAssetEndpointProfiles" if discovered else "assetEndpointProfiles"
+    profile_resource_group = f"/resourceGroups/{profile_resource_group}" if profile_resource_group else ""
+    profile_name = f"/{profile_name}" if profile_name else ""
+
+    return f"/subscriptions/{profile_subscription}{profile_resource_group}/providers/"\
+        f"Microsoft.DeviceRegistry/{profile_type}{profile_name}"
+
+
+def get_mgmt_uri(resource_id: str):
+    return f"https://management.azure.com{resource_id}"
+
+
+# TODO: clean up
 def get_asset_mgmt_uri(
     asset_name: Optional[str] = None,
     asset_resource_group: Optional[str] = None,
@@ -129,10 +149,28 @@ def get_asset_record(
     return asset
 
 
+def get_profile_record(
+    profile_name: str,
+    profile_resource_group: str,
+    profile_subscription: Optional[str] = None,
+    full: bool = True,
+    discovered: bool = False
+) -> dict:
+    profile_id = get_profile_id(profile_name, profile_resource_group, profile_subscription, discovered)
+    asset = deepcopy(FULL_AEP) if full else deepcopy(MINIMUM_AEP)
+    asset["name"] = profile_name
+    asset["resourceGroup"] = profile_resource_group
+    asset["id"] = profile_id
+    if discovered:
+        asset["type"] = "microsoft.deviceregistry/discoveredAssetEndpointProfiles"
+    return asset
+
+
 # Paths for mocking
 ASSETS_PATH = "azext_edge.edge.providers.rpsaas.adr2.assets"
 
 # Generic objects
+# Assets
 MINIMUM_ASSET = {
     "extendedLocation": {
         "name": generate_random_string(),
@@ -238,4 +276,73 @@ FULL_ASSET = {
         generate_random_string(): generate_random_string()
     },
     "type": "microsoft.deviceregistry/assets"
+}
+
+
+# Asset Endpoint Profiles
+MINIMUM_AEP = {
+    "extendedLocation": {
+        "name": generate_random_string(),
+        "type": generate_random_string(),
+    },
+    "id": generate_random_string(),
+    "location": "westus3",
+    "name": "aep-min",
+    "properties": {
+        "endpointProfileType": generate_random_string(),
+        "targetAddress": generate_random_string(),
+        "authentication": {
+            "method": "Anonymous"
+        },
+    },
+    "resourceGroup": generate_random_string(),
+    "type": "microsoft.deviceregistry/assetendpointprofiles"
+}
+# TODO: add in additional config
+FULL_AEP = {
+    "extendedLocation": {
+        "name": generate_random_string(),
+        "type": generate_random_string(),
+    },
+    "id": generate_random_string(),
+    "location": "westus3",
+    "name": "aep-full",
+    "properties": {
+        "additionalConfiguration": {
+            "applicationName": generate_random_string(),
+            "keepAliveMilliseconds": 10,
+            "defaults": {
+                "publishingIntervalMilliseconds": 0,
+                "samplingIntervalMilliseconds": 0,
+                "queueSize": 0
+            },
+            "session": {
+                "timeoutMilliseconds": 0,
+                "keepAliveIntervalMilliseconds": 0,
+                "reconnectPeriodMilliseconds": 100,
+                "reconnectExponentialBackOffMilliseconds": 300
+            },
+            "subscription": {
+                "maxItems": 10,
+                "lifeTimeMilliseconds": 5000
+            },
+            "security": {
+                "autoAcceptUntrustedServerCertificates": True,
+                "securityPolicy": generate_random_string(),
+                "securityMode": "sign"
+            },
+            "runAssetDiscovery": True
+        },
+        "endpointProfileType": "OPCUA",
+        "targetAddress": generate_random_string(),
+        "authentication": {
+            "method": "UsernamePassword",
+            "usernamePasswordCredentials": {
+                "passwordReference": generate_random_string(),
+                "usernameReference": generate_random_string()
+            }
+        },
+    },
+    "resourceGroup": generate_random_string(),
+    "type": "microsoft.deviceregistry/assetendpointprofiles"
 }

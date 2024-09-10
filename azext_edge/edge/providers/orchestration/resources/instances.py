@@ -67,6 +67,7 @@ class Instances(Queryable):
             cmd=self.cmd,
             cluster_name=resource_id_container.resource_name,
             resource_group_name=resource_id_container.resource_group_name,
+            subscription_id=resource_id_container.subscription_id,
             defer_refresh=True,
         )
 

@@ -19,9 +19,10 @@ def create_asset(
     endpoint_profile: str,
     instance_name: str,
     resource_group_name: str,
-    custom_location_id: Optional[str] = None,  # TODO: remove once instances have new extension
     custom_attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
+    default_topic_path: Optional[str] = None,
+    default_topic_retain: Optional[str] = None,
     disabled: bool = False,
     display_name: Optional[str] = None,
     documentation_uri: Optional[str] = None,
@@ -47,12 +48,13 @@ def create_asset(
     tags: Optional[Dict[str, str]] = None,
 ):
     return Assets(cmd).create(
-        custom_location_id=custom_location_id,
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         endpoint_profile=endpoint_profile,
         custom_attributes=custom_attributes,
         description=description,
+        default_topic_path=default_topic_path,
+        default_topic_retain=default_topic_retain,
         disabled=disabled,
         display_name=display_name,
         documentation_uri=documentation_uri,
@@ -237,7 +239,7 @@ def update_asset(
 #     )
 
 
-# def export_datasets(
+# def export_asset_datasets(
 #     cmd,
 #     asset_name: str,
 #     resource_group_name: str,
@@ -254,7 +256,7 @@ def update_asset(
 #     )
 
 
-# def import_datasets(
+# def import_asset_datasets(
 #     cmd,
 #     asset_name: str,
 #     file_path: str,
@@ -269,7 +271,7 @@ def update_asset(
 #     )
 
 
-def list_datasets(
+def list_asset_datasets(
     cmd,
     asset_name: str,
     resource_group_name: str
@@ -280,7 +282,7 @@ def list_datasets(
     )
 
 
-def show_dataset(
+def show_asset_dataset(
     cmd,
     asset_name: str,
     dataset_name: str,
@@ -293,7 +295,7 @@ def show_dataset(
     )
 
 
-# def remove_dataset(
+# def remove_asset_dataset(
 #     cmd,
 #     asset_name: str,
 #     dataset_name: str,
