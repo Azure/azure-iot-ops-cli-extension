@@ -228,7 +228,7 @@ class FileType(ListableEnum):
     Supported file types/extensions for bulk asset operations.
     """
 
-    csv = "csv"
+    # csv = "csv"  # just use the portal format for ease
     json = "json"
     portal_csv = "portal-csv"
     yaml = "yaml"

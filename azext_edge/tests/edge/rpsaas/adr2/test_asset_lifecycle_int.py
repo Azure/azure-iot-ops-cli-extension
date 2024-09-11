@@ -4,11 +4,11 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-# import json
-# import os
+import json
+import os
 from time import sleep
 from knack.log import get_logger
-# from azext_edge.edge.common import FileType
+from azext_edge.edge.common import FileType
 from azext_edge.edge.util.common import assemble_nargs_to_dict
 from ....generators import generate_random_string
 from ....helpers import run
@@ -22,13 +22,12 @@ def test_asset_lifecycle(require_init, tracked_resources):
     custom_location_id = require_init["customLocationId"]
 
     # Create an endpoint profile
-    # endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
-    # asset_endpoint = run(
-    #     f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} -c {cluster_name} "
-    #     f"--cg {rg} --ta opc.tcp://opcplc-000000:50000"
-    # )
-    # tracked_resources.append(asset_endpoint["id"])
-    endpoint_name = "todochangefake"
+    endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
+    asset_endpoint = run(
+        f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} --instance {instance} "
+        f"--ta opc.tcp://opcplc-000000:50000"
+    )
+    tracked_resources.append(asset_endpoint["id"])
 
     min_asset_name = "test-asset-" + generate_random_string(force_lower=True)[:4]
     custom_attribute = f"{generate_random_string()}={generate_random_string()}"
@@ -118,6 +117,152 @@ def test_asset_lifecycle(require_init, tracked_resources):
     tracked_resources.remove(max_asset["id"])
 
 
+def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_files):
+    rg = require_init["resourceGroup"]
+    instance = require_init["instanceName"]
+    custom_location_id = require_init["customLocationId"]
+
+    # Create an endpoint profile
+    endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
+    asset_endpoint = run(
+        f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} --instance {instance} "
+        f"--ta opc.tcp://opcplc-000000:50000"
+    )
+    tracked_resources.append(asset_endpoint["id"])
+
+    expected_events = [{
+        "event_notifier": generate_random_string(),
+        "name": generate_random_string(),
+        "observability_mode": "log",
+        "queue_size": 1,
+    }]
+    asset_name = "test-asset-" + generate_random_string(force_lower=True)[:4]
+    asset = run(
+        f"az iot ops asset create -n {asset_name} -g {rg} --instance {instance} --endpoint {endpoint_name} "
+        f"--events event_notifier={expected_events[0]['event_notifier']} "
+        f"name={expected_events[0]['name']} "
+        f"observability_mode={expected_events[0]['observability_mode']} "
+        f"queue_size={expected_events[0]['queue_size']}"
+    )
+    tracked_resources.append(asset["id"])
+    assert_asset_props(
+        result=asset,
+        name=asset_name,
+        custom_location_id=custom_location_id,
+    )
+    assert not asset["properties"].get("datasets")
+    assert len(asset["properties"]["events"]) == len(expected_events)
+    assert_sub_point(asset["properties"]["events"][0], **expected_events[0])
+
+    # events
+    expected_events.append({
+        "event_notifier": generate_random_string(),
+        "name": generate_random_string(),
+    })
+    command = f"az iot ops asset event add -a {asset_name} -g {rg}"
+    for arg, value in expected_events[1].items():
+        command += f" --{arg.replace('_', '-')} {value}"
+
+    asset_events = run(command)
+    assert len(asset_events) == len(expected_events)
+    for i in range(len(expected_events)):
+        assert_sub_point(asset_events[i], **expected_events[i])
+
+    asset_events = run(f"az iot ops asset event list -a {asset_name} -g {rg}")
+    assert len(asset_events) == len(expected_events)
+    for i in range(len(expected_events)):
+        assert_sub_point(asset_events[i], **expected_events[i])
+
+    for file_type in FileType.list():
+        event_file_path = run(
+            f"az iot ops asset event export -a {asset_name} -g {rg} -f {file_type}"
+        )["file_path"]
+        tracked_files.append(event_file_path)
+        assert os.path.exists(event_file_path)
+
+        asset_events = run(
+            f"az iot ops asset event remove -a {asset_name} -g {rg} "
+            f"--event-notifier {expected_events[1]['event_notifier']}"
+        )
+        assert len(asset_events) + 1 == len(expected_events)
+
+        asset_events = run(
+            f"az iot ops asset event import -a {asset_name} -g {rg} --input-file {event_file_path}"
+        )
+        assert len(asset_events) == len(expected_events)
+        assert expected_events[1]['event_notifier'] in [point["eventNotifier"] for point in asset_events]
+
+    # data points
+    expected_data_points = [{
+        "data_source": generate_random_string(),
+        "name": generate_random_string()
+    }]
+    command = f"az iot ops asset dataset data-point add -a {asset_name} -g {rg} --dataset default"
+    for arg, value in expected_data_points[1].items():
+        command += f" --{arg.replace('_', '-')} {value}"
+
+    asset_data_points = run(command)
+    assert len(asset_data_points) == len(expected_data_points)
+    for i in range(len(expected_data_points)):
+        assert_sub_point(asset_data_points[i], **expected_data_points[i])
+
+    expected_data_points.append({
+        "capability_id": generate_random_string(),
+        "data_source": generate_random_string(),
+        "name": generate_random_string(),
+        "observability_mode": "log",
+        "queue_size": 1,
+        "sampling_interval": 30,
+    })
+    command = f"az iot ops asset dataset data-point add -a {asset_name} -g {rg} --dataset default"
+    for arg, value in expected_data_points[1].items():
+        command += f" --{arg.replace('_', '-')} {value}"
+
+    asset_data_points = run(command)
+    assert len(asset_data_points) == len(expected_data_points)
+    for i in range(len(expected_data_points)):
+        assert_sub_point(asset_data_points[i], **expected_data_points[i])
+
+    asset_datasets = run(f"az iot ops asset dataset list -a {asset_name} -g {rg} --dataset default")
+    assert asset_datasets
+    asset_data_points = asset_datasets[0]["dataPoints"]
+    assert len(asset_data_points) == len(expected_data_points)
+    for i in range(len(expected_data_points)):
+        assert_sub_point(asset_data_points[i], **expected_data_points[i])
+    asset_data_points = run(f"az iot ops asset dataset data-point list -a {asset_name} -g {rg} --dataset default")
+    assert len(asset_data_points) == len(expected_data_points)
+    for i in range(len(expected_data_points)):
+        assert_sub_point(asset_data_points[i], **expected_data_points[i])
+
+    for file_type in FileType.list():
+        data_file_path = run(
+            f"az iot ops asset dataset data-point export -a {asset_name} -g {rg} --dataset default -f {file_type}"
+        )["file_path"]
+        tracked_files.append(data_file_path)
+        assert os.path.exists(data_file_path)
+
+        asset_data_points = run(
+            f"az iot ops asset dataset data-point remove -a {asset_name} -g {rg}  --dataset default"
+            f"--data-source {expected_data_points[1]['data_source']}"
+        )
+        assert len(asset_data_points) + 1 == len(expected_data_points)
+
+        asset_data_points = run(
+            f"az iot ops asset dataset data-point import -a {asset_name} -g {rg} --dataset default "
+            f"--input-file {data_file_path}"
+        )
+        assert len(asset_data_points) == len(expected_data_points)
+        assert expected_data_points[1]['data_source'] in [point["dataSource"] for point in asset_data_points]
+
+    second_asset = run(
+        f"az iot ops asset create -n {asset_name} -g {rg} --instance {instance} "
+        f"--endpoint {endpoint_name} --event-file {event_file_path}"
+    )
+    tracked_resources.append(second_asset["id"])
+    assert len(second_asset["properties"]["events"]) == len(expected_events)
+    assert_sub_point(second_asset["properties"]["events"][0], **expected_events[0])
+
+
 def assert_asset_props(result, **expected):
     assert result["name"] == expected["name"]
     assert result["extendedLocation"]["name"] == expected["custom_location_id"]
@@ -153,3 +298,18 @@ def assert_asset_props(result, **expected):
         assert result_props["serialNumber"] == expected["serial_number"]
     if expected.get("software_revision"):
         assert result_props["softwareRevision"] == expected["software_revision"]
+
+
+def assert_sub_point(result, **expected):
+    assert result.get("dataSource") == expected.get("data_source")
+    assert result.get("eventNotifier") == expected.get("event_notifier")
+    assert result.get("name") == expected.get("name")
+    # service is weird - sometimes it sets empty observability sometimes not
+    assert result.get("observabilityMode", "none") == expected.get("observability_mode", "none")
+
+    key = "dataPointConfiguration"
+    if expected.get("event_notifier"):
+        key = "eventConfiguration"
+    configuration = json.loads(result.get(key, "{}"))
+    assert configuration.get("queueSize") == expected.get("queue_size")
+    assert configuration.get("samplingInterval") == expected.get("sampling_interval")
