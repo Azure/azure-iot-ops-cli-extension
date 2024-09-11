@@ -345,67 +345,73 @@ def _process_dataflow_destinationsettings(
 def _process_endpoint_authentication(
     endpoint_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int, detail_level: int
 ) -> None:
+    auth_property_dict = {
+        DataFlowEndpointAuthenticationType.access_token.value: {
+            "key": "accessTokenSettings",
+            "displays": [
+                ("Secret Reference", "secretRef"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.system_assigned.value: {
+            "key": "systemAssignedManagedIdentitySettings",
+            "displays": [
+                ("Audience", "audience"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.user_assigned.value: {
+            "key": "userAssignedManagedIdentitySettings",
+            "displays": [
+                ("Client ID", "clientId"),
+                ("Scope", "scope"),
+                ("Tenant ID", "tenantId"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.x509.value: {
+            "key": "x509CertificateSettings",
+            "displays": [
+                ("Secret Ref", "secretRef"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.service_account_token.value: {
+            "key": "serviceAccountTokenSettings",
+            "displays": [
+                ("Audience", "audience"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.sasl.value: {
+            "key": "saslSettings",
+            "displays": [
+                ("Type", "saslType"),
+                ("Secret Ref", "secretRef"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.anonymous.value: {
+            "key": "anonymousSettings",
+            "displays": [],
+        },
+    }
+
     auth: dict = endpoint_settings.get("authentication", {})
     auth_method = auth.get("method")
+
+    # display unkown auth method
+    if auth_method not in auth_property_dict:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"[red]Unknown authentication method: {auth_method}", (0, 0, 0, padding)),
+        )
+        return
+
+    # display auth method
     check_manager.add_display(
         target_name=target,
         namespace=namespace,
         display=basic_property_display(label="Authentication Method", value=auth_method, padding=padding),
     )
-    if detail_level > ResourceOutputDetailLevel.detail.value:
-        auth_property_dict = {
-            DataFlowEndpointAuthenticationType.access_token.value: {
-                "key": "accessTokenSettings",
-                "displays": [
-                    ("Secret Reference", "secretRef"),
-                ],
-            },
-            DataFlowEndpointAuthenticationType.system_assigned.value: {
-                "key": "systemAssignedManagedIdentitySettings",
-                "displays": [
-                    ("Audience", "audience"),
-                ],
-            },
-            DataFlowEndpointAuthenticationType.user_assigned.value: {
-                "key": "userAssignedManagedIdentitySettings",
-                "displays": [
-                    ("Client ID", "clientId"),
-                    ("Scope", "scope"),
-                    ("Tenant ID", "tenantId"),
-                ],
-            },
-            DataFlowEndpointAuthenticationType.x509.value: {
-                "key": "x509CertificateSettings",
-                "displays": [
-                    ("Secret Ref", "secretRef"),
-                ],
-            },
-            DataFlowEndpointAuthenticationType.service_account_token.value: {
-                "key": "serviceAccountTokenSettings",
-                "displays": [
-                    ("Audience", "audience"),
-                ],
-            },
-            DataFlowEndpointAuthenticationType.sasl.value: {
-                "key": "saslSettings",
-                "displays": [
-                    ("Type", "saslType"),
-                    ("Secret Ref", "secretRef"),
-                ],
-            },
-            DataFlowEndpointAuthenticationType.anonymous.value: {
-                "key": "anonymousSettings",
-                "displays": [],
-            },
-        }
-        if auth_method not in auth_property_dict:
-            check_manager.add_display(
-                target_name=target,
-                namespace=namespace,
-                display=Padding(f"[red]Unknown authentication method: {auth_method}", (0, 0, 0, padding)),
-            )
-            return
 
+    # show details for various auth methods
+    if detail_level > ResourceOutputDetailLevel.detail.value:
         auth_properties: dict = auth_property_dict.get(auth_method, {})
         auth_settings_key = auth_properties.get("key")
         auth_obj = auth.get(auth_settings_key)
