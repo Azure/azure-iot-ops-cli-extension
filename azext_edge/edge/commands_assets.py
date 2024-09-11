@@ -90,6 +90,7 @@ def delete_asset(
     return Assets(cmd).delete(asset_name=asset_name, resource_group_name=resource_group_name)
 
 
+# TODO: add in once GA
 def list_assets(
     cmd,
     # discovered: bool = False,  # TODO: discovered
@@ -407,9 +408,9 @@ def add_asset_event(
     event_name: Optional[str] = None,
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
-    sampling_interval: Optional[int] = None,
-    publishing_interval: Optional[int] = None,
-    # topic_path: Optional[str] = None,  # TODO: hide non asset topics
+    sampling_interval: Optional[int] = None,  # Note: not in DOE
+    publishing_interval: Optional[int] = None,  # Note not in DOE
+    # topic_path: Optional[str] = None,  # TODO: expose once supported
     # topic_retain: Optional[str] = None
 ):
     return Assets(cmd).add_event(

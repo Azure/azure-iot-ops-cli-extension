@@ -101,7 +101,6 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("create", "create_asset")
         cmd_group.command("delete", "delete_asset")
-        # cmd_group.command("list", "list_assets")
         cmd_group.command("query", "query_assets")
         cmd_group.show_command("show", "show_asset")
         cmd_group.command("update", "update_asset")

@@ -85,6 +85,7 @@ def delete_asset_endpoint_profile(
     )
 
 
+# TODO: add in once GA
 def list_asset_endpoint_profiles(
     cmd,
     resource_group_name: str,

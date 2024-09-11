@@ -462,7 +462,7 @@ class Assets(Queryable):
         observability_mode: Optional[str] = None,
         queue_size: Optional[int] = None,
         sampling_interval: Optional[int] = None,
-        publishing_interval: Optional[int] = None,
+        # publishing_interval: Optional[int] = None,
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -479,14 +479,14 @@ class Assets(Queryable):
             observability_mode=observability_mode,
             queue_size=queue_size,
             sampling_interval=sampling_interval,
-            publishing_interval=publishing_interval
+            # publishing_interval=publishing_interval
         )
         dataset["dataPoints"].append(sub_point)
 
         poller = self.update_ops.begin_update(
             resource_group_name,
             asset_name,
-            asset["properties"]
+            {"properties": {"datasets": asset["properties"]["datasets"]}}
         )
         poller.wait()
         asset = poller.result()
@@ -555,7 +555,7 @@ class Assets(Queryable):
         poller = self.update_ops.begin_update(
             resource_group_name,
             asset_name,
-            asset["properties"]
+            {"properties": {"datasets": asset["properties"]["datasets"]}}
         )
         poller.wait()
         asset = poller.result()
@@ -595,7 +595,7 @@ class Assets(Queryable):
         poller = self.update_ops.begin_update(
             resource_group_name,
             asset_name,
-            asset["properties"]
+            {"properties": {"datasets": asset["properties"]["datasets"]}}
         )
         poller.wait()
         asset = poller.result()
@@ -614,7 +614,7 @@ class Assets(Queryable):
         observability_mode: Optional[str] = None,
         queue_size: Optional[int] = None,
         sampling_interval: Optional[int] = None,
-        publishing_interval: Optional[int] = None,  # note that the swagger mentions this but not sure if used
+        # publishing_interval: Optional[int] = None,
         topic_path: Optional[str] = None,
         topic_retain: Optional[str] = None
     ):
@@ -629,7 +629,7 @@ class Assets(Queryable):
             name=event_name,
             observability_mode=observability_mode,
             queue_size=queue_size,
-            publishing_interval=publishing_interval,
+            # publishing_interval=publishing_interval,
             sampling_interval=sampling_interval
         )
         if topic_path:
@@ -643,7 +643,7 @@ class Assets(Queryable):
         poller = self.update_ops.begin_update(
             resource_group_name,
             asset_name,
-            asset["properties"]
+            {"properties": {"events": asset["properties"]["events"]}}
         )
         poller.wait()
         asset = poller.result()
@@ -707,7 +707,7 @@ class Assets(Queryable):
         poller = self.update_ops.begin_update(
             resource_group_name,
             asset_name,
-            asset_props
+            {"properties": {"events": asset_props["events"]}}
         )
         poller.wait()
         asset = poller.result()
@@ -734,18 +734,17 @@ class Assets(Queryable):
         event_name: str,
         resource_group_name: str,
     ):
-        asset = self.show(
+        asset_props = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
             check_cluster=True
-        )
-        asset_props = asset["properties"]
+        )["properties"]
         asset_props["events"] = [ev for ev in asset_props.get("events", []) if ev["name"] != event_name]
 
         poller = self.update_ops.begin_update(
             resource_group_name,
             asset_name,
-            asset_props
+            {"properties": {"events": asset_props["events"]}}
         )
         poller.wait()
         asset = poller.result()
@@ -758,9 +757,14 @@ class Assets(Queryable):
 def _get_dataset(asset: dict, dataset_name: str):
     datasets = asset["properties"].get("datasets", [])
     dataset = [dset for dset in datasets if dset["name"] == dataset_name]
+    # Temporary convert empty names to default
+    if not dataset and dataset_name == "default":
+        dataset = [dset for dset in datasets if dset["name"] == ""]
     if not dataset:
         raise InvalidArgumentValueError(f"Dataset {dataset_name} not found in asset {asset['name']}.")
     # should I check for more than one dataset? -> need to see if datasets can have the same name within an asset
+    # part of the temporary convert
+    dataset[0]["name"] = dataset_name
     return dataset[0]
 
 
@@ -794,7 +798,7 @@ def _process_asset_sub_points_file_path(
     file_points = list(deserialize_file_content(file_path=file_path))
     _convert_sub_points_from_csv(file_points)
 
-    if replace:
+    if replace or (point_key is None):
         return file_points
 
     if not original_items:
@@ -880,13 +884,13 @@ def _build_asset_sub_point(
     event_notifier: Optional[str] = None,
     name: Optional[str] = None,
     observability_mode: Optional[str] = None,
-    publishing_interval: Optional[int] = None,
+    # publishing_interval: Optional[int] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
 ) -> Dict[str, str]:
     custom_configuration = _build_default_configuration(
         original_configuration="{}",
-        publishing_interval=publishing_interval,
+        # publishing_interval=publishing_interval,
         sampling_interval=sampling_interval,
         queue_size=queue_size
     )
@@ -1098,7 +1102,7 @@ def _update_properties(
 
     # Defaults
     properties["defaultDatasetsConfiguration"] = _build_default_configuration(
-        original_configuration=properties.get("defaultDataPointsConfiguration", "{}"),
+        original_configuration=properties.get("defaultDatasetsConfiguration", "{}"),
         publishing_interval=ds_publishing_interval,
         sampling_interval=ds_sampling_interval,
         queue_size=ds_queue_size
@@ -1111,6 +1115,7 @@ def _update_properties(
         queue_size=ev_queue_size
     )
 
+    # TODO: unit test
     if any([default_topic_path, default_topic_retain]):
         properties["defaultTopic"] = _build_topic(
             original_topic=properties.get("defaultTopic"),
