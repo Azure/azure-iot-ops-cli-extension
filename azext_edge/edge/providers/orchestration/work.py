@@ -61,6 +61,7 @@ PROVISIONING_STATE_SUCCESS = "Succeeded"
 CONNECTIVITY_STATUS_CONNECTED = "Connected"
 IOT_OPS_EXTENSION_TYPE = "microsoft.iotoperations"
 IOT_OPS_PLAT_EXTENSION_TYPE = "microsoft.iotoperations.platform"
+SECRET_SYNC_EXTENSION_TYPE = "microsoft.azure.secretstore"
 CONTRIBUTOR_ROLE_ID = "b24988ac-6180-42a0-ab88-20f7382dd24c"
 
 
@@ -109,6 +110,20 @@ class WorkManager:
         self._show_progress = show_progress
         self._progress_shown = False
 
+    def _format_enablement_desc(self) -> str:
+        version_map = self._targets.get_extension_versions()
+        display_desc = "[dim]"
+        for ver in version_map:
+            display_desc += f"• {ver}: {version_map[ver]}\n"
+        return display_desc[:-1] + ""
+
+    def _format_instance_desc(self) -> str:
+        instance_config = {"resource sync": "enabled" if self._targets.deploy_resource_sync_rules else "disabled"}
+        display_desc = ""
+        for c in instance_config:
+            display_desc += f"• {c}: {instance_config[c]}\n"
+        return display_desc[:-1] + ""
+
     def _build_display(self):
         pre_check_cat_desc = "Pre-Flight"
         self._display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
@@ -122,23 +137,22 @@ class WorkManager:
             self._display.add_step(
                 WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation"
             )
-            ext_version_display = self._targets.get_extension_versions(in_display_format=True)
             self._display.add_step(
                 WorkCategoryKey.ENABLE_IOT_OPS,
                 WorkStepKey.DEPLOY_ENABLEMENT,
                 "Install foundation layer",
-                ext_version_display,
+                self._format_enablement_desc(),
             )
 
         if self._targets.instance_name:
-            create_instance_desc = f"Create instance: [cyan]{self._targets.instance_name}"
-            self._display.add_category(
-                WorkCategoryKey.DEPLOY_IOT_OPS,
-                f"Deploy IoT Operations: [dark_orange3]{self._targets.iot_operations_version}",
-                skipped=not self._targets.instance_name,
-            )
+            self._display.add_category(WorkCategoryKey.DEPLOY_IOT_OPS, "Deploy IoT Operations")
             self._display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.WHAT_IF_INSTANCE, "What-If evaluation")
-            self._display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.DEPLOY_INSTANCE, create_instance_desc)
+            self._display.add_step(
+                WorkCategoryKey.DEPLOY_IOT_OPS,
+                WorkStepKey.DEPLOY_INSTANCE,
+                f"Create instance [cyan]{self._targets.instance_name}",
+                self._format_instance_desc(),
+            )
 
     def _process_connected_cluster(self) -> ConnectedCluster:
         connected_cluster = ConnectedCluster(
@@ -304,7 +318,7 @@ class WorkManager:
                 _ = wait_for_terminal_state(enablement_poller)
 
                 self._extension_map = connected_cluster.get_extensions_by_type(
-                    IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE
+                    IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
                 )
                 self.permission_manager.apply_role_assignment(
                     scope=self._targets.schema_registry_resource_id,
@@ -327,7 +341,7 @@ class WorkManager:
             if self._targets.instance_name:
                 if not self._extension_map:
                     self._extension_map = connected_cluster.get_extensions_by_type(
-                        IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE
+                        IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
                     )
                     # TODO - @digmaun revisit
                     if any(not v for v in self._extension_map.values()):
