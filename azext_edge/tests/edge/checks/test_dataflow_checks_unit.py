@@ -880,6 +880,20 @@ def test_evaluate_dataflow_endpoints(
                             },
                         },
                     },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "success",
+                            "operationId": "operationId",
+                            "logErrors": True,
+                            "output": {
+                                "message": "message",
+                            },
+                        },
+                        "runtimeStatus": {
+                            "level": "ok",
+                            "description": "runtime status",
+                        },
+                    },
                 },
             ],
             # pods
@@ -897,6 +911,22 @@ def test_evaluate_dataflow_endpoints(
             ],
             # evaluations
             [
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        DEFAULT_DATAFLOW_PROFILE,
+                    ),
+                    ("value", {'status.provisioningStatus.status': 'success'}),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        DEFAULT_DATAFLOW_PROFILE,
+                    ),
+                    ("value", {'status.runtimeStatus.level': 'ok'}),
+                ],
                 [
                     ("status", "success"),
                     (
@@ -998,7 +1028,7 @@ def test_evaluate_dataflow_endpoints(
                 ],
             ],
         ),
-        # good profile, warning status
+        # good profile, error status
         (
             # profiles
             [
@@ -1010,7 +1040,20 @@ def test_evaluate_dataflow_endpoints(
                     "spec": {
                         "instanceCount": 1,
                     },
-                    "status": {"configStatusLevel": "warn", "statusDescription": "this should display a warning"},
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "error",
+                            "error": {
+                                "code": "123",
+                                "message": "error message",
+                            },
+                            "failureCause": "failure cause",
+                        },
+                        "runtimeStatus": {
+                            "level": "ok",
+                            "description": "runtime status",
+                        },
+                    },
                 },
             ],
             # pods
@@ -1029,13 +1072,27 @@ def test_evaluate_dataflow_endpoints(
             # evaluations
             [
                 [
-                    ("status", "warning"),
+                    ("status", "error"),
                     (
                         "name",
                         DEFAULT_DATAFLOW_PROFILE,
                     ),
-                    ("value/status/configStatusLevel", "warn"),
-                    ("value/status/statusDescription", "this should display a warning"),
+                    (
+                        "value",
+                        {
+                            "status.provisioningStatus.error": {"code": "123", "message": "error message"},
+                            "status.provisioningStatus.status": "error",
+                        },
+                    ),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "value",
+                        {
+                            "status.runtimeStatus.level": "ok",
+                        },
+                    ),
                 ],
                 [
                     ("status", "success"),
