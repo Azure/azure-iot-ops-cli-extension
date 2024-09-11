@@ -135,16 +135,9 @@ class InitTargets:
     def iot_operations_version(self):
         return IOT_OPERATIONS_VERSION_MONIKER
 
-    def get_extension_versions(self, in_display_format: bool = False) -> dict:
+    def get_extension_versions(self) -> dict:
         # Don't need a deep copy here.
-        version_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
-        if not in_display_format:
-            return version_map
-
-        display_desc = "[dim]"
-        for ver in version_map:
-            display_desc += f"• {ver}: {version_map[ver]}\n"
-        return display_desc[:-1] + ""
+        return M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
 
     def get_ops_enablement_template(
         self,
@@ -324,8 +317,3 @@ class InitTargets:
             }
 
         return instance_kpis
-
-    def get_enablement_kpis(self) -> dict:
-        enablement_kpis = {}
-
-        return enablement_kpis
