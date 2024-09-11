@@ -92,7 +92,7 @@ class DeletionManager:
 
     def _display_resource_tree(self):
         if self._render_progress:
-            print(self.resource_map.build_tree(hide_extensions=True))
+            print(self.resource_map.build_tree(hide_extensions=not self.include_dependencies))
 
     def _render_display(self, description: str):
         if self._render_progress:
