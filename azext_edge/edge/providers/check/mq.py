@@ -36,6 +36,7 @@ from .common import (
     AIO_BROKER_HEALTH_MANAGER,
     AIO_BROKER_OPERATOR,
     BROKER_DIAGNOSTICS_PROPERTIES,
+    CheckResult,
     ResourceOutputDetailLevel,
 )
 
@@ -54,7 +55,6 @@ def check_mq_deployment(
     evaluate_funcs = {
         MqResourceKinds.BROKER: evaluate_brokers,
         MqResourceKinds.BROKER_LISTENER: evaluate_broker_listeners,
-        # TODO: add BROKER_AUTHENTICATION and BROKER_AUTHORIZATION evaluations
         MqResourceKinds.BROKER_AUTHENTICATION: evaluate_broker_authentications,
         MqResourceKinds.BROKER_AUTHORIZATION: evaluate_broker_authorizations,
     }
@@ -220,10 +220,14 @@ def evaluate_broker_listeners(
                     authn_eval_status = CheckTaskStatus.success.value
 
                     if authn not in valid_authns:
-                        authn_display = f"[red]Invalid[/red] authentication reference {{[red]{authn}[/red]}}."
+                        authn_display = (
+                            f"Authentication reference: [red]invalid[/red] reference {{[red]{authn}[/red]}}."
+                        )
                         authn_eval_status = CheckTaskStatus.error.value
                     else:
-                        authn_display = f"[green]Valid[/green] authentication reference {{[green]{authn}[/green]}}."
+                        authn_display = (
+                            f"Authentication reference: [green]valid[/green] reference {{[green]{authn}[/green]}}."
+                        )
 
                     check_manager.add_display(
                         target_name=target_listeners,
@@ -658,6 +662,8 @@ def evaluate_broker_authentications(
         for auth in authentications:
             auth_name = auth["metadata"]["name"]
             auth_metadata = auth["metadata"]
+            # store results for check that will used to display later
+            sub_check_results: List[CheckResult] = []
 
             # check broker reference
             broker_ref = auth_metadata.get("ownerReferences", [])
@@ -702,10 +708,16 @@ def evaluate_broker_authentications(
                 auth_methods_desc = auth_methods_desc.format(f"[red]Detected {len(auth_methods)}[/red].")
                 auth_methods_eval_status = CheckTaskStatus.error.value
 
-            check_manager.add_display(
-                target_name=target_authentications,
-                namespace=namespace,
-                display=Padding(auth_methods_desc, (0, 0, 0, 12)),
+            # check_manager.add_display(
+            #     target_name=target_authentications,
+            #     namespace=namespace,
+            #     display=Padding(auth_methods_desc, (0, 0, 0, 12)),
+            # )
+            sub_check_results.append(
+                CheckResult(
+                    display=Padding(auth_methods_desc, (0, 0, 0, 12)),
+                    eval_status=auth_methods_eval_status,
+                )
             )
 
             check_manager.add_target_eval(
@@ -718,34 +730,46 @@ def evaluate_broker_authentications(
 
             for method in auth_methods:
                 condition = []
-                method_name = method.get("method")
+                method_type = method.get("method")
                 method_eval_status = CheckTaskStatus.success.value
                 method_eval_value = method
-                if method_name == "custom":
+                if method_type == "custom":
                     condition.append("spec.authenticationMethods[*].customSettings")
-                    method = method.get("customSettings")
-                    custom_method_desc = f"- Custom method: [green]{method_name}[/green]."
-                    check_manager.add_display(
-                        target_name=target_authentications,
-                        namespace=namespace,
-                        display=Padding(custom_method_desc, (0, 0, 0, 12)),
+                    setting = method.get("customSettings")
+                    method_display = f"- Custom method: [green]{method_type}[/green]."
+                    # check_manager.add_display(
+                    #     target_name=target_authentications,
+                    #     namespace=namespace,
+                    #     display=Padding(custom_method_desc, (0, 0, 0, 12)),
+                    # )
+                    sub_check_results.append(
+                        CheckResult(
+                            display=Padding(method_display, (0, 0, 0, 14)),
+                            eval_status=method_eval_status,
+                        )
                     )
 
                     # endpoint
-                    endpoint = method.get("endpoint")
+                    endpoint = setting.get("endpoint")
 
                     condition.append("spec.authenticationMethods[*].customSettings.endpoint")
 
                     if not endpoint:
-                        endpoint_display = "- Endpoint [red]not found[/red]."
+                        endpoint_display = "Endpoint [red]not found[/red]."
                         method_eval_status = CheckTaskStatus.error.value
                     else:
-                        endpoint_display = f"- Endpoint: [green]{endpoint}[/green]."
+                        endpoint_display = f"Endpoint: [green]{endpoint}[/green]."
 
-                    check_manager.add_display(
-                        target_name=target_authentications,
-                        namespace=namespace,
-                        display=Padding(endpoint_display, (0, 0, 0, 12)),
+                    # check_manager.add_display(
+                    #     target_name=target_authentications,
+                    #     namespace=namespace,
+                    #     display=Padding(endpoint_display, (0, 0, 0, 12)),
+                    # )
+                    sub_check_results.append(
+                        CheckResult(
+                            display=Padding(endpoint_display, (0, 0, 0, 18)),
+                            eval_status=method_eval_status,
+                        )
                     )
 
                     # auth
@@ -762,20 +786,51 @@ def evaluate_broker_authentications(
 
                         # get kube secrets
                         secret: dict = get_secret_for_all_namespaces(secret_ref)
+                        secret_ref_display = "X.509 Client Certificate Secret reference: {}."
 
                         if not secret:
-                            secret_ref_display = f"- [red]Invalid[/red] Secret reference [red]{secret_ref}[/red]."
+                            secret_ref_display = secret_ref_display.format(
+                                f"[red]Invalid[/red] Secret reference [red]{secret_ref}[/red]."
+                            )
                             secret_ref_status = CheckTaskStatus.error.value
                         else:
-                            secret_ref_display = (
-                                f"- [green]Valid[/green] Secret reference [green]{secret_ref}[/green]."
+                            secret_ref_display = secret_ref_display.format(
+                                f"[green]Valid[/green] Secret reference [green]{secret_ref}[/green]."
                             )
 
-                        check_manager.add_display(
-                            target_name=target_authentications,
-                            namespace=namespace,
-                            display=Padding(secret_ref_display, (0, 0, 0, 12)),
+                        # check_manager.add_display(
+                        #     target_name=target_authentications,
+                        #     namespace=namespace,
+                        #     display=Padding(secret_ref_display, (0, 0, 0, 12)),
+                        # )
+                        sub_check_results.append(
+                            CheckResult(
+                                display=Padding(secret_ref_display, (0, 0, 0, 18)),
+                                eval_status=secret_ref_status,
+                            )
                         )
+
+                    for prop_name, prop_value in {
+                        "CA certificate Config Map": method.get("caCertConfigMap"),
+                        "HTTP Headers": method.get("headers", {}).get("additionalProperties"),
+                    }.items():
+                        if prop_value:
+                            # check_manager.add_display(
+                            #     target_name=target_authentications,
+                            #     namespace=namespace,
+                            #     display=Padding(
+                            #         f"{prop_name}: [bright_blue]{prop_value}[/bright_blue]",
+                            #         (0, 0, 0, 12),
+                            #     ),
+                            # )
+                            sub_check_results.append(
+                                CheckResult(
+                                    display=Padding(
+                                        f"{prop_name}: [bright_blue]{prop_value}[/bright_blue]", (0, 0, 0, 18)
+                                    ),
+                                    eval_status=None,
+                                ),
+                            )
 
                         check_manager.add_target_conditions(
                             target_name=target_authentications,
@@ -792,59 +847,146 @@ def evaluate_broker_authentications(
                         )
 
                         # display rest of the properties
-                elif method_name == "x509":
+                elif method_type == "x509":
                     condition.append("spec.authenticationMethods[*].x509Settings")
-                    method = method.get("x509Settings")
-                    x509_method_desc = f"- x509 method: [green]{method_name}[/green]."
-                    check_manager.add_display(
-                        target_name=target_authentications,
-                        namespace=namespace,
-                        display=Padding(x509_method_desc, (0, 0, 0, 12)),
+                    setting = method.get("x509Settings")
+                    method_display = f"- x509 method: [green]{method_type}[/green]."
+
+                    sub_check_results.append(
+                        CheckResult(
+                            display=Padding(method_display, (0, 0, 0, 14)),
+                            eval_status=method_eval_status,
+                        )
                     )
 
-                    process_dict_resource(
-                        check_manager=check_manager,
-                        target_name=target_authentications,
-                        resource=method,
-                        namespace=namespace,
-                        padding=12,
-                    )
-                elif method_name == "ServiceAccountToken":
+                    # authorizationAttributes
+                    auth_attrs = setting.get("authorizationAttributes", {}).get("additionalProperties")
+
+                    if auth_attrs:
+                        condition.append("spec.authenticationMethods[*].x509Settings.authorizationAttributes")
+                        attributes_additional_properties = setting.get("authorizationAttributes", {}).get(
+                            "additionalProperties", {}
+                        )
+
+                        # attributes
+                        attributes = attributes_additional_properties.get("attributes")
+                        if not attributes:
+                            attributes_display = "Authorization Attributes [red]not found[/red]."
+                            method_eval_status = CheckTaskStatus.error.value
+                        else:
+                            attributes_display = f"Authorization Attributes: [green]{attributes}[/green]."
+                        sub_check_results.append(
+                            CheckResult(
+                                display=Padding(attributes_display, (0, 0, 0, 18)),
+                                eval_status=CheckTaskStatus.success.value,
+                            )
+                        )
+
+                        # subject
+                        subject = attributes_additional_properties.get("subject")
+
+                        if not subject:
+                            subject_display = "Subject [red]not found[/red]."
+                            method_eval_status = CheckTaskStatus.error.value
+                        else:
+                            subject_display = f"Subject: [green]{subject}[/green]."
+                        sub_check_results.append(
+                            CheckResult(
+                                display=Padding(subject_display, (0, 0, 0, 18)),
+                                eval_status=CheckTaskStatus.success.value,
+                            )
+                        )
+
+                    # trustedClientCaCert
+                    trusted_client_ca_cert = setting.get("trustedClientCaCert")
+
+                    if trusted_client_ca_cert:
+                        sub_check_results.append(
+                            CheckResult(
+                                display=Padding(
+                                    f"Trusted Client CA Cert: {{[cyan]{trusted_client_ca_cert}[/cyan]}}", (0, 0, 0, 18)
+                                ),
+                                eval_status=None,
+                            )
+                        )
+                    # check_manager.add_display(
+                    #     target_name=target_authentications,
+                    #     namespace=namespace,
+                    #     display=Padding(x509_method_desc, (0, 0, 0, 12)),
+                    # )
+
+                    # TODO: for rest of the properties display at the end
+                    # process_dict_resource(
+                    #     check_manager=check_manager,
+                    #     target_name=target_authentications,
+                    #     resource=method,
+                    #     namespace=namespace,
+                    #     padding=12,
+                    # )
+                elif method_type == "ServiceAccountToken":
                     condition.append("spec.authenticationMethods[*].serviceAccountTokenSettings")
-                    method = method.get("serviceAccountTokenSettings")
-                    service_account_method_desc = f"Service Account Token Method: [green]{method_name}[/green]."
-                    check_manager.add_display(
-                        target_name=target_authentications,
-                        namespace=namespace,
-                        display=Padding(service_account_method_desc, (0, 0, 0, 12)),
+                    setting = method.get("serviceAccountTokenSettings")
+                    method_display = f"Service Account Token Method: [green]{method_type}[/green]."
+                    sub_check_results.append(
+                        CheckResult(
+                            display=Padding(method_display, (0, 0, 0, 14)),
+                            eval_status=method_eval_status,
+                        )
                     )
+
+                    # check_manager.add_display(
+                    #     target_name=target_authentications,
+                    #     namespace=namespace,
+                    #     display=Padding(service_account_method_desc, (0, 0, 0, 12)),
+                    # )
 
                     # audiences
-                    audiences = method.get("audiences")
+                    audiences = setting.get("audiences")
                     condition.append("spec.authenticationMethods[*].serviceAccountTokenSettings.audiences")
 
                     if not audiences:
-                        audiences_display = "- Audiences [red]not found[/red]."
+                        audiences_display = "Audiences [red]not found[/red]."
                         method_eval_status = CheckTaskStatus.error.value
                     else:
-                        audiences_display = f"- Audiences: [green]{audiences}[/green]."
+                        audiences_display = f"Audiences: [green]{str(audiences)}[/green]."
 
-                    check_manager.add_display(
-                        target_name=target_authentications,
-                        namespace=namespace,
-                        display=Padding(audiences_display, (0, 0, 0, 16)),
-                    )
+                    # check_manager.add_display(
+                    #     target_name=target_authentications,
+                    #     namespace=namespace,
+                    #     display=Padding(audiences_display, (0, 0, 0, 16)),
+                    # )
+                    if detail_level != ResourceOutputDetailLevel.summary.value:
+                        sub_check_results.append(
+                            CheckResult(
+                                display=Padding(audiences_display, (0, 0, 0, 16)),
+                                eval_status=CheckTaskStatus.success.value,
+                            )
+                        )
                 else:
                     method_display = (
-                        f"- Unknown method: [red]{method_name}[/red]."
-                        if method_name
+                        f"- Unknown method type: [red]{method_type}[/red]."
+                        if method_type
                         else "- Method [red]not found[/red]."
                     )
-                    check_manager.add_display(
-                        target_name=target_authentications,
-                        namespace=namespace,
-                        display=Padding(method_display, (0, 0, 0, 12)),
+                    method_eval_status = CheckTaskStatus.error.value
+                    # check_manager.add_display(
+                    #     target_name=target_authentications,
+                    #     namespace=namespace,
+                    #     display=Padding(method_display, (0, 0, 0, 12)),
+                    # )
+                    sub_check_results.append(
+                        CheckResult(
+                            display=Padding(method_display, (0, 0, 0, 14)),
+                            eval_status=method_eval_status,
+                        )
                     )
+
+                # sub_check_results.append(
+                #     CheckResult(
+                #         display=Padding(method_display, (0, 0, 0, 12)),
+                #         eval_status=method_eval_status,
+                #     )
+                # )
 
                 check_manager.add_target_conditions(
                     target_name=target_authentications,
@@ -858,6 +1000,21 @@ def evaluate_broker_authentications(
                     value=method_eval_value,
                     resource_name=auth_name,
                 )
+
+            for result in sub_check_results:
+                if (
+                    (
+                        detail_level == ResourceOutputDetailLevel.summary.value
+                        and result.eval_status != CheckTaskStatus.success.value
+                    )
+                    or (detail_level == ResourceOutputDetailLevel.detail.value and result.eval_status != None)
+                    or (detail_level == ResourceOutputDetailLevel.verbose)
+                ):
+                    check_manager.add_display(
+                        target_name=target_authentications,
+                        namespace=namespace,
+                        display=result.display,
+                    )
 
     return check_manager.as_dict(as_list)
 
@@ -902,7 +1059,6 @@ def evaluate_broker_authorizations(
         check_manager.add_target(
             target_name=target_authorizations,
             namespace=namespace,
-            conditions=authz_conditions,
         )
         check_manager.add_display(
             target_name=target_authorizations,
@@ -915,6 +1071,7 @@ def evaluate_broker_authorizations(
         for authz in authorizations:
             authz_name = authz["metadata"]["name"]
             authz_metadata = authz["metadata"]
+            sub_evaluation_results: List[CheckResult] = []
 
             # check broker reference
             broker_ref = authz_metadata.get("ownerReferences", [])
@@ -951,18 +1108,22 @@ def evaluate_broker_authorizations(
             # check authorization policies
             authz_policies = authz_spec.get("authorizationPolicies", {})
             authz_policies_eval_status = CheckTaskStatus.success.value
-            condition
 
             if authz_policies:
-                authz_policies_desc = f"Authorization Policies [green]detected[/green]."
+                authz_policies_desc = "Authorization Policies [green]detected[/green]."
             else:
-                authz_policies_desc = f"Authorization Policies [red]not detected[/red]."
+                authz_policies_desc = "Authorization Policies [red]not detected[/red]."
                 authz_policies_eval_status = CheckTaskStatus.error.value
 
-            check_manager.add_display(
-                target_name=target_authorizations,
-                namespace=namespace,
-                display=Padding(authz_policies_desc, (0, 0, 0, 12)),
+            # check_manager.add_display(
+            #     target_name=target_authorizations,
+            #     namespace=namespace,
+            #     display=Padding(authz_policies_desc, (0, 0, 0, 12)),
+            # )
+            sub_evaluation_results.append(
+                CheckResult(
+                    display=Padding(authz_policies_desc, (0, 0, 0, 12)), eval_status=authz_policies_eval_status
+                )
             )
 
             check_manager.add_target_eval(
@@ -992,6 +1153,61 @@ def evaluate_broker_authorizations(
 
                 for resource in broker_resources:
                     method = resource.get("method")
+                    authz_conditions.append("spec.authorizationPolicies[*].brokerResources[*].method")
+
+                    if not method:
+                        authz_policies_eval_status = CheckTaskStatus.error.value
+                        method_display = "- Method [red]not found[/red]."
+                    else:
+                        method_display = f"- Method: [green]{method}[/green]."
+
+                    # check_manager.add_display(
+                    #     target_name=target_authorizations,
+                    #     namespace=namespace,
+                    #     display=Padding(method_display, (0, 0, 0, 12)),
+                    # )
+                    sub_evaluation_results.append(
+                        CheckResult(
+                            display=Padding(method_display, (0, 0, 0, 12)), eval_status=authz_policies_eval_status
+                        )
+                    )
+
+                    # TODO: display the rest of the properties
+
+                if detail_level == ResourceOutputDetailLevel.verbose.value:
+                    principals = rule.get("principals", {})
+                    process_dict_resource(
+                        check_manager=check_manager,
+                        target_name=target_authorizations,
+                        resource=principals,
+                        namespace=namespace,
+                        padding=12,
+                    )
+
+            for result in sub_evaluation_results:
+                if detail_level > ResourceOutputDetailLevel.summary.value or (
+                    detail_level == ResourceOutputDetailLevel.summary.value
+                    and result.eval_status != CheckTaskStatus.success.value
+                ):
+                    check_manager.add_display(
+                        target_name=target_authorizations,
+                        namespace=namespace,
+                        display=result.display,
+                    )
+
+            check_manager.set_target_conditions(
+                target_name=target_authorizations,
+                namespace=namespace,
+                conditions=authz_conditions,
+            )
+
+            check_manager.add_target_eval(
+                target_name=target_authorizations,
+                namespace=namespace,
+                status=authz_policies_eval_status,
+                value={"spec.authorizationPolicies": authz_policies},
+                resource_name=authz_name,
+            )
 
     return check_manager.as_dict(as_list)
 
@@ -1003,11 +1219,11 @@ def _evaluate_broker_reference(
     namespace: str,
     resource_name: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
-) -> None:
+) -> str:
     broker_reference = [ref for ref in owner_reference if ref.get("kind").lower() == MqResourceKinds.BROKER.value]
     if not broker_reference:
         # skip this check
-        return
+        return ""
 
     # should only have one broker reference
     broker_reference_name = broker_reference[0].get("name")
