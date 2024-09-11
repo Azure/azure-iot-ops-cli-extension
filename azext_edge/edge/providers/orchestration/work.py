@@ -216,7 +216,7 @@ class WorkManager:
     ):
         self._bootstrap_ux(show_progress=show_progress)
         self._work_id = uuid4().hex
-        self._work_format_str = f"aziotops.init.{{op}}.{self._work_id}"
+        self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
         self._apply_foundation = apply_foundation
         self._pre_flight = pre_flight
 
