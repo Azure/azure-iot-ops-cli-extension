@@ -33,6 +33,6 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,
-        prefixes=["esa", "csi", "config-operator", "edgevolume", "w-adr-schema-registry", "wyvern"],
+        prefixes=["esa-otel", "csi-wyvern", "config-operator", "edgevolume", "w-adr-schema-registry", "wyvern"],
         bundle_path=bundle_path,
     )
