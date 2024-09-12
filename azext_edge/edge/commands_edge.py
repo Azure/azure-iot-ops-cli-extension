@@ -154,7 +154,6 @@ def create_instance(
     disable_rsync_rules: Optional[bool] = None,
     instance_description: Optional[str] = None,
     dataflow_profile_instances: int = 1,
-    mi_user_assigned_identities: Optional[List[str]] = None,
     # Broker
     custom_broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
@@ -203,7 +202,6 @@ def create_instance(
         instance_description=instance_description,
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
-        mi_user_assigned_identities=mi_user_assigned_identities,
         # Broker
         custom_broker_config=custom_broker_config,
         broker_memory_profile=broker_memory_profile,
