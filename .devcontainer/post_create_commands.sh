@@ -7,8 +7,7 @@ done
 
 # create local k3s cluster
 echo "Creating k3d cluster"
-export K3D_FIX_MOUNTS=1
-k3d cluster create -i ghcr.io/jlian/k3d-nfs:v1.25.3-k3s1 \
+k3d cluster create \
 -p '1883:1883@loadbalancer' \
 -p '8883:8883@loadbalancer' \
 -p '6001:6001@loadbalancer' \

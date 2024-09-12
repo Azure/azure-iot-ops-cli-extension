@@ -1139,6 +1139,7 @@ def test_create_bundle_schemas(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
+    mocked_list_persistent_volume_claims,
     mocked_root_logger,
     mocked_get_config_map,
 ):
@@ -1178,4 +1179,10 @@ def test_create_bundle_schemas(
         mocked_zipfile,
         label_selector=SCHEMAS_NAME_LABEL,
         directory_path=SCHEMAS_DIRECTORY_PATH,
+    )
+    assert_list_persistent_volume_claims(
+        mocked_client,
+        mocked_zipfile,
+        directory_path=SCHEMAS_DIRECTORY_PATH,
+        label_selector=SCHEMAS_NAME_LABEL,
     )
