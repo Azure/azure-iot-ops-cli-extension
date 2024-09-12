@@ -88,40 +88,40 @@ def test_init_scenario(
     additional_create_args = init_test_setup["additionalCreateArgs"] or ""
     create_arg_dict = _process_additional_args(additional_create_args)
 
-    # if "ca_dir" in arg_dict:
-    #     try:
-    #         mkdir(arg_dict["ca_dir"])
-    #         tracked_files.append(arg_dict["ca_dir"])
-    #     except FileExistsError:
-    #         pass
-    # elif all(["ca_key_file" not in arg_dict, "ca_file" not in arg_dict]):
-    #     tracked_files.append("aio-test-ca.crt")
-    #     tracked_files.append("aio-test-private.key")
-
     cluster_name = init_test_setup["clusterName"]
     resource_group = init_test_setup["resourceGroup"]
     registry_id = init_test_setup["schemaRegistryId"]
     instance_name = init_test_setup["instanceName"]
-    # key_vault = init_test_setup["keyVault"]
-    # sp_app_id = init_test_setup["servicePrincipalAppId"]
-    # sp_object_id = init_test_setup["servicePrincipalObjectId"]
-    # sp_secret = init_test_setup["servicePrincipalSecret"]
-
     command = f"az iot ops init -g {resource_group} --cluster {cluster_name} "\
         f"--sr-resource-id {registry_id} --no-progress {init_arg_dict} "
-    #     f"--kv-id {key_vault} --no-progress {additional_args} "
-    # if sp_app_id:
-    #     command += f"--sp-app-id {sp_app_id} "
-    # if sp_object_id:
-    #     command += f"--sp-object-id {sp_object_id} "
-    # if sp_secret:
-    #     command += f"--sp-secret {sp_secret} "
 
-    result = run(command)
-    # TODO: add in commands to make sure init succeeded
+    # TODO: assert return once there is a return for init
+    run(command)
+
+    cluster_id = run(
+        f"az resource show -n {cluster_name} -g {resource_group} "
+        "--resource-type Microsoft.Kubernetes/connectedClusters"
+    )["id"]
+    extensions = run(
+        f"az rest --method GET --url {cluster_id}/providers/"
+        "Microsoft.KubernetesConfiguration/extensions?api-version=2023-05-01"
+    )
+    aio_extensions = []
+    for ext in extensions:
+        if ext["extensionType"] in (
+            "microsoft.iotoperations", "microsoft.iotoperations.platform"
+        ):
+            aio_extensions.append(ext["name"])
+
+    if len(aio_extensions) < 2:
+        raise AssertionError(
+            "Extensions for AIO are missing. These are the extensions "
+            f"on the cluster: {[ext['name'] for ext in extensions]}."
+        )
 
     create_command = f"az iot ops create -g {resource_group} --cluster {cluster_name} "\
         f"-n {instance_name} --no-progress {create_arg_dict} "
+    create_result = run(create_command)
 
     try:
         assert_init_result(
