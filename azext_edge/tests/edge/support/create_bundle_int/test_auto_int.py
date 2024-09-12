@@ -77,9 +77,9 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             ]
             walk_result[path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.mq.value)]["folders"] = []
 
-    # remove esa resources from walk_result from aio namespace assertion
-    if namespace.esa:
-        walk_result.pop(path.join(BASE_ZIP_PATH, namespace.esa, OpsServiceType.arccontainerstorage.value), {})
+    # remove acs resources from walk_result from aio namespace assertion
+    if namespace.acs:
+        walk_result.pop(path.join(BASE_ZIP_PATH, namespace.acs, "arccontainerstorage"), {})
 
     # Level 2 and 3 - bottom
     is_billing_included = OpsServiceType.billing.value in expected_services
@@ -131,7 +131,7 @@ def _get_expected_services(
 
     # arccotainerstorage folder will not be created under aio namespace
     if (
-        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.arccontainerstorage.value))
+        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, "arccontainerstorage"))
         and OpsServiceType.arccontainerstorage.value in expected_services
     ):
         expected_services.remove(OpsServiceType.arccontainerstorage.value)

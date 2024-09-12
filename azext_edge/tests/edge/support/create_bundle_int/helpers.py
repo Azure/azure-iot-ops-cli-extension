@@ -41,7 +41,7 @@ WORKLOAD_TYPES = [
 class NamespaceTuple(NamedTuple):
     arc: str
     aio: str
-    esa: str
+    acs: str
     usage_system: str
 
 
@@ -238,7 +238,7 @@ def get_file_map(
     mq_traces: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    arc_namespace, aio_namespace, esa_namespace, c_namespace = process_top_levels(walk_result, ops_service)
+    arc_namespace, aio_namespace, asc_namespace, c_namespace = process_top_levels(walk_result, ops_service)
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -268,11 +268,11 @@ def get_file_map(
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
-    elif ops_service == "esa":
+    elif ops_service == "asc":
         assert len(walk_result) == 1 + expected_default_walk_result
-        esa_path = path.join(BASE_ZIP_PATH, esa_namespace, "esa")
-        file_map["esa"] = convert_file_names(walk_result[esa_path]["files"])
-        file_map["__namespaces__"]["esa"] = esa_namespace
+        asc_path = path.join(BASE_ZIP_PATH, asc_namespace, "asc")
+        file_map["asc"] = convert_file_names(walk_result[asc_path]["files"])
+        file_map["__namespaces__"]["asc"] = asc_namespace
 
         # no files for aio, skip the rest assertions
         return file_map
@@ -304,7 +304,7 @@ def process_top_levels(
     namespace = None
     clusterconfig_namespace = None
     arc_namespace = None
-    esa_namespace = None
+    acs_namespace = None
 
     def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
@@ -321,8 +321,8 @@ def process_top_levels(
             name=name, folder=path.join("arcagents", ARC_AGENTS[0][0]), file_prefix="pod"
         ):
             arc_namespace = name
-        elif _get_namespace_determinating_files(name=name, folder=path.join("esa"), file_prefix="pvc"):
-            esa_namespace = name
+        elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
+            acs_namespace = name
         else:
             namespace = name
 
@@ -344,22 +344,22 @@ def process_top_levels(
         assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS]
         assert not level_2["files"]
 
-    if esa_namespace:
-        # remove empty esa related folders
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, esa_namespace))
-        assert level_1["folders"] == ["esa"]
+    if acs_namespace:
+        # remove empty acs related folders
+        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acs_namespace))
+        assert level_1["folders"] == ["arccontainerstorage"]
         assert not level_1["files"]
 
     logger.debug("Determined the following namespaces:")
     logger.debug(f"AIO namespace: {namespace}")
     logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
     logger.debug(f"ARC namespace: {arc_namespace}")
-    logger.debug(f"ESA namespace: {esa_namespace}")
+    logger.debug(f"ACS namespace: {acs_namespace}")
 
     return NamespaceTuple(
         arc=arc_namespace,
         aio=namespace,
-        esa=esa_namespace,
+        acs=acs_namespace,
         usage_system=clusterconfig_namespace,
     )
 
