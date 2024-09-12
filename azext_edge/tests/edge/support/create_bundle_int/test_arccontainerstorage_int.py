@@ -23,7 +23,7 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
     ops_service = OpsServiceType.arccontainerstorage.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
-    file_map = get_file_map(walk_result, ops_service)["asc"]
+    file_map = get_file_map(walk_result, ops_service)["acs"]
 
     check_custom_resource_files(file_objs=file_map, resource_api=ARCCONTAINERSTORAGE_API_V1)
 
