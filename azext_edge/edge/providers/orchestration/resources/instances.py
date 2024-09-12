@@ -111,9 +111,13 @@ class Instances(Queryable):
 
         del identity["userAssignedIdentities"][mi_user_assigned]
 
+        # Check if we deleted them all.
+        if not identity["userAssignedIdentities"]:
+            identity["type"] = "None"
+
         instance["identity"] = identity
         updated_instance = self.update(name=name, resource_group_name=resource_group_name, instance=instance)
-        # self.unfederate_msi(mi_resource_id_container)
+        self.unfederate_msi(mi_resource_id_container)
         return updated_instance
 
     def add_mi_user_assigned(self, name: str, resource_group_name: str, mi_user_assigned: str):
@@ -130,10 +134,10 @@ class Instances(Queryable):
                 f"The cluster '{cluster_resource['name']}' is not enabled as an oidc issuer.\n"
                 "Please enable via 'az connectedk8s connect --enable-oidc-issuer'."
             )
-        # self.federate_msi(mi_resource_id_container, cluster_resource["properties"]["oidcIssuerProfile"])
+        self.federate_msi(mi_resource_id_container, cluster_resource["properties"]["oidcIssuerProfile"]["issuerUrl"])
 
-        identity = instance.get("identity", {})
-        if not identity:
+        identity: dict = instance.get("identity", {})
+        if not identity or identity.get("type") == "None":
             identity["type"] = "UserAssigned"
             identity["userAssignedIdentities"] = {}
         identity["userAssignedIdentities"][mi_user_assigned] = {}
@@ -155,7 +159,7 @@ class Instances(Queryable):
             parameters={
                 "properties": {
                     "subject": f"system:serviceaccount:{namespace}:{service_account_name}",
-                    "audience": ["api://AzureADTokenExchange"],
+                    "audiences": ["api://AzureADTokenExchange"],
                     "issuer": oidc_issuer,
                 }
             },
