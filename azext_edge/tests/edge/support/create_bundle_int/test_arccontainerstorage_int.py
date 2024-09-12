@@ -36,6 +36,7 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
         prefixes=[
             "esa-otel-collector",
             "csi-wyvern-controller",
+            "csi-wyvern-node",
             "config-operator",
             "edgevolume-mounthelper",
             "w-adr-schema-registry",
