@@ -238,7 +238,7 @@ def get_file_map(
     mq_traces: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    arc_namespace, aio_namespace, asc_namespace, c_namespace = process_top_levels(walk_result, ops_service)
+    arc_namespace, aio_namespace, acs_namespace, c_namespace = process_top_levels(walk_result, ops_service)
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -268,11 +268,11 @@ def get_file_map(
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
-    elif ops_service == "asc":
+    elif ops_service == "acs":
         assert len(walk_result) == 1 + expected_default_walk_result
-        asc_path = path.join(BASE_ZIP_PATH, asc_namespace, "asc")
-        file_map["asc"] = convert_file_names(walk_result[asc_path]["files"])
-        file_map["__namespaces__"]["asc"] = asc_namespace
+        acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "acs")
+        file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
+        file_map["__namespaces__"]["acs"] = acs_namespace
 
         # no files for aio, skip the rest assertions
         return file_map
