@@ -273,7 +273,6 @@ class WorkManager:
                 self.complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
-                    active_step=WorkStepKey.WHAT_IF_ENABLEMENT,
                 )
 
             # Enable IoT Ops workflow

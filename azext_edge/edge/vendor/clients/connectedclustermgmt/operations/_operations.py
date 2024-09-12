@@ -44,14 +44,14 @@ _SERIALIZER = Serializer()
 _SERIALIZER.client_side_validation = False
 
 
-def build_connected_cluster_create_request(
+def build_connected_cluster_create_or_update_request(
     resource_group_name: str, cluster_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-01-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -84,7 +84,7 @@ def build_connected_cluster_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-01-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -116,7 +116,7 @@ def build_connected_cluster_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-01-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -146,7 +146,7 @@ def build_connected_cluster_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-01-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -177,7 +177,7 @@ def build_connected_cluster_list_cluster_user_credential_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-01-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -209,7 +209,7 @@ def build_connected_cluster_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-01-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -236,7 +236,7 @@ def build_connected_cluster_list_by_subscription_request(subscription_id: str, *
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-01-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -260,7 +260,7 @@ def build_operations_get_request(**kwargs: Any) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-01-01"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-15-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -292,7 +292,7 @@ class ConnectedClusterOperations:
         self._serialize = input_args.pop(0) if input_args else kwargs.pop("serializer")
         self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
 
-    def _create_initial(
+    def _create_or_update_initial(
         self, resource_group_name: str, cluster_name: str, connected_cluster: Union[JSON, IO], **kwargs: Any
     ) -> JSON:
         error_map = {
@@ -317,7 +317,7 @@ class ConnectedClusterOperations:
         else:
             _json = connected_cluster
 
-        request = build_connected_cluster_create_request(
+        request = build_connected_cluster_create_or_update_request(
             resource_group_name=resource_group_name,
             cluster_name=cluster_name,
             subscription_id=self._config.subscription_id,
@@ -359,7 +359,7 @@ class ConnectedClusterOperations:
         return cast(JSON, deserialized)  # type: ignore
 
     @overload
-    def begin_create(
+    def begin_create_or_update(
         self,
         resource_group_name: str,
         cluster_name: str,
@@ -435,9 +435,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -448,6 +493,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -461,14 +512,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -540,9 +607,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -553,6 +665,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -566,14 +684,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -609,7 +743,7 @@ class ConnectedClusterOperations:
         """
 
     @overload
-    def begin_create(
+    def begin_create_or_update(
         self,
         resource_group_name: str,
         cluster_name: str,
@@ -685,9 +819,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -698,6 +877,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -711,14 +896,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -754,7 +955,7 @@ class ConnectedClusterOperations:
         """
 
     @distributed_trace
-    def begin_create(
+    def begin_create_or_update(
         self, resource_group_name: str, cluster_name: str, connected_cluster: Union[JSON, IO], **kwargs: Any
     ) -> LROPoller[JSON]:
         """Register a new Kubernetes cluster with Azure Resource Manager.
@@ -825,9 +1026,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -838,6 +1084,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -851,14 +1103,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -930,9 +1198,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -943,6 +1256,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -956,14 +1275,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -1006,7 +1341,7 @@ class ConnectedClusterOperations:
         lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
         cont_token: Optional[str] = kwargs.pop("continuation_token", None)
         if cont_token is None:
-            raw_result = self._create_initial(
+            raw_result = self._create_or_update_initial(
                 resource_group_name=resource_group_name,
                 cluster_name=cluster_name,
                 connected_cluster=connected_cluster,
@@ -1130,9 +1465,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -1143,6 +1523,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -1156,14 +1542,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -1267,9 +1669,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -1280,6 +1727,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -1293,14 +1746,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -1415,9 +1884,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -1428,6 +1942,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -1441,14 +1961,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -1595,9 +2131,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -1608,6 +2189,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -1621,14 +2208,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -1854,6 +2457,8 @@ class ConnectedClusterOperations:
                           expired.
                         "hybridConnectionName": "str",  # Optional. Name of the connection.
                         "relay": "str",  # Optional. Name of the relay.
+                        "relayTid": "str",  # Optional. TenantID of the relay.
+                        "relayType": "str",  # Optional. Type of relay.
                         "token": "str"  # Optional. Sender access token.
                     },
                     "kubeconfigs": [
@@ -1905,6 +2510,8 @@ class ConnectedClusterOperations:
                           expired.
                         "hybridConnectionName": "str",  # Optional. Name of the connection.
                         "relay": "str",  # Optional. Name of the relay.
+                        "relayTid": "str",  # Optional. TenantID of the relay.
+                        "relayType": "str",  # Optional. Type of relay.
                         "token": "str"  # Optional. Sender access token.
                     },
                     "kubeconfigs": [
@@ -1959,6 +2566,8 @@ class ConnectedClusterOperations:
                           expired.
                         "hybridConnectionName": "str",  # Optional. Name of the connection.
                         "relay": "str",  # Optional. Name of the relay.
+                        "relayTid": "str",  # Optional. TenantID of the relay.
+                        "relayType": "str",  # Optional. Type of relay.
                         "token": "str"  # Optional. Sender access token.
                     },
                     "kubeconfigs": [
@@ -2028,7 +2637,7 @@ class ConnectedClusterOperations:
 
     @distributed_trace
     def list_by_resource_group(self, resource_group_name: str, **kwargs: Any) -> Iterable[JSON]:
-        """Lists all connected clusters.
+        """Lists all connected clusters in the given ResourceGroup.
 
         API to enumerate registered connected K8s clusters under a Resource Group.
 
@@ -2080,9 +2689,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -2093,6 +2747,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -2106,14 +2766,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -2215,7 +2891,7 @@ class ConnectedClusterOperations:
 
     @distributed_trace
     def list_by_subscription(self, **kwargs: Any) -> Iterable[JSON]:
-        """Lists all connected clusters.
+        """Lists all connected clusters in the given Subscription.
 
         API to enumerate registered connected K8s clusters under a Subscription.
 
@@ -2264,9 +2940,54 @@ class ConnectedClusterOperations:
                               "Enabled". Indicates whether the Arc agents on the be upgraded
                               automatically to the latest version. Defaults to Enabled. Known values
                               are: "Enabled" and "Disabled".
-                            "desiredAgentVersion": "str"  # Optional. Version of the Arc
+                            "agentErrors": [
+                                {
+                                    "component": "str",  # Optional. Agent
+                                      component where error message occured.
+                                    "message": "str",  # Optional. Agent error
+                                      message.
+                                    "severity": "str",  # Optional. Severity of
+                                      the error message.
+                                    "time": "2020-02-20 00:00:00"  # Optional.
+                                      The timestamp of error occured (UTC).
+                                }
+                            ],
+                            "agentState": "str",  # Optional. Represents the current
+                              state of the Arc agentry and its dependent components.
+                            "desiredAgentVersion": "str",  # Optional. Version of the Arc
                               agents to be installed on the cluster resource.
+                            "systemComponents": [
+                                {
+                                    "currentVersion": "str",  # Optional. Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "majorVersion": 0,  # Optional. Major Version
+                                      of the system extension that is currently installed on the
+                                      cluster resource.
+                                    "type": "str",  # Optional. Type of the
+                                      system extension.
+                                    "userSpecifiedVersion": "str"  # Optional.
+                                      Version of the system extension to be installed on the cluster
+                                      resource.
+                                }
+                            ]
                         },
+                        "arcAgentryConfigurations": [
+                            {
+                                "feature": "str",  # Optional. Specifies the name of
+                                  the feature for the configuration setting.
+                                "protectedSettings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that contain any sensitive or secret
+                                      information.
+                                },
+                                "settings": {
+                                    "str": "str"  # Optional. The configuration
+                                      settings for the feature that do not contain any sensitive or
+                                      secret information.
+                                }
+                            }
+                        ],
                         "azureHybridBenefit": "str",  # Optional. Indicates whether Azure
                           Hybrid Benefit is opted in. Known values are: "True", "False", and
                           "NotApplicable".
@@ -2277,6 +2998,12 @@ class ConnectedClusterOperations:
                           running on this connected cluster.
                         "distributionVersion": "str",  # Optional. The Kubernetes
                           distribution version on this connected cluster.
+                        "gateway": {
+                            "enabled": bool,  # Optional. Indicates whether the gateway
+                              for arc router connectivity is enabled.
+                            "resourceId": "str"  # Optional. The resource ID of the
+                              gateway used for the Arc router feature.
+                        },
                         "infrastructure": "str",  # Optional. The infrastructure on which the
                           Kubernetes cluster represented by this connected cluster is running on.
                         "kubernetesVersion": "str",  # Optional. The Kubernetes version of
@@ -2290,14 +3017,30 @@ class ConnectedClusterOperations:
                               Connected Cluster.
                         },
                         "offering": "str",  # Optional. Connected cluster offering.
-                        "privateLinkScopeResourceId": "str",  # Optional. The resource id of
-                          the private link scope this connected cluster is assigned to, if any.
+                        "oidcIssuerProfile": {
+                            "enabled": bool,  # Optional. Whether to enable oidc issuer
+                              for workload identity integration.
+                            "issuerUrl": "str",  # Optional. The issuer url for hybrid
+                              clusters connected to Arc used for the workload identity feature.
+                            "selfHostedIssuerUrl": "str"  # Optional. The issuer url for
+                              public cloud clusters - AKS, EKS, GKE - used for the workload identity
+                              feature.
+                        },
+                        "privateLinkScopeResourceId": "str",  # Optional. This is populated
+                          only if privateLinkState is enabled. The resource id of the private link
+                          scope this connected cluster is assigned to, if any.
                         "privateLinkState": "Disabled",  # Optional. Default value is
                           "Disabled". Property which describes the state of private link on a connected
                           cluster resource. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. Provisioning state of the
                           connected cluster resource. Known values are: "Succeeded", "Failed",
                           "Canceled", "Provisioning", "Updating", "Deleting", and "Accepted".
+                        "securityProfile": {
+                            "workloadIdentity": {
+                                "enabled": bool  # Optional. Whether to enable or
+                                  disable the workload identity Webhook.
+                            }
+                        },
                         "totalCoreCount": 0,  # Optional. Number of CPU cores present in the
                           connected cluster resource.
                         "totalNodeCount": 0  # Optional. Number of nodes present in the
@@ -2432,7 +3175,7 @@ class Operations:
                         "operation": "str",  # Optional. Operation type: Read, write, delete,
                           etc.
                         "provider": "str",  # Optional. Service provider:
-                          Microsoft.connectedClusters.
+                          Microsoft.Kubernetes.
                         "resource": "str"  # Optional. Connected Cluster Resource on which
                           the operation is performed.
                     },
