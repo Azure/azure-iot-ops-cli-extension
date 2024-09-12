@@ -40,7 +40,7 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
             "edgevolume",
             "w-adr-schema-registry",
             "wyvern",
-            "adr-schema-registry",
+            "adr-schema-registry-cache-claim",
         ],
         bundle_path=bundle_path,
     )
