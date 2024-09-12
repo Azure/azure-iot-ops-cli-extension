@@ -8,6 +8,7 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import ARCCONTAINERSTORAGE_API_V1
 from .helpers import (
+    check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
     run_bundle_command,
@@ -23,6 +24,8 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)["esa"]
+
+    check_custom_resource_files(file_objs=file_map, resource_api=ARCCONTAINERSTORAGE_API_V1)
 
     expected_workload_types = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service"]
     expected_types = set(expected_workload_types).union(ARCCONTAINERSTORAGE_API_V1.kinds)
