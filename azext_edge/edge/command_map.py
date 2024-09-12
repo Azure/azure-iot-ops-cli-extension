@@ -99,9 +99,9 @@ def load_iotops_commands(self, _):
         "iot ops dataflow identity",
         command_type=dataflow_resource_ops,
     ) as cmd_group:
-        cmd_group.show_command("assign", "assign_dataflow_identity")
+        cmd_group.command("assign", "assign_dataflow_identity")
         cmd_group.command("remove", "remove_dataflow_identity")
-        cmd_group.command("show", "show_dataflow_identity")
+        cmd_group.show_command("show", "show_dataflow_identity")
 
     with self.command_group(
         "iot ops asset",
