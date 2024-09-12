@@ -82,7 +82,7 @@ def load_iotops_help():
           text: >
             az iot ops support create-bundle --ops-service broker --broker-traces
 
-        - name: Include arccontainerstorage resources in the support bundle.
+        - name: Include ARC container storage resources in the support bundle.
           text: >
             az iot ops support create-bundle --ops-service acs
     """
