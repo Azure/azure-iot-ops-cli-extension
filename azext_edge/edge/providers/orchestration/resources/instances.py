@@ -106,8 +106,11 @@ class Instances(Queryable):
             raise ValidationError("No identities are associated with the instance.")
 
         if mi_user_assigned not in identity["userAssignedIdentities"]:
-            raise ValidationError("The identity is not associated with the instance.")
+            raise ValidationError(
+                f"The identity '{mi_resource_id_container.resource_name}' is not associated with the instance."
+            )
 
+        self.unfederate_msi(mi_resource_id_container)
         del identity["userAssignedIdentities"][mi_user_assigned]
 
         # Check if we deleted them all.
@@ -116,7 +119,6 @@ class Instances(Queryable):
 
         instance["identity"] = identity
         updated_instance = self.update(name=name, resource_group_name=resource_group_name, instance=instance)
-        self.unfederate_msi(mi_resource_id_container)
         return updated_instance
 
     def add_mi_user_assigned(self, name: str, resource_group_name: str, mi_user_assigned: str):
@@ -133,7 +135,12 @@ class Instances(Queryable):
                 f"The cluster '{cluster_resource['name']}' is not enabled as an oidc issuer.\n"
                 "Please enable via 'az connectedk8s connect --enable-oidc-issuer'."
             )
-        self.federate_msi(mi_resource_id_container, cluster_resource["properties"]["oidcIssuerProfile"]["issuerUrl"])
+        custom_location = self._get_associated_cl(instance)
+        self.federate_msi(
+            mi_resource_id_container,
+            oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"]["issuerUrl"],
+            namespace=custom_location["properties"]["namespace"],
+        )
 
         identity: dict = instance.get("identity", {})
         if not identity or identity.get("type") == "None":
