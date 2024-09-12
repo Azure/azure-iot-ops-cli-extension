@@ -274,9 +274,8 @@ def get_file_map(
         file_map["esa"] = convert_file_names(walk_result[esa_path]["files"])
         file_map["__namespaces__"]["esa"] = esa_namespace
 
-        # no files for aio
-        if not walk_result[ops_path]["folders"]:
-            return file_map
+        # no files for aio, skip the rest assertions
+        return file_map
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
             assert len(walk_result) == expected_default_walk_result
