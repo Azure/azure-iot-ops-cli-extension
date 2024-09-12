@@ -52,11 +52,6 @@ from azext_edge.edge.providers.support.opcua import (
     OPC_NAME_VAR_LABEL,
     OPCUA_NAME_LABEL,
 )
-from azext_edge.edge.providers.support.orc import (
-    ORC_DIRECTORY_PATH,
-    ORC_APP_LABEL,
-    ORC_CONTROLLER_LABEL,
-)
 from azext_edge.edge.providers.support.common import (
     COMPONENT_LABEL_FORMAT,
     NAME_LABEL_FORMAT,
