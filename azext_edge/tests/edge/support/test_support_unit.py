@@ -556,9 +556,7 @@ def assert_get_custom_resources(
     file_prefix: str = None,
     sub_group: Optional[str] = None,
 ):
-    mocked_get_custom_objects.assert_any_call(
-        group=api.group, version=api.version, plural=f"{kind}s", use_cache=False
-    )
+    mocked_get_custom_objects.assert_any_call(group=api.group, version=api.version, plural=f"{kind}s", use_cache=False)
     if not file_prefix:
         file_prefix = kind
 
@@ -729,9 +727,7 @@ def assert_list_replica_sets(
     directory_path: str,
     mock_names: Optional[List[str]] = None,
 ):
-    mocked_client.AppsV1Api().list_replica_set_for_all_namespaces.assert_any_call(
-        label_selector=label_selector
-    )
+    mocked_client.AppsV1Api().list_replica_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
     mock_names = mock_names or ["mock_replicaset"]
     for name in mock_names:
@@ -862,9 +858,7 @@ def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
 
 def assert_shared_kpis(mocked_client, mocked_zipfile):
     mocked_client.CoreV1Api().list_node.assert_called_once()
-    assert_zipfile_write(
-        mocked_zipfile, zinfo="nodes.yaml", data="items:\n- metadata:\n    name: mock_node\n"
-    )
+    assert_zipfile_write(mocked_zipfile, zinfo="nodes.yaml", data="items:\n- metadata:\n    name: mock_node\n")
     mocked_client.CoreV1Api().list_event_for_all_namespaces.assert_called_once()
     assert_zipfile_write(
         mocked_zipfile,
@@ -952,9 +946,7 @@ def test_create_bundle_mq_traces(
     mocked_mq_get_traces,
     mocked_get_config_map,
 ):
-    result = support_bundle(
-        None, ops_service=OpsServiceType.mq.value, bundle_dir=a_bundle_dir, include_mq_traces=True
-    )
+    result = support_bundle(None, ops_service=OpsServiceType.mq.value, bundle_dir=a_bundle_dir, include_mq_traces=True)
 
     assert result["bundlePath"]
     mocked_mq_get_traces.assert_called_once()
@@ -1046,6 +1038,7 @@ def test_create_bundle_schemas(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
+    mocked_list_persistent_volume_claims,
     mocked_root_logger,
     mocked_get_config_map,
 ):
@@ -1085,4 +1078,10 @@ def test_create_bundle_schemas(
         mocked_zipfile,
         label_selector=SCHEMAS_NAME_LABEL,
         directory_path=SCHEMAS_DIRECTORY_PATH,
+    )
+    assert_list_persistent_volume_claims(
+        mocked_client,
+        mocked_zipfile,
+        directory_path=SCHEMAS_DIRECTORY_PATH,
+        label_selector=SCHEMAS_NAME_LABEL,
     )
