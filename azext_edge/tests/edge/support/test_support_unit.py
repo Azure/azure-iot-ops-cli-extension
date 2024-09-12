@@ -22,7 +22,6 @@ from azext_edge.edge.providers.edge_api import (
     MQ_ACTIVE_API,
     MQTT_BROKER_API_V1B1,
     OPCUA_API_V1,
-    ORC_API_V1,
     DATAFLOW_API_V1B1,
     EdgeResourceApi,
 )
@@ -78,9 +77,9 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQTT_BROKER_API_V1B1, MQ_ACTIVE_API],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, AKRI_API_V0],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, AKRI_API_V0],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, CLUSTER_CONFIG_API_V1],
     ],
     indirect=True,
 )
@@ -330,26 +329,6 @@ def test_create_bundle(
                 label_selector=OPCUA_NAME_LABEL,
                 directory_path=OPC_DIRECTORY_PATH,
             )
-
-        if api in [ORC_API_V1]:
-            for orc_label in [ORC_APP_LABEL, ORC_CONTROLLER_LABEL]:
-                assert_list_pods(
-                    mocked_client,
-                    mocked_zipfile,
-                    mocked_list_pods,
-                    label_selector=orc_label,
-                    directory_path=ORC_DIRECTORY_PATH,
-                    since_seconds=since_seconds,
-                )
-                assert_list_deployments(
-                    mocked_client, mocked_zipfile, label_selector=orc_label, directory_path=ORC_DIRECTORY_PATH
-                )
-                assert_list_replica_sets(
-                    mocked_client, mocked_zipfile, label_selector=orc_label, directory_path=ORC_DIRECTORY_PATH
-                )
-                assert_list_services(
-                    mocked_client, mocked_zipfile, label_selector=orc_label, directory_path=ORC_DIRECTORY_PATH
-                )
 
         if api in [AKRI_API_V0]:
             assert_list_pods(

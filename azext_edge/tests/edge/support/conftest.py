@@ -87,7 +87,6 @@ def mocked_cluster_resources(request, mocker):
         MQ_ACTIVE_API,
         MQTT_BROKER_API_V1B1,
         OPCUA_API_V1,
-        ORC_API_V1,
         AKRI_API_V0,
         DEVICEREGISTRY_API_V1,
         CLUSTER_CONFIG_API_V1,
@@ -121,11 +120,6 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("BrokerAuthorization"))
         if r == OPCUA_API_V1:
             v1_resources.append(_get_api_resource("AssetType"))
-
-        if r == ORC_API_V1:
-            v1_resources.append(_get_api_resource("Instance"))
-            v1_resources.append(_get_api_resource("Solution"))
-            v1_resources.append(_get_api_resource("Target"))
 
         if r == AKRI_API_V0:
             v1_resources.append(_get_api_resource("Instance"))
