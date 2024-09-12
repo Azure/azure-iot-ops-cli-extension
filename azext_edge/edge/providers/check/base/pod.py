@@ -8,7 +8,7 @@ from knack.log import get_logger
 from rich.padding import Padding
 from rich.table import Table
 from kubernetes.client.models import V1Pod
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from .check_manager import CheckManager
 from .display import colorize_string
@@ -73,12 +73,11 @@ def evaluate_pod_health(
 
     add_footer = not all([status == CheckTaskStatus.success.value for status in pod_statuses])
 
-    if pods:
-        check_manager.add_display(
-            target_name=target,
-            namespace=namespace,
-            display=Padding(table, (0, 0, 0, padding)),
-        )
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=Padding(table, (0, 0, 0, padding)),
+    )
 
     if add_footer:
         footer = ":magnifying_glass_tilted_left:" + colorize_string(
@@ -183,9 +182,6 @@ def _process_pod_status(
     # text to display in the table
     pod_health_text = f"Pod {{[bright_blue]{pod_name}[/bright_blue]}}"
 
-    if detail_level != ResourceOutputDetailLevel.summary.value:
-        pod_health_text = f"\n{pod_health_text}"
-
     if detail_level == ResourceOutputDetailLevel.summary.value:
         status_obj = CheckTaskStatus(pod_eval_status)
         emoji = status_obj.emoji
@@ -197,11 +193,9 @@ def _process_pod_status(
         pod_conditions_text = "N/A"
 
         if pod_conditions:
-
-            if detail_level == ResourceOutputDetailLevel.detail.value:
-                pod_conditions_text = "[green]Ready[/green]" if conditions_readiness else ""
-            else:
-                pod_conditions_text = ""
+            pod_conditions_text = ""
+            if detail_level == ResourceOutputDetailLevel.detail.value and conditions_readiness:
+                pod_conditions_text = "[green]Ready[/green]"
 
             # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
             for condition_result in conditions_display_list:

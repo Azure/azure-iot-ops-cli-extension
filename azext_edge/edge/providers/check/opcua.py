@@ -22,7 +22,6 @@ from .base import (
 from ...common import CheckTaskStatus
 
 from .common import (
-    AIO_OPCUA_PREFIX,
     PADDING_SIZE,
     CoreServiceResourceKinds,
     ResourceOutputDetailLevel,

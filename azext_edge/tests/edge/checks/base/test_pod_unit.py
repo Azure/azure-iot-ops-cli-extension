@@ -6,8 +6,6 @@
 
 import pytest
 
-from unittest.mock import ANY
-
 from azext_edge.edge.common import CheckTaskStatus, PodState
 from azext_edge.edge.providers.check.base import (
     evaluate_pod_health,
