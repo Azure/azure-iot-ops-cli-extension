@@ -111,6 +111,8 @@ def _get_expected_services(
         # these should always be generated
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
+        # TODO: remove orc in supoort bundle
+        expected_services.remove(OpsServiceType.orc.value)
         expected_services.sort()
 
     # device registry folder will not be created if there are no device registry resources
