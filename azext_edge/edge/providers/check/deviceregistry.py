@@ -67,7 +67,7 @@ def evaluate_assets(
 ) -> Dict[str, Any]:
     check_manager = CheckManager(check_name="evalAssets", check_desc="Evaluate Device Registry instances")
 
-    asset_namespace_conditions = ["spec.assetEndpointProfileUri"]
+    asset_namespace_conditions = ["spec.assetEndpointProfileRef"]
 
     target_assets = generate_target_resource_name(api_info=DEVICEREGISTRY_API_V1, resource_kind=DeviceRegistryResourceKinds.ASSET.value)
 
@@ -119,7 +119,7 @@ def evaluate_assets(
             )
 
             asset_spec = asset["spec"]
-            endpoint_profile_uri = asset_spec.get("assetEndpointProfileUri", "")
+            endpoint_profile_uri = asset_spec.get("assetEndpointProfileRef", "")
             endpoint_profile = get_resources_by_name(
                 api_info=DEVICEREGISTRY_API_V1,
                 kind=DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE,
@@ -127,7 +127,7 @@ def evaluate_assets(
             )
             spec_padding = padding + PADDING_SIZE
 
-            endpoint_profile_uri_value = {"spec.assetEndpointProfileUri": endpoint_profile_uri}
+            endpoint_profile_uri_value = {"spec.assetEndpointProfileRef": endpoint_profile_uri}
             endpoint_profile_uri_status = CheckTaskStatus.success.value
             if endpoint_profile:
                 endpoint_profile_uri_text = (
@@ -151,7 +151,11 @@ def evaluate_assets(
             )
 
             # data points
-            data_points = asset_spec.get("dataPoints", [])
+            # all should be under one dataset
+            dataset = asset_spec.get("datasets", [])
+            data_points = []
+            if dataset:
+                data_points = dataset[0].get("dataPoints", [])
 
             if data_points:
                 if not added_datapoint_conditions:
@@ -159,14 +163,14 @@ def evaluate_assets(
                         target_name=target_assets,
                         namespace=namespace,
                         conditions=[
-                            "len(spec.dataPoints)",
-                            "spec.dataPoints.dataSource"
+                            "len(spec.datasets[0].dataPoints)",
+                            "spec.datasets[0].dataPoints.dataSource"
                         ]
                     )
                     added_datapoint_conditions = True
 
                 data_points_count = len(data_points)
-                data_points_value = {"len(spec.dataPoints)": data_points_count}
+                data_points_value = {"len(spec.datasets[0].dataPoints)": data_points_count}
                 data_points_status = CheckTaskStatus.success.value
 
                 if data_points_count > MAX_ASSET_DATAPOINTS:
@@ -192,7 +196,7 @@ def evaluate_assets(
                 for index, data_point in enumerate(data_points):
                     data_point_data_source = data_point.get("dataSource", "")
                     datapoint_padding = spec_padding + PADDING_SIZE
-                    data_point_data_source_value = {f"spec.dataPoints.[{index}].dataSource": data_point_data_source}
+                    data_point_data_source_value = {f"spec.datasets[0].dataPoints.[{index}].dataSource": data_point_data_source}
                     data_point_data_source_status = CheckTaskStatus.success.value
                     if data_point_data_source:
                         data_point_data_source_text = (
