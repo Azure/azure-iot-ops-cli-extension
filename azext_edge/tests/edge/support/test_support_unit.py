@@ -38,12 +38,7 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_WEBHOOK_LABEL,
 )
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
-from azext_edge.edge.providers.support.arccontainerstorage import (
-    STORAGE_APP_LABEL,
-    STORAGE_NAME_LABEL,
-    STORAGE_NAMESPACE,
-    STORAGE_SCHEMA_REGISTRY_LABEL,
-)
+from azext_edge.edge.providers.support.arccontainerstorage import STORAGE_NAMESPACE
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
