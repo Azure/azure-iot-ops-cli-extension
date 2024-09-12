@@ -16,7 +16,6 @@ from .providers.support_bundle import (
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
-    COMPAT_ORC_APIS,
     COMPAT_DATAFLOW_APIS,
 )
 
