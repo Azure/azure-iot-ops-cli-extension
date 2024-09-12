@@ -39,8 +39,8 @@ def test_check_pre_post(init_setup, post, pre):
 
     if pre is None and not post:
         try:
-            aio_check = run("kubectl api-resources --api-group=orchestrator.iotoperations.azure.com")
-            expected_pre = "orchestrator.iotoperations.azure.com" not in aio_check
+            aio_check = run("kubectl api-resources --api-group=mqttbroker.iotoperations.azure.com")
+            expected_pre = "mqttbroker.iotoperations.azure.com" not in aio_check
         except CLIInternalError:
             from azext_edge.edge.providers.edge_api.orc import ORC_API_V1
             expected_pre = not ORC_API_V1.is_deployed()
