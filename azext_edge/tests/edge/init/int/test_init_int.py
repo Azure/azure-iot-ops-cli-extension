@@ -10,6 +10,7 @@ from typing import Dict, Union
 import pytest
 from knack.log import get_logger
 
+from ....generators import generate_random_string
 from ....helpers import run
 from .dataflow_helper import assert_dataflow_profile_args
 from .helper import assert_init_result, strip_quotes
@@ -21,7 +22,7 @@ logger = get_logger(__name__)
 
 
 @pytest.fixture(scope="function")
-def init_test_setup(cluster_connection, settings):
+def init_test_setup(cluster_connection, settings, tracked_resources):
     from ....settings import EnvironmentVariables
 
     settings.add_to_config(EnvironmentVariables.rg.value)
@@ -34,6 +35,24 @@ def init_test_setup(cluster_connection, settings):
     settings.add_to_config(EnvironmentVariables.aio_cleanup.value)
     settings.add_to_config(EnvironmentVariables.init_continue_on_error.value)
 
+    instance_name = f"testcli{generate_random_string(force_lower=True, size=6)}"
+    # set up registry
+    storage_account_name = f"teststore{generate_random_string(force_lower=True, size=6)}"
+    registry_name = f"test-registry-{generate_random_string(force_lower=True, size=6)}"
+    registry_namespace1 = f"test-namespace-{generate_random_string(force_lower=True, size=6)}"
+    storage_account = run(
+        f"az storage account create -n {storage_account_name} -g {settings.env.azext_edge_rg} "
+        "--enable-hierarchical-namespace --public-network-access Disabled "
+        "--allow-shared-key-access false --allow-blob-public-access false --default-action Deny"
+    )
+    tracked_resources.append(storage_account['id'])
+    registry = run(
+        f"az iot ops schema registry create -n {registry_name} -g {settings.env.azext_edge_rg} "
+        f"--rn {registry_namespace1} --sa-resource-id {storage_account['id']} "
+        "--location eastus2euap"  # TODO: remove once avaliable in all regions
+    )
+    tracked_resources.append(registry["id"])
+
     if not all([settings.env.azext_edge_cluster, settings.env.azext_edge_rg, settings.env.azext_edge_kv]):
         raise AssertionError(
             "Cannot run init tests without a connected cluster, resource group, and precreated keyvault. "
@@ -43,17 +62,20 @@ def init_test_setup(cluster_connection, settings):
     yield {
         "clusterName": settings.env.azext_edge_cluster,
         "resourceGroup": settings.env.azext_edge_rg,
+        "schemaRegistryId": registry["id"],
+        "instanceName": instance_name,
         "keyVault": settings.env.azext_edge_kv,
         "servicePrincipalAppId": settings.env.azext_edge_sp_app_id,
         "servicePrincipalObjectId": settings.env.azext_edge_sp_object_id,
         "servicePrincipalSecret": settings.env.azext_edge_sp_secret,
-        "additionalArgs": strip_quotes(settings.env.azext_edge_init_args),
+        "additionalCreateArgs": strip_quotes(settings.env.azext_edge_create_args),
+        "additionalInitArgs": strip_quotes(settings.env.azext_edge_init_args),
         "continueOnError": settings.env.azext_edge_init_continue_on_error or False
     }
     if settings.env.azext_edge_aio_cleanup:
         run(
-            f"az iot ops delete --cluster {settings.env.azext_edge_cluster} -g {settings.env.azext_edge_rg} "
-            "-y --no-progress --force"
+            f"az iot ops delete --name {instance_name} -g {settings.env.azext_edge_rg} "
+            "-y --no-progress --force --include-deps"
         )
 
 
@@ -61,45 +83,45 @@ def init_test_setup(cluster_connection, settings):
 def test_init_scenario(
     init_test_setup, tracked_files
 ):
-    additional_args = init_test_setup["additionalArgs"] or ""
-    arg_dict = _process_additional_args(additional_args)
+    additional_init_args = init_test_setup["additionalInitArgs"] or ""
+    init_arg_dict = _process_additional_args(additional_init_args)
+    additional_create_args = init_test_setup["additionalCreateArgs"] or ""
+    create_arg_dict = _process_additional_args(additional_create_args)
 
-    if "ca_dir" in arg_dict:
-        try:
-            mkdir(arg_dict["ca_dir"])
-            tracked_files.append(arg_dict["ca_dir"])
-        except FileExistsError:
-            pass
-    elif all(["ca_key_file" not in arg_dict, "ca_file" not in arg_dict]):
-        tracked_files.append("aio-test-ca.crt")
-        tracked_files.append("aio-test-private.key")
+    # if "ca_dir" in arg_dict:
+    #     try:
+    #         mkdir(arg_dict["ca_dir"])
+    #         tracked_files.append(arg_dict["ca_dir"])
+    #     except FileExistsError:
+    #         pass
+    # elif all(["ca_key_file" not in arg_dict, "ca_file" not in arg_dict]):
+    #     tracked_files.append("aio-test-ca.crt")
+    #     tracked_files.append("aio-test-private.key")
 
     cluster_name = init_test_setup["clusterName"]
     resource_group = init_test_setup["resourceGroup"]
-    key_vault = init_test_setup["keyVault"]
-    sp_app_id = init_test_setup["servicePrincipalAppId"]
-    sp_object_id = init_test_setup["servicePrincipalObjectId"]
-    sp_secret = init_test_setup["servicePrincipalSecret"]
+    registry_id = init_test_setup["schemaRegistryId"]
+    instance_name = init_test_setup["instanceName"]
+    # key_vault = init_test_setup["keyVault"]
+    # sp_app_id = init_test_setup["servicePrincipalAppId"]
+    # sp_object_id = init_test_setup["servicePrincipalObjectId"]
+    # sp_secret = init_test_setup["servicePrincipalSecret"]
 
     command = f"az iot ops init -g {resource_group} --cluster {cluster_name} "\
-        f"--kv-id {key_vault} --no-progress {additional_args} "
-    if sp_app_id:
-        command += f"--sp-app-id {sp_app_id} "
-    if sp_object_id:
-        command += f"--sp-object-id {sp_object_id} "
-    if sp_secret:
-        command += f"--sp-secret {sp_secret} "
+        f"--sr-resource-id {registry_id} --no-progress {init_arg_dict} "
+    #     f"--kv-id {key_vault} --no-progress {additional_args} "
+    # if sp_app_id:
+    #     command += f"--sp-app-id {sp_app_id} "
+    # if sp_object_id:
+    #     command += f"--sp-object-id {sp_object_id} "
+    # if sp_secret:
+    #     command += f"--sp-secret {sp_secret} "
 
     result = run(command)
-    if arg_dict.get("ensure_latest"):
-        logger.warning("Command has --ensure-latest and succeeded. Good job.")
+    # TODO: add in commands to make sure init succeeded
 
-    if arg_dict.get("show_template"):
-        print(result)
-        pytest.skip("This is just showing the template. There is a unit test for it.")
-
-    # TODO: see what happens with --no-block and --no-deploy. maybe make witty warnings
-    # kubernetes distro + runtime socket
+    create_command = f"az iot ops create -g {resource_group} --cluster {cluster_name} "\
+        f"-n {instance_name} --no-progress {create_arg_dict} "
 
     try:
         assert_init_result(
