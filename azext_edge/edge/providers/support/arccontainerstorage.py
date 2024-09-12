@@ -34,100 +34,62 @@ STORAGE_APP_LABEL = "app in ({})".format(",".join(APP_LABELS))
 
 
 def fetch_deployments():
-    processed = process_deployments(
-        directory_path=STORAGE_DIRECTORY_PATH,
-        label_selector=STORAGE_NAME_LABEL,
-        namespace=STORAGE_NAMESPACE,
-    )
+    processed = []
 
-    processed.extend(
-        process_deployments(
-            directory_path=STORAGE_DIRECTORY_PATH,
-            label_selector=STORAGE_SCHEMA_REGISTRY_LABEL,
-            namespace=STORAGE_NAMESPACE,
+    for label in [STORAGE_NAME_LABEL, STORAGE_SCHEMA_REGISTRY_LABEL, STORAGE_APP_LABEL]:
+        processed.extend(
+            process_deployments(
+                directory_path=STORAGE_DIRECTORY_PATH,
+                label_selector=label,
+                namespace=STORAGE_NAMESPACE,
+            )
         )
-    )
-
-    processed.extend(
-        process_deployments(
-            directory_path=STORAGE_DIRECTORY_PATH,
-            label_selector=STORAGE_APP_LABEL,
-            namespace=STORAGE_NAMESPACE,
-        )
-    )
 
     return processed
 
 
 def fetch_replicasets():
-    processed = process_replicasets(
-        directory_path=STORAGE_DIRECTORY_PATH,
-        label_selector=STORAGE_APP_LABEL,
-        namespace=STORAGE_NAMESPACE,
-    )
+    processed = []
 
-    processed.extend(
-        process_replicasets(
-            directory_path=STORAGE_DIRECTORY_PATH,
-            label_selector=STORAGE_NAME_LABEL,
-            namespace=STORAGE_NAMESPACE,
+    for label in [STORAGE_NAME_LABEL, STORAGE_SCHEMA_REGISTRY_LABEL, STORAGE_APP_LABEL]:
+        processed.extend(
+            process_replicasets(
+                directory_path=STORAGE_DIRECTORY_PATH,
+                label_selector=label,
+                namespace=STORAGE_NAMESPACE,
+            )
         )
-    )
-
-    processed.extend(
-        process_replicasets(
-            directory_path=STORAGE_DIRECTORY_PATH,
-            label_selector=STORAGE_SCHEMA_REGISTRY_LABEL,
-            namespace=STORAGE_NAMESPACE,
-        )
-    )
 
     return processed
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
-    processed = process_v1_pods(
-        directory_path=STORAGE_DIRECTORY_PATH,
-        label_selector=STORAGE_APP_LABEL,
-        namespace=STORAGE_NAMESPACE,
-        since_seconds=since_seconds,
-    )
+    processed = []
 
-    processed.extend(
-        process_v1_pods(
-            directory_path=STORAGE_DIRECTORY_PATH,
-            label_selector=STORAGE_NAME_LABEL,
-            namespace=STORAGE_NAMESPACE,
-            since_seconds=since_seconds,
+    for label in [STORAGE_NAME_LABEL, STORAGE_SCHEMA_REGISTRY_LABEL, STORAGE_APP_LABEL]:
+        processed.extend(
+            process_v1_pods(
+                directory_path=STORAGE_DIRECTORY_PATH,
+                label_selector=label,
+                namespace=STORAGE_NAMESPACE,
+                since_seconds=since_seconds,
+            )
         )
-    )
-
-    processed.extend(
-        process_v1_pods(
-            directory_path=STORAGE_DIRECTORY_PATH,
-            label_selector=STORAGE_SCHEMA_REGISTRY_LABEL,
-            namespace=STORAGE_NAMESPACE,
-            since_seconds=since_seconds,
-        )
-    )
 
     return processed
 
 
 def fetch_daemonsets():
-    processed = process_daemonsets(
-        directory_path=STORAGE_DIRECTORY_PATH,
-        label_selector=STORAGE_NAME_LABEL,
-        namespace=STORAGE_NAMESPACE,
-    )
+    processed = []
 
-    processed.extend(
-        process_daemonsets(
-            directory_path=STORAGE_DIRECTORY_PATH,
-            label_selector=STORAGE_APP_LABEL,
-            namespace=STORAGE_NAMESPACE,
+    for label in [STORAGE_NAME_LABEL, STORAGE_APP_LABEL]:
+        processed.extend(
+            process_daemonsets(
+                directory_path=STORAGE_DIRECTORY_PATH,
+                label_selector=label,
+                namespace=STORAGE_NAMESPACE,
+            )
         )
-    )
 
     return processed
 

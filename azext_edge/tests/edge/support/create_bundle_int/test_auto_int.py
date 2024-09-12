@@ -63,9 +63,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             assert not mq_level["folders"]
             assert_file_names(mq_level["files"])
             # make sure level 2 doesnt get messed up
-            assert walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] == [
-                "traces"
-            ]
+            assert walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] == ["traces"]
             walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] = []
 
     # Level 2 and 3 - bottom
@@ -112,5 +110,13 @@ def _get_expected_services(
         and OpsServiceType.deviceregistry.value in expected_services
     ):
         expected_services.remove(OpsServiceType.deviceregistry.value)
+
+    # arccotainerstorage folder will not be created under aio namespace
+    if (
+        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.arccontainerstorage.value))
+        and OpsServiceType.arccontainerstorage.value in expected_services
+    ):
+        expected_services.remove(OpsServiceType.arccontainerstorage.value)
+
     expected_services.append("meta")
     return expected_services
