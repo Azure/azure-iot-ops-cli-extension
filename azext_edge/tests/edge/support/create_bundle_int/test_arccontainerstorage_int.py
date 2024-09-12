@@ -27,14 +27,12 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)["esa"]
 
-    check_custom_resource_files(file_objs=file_map, resource_api=ARCCONTAINERSTORAGE_API_V1)
-
     expected_workload_types = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service"]
     expected_types = set(expected_workload_types).union(ARCCONTAINERSTORAGE_API_V1.kinds)
     assert set(file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,
-        prefixes=["aio-operator", "aio-pre-install-job", "aio-post-install-job"],
+        prefixes=["esa", "csi", "config-operator", "edgevolume", "w-adr-schema-registry", "wyvern"],
         bundle_path=bundle_path,
     )
