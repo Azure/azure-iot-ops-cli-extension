@@ -460,7 +460,7 @@ def load_iotops_help():
         short-summary: Show the instance identities associated with dataflows.
 
         examples:
-        - name: Assign and federate a desired user-assigned managed identity.
+        - name: Show the instance identities associated with dataflows.
           text: >
             az iot ops dataflow identity show --in myinstance -g myresourcegroup
     """
