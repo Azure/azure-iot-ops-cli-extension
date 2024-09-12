@@ -508,56 +508,48 @@ def test_create_bundle(
             )
 
         if api in [ARCCONTAINERSTORAGE_API_V1]:
-            for label in [STORAGE_NAME_LABEL, STORAGE_SCHEMA_REGISTRY_LABEL, STORAGE_APP_LABEL]:
-                assert_list_deployments(
-                    mocked_client,
-                    mocked_zipfile,
-                    label_selector=label,
-                    directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
-                    namespace=STORAGE_NAMESPACE,
-                )
-
-            for label in [STORAGE_NAME_LABEL, STORAGE_SCHEMA_REGISTRY_LABEL, STORAGE_APP_LABEL]:
-                assert_list_replica_sets(
-                    mocked_client,
-                    mocked_zipfile,
-                    label_selector=label,
-                    directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
-                    namespace=STORAGE_NAMESPACE,
-                )
-
-            for label in [STORAGE_APP_LABEL, STORAGE_NAME_LABEL, STORAGE_SCHEMA_REGISTRY_LABEL]:
-                assert_list_pods(
-                    mocked_client,
-                    mocked_zipfile,
-                    mocked_list_pods,
-                    label_selector=label,
-                    directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
-                    since_seconds=since_seconds,
-                    namespace=STORAGE_NAMESPACE,
-                )
-
-            for label in [STORAGE_APP_LABEL, STORAGE_NAME_LABEL]:
-                assert_list_daemon_sets(
-                    mocked_client,
-                    mocked_zipfile,
-                    label_selector=label,
-                    directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
-                    namespace=STORAGE_NAMESPACE,
-                )
-
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
+                namespace=STORAGE_NAMESPACE,
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
+                namespace=STORAGE_NAMESPACE,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=None,
+                directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
+                since_seconds=since_seconds,
+                namespace=STORAGE_NAMESPACE,
+            )
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
+                namespace=STORAGE_NAMESPACE,
+            )
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=STORAGE_SCHEMA_REGISTRY_LABEL,
+                label_selector=None,
                 directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
                 namespace=STORAGE_NAMESPACE,
             )
             assert_list_persistent_volume_claims(
                 mocked_client,
                 mocked_zipfile,
+                label_selector=None,
                 directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
-                mock_names=["adr-schema-registry"],
                 namespace=STORAGE_NAMESPACE,
             )
     # assert shared KPIs regardless of service

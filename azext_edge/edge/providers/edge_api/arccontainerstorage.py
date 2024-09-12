@@ -17,4 +17,6 @@ class ArcContainerStorageResourceKinds(ListableEnum):
     EDGEVOLUME = "edgevolume"
 
 
-ARCCONTAINERSTORAGE_API_V1 = EdgeResourceApi(group="arccontainerstorage.azure.net", version="v1", moniker="esa")
+ARCCONTAINERSTORAGE_API_V1 = EdgeResourceApi(
+    group="arccontainerstorage.azure.net", version="v1", moniker="arccontainerstorage"
+)

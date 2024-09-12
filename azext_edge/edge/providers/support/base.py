@@ -57,6 +57,7 @@ def process_crd(
     plural: str,
     directory_path: str,
     file_prefix: Optional[str] = None,
+    namespace: Optional[str] = None,
 ) -> List[dict]:
     result: dict = get_custom_objects(
         group=group,
@@ -70,7 +71,8 @@ def process_crd(
     processed = []
     namespaces = []
     for r in result.get("items", []):
-        namespace = r["metadata"]["namespace"]
+        if not namespace:
+            namespace = r["metadata"]["namespace"]
         namespaces.append(namespace)
         name = r["metadata"]["name"]
         processed.append(
@@ -456,6 +458,7 @@ def assemble_crd_work(
     apis: Iterable[EdgeResourceApi],
     file_prefix_map: Optional[Dict[str, str]] = None,
     directory_path: Optional[str] = None,
+    namespace: Optional[str] = None,
 ) -> dict:
     if not file_prefix_map:
         file_prefix_map = {}
@@ -474,6 +477,7 @@ def assemble_crd_work(
                 plural=api._kinds[kind],  # TODO: optimize
                 directory_path=directory_path,
                 file_prefix=file_prefix,
+                namespace=namespace,
             )
 
     return result
