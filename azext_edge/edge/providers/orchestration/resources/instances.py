@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Iterable, Optional
+from typing import Iterable, Optional, List
 
 from knack.log import get_logger
 from rich import print
@@ -74,6 +74,7 @@ class Instances(Queryable):
         resource_group_name: str,
         tags: Optional[dict] = None,
         description: Optional[str] = None,
+        mi_user_assigned_identities: Optional[List[str]] = None,
         **kwargs: dict,
     ) -> dict:
         instance = self.show(name=name, resource_group_name=resource_group_name)
@@ -84,6 +85,9 @@ class Instances(Queryable):
         if tags or tags == {}:
             instance["tags"] = tags
 
+        if mi_user_assigned_identities:
+            self._handle_mi_user_assigned(instance, mi_user_assigned_identities)
+
         with console.status("Working..."):
             poller = self.iotops_mgmt_client.instance.begin_create_or_update(
                 instance_name=name,
@@ -91,3 +95,10 @@ class Instances(Queryable):
                 resource=instance,
             )
             return wait_for_terminal_state(poller, **kwargs)
+
+    def _handle_mi_user_assigned(self, instance: dict, mi_user_assigned: List[str]):
+        """
+        Responsible for federating and building the instance identity object.
+        """
+        resource_map = self.get_resource_map(instance)
+        import pdb; pdb.set_trace()
