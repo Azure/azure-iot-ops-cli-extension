@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Iterable, Optional, List
+from typing import Iterable, List
 
 from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles, Instances
 
@@ -51,7 +51,23 @@ def list_dataflow_endpoints(cmd, instance_name: str, resource_group_name: str) -
 def assign_dataflow_identity(
     cmd, instance_name: str, resource_group_name: str, mi_user_assigned_identities: List[str]
 ) -> dict:
-    return Instances(cmd).update(
+    return Instances(cmd).add_mi_user_assigned(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        mi_user_assigned_identities=mi_user_assigned_identities,
+    )
+
+
+def show_dataflow_identity(cmd, instance_name: str, resource_group_name: str) -> dict:
+    instance = Instances(cmd).show(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+    return instance.get("identity", {})
+
+
+def remove_dataflow_identity(cmd, instance_name: str, resource_group_name: str, mi_user_assigned_identities: List[str]) -> dict:
+    return Instances(cmd).remove_mi_user_assigned(
         name=instance_name,
         resource_group_name=resource_group_name,
         mi_user_assigned_identities=mi_user_assigned_identities,

@@ -4,8 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Iterable, Optional, List
+from copy import deepcopy
+from typing import Iterable, List, Optional
 
+from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
 from rich import print
 from rich.console import Console
@@ -74,19 +76,15 @@ class Instances(Queryable):
         resource_group_name: str,
         tags: Optional[dict] = None,
         description: Optional[str] = None,
-        mi_user_assigned_identities: Optional[List[str]] = None,
         **kwargs: dict,
     ) -> dict:
-        instance = self.show(name=name, resource_group_name=resource_group_name)
+        instance = kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
 
         if description:
             instance["properties"]["description"] = description
 
         if tags or tags == {}:
             instance["tags"] = tags
-
-        if mi_user_assigned_identities:
-            self._handle_mi_user_assigned(instance, mi_user_assigned_identities)
 
         with console.status("Working..."):
             poller = self.iotops_mgmt_client.instance.begin_create_or_update(
@@ -96,9 +94,38 @@ class Instances(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
-    def _handle_mi_user_assigned(self, instance: dict, mi_user_assigned: List[str]):
+    def remove_mi_user_assigned(self, name: str, resource_group_name: str, mi_user_assigned_identities: List[str]):
+        instance = self.show(name=name, resource_group_name=resource_group_name)
+        identity = instance.get("identity", {})
+        if not identity:
+            raise ValidationError("No identities are associated with the instance.")
+        modified_identity = deepcopy(identity)
+        for mi in mi_user_assigned_identities:
+            if mi in identity["userAssignedIdentities"]:
+                del modified_identity["userAssignedIdentities"][mi]
+
+        instance["identity"] = modified_identity
+        return self.update(name=name, resource_group_name=resource_group_name, instance=instance)
+
+    def add_mi_user_assigned(self, name: str, resource_group_name: str, mi_user_assigned_identities: List[str]):
         """
         Responsible for federating and building the instance identity object.
         """
-        resource_map = self.get_resource_map(instance)
-        import pdb; pdb.set_trace()
+        instance = self.show(name=name, resource_group_name=resource_group_name)
+        cluster_resource = self.get_resource_map(instance).connected_cluster.resource
+        if "oidcIssuerProfile" not in cluster_resource["properties"] or not cluster_resource["properties"][
+            "oidcIssuerProfile"
+        ].get("enabled"):
+            raise ValidationError(
+                f"The cluster '{cluster_resource['name']}' is not enabled as an oidc issuer.\n"
+                "Please enable via 'az connectedk8s connect --enable-oidc-issuer'."
+            )
+        identity = instance.get("identity", {})
+        if not identity:
+            identity["type"] = "UserAssigned"
+            identity["userAssignedIdentities"] = {}
+        for mi in mi_user_assigned_identities:
+            identity["userAssignedIdentities"][mi] = {}
+
+        instance["identity"] = identity
+        return self.update(name=name, resource_group_name=resource_group_name, instance=instance)
