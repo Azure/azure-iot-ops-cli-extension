@@ -41,8 +41,9 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
             "edgevolume-mounthelper",
             "w-adr-schema-registry",
             "wyvern-operator",
-            "adr-schema-registry-cache-claim-user",
-            "adr-schema-registry-cache-claim-system",
+            "adr-schema-registry-cache-claimsrv",
+            "adr-schema-registry-cache-claim-user-pvc",
+            "adr-schema-registry-cache-claim-system-pvc",
         ],
         bundle_path=bundle_path,
     )
