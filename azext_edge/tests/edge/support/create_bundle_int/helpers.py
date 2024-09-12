@@ -270,7 +270,7 @@ def get_file_map(
         file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "acs":
         assert len(walk_result) == 1 + expected_default_walk_result
-        acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "acs")
+        acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
         file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
         file_map["__namespaces__"]["acs"] = acs_namespace
 
