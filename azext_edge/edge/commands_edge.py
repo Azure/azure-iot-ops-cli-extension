@@ -14,7 +14,7 @@ from knack.log import get_logger
 from .common import OpsServiceType
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.edge_api.mq import MQ_ACTIVE_API
+from .providers.edge_api.meta import META_API_V1B1
 from .providers.orchestration.common import (
     KubernetesDistroType,
     TrustSourceType,
@@ -61,7 +61,7 @@ def check(
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
 
-    aio_deployed = MQ_ACTIVE_API.is_deployed()
+    aio_deployed = META_API_V1B1.is_deployed()
     # by default - run prechecks if AIO is not deployed, otherwise use argument
     run_pre = not aio_deployed if pre_deployment_checks is None else pre_deployment_checks
     # by default - run postchecks if AIO is deployed, otherwise use argument
