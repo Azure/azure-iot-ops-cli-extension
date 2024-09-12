@@ -235,12 +235,9 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops dataflow identity") as context:
         context.argument(
-            "mi_user_assigned_identities",
-            nargs="*",
-            action="extend",
+            "mi_user_assigned",
             options_list=["--mi-user-assigned"],
-            help="Space-separated resource Ids for the desired user-assigned managed identities "
-            "to associate with the instance. Can be used one or more times.",
+            help="The resource Id for the desired user-assigned managed identity to associate with the instance.",
         )
 
     with self.argument_context("iot ops broker") as context:

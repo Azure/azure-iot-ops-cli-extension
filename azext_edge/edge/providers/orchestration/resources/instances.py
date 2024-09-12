@@ -14,8 +14,10 @@ from rich.console import Console
 
 from ....util.az_client import (
     get_iotops_mgmt_client,
+    get_msi_mgmt_client,
     parse_resource_id,
     wait_for_terminal_state,
+    ResourceIdContainer,
 )
 from ....util.queryable import Queryable
 from ..common import CUSTOM_LOCATIONS_API_VERSION
@@ -30,6 +32,9 @@ class Instances(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.iotops_mgmt_client = get_iotops_mgmt_client(
+            subscription_id=self.default_subscription_id,
+        )
+        self.msi_mgmt_client = get_msi_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
 
@@ -94,23 +99,28 @@ class Instances(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
-    def remove_mi_user_assigned(self, name: str, resource_group_name: str, mi_user_assigned_identities: List[str]):
+    def remove_mi_user_assigned(self, name: str, resource_group_name: str, mi_user_assigned: str):
+        mi_resource_id_container = parse_resource_id(mi_user_assigned)
         instance = self.show(name=name, resource_group_name=resource_group_name)
         identity = instance.get("identity", {})
         if not identity:
             raise ValidationError("No identities are associated with the instance.")
-        modified_identity = deepcopy(identity)
-        for mi in mi_user_assigned_identities:
-            if mi in identity["userAssignedIdentities"]:
-                del modified_identity["userAssignedIdentities"][mi]
 
-        instance["identity"] = modified_identity
-        return self.update(name=name, resource_group_name=resource_group_name, instance=instance)
+        if mi_user_assigned not in identity["userAssignedIdentities"]:
+            raise ValidationError("The identity is not associated with the instance.")
 
-    def add_mi_user_assigned(self, name: str, resource_group_name: str, mi_user_assigned_identities: List[str]):
+        del identity["userAssignedIdentities"][mi_user_assigned]
+
+        instance["identity"] = identity
+        updated_instance = self.update(name=name, resource_group_name=resource_group_name, instance=instance)
+        # self.unfederate_msi(mi_resource_id_container)
+        return updated_instance
+
+    def add_mi_user_assigned(self, name: str, resource_group_name: str, mi_user_assigned: str):
         """
         Responsible for federating and building the instance identity object.
         """
+        mi_resource_id_container = parse_resource_id(mi_user_assigned)
         instance = self.show(name=name, resource_group_name=resource_group_name)
         cluster_resource = self.get_resource_map(instance).connected_cluster.resource
         if "oidcIssuerProfile" not in cluster_resource["properties"] or not cluster_resource["properties"][
@@ -120,12 +130,43 @@ class Instances(Queryable):
                 f"The cluster '{cluster_resource['name']}' is not enabled as an oidc issuer.\n"
                 "Please enable via 'az connectedk8s connect --enable-oidc-issuer'."
             )
+        # self.federate_msi(mi_resource_id_container, cluster_resource["properties"]["oidcIssuerProfile"])
+
         identity = instance.get("identity", {})
         if not identity:
             identity["type"] = "UserAssigned"
             identity["userAssignedIdentities"] = {}
-        for mi in mi_user_assigned_identities:
-            identity["userAssignedIdentities"][mi] = {}
+        identity["userAssignedIdentities"][mi_user_assigned] = {}
 
         instance["identity"] = identity
         return self.update(name=name, resource_group_name=resource_group_name, instance=instance)
+
+    def federate_msi(
+        self,
+        mi_resource_id_container: ResourceIdContainer,
+        oidc_issuer: str,
+        namespace: str = "azure-iot-operations",
+        service_account_name: str = "aio-dataflow",
+    ):
+        self.msi_mgmt_client.federated_identity_credentials.create_or_update(
+            resource_group_name=mi_resource_id_container.resource_group_name,
+            resource_name=mi_resource_id_container.resource_name,
+            federated_identity_credential_resource_name=mi_resource_id_container.resource_name,
+            parameters={
+                "properties": {
+                    "subject": f"system:serviceaccount:{namespace}:{service_account_name}",
+                    "audience": ["api://AzureADTokenExchange"],
+                    "issuer": oidc_issuer,
+                }
+            },
+        )
+
+    def unfederate_msi(
+        self,
+        mi_resource_id_container: ResourceIdContainer,
+    ):
+        self.msi_mgmt_client.federated_identity_credentials.delete(
+            resource_group_name=mi_resource_id_container.resource_group_name,
+            resource_name=mi_resource_id_container.resource_name,
+            federated_identity_credential_resource_name=mi_resource_id_container.resource_name,
+        )

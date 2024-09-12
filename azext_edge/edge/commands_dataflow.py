@@ -49,12 +49,12 @@ def list_dataflow_endpoints(cmd, instance_name: str, resource_group_name: str) -
 
 
 def assign_dataflow_identity(
-    cmd, instance_name: str, resource_group_name: str, mi_user_assigned_identities: List[str]
+    cmd, instance_name: str, resource_group_name: str, mi_user_assigned: List[str]
 ) -> dict:
     return Instances(cmd).add_mi_user_assigned(
         name=instance_name,
         resource_group_name=resource_group_name,
-        mi_user_assigned_identities=mi_user_assigned_identities,
+        mi_user_assigned=mi_user_assigned,
     )
 
 
@@ -66,9 +66,9 @@ def show_dataflow_identity(cmd, instance_name: str, resource_group_name: str) ->
     return instance.get("identity", {})
 
 
-def remove_dataflow_identity(cmd, instance_name: str, resource_group_name: str, mi_user_assigned_identities: List[str]) -> dict:
+def remove_dataflow_identity(cmd, instance_name: str, resource_group_name: str, mi_user_assigned: str) -> dict:
     return Instances(cmd).remove_mi_user_assigned(
         name=instance_name,
         resource_group_name=resource_group_name,
-        mi_user_assigned_identities=mi_user_assigned_identities,
+        mi_user_assigned=mi_user_assigned,
     )
