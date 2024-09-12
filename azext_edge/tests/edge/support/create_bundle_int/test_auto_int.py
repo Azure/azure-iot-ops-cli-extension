@@ -56,23 +56,30 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         )
 
     # Level 0 - top
-    namespace = process_top_levels(walk_result, ops_service).aio
+    namespace = process_top_levels(walk_result, ops_service)
+    aio_namespace = namespace.aio
 
     # Level 1
-    level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
-    expected_services = _get_expected_services(walk_result, ops_service, namespace)
+    level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
+    expected_services = _get_expected_services(walk_result, ops_service, aio_namespace)
     assert sorted(level_1["folders"]) == sorted(expected_services)
     assert not level_1["files"]
 
     # Check and take out mq traces:
     if mq_traces and ops_service in [OpsServiceType.auto.value, OpsServiceType.mq.value]:
-        mq_level = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value, "traces"), {})
+        mq_level = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.mq.value, "traces"), {})
         if mq_level:
             assert not mq_level["folders"]
             assert_file_names(mq_level["files"])
             # make sure level 2 doesnt get messed up
-            assert walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] == ["traces"]
-            walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] = []
+            assert walk_result[path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.mq.value)]["folders"] == [
+                "traces"
+            ]
+            walk_result[path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.mq.value)]["folders"] = []
+
+    # remove esa resources from walk_result from aio namespace assertion
+    if namespace.esa:
+        walk_result.pop(path.join(BASE_ZIP_PATH, namespace.esa, OpsServiceType.arccontainerstorage.value), {})
 
     # Level 2 and 3 - bottom
     is_billing_included = OpsServiceType.billing.value in expected_services

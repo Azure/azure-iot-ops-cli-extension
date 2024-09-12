@@ -4,13 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import ARCCONTAINERSTORAGE_API_V1
 from .helpers import (
-    check_custom_resource_files,
-    BASE_ZIP_PATH,
     check_workload_resource_files,
     get_file_map,
     run_bundle_command,
