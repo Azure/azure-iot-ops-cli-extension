@@ -32,6 +32,14 @@ def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
 def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
     """Test to focus on ops_service param."""
 
+    # skip arccontainerstorage for aio namespace check
+    if ops_service == OpsServiceType.arccontainerstorage.value:
+        pytest.skip("arccontainerstorage is not generated in aio namespace")
+
+    # TODO: remove orc in supoort bundle
+    if ops_service == OpsServiceType.orc.value:
+        pytest.skip("orc is no longer supported")
+
     command = f"az iot ops support create-bundle --broker-traces {mq_traces} " + "--ops-service {0}"
     if bundle_dir:
         command += f" --bundle-dir {bundle_dir}"
@@ -69,6 +77,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     # Level 2 and 3 - bottom
     is_billing_included = OpsServiceType.billing.value in expected_services
     actual_walk_result = len(expected_services) + int(is_billing_included) + len(ARC_AGENTS)
+
     assert len(walk_result) == actual_walk_result
 
     for directory in walk_result:
