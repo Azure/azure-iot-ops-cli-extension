@@ -439,6 +439,53 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow identity"
+    ] = """
+        type: group
+        short-summary: Dataflow identity management.
+    """
+
+    helps[
+        "iot ops dataflow identity assign"
+    ] = """
+        type: command
+        short-summary: Assign a user-assigned managed identity with the instance to be used in dataflows.
+        long-summary: |
+            This operation includes federation of the identity.
+
+        examples:
+        - name: Assign and federate a desired user-assigned managed identity.
+          text: >
+            az iot ops dataflow identity assign --in myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
+        "iot ops dataflow identity show"
+    ] = """
+        type: command
+        short-summary: Show the instance identities associated with dataflows.
+
+        examples:
+        - name: Show the instance identities associated with dataflows.
+          text: >
+            az iot ops dataflow identity show --in myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow identity remove"
+    ] = """
+        type: command
+        short-summary: Remove a user-assigned managed identity with the instance to be used in dataflows.
+        long-summary: |
+            This operation includes removing federation of the identity.
+
+        examples:
+        - name: Remove the desired user-assigned managed identity.
+          text: >
+            az iot ops dataflow identity remove --in myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
         "iot ops verify-host"
     ] = """
         type: command
