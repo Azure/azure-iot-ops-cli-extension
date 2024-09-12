@@ -454,6 +454,18 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow identity show"
+    ] = """
+        type: command
+        short-summary: Show the instance identities associated with dataflows.
+
+        examples:
+        - name: Assign and federate a desired user-assigned managed identity.
+          text: >
+            az iot ops dataflow identity show --in myinstance -g myresourcegroup
+    """
+
+    helps[
         "iot ops dataflow identity remove"
     ] = """
         type: command
