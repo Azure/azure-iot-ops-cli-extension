@@ -269,11 +269,14 @@ def get_file_map(
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "esa":
-        assert len(walk_result) == expected_default_walk_result
-        ops_path = path.join(BASE_ZIP_PATH, esa_namespace, ops_service)
-        esa_path = path.join(BASE_ZIP_PATH, esa_namespace, "esa", ops_service)
+        assert len(walk_result) == 1 + expected_default_walk_result
+        esa_path = path.join(BASE_ZIP_PATH, esa_namespace, "esa")
         file_map["esa"] = convert_file_names(walk_result[esa_path]["files"])
         file_map["__namespaces__"]["esa"] = esa_namespace
+
+        # no files for aio
+        if not walk_result[ops_path]["folders"]:
+            return file_map
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
             assert len(walk_result) == expected_default_walk_result
