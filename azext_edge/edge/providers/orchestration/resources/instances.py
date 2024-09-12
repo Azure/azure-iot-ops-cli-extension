@@ -4,8 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from copy import deepcopy
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional
 
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
@@ -13,11 +12,11 @@ from rich import print
 from rich.console import Console
 
 from ....util.az_client import (
+    ResourceIdContainer,
     get_iotops_mgmt_client,
     get_msi_mgmt_client,
     parse_resource_id,
     wait_for_terminal_state,
-    ResourceIdContainer,
 )
 from ....util.queryable import Queryable
 from ..common import CUSTOM_LOCATIONS_API_VERSION
