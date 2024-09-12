@@ -154,6 +154,7 @@ class OpsServiceType(ListableEnum):
     billing = "billing"
     dataflow = "dataflow"
     schemaregistry = "schemaregistry"
+    arccontainerstorage = "esa"
 
     @classmethod
     def list_check_services(cls):
