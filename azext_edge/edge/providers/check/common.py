@@ -10,7 +10,8 @@ shared: Define shared data types(enums) and constant strings for IoT Operations 
 """
 
 from enum import Enum
-from ...common import ListableEnum
+from typing import List, NamedTuple
+from ...common import CheckTaskStatus, ListableEnum
 
 
 class ResourceOutputDetailLevel(ListableEnum):
@@ -125,6 +126,17 @@ class DataflowEndpointType(ListableEnum):
     kafka = "kafka"
     local_storage = "localstorage"
     mqtt = "mqtt"
+
+
+class PodStatusResult(NamedTuple):
+    display_strings: List[str]
+    eval_status: CheckTaskStatus
+
+
+class PodStatusConditionResult(NamedTuple):
+    condition_string: str
+    failed_reason: str
+    eval_status: CheckTaskStatus
 
 
 # Akri runtime attributes

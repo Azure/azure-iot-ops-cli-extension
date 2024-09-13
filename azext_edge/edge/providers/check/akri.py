@@ -8,6 +8,8 @@ import re
 from rich.padding import Padding
 from typing import Any, Dict, List
 
+from azext_edge.edge.providers.check.base.pod import evaluate_pod_health
+
 from ...common import CheckTaskStatus
 
 from ..edge_api import (
@@ -25,7 +27,6 @@ from .base import (
     generate_target_resource_name,
     get_resources_by_name,
     process_dict_resource,
-    process_pod_status,
     get_resources_grouped_by_namespace,
     validate_one_of_conditions,
 )
@@ -99,13 +100,12 @@ def evaluate_core_service_runtime(
             ),
         )
 
-        process_pod_status(
+        evaluate_pod_health(
             check_manager=check_manager,
-            target_service_pod=f"pod/{AKRI_PREFIX}",
             target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
-            pods=pods,
             namespace=namespace,
-            display_padding=padding + PADDING_SIZE,
+            padding=padding + PADDING_SIZE,
+            pods=pods,
             detail_level=detail_level,
         )
 
@@ -502,7 +502,10 @@ def _evaluate_discovery_handler(
                         f"{property_condition_str}.valueFrom.configMapKeyRef": config_map_key_ref,
                     }
                     validate_one_of_conditions(
-                        conditions=[("secretKeyRef", secret_key_ref), ("configMapKeyRef", config_map_key_ref)],
+                        conditions=[
+                            ("secretKeyRef", secret_key_ref),
+                            ("configMapKeyRef", config_map_key_ref),
+                        ],
                         check_manager=check_manager,
                         eval_value=key_ref_eval_value,
                         namespace=namespace,
