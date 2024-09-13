@@ -21,6 +21,7 @@ __all__ = [
     "MqResourceKinds",
     "MQ_ACTIVE_API",
     "MQTT_BROKER_API_V1B1",
+    "OPCUA_API_V1",
     "OpcuaResourceKinds",
     "AkriResourceKinds",
     "AKRI_API_V0",
