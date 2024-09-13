@@ -26,7 +26,8 @@ from ...generators import generate_random_string
 @pytest.mark.parametrize("ops_service", ["akri"])
 def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        CoreServiceResourceKinds.RUNTIME_RESOURCE.value: "azext_edge.edge.providers.check.akri.evaluate_core_service_runtime",
+        CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
+        "azext_edge.edge.providers.check.akri.evaluate_core_service_runtime",
     }
 
     try:

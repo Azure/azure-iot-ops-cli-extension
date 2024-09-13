@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import re
 from rich.padding import Padding
 from typing import Any, Dict, List
 
