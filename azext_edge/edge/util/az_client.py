@@ -45,9 +45,24 @@ if TYPE_CHECKING:
     from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
     from ..vendor.clients.resourcesmgmt import ResourceManagementClient
     from ..vendor.clients.storagemgmt import StorageManagementClient
+    from ..vendor.clients.msimgmt import ManagedServiceIdentityClient
 
 
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
+
+
+def get_msi_mgmt_client(subscription_id: str, **kwargs) -> "ManagedServiceIdentityClient":
+    from ..vendor.clients.msimgmt import ManagedServiceIdentityClient
+
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return ManagedServiceIdentityClient(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
 
 
 def get_clusterconfig_mgmt_client(subscription_id: str, **kwargs) -> "KubernetesConfigurationClient":
@@ -90,6 +105,9 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
         **kwargs,
     )
+
+
+REGISTRY_API_VERSION = "2024-07-01-preview"
 
 
 def get_registry_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftDeviceRegistryManagementService":
@@ -202,6 +220,7 @@ class ResourceIdContainer(NamedTuple):
     subscription_id: str
     resource_group_name: str
     resource_name: str
+    resource_id: str
 
 
 def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
@@ -212,7 +231,7 @@ def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
     parts = resource_id.split("/")
     if len(parts) < 9:
         raise ValidationError(
-            "Malformed resource Id. An Azure resource Id has the form:\n"
+            f"Malformed resource Id '{resource_id}'. An Azure resource Id has the form:\n"
             "/subscription/{subscriptionId}/resourceGroups/{resourceGroup}"
             "/providers/Microsoft.Provider/{resourcePath}/{resourceName}"
         )
@@ -223,5 +242,8 @@ def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
     resource_name = parts[-1]
 
     return ResourceIdContainer(
-        subscription_id=subscription_id, resource_group_name=resource_group_name, resource_name=resource_name
+        subscription_id=subscription_id,
+        resource_group_name=resource_group_name,
+        resource_name=resource_name,
+        resource_id=resource_id,
     )

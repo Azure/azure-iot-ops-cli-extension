@@ -8,6 +8,7 @@ from sys import maxsize
 from time import sleep
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
+from azure.cli.core.azclierror import ArgumentUsageError
 from knack.log import get_logger
 from rich import print
 from rich.console import NewLine
@@ -17,8 +18,8 @@ from rich.table import Table
 
 from ...util.az_client import get_resource_client, wait_for_terminal_states
 from ...util.common import should_continue_prompt
+from .resource_map import IoTOperationsResource, IoTOperationsResourceMap
 from .resources import Instances
-from .resource_map import IoTOperationsResource
 
 logger = get_logger(__name__)
 
@@ -29,8 +30,9 @@ if TYPE_CHECKING:
 
 def delete_ops_resources(
     cmd,
-    instance_name: str,
     resource_group_name: str,
+    instance_name: Optional[str] = None,
+    cluster_name: Optional[str] = None,
     confirm_yes: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     force: Optional[bool] = None,
@@ -39,6 +41,7 @@ def delete_ops_resources(
     manager = DeletionManager(
         cmd=cmd,
         instance_name=instance_name,
+        cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         no_progress=no_progress,
         include_dependencies=include_dependencies,
@@ -50,8 +53,9 @@ class DeletionManager:
     def __init__(
         self,
         cmd,
-        instance_name: str,
         resource_group_name: str,
+        instance_name: Optional[str] = None,
+        cluster_name: Optional[str] = None,
         include_dependencies: Optional[bool] = None,
         no_progress: Optional[bool] = None,
     ):
@@ -59,6 +63,7 @@ class DeletionManager:
 
         self.cmd = cmd
         self.instance_name = instance_name
+        self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
         self.instances = Instances(self.cmd)
         self.include_dependencies = include_dependencies
@@ -77,8 +82,7 @@ class DeletionManager:
         self._progress_shown = False
 
     def do_work(self, confirm_yes: Optional[bool] = None, force: Optional[bool] = None):
-        self.instance = self.instances.show(name=self.instance_name, resource_group_name=self.resource_group_name)
-        self.resource_map = self.instances.get_resource_map(self.instance)
+        self.resource_map = self._get_resource_map()
         # Ensure cluster exists with existing resource_map pattern.
         self.resource_map.connected_cluster.resource
         self.resource_map.refresh_resource_state()
@@ -90,9 +94,24 @@ class DeletionManager:
 
         self._process(force=force)
 
+    def _get_resource_map(self) -> IoTOperationsResourceMap:
+        if not any([self.cluster_name, self.instance_name]):
+            raise ArgumentUsageError("Please provide either an instance name or cluster name.")
+
+        if self.instance_name:
+            self.instance = self.instances.show(name=self.instance_name, resource_group_name=self.resource_group_name)
+            return self.instances.get_resource_map(self.instance)
+
+        return IoTOperationsResourceMap(
+            cmd=self.cmd,
+            cluster_name=self.cluster_name,
+            resource_group_name=self.resource_group_name,
+            defer_refresh=True,
+        )
+
     def _display_resource_tree(self):
         if self._render_progress:
-            print(self.resource_map.build_tree(hide_extensions=True))
+            print(self.resource_map.build_tree(hide_extensions=not self.include_dependencies, category_color="red"))
 
     def _render_display(self, description: str):
         if self._render_progress:

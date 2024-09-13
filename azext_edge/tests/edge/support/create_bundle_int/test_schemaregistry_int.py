@@ -19,7 +19,7 @@ def test_create_bundle_schemas(init_setup, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, "schemaregistry")["aio"]
 
-    expected_workload_types = ["configmap", "pod", "service", "statefulset"]
+    expected_workload_types = ["configmap", "pod", "service", "statefulset", "pvc"]
 
     assert set(file_map.keys()).issubset(set(expected_workload_types))
 

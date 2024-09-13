@@ -133,16 +133,16 @@ class IoTOperationsResourceMap:
 
         self._cluster_container = refreshed_cluster_container
 
-    def build_tree(self, hide_extensions: bool = False, category_color: str = "red") -> Tree:
+    def build_tree(self, hide_extensions: bool = False, category_color: str = "cyan") -> Tree:
         tree = Tree(f"[green]{self.connected_cluster.cluster_name}")
 
         if not hide_extensions:
             extensions_node = tree.add(label=f"[{category_color}]extensions")
             [extensions_node.add(ext.display_name) for ext in self.extensions]
 
-        root_cl_node = tree.add(label=f"[{category_color}]customLocations")
         custom_locations = self.custom_locations
         if custom_locations:
+            root_cl_node = tree.add(label=f"[{category_color}]customLocations")
             for cl in custom_locations:
                 cl_node = root_cl_node.add(cl.display_name)
                 resource_sync_rules = self.get_resource_sync_rules(cl.resource_id)

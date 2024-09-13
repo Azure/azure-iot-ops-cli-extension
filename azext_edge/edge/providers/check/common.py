@@ -10,7 +10,8 @@ shared: Define shared data types(enums) and constant strings for IoT Operations 
 """
 
 from enum import Enum
-from ...common import ListableEnum
+from typing import List, NamedTuple
+from ...common import CheckTaskStatus, ListableEnum
 
 
 class ResourceOutputDetailLevel(ListableEnum):
@@ -53,9 +54,8 @@ ASSET_DATAPOINT_PROPERTIES = [
 
 ASSET_PROPERTIES = [
     ("description", "Description", True),
-    ("assetType", "Asset Type", False),
     ("attributes", "Attributes", True),
-    ("defaultDataPointsConfiguration", "Default Data Points Configuration", False),
+    ("defaultDatasetsConfiguration", "Default Dataset Configuration", False),
     ("defaultEventsConfiguration", "Default Events Configuration", False),
     ("displayName", "Display Name", False),
     ("documentationUri", "Documentation Uri", False),
@@ -126,6 +126,31 @@ class DataflowEndpointType(ListableEnum):
     kafka = "kafka"
     local_storage = "localstorage"
     mqtt = "mqtt"
+
+
+class DataFlowEndpointAuthenticationType(ListableEnum):
+    """
+    Dataflow Endpoint Authentication Type:
+    """
+
+    access_token = "AccessToken"
+    system_assigned = "SystemAssignedManagedIdentity"
+    user_assigned = "UserAssignedManagedIdentity"
+    x509 = "X509Certificate"
+    service_account_token = "ServiceAccountToken"
+    anonymous = "Anonymous"
+    sasl = "Sasl"
+
+
+class PodStatusResult(NamedTuple):
+    display_strings: List[str]
+    eval_status: CheckTaskStatus
+
+
+class PodStatusConditionResult(NamedTuple):
+    condition_string: str
+    failed_reason: str
+    eval_status: CheckTaskStatus
 
 
 # Akri runtime attributes

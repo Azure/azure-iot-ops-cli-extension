@@ -12,29 +12,33 @@ from typing import Any, TYPE_CHECKING
 from azure.core.rest import HttpRequest, HttpResponse
 from azure.mgmt.core import ARMPipelineClient
 
-from ._configuration import ConnectedKubernetesClientConfiguration
+from ._configuration import MicrosoftSecretSyncControllerConfiguration
 from ._serialization import Deserializer, Serializer
-from .operations import ConnectedClusterOperations, Operations
+from .operations import AzureKeyVaultSecretProviderClassesOperations, Operations, SecretSyncsOperations
 
 if TYPE_CHECKING:
     # pylint: disable=unused-import,ungrouped-imports
     from azure.core.credentials import TokenCredential
 
 
-class ConnectedKubernetesClient:  # pylint: disable=client-accepts-api-version-keyword
-    """Azure Connected Cluster Resource Provider API for onboarding a Kubernetes Cluster to Azure Arc.
+class MicrosoftSecretSyncController:  # pylint: disable=client-accepts-api-version-keyword
+    """Microsoft.SecretSyncController resource provider.
 
-    :ivar connected_cluster: ConnectedClusterOperations operations
-    :vartype connected_cluster: connectedcluster.mgmt.operations.ConnectedClusterOperations
     :ivar operations: Operations operations
-    :vartype operations: connectedcluster.mgmt.operations.Operations
-    :param subscription_id: The ID of the target subscription. Required.
+    :vartype operations: secretsync.mgmt.operations.Operations
+    :ivar azure_key_vault_secret_provider_classes: AzureKeyVaultSecretProviderClassesOperations
+     operations
+    :vartype azure_key_vault_secret_provider_classes:
+     secretsync.mgmt.operations.AzureKeyVaultSecretProviderClassesOperations
+    :ivar secret_syncs: SecretSyncsOperations operations
+    :vartype secret_syncs: secretsync.mgmt.operations.SecretSyncsOperations
+    :param subscription_id: The ID of the target subscription. The value must be an UUID. Required.
     :type subscription_id: str
     :param credential: Credential needed for the client to connect to Azure. Required.
     :type credential: ~azure.core.credentials.TokenCredential
     :keyword endpoint: Service URL. Default value is "https://management.azure.com".
     :paramtype endpoint: str
-    :keyword api_version: Api Version. Default value is "2024-07-15-preview". Note that overriding
+    :keyword api_version: Api Version. Default value is "2024-08-21-preview". Note that overriding
      this default value may result in unsupported behavior.
     :paramtype api_version: str
     :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
@@ -49,7 +53,7 @@ class ConnectedKubernetesClient:  # pylint: disable=client-accepts-api-version-k
         endpoint: str = "https://management.azure.com",
         **kwargs: Any
     ) -> None:
-        self._config = ConnectedKubernetesClientConfiguration(
+        self._config = MicrosoftSecretSyncControllerConfiguration(
             subscription_id=subscription_id, credential=credential, **kwargs
         )
         self._client: ARMPipelineClient = ARMPipelineClient(base_url=endpoint, config=self._config, **kwargs)
@@ -57,10 +61,11 @@ class ConnectedKubernetesClient:  # pylint: disable=client-accepts-api-version-k
         self._serialize = Serializer()
         self._deserialize = Deserializer()
         self._serialize.client_side_validation = False
-        self.connected_cluster = ConnectedClusterOperations(
+        self.operations = Operations(self._client, self._config, self._serialize, self._deserialize)
+        self.azure_key_vault_secret_provider_classes = AzureKeyVaultSecretProviderClassesOperations(
             self._client, self._config, self._serialize, self._deserialize
         )
-        self.operations = Operations(self._client, self._config, self._serialize, self._deserialize)
+        self.secret_syncs = SecretSyncsOperations(self._client, self._config, self._serialize, self._deserialize)
 
     def send_request(self, request: HttpRequest, **kwargs: Any) -> HttpResponse:
         """Runs the network request through the client's chained policies.
@@ -87,7 +92,7 @@ class ConnectedKubernetesClient:  # pylint: disable=client-accepts-api-version-k
     def close(self) -> None:
         self._client.close()
 
-    def __enter__(self) -> "ConnectedKubernetesClient":
+    def __enter__(self) -> "MicrosoftSecretSyncController":
         self._client.__enter__()
         return self
 
