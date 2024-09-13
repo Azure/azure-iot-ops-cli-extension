@@ -433,6 +433,53 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow identity"
+    ] = """
+        type: group
+        short-summary: Dataflow identity management.
+    """
+
+    helps[
+        "iot ops dataflow identity assign"
+    ] = """
+        type: command
+        short-summary: Assign a user-assigned managed identity with the instance to be used in dataflows.
+        long-summary: |
+            This operation includes federation of the identity.
+
+        examples:
+        - name: Assign and federate a desired user-assigned managed identity.
+          text: >
+            az iot ops dataflow identity assign --in myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
+        "iot ops dataflow identity show"
+    ] = """
+        type: command
+        short-summary: Show the instance identities associated with dataflows.
+
+        examples:
+        - name: Show the instance identities associated with dataflows.
+          text: >
+            az iot ops dataflow identity show --in myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow identity remove"
+    ] = """
+        type: command
+        short-summary: Remove a user-assigned managed identity with the instance to be used in dataflows.
+        long-summary: |
+            This operation includes removing federation of the identity.
+
+        examples:
+        - name: Remove the desired user-assigned managed identity.
+          text: >
+            az iot ops dataflow identity remove --in myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
         "iot ops verify-host"
     ] = """
         type: command
@@ -448,23 +495,58 @@ def load_iotops_help():
         "iot ops init"
     ] = """
         type: command
-        short-summary: Bootstrap, configure and deploy IoT Operations to the target Arc-enabled cluster.
+        short-summary: Bootstrap the target Arc-enabled cluster for IoT Operations deployment.
         long-summary: |
-                      For additional resources including how to Arc-enable a cluster see
-                      https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
+                      An Arc-enabled cluster is required to deploy IoT Operations. See the following resource for
+                      more info https://aka.ms/aziotops-arcconnect.
 
-                      IoT Operations depends on a service principal (SP) for Key Vault CSI driver secret synchronization.
+                      The init operation will do work in installing and configuring a foundation layer of edge
+                      services necessary for IoT Operations deployment.
 
-                      By default, init will do work in creating and configuring a suitable app registration
-                      via Microsoft Graph then apply it to the cluster.
+                      After the foundation layer has been installed the `az iot ops create` command should
+                      be used to deploy an instance.
+        examples:
+        - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+        - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             --enable-fault-tolerance
+    """
 
-                      You can short-circuit this work, by pre-creating an app registration, then providing values
-                      for --sp-app-id, --sp-object-id and --sp-secret. By providing the SP fields, no additional
-                      work via Microsoft Graph operations will be done.
+    helps[
+        "iot ops create"
+    ] = """
+        type: command
+        short-summary: Create an IoT Operations instance.
+        long-summary: |
+                      A succesful execution of init is required before running this command.
 
-                      Pre-creating an app registration is useful when the logged-in principal has constrained
-                      Entra Id permissions. For example in CI/automation scenarios, or an orgs separation of user
-                      responsibility.
+                      The result of the command nets an IoT Operations instance with
+                      a set of default resources configured for cohesive function.
+
+        examples:
+        - name: Create the target instance with minimum input.
+          text: >
+            az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+        - name: The following example adds customization to the default broker instance resource
+            as well as an instance description and tags.
+          text: >
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --broker-mem-profile High --broker-backend-workers 4 --description 'Contoso Factory'
+             --tags tier=testX1
+        - name: This example shows deploying an additional insecure (no authn or authz) broker listener
+            configured for port 1883 of service type load balancer. Useful for testing and/or demos.
+            Do not use the insecure option in production.
+          text: >
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --add-insecure-listener
+        - name: This form shows how to disable resource sync rules from the instance deployment,
+            which may be necessary due to lack of permissions to deploy them.
+          text: >
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --disable-rsync-rules
     """
 
     helps[
@@ -543,18 +625,6 @@ def load_iotops_help():
         - name: Update the instance description.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
-    """
-
-    helps[
-        "iot ops create"
-    ] = """
-        type: command
-        short-summary: Create an IoT Operations instance.
-
-        examples:
-        - name: Create the target instance with minimum input.
-          text: >
-            az iot ops create --name myinstance --cluster mycluster -g myresourcegroup
     """
 
     helps[
