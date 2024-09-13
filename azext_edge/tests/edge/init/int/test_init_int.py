@@ -327,7 +327,7 @@ def assert_dataflow_profile_args(
     **_
 ):
     profile = run(f"az iot ops dataflow profile list -g {resource_group} -i {instance_name}")
-    profile_props = profile["properties"][0]
+    profile_props = profile[0]["properties"]
     assert profile_props["instanceCount"] == (dataflow_profile_instances or 1)
 
 
