@@ -25,9 +25,8 @@ from ...util.az_client import (
     get_resource_client,
     wait_for_terminal_state,
 )
-from .connected_cluster import ConnectedCluster
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager
-from .resources import Instances
+from .resource_map import IoTOperationsResourceMap
 from .targets import InitTargets
 
 logger = get_logger(__name__)
@@ -95,7 +94,6 @@ class WorkManager:
         self.subscription_id: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
         self.resource_client = get_resource_client(subscription_id=self.subscription_id)
         self.permission_manager = PermissionManager(subscription_id=self.subscription_id)
-        self.instances = Instances(cmd=cmd)
 
     def _bootstrap_ux(self, show_progress: bool = False):
         self._display = WorkDisplay()
@@ -154,13 +152,8 @@ class WorkManager:
                 self._format_instance_desc(),
             )
 
-    def _process_connected_cluster(self) -> ConnectedCluster:
-        connected_cluster = ConnectedCluster(
-            cmd=self.cmd,
-            subscription_id=self.subscription_id,
-            cluster_name=self._targets.cluster_name,
-            resource_group_name=self._targets.resource_group_name,
-        )
+    def _process_connected_cluster(self):
+        connected_cluster = self._resource_map.connected_cluster
         cluster = connected_cluster.resource
         cluster_properties: Dict[str, Union[str, dict]] = cluster["properties"]
         cluster_validation_tuples = [
@@ -176,8 +169,6 @@ class WorkManager:
 
         if self._targets.enable_fault_tolerance and cluster_properties["totalNodeCount"] < 3:
             raise ValidationError("Arc Container Storage fault tolerance enablement requires at least 3 nodes.")
-
-        return connected_cluster
 
     def _deploy_template(
         self,
@@ -224,6 +215,12 @@ class WorkManager:
         self._active_step: int = 0
         self._targets = InitTargets(subscription_id=self.subscription_id, **kwargs)
         self._extension_map = None
+        self._resource_map = IoTOperationsResourceMap(
+            cmd=self.cmd,
+            cluster_name=self._targets.cluster_name,
+            resource_group_name=self._targets.resource_group_name,
+            defer_refresh=True,
+        )
         self._build_display()
 
         return self._do_work()
@@ -243,7 +240,7 @@ class WorkManager:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             self.render_display()
             verify_cli_client_connections()
-            connected_cluster = self._process_connected_cluster()
+            self._process_connected_cluster()
 
             # Pre-Flight workflow
             if self._pre_flight:
@@ -261,7 +258,7 @@ class WorkManager:
                 if False:
                     verify_custom_locations_enabled(self.cmd)
                     verify_custom_location_namespace(
-                        connected_cluster=connected_cluster,
+                        connected_cluster=self._resource_map.connected_cluster,
                         custom_location_name=self._targets.custom_location_name,
                         namespace=self._targets.cluster_namespace,
                     )
@@ -316,7 +313,7 @@ class WorkManager:
                 self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
                 _ = wait_for_terminal_state(enablement_poller)
 
-                self._extension_map = connected_cluster.get_extensions_by_type(
+                self._extension_map = self._resource_map.connected_cluster.get_extensions_by_type(
                     IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
                 )
                 self.permission_manager.apply_role_assignment(
@@ -330,16 +327,19 @@ class WorkManager:
                     category=WorkCategoryKey.ENABLE_IOT_OPS, completed_step=WorkStepKey.DEPLOY_ENABLEMENT
                 )
 
-                # TODO @digimaun
                 if self._show_progress:
+                    self._resource_map.refresh_resource_state()
+                    resource_tree = self._resource_map.build_tree()
                     self.stop_display()
+                    print(resource_tree)
                     return
+                # TODO @digimaun - work_kpis
                 return work_kpis
 
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
                 if not self._extension_map:
-                    self._extension_map = connected_cluster.get_extensions_by_type(
+                    self._extension_map = self._resource_map.connected_cluster.get_extensions_by_type(
                         IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
                     )
                     # TODO - @digmaun revisit
@@ -392,12 +392,10 @@ class WorkManager:
                 )
 
                 if self._show_progress:
+                    self._resource_map.refresh_resource_state()
+                    resource_tree = self._resource_map.build_tree()
                     self.stop_display()
-                    self.instances.show(
-                        name=self._targets.instance_name,
-                        resource_group_name=self._targets.resource_group_name,
-                        show_tree=True,
-                    )
+                    print(resource_tree)
                     return
                 # TODO @digimaun - work_kpis
                 return work_kpis
