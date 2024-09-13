@@ -69,6 +69,7 @@ def _assemble_connected_cluster_mock(
 )
 @pytest.mark.parametrize("expected_resources", [None, _generate_records(5)])
 @pytest.mark.parametrize("expected_resource_sync_rules", [None, _generate_records()])
+@pytest.mark.parametrize("category_color", [None, "red"])
 def test_resource_map(
     mocker,
     mocked_cmd: Mock,
@@ -77,6 +78,7 @@ def test_resource_map(
     expected_custom_locations: Optional[List[dict]],
     expected_resources: Optional[List[dict]],
     expected_resource_sync_rules: Optional[List[dict]],
+    category_color: Optional[str],
 ):
     from azext_edge.edge.providers.orchestration.resource_map import (
         IoTOperationsResourceMap,
@@ -117,13 +119,18 @@ def test_resource_map(
             )
             _assert_ops_resource_eq(resource_map.get_resource_sync_rules(cl["id"]), expected_resource_sync_rules)
 
+    kwargs = {}
+    if category_color:
+        kwargs["category_color"] = category_color
+
     _assert_tree(
-        resource_map.build_tree(),
+        resource_map.build_tree(**kwargs),
         cluster_name=cluster_name,
         expected_aio_extensions=expected_extensions,
         expected_aio_custom_locations=expected_custom_locations,
         expected_aio_resources=expected_resources,
         expected_resource_sync_rules=expected_resource_sync_rules,
+        **kwargs,
     )
 
 
@@ -155,27 +162,28 @@ def _assert_tree(
     expected_aio_custom_locations: Optional[List[dict]],
     expected_aio_resources: Optional[List[dict]],
     expected_resource_sync_rules: Optional[List[dict]],
+    category_color: str = "cyan",
 ):
     assert tree.label == f"[green]{cluster_name}"
 
-    assert tree.children[0].label == "[red]extensions"
+    assert tree.children[0].label == f"[{category_color}]extensions"
     if expected_aio_extensions:
         for i in range(len(expected_aio_extensions)):
             tree.children[0].children[i].label == expected_aio_extensions[i]["name"]
 
-    assert tree.children[1].label == "[red]customLocations"
     if expected_aio_custom_locations:
+        assert tree.children[1].label == f"[{category_color}]customLocations"
         for i in range(len(expected_aio_custom_locations)):
             tree.children[1].children[i].label == expected_aio_custom_locations[i]["name"]
 
             if expected_resource_sync_rules:
-                assert tree.children[1].children[i].children[0].label == "[red]resourceSyncRules"
+                assert tree.children[1].children[i].children[0].label == f"[{category_color}]resourceSyncRules"
                 for j in range(len(expected_resource_sync_rules)):
                     tree.children[1].children[i].children[0].children[j].label == expected_resource_sync_rules[i][
                         "name"
                     ]
 
             if expected_aio_resources:
-                assert tree.children[1].children[i].children[1].label == "[red]resources"
+                assert tree.children[1].children[i].children[1].label == f"[{category_color}]resources"
                 for j in range(len(expected_aio_resources)):
                     tree.children[1].children[i].children[1].children[j].label == expected_aio_resources[i]["name"]

@@ -216,7 +216,8 @@ def create_instance(
 def delete(
     cmd,
     resource_group_name: str,
-    instance_name: str,
+    instance_name: Optional[str] = None,
+    cluster_name: Optional[str] = None,
     confirm_yes: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     force: Optional[bool] = None,
@@ -227,6 +228,7 @@ def delete(
     return delete_ops_resources(
         cmd=cmd,
         instance_name=instance_name,
+        cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         confirm_yes=confirm_yes,
         no_progress=no_progress,
