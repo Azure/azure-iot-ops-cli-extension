@@ -13,6 +13,7 @@ from uuid import uuid4
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
+from rich import print
 from rich.console import NewLine
 from rich.live import Live
 from rich.padding import Padding
