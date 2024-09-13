@@ -42,8 +42,8 @@ def test_check_pre_post(init_setup, post, pre):
             aio_check = run("kubectl api-resources --api-group=iotoperations.azure.com")
             expected_pre = "iotoperations.azure.com" not in aio_check
         except CLIInternalError:
-            from azext_edge.edge.providers.edge_api.orc import ORC_API_V1
-            expected_pre = not ORC_API_V1.is_deployed()
+            from azext_edge.edge.providers.edge_api.meta import META_API_V1B1
+            expected_pre = not META_API_V1B1.is_deployed()
 
     assert bool(result.get("preDeployment")) == expected_pre
     assert bool(result.get("postDeployment")) == expected_post
