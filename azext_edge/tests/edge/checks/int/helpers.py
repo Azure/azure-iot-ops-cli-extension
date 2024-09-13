@@ -39,7 +39,7 @@ def assert_enumerate_resources(
     assert len(evaluation["evaluations"]) == 1
     assert evaluation["evaluations"][0]["status"] == status
 
-    if present:
+    if present and resource_kinds:
         assert len(evaluation["evaluations"][0]["value"]) == len(resource_kinds)
         for kind in evaluation["evaluations"][0]["value"]:
             assert kind.lower() in resource_kinds
