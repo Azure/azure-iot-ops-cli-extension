@@ -499,20 +499,20 @@ def evaluate_brokers(
 
             pods: List[dict] = []
 
-            for prefix, label in [
-                (AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX, MQ_NAME_LABEL),
-                (AIO_BROKER_FRONTEND_PREFIX, MQ_NAME_LABEL),
-                (AIO_BROKER_BACKEND_PREFIX, MQ_NAME_LABEL),
-                (AIO_BROKER_AUTH_PREFIX, MQ_NAME_LABEL),
-                (AIO_BROKER_HEALTH_MANAGER, MQ_NAME_LABEL),
-                (AIO_BROKER_DIAGNOSTICS_SERVICE, MQ_NAME_LABEL),
-                (AIO_BROKER_OPERATOR, MQ_NAME_LABEL),
-                (AIO_BROKER_FLUENT_BIT, MQ_NAME_LABEL),
+            for prefix in [
+                AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX,
+                AIO_BROKER_FRONTEND_PREFIX,
+                AIO_BROKER_BACKEND_PREFIX,
+                AIO_BROKER_AUTH_PREFIX,
+                AIO_BROKER_HEALTH_MANAGER,
+                AIO_BROKER_DIAGNOSTICS_SERVICE,
+                AIO_BROKER_OPERATOR,
+                AIO_BROKER_FLUENT_BIT,
             ]:
                 prefixed_pods = get_namespaced_pods_by_prefix(
                     prefix=prefix,
                     namespace=namespace,
-                    label_selector=label,
+                    label_selector=MQ_NAME_LABEL,
                 )
 
                 if not prefixed_pods:
@@ -531,7 +531,7 @@ def evaluate_brokers(
                         get_namespaced_pods_by_prefix(
                             prefix=prefix,
                             namespace="",
-                            label_selector=label,
+                            label_selector=MQ_NAME_LABEL,
                         )
                     )
 

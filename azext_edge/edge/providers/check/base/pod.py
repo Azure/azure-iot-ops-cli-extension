@@ -71,7 +71,7 @@ def evaluate_pod_health(
         pod_statuses.append(pod_status_result.eval_status)
         table.add_row(*pod_status_result.display_strings)
 
-    add_footer = not all([status == CheckTaskStatus.success.value for status in pod_statuses])
+    add_footer = not all(status == CheckTaskStatus.success.value for status in pod_statuses)
 
     check_manager.add_display(
         target_name=target,
