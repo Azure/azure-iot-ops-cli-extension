@@ -148,7 +148,6 @@ class OpsServiceType(ListableEnum):
     auto = "auto"
     mq = "broker"
     opcua = "opcua"
-    orc = "orc"
     akri = "akri"
     deviceregistry = "deviceregistry"
     billing = "billing"
