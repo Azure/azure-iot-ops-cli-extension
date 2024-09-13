@@ -8,15 +8,6 @@ from .base import EdgeResourceApi
 from ...common import ListableEnum
 
 
-class ArcContainerStorageResourceKinds(ListableEnum):
-    ACSTORCONFIGURATION = "acstorconfiguration"
-    CACHECONFIGURATION = "cacheconfiguration"
-    EDGEINGESTPOLICY = "edgeingestpolicy"
-    EDGESTORAGECONFIGURATION = "edgestorageconfiguration"
-    EDGESUBVOLUME = "edgesubvolume"
-    EDGEVOLUME = "edgevolume"
-
-
 ARCCONTAINERSTORAGE_API_V1 = EdgeResourceApi(
     group="arccontainerstorage.azure.net", version="v1", moniker="arccontainerstorage"
 )
