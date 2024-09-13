@@ -577,6 +577,9 @@ def load_iotops_help():
         - name: Force deletion regardless of warnings. May lead to errors.
           text: >
             az iot ops delete -n myinstance -g myresourcegroup --force
+        - name: Use cluster name instead of instance for lookup.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup
         - name: Reverse application of init.
           text: >
             az iot ops delete -n myinstance -g myresourcegroup --include-deps
