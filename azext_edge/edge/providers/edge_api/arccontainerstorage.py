@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 from .base import EdgeResourceApi
-from ...common import ListableEnum
 
 
 ARCCONTAINERSTORAGE_API_V1 = EdgeResourceApi(
