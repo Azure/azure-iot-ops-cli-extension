@@ -12,6 +12,7 @@ from knack.help_files import helps
 from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
     COMPAT_AKRI_APIS,
+    COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
@@ -58,6 +59,7 @@ def load_iotops_help():
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
+            - {COMPAT_ARCCONTAINERSTORAGE_APIS.as_str()}
 
             Note: logs from evicted pod will not be captured, as they are inaccessible. For details
             on why a pod was evicted, please refer to the related pod and node files.
@@ -79,6 +81,10 @@ def load_iotops_help():
         - name: Include mqtt broker traces in the support bundle. This is an alias for stats trace fetch capability.
           text: >
             az iot ops support create-bundle --ops-service broker --broker-traces
+
+        - name: Include arc container storage resources in the support bundle.
+          text: >
+            az iot ops support create-bundle --ops-service acs
     """
 
     helps[
@@ -433,6 +439,53 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow identity"
+    ] = """
+        type: group
+        short-summary: Dataflow identity management.
+    """
+
+    helps[
+        "iot ops dataflow identity assign"
+    ] = """
+        type: command
+        short-summary: Assign a user-assigned managed identity with the instance to be used in dataflows.
+        long-summary: |
+            This operation includes federation of the identity.
+
+        examples:
+        - name: Assign and federate a desired user-assigned managed identity.
+          text: >
+            az iot ops dataflow identity assign --in myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
+        "iot ops dataflow identity show"
+    ] = """
+        type: command
+        short-summary: Show the instance identities associated with dataflows.
+
+        examples:
+        - name: Show the instance identities associated with dataflows.
+          text: >
+            az iot ops dataflow identity show --in myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow identity remove"
+    ] = """
+        type: command
+        short-summary: Remove a user-assigned managed identity with the instance to be used in dataflows.
+        long-summary: |
+            This operation includes removing federation of the identity.
+
+        examples:
+        - name: Remove the desired user-assigned managed identity.
+          text: >
+            az iot ops dataflow identity remove --in myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
         "iot ops verify-host"
     ] = """
         type: command
@@ -507,8 +560,12 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Delete IoT Operations from the cluster.
-        long-summary: The operation uses Azure Resource Graph to determine correlated resources.
-          Resource Graph being eventually consistent does not guarantee a synchronized state at the time of execution.
+        long-summary: |
+            The name of either the instance or cluster must be provided.
+
+            The operation uses Azure Resource Graph to determine correlated resources.
+            Resource Graph being eventually consistent does not guarantee a synchronized state at the
+            time of execution.
 
         examples:
         - name: Minimum input for complete deletion.
@@ -520,6 +577,9 @@ def load_iotops_help():
         - name: Force deletion regardless of warnings. May lead to errors.
           text: >
             az iot ops delete -n myinstance -g myresourcegroup --force
+        - name: Use cluster name instead of instance for lookup.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup
         - name: Reverse application of init.
           text: >
             az iot ops delete -n myinstance -g myresourcegroup --include-deps

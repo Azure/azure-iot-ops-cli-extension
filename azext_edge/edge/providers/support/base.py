@@ -57,6 +57,7 @@ def process_crd(
     plural: str,
     directory_path: str,
     file_prefix: Optional[str] = None,
+    namespace: Optional[str] = None,
 ) -> List[dict]:
     result: dict = get_custom_objects(
         group=group,
@@ -70,7 +71,8 @@ def process_crd(
     processed = []
     namespaces = []
     for r in result.get("items", []):
-        namespace = r["metadata"]["namespace"]
+        if not namespace:
+            namespace = r["metadata"]["namespace"]
         namespaces.append(namespace)
         name = r["metadata"]["name"]
         processed.append(
@@ -92,6 +94,7 @@ def process_v1_pods(
     prefix_names: Optional[List[str]] = None,
     pod_prefix_for_init_container_logs: Optional[List[str]] = None,
     exclude_prefixes: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ) -> List[dict]:
     from kubernetes.client.models import V1Pod
 
@@ -102,7 +105,10 @@ def process_v1_pods(
     if not prefix_names:
         prefix_names = []
 
-    pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
+    if namespace:
+        pods: V1PodList = v1_api.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
+    else:
+        pods: V1PodList = v1_api.list_pod_for_all_namespaces(label_selector=label_selector)
 
     if exclude_prefixes:
         pods = exclude_resources_with_prefix(pods, exclude_prefixes)
@@ -186,11 +192,18 @@ def process_deployments(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
     exclude_prefixes: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ) -> List[dict]:
     v1_apps = client.AppsV1Api()
-    deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
-    )
+
+    if namespace:
+        deployments: V1DeploymentList = v1_apps.list_namespaced_deployment(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        deployments: V1DeploymentList = v1_apps.list_deployment_for_all_namespaces(
+            label_selector=label_selector, field_selector=field_selector
+        )
 
     return _process_kubernetes_resources(
         directory_path=directory_path,
@@ -237,11 +250,18 @@ def process_services(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
     exclude_prefixes: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ) -> List[dict]:
     v1_api = client.CoreV1Api()
-    services: V1ServiceList = v1_api.list_service_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
-    )
+
+    if namespace:
+        services: V1ServiceList = v1_api.list_namespaced_service(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        services: V1ServiceList = v1_api.list_service_for_all_namespaces(
+            label_selector=label_selector, field_selector=field_selector
+        )
 
     return _process_kubernetes_resources(
         directory_path=directory_path,
@@ -257,9 +277,16 @@ def process_replicasets(
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
     exclude_prefixes: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ) -> List[dict]:
     v1_apps = client.AppsV1Api()
-    replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
+
+    if namespace:
+        replicasets: V1ReplicaSetList = v1_apps.list_namespaced_replica_set(
+            namespace=namespace, label_selector=label_selector
+        )
+    else:
+        replicasets: V1ReplicaSetList = v1_apps.list_replica_set_for_all_namespaces(label_selector=label_selector)
 
     return _process_kubernetes_resources(
         directory_path=directory_path,
@@ -275,11 +302,18 @@ def process_daemonsets(
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ) -> List[dict]:
     v1_apps = client.AppsV1Api()
-    daemonsets: V1DaemonSetList = v1_apps.list_daemon_set_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
-    )
+
+    if namespace:
+        daemonsets: V1DaemonSetList = v1_apps.list_namespaced_daemon_set(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        daemonsets: V1DaemonSetList = v1_apps.list_daemon_set_for_all_namespaces(
+            label_selector=label_selector, field_selector=field_selector
+        )
 
     return _process_kubernetes_resources(
         directory_path=directory_path,
@@ -359,11 +393,18 @@ def process_persistent_volume_claims(
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ) -> List[dict]:
     v1_api = client.CoreV1Api()
-    pvcs: V1PersistentVolumeClaimList = v1_api.list_persistent_volume_claim_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
-    )
+
+    if namespace:
+        pvcs: V1PersistentVolumeClaimList = v1_api.list_namespaced_persistent_volume_claim(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        pvcs: V1PersistentVolumeClaimList = v1_api.list_persistent_volume_claim_for_all_namespaces(
+            label_selector=label_selector, field_selector=field_selector
+        )
 
     return _process_kubernetes_resources(
         directory_path=directory_path,
@@ -417,6 +458,7 @@ def assemble_crd_work(
     apis: Iterable[EdgeResourceApi],
     file_prefix_map: Optional[Dict[str, str]] = None,
     directory_path: Optional[str] = None,
+    namespace: Optional[str] = None,
 ) -> dict:
     if not file_prefix_map:
         file_prefix_map = {}
@@ -435,6 +477,7 @@ def assemble_crd_work(
                 plural=api._kinds[kind],  # TODO: optimize
                 directory_path=directory_path,
                 file_prefix=file_prefix,
+                namespace=namespace,
             )
 
     return result
@@ -473,9 +516,7 @@ def _capture_pod_container_logs(
         for capture_previous in capture_previous_log_runs:
             try:
                 logger_debug_previous = "previous run " if capture_previous else ""
-                logger.debug(
-                    f"Reading {logger_debug_previous}log from pod {pod_name} container {container.name}"
-                )
+                logger.debug(f"Reading {logger_debug_previous}log from pod {pod_name} container {container.name}")
                 log: str = v1_api.read_namespaced_pod_log(
                     name=pod_name,
                     namespace=pod_namespace,
@@ -542,12 +583,8 @@ def _process_kubernetes_resources(
     return processed
 
 
-def exclude_resources_with_prefix(
-    resources: K8sRuntimeResources, exclude_prefixes: List[str]
-) -> K8sRuntimeResources:
+def exclude_resources_with_prefix(resources: K8sRuntimeResources, exclude_prefixes: List[str]) -> K8sRuntimeResources:
     for prefix in exclude_prefixes:
-        resources.items = [
-            resource for resource in resources.items if not resource.metadata.name.startswith(prefix)
-        ]
+        resources.items = [resource for resource in resources.items if not resource.metadata.name.startswith(prefix)]
 
     return resources
