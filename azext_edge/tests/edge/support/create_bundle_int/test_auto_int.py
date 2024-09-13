@@ -32,6 +32,14 @@ def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
 def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
     """Test to focus on ops_service param."""
 
+    # skip arccontainerstorage for aio namespace check
+    if ops_service == OpsServiceType.arccontainerstorage.value:
+        pytest.skip("arccontainerstorage is not generated in aio namespace")
+
+    # TODO: remove orc in supoort bundle
+    if ops_service == OpsServiceType.orc.value:
+        pytest.skip("orc is no longer supported")
+
     command = f"az iot ops support create-bundle --broker-traces {mq_traces} " + "--ops-service {0}"
     if bundle_dir:
         command += f" --bundle-dir {bundle_dir}"
@@ -48,29 +56,35 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         )
 
     # Level 0 - top
-    namespace = process_top_levels(walk_result, ops_service).aio
+    namespace = process_top_levels(walk_result, ops_service)
+    aio_namespace = namespace.aio
 
     # Level 1
-    level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
-    expected_services = _get_expected_services(walk_result, ops_service, namespace)
+    level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
+    expected_services = _get_expected_services(walk_result, ops_service, aio_namespace)
     assert sorted(level_1["folders"]) == sorted(expected_services)
     assert not level_1["files"]
 
     # Check and take out mq traces:
     if mq_traces and ops_service in [OpsServiceType.auto.value, OpsServiceType.mq.value]:
-        mq_level = walk_result.pop(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value, "traces"), {})
+        mq_level = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.mq.value, "traces"), {})
         if mq_level:
             assert not mq_level["folders"]
             assert_file_names(mq_level["files"])
             # make sure level 2 doesnt get messed up
-            assert walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] == [
+            assert walk_result[path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.mq.value)]["folders"] == [
                 "traces"
             ]
-            walk_result[path.join(BASE_ZIP_PATH, namespace, OpsServiceType.mq.value)]["folders"] = []
+            walk_result[path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.mq.value)]["folders"] = []
+
+    # remove acs resources from walk_result from aio namespace assertion
+    if namespace.acs:
+        walk_result.pop(path.join(BASE_ZIP_PATH, namespace.acs, "arccontainerstorage"), {})
 
     # Level 2 and 3 - bottom
     is_billing_included = OpsServiceType.billing.value in expected_services
     actual_walk_result = len(expected_services) + int(is_billing_included) + len(ARC_AGENTS)
+
     assert len(walk_result) == actual_walk_result
 
     for directory in walk_result:
@@ -104,6 +118,8 @@ def _get_expected_services(
         # these should always be generated
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
+        # TODO: remove orc in supoort bundle
+        expected_services.remove(OpsServiceType.orc.value)
         expected_services.sort()
 
     # device registry folder will not be created if there are no device registry resources
@@ -112,5 +128,13 @@ def _get_expected_services(
         and OpsServiceType.deviceregistry.value in expected_services
     ):
         expected_services.remove(OpsServiceType.deviceregistry.value)
+
+    # arccotainerstorage folder will not be created under aio namespace
+    if (
+        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, "arccontainerstorage"))
+        and OpsServiceType.arccontainerstorage.value in expected_services
+    ):
+        expected_services.remove(OpsServiceType.arccontainerstorage.value)
+
     expected_services.append("meta")
     return expected_services
