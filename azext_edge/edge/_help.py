@@ -555,7 +555,7 @@ def load_iotops_help():
         type: command
         short-summary: Delete IoT Operations from the cluster.
         long-summary: |
-            Either the instance name via --name, or cluster name via --cluster must be provided.
+            The name of either the instance or cluster must be provided.
 
             The operation uses Azure Resource Graph to determine correlated resources.
             Resource Graph being eventually consistent does not guarantee a synchronized state at the
