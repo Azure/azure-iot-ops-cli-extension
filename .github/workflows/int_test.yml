@@ -201,6 +201,7 @@ jobs:
           azext_edge_init_continue_on_error: ${{ inputs.init-continue-on-error || '' }}
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
           azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
           azext_edge_init_redeployment: ${{ steps.init.outputs.REDEPLOY }}
@@ -229,6 +230,7 @@ jobs:
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-int --skip-pkg-install -- --durations=0
@@ -280,22 +282,21 @@ jobs:
           az iot ops broker stats --raw
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
           az iot ops verify-host
-      # - name: "Delete Cluster for redeployment"
-      #   if: ${{ matrix.feature == 'redeploy' }}
-      #   run: |
-      #     az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
-      # - name: "Redeploy cluster via tox"
-      #   if: ${{ matrix.feature == 'redeploy' }}
-      #   env:
-      #     azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
-      #     azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-      #     azext_edge_init_args: ${{ steps.init.outputs.ARG }}
-      #     azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
-      #     azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
-      #     azext_edge_sp_secret: ${{ secrets.AIO_SP_SECRET || '' }}
-      #   run: |
-      #     cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-      #     tox r -e python-init-int --skip-pkg-install -- --durations=0
+      - name: "Delete Cluster for redeployment"
+        if: ${{ matrix.feature == 'redeploy' }}
+        run: |
+          az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
+      - name: "Redeploy cluster via tox"
+        if: ${{ matrix.feature == 'redeploy' }}
+        env:
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+          azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
+          azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          tox r -e python-init-int --skip-pkg-install -- --durations=0
       - name: "Delete AIO resources"
         if: ${{ always() }}
         run: |
