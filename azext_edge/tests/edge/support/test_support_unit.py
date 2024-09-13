@@ -17,6 +17,7 @@ from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import (
     AKRI_API_V0,
+    ARCCONTAINERSTORAGE_API_V1,
     CLUSTER_CONFIG_API_V1,
     DEVICEREGISTRY_API_V1,
     MQ_ACTIVE_API,
@@ -37,6 +38,7 @@ from azext_edge.edge.providers.support.akri import (
     AKRI_WEBHOOK_LABEL,
 )
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
+from azext_edge.edge.providers.support.arccontainerstorage import STORAGE_NAMESPACE
 from azext_edge.edge.providers.support.base import get_bundle_path
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
@@ -69,6 +71,7 @@ from azext_edge.tests.edge.support.conftest import add_pod_to_mocked_pods
 from ...generators import generate_random_string
 
 a_bundle_dir = f"support_test_{generate_random_string()}"
+# @TODO: test refactor
 
 
 @pytest.mark.parametrize(
@@ -81,6 +84,7 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, AKRI_API_V0],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1],
+        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, ORC_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1],
     ],
     indirect=True,
 )
@@ -498,6 +502,51 @@ def test_create_bundle(
                 since_seconds=since_seconds,
             )
 
+        if api in [ARCCONTAINERSTORAGE_API_V1]:
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
+                namespace=STORAGE_NAMESPACE,
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
+                namespace=STORAGE_NAMESPACE,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=None,
+                directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
+                since_seconds=since_seconds,
+                namespace=STORAGE_NAMESPACE,
+            )
+            assert_list_daemon_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
+                namespace=STORAGE_NAMESPACE,
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
+                namespace=STORAGE_NAMESPACE,
+            )
+            assert_list_persistent_volume_claims(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=None,
+                directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
+                namespace=STORAGE_NAMESPACE,
+            )
     # assert shared KPIs regardless of service
     assert_shared_kpis(mocked_client, mocked_zipfile)
     # assert meta KPIs
@@ -556,9 +605,7 @@ def assert_get_custom_resources(
     file_prefix: str = None,
     sub_group: Optional[str] = None,
 ):
-    mocked_get_custom_objects.assert_any_call(
-        group=api.group, version=api.version, plural=f"{kind}s", use_cache=False
-    )
+    mocked_get_custom_objects.assert_any_call(group=api.group, version=api.version, plural=f"{kind}s", use_cache=False)
     if not file_prefix:
         file_prefix = kind
 
@@ -595,6 +642,7 @@ def assert_list_deployments(
     directory_path: str,
     field_selector: str = None,
     mock_names: List[str] = None,
+    namespace: Optional[str] = None,
 ):
     if MQ_DIRECTORY_PATH in directory_path:
         # regardless of MQ API, MQ_ACTIVE_API.moniker is used for support/broker/fetch_diagnostic_metrics
@@ -608,9 +656,14 @@ def assert_list_deployments(
             ]
         )
     else:
-        mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_any_call(
-            label_selector=label_selector, field_selector=field_selector
-        )
+        if namespace:
+            mocked_client.AppsV1Api().list_namespaced_deployment.assert_any_call(
+                namespace=namespace, label_selector=label_selector, field_selector=field_selector
+            )
+        else:
+            mocked_client.AppsV1Api().list_deployment_for_all_namespaces.assert_any_call(
+                label_selector=label_selector, field_selector=field_selector
+            )
 
     mock_names = mock_names or ["mock_deployment"]
     for name in mock_names:
@@ -649,7 +702,12 @@ def assert_list_pods(
     directory_path: str,
     **kwargs,
 ):
-    mocked_client.CoreV1Api().list_pod_for_all_namespaces.assert_any_call(label_selector=label_selector)
+    if "namespace" in kwargs:
+        mocked_client.CoreV1Api().list_namespaced_pod.assert_any_call(
+            namespace=kwargs["namespace"], label_selector=label_selector
+        )
+    else:
+        mocked_client.CoreV1Api().list_pod_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
     for namespace in mocked_list_pods:
         for pod_name in mocked_list_pods[namespace]:
@@ -728,10 +786,14 @@ def assert_list_replica_sets(
     label_selector: str,
     directory_path: str,
     mock_names: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ):
-    mocked_client.AppsV1Api().list_replica_set_for_all_namespaces.assert_any_call(
-        label_selector=label_selector
-    )
+    if namespace:
+        mocked_client.AppsV1Api().list_namespaced_replica_set.assert_any_call(
+            namespace=namespace, label_selector=label_selector
+        )
+    else:
+        mocked_client.AppsV1Api().list_replica_set_for_all_namespaces.assert_any_call(label_selector=label_selector)
 
     mock_names = mock_names or ["mock_replicaset"]
     for name in mock_names:
@@ -748,16 +810,25 @@ def assert_list_persistent_volume_claims(
     directory_path: str,
     label_selector: str = None,
     field_selector: str = None,
+    mock_names: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ):
-    mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.assert_any_call(
-        label_selector=label_selector, field_selector=field_selector
-    )
+    if namespace:
+        mocked_client.CoreV1Api().list_namespaced_persistent_volume_claim.assert_any_call(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.assert_any_call(
+            label_selector=label_selector, field_selector=field_selector
+        )
 
-    assert_zipfile_write(
-        mocked_zipfile,
-        zinfo=f"mock_namespace/{directory_path}/pvc.mock_pvc.yaml",
-        data="kind: PersistentVolumeClaim\nmetadata:\n  name: mock_pvc\n  namespace: mock_namespace\n",
-    )
+    mock_names = mock_names or ["mock_pvc"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{directory_path}/pvc.{name}.yaml",
+            data=f"kind: PersistentVolumeClaim\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+        )
 
 
 def assert_list_stateful_sets(
@@ -785,10 +856,17 @@ def assert_list_services(
     label_selector: Optional[str] = None,
     field_selector: Optional[str] = None,
     mock_names: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ):
-    mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(
-        label_selector=label_selector, field_selector=field_selector
-    )
+
+    if namespace:
+        mocked_client.CoreV1Api().list_namespaced_service.assert_any_call(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        mocked_client.CoreV1Api().list_service_for_all_namespaces.assert_any_call(
+            label_selector=label_selector, field_selector=field_selector
+        )
 
     mock_names = mock_names or ["mock_service"]
     for name in mock_names:
@@ -826,10 +904,16 @@ def assert_list_daemon_sets(
     label_selector: Optional[str] = None,
     field_selector: Optional[str] = None,
     mock_names: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ):
-    mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.assert_any_call(
-        label_selector=label_selector, field_selector=field_selector
-    )
+    if namespace:
+        mocked_client.AppsV1Api().list_namespaced_daemon_set.assert_any_call(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.assert_any_call(
+            label_selector=label_selector, field_selector=field_selector
+        )
 
     mock_names = mock_names or ["mock_daemonset"]
     for name in mock_names:
@@ -862,9 +946,7 @@ def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
 
 def assert_shared_kpis(mocked_client, mocked_zipfile):
     mocked_client.CoreV1Api().list_node.assert_called_once()
-    assert_zipfile_write(
-        mocked_zipfile, zinfo="nodes.yaml", data="items:\n- metadata:\n    name: mock_node\n"
-    )
+    assert_zipfile_write(mocked_zipfile, zinfo="nodes.yaml", data="items:\n- metadata:\n    name: mock_node\n")
     mocked_client.CoreV1Api().list_event_for_all_namespaces.assert_called_once()
     assert_zipfile_write(
         mocked_zipfile,
@@ -952,9 +1034,7 @@ def test_create_bundle_mq_traces(
     mocked_mq_get_traces,
     mocked_get_config_map,
 ):
-    result = support_bundle(
-        None, ops_service=OpsServiceType.mq.value, bundle_dir=a_bundle_dir, include_mq_traces=True
-    )
+    result = support_bundle(None, ops_service=OpsServiceType.mq.value, bundle_dir=a_bundle_dir, include_mq_traces=True)
 
     assert result["bundlePath"]
     mocked_mq_get_traces.assert_called_once()
@@ -1046,6 +1126,7 @@ def test_create_bundle_schemas(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
+    mocked_list_persistent_volume_claims,
     mocked_root_logger,
     mocked_get_config_map,
 ):
@@ -1085,4 +1166,10 @@ def test_create_bundle_schemas(
         mocked_zipfile,
         label_selector=SCHEMAS_NAME_LABEL,
         directory_path=SCHEMAS_DIRECTORY_PATH,
+    )
+    assert_list_persistent_volume_claims(
+        mocked_client,
+        mocked_zipfile,
+        directory_path=SCHEMAS_DIRECTORY_PATH,
+        label_selector=SCHEMAS_NAME_LABEL,
     )

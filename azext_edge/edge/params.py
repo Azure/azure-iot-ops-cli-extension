@@ -233,6 +233,13 @@ def load_iotops_arguments(self, _):
             help="Dataflow endpoint name.",
         )
 
+    with self.argument_context("iot ops dataflow identity") as context:
+        context.argument(
+            "mi_user_assigned",
+            options_list=["--mi-user-assigned"],
+            help="The resource Id for the desired user-assigned managed identity to associate with the instance.",
+        )
+
     with self.argument_context("iot ops broker") as context:
         context.argument(
             "instance_name",
@@ -497,13 +504,6 @@ def load_iotops_arguments(self, _):
                 "--ops-config can be used one or more times. For advanced use cases.",
             )
             context.argument(
-                "dataflow_profile_instances",
-                type=int,
-                options_list=["--df-profile-instances"],
-                help="The instance count associated with the default dataflow profile.",
-                arg_group="Dataflow Profile",
-            )
-            context.argument(
                 "enable_fault_tolerance",
                 arg_type=get_three_state_flag(),
                 options_list=["--enable-fault-tolerance"],
@@ -511,13 +511,11 @@ def load_iotops_arguments(self, _):
                 arg_group="Container Storage",
             )
             context.argument(
-                "mi_user_assigned_identities",
-                nargs="*",
-                action="extend",
-                options_list=["--mi-user-assigned"],
-                help="Space-separated resource Ids for the desired user managed identities "
-                "to associate with the instance. Can be used one or more times.",
-                arg_group="Identity",
+                "dataflow_profile_instances",
+                type=int,
+                options_list=["--df-profile-instances"],
+                help="The instance count associated with the default dataflow profile.",
+                arg_group="Dataflow",
             )
             context.argument(
                 "trust_source",
