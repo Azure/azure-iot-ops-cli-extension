@@ -47,6 +47,9 @@ class InitTargets:
         instance_description: Optional[str] = None,
         enable_fault_tolerance: Optional[bool] = None,
         ops_config: Optional[List[str]] = None,
+        tags: Optional[dict] = None,
+        trust_source: str = TrustSourceType.self_signed.value,
+        # Dataflow
         dataflow_profile_instances: int = 1,
         # Broker
         custom_broker_config: Optional[dict] = None,
@@ -61,10 +64,6 @@ class InitTargets:
         # Akri
         kubernetes_distro: str = KubernetesDistroType.k8s.value,
         container_runtime_socket: Optional[str] = None,
-        trust_source: str = TrustSourceType.self_signed.value,
-        # Misc
-        mi_user_assigned_identities: Optional[List[str]] = None,
-        tags: Optional[dict] = None,
         **_,
     ):
         self.cluster_name = cluster_name
@@ -82,6 +81,10 @@ class InitTargets:
         self.instance_description = instance_description
         self.enable_fault_tolerance = enable_fault_tolerance
         self.ops_config = assemble_nargs_to_dict(ops_config)
+        self.trust_source = trust_source
+        self.tags = tags
+
+        # Dataflow
         self.dataflow_profile_instances = self._sanitize_int(dataflow_profile_instances)
 
         # Broker
@@ -99,10 +102,6 @@ class InitTargets:
         # Akri
         self.kubernetes_distro = kubernetes_distro
         self.container_runtime_socket = container_runtime_socket
-
-        self.trust_source = trust_source
-        self.mi_user_assigned_identities = mi_user_assigned_identities
-        self.tags = tags
 
     def _sanitize_k8s_name(self, name: Optional[str]) -> Optional[str]:
         if not name:
@@ -213,13 +212,14 @@ class InitTargets:
             dataflow_profile["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_PROFILE}"
             dataflow_endpoint["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_ENDPOINT}"
 
-        if self.mi_user_assigned_identities:
-            mi_user_payload = {}
-            for mi in self.mi_user_assigned_identities:
-                mi_user_payload[mi] = {}
-            instance["identity"] = {}
-            instance["identity"]["type"] = "UserAssigned"
-            instance["identity"]["userAssignedIdentities"] = mi_user_payload
+        # TODO - @digimaun
+        # if self.mi_user_assigned_identities:
+        #     mi_user_payload = {}
+        #     for mi in self.mi_user_assigned_identities:
+        #         mi_user_payload[mi] = {}
+        #     instance["identity"] = {}
+        #     instance["identity"]["type"] = "UserAssigned"
+        #     instance["identity"]["userAssignedIdentities"] = mi_user_payload
 
         if self.custom_broker_config:
             if "properties" in self.custom_broker_config:
