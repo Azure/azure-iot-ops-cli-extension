@@ -137,17 +137,6 @@ def _process_dataflow_resource_status(
                 display=Padding("Log Errors:", (0, 0, 0, inner_padding)),
             )
 
-        # operation ID on detail level 2
-        provisioning_status_operation_id = provisioning_status.get("operationId")
-        if detail_level > ResourceOutputDetailLevel.detail.value and provisioning_status_operation_id:
-            check_manager.add_display(
-                target_name=target_name,
-                namespace=namespace,
-                display=basic_property_display(
-                    label="Operation ID", value=provisioning_status_operation_id, padding=inner_padding
-                ),
-            )
-
     # runtime status (required for profiles)
     runtime_status = status.get("runtimeStatus", {})
     if runtime_status:
