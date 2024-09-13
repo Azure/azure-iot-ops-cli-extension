@@ -21,7 +21,6 @@ from .edge_api.mq import MqResourceKinds
 from .check.akri import check_akri_deployment
 from .check.dataflow import check_dataflows_deployment
 from .check.summary import check_summary
-from .edge_api.akri import AkriResourceKinds
 from .edge_api.opcua import OpcuaResourceKinds
 
 console = Console(width=100, highlight=False)
@@ -65,13 +64,10 @@ def run_checks(
                 OpsServiceType.deviceregistry.value: check_deviceregistry_deployment,
                 OpsServiceType.opcua.value: check_opcua_deployment,
                 OpsServiceType.dataflow.value: check_dataflows_deployment,
-                None: check_summary
+                None: check_summary,
             }
             service_result = service_check_dict[ops_service](
-                detail_level=detail_level,
-                resource_name=resource_name,
-                as_list=as_list,
-                resource_kinds=resource_kinds
+                detail_level=detail_level, resource_name=resource_name, as_list=as_list, resource_kinds=resource_kinds
             )
             if isinstance(service_result, list):
                 for obj in service_result:
@@ -85,8 +81,10 @@ def run_checks(
 
 
 def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: List[str]) -> None:
+    if ops_service == OpsServiceType.akri.value:
+        raise ArgumentUsageError(f"--resources is not supported for service {ops_service}.")
+
     service_kinds_dict: Dict[str, ListableEnum] = {
-        OpsServiceType.akri.value: AkriResourceKinds,
         OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
         OpsServiceType.opcua.value: OpcuaResourceKinds,

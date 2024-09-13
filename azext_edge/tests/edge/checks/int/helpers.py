@@ -12,7 +12,7 @@ from ....helpers import (
     find_extra_or_missing_names,
     get_kubectl_workload_items,
     run,
-    sort_kubectl_items_by_namespace
+    sort_kubectl_items_by_namespace,
 )
 
 
@@ -22,7 +22,7 @@ def assert_enumerate_resources(
     key_name: str,
     resource_api: EdgeResourceApi,
     resource_kinds: list,
-    present: bool = True
+    present: bool = True,
 ):
     key = f"enumerate{key_name}Api"
     status = "success" if present else "error"
@@ -60,9 +60,7 @@ def assert_eval_core_service_runtime(
         namespace_status = "skipped"
         evals = runtime_resource[namespace]["evaluations"]
         kubectl_pods = get_kubectl_workload_items(
-            prefixes=pod_prefix,
-            service_type="pod",
-            resource_match=resource_match
+            prefixes=pod_prefix, service_type="pod", resource_match=resource_match
         )
 
         if kubectl_pods:
@@ -76,7 +74,7 @@ def assert_eval_core_service_runtime(
             result_names=results,
             expected_names=kubectl_pods.keys(),
             ignore_extras=True,
-            ignore_missing=True
+            ignore_missing=True,
         )
 
         for pod in kubectl_pods:
@@ -171,7 +169,7 @@ def assert_general_eval_custom_resources(
     description_name: str,
     resource_api: EdgeResourceApi,
     resource_kind_present: bool,
-    include_all_namespace: bool = False
+    include_all_namespace: bool = False,
 ):
     # this should check general shared attributes for different services.
     # specific target checks should be in separate functions
@@ -207,9 +205,7 @@ def assert_general_eval_custom_resources(
             assert name in kubectl_items
 
 
-def combine_statuses(
-    status_list: List[str]
-):
+def combine_statuses(status_list: List[str]):
     final_status = "success"
     for status in status_list:
         if final_status == "success" and status in ["warning", "error", "skipped"]:
@@ -220,15 +216,10 @@ def combine_statuses(
 
 
 def expected_status(
-    success_or_fail: bool,
-    success_or_warning: Optional[bool] = None,
-    warning_or_fail: Optional[bool] = None
+    success_or_fail: bool, success_or_warning: Optional[bool] = None, warning_or_fail: Optional[bool] = None
 ):
     status = "success" if success_or_fail else "error"
-    if any([
-        status == "success" and success_or_warning is False,
-        status == "error" and warning_or_fail is True
-    ]):
+    if any([status == "success" and success_or_warning is False, status == "error" and warning_or_fail is True]):
         status = "warning"
     return status
 
@@ -237,7 +228,7 @@ def run_check_command(
     detail_level: str,
     ops_service: str,
     resource_api: EdgeResourceApi,
-    resource_kind: str,
+    resource_kind: Optional[str] = None,
     resource_match: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], bool]:
     try:
