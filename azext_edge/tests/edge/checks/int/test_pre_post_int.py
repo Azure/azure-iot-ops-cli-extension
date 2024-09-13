@@ -43,7 +43,6 @@ def test_check_pre_post(init_setup, post, pre):
             expected_pre = "iotoperations.azure.com" not in aio_check
         except CLIInternalError:
             from azext_edge.edge.providers.edge_api import META_API_V1B1
-
             expected_pre = not META_API_V1B1.is_deployed()
 
     assert bool(result.get("preDeployment")) == expected_pre

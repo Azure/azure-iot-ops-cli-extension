@@ -20,6 +20,7 @@ from ..providers.edge_api import (
     DEVICEREGISTRY_API_V1,
     DATAFLOW_API_V1B1,
     META_API_V1B1,
+    ARCCONTAINERSTORAGE_API_V1,
     EdgeApiManager,
 )
 
@@ -34,6 +35,7 @@ COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
 COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1B1])
+COMPAT_ARCCONTAINERSTORAGE_APIS = EdgeApiManager(resource_apis=[ARCCONTAINERSTORAGE_API_V1])
 
 
 def build_bundle(
@@ -56,6 +58,7 @@ def build_bundle(
     from .support.arcagents import prepare_bundle as prepare_arcagents_bundle
     from .support.meta import prepare_bundle as prepare_meta_bundle
     from .support.schemaregistry import prepare_bundle as prepare_schema_registry_bundle
+    from .support.arccontainerstorage import prepare_bundle as prepare_arccontainerstorage_bundle
 
     def collect_default_works(
         pending_work: dict,
@@ -96,6 +99,10 @@ def build_bundle(
         OpsServiceType.schemaregistry.value: {
             "apis": None,
             "prepare_bundle": prepare_schema_registry_bundle,
+        },
+        OpsServiceType.arccontainerstorage.value: {
+            "apis": COMPAT_ARCCONTAINERSTORAGE_APIS,
+            "prepare_bundle": prepare_arccontainerstorage_bundle,
         },
     }
 

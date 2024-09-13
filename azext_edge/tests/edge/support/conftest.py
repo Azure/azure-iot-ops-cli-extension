@@ -43,6 +43,7 @@ def add_pod_to_mocked_pods(
 
     pods_list = V1PodList(items=pod_list)
     mocked_client.CoreV1Api().list_pod_for_all_namespaces.return_value = pods_list
+    mocked_client.CoreV1Api().list_namespaced_pod.return_value = pods_list
     mocked_client.CoreV1Api().read_namespaced_pod_log.return_value = mock_log
 
 
@@ -291,6 +292,7 @@ def mocked_list_deployments(mocked_client):
         return deployment_list
 
     mocked_client.AppsV1Api().list_deployment_for_all_namespaces.side_effect = _handle_list_deployments
+    mocked_client.AppsV1Api().list_namespaced_deployment.side_effect = _handle_list_deployments
 
     yield mocked_client
 
@@ -309,6 +311,7 @@ def mocked_list_replicasets(mocked_client):
         return replicaset_list
 
     mocked_client.AppsV1Api().list_replica_set_for_all_namespaces.side_effect = _handle_list_replicasets
+    mocked_client.AppsV1Api().list_namespaced_replica_set.side_effect = _handle_list_replicasets
 
     yield mocked_client
 
@@ -342,6 +345,7 @@ def mocked_list_services(mocked_client):
         return service_list
 
     mocked_client.CoreV1Api().list_service_for_all_namespaces.side_effect = _handle_list_services
+    mocked_client.CoreV1Api().list_namespaced_service.side_effect = _handle_list_services
 
     yield mocked_client
 
@@ -409,6 +413,7 @@ def mocked_list_daemonsets(mocked_client):
         return daemonset_list
 
     mocked_client.AppsV1Api().list_daemon_set_for_all_namespaces.side_effect = _handle_list_daemonsets
+    mocked_client.AppsV1Api().list_namespaced_daemon_set.side_effect = _handle_list_daemonsets
 
     yield mocked_client
 
@@ -418,12 +423,18 @@ def mocked_list_persistent_volume_claims(mocked_client):
     from kubernetes.client.models import V1PersistentVolumeClaimList, V1PersistentVolumeClaim, V1ObjectMeta
 
     def _handle_list_persistent_volume_claims(*args, **kwargs):
-        pvc = V1PersistentVolumeClaim(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_pvc"))
-        pvc_list = V1PersistentVolumeClaimList(items=[pvc])
+        pvc_names = ["mock_pvc", "adr-schema-registry"]
+        pvc_list = []
+        for name in pvc_names:
+            pvc_list.append(V1PersistentVolumeClaim(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        pvc_list = V1PersistentVolumeClaimList(items=pvc_list)
 
         return pvc_list
 
     mocked_client.CoreV1Api().list_persistent_volume_claim_for_all_namespaces.side_effect = (
+        _handle_list_persistent_volume_claims
+    )
+    mocked_client.CoreV1Api().list_namespaced_persistent_volume_claim.side_effect = (
         _handle_list_persistent_volume_claims
     )
 
