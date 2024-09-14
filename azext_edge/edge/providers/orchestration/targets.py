@@ -17,8 +17,15 @@ from ...common import (
 )
 from ...util import assemble_nargs_to_dict
 from ...util.az_client import parse_resource_id
+from ..orchestration.common import (
+    AIO_INSECURE_LISTENER_NAME,
+    AIO_INSECURE_LISTENER_SERVICE_NAME,
+    AIO_INSECURE_LISTENER_SERVICE_PORT,
+    MqServiceType,
+)
 from .common import KubernetesDistroType, TrustSourceType
 from .template import (
+    IOT_OPERATIONS_VERSION_MONIKER,
     M2_ENABLEMENT_TEMPLATE,
     M2_INSTANCE_TEMPLATE,
     TemplateBlueprint,
@@ -40,6 +47,9 @@ class InitTargets:
         instance_description: Optional[str] = None,
         enable_fault_tolerance: Optional[bool] = None,
         ops_config: Optional[List[str]] = None,
+        tags: Optional[dict] = None,
+        trust_source: str = TrustSourceType.self_signed.value,
+        # Dataflow
         dataflow_profile_instances: int = 1,
         # Broker
         custom_broker_config: Optional[dict] = None,
@@ -54,17 +64,14 @@ class InitTargets:
         # Akri
         kubernetes_distro: str = KubernetesDistroType.k8s.value,
         container_runtime_socket: Optional[str] = None,
-        trust_source: str = TrustSourceType.self_signed.value,
-        # Misc
-        mi_user_assigned_identities: Optional[List[str]] = None,
-        tags: Optional[dict] = None,
         **_,
     ):
         self.cluster_name = cluster_name
         self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
         self.resource_group_name = resource_group_name
         # TODO - @digimaun
-        parse_resource_id(schema_registry_resource_id)
+        if schema_registry_resource_id:
+            parse_resource_id(schema_registry_resource_id)
         self.schema_registry_resource_id = schema_registry_resource_id
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
@@ -74,6 +81,10 @@ class InitTargets:
         self.instance_description = instance_description
         self.enable_fault_tolerance = enable_fault_tolerance
         self.ops_config = assemble_nargs_to_dict(ops_config)
+        self.trust_source = trust_source
+        self.tags = tags
+
+        # Dataflow
         self.dataflow_profile_instances = self._sanitize_int(dataflow_profile_instances)
 
         # Broker
@@ -91,10 +102,6 @@ class InitTargets:
         # Akri
         self.kubernetes_distro = kubernetes_distro
         self.container_runtime_socket = container_runtime_socket
-
-        self.trust_source = trust_source
-        self.mi_user_assigned_identities = mi_user_assigned_identities
-        self.tags = tags
 
     def _sanitize_k8s_name(self, name: Optional[str]) -> Optional[str]:
         if not name:
@@ -122,6 +129,14 @@ class InitTargets:
                 deploy_params[param] = {"value": param_to_target[param]}
 
         return template_copy, deploy_params
+
+    @property
+    def iot_operations_version(self):
+        return IOT_OPERATIONS_VERSION_MONIKER
+
+    def get_extension_versions(self) -> dict:
+        # Don't need a deep copy here.
+        return M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
 
     def get_ops_enablement_template(
         self,
@@ -197,13 +212,14 @@ class InitTargets:
             dataflow_profile["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_PROFILE}"
             dataflow_endpoint["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_ENDPOINT}"
 
-        if self.mi_user_assigned_identities:
-            mi_user_payload = {}
-            for mi in self.mi_user_assigned_identities:
-                mi_user_payload[mi] = {}
-            instance["identity"] = {}
-            instance["identity"]["type"] = "UserAssigned"
-            instance["identity"]["userAssignedIdentities"] = mi_user_payload
+        # TODO - @digimaun
+        # if self.mi_user_assigned_identities:
+        #     mi_user_payload = {}
+        #     for mi in self.mi_user_assigned_identities:
+        #         mi_user_payload[mi] = {}
+        #     instance["identity"] = {}
+        #     instance["identity"]["type"] = "UserAssigned"
+        #     instance["identity"]["userAssignedIdentities"] = mi_user_payload
 
         if self.custom_broker_config:
             if "properties" in self.custom_broker_config:
@@ -261,3 +277,43 @@ class InitTargets:
             raise InvalidArgumentValueError("\n".join(validation_errors))
 
         return processed_config_map
+
+    # TODO - @digimaun
+    def get_instance_kpis(self) -> dict:
+        default_listener_port: int = M2_INSTANCE_TEMPLATE.content["variables"]["MQTT_SETTINGS"]["brokerListenerPort"]
+        default_listener_service_name: str = M2_INSTANCE_TEMPLATE.content["variables"]["MQTT_SETTINGS"][
+            "brokerListenerServiceName"
+        ]
+
+        instance_kpis = {
+            "instance": {
+                "name": self.instance_name,
+                "description": self.instance_description,
+                "resourceSync": {"enabled": self.deploy_resource_sync_rules},
+                "location": self.location,
+                "broker": {
+                    DEFAULT_BROKER: {
+                        "listener": {
+                            DEFAULT_BROKER_LISTENER: {
+                                "port": default_listener_port,
+                                "serviceName": default_listener_service_name,
+                                "serviceType": self.broker_service_type,
+                            }
+                        },
+                    },
+                    "authn": {DEFAULT_BROKER_AUTHN: {}},
+                },
+                "dataflows": {
+                    "profile": {DEFAULT_DATAFLOW_PROFILE: {"instanceCount": self.dataflow_profile_instances}},
+                    "endpoint": {DEFAULT_DATAFLOW_ENDPOINT: {}},
+                },
+            }
+        }
+        if self.add_insecure_listener:
+            instance_kpis["instance"]["listener"][AIO_INSECURE_LISTENER_NAME] = {
+                "port": AIO_INSECURE_LISTENER_SERVICE_PORT,
+                "serviceName": AIO_INSECURE_LISTENER_SERVICE_NAME,
+                "serviceType": MqServiceType.load_balancer.value,
+            }
+
+        return instance_kpis

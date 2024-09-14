@@ -148,12 +148,12 @@ class OpsServiceType(ListableEnum):
     auto = "auto"
     mq = "broker"
     opcua = "opcua"
-    orc = "orc"
     akri = "akri"
     deviceregistry = "deviceregistry"
     billing = "billing"
     dataflow = "dataflow"
     schemaregistry = "schemaregistry"
+    arccontainerstorage = "acs"
 
     @classmethod
     def list_check_services(cls):

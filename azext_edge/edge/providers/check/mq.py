@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from azext_edge.edge.providers.check.base.resource import validate_secret_ref
 
+from azext_edge.edge.providers.check.base.display import add_display_and_eval
+
 from .base import (
     CheckManager,
     check_post_deployment,
@@ -45,7 +47,7 @@ from .common import (
 from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
 from ..support.mq import MQ_NAME_LABEL
 
-from ..base import get_namespaced_service
+from ..base import get_namespaced_pods_by_prefix, get_namespaced_service
 
 
 def check_mq_deployment(
@@ -590,7 +592,9 @@ def evaluate_brokers(
                 ),
             )
 
-            for pod in [
+            pods: List[dict] = []
+
+            for prefix in [
                 AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX,
                 AIO_BROKER_FRONTEND_PREFIX,
                 AIO_BROKER_BACKEND_PREFIX,
@@ -600,15 +604,40 @@ def evaluate_brokers(
                 AIO_BROKER_OPERATOR,
                 AIO_BROKER_FLUENT_BIT,
             ]:
-                evaluate_pod_health(
-                    check_manager=check_manager,
-                    target=target_brokers,
+                prefixed_pods = get_namespaced_pods_by_prefix(
+                    prefix=prefix,
                     namespace=namespace,
-                    pod=pod,
-                    display_padding=12,
-                    service_label=MQ_NAME_LABEL,
-                    detail_level=detail_level,
+                    label_selector=MQ_NAME_LABEL,
                 )
+
+                if not prefixed_pods:
+                    add_display_and_eval(
+                        check_manager=check_manager,
+                        target_name=target_brokers,
+                        display_text=f"{prefix}* [yellow]not detected[/yellow].",
+                        eval_status=CheckTaskStatus.warning.value,
+                        eval_value=None,
+                        resource_name=prefix,
+                        namespace=namespace,
+                        padding=(0, 0, 0, 12),
+                    )
+                else:
+                    pods.extend(
+                        get_namespaced_pods_by_prefix(
+                            prefix=prefix,
+                            namespace="",
+                            label_selector=MQ_NAME_LABEL,
+                        )
+                    )
+
+            evaluate_pod_health(
+                check_manager=check_manager,
+                target=target_brokers,
+                namespace=namespace,
+                padding=12,
+                pods=pods,
+                detail_level=detail_level,
+            )
 
     return check_manager.as_dict(as_list)
 

@@ -267,7 +267,7 @@ def test_summary_checks(
 
     assert result["title"] == "IoT Operations Summary"
     assert result["postDeployment"][0]["name"] == "evalAIOSummary"
-    assert result["postDeployment"][0]["description"] == "AIO components"
+    assert result["postDeployment"][0]["description"] == "Service summary checks"
     expected_status = "skipped"
     for status in ["success", "warning", "error"]:
         if status in [akri_status, broker_status, deviceregistry_status, opcua_status, dataflow_status]:
