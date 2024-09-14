@@ -262,3 +262,27 @@ def update_instance(
         description=instance_description,
         **kwargs,
     )
+
+
+def instance_identity_assign(cmd, instance_name: str, resource_group_name: str, mi_user_assigned: str) -> dict:
+    return Instances(cmd).add_mi_user_assigned(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        mi_user_assigned=mi_user_assigned,
+    )
+
+
+def instance_identity_show(cmd, instance_name: str, resource_group_name: str) -> dict:
+    instance = Instances(cmd).show(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+    return instance.get("identity", {})
+
+
+def instance_identity_remove(cmd, instance_name: str, resource_group_name: str, mi_user_assigned: str) -> dict:
+    return Instances(cmd).remove_mi_user_assigned(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        mi_user_assigned=mi_user_assigned,
+    )

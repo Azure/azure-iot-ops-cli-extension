@@ -46,27 +46,3 @@ def show_dataflow_endpoint(cmd, endpoint_name: str, instance_name: str, resource
 
 def list_dataflow_endpoints(cmd, instance_name: str, resource_group_name: str) -> Iterable[dict]:
     return DataFlowEndpoints(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
-
-
-def assign_dataflow_identity(cmd, instance_name: str, resource_group_name: str, mi_user_assigned: str) -> dict:
-    return Instances(cmd).add_mi_user_assigned(
-        name=instance_name,
-        resource_group_name=resource_group_name,
-        mi_user_assigned=mi_user_assigned,
-    )
-
-
-def show_dataflow_identity(cmd, instance_name: str, resource_group_name: str) -> dict:
-    instance = Instances(cmd).show(
-        name=instance_name,
-        resource_group_name=resource_group_name,
-    )
-    return instance.get("identity", {})
-
-
-def remove_dataflow_identity(cmd, instance_name: str, resource_group_name: str, mi_user_assigned: str) -> dict:
-    return Instances(cmd).remove_mi_user_assigned(
-        name=instance_name,
-        resource_group_name=resource_group_name,
-        mi_user_assigned=mi_user_assigned,
-    )
