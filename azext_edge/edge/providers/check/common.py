@@ -10,14 +10,9 @@ shared: Define shared data types(enums) and constant strings for IoT Operations 
 """
 
 from enum import Enum
-<<<<<<< HEAD
-from typing import NamedTuple
-from ...common import ListableEnum
-from rich.padding import Padding
-=======
 from typing import List, NamedTuple
 from ...common import CheckTaskStatus, ListableEnum
->>>>>>> feature/0.7.0
+from rich.padding import Padding
 
 
 class ResourceOutputDetailLevel(ListableEnum):
