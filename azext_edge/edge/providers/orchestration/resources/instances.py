@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
@@ -20,14 +20,42 @@ from ....util.az_client import (
     parse_resource_id,
     wait_for_terminal_state,
 )
+from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
-from ..common import CUSTOM_LOCATIONS_API_VERSION
-from ..permissions import PermissionManager
+from ..common import CUSTOM_LOCATIONS_API_VERSION, KEYVAULT_CLOUD_API_VERSION
+from ..permissions import ROLE_DEF_FORMAT_STR, PermissionManager
 from ..resource_map import IoTOperationsResourceMap
 
 logger = get_logger(__name__)
 
 console = Console()
+
+
+SERVICE_ACCOUNT_DATAFLOW = "aio-dataflow"
+SERVICE_ACCOUNT_SECRETSYNC = "aio-ssc-sa"
+KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
+KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
+
+
+def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str):
+    return (
+        f"{prefix}\n\n"
+        f"The user-assigned managed identity principal '{principal_id}' needs\n"
+        "'Key Vault Secrets User' and 'Key Vault Reader' or equivalent roles against scope:\n"
+        f"'{scope}'\n\n"
+        "Please handle this step before continuing."
+    )
+
+
+def get_spc_name(instance_name: str):
+    return f"{instance_name}-spc"
+
+
+def get_enable_syntax(instanc_name: str, resource_group_name: str):
+    return (
+        f"Use 'az iot ops secretsync enable -n {instanc_name} -g {resource_group_name} "
+        "--user-assigned /ua/mi/resource/id'."
+    )
 
 
 class Instances(Queryable):
@@ -153,21 +181,52 @@ class Instances(Queryable):
         return self.update(name=name, resource_group_name=resource_group_name, instance=instance)
 
     def enable_secretsync(
-        self, name: str, resource_group_name: str, mi_user_assigned: str, keyvault_resource_id: str, **kwargs
+        self,
+        name: str,
+        resource_group_name: str,
+        mi_user_assigned: str,
+        keyvault_resource_id: str,
+        skip_role_assignments: bool = False,
+        **kwargs,
     ):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         keyvault_resource_id_container = parse_resource_id(keyvault_resource_id)
-        # TODO - validate keyvault exists.
-        # TODO - add role assignments.
-        # TODO - federate.
-        with console.status("Working..."):
+        # TODO - Create SPC (custom name?)
+        # TODO - az iot ops dataflow identity assign -> az iot ops identity assign
+        with console.status("Working...") as status:
+            keyvault: dict = self.resource_client.resources.get_by_id(
+                resource_id=keyvault_resource_id_container.resource_id, api_version=KEYVAULT_CLOUD_API_VERSION
+            )
             mi_user_assigned: dict = self.msi_mgmt_client.user_assigned_identities.get(
                 resource_group_name=mi_resource_id_container.resource_group_name,
                 resource_name=mi_resource_id_container.resource_name,
             )
+            role_assignment_error = None
+            if not skip_role_assignments:
+                role_assignment_error = self._attempt_keyvault_role_assignments(
+                    keyvault=keyvault, mi_user_assigned=mi_user_assigned
+                )
+
             instance = self.show(name=name, resource_group_name=resource_group_name)
-            cluster_resource = self.get_resource_map(instance).connected_cluster.resource
-            self._ensure_oidc_issuer(cluster_resource)
+            resource_map = self.get_resource_map(instance)
+            cluster_resource = resource_map.connected_cluster.resource
+            custom_location = self._get_associated_cl(instance)
+            cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
+            self._ensure_oidc_issuer(resource_map.connected_cluster.resource)
+            self.federate_msi(
+                mi_resource_id_container=mi_resource_id_container,
+                oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"]["issuerUrl"],
+                namespace=custom_location["properties"]["namespace"],
+                service_account_name=SERVICE_ACCOUNT_SECRETSYNC,
+            )
+            secretsync_spc = self._find_existing_spc(cl_resources)
+            if secretsync_spc:
+                status.stop()
+                logger.warning(
+                    f"Instance '{instance['name']}' is already enabled for secret sync.\n"
+                    f"Use 'az iot ops secretsync show -n {instance['name']} -g {resource_group_name}' for details."
+                )
+                return
             spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_create_or_update(
                 resource_group_name=resource_group_name,
                 azure_key_vault_secret_provider_class_name=get_spc_name(name),
@@ -181,28 +240,75 @@ class Instances(Queryable):
                     },
                 },
             )
-            return wait_for_terminal_state(spc_poller, **kwargs)
+            result_spc = wait_for_terminal_state(spc_poller, **kwargs)
+            status.stop()
+            if role_assignment_error:
+                logger.warning(role_assignment_error)
+            return result_spc
 
-    def show_secretsync(self, name: str, resource_group_name: str):
+    def show_secretsync(self, name: str, resource_group_name: str) -> Optional[dict]:
         with console.status("Working..."):
             instance = self.show(name=name, resource_group_name=resource_group_name)
             resource_map = self.get_resource_map(instance)
             cl_resources = resource_map.connected_cluster.get_aio_resources(
                 custom_location_id=instance["extendedLocation"]["name"]
             )
-            for resource in cl_resources:
-                if resource["type"] == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses":
-                    resource_id_container = parse_resource_id(resource["id"])
-                    return self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
-                        resource_group_name=resource_id_container.resource_group_name,
-                        azure_key_vault_secret_provider_class_name=resource_id_container.resource_name,
-                    )
-        logger.warning("No secret provider class detected. Use 'az iot ops secretsync enable'.")
+            secretsync_spc = self._find_existing_spc(cl_resources)
+            if secretsync_spc:
+                return secretsync_spc
+        logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
 
-    def disable_secretsync(self, name: str, resource_group_name: str, mi_user_assigned: str):
-        mi_resource_id_container = parse_resource_id(mi_user_assigned)
-        instance = self.show(name=name, resource_group_name=resource_group_name)
-        pass
+    def disable_secretsync(self, name: str, resource_group_name: str, confirm_yes: Optional[bool] = None, **kwargs):
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
+        if should_bail:
+            return
+
+        with console.status("Working..."):
+            instance = self.show(name=name, resource_group_name=resource_group_name)
+            resource_map = self.get_resource_map(instance)
+            cl_resources = resource_map.connected_cluster.get_aio_resources(
+                custom_location_id=instance["extendedLocation"]["name"]
+            )
+            secretsync_spc = self._find_existing_spc(cl_resources)
+            if secretsync_spc:
+                spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_delete(
+                    resource_group_name=resource_group_name,
+                    azure_key_vault_secret_provider_class_name=secretsync_spc["name"],
+                )
+                wait_for_terminal_state(spc_poller, **kwargs)
+                return
+        logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
+
+    def _find_existing_spc(self, cl_resources: List[dict]) -> Optional[dict]:
+        for resource in cl_resources:
+            if resource["type"].lower() == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses":
+                resource_id_container = parse_resource_id(resource["id"])
+                return self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
+                    resource_group_name=resource_id_container.resource_group_name,
+                    azure_key_vault_secret_provider_class_name=resource_id_container.resource_name,
+                )
+
+    def _attempt_keyvault_role_assignments(self, keyvault: dict, mi_user_assigned: dict) -> Optional[str]:
+        """
+        Returns error string is role-assignment fails.
+        """
+        target_role_ids = [KEYVAULT_ROLE_ID_SECRETS_USER, KEYVAULT_ROLE_ID_READER]
+        try:
+            for role_id in target_role_ids:
+                self.permission_manager.apply_role_assignment(
+                    scope=keyvault["id"],
+                    principal_id=mi_user_assigned["properties"]["principalId"],
+                    role_def_id=ROLE_DEF_FORMAT_STR.format(
+                        subscription_id=self.default_subscription_id,
+                        role_id=role_id,
+                    ),
+                )
+        except Exception as e:
+            return get_user_msg_warn_ra(
+                prefix=f"Role assignment failed with:\n{str(e)}.",
+                principal_id=mi_user_assigned["properties"]["principalId"],
+                scope=keyvault["id"],
+            )
 
     def _ensure_oidc_issuer(self, cluster_resource: dict):
         enabled_oidc = cluster_resource["properties"].get("oidcIssuerProfile", {}).get("enabled", False)
@@ -230,7 +336,7 @@ class Instances(Queryable):
         mi_resource_id_container: ResourceIdContainer,
         oidc_issuer: str,
         namespace: str = "azure-iot-operations",
-        service_account_name: str = "aio-dataflow",
+        service_account_name: str = SERVICE_ACCOUNT_DATAFLOW,
     ):
         self.msi_mgmt_client.federated_identity_credentials.create_or_update(
             resource_group_name=mi_resource_id_container.resource_group_name,
@@ -254,7 +360,3 @@ class Instances(Queryable):
             resource_name=mi_resource_id_container.resource_name,
             federated_identity_credential_resource_name=mi_resource_id_container.resource_name,
         )
-
-
-def get_spc_name(instance_name: str):
-    return f"{instance_name}-spc"

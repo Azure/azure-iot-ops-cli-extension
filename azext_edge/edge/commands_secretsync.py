@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Iterable, Optional, List
+from typing import Optional
 
 from knack.log import get_logger
 
@@ -14,13 +14,19 @@ logger = get_logger(__name__)
 
 
 def secretsync_enable(
-    cmd, instance_name: str, resource_group_name: str, mi_user_assigned: str, keyvault_resource_id: str
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    mi_user_assigned: str,
+    keyvault_resource_id: str,
+    skip_role_assignments: Optional[bool] = None,
 ) -> dict:
     return Instances(cmd).enable_secretsync(
         name=instance_name,
         resource_group_name=resource_group_name,
         mi_user_assigned=mi_user_assigned,
         keyvault_resource_id=keyvault_resource_id,
+        skip_role_assignments=skip_role_assignments,
     )
 
 
@@ -31,9 +37,9 @@ def secretsync_show(cmd, instance_name: str, resource_group_name: str) -> dict:
     )
 
 
-def secretsync_disable(cmd, instance_name: str, resource_group_name: str, mi_user_assigned: str) -> dict:
+def secretsync_disable(cmd, instance_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None):
     return Instances(cmd).disable_secretsync(
         name=instance_name,
         resource_group_name=resource_group_name,
-        mi_user_assigned=mi_user_assigned,
+        confirm_yes=confirm_yes,
     )

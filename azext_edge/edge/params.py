@@ -526,10 +526,14 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops secretsync") as context:
         context.argument(
             "keyvault_resource_id",
-            options_list=[
-                "--kv-resource-id",
-            ],
+            options_list=["--kv-resource-id"],
             help="Key Vault ARM resource Id.",
+        )
+        context.argument(
+            "skip_role_assignments",
+            options_list=["--skip-ra"],
+            arg_type=get_three_state_flag(),
+            help="When used the role assignment step of the operation will be skipped.",
         )
 
     with self.argument_context("iot ops asset") as context:

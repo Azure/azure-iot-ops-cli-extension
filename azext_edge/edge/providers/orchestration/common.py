@@ -22,8 +22,7 @@ ARC_CONFIG_MAP = "azure-clusterconfig"
 ARC_NAMESPACE = "azure-arc"
 
 # Key Vault KPIs
-KEYVAULT_DATAPLANE_API_VERSION = "7.4"  # TODO - @digimaun, maybe needed
-KEYVAULT_CLOUD_API_VERSION = "2022-07-01"  # TODO - @digimaun, maybe needed
+KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 
 # Custom Locations KPIs
 CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
