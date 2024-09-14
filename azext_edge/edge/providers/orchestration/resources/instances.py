@@ -15,11 +15,14 @@ from ....util.az_client import (
     ResourceIdContainer,
     get_iotops_mgmt_client,
     get_msi_mgmt_client,
+    get_ssc_mgmt_client,
+    get_tenant_id,
     parse_resource_id,
     wait_for_terminal_state,
 )
 from ....util.queryable import Queryable
 from ..common import CUSTOM_LOCATIONS_API_VERSION
+from ..permissions import PermissionManager
 from ..resource_map import IoTOperationsResourceMap
 
 logger = get_logger(__name__)
@@ -36,6 +39,10 @@ class Instances(Queryable):
         self.msi_mgmt_client = get_msi_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
+        self.ssc_mgmt_client = get_ssc_mgmt_client(
+            subscription_id=self.default_subscription_id,
+        )
+        self.permission_manager = PermissionManager(self.default_subscription_id)
 
     def show(self, name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> Optional[dict]:
         result = self.iotops_mgmt_client.instance.get(instance_name=name, resource_group_name=resource_group_name)
@@ -128,13 +135,7 @@ class Instances(Queryable):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         instance = self.show(name=name, resource_group_name=resource_group_name)
         cluster_resource = self.get_resource_map(instance).connected_cluster.resource
-        if "oidcIssuerProfile" not in cluster_resource["properties"] or not cluster_resource["properties"][
-            "oidcIssuerProfile"
-        ].get("enabled"):
-            raise ValidationError(
-                f"The cluster '{cluster_resource['name']}' is not enabled as an oidc issuer.\n"
-                "Please enable via 'az connectedk8s connect --enable-oidc-issuer'."
-            )
+        self._ensure_oidc_issuer(cluster_resource)
         custom_location = self._get_associated_cl(instance)
         self.federate_msi(
             mi_resource_id_container,
@@ -150,6 +151,79 @@ class Instances(Queryable):
 
         instance["identity"] = identity
         return self.update(name=name, resource_group_name=resource_group_name, instance=instance)
+
+    def enable_secretsync(
+        self, name: str, resource_group_name: str, mi_user_assigned: str, keyvault_resource_id: str, **kwargs
+    ):
+        mi_resource_id_container = parse_resource_id(mi_user_assigned)
+        keyvault_resource_id_container = parse_resource_id(keyvault_resource_id)
+        # TODO - validate keyvault exists.
+        # TODO - add role assignments.
+        # TODO - federate.
+        with console.status("Working..."):
+            mi_user_assigned: dict = self.msi_mgmt_client.user_assigned_identities.get(
+                resource_group_name=mi_resource_id_container.resource_group_name,
+                resource_name=mi_resource_id_container.resource_name,
+            )
+            instance = self.show(name=name, resource_group_name=resource_group_name)
+            cluster_resource = self.get_resource_map(instance).connected_cluster.resource
+            self._ensure_oidc_issuer(cluster_resource)
+            spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                azure_key_vault_secret_provider_class_name=get_spc_name(name),
+                resource={
+                    "location": cluster_resource["location"],
+                    "extendedLocation": instance["extendedLocation"],
+                    "properties": {
+                        "clientId": mi_user_assigned["properties"]["clientId"],
+                        "keyvaultName": keyvault_resource_id_container.resource_name,
+                        "tenantId": get_tenant_id(),
+                    },
+                },
+            )
+            return wait_for_terminal_state(spc_poller, **kwargs)
+
+    def show_secretsync(self, name: str, resource_group_name: str):
+        with console.status("Working..."):
+            instance = self.show(name=name, resource_group_name=resource_group_name)
+            resource_map = self.get_resource_map(instance)
+            cl_resources = resource_map.connected_cluster.get_aio_resources(
+                custom_location_id=instance["extendedLocation"]["name"]
+            )
+            for resource in cl_resources:
+                if resource["type"] == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses":
+                    resource_id_container = parse_resource_id(resource["id"])
+                    return self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
+                        resource_group_name=resource_id_container.resource_group_name,
+                        azure_key_vault_secret_provider_class_name=resource_id_container.resource_name,
+                    )
+        logger.warning("No secret provider class detected. Use 'az iot ops secretsync enable'.")
+
+    def disable_secretsync(self, name: str, resource_group_name: str, mi_user_assigned: str):
+        mi_resource_id_container = parse_resource_id(mi_user_assigned)
+        instance = self.show(name=name, resource_group_name=resource_group_name)
+        pass
+
+    def _ensure_oidc_issuer(self, cluster_resource: dict):
+        enabled_oidc = cluster_resource["properties"].get("oidcIssuerProfile", {}).get("enabled", False)
+        enabled_wlif = (
+            cluster_resource["properties"].get("securityProfile", {}).get("workloadIdentity").get("enabled", False)
+        )
+
+        error = f"The cluster '{cluster_resource['name']}' is not enabled"
+        fix_with = f"Please enable via 'az connectedk8s update -n {cluster_resource['name']} -g {parse_resource_id(cluster_resource['id']).resource_group_name}"
+        if not enabled_oidc:
+            error += " as an oidc issuer"
+            fix_with += " --enable-oidc-issuer"
+        if not enabled_wlif:
+            sep = "" if enabled_oidc else " or"
+            error += f"{sep} for workload identity federation"
+            fix_with += " --enable-workload-identity"
+        error += "'.\n"
+        error += fix_with
+
+        if any([not enabled_oidc, not enabled_wlif]):
+            raise ValidationError(error)
 
     def federate_msi(
         self,
@@ -180,3 +254,7 @@ class Instances(Queryable):
             resource_name=mi_resource_id_container.resource_name,
             federated_identity_credential_resource_name=mi_resource_id_container.resource_name,
         )
+
+
+def get_spc_name(instance_name: str):
+    return f"{instance_name}-spc"

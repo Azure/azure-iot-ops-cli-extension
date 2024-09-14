@@ -48,9 +48,7 @@ def list_dataflow_endpoints(cmd, instance_name: str, resource_group_name: str) -
     return DataFlowEndpoints(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
 
 
-def assign_dataflow_identity(
-    cmd, instance_name: str, resource_group_name: str, mi_user_assigned: List[str]
-) -> dict:
+def assign_dataflow_identity(cmd, instance_name: str, resource_group_name: str, mi_user_assigned: str) -> dict:
     return Instances(cmd).add_mi_user_assigned(
         name=instance_name,
         resource_group_name=resource_group_name,

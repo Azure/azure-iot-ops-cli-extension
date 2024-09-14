@@ -479,22 +479,6 @@ def load_iotops_arguments(self, _):
                 help="Service type associated with the default mqtt broker listener.",
                 arg_group="Broker",
             )
-            # AKV CSI Driver TODO - @digimaun
-            # context.argument(
-            #     "keyvault_resource_id",
-            #     options_list=[
-            #         "--kv-resource-id",
-            #         context.deprecate(
-            #             target="--kv-id",
-            #             redirect="--kv-resource-id",
-            #             hide=True,
-            #         ),
-            #     ],
-            #     help="Key Vault ARM resource Id. Providing this resource Id will enable the client "
-            #     "to setup all necessary resources and cluster side configuration to enable "
-            #     "the Key Vault CSI driver for IoT Operations.",
-            #     arg_group="Key Vault CSI Driver",
-            # )
             context.argument(
                 "ops_config",
                 options_list=["--ops-config"],
@@ -537,6 +521,15 @@ def load_iotops_arguments(self, _):
             "cluster_name",
             options_list=["--cluster"],
             help="Target cluster name for IoT Operations deletion.",
+        )
+
+    with self.argument_context("iot ops secretsync") as context:
+        context.argument(
+            "keyvault_resource_id",
+            options_list=[
+                "--kv-resource-id",
+            ],
+            help="Key Vault ARM resource Id.",
         )
 
     with self.argument_context("iot ops asset") as context:

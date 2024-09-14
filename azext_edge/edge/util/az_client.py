@@ -46,9 +46,24 @@ if TYPE_CHECKING:
     from ..vendor.clients.resourcesmgmt import ResourceManagementClient
     from ..vendor.clients.storagemgmt import StorageManagementClient
     from ..vendor.clients.msimgmt import ManagedServiceIdentityClient
+    from ..vendor.clients.secretsyncmgmt import MicrosoftSecretSyncController
 
 
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
+
+
+def get_ssc_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftSecretSyncController":
+    from ..vendor.clients.secretsyncmgmt import MicrosoftSecretSyncController
+
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return MicrosoftSecretSyncController(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
 
 
 def get_msi_mgmt_client(subscription_id: str, **kwargs) -> "ManagedServiceIdentityClient":
