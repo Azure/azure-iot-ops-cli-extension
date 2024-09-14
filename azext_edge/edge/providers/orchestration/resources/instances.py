@@ -191,8 +191,7 @@ class Instances(Queryable):
     ):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         keyvault_resource_id_container = parse_resource_id(keyvault_resource_id)
-        # TODO - Create SPC (custom name?)
-        # TODO - az iot ops dataflow identity assign -> az iot ops identity assign
+        # TODO - @digimaun SPC custom name?
         with console.status("Working...") as status:
             keyvault: dict = self.resource_client.resources.get_by_id(
                 resource_id=keyvault_resource_id_container.resource_id, api_version=KEYVAULT_CLOUD_API_VERSION
