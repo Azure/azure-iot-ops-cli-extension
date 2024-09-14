@@ -7,6 +7,8 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
+from azext_edge.edge.providers.check.base.resource import validate_secret_ref
+
 from .base import (
     CheckManager,
     check_post_deployment,
@@ -43,7 +45,7 @@ from .common import (
 from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
 from ..support.mq import MQ_NAME_LABEL
 
-from ..base import get_namespaced_service, get_secret_for_all_namespaces
+from ..base import get_namespaced_service
 
 
 def check_mq_deployment(
@@ -308,6 +310,7 @@ def evaluate_broker_listeners(
                             namespace=namespace,
                             display=Padding("TLS:", (0, 0, 0, 12)),
                         )
+                        # TODO - add check for issuerRef
                         for prop_name, prop_value in {
                             "Cert Manager certificate spec": cert_spec,
                             "Manual": manual,
@@ -708,11 +711,6 @@ def evaluate_broker_authentications(
                 auth_methods_desc = auth_methods_desc.format(f"[red]Detected {len(auth_methods)}[/red].")
                 auth_methods_eval_status = CheckTaskStatus.error.value
 
-            # check_manager.add_display(
-            #     target_name=target_authentications,
-            #     namespace=namespace,
-            #     display=Padding(auth_methods_desc, (0, 0, 0, 12)),
-            # )
             sub_check_results.append(
                 CheckResult(
                     display=Padding(auth_methods_desc, (0, 0, 0, 12)),
@@ -737,14 +735,9 @@ def evaluate_broker_authentications(
                     condition.append("spec.authenticationMethods[*].customSettings")
                     setting = method.get("customSettings")
                     method_display = f"- Custom method: [green]{method_type}[/green]."
-                    # check_manager.add_display(
-                    #     target_name=target_authentications,
-                    #     namespace=namespace,
-                    #     display=Padding(custom_method_desc, (0, 0, 0, 12)),
-                    # )
                     sub_check_results.append(
                         CheckResult(
-                            display=Padding(method_display, (0, 0, 0, 14)),
+                            display=Padding(method_display, (0, 0, 0, 16)),
                             eval_status=method_eval_status,
                         )
                     )
@@ -760,14 +753,9 @@ def evaluate_broker_authentications(
                     else:
                         endpoint_display = f"Endpoint: [green]{endpoint}[/green]."
 
-                    # check_manager.add_display(
-                    #     target_name=target_authentications,
-                    #     namespace=namespace,
-                    #     display=Padding(endpoint_display, (0, 0, 0, 12)),
-                    # )
                     sub_check_results.append(
                         CheckResult(
-                            display=Padding(endpoint_display, (0, 0, 0, 18)),
+                            display=Padding(endpoint_display, (0, 0, 0, 20)),
                             eval_status=method_eval_status,
                         )
                     )
@@ -781,14 +769,16 @@ def evaluate_broker_authentications(
                             "valid(spec.authenticationMethods[*].customSettings.auth.x509.secretRef)"
                         ]
                         secret_ref = auth.get("x509", {}).get("secretRef")
-                        secret_ref_status = CheckTaskStatus.success.value
-                        secret_ref_value = secret_ref
-
-                        # get kube secrets
-                        secret: dict = get_secret_for_all_namespaces(secret_ref)
+                        secret_ref_value = {
+                            "spec.authenticationMethods[*].customSettings.auth.x509.secretRef": secret_ref
+                        }
+                        is_ref_valid = validate_secret_ref(
+                            namespace=namespace,
+                            name=secret_ref,
+                        )
                         secret_ref_display = "X.509 Client Certificate Secret reference: {}."
 
-                        if not secret:
+                        if not is_ref_valid:
                             secret_ref_display = secret_ref_display.format(
                                 f"[red]Invalid[/red] Secret reference [red]{secret_ref}[/red]."
                             )
@@ -798,14 +788,9 @@ def evaluate_broker_authentications(
                                 f"[green]Valid[/green] Secret reference [green]{secret_ref}[/green]."
                             )
 
-                        # check_manager.add_display(
-                        #     target_name=target_authentications,
-                        #     namespace=namespace,
-                        #     display=Padding(secret_ref_display, (0, 0, 0, 12)),
-                        # )
                         sub_check_results.append(
                             CheckResult(
-                                display=Padding(secret_ref_display, (0, 0, 0, 18)),
+                                display=Padding(secret_ref_display, (0, 0, 0, 20)),
                                 eval_status=secret_ref_status,
                             )
                         )
@@ -815,38 +800,30 @@ def evaluate_broker_authentications(
                         "HTTP Headers": method.get("headers", {}).get("additionalProperties"),
                     }.items():
                         if prop_value:
-                            # check_manager.add_display(
-                            #     target_name=target_authentications,
-                            #     namespace=namespace,
-                            #     display=Padding(
-                            #         f"{prop_name}: [bright_blue]{prop_value}[/bright_blue]",
-                            #         (0, 0, 0, 12),
-                            #     ),
-                            # )
                             sub_check_results.append(
                                 CheckResult(
                                     display=Padding(
-                                        f"{prop_name}: [bright_blue]{prop_value}[/bright_blue]", (0, 0, 0, 18)
+                                        f"{prop_name}: [bright_blue]{prop_value}[/bright_blue]", (0, 0, 0, 20)
                                     ),
                                     eval_status=None,
                                 ),
                             )
 
-                        check_manager.add_target_conditions(
-                            target_name=target_authentications,
-                            namespace=namespace,
-                            conditions=secret_ref_condition,
-                        )
+                    check_manager.add_target_conditions(
+                        target_name=target_authentications,
+                        namespace=namespace,
+                        conditions=secret_ref_condition,
+                    )
 
-                        check_manager.add_target_eval(
-                            target_name=target_authentications,
-                            namespace=namespace,
-                            status=secret_ref_status,
-                            value=secret_ref_value,
-                            resource_name=auth_name,
-                        )
+                    check_manager.add_target_eval(
+                        target_name=target_authentications,
+                        namespace=namespace,
+                        status=secret_ref_status,
+                        value=secret_ref_value,
+                        resource_name=auth_name,
+                    )
 
-                        # display rest of the properties
+                    # display rest of the properties
                 elif method_type == "x509":
                     condition.append("spec.authenticationMethods[*].x509Settings")
                     setting = method.get("x509Settings")
@@ -854,7 +831,7 @@ def evaluate_broker_authentications(
 
                     sub_check_results.append(
                         CheckResult(
-                            display=Padding(method_display, (0, 0, 0, 14)),
+                            display=Padding(method_display, (0, 0, 0, 16)),
                             eval_status=method_eval_status,
                         )
                     )
@@ -877,7 +854,7 @@ def evaluate_broker_authentications(
                             attributes_display = f"Authorization Attributes: [green]{attributes}[/green]."
                         sub_check_results.append(
                             CheckResult(
-                                display=Padding(attributes_display, (0, 0, 0, 18)),
+                                display=Padding(attributes_display, (0, 0, 0, 20)),
                                 eval_status=CheckTaskStatus.success.value,
                             )
                         )
@@ -892,7 +869,7 @@ def evaluate_broker_authentications(
                             subject_display = f"Subject: [green]{subject}[/green]."
                         sub_check_results.append(
                             CheckResult(
-                                display=Padding(subject_display, (0, 0, 0, 18)),
+                                display=Padding(subject_display, (0, 0, 0, 20)),
                                 eval_status=CheckTaskStatus.success.value,
                             )
                         )
@@ -904,41 +881,21 @@ def evaluate_broker_authentications(
                         sub_check_results.append(
                             CheckResult(
                                 display=Padding(
-                                    f"Trusted Client CA Cert: {{[cyan]{trusted_client_ca_cert}[/cyan]}}", (0, 0, 0, 18)
+                                    f"Trusted Client CA Cert: {{[cyan]{trusted_client_ca_cert}[/cyan]}}", (0, 0, 0, 20)
                                 ),
                                 eval_status=None,
                             )
                         )
-                    # check_manager.add_display(
-                    #     target_name=target_authentications,
-                    #     namespace=namespace,
-                    #     display=Padding(x509_method_desc, (0, 0, 0, 12)),
-                    # )
-
-                    # TODO: for rest of the properties display at the end
-                    # process_dict_resource(
-                    #     check_manager=check_manager,
-                    #     target_name=target_authentications,
-                    #     resource=method,
-                    #     namespace=namespace,
-                    #     padding=12,
-                    # )
                 elif method_type == "ServiceAccountToken":
                     condition.append("spec.authenticationMethods[*].serviceAccountTokenSettings")
                     setting = method.get("serviceAccountTokenSettings")
                     method_display = f"Service Account Token Method: [green]{method_type}[/green]."
                     sub_check_results.append(
                         CheckResult(
-                            display=Padding(method_display, (0, 0, 0, 14)),
+                            display=Padding(method_display, (0, 0, 0, 16)),
                             eval_status=method_eval_status,
                         )
                     )
-
-                    # check_manager.add_display(
-                    #     target_name=target_authentications,
-                    #     namespace=namespace,
-                    #     display=Padding(service_account_method_desc, (0, 0, 0, 12)),
-                    # )
 
                     # audiences
                     audiences = setting.get("audiences")
@@ -950,15 +907,10 @@ def evaluate_broker_authentications(
                     else:
                         audiences_display = f"Audiences: [green]{str(audiences)}[/green]."
 
-                    # check_manager.add_display(
-                    #     target_name=target_authentications,
-                    #     namespace=namespace,
-                    #     display=Padding(audiences_display, (0, 0, 0, 16)),
-                    # )
                     if detail_level != ResourceOutputDetailLevel.summary.value:
                         sub_check_results.append(
                             CheckResult(
-                                display=Padding(audiences_display, (0, 0, 0, 16)),
+                                display=Padding(audiences_display, (0, 0, 0, 20)),
                                 eval_status=CheckTaskStatus.success.value,
                             )
                         )
@@ -969,24 +921,12 @@ def evaluate_broker_authentications(
                         else "- Method [red]not found[/red]."
                     )
                     method_eval_status = CheckTaskStatus.error.value
-                    # check_manager.add_display(
-                    #     target_name=target_authentications,
-                    #     namespace=namespace,
-                    #     display=Padding(method_display, (0, 0, 0, 12)),
-                    # )
                     sub_check_results.append(
                         CheckResult(
-                            display=Padding(method_display, (0, 0, 0, 14)),
+                            display=Padding(method_display, (0, 0, 0, 16)),
                             eval_status=method_eval_status,
                         )
                     )
-
-                # sub_check_results.append(
-                #     CheckResult(
-                #         display=Padding(method_display, (0, 0, 0, 12)),
-                #         eval_status=method_eval_status,
-                #     )
-                # )
 
                 check_manager.add_target_conditions(
                     target_name=target_authentications,
@@ -1000,7 +940,6 @@ def evaluate_broker_authentications(
                     value=method_eval_value,
                     resource_name=auth_name,
                 )
-
             for result in sub_check_results:
                 if (
                     (
@@ -1008,7 +947,7 @@ def evaluate_broker_authentications(
                         and result.eval_status != CheckTaskStatus.success.value
                     )
                     or (detail_level == ResourceOutputDetailLevel.detail.value and result.eval_status != None)
-                    or (detail_level == ResourceOutputDetailLevel.verbose)
+                    or (detail_level == ResourceOutputDetailLevel.verbose.value)
                 ):
                     check_manager.add_display(
                         target_name=target_authentications,
@@ -1071,7 +1010,6 @@ def evaluate_broker_authorizations(
         for authz in authorizations:
             authz_name = authz["metadata"]["name"]
             authz_metadata = authz["metadata"]
-            sub_evaluation_results: List[CheckResult] = []
 
             # check broker reference
             broker_ref = authz_metadata.get("ownerReferences", [])
@@ -1115,16 +1053,15 @@ def evaluate_broker_authorizations(
                 authz_policies_desc = "Authorization Policies [red]not detected[/red]."
                 authz_policies_eval_status = CheckTaskStatus.error.value
 
-            # check_manager.add_display(
-            #     target_name=target_authorizations,
-            #     namespace=namespace,
-            #     display=Padding(authz_policies_desc, (0, 0, 0, 12)),
-            # )
-            sub_evaluation_results.append(
-                CheckResult(
-                    display=Padding(authz_policies_desc, (0, 0, 0, 12)), eval_status=authz_policies_eval_status
+            if (
+                detail_level != ResourceOutputDetailLevel.summary.value
+                or authz_policies_eval_status != CheckTaskStatus.success.value
+            ):
+                check_manager.add_display(
+                    target_name=target_authorizations,
+                    namespace=namespace,
+                    display=Padding(authz_policies_desc, (0, 0, 0, 12)),
                 )
-            )
 
             check_manager.add_target_eval(
                 target_name=target_authorizations,
@@ -1134,79 +1071,19 @@ def evaluate_broker_authorizations(
                 resource_name=authz_name,
             )
 
-            # cache
-            cache = authz_spec.get("cache")
-
-            if detail_level != ResourceOutputDetailLevel.summary.value and cache:
-                check_manager.add_display(
+            if authz_policies and detail_level == ResourceOutputDetailLevel.verbose.value:
+                process_dict_resource(
+                    check_manager=check_manager,
                     target_name=target_authorizations,
+                    resource=authz_policies,
                     namespace=namespace,
-                    display=Padding(f"Cache: {cache}", (0, 0, 0, 12)),
+                    padding=14,
                 )
-
-            # rules
-            rules = authz_spec.get("rules", [])
-
-            for rule in rules:
-                # brokerResources
-                broker_resources = rule.get("brokerResources", [])
-
-                for resource in broker_resources:
-                    method = resource.get("method")
-                    authz_conditions.append("spec.authorizationPolicies[*].brokerResources[*].method")
-
-                    if not method:
-                        authz_policies_eval_status = CheckTaskStatus.error.value
-                        method_display = "- Method [red]not found[/red]."
-                    else:
-                        method_display = f"- Method: [green]{method}[/green]."
-
-                    # check_manager.add_display(
-                    #     target_name=target_authorizations,
-                    #     namespace=namespace,
-                    #     display=Padding(method_display, (0, 0, 0, 12)),
-                    # )
-                    sub_evaluation_results.append(
-                        CheckResult(
-                            display=Padding(method_display, (0, 0, 0, 12)), eval_status=authz_policies_eval_status
-                        )
-                    )
-
-                    # TODO: display the rest of the properties
-
-                if detail_level == ResourceOutputDetailLevel.verbose.value:
-                    principals = rule.get("principals", {})
-                    process_dict_resource(
-                        check_manager=check_manager,
-                        target_name=target_authorizations,
-                        resource=principals,
-                        namespace=namespace,
-                        padding=12,
-                    )
-
-            for result in sub_evaluation_results:
-                if detail_level > ResourceOutputDetailLevel.summary.value or (
-                    detail_level == ResourceOutputDetailLevel.summary.value
-                    and result.eval_status != CheckTaskStatus.success.value
-                ):
-                    check_manager.add_display(
-                        target_name=target_authorizations,
-                        namespace=namespace,
-                        display=result.display,
-                    )
 
             check_manager.set_target_conditions(
                 target_name=target_authorizations,
                 namespace=namespace,
                 conditions=authz_conditions,
-            )
-
-            check_manager.add_target_eval(
-                target_name=target_authorizations,
-                namespace=namespace,
-                status=authz_policies_eval_status,
-                value={"spec.authorizationPolicies": authz_policies},
-                resource_name=authz_name,
             )
 
     return check_manager.as_dict(as_list)

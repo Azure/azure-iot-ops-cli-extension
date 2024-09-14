@@ -130,7 +130,7 @@ class DataflowEndpointType(ListableEnum):
     mqtt = "mqtt"
 
 
-class CheckEvalResult(NamedTuple):
+class CheckResult(NamedTuple):
     display: Padding
     eval_status: str
 

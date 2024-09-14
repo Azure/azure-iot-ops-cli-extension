@@ -16,8 +16,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .check_manager import CheckManager
 from .display import process_value_color
-from ..common import COLOR_STR_FORMAT, PADDING_SIZE, ResourceOutputDetailLevel
-from ...base import get_cluster_custom_api
+from ..common import COLOR_STR_FORMAT, PADDING_SIZE, CheckResult, ResourceOutputDetailLevel
+from ...base import get_cluster_custom_api, get_namespaced_secret
 from ...edge_api import EdgeResourceApi
 from ....common import CheckTaskStatus, ResourceState
 
@@ -470,3 +470,8 @@ def process_custom_resource_status(
                     namespace=namespace,
                     display=Padding(status_text, (0, 0, 0, padding + 4)),
                 )
+
+
+def validate_secret_ref(name: str, namespace: str) -> bool:
+    secret = get_namespaced_secret(secret_name=name, namespace=namespace)
+    return secret != {}
