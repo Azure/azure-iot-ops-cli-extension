@@ -315,7 +315,7 @@ class Instances(Queryable):
             cluster_resource["properties"].get("securityProfile", {}).get("workloadIdentity", {}).get("enabled", False)
         )
 
-        error = f"The cluster '{cluster_resource['name']}' is not enabled"
+        error = f"The connected cluster '{cluster_resource['name']}' is not enabled"
         fix_with = (
             f"Please enable with 'az connectedk8s update -n {cluster_resource['name']} "
             f"-g {parse_resource_id(cluster_resource['id']).resource_group_name}"
