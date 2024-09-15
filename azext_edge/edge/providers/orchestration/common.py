@@ -61,12 +61,17 @@ class TrustSourceType(Enum):
     # customer_managed = "CustomerManaged"  # TODO - @digimaun
 
 
+class IdentityUsageType(Enum):
+    dataflow = "dataflow"
+
+
 __all__ = [
     "MqMode",
     "MqMemoryProfile",
     "MqServiceType",
     "KubernetesDistroType",
     "TrustSourceType",
+    "IdentityUsageType",
     "DEFAULT_X509_CA_VALID_DAYS",
     "KEYVAULT_CLOUD_API_VERSION",
 ]

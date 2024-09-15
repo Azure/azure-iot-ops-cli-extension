@@ -19,14 +19,18 @@ def secretsync_enable(
     resource_group_name: str,
     mi_user_assigned: str,
     keyvault_resource_id: str,
+    spc_name: Optional[str] = None,
     skip_role_assignments: Optional[bool] = None,
+    **kwargs,
 ) -> dict:
     return Instances(cmd).enable_secretsync(
         name=instance_name,
         resource_group_name=resource_group_name,
         mi_user_assigned=mi_user_assigned,
         keyvault_resource_id=keyvault_resource_id,
+        spc_name=spc_name,
         skip_role_assignments=skip_role_assignments,
+        **kwargs,
     )
 
 

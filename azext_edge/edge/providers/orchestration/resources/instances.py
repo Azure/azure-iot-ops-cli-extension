@@ -20,7 +20,7 @@ from ....util.az_client import (
     parse_resource_id,
     wait_for_terminal_state,
 )
-from ....util.common import should_continue_prompt
+from ....util.common import should_continue_prompt, url_safe_hash_phrase
 from ....util.queryable import Queryable
 from ..common import CUSTOM_LOCATIONS_API_VERSION, KEYVAULT_CLOUD_API_VERSION
 from ..permissions import ROLE_DEF_FORMAT_STR, PermissionManager
@@ -37,7 +37,7 @@ KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
 
 
-def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str):
+def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str) -> str:
     return (
         f"{prefix}\n\n"
         f"The user-assigned managed identity principal '{principal_id}' needs\n"
@@ -47,11 +47,15 @@ def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str):
     )
 
 
-def get_spc_name(instance_name: str):
+def get_spc_name(instance_name: str) -> str:
     return f"{instance_name}-spc"
 
 
-def get_enable_syntax(instanc_name: str, resource_group_name: str):
+def get_fc_name(cluster_name: str, namespace: str, instance_name: str) -> str:
+    return f"{cluster_name}-" + url_safe_hash_phrase(f"{cluster_name}-{namespace}-{instance_name}")[:5]
+
+
+def get_enable_syntax(instanc_name: str, resource_group_name: str) -> str:
     return (
         f"Use 'az iot ops secretsync enable -n {instanc_name} -g {resource_group_name} "
         "--user-assigned /ua/mi/resource/id'."
@@ -133,19 +137,36 @@ class Instances(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
-    def remove_mi_user_assigned(self, name: str, resource_group_name: str, mi_user_assigned: str):
+    def remove_mi_user_assigned(
+        self,
+        name: str,
+        resource_group_name: str,
+        mi_user_assigned: str,
+        federated_credential_name: Optional[str] = None,
+        **kwargs,
+    ):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         instance = self.show(name=name, resource_group_name=resource_group_name)
-        identity = instance.get("identity", {})
+        cluster_resource = self.get_resource_map(instance).connected_cluster.resource
+        custom_location = self._get_associated_cl(instance)
+
+        if not federated_credential_name:
+            federated_credential_name = get_fc_name(
+                cluster_name=cluster_resource["name"],
+                namespace=custom_location["properties"]["namespace"],
+                instance_name=instance["name"],
+            )
+        self.unfederate_msi(mi_resource_id_container, federated_credential_name)
+
+        identity: dict = instance.get("identity", {})
         if not identity:
             raise ValidationError("No identities are associated with the instance.")
 
-        if mi_user_assigned not in identity["userAssignedIdentities"]:
+        if mi_user_assigned not in identity.get("userAssignedIdentities", {}):
             raise ValidationError(
                 f"The identity '{mi_resource_id_container.resource_name}' is not associated with the instance."
             )
 
-        self.unfederate_msi(mi_resource_id_container)
         del identity["userAssignedIdentities"][mi_user_assigned]
 
         # Check if we deleted them all.
@@ -153,21 +174,35 @@ class Instances(Queryable):
             identity["type"] = "None"
 
         instance["identity"] = identity
-        updated_instance = self.update(name=name, resource_group_name=resource_group_name, instance=instance)
-        return updated_instance
+        return self.update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
 
-    def add_mi_user_assigned(self, name: str, resource_group_name: str, mi_user_assigned: str):
+    def add_mi_user_assigned(
+        self,
+        name: str,
+        resource_group_name: str,
+        mi_user_assigned: str,
+        federated_credential_name: Optional[str] = None,
+        **kwargs,
+    ):
         """
         Responsible for federating and building the instance identity object.
         """
+        kwargs.pop("usage_type", None)  # TODO - @digimaun, unused atm.
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         instance = self.show(name=name, resource_group_name=resource_group_name)
         cluster_resource = self.get_resource_map(instance).connected_cluster.resource
         self._ensure_oidc_issuer(cluster_resource)
         custom_location = self._get_associated_cl(instance)
+        if not federated_credential_name:
+            federated_credential_name = get_fc_name(
+                cluster_name=cluster_resource["name"],
+                namespace=custom_location["properties"]["namespace"],
+                instance_name=instance["name"],
+            )
         self.federate_msi(
             mi_resource_id_container,
             oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"]["issuerUrl"],
+            federated_credential_name=federated_credential_name,
             namespace=custom_location["properties"]["namespace"],
         )
 
@@ -178,7 +213,7 @@ class Instances(Queryable):
         identity["userAssignedIdentities"][mi_user_assigned] = {}
 
         instance["identity"] = identity
-        return self.update(name=name, resource_group_name=resource_group_name, instance=instance)
+        return self.update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
 
     def enable_secretsync(
         self,
@@ -186,12 +221,13 @@ class Instances(Queryable):
         resource_group_name: str,
         mi_user_assigned: str,
         keyvault_resource_id: str,
+        federated_credential_name: Optional[str] = None,
+        spc_name: Optional[str] = None,
         skip_role_assignments: bool = False,
         **kwargs,
     ):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         keyvault_resource_id_container = parse_resource_id(keyvault_resource_id)
-        # TODO - @digimaun SPC custom name?
         with console.status("Working...") as status:
             keyvault: dict = self.resource_client.resources.get_by_id(
                 resource_id=keyvault_resource_id_container.resource_id, api_version=KEYVAULT_CLOUD_API_VERSION
@@ -212,12 +248,6 @@ class Instances(Queryable):
             custom_location = self._get_associated_cl(instance)
             cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
             self._ensure_oidc_issuer(cluster_resource)
-            self.federate_msi(
-                mi_resource_id_container=mi_resource_id_container,
-                oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"]["issuerUrl"],
-                namespace=custom_location["properties"]["namespace"],
-                service_account_name=SERVICE_ACCOUNT_SECRETSYNC,
-            )
             secretsync_spc = self._find_existing_spc(cl_resources)
             if secretsync_spc:
                 status.stop()
@@ -226,9 +256,25 @@ class Instances(Queryable):
                     f"Use 'az iot ops secretsync show -n {instance['name']} -g {resource_group_name}' for details."
                 )
                 return
+            if not federated_credential_name:
+                federated_credential_name = (
+                    get_fc_name(
+                        cluster_name=cluster_resource["name"],
+                        namespace=custom_location["properties"]["namespace"],
+                        instance_name=instance["name"],
+                    )
+                    + "-ssc"
+                )
+            self.federate_msi(
+                mi_resource_id_container=mi_resource_id_container,
+                oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"]["issuerUrl"],
+                federated_credential_name=federated_credential_name,
+                namespace=custom_location["properties"]["namespace"],
+                service_account_name=SERVICE_ACCOUNT_SECRETSYNC,
+            )
             spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_create_or_update(
                 resource_group_name=resource_group_name,
-                azure_key_vault_secret_provider_class_name=get_spc_name(name),
+                azure_key_vault_secret_provider_class_name=spc_name or get_spc_name(instance["name"]),
                 resource={
                     "location": cluster_resource["location"],
                     "extendedLocation": instance["extendedLocation"],
@@ -257,7 +303,13 @@ class Instances(Queryable):
                 return secretsync_spc
         logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
 
-    def disable_secretsync(self, name: str, resource_group_name: str, confirm_yes: Optional[bool] = None, **kwargs):
+    def disable_secretsync(
+        self,
+        name: str,
+        resource_group_name: str,
+        confirm_yes: Optional[bool] = None,
+        **kwargs,
+    ):
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
         if should_bail:
             return
@@ -337,13 +389,14 @@ class Instances(Queryable):
         self,
         mi_resource_id_container: ResourceIdContainer,
         oidc_issuer: str,
+        federated_credential_name: str,
         namespace: str = "azure-iot-operations",
         service_account_name: str = SERVICE_ACCOUNT_DATAFLOW,
     ):
         self.msi_mgmt_client.federated_identity_credentials.create_or_update(
             resource_group_name=mi_resource_id_container.resource_group_name,
             resource_name=mi_resource_id_container.resource_name,
-            federated_identity_credential_resource_name=mi_resource_id_container.resource_name,
+            federated_identity_credential_resource_name=federated_credential_name,
             parameters={
                 "properties": {
                     "subject": f"system:serviceaccount:{namespace}:{service_account_name}",
@@ -356,9 +409,10 @@ class Instances(Queryable):
     def unfederate_msi(
         self,
         mi_resource_id_container: ResourceIdContainer,
+        federated_credential_name: str,
     ):
         self.msi_mgmt_client.federated_identity_credentials.delete(
             resource_group_name=mi_resource_id_container.resource_group_name,
             resource_name=mi_resource_id_container.resource_name,
-            federated_identity_credential_resource_name=mi_resource_id_container.resource_name,
+            federated_identity_credential_resource_name=federated_credential_name,
         )
