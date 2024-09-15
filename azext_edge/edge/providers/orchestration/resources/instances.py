@@ -211,7 +211,7 @@ class Instances(Queryable):
             cluster_resource = resource_map.connected_cluster.resource
             custom_location = self._get_associated_cl(instance)
             cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
-            self._ensure_oidc_issuer(resource_map.connected_cluster.resource)
+            self._ensure_oidc_issuer(cluster_resource)
             self.federate_msi(
                 mi_resource_id_container=mi_resource_id_container,
                 oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"]["issuerUrl"],
@@ -312,11 +312,14 @@ class Instances(Queryable):
     def _ensure_oidc_issuer(self, cluster_resource: dict):
         enabled_oidc = cluster_resource["properties"].get("oidcIssuerProfile", {}).get("enabled", False)
         enabled_wlif = (
-            cluster_resource["properties"].get("securityProfile", {}).get("workloadIdentity").get("enabled", False)
+            cluster_resource["properties"].get("securityProfile", {}).get("workloadIdentity", {}).get("enabled", False)
         )
 
         error = f"The cluster '{cluster_resource['name']}' is not enabled"
-        fix_with = f"Please enable via 'az connectedk8s update -n {cluster_resource['name']} -g {parse_resource_id(cluster_resource['id']).resource_group_name}"
+        fix_with = (
+            f"Please enable with 'az connectedk8s update -n {cluster_resource['name']} "
+            f"-g {parse_resource_id(cluster_resource['id']).resource_group_name}"
+        )
         if not enabled_oidc:
             error += " as an oidc issuer"
             fix_with += " --enable-oidc-issuer"
@@ -324,8 +327,8 @@ class Instances(Queryable):
             sep = "" if enabled_oidc else " or"
             error += f"{sep} for workload identity federation"
             fix_with += " --enable-workload-identity"
-        error += "'.\n"
-        error += fix_with
+        error += ".\n"
+        error += f"{fix_with}'."
 
         if any([not enabled_oidc, not enabled_wlif]):
             raise ValidationError(error)

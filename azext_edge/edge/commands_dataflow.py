@@ -4,9 +4,9 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Iterable, List
+from typing import Iterable
 
-from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles, Instances
+from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles
 
 
 def show_dataflow_profile(cmd, profile_name: str, instance_name: str, resource_group_name: str) -> dict:

@@ -68,6 +68,5 @@ __all__ = [
     "KubernetesDistroType",
     "TrustSourceType",
     "DEFAULT_X509_CA_VALID_DAYS",
-    "KEYVAULT_DATAPLANE_API_VERSION",
     "KEYVAULT_CLOUD_API_VERSION",
 ]
