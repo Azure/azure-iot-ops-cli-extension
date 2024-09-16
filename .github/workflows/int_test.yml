@@ -99,7 +99,7 @@ jobs:
       matrix:
         feature: [custom-input, default, insecure-listener, no-syncrules, redeploy]
         runtime-args:
-          - ${{ inputs.runtime-init-args != '' }}
+          - ${{ inputs.runtime-init-args != '' || inputs.runtime-create-args != '' }}
         exclude:
           - feature: custom-input
             runtime-args: false
