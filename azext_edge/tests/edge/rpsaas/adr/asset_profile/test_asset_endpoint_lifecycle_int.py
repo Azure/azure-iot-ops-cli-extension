@@ -13,7 +13,7 @@ from .....helpers import run
 logger = get_logger(__name__)
 
 
-@pytest.skip("new asset tests comming in soon")
+@pytest.mark.skip("new asset tests comming in soon")
 def test_asset_endpoint_lifecycle(require_init, tracked_resources):
     rg = require_init["resourceGroup"]
     custom_location = require_init["customLocation"]
