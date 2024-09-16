@@ -14,7 +14,7 @@ from azext_edge.edge.providers.check.common import (
     AIO_SUPPORTED_ARCHITECTURES,
     MIN_NODE_MEMORY,
     MIN_NODE_STORAGE,
-    MIN_NODE_VCPU
+    MIN_NODE_VCPU,
 )
 
 logger = get_logger(__name__)
@@ -42,7 +42,7 @@ def test_check_pre_post(init_setup, post, pre):
             aio_check = run("kubectl api-resources --api-group=iotoperations.azure.com")
             expected_pre = "iotoperations.azure.com" not in aio_check
         except CLIInternalError:
-            from azext_edge.edge.providers.edge_api.meta import META_API_V1B1
+            from azext_edge.edge.providers.edge_api import META_API_V1B1
             expected_pre = not META_API_V1B1.is_deployed()
 
     assert bool(result.get("preDeployment")) == expected_pre
@@ -98,21 +98,17 @@ def test_check_pre_post(init_setup, post, pre):
             f"info.architecture in ({','.join(AIO_SUPPORTED_ARCHITECTURES)})",
             f"condition.cpu>={MIN_NODE_VCPU}",
             f"condition.memory>={MIN_NODE_MEMORY}",
-            f"condition.ephemeral-storage>={MIN_NODE_STORAGE}"
+            f"condition.ephemeral-storage>={MIN_NODE_STORAGE}",
         ]
 
         node_arch = node_target["evaluations"][0]["value"]["info.architecture"]
         assert node_arch == node["status"]["nodeInfo"]["architecture"]
-        assert node_target["evaluations"][0]["status"] == expected_status(
-            node_arch in AIO_SUPPORTED_ARCHITECTURES
-        )
+        assert node_target["evaluations"][0]["status"] == expected_status(node_arch in AIO_SUPPORTED_ARCHITECTURES)
 
         node_capacity = node["status"]["capacity"]
         node_cpu = node_target["evaluations"][1]["value"]["condition.cpu"]
         assert node_cpu == int(node_capacity["cpu"])
-        assert node_target["evaluations"][1]["status"] == expected_status(
-            node_cpu >= int(MIN_NODE_VCPU)
-        )
+        assert node_target["evaluations"][1]["status"] == expected_status(node_cpu >= int(MIN_NODE_VCPU))
 
         node_memory = node_target["evaluations"][2]["value"]["condition.memory"]
         assert node_memory == int(parse_quantity(node_capacity["memory"]))

@@ -16,7 +16,6 @@ from ..providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
     MQTT_BROKER_API_V1B1,
     OPCUA_API_V1,
-    ORC_API_V1,
     AKRI_API_V0,
     DEVICEREGISTRY_API_V1,
     DATAFLOW_API_V1B1,
@@ -32,7 +31,6 @@ console = Console()
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
 COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
-COMPAT_ORC_APIS = EdgeApiManager(resource_apis=[ORC_API_V1])
 COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
@@ -53,7 +51,6 @@ def build_bundle(
     from .support.billing import prepare_bundle as prepare_billing_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
-    from .support.orc import prepare_bundle as prepare_symphony_bundle
     from .support.dataflow import prepare_bundle as prepare_dataflow_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
@@ -89,10 +86,6 @@ def build_bundle(
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
-        },
-        OpsServiceType.orc.value: {
-            "apis": COMPAT_ORC_APIS,
-            "prepare_bundle": prepare_symphony_bundle,
         },
         OpsServiceType.akri.value: {"apis": COMPAT_AKRI_APIS, "prepare_bundle": prepare_akri_bundle},
         OpsServiceType.deviceregistry.value: {

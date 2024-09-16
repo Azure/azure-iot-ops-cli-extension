@@ -128,6 +128,20 @@ class DataflowEndpointType(ListableEnum):
     mqtt = "mqtt"
 
 
+class DataFlowEndpointAuthenticationType(ListableEnum):
+    """
+    Dataflow Endpoint Authentication Type:
+    """
+
+    access_token = "AccessToken"
+    system_assigned = "SystemAssignedManagedIdentity"
+    user_assigned = "UserAssignedManagedIdentity"
+    x509 = "X509Certificate"
+    service_account_token = "ServiceAccountToken"
+    anonymous = "Anonymous"
+    sasl = "Sasl"
+
+
 class PodStatusResult(NamedTuple):
     display_strings: List[str]
     eval_status: CheckTaskStatus

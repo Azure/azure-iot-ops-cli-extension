@@ -36,10 +36,6 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     if ops_service == OpsServiceType.arccontainerstorage.value:
         pytest.skip("arccontainerstorage is not generated in aio namespace")
 
-    # TODO: remove orc in supoort bundle
-    if ops_service == OpsServiceType.orc.value:
-        pytest.skip("orc is no longer supported")
-
     command = f"az iot ops support create-bundle --broker-traces {mq_traces} " + "--ops-service {0}"
     if bundle_dir:
         command += f" --bundle-dir {bundle_dir}"
@@ -118,8 +114,6 @@ def _get_expected_services(
         # these should always be generated
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
-        # TODO: remove orc in supoort bundle
-        expected_services.remove(OpsServiceType.orc.value)
         expected_services.sort()
 
     # device registry folder will not be created if there are no device registry resources

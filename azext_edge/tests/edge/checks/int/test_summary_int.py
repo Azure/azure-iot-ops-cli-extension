@@ -26,7 +26,7 @@ def test_summary_checks():
     # assert only one check ran and overall status is success or skipped
     assert len(post) == 1
     checks = post[0]
-    assert checks["description"] == "AIO components"
+    assert checks["description"] == "Service summary checks"
     assert checks["status"] in ["success", "skipped"]
 
     # assert each service check is either success or skipped
