@@ -24,7 +24,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
     # Create an endpoint profile
     endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     asset_endpoint = run(
-        f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} --instance {instance} "
+        f"az iot ops asset endpoint create opcua -n {endpoint_name} -g {rg} --instance {instance} "
         f"--ta opc.tcp://opcplc-000000:50000"
     )
     tracked_resources.append(asset_endpoint["id"])
@@ -125,7 +125,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     # Create an endpoint profile
     endpoint_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     asset_endpoint = run(
-        f"az iot ops asset endpoint create -n {endpoint_name} -g {rg} --instance {instance} "
+        f"az iot ops asset endpoint create opcua -n {endpoint_name} -g {rg} --instance {instance} "
         f"--ta opc.tcp://opcplc-000000:50000"
     )
     tracked_resources.append(asset_endpoint["id"])
@@ -139,7 +139,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     asset_name = "test-asset-" + generate_random_string(force_lower=True)[:4]
     asset = run(
         f"az iot ops asset create -n {asset_name} -g {rg} --instance {instance} --endpoint {endpoint_name} "
-        f"--events event_notifier={expected_events[0]['event_notifier']} "
+        f"--event event_notifier={expected_events[0]['event_notifier']} "
         f"name={expected_events[0]['name']} "
         f"observability_mode={expected_events[0]['observability_mode']} "
         f"queue_size={expected_events[0]['queue_size']}"
@@ -305,7 +305,7 @@ def assert_sub_point(result, **expected):
     assert result.get("eventNotifier") == expected.get("event_notifier")
     assert result.get("name") == expected.get("name")
     # service is weird - sometimes it sets empty observability sometimes not
-    assert result.get("observabilityMode", "none") == expected.get("observability_mode", "none")
+    assert result.get("observabilityMode", "none").lower() == expected.get("observability_mode", "none")
 
     key = "dataPointConfiguration"
     if expected.get("event_notifier"):
