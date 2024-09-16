@@ -756,12 +756,12 @@ def evaluate_broker_authentications(
             )
 
             for method in auth_methods:
-                condition = []
+                conditions = []
                 method_type = method.get("method")
                 method_eval_status = CheckTaskStatus.success.value
                 method_eval_value = method
                 if method_type == "custom":
-                    condition.append("spec.authenticationMethods[*].customSettings")
+                    conditions.append("spec.authenticationMethods[*].customSettings")
                     setting = method.get("customSettings")
                     method_display = f"- Custom method: [green]{method_type}[/green]."
                     sub_check_results.append(
@@ -774,7 +774,7 @@ def evaluate_broker_authentications(
                     # endpoint
                     endpoint = setting.get("endpoint")
 
-                    condition.append("spec.authenticationMethods[*].customSettings.endpoint")
+                    conditions.append("spec.authenticationMethods[*].customSettings.endpoint")
 
                     if not endpoint:
                         endpoint_display = "Endpoint [red]not found[/red]."
@@ -838,6 +838,7 @@ def evaluate_broker_authentications(
                                 ),
                             )
 
+                    # add condition separately for secret ref
                     check_manager.add_target_conditions(
                         target_name=target_authentications,
                         namespace=namespace,
@@ -854,7 +855,7 @@ def evaluate_broker_authentications(
 
                     # display rest of the properties
                 elif method_type == "x509":
-                    condition.append("spec.authenticationMethods[*].x509Settings")
+                    conditions.append("spec.authenticationMethods[*].x509Settings")
                     setting = method.get("x509Settings")
                     method_display = f"- x509 method: [green]{method_type}[/green]."
 
@@ -869,7 +870,7 @@ def evaluate_broker_authentications(
                     auth_attrs = setting.get("authorizationAttributes", {}).get("additionalProperties")
 
                     if auth_attrs:
-                        condition.append("spec.authenticationMethods[*].x509Settings.authorizationAttributes")
+                        conditions.append("spec.authenticationMethods[*].x509Settings.authorizationAttributes")
                         attributes_additional_properties = setting.get("authorizationAttributes", {}).get(
                             "additionalProperties", {}
                         )
@@ -916,7 +917,7 @@ def evaluate_broker_authentications(
                             )
                         )
                 elif method_type == "ServiceAccountToken":
-                    condition.append("spec.authenticationMethods[*].serviceAccountTokenSettings")
+                    conditions.append("spec.authenticationMethods[*].serviceAccountTokenSettings")
                     setting = method.get("serviceAccountTokenSettings")
                     method_display = f"Service Account Token Method: [green]{method_type}[/green]."
                     sub_check_results.append(
@@ -928,7 +929,7 @@ def evaluate_broker_authentications(
 
                     # audiences
                     audiences = setting.get("audiences")
-                    condition.append("spec.authenticationMethods[*].serviceAccountTokenSettings.audiences")
+                    conditions.append("spec.authenticationMethods[*].serviceAccountTokenSettings.audiences")
 
                     if not audiences:
                         audiences_display = "Audiences [red]not found[/red]."
@@ -960,7 +961,7 @@ def evaluate_broker_authentications(
                 check_manager.add_target_conditions(
                     target_name=target_authentications,
                     namespace=namespace,
-                    conditions=condition,
+                    conditions=conditions,
                 )
                 check_manager.add_target_eval(
                     target_name=target_authentications,
@@ -969,20 +970,15 @@ def evaluate_broker_authentications(
                     value=method_eval_value,
                     resource_name=auth_name,
                 )
-            for result in sub_check_results:
-                if (
-                    (
-                        detail_level == ResourceOutputDetailLevel.summary.value
-                        and result.eval_status != CheckTaskStatus.success.value
-                    )
-                    or (detail_level == ResourceOutputDetailLevel.detail.value and result.eval_status != None)
-                    or (detail_level == ResourceOutputDetailLevel.verbose.value)
-                ):
-                    check_manager.add_display(
-                        target_name=target_authentications,
-                        namespace=namespace,
-                        display=result.display,
-                    )
+
+            _display_sub_check_results(
+                check_manager=check_manager,
+                target_name=target_authentications,
+                namespace=namespace,
+                sub_check_results=sub_check_results,
+                parent_padding=8,
+                detail_level=detail_level,
+            )
 
     return check_manager.as_dict(as_list)
 
@@ -1383,3 +1379,39 @@ def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = Non
                 result[name] = True
 
     return result
+
+
+def _display_sub_check_results(
+    check_manager: CheckManager,
+    target_name: str,
+    namespace: str,
+    sub_check_results: List[CheckResult],
+    parent_padding: int,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> None:
+    errors_displays = []
+    for result in sub_check_results:
+        # summary level will only show header and non-success results
+        # detail level will show all results with evaluation status
+        # verbose level will show all results
+        if (
+            detail_level == ResourceOutputDetailLevel.summary.value
+            or result.eval_status != CheckTaskStatus.success.value
+        ):
+            errors_displays.append(result.display.renderable)
+        elif (detail_level == ResourceOutputDetailLevel.detail.value and result.eval_status != None) or (
+            detail_level == ResourceOutputDetailLevel.verbose.value
+        ):
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=result.display,
+            )
+
+    # for errors displayed in summary level, align padding with parent
+    for error_display in errors_displays:
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(error_display, (0, 0, 0, parent_padding + 4)),
+        )
