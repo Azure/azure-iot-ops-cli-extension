@@ -297,6 +297,12 @@ jobs:
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-init-int --skip-pkg-install -- --durations=0
+      - name: "Az CLI login refresh"
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Delete AIO resources"
         if: ${{ always() }}
         run: |
