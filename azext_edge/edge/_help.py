@@ -41,7 +41,7 @@ def load_iotops_help():
         "iot ops support"
     ] = """
         type: group
-        short-summary: IoT Operations support command space.
+        short-summary: IoT Operations support operations.
     """
 
     helps[
@@ -130,7 +130,7 @@ def load_iotops_help():
         "iot ops broker"
     ] = """
         type: group
-        short-summary: Mqtt broker management and operations.
+        short-summary: Mqtt broker management.
     """
 
     helps[
@@ -437,53 +437,6 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops dataflow identity"
-    ] = """
-        type: group
-        short-summary: Dataflow identity management.
-    """
-
-    helps[
-        "iot ops dataflow identity assign"
-    ] = """
-        type: command
-        short-summary: Assign a user-assigned managed identity with the instance to be used in dataflows.
-        long-summary: |
-            This operation includes federation of the identity.
-
-        examples:
-        - name: Assign and federate a desired user-assigned managed identity.
-          text: >
-            az iot ops dataflow identity assign --in myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
-    """
-
-    helps[
-        "iot ops dataflow identity show"
-    ] = """
-        type: command
-        short-summary: Show the instance identities associated with dataflows.
-
-        examples:
-        - name: Show the instance identities associated with dataflows.
-          text: >
-            az iot ops dataflow identity show --in myinstance -g myresourcegroup
-    """
-
-    helps[
-        "iot ops dataflow identity remove"
-    ] = """
-        type: command
-        short-summary: Remove a user-assigned managed identity with the instance to be used in dataflows.
-        long-summary: |
-            This operation includes removing federation of the identity.
-
-        examples:
-        - name: Remove the desired user-assigned managed identity.
-          text: >
-            az iot ops dataflow identity remove --in myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
-    """
-
-    helps[
         "iot ops verify-host"
     ] = """
         type: command
@@ -499,7 +452,7 @@ def load_iotops_help():
         "iot ops init"
     ] = """
         type: command
-        short-summary: Bootstrap the target Arc-enabled cluster for IoT Operations deployment.
+        short-summary: Bootstrap the Arc-enabled cluster for IoT Operations deployment.
         long-summary: |
                       An Arc-enabled cluster is required to deploy IoT Operations. See the following resource for
                       more info https://aka.ms/aziotops-arcconnect.
@@ -639,10 +592,110 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops identity"
+    ] = """
+        type: group
+        short-summary: Instance identity management.
+    """
+
+    helps[
+        "iot ops identity assign"
+    ] = """
+        type: command
+        short-summary: Assign a user-assigned managed identity with the instance.
+        long-summary: |
+            This operation includes federation of the identity.
+
+        examples:
+        - name: Assign and federate a desired user-assigned managed identity.
+          text: >
+            az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
+        "iot ops identity show"
+    ] = """
+        type: command
+        short-summary: Show the instance identities.
+
+        examples:
+        - name: Show the identities associated with the target instance.
+          text: >
+            az iot ops identity show --name myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops identity remove"
+    ] = """
+        type: command
+        short-summary: Remove a user-assigned managed identity from the instance.
+        long-summary: |
+            This operation includes removing federation of the identity.
+
+        examples:
+        - name: Remove the desired user-assigned managed identity from the instance.
+          text: >
+            az iot ops identity remove --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
+        "iot ops secretsync"
+    ] = """
+        type: group
+        short-summary: Instance secret sync management.
+    """
+
+    helps[
+        "iot ops secretsync enable"
+    ] = """
+        type: command
+        short-summary: Enable secret sync for an instance.
+        long-summary: |
+            The operation handles federation, creation of a secret provider class
+            and role assignments of the managed identity to the target Key Vault.
+
+            Only one Secret Provider Class must be associated to the instance at a time.
+
+        examples:
+        - name: Enable the target instance for Key Vault secret sync.
+          text: >
+            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
+        - name: Same as prior example except flag to skip Key Vault role assignments.
+          text: >
+            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --skip-ra
+    """
+
+    helps[
+        "iot ops secretsync show"
+    ] = """
+        type: command
+        short-summary: Show the secret sync config associated with an instance.
+
+        examples:
+        - name: Show the secret sync config associated with an instance.
+          text: >
+            az iot ops secretsync show --name myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops secretsync disable"
+    ] = """
+        type: command
+        short-summary: Disable secret sync for an instance.
+
+        examples:
+        - name: Disable secret sync for an instance.
+          text: >
+            az iot ops secretsync disable --name myinstance -g myresourcegroup
+    """
+
+    helps[
         "iot ops asset"
     ] = """
         type: group
-        short-summary: Manage assets.
+        short-summary: Asset management.
     """
 
     helps[
@@ -1215,7 +1268,7 @@ def load_iotops_help():
         "iot ops schema"
     ] = """
         type: group
-        short-summary: Schema management.
+        short-summary: Schema and registry management.
         long-summary: |
           Schemas are documents that describe data to enable processing and contextualization.
           Message schemas describe the format of a message and its contents.
