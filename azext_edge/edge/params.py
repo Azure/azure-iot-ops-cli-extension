@@ -27,6 +27,7 @@ from .providers.edge_api import (
     OpcuaResourceKinds,
 )
 from .providers.orchestration.common import (
+    IdentityUsageType,
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
@@ -94,6 +95,24 @@ def load_iotops_arguments(self, _):
             "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
+        )
+        context.argument(
+            "mi_user_assigned",
+            options_list=["--mi-user-assigned"],
+            help="The resource Id for the desired user-assigned managed identity to use with the instance.",
+        )
+        context.argument(
+            "federated_credential_name",
+            options_list=["--fc"],
+            help="The federated credential name.",
+        )
+
+    with self.argument_context("iot ops identity") as context:
+        context.argument(
+            "usage_type",
+            options_list=["--usage"],
+            arg_type=get_enum_type(IdentityUsageType),
+            help="Indicates the usage type of the associated identity.",
         )
 
     with self.argument_context("iot ops show") as context:
@@ -231,13 +250,6 @@ def load_iotops_arguments(self, _):
             "endpoint_name",
             options_list=["--name", "-n"],
             help="Dataflow endpoint name.",
-        )
-
-    with self.argument_context("iot ops dataflow identity") as context:
-        context.argument(
-            "mi_user_assigned",
-            options_list=["--mi-user-assigned"],
-            help="The resource Id for the desired user-assigned managed identity to associate with the instance.",
         )
 
     with self.argument_context("iot ops broker") as context:
@@ -479,22 +491,6 @@ def load_iotops_arguments(self, _):
                 help="Service type associated with the default mqtt broker listener.",
                 arg_group="Broker",
             )
-            # AKV CSI Driver TODO - @digimaun
-            # context.argument(
-            #     "keyvault_resource_id",
-            #     options_list=[
-            #         "--kv-resource-id",
-            #         context.deprecate(
-            #             target="--kv-id",
-            #             redirect="--kv-resource-id",
-            #             hide=True,
-            #         ),
-            #     ],
-            #     help="Key Vault ARM resource Id. Providing this resource Id will enable the client "
-            #     "to setup all necessary resources and cluster side configuration to enable "
-            #     "the Key Vault CSI driver for IoT Operations.",
-            #     arg_group="Key Vault CSI Driver",
-            # )
             context.argument(
                 "ops_config",
                 options_list=["--ops-config"],
@@ -537,6 +533,25 @@ def load_iotops_arguments(self, _):
             "cluster_name",
             options_list=["--cluster"],
             help="Target cluster name for IoT Operations deletion.",
+        )
+
+    with self.argument_context("iot ops secretsync") as context:
+        context.argument(
+            "keyvault_resource_id",
+            options_list=["--kv-resource-id"],
+            help="Key Vault ARM resource Id.",
+        )
+        context.argument(
+            "spc_name",
+            options_list=["--spc"],
+            help="The secret provider class name for secret sync enablement. "
+            "The default pattern is '{instance_name}-spc'.",
+        )
+        context.argument(
+            "skip_role_assignments",
+            options_list=["--skip-ra"],
+            arg_type=get_three_state_flag(),
+            help="When used the role assignment step of the operation will be skipped.",
         )
 
     with self.argument_context("iot ops asset") as context:

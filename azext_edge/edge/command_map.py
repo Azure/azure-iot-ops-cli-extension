@@ -13,6 +13,7 @@ schema_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_s
 mq_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_mq#{}")
 dataflow_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_dataflow#{}")
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
+secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_secretsync#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
 
@@ -34,6 +35,22 @@ def load_iotops_commands(self, _):
         cmd_group.command("list", "list_instances")
         cmd_group.command("delete", "delete")
         cmd_group.command("verify-host", "verify_host")
+
+    with self.command_group(
+        "iot ops identity",
+        command_type=edge_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("assign", "instance_identity_assign")
+        cmd_group.command("remove", "instance_identity_remove")
+        cmd_group.show_command("show", "instance_identity_show")
+
+    with self.command_group(
+        "iot ops secretsync",
+        command_type=secretsync_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("enable", "secretsync_enable")
+        cmd_group.command("disable", "secretsync_disable")
+        cmd_group.show_command("show", "secretsync_show")
 
     with self.command_group(
         "iot ops support",
@@ -94,14 +111,6 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_dataflow_endpoint")
         cmd_group.command("list", "list_dataflow_endpoints")
-
-    with self.command_group(
-        "iot ops dataflow identity",
-        command_type=dataflow_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("assign", "assign_dataflow_identity")
-        cmd_group.command("remove", "remove_dataflow_identity")
-        cmd_group.show_command("show", "show_dataflow_identity")
 
     with self.command_group(
         "iot ops asset",
