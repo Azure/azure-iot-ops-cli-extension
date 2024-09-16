@@ -50,7 +50,7 @@ class TemplateBlueprint(NamedTuple):
 IOT_OPERATIONS_VERSION_MONIKER = "v0.7.0-preview"
 
 M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
-    commit_id="0a70dc2af150f4e44c03141a3b7ee82c53ba5cb7",
+    commit_id="0f5d0d234045e945ab7808c6aa2a44dc0ce77723",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",

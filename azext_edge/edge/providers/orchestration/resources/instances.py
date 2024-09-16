@@ -397,13 +397,24 @@ class Instances(Queryable):
         namespace: str = "azure-iot-operations",
         service_account_name: str = SERVICE_ACCOUNT_DATAFLOW,
     ):
+        cred_subject = f"system:serviceaccount:{namespace}:{service_account_name}"
+        if self._find_federated_cred(
+            mi_resource_id_container=mi_resource_id_container, issuer_url=oidc_issuer, subject=cred_subject
+        ):
+            logger.warning(
+                f"This OIDC issuer '{oidc_issuer}'\n"
+                f"and subject '{cred_subject}' combo are already associated "
+                f"with identity '{mi_resource_id_container.resource_name}'.\n"
+                "No new federated credential will be created."
+            )
+            return
         self.msi_mgmt_client.federated_identity_credentials.create_or_update(
             resource_group_name=mi_resource_id_container.resource_group_name,
             resource_name=mi_resource_id_container.resource_name,
             federated_identity_credential_resource_name=federated_credential_name,
             parameters={
                 "properties": {
-                    "subject": f"system:serviceaccount:{namespace}:{service_account_name}",
+                    "subject": cred_subject,
                     "audiences": ["api://AzureADTokenExchange"],
                     "issuer": oidc_issuer,
                 }
@@ -420,3 +431,15 @@ class Instances(Queryable):
             resource_name=mi_resource_id_container.resource_name,
             federated_identity_credential_resource_name=federated_credential_name,
         )
+
+    def _find_federated_cred(
+        self, mi_resource_id_container: ResourceIdContainer, issuer_url: str, subject: str
+    ) -> Optional[dict]:
+        cred_iteratable = self.msi_mgmt_client.federated_identity_credentials.list(
+            resource_group_name=mi_resource_id_container.resource_group_name,
+            resource_name=mi_resource_id_container.resource_name,
+        )
+        for cred in cred_iteratable:
+            cred_props: dict = cred["properties"]
+            if cred_props.get("issuer") == issuer_url and cred_props.get("subject") == subject:
+                return cred
