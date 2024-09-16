@@ -225,19 +225,23 @@ def evaluate_broker_listeners(
 
                     if authn not in valid_authns:
                         authn_display = (
-                            f"Authentication reference: [red]invalid[/red] reference {{[red]{authn}[/red]}}."
+                            f"Authentication reference: [red]Invalid[/red] reference {{[red]{authn}[/red]}}."
                         )
                         authn_eval_status = CheckTaskStatus.error.value
                     else:
                         authn_display = (
-                            f"Authentication reference: [green]valid[/green] reference {{[green]{authn}[/green]}}."
+                            f"Authentication reference: [green]Valid[/green] reference {{[green]{authn}[/green]}}."
                         )
 
-                    check_manager.add_display(
-                        target_name=target_listeners,
-                        namespace=namespace,
-                        display=Padding(authn_display, (0, 0, 0, 12)),
-                    )
+                    if (
+                        detail_level > ResourceOutputDetailLevel.summary.value
+                        or authn_eval_status == CheckTaskStatus.error.value
+                    ):
+                        check_manager.add_display(
+                            target_name=target_listeners,
+                            namespace=namespace,
+                            display=Padding(authn_display, (0, 0, 0, 12)),
+                        )
 
                     check_manager.add_target_eval(
                         target_name=target_listeners,
@@ -264,16 +268,24 @@ def evaluate_broker_listeners(
                     authz_eval_status = CheckTaskStatus.success.value
 
                     if authz not in valid_authzs:
-                        authz_display = f"[red]Invalid[/red] authorization reference {{[red]{authz}[/red]}}."
+                        authz_display = (
+                            f"Authorization reference: [red]Invalid[/red] reference {{[red]{authz}[/red]}}."
+                        )
                         authz_eval_status = CheckTaskStatus.error.value
                     else:
-                        authz_display = f"[green]Valid[/green] authorization reference {{[green]{authz}[/green]}}."
+                        authz_display = (
+                            f"Authorization reference: [green]Valid[/green] reference {{[green]{authz}[/green]}}."
+                        )
 
-                    check_manager.add_display(
-                        target_name=target_listeners,
-                        namespace=namespace,
-                        display=Padding(authz_display, (0, 0, 0, 12)),
-                    )
+                    if (
+                        detail_level > ResourceOutputDetailLevel.summary.value
+                        or authz_eval_status == CheckTaskStatus.error.value
+                    ):
+                        check_manager.add_display(
+                            target_name=target_listeners,
+                            namespace=namespace,
+                            display=Padding(authz_display, (0, 0, 0, 12)),
+                        )
 
                     check_manager.add_target_eval(
                         target_name=target_listeners,
@@ -312,7 +324,7 @@ def evaluate_broker_listeners(
                             namespace=namespace,
                             display=Padding("TLS:", (0, 0, 0, 12)),
                         )
-                        # TODO - add check for issuerRef
+                        # TODO - add check for refs
                         for prop_name, prop_value in {
                             "Cert Manager certificate spec": cert_spec,
                             "Manual": manual,
@@ -760,7 +772,7 @@ def evaluate_broker_authentications(
                 method_type = method.get("method")
                 method_eval_status = CheckTaskStatus.success.value
                 method_eval_value = method
-                if method_type == "custom":
+                if method_type.lower() == "custom":
                     conditions.append("spec.authenticationMethods[*].customSettings")
                     setting = method.get("customSettings")
                     method_display = f"- Custom method: [green]{method_type}[/green]."
@@ -854,7 +866,7 @@ def evaluate_broker_authentications(
                     )
 
                     # display rest of the properties
-                elif method_type == "x509":
+                elif method_type.lower() == "x509":
                     conditions.append("spec.authenticationMethods[*].x509Settings")
                     setting = method.get("x509Settings")
                     method_display = f"- x509 method: [green]{method_type}[/green]."
@@ -916,7 +928,7 @@ def evaluate_broker_authentications(
                                 eval_status=None,
                             )
                         )
-                elif method_type == "ServiceAccountToken":
+                elif method_type.lower() == "serviceaccounttoken":
                     conditions.append("spec.authenticationMethods[*].serviceAccountTokenSettings")
                     setting = method.get("serviceAccountTokenSettings")
                     method_display = f"Service Account Token Method: [green]{method_type}[/green]."
@@ -1396,7 +1408,7 @@ def _display_sub_check_results(
         # verbose level will show all results
         if (
             detail_level == ResourceOutputDetailLevel.summary.value
-            or result.eval_status != CheckTaskStatus.success.value
+            and result.eval_status != CheckTaskStatus.success.value
         ):
             errors_displays.append(result.display.renderable)
         elif (detail_level == ResourceOutputDetailLevel.detail.value and result.eval_status != None) or (
