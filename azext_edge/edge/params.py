@@ -106,6 +106,12 @@ def load_iotops_arguments(self, _):
             options_list=["--fc"],
             help="The federated credential name.",
         )
+        context.argument(
+            "use_self_hosted_issuer",
+            options_list=["--self-hosted-issuer"],
+            arg_type=get_three_state_flag(),
+            help="The operation will make use of the connected cluster self-hosted issuer url.",
+        )
 
     with self.argument_context("iot ops identity") as context:
         context.argument(

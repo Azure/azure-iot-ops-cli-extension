@@ -182,6 +182,7 @@ class Instances(Queryable):
         resource_group_name: str,
         mi_user_assigned: str,
         federated_credential_name: Optional[str] = None,
+        use_self_hosted_issuer: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -199,9 +200,10 @@ class Instances(Queryable):
                 namespace=custom_location["properties"]["namespace"],
                 instance_name=instance["name"],
             )
+        issuer_key = "selfHostedIssuerUrl" if use_self_hosted_issuer else "issuerUrl"
         self.federate_msi(
             mi_resource_id_container,
-            oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"]["issuerUrl"],
+            oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"][issuer_key],
             federated_credential_name=federated_credential_name,
             namespace=custom_location["properties"]["namespace"],
         )
@@ -224,6 +226,7 @@ class Instances(Queryable):
         federated_credential_name: Optional[str] = None,
         spc_name: Optional[str] = None,
         skip_role_assignments: bool = False,
+        use_self_hosted_issuer: Optional[bool] = None,
         **kwargs,
     ):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
@@ -265,9 +268,10 @@ class Instances(Queryable):
                     )
                     + "-ssc"
                 )
+            issuer_key = "selfHostedIssuerUrl" if use_self_hosted_issuer else "issuerUrl"
             self.federate_msi(
                 mi_resource_id_container=mi_resource_id_container,
-                oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"]["issuerUrl"],
+                oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"][issuer_key],
                 federated_credential_name=federated_credential_name,
                 namespace=custom_location["properties"]["namespace"],
                 service_account_name=SERVICE_ACCOUNT_SECRETSYNC,
